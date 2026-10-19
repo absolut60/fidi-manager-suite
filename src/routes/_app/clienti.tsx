@@ -612,13 +612,23 @@ function ClientiPage() {
   function buildBaseQuery(selectCols: string, count: "exact" | undefined, opts?: { skipIncludeIds?: boolean }) {
     // FM47 4a: semaforo / scostamento / da verificare filtrati dal database con
     // un solo embed interno su fido_teorico_cliente (chi non ha riga resta escluso).
-    const ftcCols: string[] = [];
+    // FM47 4c-bis: ordinamento per Fido proposto / Scostamento via embed.
+    const sortFidoTeorico = sortBy === "fido_proposto" || sortBy === "scostamento";
+    const embedFiltroAttivo = semaforoFiltro !== "tutti" || scostamentoFiltro !== "tutti" || soloDaVerificare;
+    let ftcCols: string[] = [];
     if (semaforoFiltro !== "tutti") ftcCols.push("semaforo_stadio");
-    if (scostamentoFiltro !== "tutti") ftcCols.push("scostamento");
+    if (scostamentoFiltro !== "tutti" && !ftcCols.includes("scostamento")) ftcCols.push("scostamento");
     if (soloDaVerificare) ftcCols.push("richiede_verifica");
-    const selectFinale = ftcCols.length > 0
+    if (sortFidoTeorico) {
+      // Le colonne di ordinamento servono in select: stesso embed dei filtri se c'è,
+      // altrimenti embed normale (non !inner) così i clienti senza riga restano in lista.
+      ftcCols = [...new Set([...ftcCols, "fido_proposto", "scostamento"])];
+    }
+    const selectFinale = embedFiltroAttivo
       ? `${selectCols}, fido_teorico_cliente!inner(${ftcCols.join(",")})`
-      : selectCols;
+      : sortFidoTeorico
+        ? `${selectCols}, fido_teorico_cliente(fido_proposto,scostamento)`
+        : selectCols;
     let q = supabase
       .from("clienti")
       .select(selectFinale, count ? { count } : undefined);
@@ -755,9 +765,10 @@ function ClientiPage() {
     const orderCol = isVirtualOrder ? "ragione_sociale" : sortBy;
     const orderAsc = isVirtualOrder ? true : sortDir === "asc";
     if (sortBy === "fido_proposto" || sortBy === "scostamento") {
-      // FM47: colonne calcolate fido_proposto(clienti) / fido_scostamento(clienti).
-      const col = sortBy === "fido_proposto" ? "fido_proposto" : "fido_scostamento";
-      q = q.order(col as never, { ascending: sortDir === "asc", nullsFirst: false });
+      // FM47 4c-bis: ordinamento sull'embed fido_teorico_cliente in UNA query
+      // (le colonne calcolate su clienti rivalutano le regole di accesso per riga: ~6,4 s).
+      const col = sortBy === "fido_proposto" ? "fido_proposto" : "scostamento";
+      q = q.order(`fido_teorico_cliente(${col})` as never, { ascending: sortDir === "asc", nullsFirst: false });
       q = q.order("ragione_sociale", { ascending: true });
     } else {
       q = q.order(orderCol, { ascending: orderAsc, nullsFirst: false });
