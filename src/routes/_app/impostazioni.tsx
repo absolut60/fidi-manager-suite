@@ -126,7 +126,10 @@ function ImpostazioniPage() {
           <h2 className="font-semibold flex items-center gap-2">
             <Building2 className="size-4" /> Punti vendita ({stores?.length ?? 0})
           </h2>
-          <GeocodificaSediButton />
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button variant="outline" size="sm" onClick={openNew} className="gap-1.5"><Plus className="size-4" /> Aggiungi sede</Button>
+            <GeocodificaSediButton />
+          </div>
         </div>
         {isLoading ? (
           <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
@@ -610,6 +613,7 @@ function StoreDialog({ editing, onClose }: { editing: StoreRow | null; onClose: 
           <div className="space-y-1.5">
             <Label htmlFor="codice">Codice *</Label>
             <Input id="codice" value={form.codice} onChange={(e) => setForm({ ...form, codice: e.target.value.toUpperCase() })} placeholder="1" />
+            <p className="text-xs text-muted-foreground">Deve coincidere con il codice del negozio in Gamma: l'import assegna i clienti alla sede tramite questo codice.</p>
             {errors.codice && <p className="text-xs text-destructive">{errors.codice}</p>}
           </div>
           <div className="space-y-1.5 sm:col-span-2">
