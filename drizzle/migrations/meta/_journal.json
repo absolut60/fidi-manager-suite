@@ -470,6 +470,13 @@
       "when": 1792407421447,
       "tag": "0066_fm47_dashboard_fidi_aggregati_eff_materialized",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1792408327657,
+      "tag": "0067_0067_fm47_eff_materialized_12_funzioni",
+      "breakpoints": true
     }
   ]
 }
