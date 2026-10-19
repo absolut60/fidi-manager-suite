@@ -420,35 +420,6 @@ function ClientiPage() {
   });
 
 
-  // Mappa classificazione (id + colonne necessarie per semaforo e stato fido)
-  // Carica tutti i clienti in chunk da 1000 per superare il limite Supabase.
-  // Serve solo ai 4 filtri opzionali (stato fido, oltre fido, fido consumato >= X%, insoluti):
-  // viene caricata solo quando almeno uno di essi è attivo.
-  // FM47 4a: stato fido e insoluti sono filtri della query principale; qui restano solo oltre fido e % consumato.
-  const needsClassif = soloOltreFido || advApplied.percConsumato != null;
-  const { data: classifList, isError: classifError, refetch: refetchClassif } = useQuery({
-    queryKey: ["clienti-classificazione"],
-    enabled: isListRoute && needsClassif,
-    queryFn: async () => {
-      const all: any[] = [];
-      let offset = 0;
-      const size = 1000;
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const { data, error } = await supabase
-          .from("clienti")
-          .select("id, attivo, bloccato, fido_residuo, fido_gestionale, scaduto, totale_rischio, doc_da_evadere, num_insoluti")
-          .range(offset, offset + size - 1);
-        if (error) throw error;
-        const batch = data ?? [];
-        all.push(...batch);
-        if (batch.length < size) break;
-        offset += size;
-      }
-      return all;
-    },
-    staleTime: 60_000,
-  });
 
   // ID set per preset "clienti fermi" (RPC lato server, paginata per sicurezza)
   const { data: fermiIds, isError: fermiError, refetch: refetchFermi } = useQuery({
@@ -623,26 +594,6 @@ function ClientiPage() {
     return richiesteAttiveIds;
   }, [soloInRevisione, richiesteAttiveIds]);
 
-  // ID set per filtro "esposizione oltre il fido" (rischio + da evadere > fido gestionale)
-  const oltreFidoIds = useMemo<string[] | null>(() => {
-    if (!soloOltreFido || !classifList) return null;
-    return (classifList as any[])
-      .filter((c) => Number(c.totale_rischio ?? 0) + Number(c.doc_da_evadere ?? 0) > Number(c.fido_gestionale ?? 0))
-      .map((c) => c.id);
-  }, [classifList, soloOltreFido]);
-
-  // Filtro avanzato: percentuale fido consumato (>= X%) — client-side da classifList
-  const percConsumatoIds = useMemo<string[] | null>(() => {
-    if (advApplied.percConsumato == null || !classifList) return null;
-    const threshold = advApplied.percConsumato / 100;
-    return (classifList as any[]).filter((c) => {
-      const fg = getFidoAttuale(c);
-      if (!fg || fg <= 0) return false;
-      const fr = Number(c.fido_residuo ?? 0);
-      const consumed = (fg - fr) / fg;
-      return consumed >= threshold;
-    }).map((c) => c.id);
-  }, [classifList, advApplied.percConsumato]);
 
   // Fido teorico per l'intera anagrafica: una sola chiamata alla RPC,
   // usata sia per le colonne opzionali sia per filtro/ordinamento.
@@ -775,6 +726,10 @@ function ClientiPage() {
     if (advApplied.dataFattPrima) q = q.lt("ultima_data_fatturazione", advApplied.dataFattPrima);
     if (advApplied.dataFattDopo) q = q.gt("ultima_data_fatturazione", advApplied.dataFattDopo);
     if (advApplied.presetScopertoInsoluto) q = q.eq("assicurazione_attiva", false).gt("scaduto", 0);
+    // FM47 4b: "oltre il fido" e "% fido consumato" calcolati dal database
+    // (colonne calcolate su clienti; fido_consumato_perc NULL esclude il cliente).
+    if (soloOltreFido) q = q.eq("esposizione_oltre_fido" as never, true);
+    if (advApplied.percConsumato != null) q = q.gte("fido_consumato_perc" as never, advApplied.percConsumato);
 
     // Include intersect (semaforo / stato fido / scadenziario include / a_scadere / insoluti / fermi / privacy)
     let largeInclude = false;
@@ -832,7 +787,6 @@ function ClientiPage() {
 
 
 
-  const classifReady = !needsClassif || !!classifList;
   const scadReady = !needsScadFull || !!scadenziarioMap;
   const isVirtualSort = VIRTUAL_SORT_COLS.includes(sortBy);
   const isFidoTeoricoSort = sortBy === "fido_proposto" || sortBy === "scostamento";
@@ -841,7 +795,7 @@ function ClientiPage() {
     || (isFidoTeoricoSort ? !!fidoTeoricoMap : !!scadenziarioMap);
   const fermiReady = !soloFermi || !!fermiIds;
 
-  const privacyFilterReady = privacyFiltro === "tutti" || (scadReady && classifReady && isConfigReady && virtualSortReady && fermiReady && richiesteReady);
+  const privacyFilterReady = privacyFiltro === "tutti" || (scadReady && isConfigReady && virtualSortReady && fermiReady && richiesteReady);
   const { data: privacyFilterMap } = useQuery({
     queryKey: ["clienti-privacy-filter", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, richiesteN: richiesteAttiveIds?.length ?? null, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
     enabled: isListRoute && privacyFiltro !== "tutti" && privacyFilterReady,
@@ -878,22 +832,20 @@ function ClientiPage() {
     return ids;
   }, [privacyFilterMap, privacyFiltro]);
 
-  // Intersezione id set "include" (semaforo ∩ stato_fido ∩ scadenziario ∩ a_scadere ∩ perc consumato ∩ insoluti ∩ fermi ∩ privacy)
+  // Intersezione id set "include" (semaforo ∩ stato_fido ∩ scadenziario ∩ a_scadere ∩ insoluti ∩ fermi ∩ privacy)
   const includeIdsFilter = useMemo<string[] | null>(() => {
     const sources: string[][] = [];
     if (statoFidoIds) sources.push(statoFidoIds);
-    if (oltreFidoIds) sources.push(oltreFidoIds);
     if (scadenziarioIdsFilter?.mode === "include") sources.push(scadenziarioIdsFilter.ids);
     if (aScadereIds) sources.push(aScadereIds);
     if (fatturatoIds) sources.push(fatturatoIds);
-    if (percConsumatoIds) sources.push(percConsumatoIds);
     if (fermiIds) sources.push(fermiIds);
     if (privacyIdsFilter) sources.push(privacyIdsFilter);
     if (filtroRichiesta === "solo" && richiesteAttiveIds) sources.push(richiesteAttiveIds);
     if (sources.length === 0) return null;
     const sets = sources.map((s) => new Set(s));
     return sources[0].filter((id) => sets.every((s) => s.has(id)));
-  }, [statoFidoIds, oltreFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, percConsumatoIds, fermiIds, privacyIdsFilter, filtroRichiesta, richiesteAttiveIds]);
+  }, [statoFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, fermiIds, privacyIdsFilter, filtroRichiesta, richiesteAttiveIds]);
 
   const { data: clientiResp, isLoading, isError: clientiError, refetch: refetchClienti } = useQuery({
     queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, richiesteN: richiesteAttiveIds?.length ?? null, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
@@ -975,16 +927,15 @@ function ClientiPage() {
       if (error) throw error;
       return { rows: data ?? [], count: count ?? (data?.length ?? 0) };
     },
-    enabled: isListRoute && scadReady && classifReady && isConfigReady && virtualSortReady && fermiReady && richiesteReady,
+    enabled: isListRoute && scadReady && isConfigReady && virtualSortReady && fermiReady && richiesteReady,
   });
   const clienti = (clientiResp?.rows ?? []) as any[];
   const totaleClienti = clientiResp?.count ?? 0;
   // FM47: attesa onesta delle mappe da cui dipende la query principale (disabilitata nel frattempo).
-  const listaInAttesa = isListRoute && !(scadReady && classifReady && isConfigReady && virtualSortReady && fermiReady && richiesteReady);
-  const listaInErrore = clientiError || scadError || classifError || fermiError || fidoTeoricoError || richiesteError;
+  const listaInAttesa = isListRoute && !(scadReady && isConfigReady && virtualSortReady && fermiReady && richiesteReady);
+  const listaInErrore = clientiError || scadError || fermiError || fidoTeoricoError || richiesteError;
   const riprovaLista = () => {
     if (scadError) void refetchScad();
-    if (classifError) void refetchClassif();
     if (fermiError) void refetchFermi();
     if (fidoTeoricoError) void refetchFidoTeorico();
     if (richiesteError) void refetchRichieste();

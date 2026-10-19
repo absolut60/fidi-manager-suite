@@ -498,6 +498,13 @@
       "when": 1792411143228,
       "tag": "0070_fm47_cache_cruscotti",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1792411805470,
+      "tag": "0071_fm47_clienti_colonne_calcolate_fido",
+      "breakpoints": true
     }
   ]
 }
