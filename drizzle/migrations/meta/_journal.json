@@ -477,6 +477,13 @@
       "when": 1792408327657,
       "tag": "0067_0067_fm47_eff_materialized_12_funzioni",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1792409863541,
+      "tag": "0068_fm47_store_id_effettivo_responsabile_agenti",
+      "breakpoints": true
     }
   ]
 }
