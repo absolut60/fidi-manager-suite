@@ -7065,6 +7065,10 @@ export type Database = {
           storage_path: string
         }[]
       }
+      esposizione_oltre_fido: {
+        Args: { c: Database["public"]["Tables"]["clienti"]["Row"] }
+        Returns: boolean
+      }
       evento_iscrizioni_aperte: {
         Args: { _aperte: boolean; _data_evento: string }
         Returns: boolean
@@ -7089,6 +7093,10 @@ export type Database = {
           stato: string
           user_agent: string
         }[]
+      }
+      fido_consumato_perc: {
+        Args: { c: Database["public"]["Tables"]["clienti"]["Row"] }
+        Returns: number
       }
       fn_email_valida: { Args: { _raw: string }; Returns: boolean }
       fn_telefono_valido: { Args: { _raw: string }; Returns: boolean }
