@@ -18,7 +18,7 @@ import {
   type StatoRichiesta, type TipoRichiesta,
 } from "@/lib/fidi";
 import {
-  fetchFidoTeorico, fetchFidoTeoricoTutti, isProponibile,
+  fetchFidoTeorico, isProponibile,
   REGOLA_LABEL, MOTIVO_NON_PROPONIBILE, type FidoTeoricoRow,
 } from "@/lib/fido-teorico";
 import { Button } from "@/components/ui/button";
@@ -153,7 +153,7 @@ type ScadenziarioState = {
 };
 
 /** Colonne ordinabili non presenti nella tabella clienti (ordinamento in memoria). */
-const VIRTUAL_SORT_COLS = ["scaduto", "a_scadere", "fido_proposto", "scostamento"];
+const VIRTUAL_SORT_COLS = ["scaduto", "a_scadere"];
 
 const FIDO_RANGE_MIN = -100000;
 const FIDO_RANGE_MAX = 500000;
@@ -595,17 +595,6 @@ function ClientiPage() {
   }, [soloInRevisione, richiesteAttiveIds]);
 
 
-  // Fido teorico per l'intera anagrafica: una sola chiamata alla RPC,
-  // usata sia per le colonne opzionali sia per filtro/ordinamento.
-  const fidoTeoricoAttivo = mostraFidoTeorico
-    || sortBy === "fido_proposto" || sortBy === "scostamento";
-  const { data: fidoTeoricoMap, isError: fidoTeoricoError, refetch: refetchFidoTeorico } = useQuery({
-    queryKey: ["fido-teorico-tutti"],
-    enabled: isListRoute && fidoTeoricoAttivo,
-    staleTime: 10 * 60_000,
-    queryFn: fetchFidoTeoricoTutti,
-  });
-
   // Reset pagina SOLO quando un filtro cambia davvero dopo il montaggio (firma precedente).
   const firmaFiltri = JSON.stringify([search, statoCliente, statoAttivita, storeFiltro, F.statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso]);
   const firmaPrecedente = useRef(firmaFiltri);
@@ -765,7 +754,14 @@ function ClientiPage() {
     const isVirtualOrder = VIRTUAL_SORT_COLS.includes(sortBy);
     const orderCol = isVirtualOrder ? "ragione_sociale" : sortBy;
     const orderAsc = isVirtualOrder ? true : sortDir === "asc";
-    q = q.order(orderCol, { ascending: orderAsc, nullsFirst: false });
+    if (sortBy === "fido_proposto" || sortBy === "scostamento") {
+      // FM47: colonne calcolate fido_proposto(clienti) / fido_scostamento(clienti).
+      const col = sortBy === "fido_proposto" ? "fido_proposto" : "fido_scostamento";
+      q = q.order(col as never, { ascending: sortDir === "asc", nullsFirst: false });
+      q = q.order("ragione_sociale", { ascending: true });
+    } else {
+      q = q.order(orderCol, { ascending: orderAsc, nullsFirst: false });
+    }
     return { q, largeInclude };
   }
 
@@ -789,10 +785,8 @@ function ClientiPage() {
 
   const scadReady = !needsScadFull || !!scadenziarioMap;
   const isVirtualSort = VIRTUAL_SORT_COLS.includes(sortBy);
-  const isFidoTeoricoSort = sortBy === "fido_proposto" || sortBy === "scostamento";
-  // Ordinamento virtuale: serve la mappa completa (scadenziario o fido teorico).
-  const virtualSortReady = !isVirtualSort
-    || (isFidoTeoricoSort ? !!fidoTeoricoMap : !!scadenziarioMap);
+  // Ordinamento virtuale: serve la mappa completa dello scadenziario.
+  const virtualSortReady = !isVirtualSort || !!scadenziarioMap;
   const fermiReady = !soloFermi || !!fermiIds;
 
   const privacyFilterReady = privacyFiltro === "tutti" || (scadReady && isConfigReady && virtualSortReady && fermiReady && richiesteReady);
@@ -877,8 +871,6 @@ function ClientiPage() {
 
         const dir = sortDir === "asc" ? 1 : -1;
         const valore = (id: string): number => {
-          if (sortBy === "fido_proposto") return fidoTeoricoMap?.get(id)?.fido_proposto ?? 0;
-          if (sortBy === "scostamento") return fidoTeoricoMap?.get(id)?.scostamento ?? 0;
           const key = sortBy === "scaduto" ? "totale_scaduto" : "totale_a_scadere";
           return scadenziarioMap?.get(id)?.[key] ?? 0;
         };
@@ -933,11 +925,10 @@ function ClientiPage() {
   const totaleClienti = clientiResp?.count ?? 0;
   // FM47: attesa onesta delle mappe da cui dipende la query principale (disabilitata nel frattempo).
   const listaInAttesa = isListRoute && !(scadReady && isConfigReady && virtualSortReady && fermiReady && richiesteReady);
-  const listaInErrore = clientiError || scadError || fermiError || fidoTeoricoError || richiesteError;
+  const listaInErrore = clientiError || scadError || fermiError || richiesteError;
   const riprovaLista = () => {
     if (scadError) void refetchScad();
     if (fermiError) void refetchFermi();
-    if (fidoTeoricoError) void refetchFidoTeorico();
     if (richiesteError) void refetchRichieste();
     if (clientiError) void refetchClienti();
   };
@@ -949,6 +940,13 @@ function ClientiPage() {
     enabled: isListRoute && visibleClienteIds.length > 0,
     staleTime: 5 * 60_000,
     queryFn: async () => fetchPrivacyStatusMap(visibleClienteIds),
+  });
+  // FM47: fido teorico solo per le righe visibili (colonne opzionali e schede telefono).
+  const { data: fidoTeoricoDisplayMap } = useQuery({
+    queryKey: ["clienti-fido-teorico-display", visibleClienteIds],
+    enabled: isListRoute && mostraFidoTeorico && visibleClienteIds.length > 0,
+    staleTime: 5 * 60_000,
+    queryFn: () => fetchFidoTeorico(visibleClienteIds),
   });
   // Semaforo di display per le sole righe visibili (pagina corrente): evita
   // di caricare la mappa completa quando il filtro Semaforo è su "tutti".
@@ -1879,7 +1877,7 @@ function ClientiPage() {
                     { etichetta: "Punto vendita", valore: c.stores?.nome || "—" },
                     { etichetta: "Fido attuale", valore: fmtEuro(c.fido_gestionale) },
                     { etichetta: "Fido residuo", valore: fmtEuro(c.fido_residuo) },
-                    ...(mostraFidoTeorico ? [{ etichetta: "Fido proposto", valore: (() => { const ft = fidoTeoricoMap?.get(c.id); return ft ? fmtEuro(ft.fido_proposto) : "—"; })() }] : []),
+                    ...(mostraFidoTeorico ? [{ etichetta: "Fido proposto", valore: (() => { const ft = fidoTeoricoDisplayMap?.get(c.id); return ft ? fmtEuro(ft.fido_proposto) : "—"; })() }] : []),
                   ]}
 
                   footer={
@@ -2016,7 +2014,7 @@ function ClientiPage() {
                       {fmtEuro(residuo)}
                     </TableCell>
                     {mostraFidoTeorico && (() => {
-                      const ft = fidoTeoricoMap?.get(c.id);
+                      const ft = fidoTeoricoDisplayMap?.get(c.id);
                       const scost = ft?.scostamento ?? 0;
                       return (
                         <>
