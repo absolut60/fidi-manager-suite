@@ -10,13 +10,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { getMesiAttiviUltimi12 } from "@/lib/fido-teorico-export.functions";
-import {
-  costruisciWorkbook,
-  nomeFileExport,
-  raccogliDatiFidoTeorico,
-  scaricaWorkbook,
-  type ProgressoExport,
-} from "@/lib/fido-teorico-export";
+import type { ProgressoExport } from "@/lib/fido-teorico-export";
 
 export function EsportaFidoTeoricoButton({
   className,
@@ -36,6 +30,8 @@ export function EsportaFidoTeoricoButton({
     setBusy(true);
     setProg({ fase: "Preparazione...", percentuale: 2 });
     try {
+      const { costruisciWorkbook, nomeFileExport, raccogliDatiFidoTeorico, scaricaWorkbook } =
+        await import("@/lib/fido-teorico-export");
       const mesiAttivi = (await mesiAttiviFn({ data: undefined } as any)) as Record<string, number>;
       let clienteIds: string[] | undefined;
       if (caricaClienteIds) {

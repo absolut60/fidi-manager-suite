@@ -40,7 +40,6 @@ import {
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SignaturePad, getCanvasDataURL } from "@/components/signature-pad";
-import { generaSchedaCliente } from "@/lib/scheda-pdf";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { useConfig, useConfigReady, isClienteAttivo } from "@/hooks/use-config";
@@ -3502,6 +3501,7 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
               dataFirma: now,
             };
 
+            const { generaSchedaCliente } = await import("@/lib/scheda-pdf");
             const pdfBytes = await generaSchedaCliente(schedaPayload);
 
 
