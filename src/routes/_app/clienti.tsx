@@ -674,7 +674,8 @@ function ClientiPage() {
         .or(`ultima_data_fatturazione.is.null,ultima_data_fatturazione.lt.${cutoffIso}`)
         .or(`doc_da_fatturare.is.null,doc_da_fatturare.lte.0`);
     }
-    if (storeFiltro !== "tutti") q = q.eq("store_id", storeFiltro);
+    if (storeFiltro === "__none__") q = q.is("store_id", null);
+    else if (storeFiltro !== "tutti") q = q.eq("store_id", storeFiltro);
     if (soloConFidoAttivo) q = q.gt("fido_gestionale", 0);
     if (fasciaConcesso !== "tutti") {
       const range = FASCE_CONCESSO[fasciaConcesso];
@@ -1216,6 +1217,7 @@ function ClientiPage() {
       <SelectTrigger className="w-full"><SelectValue placeholder="Punto vendita" /></SelectTrigger>
       <SelectContent>
         <SelectItem value="tutti">Tutti i punti vendita</SelectItem>
+        <SelectItem value="__none__">Senza punto vendita</SelectItem>
         {(stores ?? []).map((s) => (
           <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
         ))}
@@ -1488,8 +1490,9 @@ function ClientiPage() {
   if (statoCliente !== "attivi") activeChips.push({ key: "statoCliente", label: statoCliente === "disattivati" ? "Solo disattivati" : "Attivi+disattivati", onRemove: () => setStatoCliente("attivi") });
   if (statoAttivita !== "attivi") activeChips.push({ key: "statoAttivita", label: statoAttivita === "non_attivi" ? "Solo non attivi" : "Tutti (attività)", onRemove: () => setStatoAttivita("attivi") });
   if (storeFiltro !== "tutti") {
-    const s = (stores ?? []).find((x) => x.id === storeFiltro);
-    activeChips.push({ key: "store", label: `Punto vendita: ${s?.nome ?? "—"}`, onRemove: () => setStoreFiltro("tutti") });
+    const s = storeFiltro === "__none__" ? null : (stores ?? []).find((x) => x.id === storeFiltro);
+    const etichetta = storeFiltro === "__none__" ? "Senza punto vendita" : (s?.nome ?? "—");
+    activeChips.push({ key: "store", label: `Punto vendita: ${etichetta}`, onRemove: () => setStoreFiltro("tutti") });
   }
   if (statoFido.size > 0) {
     activeChips.push({ key: "statoFido", label: `Stato fido: ${Array.from(statoFido).join(", ")}`, onRemove: () => setStatoFido(new Set()) });
