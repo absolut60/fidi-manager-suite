@@ -1033,6 +1033,18 @@ function ClientiPage() {
   });
   const clienti = (clientiResp?.rows ?? []) as any[];
   const totaleClienti = clientiResp?.count ?? 0;
+  // FM47: attesa onesta delle mappe da cui dipende la query principale (disabilitata nel frattempo).
+  const listaInAttesa = isListRoute && !(scadReady && classifReady && isConfigReady && virtualSortReady && scostamentoReady && insolutiReady && fermiReady && richiesteReady);
+  const listaInErrore = clientiError || scadError || classifError || fermiError || fidoTeoricoError || richiesteError || semaforoError;
+  const riprovaLista = () => {
+    if (scadError) void refetchScad();
+    if (classifError) void refetchClassif();
+    if (fermiError) void refetchFermi();
+    if (fidoTeoricoError) void refetchFidoTeorico();
+    if (richiesteError) void refetchRichieste();
+    if (semaforoError) void refetchSemaforo();
+    if (clientiError) void refetchClienti();
+  };
   const totalPages = Math.max(1, Math.ceil(totaleClienti / pageSize));
 
   const visibleClienteIds = useMemo(() => clienti.map((c: any) => c.id), [clienti]);
