@@ -458,7 +458,7 @@ function GeocodificaSediButton() {
   }
 
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-2 flex-wrap">
       <Button variant="outline" size="sm" disabled={busy} onClick={() => esegui(false)} className="gap-1.5">
         <MapPinned className={`size-4 ${busy ? "animate-pulse" : ""}`} /> Geocodifica tutte le sedi
       </Button>
