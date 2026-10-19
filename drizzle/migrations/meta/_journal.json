@@ -456,6 +456,13 @@
       "when": 1792401366424,
       "tag": "0064_fm47_previsione_coperture_visibilita_una_volta",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1792402203458,
+      "tag": "0065_fm47_clienti_scadenziario_mappa",
+      "breakpoints": true
     }
   ]
 }
