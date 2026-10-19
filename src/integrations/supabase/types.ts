@@ -806,6 +806,27 @@ export type Database = {
           },
         ]
       }
+      cache_cruscotti: {
+        Row: {
+          ambito: string
+          calcolato_at: string
+          chiave: string
+          dati: Json
+        }
+        Insert: {
+          ambito: string
+          calcolato_at?: string
+          chiave: string
+          dati: Json
+        }
+        Update: {
+          ambito?: string
+          calcolato_at?: string
+          chiave?: string
+          dati?: Json
+        }
+        Relationships: []
+      }
       campagne_email_clic: {
         Row: {
           campagna_id: string
@@ -6737,6 +6758,7 @@ export type Database = {
         Args: { _name: string }
         Returns: string
       }
+      ambiti_cache_cruscotti: { Args: never; Returns: string[] }
       annulla_conversione_lead: {
         Args: { _lead_id: string }
         Returns: undefined
@@ -7361,6 +7383,17 @@ export type Database = {
           ytd_alla_data: string
         }[]
       }
+      get_dashboard_fatturato_calcolo: {
+        Args: { _store_id?: string }
+        Returns: {
+          anno: number
+          fatturato: number
+          num_clienti: number
+          num_fatture: number
+          tipo: string
+          ytd_alla_data: string
+        }[]
+      }
       get_dashboard_fidi: {
         Args: never
         Returns: {
@@ -7465,7 +7498,54 @@ export type Database = {
           n_ritardo: number
         }[]
       }
+      get_dso_aggregato_calcolo: {
+        Args: {
+          _cliente_id?: string
+          _data_a?: string
+          _data_da?: string
+          _store_id?: string
+        }
+        Returns: {
+          all_importo: number
+          all_n: number
+          all_reale_medio: number
+          all_reale_pond: number
+          all_scollamento_medio: number
+          all_scollamento_pond: number
+          all_teorico_medio: number
+          all_teorico_pond: number
+          cred_importo: number
+          cred_n: number
+          cred_reale_medio: number
+          cred_reale_pond: number
+          cred_scollamento_medio: number
+          cred_scollamento_pond: number
+          cred_teorico_medio: number
+          cred_teorico_pond: number
+          importo_anticipo: number
+          importo_puntuali: number
+          importo_ritardo: number
+          n_anticipo: number
+          n_puntuali: number
+          n_ritardo: number
+        }[]
+      }
       get_dso_serie_mensile: {
+        Args: {
+          _cliente_id?: string
+          _mesi_indietro?: number
+          _store_id?: string
+        }
+        Returns: {
+          all_reale: number
+          all_teorico: number
+          cred_reale: number
+          cred_teorico: number
+          mese: string
+          n_scadenze: number
+        }[]
+      }
+      get_dso_serie_mensile_calcolo: {
         Args: {
           _cliente_id?: string
           _mesi_indietro?: number
@@ -8140,6 +8220,10 @@ export type Database = {
       }
       prossimo_numero_ordine: { Args: { p_anno: number }; Returns: number }
       prossimo_numero_preventivo: { Args: { p_anno: number }; Returns: number }
+      refresh_cache_cruscotti: {
+        Args: { _ambito: string; _chiave: string }
+        Returns: undefined
+      }
       refresh_fatturato_mensile: { Args: never; Returns: string }
       registra_adesione_evento_whatsapp: {
         Args: { _numero_raw: string; _testo_bottone?: string }
