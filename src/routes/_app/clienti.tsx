@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { Plus, Search, Building, MapPin, Shield, ShieldOff, ArrowLeft, ArrowRight, Check, Pencil, PenTool, FileText, SlidersHorizontal, X, AlertCircle, Clock, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, MessageSquare, Loader2, HandCoins } from "lucide-react";
+import { Plus, Search, Building, MapPin, Shield, ShieldOff, ArrowLeft, ArrowRight, Check, Pencil, PenTool, FileText, SlidersHorizontal, X, AlertCircle, Clock, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, MessageSquare, Loader2, HandCoins, AlertTriangle, RefreshCw } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/lista-responsive";
@@ -397,31 +397,22 @@ function ClientiPage() {
   // Aggregato scadenziario (una sola query, cached) per badge + filtro.
   // La mappa COMPLETA serve solo al filtro Scaduto o all'ordinamento virtuale.
   const needsScadFull = scadenziarioFiltro !== "tutti" || sortBy === "scaduto" || sortBy === "a_scadere";
-  const { data: scadenziarioMap } = useQuery({
+  const { data: scadenziarioMap, isError: scadError, refetch: refetchScad } = useQuery({
     queryKey: ["clienti-scadenziario-agg"],
     enabled: isListRoute && needsScadFull,
     queryFn: async () => {
+      // FM47: una sola chiamata (prima 9 blocchi .range() che ricalcolavano tutto ogni volta).
       const map = new Map<string, ScadenziarioState>();
-      let offset = 0;
-      const size = 1000;
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const { data, error } = await supabase
-          .rpc("get_clienti_scadenziario")
-          .range(offset, offset + size - 1);
-        if (error) throw error;
-        const batch = (data ?? []) as any[];
-        for (const r of batch) {
-          map.set(r.cliente_id, {
-            totale_scaduto: Number(r.totale_scaduto) || 0,
-            totale_a_scadere: Number(r.totale_a_scadere) || 0,
-            ha_scaduto: !!r.ha_scaduto,
-            ha_a_scadere: !!r.ha_a_scadere,
-          });
-        }
-        if (batch.length < size) break;
-        offset += size;
-        if (offset > 100000) break;
+      const { data, error } = await supabase.rpc("get_clienti_scadenziario_mappa" as never);
+      if (error) throw error;
+      const obj = (data ?? {}) as Record<string, unknown[]>;
+      for (const [id, arr] of Object.entries(obj)) {
+        map.set(id, {
+          totale_scaduto: Number(arr[0]) || 0,
+          totale_a_scadere: Number(arr[1]) || 0,
+          ha_scaduto: !!arr[2],
+          ha_a_scadere: !!arr[3],
+        });
       }
       return map;
     },
@@ -434,7 +425,7 @@ function ClientiPage() {
   // Serve solo ai 4 filtri opzionali (stato fido, oltre fido, fido consumato >= X%, insoluti):
   // viene caricata solo quando almeno uno di essi è attivo.
   const needsClassif = statoFido.size > 0 || soloOltreFido || advApplied.percConsumato != null || soloInsoluti;
-  const { data: classifList } = useQuery({
+  const { data: classifList, isError: classifError, refetch: refetchClassif } = useQuery({
     queryKey: ["clienti-classificazione"],
     enabled: isListRoute && needsClassif,
     queryFn: async () => {
@@ -459,7 +450,7 @@ function ClientiPage() {
   });
 
   // ID set per preset "clienti fermi" (RPC lato server, paginata per sicurezza)
-  const { data: fermiIds } = useQuery({
+  const { data: fermiIds, isError: fermiError, refetch: refetchFermi } = useQuery({
     queryKey: ["clienti-fermi-ids", soloFermi],
     enabled: soloFermi,
     staleTime: 5 * 60_000,
@@ -484,7 +475,7 @@ function ClientiPage() {
   });
 
   // Semaforo affidabilità precalcolato (tabella fido_teorico_cliente), letto in blocco
-  const { data: semaforoMap } = useQuery({
+  const { data: semaforoMap, isError: semaforoError, refetch: refetchSemaforo } = useQuery({
     queryKey: ["clienti-semaforo-affidabilita"],
     queryFn: async () => {
       const map = new Map<string, SemaforoPre>();
@@ -638,7 +629,7 @@ function ClientiPage() {
 
   // Clienti con richiesta fido in corso — regola unica: isRichiestaAttiva (fidi.ts)
   const needsRichiesteAttive = filtroRichiesta !== "tutti" || statoFido.has("in_revisione");
-  const { data: richiesteAttiveIds } = useQuery({
+  const { data: richiesteAttiveIds, isError: richiesteError, refetch: refetchRichieste } = useQuery({
     queryKey: ["clienti-richieste-fido-attive"],
     queryFn: async () => {
       const set = new Set<string>();
@@ -706,7 +697,7 @@ function ClientiPage() {
   // usata sia per le colonne opzionali sia per filtro/ordinamento.
   const fidoTeoricoAttivo = mostraFidoTeorico || scostamentoFiltro !== "tutti" || soloDaVerificare
     || sortBy === "fido_proposto" || sortBy === "scostamento";
-  const { data: fidoTeoricoMap } = useQuery({
+  const { data: fidoTeoricoMap, isError: fidoTeoricoError, refetch: refetchFidoTeorico } = useQuery({
     queryKey: ["fido-teorico-tutti"],
     enabled: isListRoute && fidoTeoricoAttivo,
     staleTime: 10 * 60_000,
@@ -958,7 +949,7 @@ function ClientiPage() {
     return sources[0].filter((id) => sets.every((s) => s.has(id)));
   }, [semaforoIds, statoFidoIds, oltreFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, percConsumatoIds, scostamentoIds, daVerificareIds, insolutiIds, fermiIds, privacyIdsFilter, filtroRichiesta, richiesteAttiveIds]);
 
-  const { data: clientiResp, isLoading } = useQuery({
+  const { data: clientiResp, isLoading, isError: clientiError, refetch: refetchClienti } = useQuery({
     queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, richiesteN: richiesteAttiveIds?.length ?? null, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
     queryFn: async () => {
       // Ramo ordinamento virtuale (Scaduto / A scadere): PostgREST non puo'
@@ -1042,6 +1033,18 @@ function ClientiPage() {
   });
   const clienti = (clientiResp?.rows ?? []) as any[];
   const totaleClienti = clientiResp?.count ?? 0;
+  // FM47: attesa onesta delle mappe da cui dipende la query principale (disabilitata nel frattempo).
+  const listaInAttesa = isListRoute && !(scadReady && classifReady && isConfigReady && virtualSortReady && scostamentoReady && insolutiReady && fermiReady && richiesteReady);
+  const listaInErrore = clientiError || scadError || classifError || fermiError || fidoTeoricoError || richiesteError || semaforoError;
+  const riprovaLista = () => {
+    if (scadError) void refetchScad();
+    if (classifError) void refetchClassif();
+    if (fermiError) void refetchFermi();
+    if (fidoTeoricoError) void refetchFidoTeorico();
+    if (richiesteError) void refetchRichieste();
+    if (semaforoError) void refetchSemaforo();
+    if (clientiError) void refetchClienti();
+  };
   const totalPages = Math.max(1, Math.ceil(totaleClienti / pageSize));
 
   const visibleClienteIds = useMemo(() => clienti.map((c: any) => c.id), [clienti]);
@@ -1865,8 +1868,14 @@ function ClientiPage() {
 
         <div className="mb-3 text-sm text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1">
           <span>
-            Pagina <strong className="text-foreground">{page}</strong> di <strong className="text-foreground">{totalPages}</strong>
-            <span className="ml-1">— <strong className="text-foreground">{totaleClienti}</strong> clienti totali</span>
+            {listaInAttesa || isLoading ? (
+              <>Caricamento…</>
+            ) : (
+              <>
+                Pagina <strong className="text-foreground">{page}</strong> di <strong className="text-foreground">{totalPages}</strong>
+                <span className="ml-1">— <strong className="text-foreground">{totaleClienti}</strong> clienti totali</span>
+              </>
+            )}
           </span>
           {attiviCount > 0 && <span>(filtri attivi: {attiviCount})</span>}
           {filtroTipoSoggetto === "giuridica" && (
@@ -1896,7 +1905,17 @@ function ClientiPage() {
         </div>
 
 
-        {isLoading ? (
+        {listaInErrore ? (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 sm:p-6 text-center">
+            <AlertTriangle className="mx-auto size-6 text-destructive" />
+            <p className="mt-3 text-sm font-medium text-foreground break-words">
+              Non è stato possibile caricare i clienti con questi filtri. Riprova o togli l'ordinamento/filtro appena scelto.
+            </p>
+            <Button variant="outline" className="mt-4 min-h-10 w-full sm:w-auto" onClick={riprovaLista}>
+              <RefreshCw className="size-4" /> Riprova
+            </Button>
+          </div>
+        ) : isLoading || listaInAttesa ? (
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (
               <Skeleton key={i} className="h-12 w-full" />

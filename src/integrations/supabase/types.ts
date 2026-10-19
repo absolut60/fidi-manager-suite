@@ -7210,6 +7210,10 @@ export type Database = {
           totale_scaduto: number
         }[]
       }
+      get_clienti_scadenziario_mappa: {
+        Args: { _cliente_ids?: string[] }
+        Returns: Json
+      }
       get_clienti_senza_email_con_scadenze: {
         Args: never
         Returns: {
