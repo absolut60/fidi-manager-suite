@@ -24,6 +24,26 @@ export const Route = createFileRoute("/_app/clienti-variazioni-blocco")({
 
 const PER_PAGE = 50;
 
+type Periodo = "7g" | "30g" | "tutto";
+
+const PERIODI: Periodo[] = ["7g", "30g", "tutto"];
+const ETICHETTE_PERIODO: Record<Periodo, string> = {
+  "7g": "Ultimi 7 giorni",
+  "30g": "Ultimi 30 giorni",
+  tutto: "Tutto",
+};
+
+/**
+ * Soglia minima per `rilevato_at` (ISO UTC) del periodo scelto; null = tutto
+ * lo storico. Unica fonte: la usano la query e, se servirà altrove, l'etichetta.
+ */
+function sogliaPeriodo(periodo: Periodo): string | null {
+  const giorni = periodo === "7g" ? 7 : periodo === "30g" ? 30 : null;
+  if (giorni === null) return null;
+  return new Date(Date.now() - giorni * 24 * 60 * 60 * 1000).toISOString();
+}
+
+
 type VariazioneRow = {
   id: string;
   cliente_id: string;
@@ -59,8 +79,11 @@ function ClientiVariazioniBloccoPage() {
   const { user } = useAuth();
   const { filtri: FV, setCampo } = useFiltriPagina("clienti-variazioni-blocco", {
     tipo: "tutte" as "tutte" | "bloccato" | "sbloccato", search: "", storeId: "all", pagina: 0,
+    periodo: "7g" as Periodo,
   }, { userId: user?.id });
-  const { tipo, search, pagina } = FV;
+  const { tipo, search, pagina, periodo } = FV;
+  const setPeriodo = (v: Periodo) => setCampo("periodo", v);
+
   const setTipo = (v: typeof tipo) => setCampo("tipo", v);
   const setSearch = (v: string) => setCampo("search", v);
   const setStoreId = (v: string) => setCampo("storeId", v);
@@ -110,15 +133,18 @@ function ClientiVariazioniBloccoPage() {
   ].filter(Boolean).length;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["clienti-variazioni-blocco", tipo, qApplied, storeId, pagina],
+    queryKey: ["clienti-variazioni-blocco", tipo, qApplied, storeId, pagina, periodo],
     placeholderData: keepPreviousData,
     queryFn: async () => {
+      const soglia = sogliaPeriodo(periodo);
       let q = supabase
         .from("clienti_blocco_variazioni")
         .select("id, cliente_id, store_id, codice_gestionale, ragione_sociale, tipo, rilevato_at, stores(nome)", { count: "exact" })
         .order("rilevato_at", { ascending: false })
         .range(pagina * PER_PAGE, pagina * PER_PAGE + PER_PAGE - 1);
+      if (soglia) q = q.gte("rilevato_at", soglia);
       if (tipo !== "tutte") q = q.eq("tipo", tipo);
+
       if (storeId !== "all") q = q.eq("store_id", storeId);
       if (qApplied) {
         q = q.or(`codice_gestionale.ilike.%${qApplied}%,ragione_sociale.ilike.%${qApplied}%`);
@@ -143,12 +169,29 @@ function ClientiVariazioniBloccoPage() {
           <AlertTriangle className="size-7 text-primary" /> Variazioni blocco clienti
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Clienti che dopo l'ultimo import dal gestionale sono passati a bloccato o sono stati sbloccati.
+          Clienti passati a bloccato o sbloccati, rilevati a ogni import dal gestionale.
         </p>
       </div>
 
       <Card className="p-4">
+        {/* Periodo: sempre visibile, fuori da FiltriCollassabili (non conta tra i filtri attivi). */}
+        <div role="group" aria-label="Periodo" className="grid grid-cols-3 gap-1 mb-3">
+          {PERIODI.map((p) => (
+            <Button
+              key={p}
+              type="button"
+              size="sm"
+              variant={periodo === p ? "default" : "outline"}
+              aria-pressed={periodo === p}
+              onClick={() => { setPeriodo(p); setPagina(0); }}
+              className="min-h-10 h-auto px-1 py-2 leading-tight text-xs sm:text-sm"
+            >
+              {ETICHETTE_PERIODO[p]}
+            </Button>
+          ))}
+        </div>
         <FiltriCollassabili attivi={attiviCount}>
+
           <div className="flex flex-wrap gap-3">
             <div className="flex-1 min-w-[200px] sm:flex-none sm:w-64">
               <div className="relative">
@@ -197,10 +240,25 @@ function ClientiVariazioniBloccoPage() {
             {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
           </div>
         ) : righe.length === 0 ? (
-          <div className="p-12 text-center text-sm text-muted-foreground">
-            Nessuna variazione registrata. Le variazioni vengono rilevate a ogni import dei blocchi dal gestionale.
-          </div>
+          periodo === "tutto" ? (
+            <div className="p-12 text-center text-sm text-muted-foreground">
+              Nessuna variazione registrata. Le variazioni vengono rilevate a ogni import dei blocchi dal gestionale.
+            </div>
+          ) : (
+            <div className="p-8 sm:p-12 text-center space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Nessuna variazione {periodo === "7g" ? "negli ultimi 7 giorni" : "negli ultimi 30 giorni"}.
+              </p>
+              <Button
+                variant="outline" size="sm" className="min-h-10"
+                onClick={() => { setPeriodo("tutto"); setPagina(0); }}
+              >
+                Mostra tutto
+              </Button>
+            </div>
+          )
         ) : (
+
           <>
             {/* Mobile: schede al posto della tabella */}
             <div className="md:hidden p-3">
