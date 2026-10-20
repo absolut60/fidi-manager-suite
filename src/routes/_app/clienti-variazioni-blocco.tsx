@@ -184,7 +184,7 @@ function ClientiVariazioniBloccoPage() {
               variant={periodo === p ? "default" : "outline"}
               aria-pressed={periodo === p}
               onClick={() => { setPeriodo(p); setPagina(0); }}
-              className="min-h-10 h-auto px-1 py-2 leading-tight text-xs sm:text-sm"
+              className="min-h-10 h-auto px-1 py-2 leading-tight text-xs sm:text-sm whitespace-normal"
             >
               {ETICHETTE_PERIODO[p]}
             </Button>
