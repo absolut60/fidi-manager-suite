@@ -80,7 +80,7 @@ function ClientiVariazioniBloccoPage() {
   const { filtri: FV, setCampo } = useFiltriPagina("clienti-variazioni-blocco", {
     tipo: "tutte" as "tutte" | "bloccato" | "sbloccato", search: "", storeId: "all", pagina: 0,
     periodo: "7g" as Periodo,
-  }, { userId: user?.id });
+  }, { userId: user?.id, valida: { periodo: (v) => v === "7g" || v === "30g" || v === "tutto" } });
   const { tipo, search, pagina, periodo } = FV;
   const setPeriodo = (v: Periodo) => setCampo("periodo", v);
 
