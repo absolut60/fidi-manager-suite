@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, MessagesSquare, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, MessagesSquare, Plus, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -77,7 +77,7 @@ const TIPO_LABEL: Record<TipoCanale, string> = {
 };
 
 function ChatPage() {
-  const { user, role } = useAuth();
+  const { user, role, roles } = useAuth();
   const queryClient = useQueryClient();
   const { canale: canaleParam } = Route.useSearch();
   const [selected, setSelected] = useState<string | null>(null);
@@ -185,6 +185,11 @@ function ChatPage() {
   }, [membriDiretti, rubrica, user?.id]);
 
   const canaleCorrente = (canali ?? []).find((c) => c.id === selected) ?? null;
+  const [partecipantiOpen, setPartecipantiOpen] = useState(false);
+  const puoGestirePartecipanti =
+    !!canaleCorrente &&
+    (canaleCorrente.tipo === "area" || canaleCorrente.tipo === "store") &&
+    (roles ?? []).includes("amministratore");
 
   async function eliminaChat() {
     if (!canaleCorrente) return;
@@ -291,6 +296,19 @@ function ChatPage() {
                     {TIPO_LABEL[canaleCorrente.tipo]}
                   </div>
                 </div>
+                {puoGestirePartecipanti && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 h-10 sm:h-9"
+                    onClick={() => setPartecipantiOpen(true)}
+                    aria-label="Partecipanti"
+                    title="Partecipanti"
+                  >
+                    <Users className="size-4 sm:mr-1.5" />
+                    <span className="hidden sm:inline">Partecipanti</span>
+                  </Button>
+                )}
                 {canaleCorrente.tipo !== "task" &&
                   (isAdmin || canaleCorrente.created_by === user?.id) && (
                     <Button
@@ -358,7 +376,157 @@ function ChatPage() {
           queryClient.invalidateQueries({ queryKey: ["chat", "canali"] });
         }}
       />
+
+      {canaleCorrente && puoGestirePartecipanti && (
+        <GestisciPartecipantiDialog
+          open={partecipantiOpen}
+          onOpenChange={setPartecipantiOpen}
+          canaleId={canaleCorrente.id}
+          currentUserId={user?.id ?? null}
+          profili={(profili ?? []).filter((p) => p.attivo)}
+          onRimossoSeStesso={() => setSelected(null)}
+        />
+      )}
     </div>
+  );
+}
+
+function GestisciPartecipantiDialog({
+  open, onOpenChange, canaleId, currentUserId, profili, onRimossoSeStesso,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  canaleId: string;
+  currentUserId: string | null;
+  profili: Array<{ id: string; nome: string | null; cognome: string | null }>;
+  onRimossoSeStesso: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [cerca, setCerca] = useState("");
+  const [sel, setSel] = useState<Set<string>>(new Set());
+  const [salvo, setSalvo] = useState(false);
+  const membriKey = ["chat", "canale-membri", canaleId] as const;
+
+  const { data: membri, isLoading } = useQuery({
+    queryKey: membriKey,
+    enabled: open,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("canale_membri").select("user_id").eq("canale_id", canaleId);
+      if (error) throw error;
+      return (data ?? []).map((r) => r.user_id as string);
+    },
+  });
+
+  useEffect(() => {
+    if (open && membri) setSel(new Set(membri));
+    if (open) setCerca("");
+  }, [open, membri]);
+
+  const nome = (p: { nome: string | null; cognome: string | null }) =>
+    `${p.cognome ?? ""} ${p.nome ?? ""}`.trim() || "—";
+  const byId = useMemo(() => new Map(profili.map((p) => [p.id, p])), [profili]);
+  const ordinati = useMemo(
+    () =>
+      [...profili].sort(
+        (a, b) =>
+          (a.cognome ?? "").localeCompare(b.cognome ?? "", "it") ||
+          (a.nome ?? "").localeCompare(b.nome ?? "", "it"),
+      ),
+    [profili],
+  );
+  const filtrati = useMemo(() => {
+    const t = cerca.trim().toLowerCase();
+    if (!t) return ordinati;
+    return ordinati.filter((p) => `${p.nome ?? ""} ${p.cognome ?? ""} ${p.cognome ?? ""}`.toLowerCase().includes(t));
+  }, [ordinati, cerca]);
+
+  const iniziali = useMemo(() => new Set(membri ?? []), [membri]);
+  const aggiunti = [...sel].filter((id) => !iniziali.has(id));
+  const rimossi = [...iniziali].filter((id) => !sel.has(id));
+  const modificato = aggiunti.length > 0 || rimossi.length > 0;
+  const vuoto = sel.size === 0;
+  const rimuovoMe = !!currentUserId && rimossi.includes(currentUserId);
+  const etichetta = (id: string) => { const p = byId.get(id); return p ? nome(p) : "Utente"; };
+
+  function toggle(id: string, v: boolean) {
+    setSel((prev) => { const n = new Set(prev); if (v) n.add(id); else n.delete(id); return n; });
+  }
+
+  async function salva() {
+    if (!modificato || vuoto || salvo) return;
+    setSalvo(true);
+    let insOk = true, delOk = true;
+    if (aggiunti.length > 0) {
+      const now = new Date().toISOString();
+      const { error } = await supabase.from("canale_membri").insert(
+        aggiunti.map((user_id) => ({ canale_id: canaleId, user_id, ultimo_letto_at: now })) as never,
+      );
+      insOk = !error;
+    }
+    if (rimossi.length > 0) {
+      const { error } = await supabase.from("canale_membri").delete().eq("canale_id", canaleId).in("user_id", rimossi);
+      delOk = !error;
+    }
+    setSalvo(false);
+    queryClient.invalidateQueries({ queryKey: ["chat", "canali"] });
+    queryClient.invalidateQueries({ queryKey: ["chat", "non-letti"] });
+    queryClient.invalidateQueries({ queryKey: membriKey });
+    if (insOk && delOk) {
+      toast.success("Partecipanti aggiornati");
+      onOpenChange(false);
+      if (rimuovoMe) onRimossoSeStesso();
+      return;
+    }
+    if (!insOk && !delOk) toast.error("Impossibile aggiornare i partecipanti: né aggiunte né rimozioni sono state salvate");
+    else if (!insOk) toast.error(rimossi.length > 0
+      ? "Rimozioni salvate, ma l'aggiunta dei nuovi partecipanti non è riuscita"
+      : "Impossibile aggiungere i nuovi partecipanti");
+    else toast.error(aggiunti.length > 0
+      ? "Nuovi partecipanti aggiunti, ma la rimozione non è riuscita"
+      : "Impossibile rimuovere i partecipanti");
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[calc(100vw-1.5rem)] max-w-lg max-h-[90vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Partecipanti</DialogTitle>
+          <DialogDescription>{sel.size} partecipanti</DialogDescription>
+        </DialogHeader>
+        <Input placeholder="Cerca per nome o cognome…" value={cerca} onChange={(e) => setCerca(e.target.value)} />
+        <div className="max-h-[45vh] overflow-y-auto rounded-md border divide-y min-h-0">
+          {isLoading ? (
+            <div className="p-3 space-y-2"><Skeleton className="h-6" /><Skeleton className="h-6" /></div>
+          ) : filtrati.length === 0 ? (
+            <div className="p-4 text-sm text-muted-foreground text-center">Nessun utente trovato</div>
+          ) : (
+            filtrati.map((p) => (
+              <label key={p.id} className="flex items-center gap-3 px-3 min-h-10 py-2 cursor-pointer hover:bg-muted/50">
+                <Checkbox checked={sel.has(p.id)} onCheckedChange={(v) => toggle(p.id, v === true)} />
+                <span className="text-sm min-w-0 break-words">{nome(p)}</span>
+              </label>
+            ))
+          )}
+        </div>
+        {modificato && (
+          <div className="text-xs space-y-1 break-words">
+            <div>
+              <span className="font-medium">Aggiunti:</span> {aggiunti.length ? aggiunti.map(etichetta).join(", ") : "—"}
+              {" · "}
+              <span className="font-medium">Rimossi:</span> {rimossi.length ? rimossi.map(etichetta).join(", ") : "—"}
+            </div>
+            {rimuovoMe && <div className="text-destructive">Togli anche te stesso: non vedrai più questa chat</div>}
+          </div>
+        )}
+        {vuoto && !isLoading && (
+          <div className="text-xs text-destructive">Il canale deve avere almeno un partecipante</div>
+        )}
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
+          <Button onClick={() => void salva()} disabled={!modificato || vuoto || salvo}>Salva</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
