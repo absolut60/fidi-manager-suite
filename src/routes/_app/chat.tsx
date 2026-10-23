@@ -302,8 +302,8 @@ function ChatPage() {
                     size="sm"
                     className="shrink-0 h-10 sm:h-9"
                     onClick={() => setPartecipantiOpen(true)}
-                    aria-label="Partecipanti"
-                    title="Partecipanti"
+                    aria-label="Gestisci canale"
+                    title="Gestisci canale"
                   >
                     <Users className="size-4 sm:mr-1.5" />
                     <span className="hidden sm:inline">Partecipanti</span>
@@ -382,6 +382,7 @@ function ChatPage() {
           open={partecipantiOpen}
           onOpenChange={setPartecipantiOpen}
           canaleId={canaleCorrente.id}
+          nomeAttuale={canaleCorrente.nome}
           currentUserId={user?.id ?? null}
           profili={(profili ?? []).filter((p) => p.attivo)}
           onRimossoSeStesso={() => setSelected(null)}
@@ -392,11 +393,12 @@ function ChatPage() {
 }
 
 function GestisciPartecipantiDialog({
-  open, onOpenChange, canaleId, currentUserId, profili, onRimossoSeStesso,
+  open, onOpenChange, canaleId, nomeAttuale, currentUserId, profili, onRimossoSeStesso,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   canaleId: string;
+  nomeAttuale: string | null;
   currentUserId: string | null;
   profili: Array<{ id: string; nome: string | null; cognome: string | null }>;
   onRimossoSeStesso: () => void;
@@ -405,6 +407,7 @@ function GestisciPartecipantiDialog({
   const [cerca, setCerca] = useState("");
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [salvo, setSalvo] = useState(false);
+  const [nomeInserito, setNomeInserito] = useState(nomeAttuale ?? "");
   const membriKey = ["chat", "canale-membri", canaleId] as const;
 
   const { data: membri, isLoading } = useQuery({
@@ -421,6 +424,11 @@ function GestisciPartecipantiDialog({
     if (open && membri) setSel(new Set(membri));
     if (open) setCerca("");
   }, [open, membri]);
+
+  // Il campo nome si precarica all'apertura (e se il nome nel database cambia).
+  useEffect(() => {
+    if (open) setNomeInserito(nomeAttuale ?? "");
+  }, [open, nomeAttuale]);
 
   const nome = (p: { nome: string | null; cognome: string | null }) =>
     `${p.cognome ?? ""} ${p.nome ?? ""}`.trim() || "—";
@@ -443,7 +451,11 @@ function GestisciPartecipantiDialog({
   const iniziali = useMemo(() => new Set(membri ?? []), [membri]);
   const aggiunti = [...sel].filter((id) => !iniziali.has(id));
   const rimossi = [...iniziali].filter((id) => !sel.has(id));
-  const modificato = aggiunti.length > 0 || rimossi.length > 0;
+  const nomeTrim = nomeInserito.trim();
+  const nomeVecchio = (nomeAttuale ?? "").trim();
+  const nomeCambiato = nomeTrim !== nomeVecchio;
+  const nomeVuoto = nomeTrim.length === 0;
+  const modificato = aggiunti.length > 0 || rimossi.length > 0 || nomeCambiato;
   const vuoto = sel.size === 0;
   const rimuovoMe = !!currentUserId && rimossi.includes(currentUserId);
   const etichetta = (id: string) => { const p = byId.get(id); return p ? nome(p) : "Utente"; };
@@ -453,9 +465,13 @@ function GestisciPartecipantiDialog({
   }
 
   async function salva() {
-    if (!modificato || vuoto || salvo) return;
+    if (!modificato || vuoto || nomeVuoto || salvo) return;
     setSalvo(true);
-    let insOk = true, delOk = true;
+    let insOk = true, delOk = true, nomeOk = true;
+    if (nomeCambiato) {
+      const { error } = await supabase.from("canali").update({ nome: nomeTrim }).eq("id", canaleId);
+      nomeOk = !error;
+    }
     if (aggiunti.length > 0) {
       const now = new Date().toISOString();
       const { error } = await supabase.from("canale_membri").insert(
@@ -471,28 +487,39 @@ function GestisciPartecipantiDialog({
     queryClient.invalidateQueries({ queryKey: ["chat", "canali"] });
     queryClient.invalidateQueries({ queryKey: ["chat", "non-letti"] });
     queryClient.invalidateQueries({ queryKey: membriKey });
-    if (insOk && delOk) {
-      toast.success("Partecipanti aggiornati");
+    if (insOk && delOk && nomeOk) {
+      toast.success(nomeCambiato ? "Canale aggiornato" : "Partecipanti aggiornati");
       onOpenChange(false);
       if (rimuovoMe) onRimossoSeStesso();
       return;
     }
-    if (!insOk && !delOk) toast.error("Impossibile aggiornare i partecipanti: né aggiunte né rimozioni sono state salvate");
-    else if (!insOk) toast.error(rimossi.length > 0
-      ? "Rimozioni salvate, ma l'aggiunta dei nuovi partecipanti non è riuscita"
-      : "Impossibile aggiungere i nuovi partecipanti");
-    else toast.error(aggiunti.length > 0
-      ? "Nuovi partecipanti aggiunti, ma la rimozione non è riuscita"
-      : "Impossibile rimuovere i partecipanti");
+    const riusciti: string[] = [];
+    const falliti: string[] = [];
+    if (nomeCambiato) (nomeOk ? riusciti : falliti).push("il nome");
+    if (aggiunti.length > 0) (insOk ? riusciti : falliti).push("i nuovi partecipanti");
+    if (rimossi.length > 0) (delOk ? riusciti : falliti).push("le rimozioni");
+    toast.error(
+      `Non salvato: ${falliti.join(", ")}.${riusciti.length ? ` Salvato: ${riusciti.join(", ")}.` : ""}`,
+    );
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[calc(100vw-1.5rem)] max-w-lg max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Partecipanti</DialogTitle>
+          <DialogTitle>Gestisci canale</DialogTitle>
           <DialogDescription>{sel.size} partecipanti</DialogDescription>
         </DialogHeader>
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="chat-canale-nome" className="text-xs text-muted-foreground">Nome canale</Label>
+          <Input
+            id="chat-canale-nome"
+            placeholder="Nome del canale"
+            value={nomeInserito}
+            maxLength={80}
+            onChange={(e) => setNomeInserito(e.target.value)}
+          />
+        </div>
         <Input placeholder="Cerca per nome o cognome…" value={cerca} onChange={(e) => setCerca(e.target.value)} />
         <div className="max-h-[45vh] overflow-y-auto rounded-md border divide-y min-h-0">
           {isLoading ? (
@@ -510,6 +537,11 @@ function GestisciPartecipantiDialog({
         </div>
         {modificato && (
           <div className="text-xs space-y-1 break-words">
+            {nomeCambiato && (
+              <div>
+                <span className="font-medium">Nome:</span> {nomeVecchio || "—"} → {nomeTrim || "—"}
+              </div>
+            )}
             <div>
               <span className="font-medium">Aggiunti:</span> {aggiunti.length ? aggiunti.map(etichetta).join(", ") : "—"}
               {" · "}
@@ -521,9 +553,12 @@ function GestisciPartecipantiDialog({
         {vuoto && !isLoading && (
           <div className="text-xs text-destructive">Il canale deve avere almeno un partecipante</div>
         )}
+        {nomeVuoto && (
+          <div className="text-xs text-destructive">Il nome del canale non può essere vuoto</div>
+        )}
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
-          <Button onClick={() => void salva()} disabled={!modificato || vuoto || salvo}>Salva</Button>
+          <Button onClick={() => void salva()} disabled={!modificato || vuoto || nomeVuoto || salvo}>Salva</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
