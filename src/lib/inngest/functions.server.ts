@@ -152,6 +152,42 @@ async function downloadJsonFromStorage<T>(
   return JSON.parse(await file.text()) as T;
 }
 
+/**
+ * Download JSON da storage con più tentativi brevi: 4 tentativi da 20 s, ognuno
+ * con una richiesta nuova, attese 2 s / 5 s / 10 s tra un tentativo e l'altro.
+ * Usato per chunk e manifest dello scadenziario pre-staged.
+ */
+const DOWNLOAD_TENTATIVI = 4;
+const DOWNLOAD_TIMEOUT_MS = 20_000;
+const DOWNLOAD_ATTESE_MS = [2_000, 5_000, 10_000];
+
+async function downloadJsonConRetry<T>(
+  filePath: string,
+  label: string,
+  log: (msg: string) => void,
+  bucket: "import-files" | "import-staging" = "import-files",
+): Promise<T> {
+  let ultimo: unknown;
+  for (let t = 1; t <= DOWNLOAD_TENTATIVI; t++) {
+    try {
+      return await withTimeout(
+        downloadJsonFromStorage<T>(filePath, bucket),
+        DOWNLOAD_TIMEOUT_MS,
+        `${label} (tentativo ${t}/${DOWNLOAD_TENTATIVI})`,
+      );
+    } catch (e) {
+      ultimo = e;
+      log(
+        `${label}: tentativo ${t}/${DOWNLOAD_TENTATIVI} fallito: ${e instanceof Error ? e.message : String(e)}`,
+      );
+      if (t < DOWNLOAD_TENTATIVI) {
+        await new Promise((r) => setTimeout(r, DOWNLOAD_ATTESE_MS[t - 1]));
+      }
+    }
+  }
+  throw ultimo instanceof Error ? ultimo : new Error(String(ultimo));
+}
+
 type StagedScadenziarioManifest = {
   kind: "scadenziario-staging-v1";
   originalFilePath: string;
@@ -1696,7 +1732,11 @@ export const processScadenziarioImport = inngest.createFunction(
       );
       if (filePath.startsWith("_staging/") && filePath.endsWith("/manifest.json")) {
         const manifest = await step.run("load-staged-manifest", async () => {
-          return downloadJsonFromStorage<StagedScadenziarioManifest>(filePath);
+          return downloadJsonConRetry<StagedScadenziarioManifest>(
+            filePath,
+            `manifest download-json ${filePath}`,
+            (m) => logger.warn(m),
+          );
         });
         const timestampInizio = await step.run("init-timestamp", async () =>
           new Date().toISOString(),
@@ -1738,6 +1778,7 @@ export const processScadenziarioImport = inngest.createFunction(
             endRow0: 0,
             headers: [],
             timestampInizio,
+            righeChunk: (chunk.rowsCount ?? 0) + (chunk.missingCount ?? 0),
           },
         }));
         const SEND_BATCH = 500;
@@ -1841,6 +1882,8 @@ type ChunkEventData = {
   endRow0: number;
   headers: string[];
   timestampInizio: string;
+  /** Righe del chunk pre-staged (dal manifest), usate dall'onFailure. */
+  righeChunk?: number;
 };
 
 const SCAD_UPSERT_SUBBATCH = 250;
@@ -1853,6 +1896,87 @@ export const processScadenziarioChunk = inngest.createFunction(
     retries: 3,
     concurrency: { limit: 3 },
     triggers: [{ event: "import/scadenziario.chunk" }],
+    // Si attiva solo dopo che Inngest ha esaurito i retry: registra il chunk
+    // come non scritto e fa avanzare i contatori, così l'import non resta
+    // "in_elaborazione" e il finalize (verifica-completezza) salta la pulizia.
+    onFailure: async ({ error, event: failedEvent, step, logger }) => {
+      const fd = (failedEvent.data ?? {}) as { event?: { data?: ChunkEventData } } & Partial<ChunkEventData>;
+      const orig = (fd.event?.data ?? fd) as Partial<ChunkEventData>;
+      const importazioneId = orig.importazioneId;
+      if (!importazioneId) return;
+      const chunkIndex = orig.chunkIndex ?? -1;
+      const timestampInizio = orig.timestampInizio ?? new Date().toISOString();
+      const messaggio = (error?.message ?? "errore sconosciuto").slice(0, 300);
+      const righeChunk =
+        orig.righeChunk && orig.righeChunk > 0
+          ? orig.righeChunk
+          : !orig.chunkPath && (orig.endRow0 ?? 0) > (orig.startRow0 ?? 0)
+            ? (orig.endRow0 as number) - (orig.startRow0 as number)
+            : 1;
+
+      await step.run("registra-chunk-fallito", async () => {
+        const { error: anErr } = await supabaseAdmin.from("anomalie_import" as never).insert({
+          importazione_id: importazioneId,
+          tipo_anomalia: "upsert_chunk_fallito",
+          campo: "scadenze",
+          codice_gestionale: "",
+          valore_attuale: `chunk ${chunkIndex}: righe non scritte (download/elaborazione fallita)`,
+          valore_nuovo: messaggio,
+          stato: "in_attesa",
+        } as never);
+        if (anErr) logger.error(`[chunk ${chunkIndex}] onFailure insert anomalia: ${anErr.message}`);
+
+        const { data: cur } = await supabaseAdmin
+          .from("importazioni")
+          .select("log_errori")
+          .eq("id", importazioneId)
+          .single();
+        const existing = (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
+        const { error: logErr } = await supabaseAdmin
+          .from("importazioni")
+          .update({
+            log_errori: [
+              ...existing,
+              { riga: chunkIndex, errore: `Chunk ${chunkIndex} fallito dopo tutti i tentativi: ${messaggio}` },
+            ].slice(0, 500),
+          } as never)
+          .eq("id", importazioneId);
+        if (logErr) logger.error(`[chunk ${chunkIndex}] onFailure log_errori: ${logErr.message}`);
+        return true;
+      });
+
+      const progress = await step.run("incrementa-contatori-chunk-fallito", async () => {
+        const { data: rpc, error: rpcErr } = await (
+          supabaseAdmin.rpc as unknown as (
+            fn: string,
+            args: Record<string, unknown>,
+          ) => Promise<{
+            data: Array<{ chunks_completati: number; chunks_totali: number }> | null;
+            error: { message: string } | null;
+          }>
+        )("increment_importazione_counters", {
+          _id: importazioneId,
+          _elaborate: 0,
+          _create: 0,
+          _update: 0,
+          _error: righeChunk,
+          _skipped: 0,
+        });
+        if (rpcErr) throw new Error(`increment_importazione_counters: ${rpcErr.message}`);
+        return rpc?.[0] ?? null;
+      });
+
+      if (progress && progress.chunks_completati >= progress.chunks_totali) {
+        await step.run("send-finalize-dopo-chunk-fallito", async () => {
+          await sendInngestEvents([
+            {
+              name: "import/scadenziario.finalize",
+              data: { importazioneId, timestampInizio },
+            },
+          ]);
+        });
+      }
+    },
   },
   async ({ event, step, logger }) => {
     const data = event.data as ChunkEventData;
@@ -1874,10 +1998,10 @@ export const processScadenziarioChunk = inngest.createFunction(
       const t0 = Date.now();
       logger.info(`[chunk ${chunkIndex}] A.start download-parse-range`);
       if (chunkPath) {
-        const staged = await withTimeout(
-          downloadJsonFromStorage<StagedScadenziarioChunk>(chunkPath),
-          60_000,
+        const staged = await downloadJsonConRetry<StagedScadenziarioChunk>(
+          chunkPath,
           `chunk ${chunkIndex} download-json ${chunkPath}`,
+          (m) => logger.warn(m),
         );
         const codici = Array.from(new Set(staged.rows.map((r) => r.codice_gestionale)));
         logger.info(`[chunk ${chunkIndex}] A.end download-json in ${Date.now() - t0}ms rows=${staged.rows.length}`);
