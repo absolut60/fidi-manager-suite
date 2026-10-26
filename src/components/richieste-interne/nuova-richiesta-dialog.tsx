@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Plus, Paperclip, X, ChevronsUpDown } from "lucide-react";
@@ -47,7 +48,15 @@ export type RichiestaEditInitial = {
   fornitore: string | null;
   sede_id: string | null;
   description: string | null;
+  acconto_richiesto?: boolean;
+  acconto_importo?: number | null;
+  acconto_data_prevista?: string | null;
 };
+
+function oggiIso(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 export function NuovaRichiestaDialog({
   trigger,
@@ -82,6 +91,9 @@ export function NuovaRichiestaDialog({
   const [fornitore, setFornitore] = useState("");
   const [fornitoreOpen, setFornitoreOpen] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
+  const [acconto, setAcconto] = useState(false);
+  const [accontoImporto, setAccontoImporto] = useState("");
+  const [accontoData, setAccontoData] = useState("");
 
   const { data: sedi } = useQuery({
     queryKey: ["stores", "select"],
@@ -116,6 +128,11 @@ export function NuovaRichiestaDialog({
       setSedeId(initial.sede_id ?? "");
       setFornitore(initial.fornitore ?? "");
       setFiles([]);
+      setAcconto(!!initial.acconto_richiesto);
+      setAccontoImporto(initial.acconto_importo != null
+        ? initial.acconto_importo.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        : "");
+      setAccontoData(initial.acconto_data_prevista ?? "");
     } else if (!isEdit) {
       if (!sedeId && sedeCorrenteId) setSedeId(sedeCorrenteId);
     }
@@ -125,6 +142,7 @@ export function NuovaRichiestaDialog({
   function reset() {
     setTitle(""); setTipo("acquisto"); setImporto(""); setDescrizione("");
     setSedeId(""); setFornitore(""); setFiles([]);
+    setAcconto(false); setAccontoImporto(""); setAccontoData("");
   }
 
   const fornitoriFiltered = useMemo(() => {
@@ -138,6 +156,26 @@ export function NuovaRichiestaDialog({
   async function onSubmit() {
     if (!user?.id) { toast.error("Sessione non valida"); return; }
     if (!title.trim()) { toast.error("Il titolo è obbligatorio"); return; }
+
+    // Bonifico di acconto (FM48): coerente con il CHECK richieste_interne_acconto_coerenza.
+    let accontoPatch: {
+      acconto_richiesto: boolean;
+      acconto_importo: number | null;
+      acconto_data_prevista: string | null;
+      acconto_stato: "da_eseguire" | null;
+    } = { acconto_richiesto: false, acconto_importo: null, acconto_data_prevista: null, acconto_stato: null };
+    if (acconto) {
+      const imp = parseImporto(accontoImporto);
+      if (imp == null || imp <= 0) { toast.error("Importo acconto non valido: deve essere maggiore di zero"); return; }
+      const impArr = Math.round(imp * 100) / 100;
+      if (accontoData && accontoData < oggiIso()) { toast.error("La data prevista del bonifico non può essere nel passato"); return; }
+      accontoPatch = {
+        acconto_richiesto: true,
+        acconto_importo: impArr,
+        acconto_data_prevista: accontoData || null,
+        acconto_stato: "da_eseguire",
+      };
+    }
 
     setSaving(true);
     try {
@@ -156,6 +194,7 @@ export function NuovaRichiestaDialog({
             fornitore: fornitoreTrim || null,
             sede_id: sedeId || null,
             sede_name: sedeName,
+            ...accontoPatch,
             updated_at: new Date().toISOString(),
           })
           .eq("id", initial.id);
@@ -192,6 +231,7 @@ export function NuovaRichiestaDialog({
           sede_id: sedeId || null,
           sede_name: sedeName,
           status: "pending",
+          ...accontoPatch,
         })
         .select("id")
         .single();
@@ -264,7 +304,7 @@ export function NuovaRichiestaDialog({
           )}
         </DialogTrigger>
       )}
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:w-screen max-sm:max-w-none max-sm:rounded-none">
         <DialogHeader><DialogTitle>{isEdit ? "Modifica richiesta" : "Nuova richiesta interna"}</DialogTitle></DialogHeader>
 
         <div className="space-y-4">
@@ -358,6 +398,37 @@ export function NuovaRichiestaDialog({
               placeholder="Descrizione..." rows={4} maxLength={5000} />
           </div>
 
+          <div className="space-y-3 rounded-md border p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <Label htmlFor="rq-acconto" className="cursor-pointer">Richiesta bonifico di acconto</Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Alla approvazione la tesoreria riceverà un avviso per eseguire il bonifico.
+                </p>
+              </div>
+              <Switch id="rq-acconto" checked={acconto} onCheckedChange={setAcconto} className="shrink-0" />
+            </div>
+            {acconto && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="rq-acc-imp">Importo acconto (€) <span className="text-destructive">*</span></Label>
+                  <Input id="rq-acc-imp" inputMode="decimal" value={accontoImporto} className="h-10"
+                    onChange={(e) => setAccontoImporto(e.target.value)}
+                    onBlur={() => {
+                      const n = parseImporto(accontoImporto);
+                      if (n != null && n > 0) setAccontoImporto(n.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+                    }}
+                    placeholder="0,00" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="rq-acc-data">Data prevista del bonifico</Label>
+                  <Input id="rq-acc-data" type="date" min={oggiIso()} value={accontoData} className="h-10"
+                    onChange={(e) => setAccontoData(e.target.value)} />
+                </div>
+              </div>
+            )}
+          </div>
+
           {!isEdit && (
             <div className="space-y-1.5">
               <Label>Allegati</Label>
@@ -395,9 +466,9 @@ export function NuovaRichiestaDialog({
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>Annulla</Button>
-          <Button onClick={onSubmit} disabled={saving || !title.trim()}>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" className="h-10" onClick={() => setOpen(false)} disabled={saving}>Annulla</Button>
+          <Button className="h-10" onClick={onSubmit} disabled={saving || !title.trim() || (acconto && !(parseImporto(accontoImporto) ?? 0))}>
             {saving ? "Salvataggio…" : isEdit ? "Salva modifiche" : "Crea richiesta"}
           </Button>
         </DialogFooter>
