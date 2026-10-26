@@ -17,7 +17,6 @@ import {
   Copy,
   EyeOff,
   AlertTriangle,
-  Send,
   CreditCard,
   Building2,
   MapPin,
@@ -26,7 +25,6 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { BackButton } from "@/components/back-button";
-import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
 import { useRef } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -66,7 +64,7 @@ import { ClienteInsolutiTab } from "@/components/cliente-insoluti-tab";
 import { useEsperienzaPagamentoCliente, testiPagateInRitardo } from "@/hooks/use-esperienza-pagamento";
 import { ClienteAttivitaRecuperoTab } from "@/components/cliente-attivita-recupero-tab";
 import { ClientePromesseTab } from "@/components/cliente-promesse-tab";
-import { useAzioniRecuperoCliente } from "@/hooks/use-azioni-recupero-cliente";
+import { useAzioniRecuperoCliente, useStadioSollecitoCliente } from "@/hooks/use-azioni-recupero-cliente";
 import { isPromessaPagamento } from "@/lib/azioni-recupero-ui";
 import { AllegatiSection } from "@/components/allegati-section";
 import { ClienteFatturato } from "@/components/cliente-fatturato";
@@ -287,7 +285,6 @@ function ClienteDetail() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { role, hasRole, roles } = useAuth();
-  const puoInviare = puoInviareComunicazioniRecupero(roles as string[]);
   const isAdmin = role === "amministratore";
   const isStoreManager = role === "store_manager";
   // Retro-compatibilita': i vecchi link ?tab=insoluti&insolutiTab=x puntano ora al tab promosso
@@ -299,6 +296,15 @@ function ClienteDetail() {
         : "scadenziario"
       : (tab ?? "riepilogo");
   const effTab = effTabRaw === "solleciti" ? "attivita" : effTabRaw;
+  useEffect(() => {
+    if (effTabRaw !== "solleciti") return;
+    navigate({
+      to: "/clienti/$clienteId",
+      params: { clienteId },
+      search: (prev: Record<string, unknown>) => ({ ...prev, tab: "attivita", insolutiTab: undefined }),
+      replace: true,
+    } as never);
+  }, [effTabRaw, clienteId, navigate]);
   const isAgente = hasRole("agente");
   // Conteggio per l'etichetta della scheda Promesse: stessa cache di Attività recupero.
   const { azioni: azioniRecupero } = useAzioniRecuperoCliente(clienteId);
