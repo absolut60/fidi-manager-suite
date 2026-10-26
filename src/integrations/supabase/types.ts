@@ -8586,6 +8586,7 @@ export type Database = {
         | "marketing_eventi"
         | "amministrazione_strumenti"
         | "recupero_crediti"
+        | "tesoreria"
       categoria_allegato:
         | "capitolato"
         | "disegni"
@@ -8902,6 +8903,7 @@ export const Constants = {
         "marketing_eventi",
         "amministrazione_strumenti",
         "recupero_crediti",
+        "tesoreria",
       ],
       categoria_allegato: [
         "capitolato",

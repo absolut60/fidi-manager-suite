@@ -540,6 +540,13 @@
       "when": 1793021779938,
       "tag": "0076_fm48_iscrizione_whatsapp_soggetto_sede",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1793044462676,
+      "tag": "0077_fm48_ruolo_tesoreria",
+      "breakpoints": true
     }
   ]
 }
