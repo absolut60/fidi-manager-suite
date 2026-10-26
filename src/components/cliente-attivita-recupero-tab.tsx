@@ -435,6 +435,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda, onApriProm
               cc={viewEmail.email_cc ?? null}
               bcc={viewEmail.email_bcc ?? null}
               azioneId={viewEmail.id}
+              clienteId={viewEmail.cliente_id}
             />
           )}
         </DialogContent>

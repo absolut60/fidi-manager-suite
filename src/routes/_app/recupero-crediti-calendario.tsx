@@ -1,5 +1,7 @@
 import { testoAzione } from "@/lib/azioni-recupero-ui";
-import { TIPO_PROMESSA } from "@/lib/azioni-recupero-ui";
+import { TIPO_PROMESSA, isEmailDaInviare } from "@/lib/azioni-recupero-ui";
+import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
+import { InviaEmailRecuperoDialog } from "@/components/invia-email-recupero-dialog";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -11,7 +13,7 @@ import listPlugin from "@fullcalendar/list";
 import itLocale from "@fullcalendar/core/locales/it";
 import type { DatesSetArg, EventClickArg, EventDropArg, DateSelectArg, EventContentArg } from "@fullcalendar/core";
 import type { DateClickArg } from "@fullcalendar/interaction";
-import { CalendarClock, ExternalLink, ChevronDown, Plus, HandCoins, Search, AlertTriangle } from "lucide-react";
+import { CalendarClock, ExternalLink, Send, ChevronDown, Plus, HandCoins, Search, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -114,7 +116,7 @@ function fmtDateTime(v: unknown): string {
 }
 
 function CalendarioPage() {
-  const { role, profilo, user } = useAuth();
+  const { role, roles, profilo, user } = useAuth();
   const isStoreManager = role === "store_manager";
   const myStoreId = profilo?.store_id ?? null;
   const navigate = useNavigate();
@@ -131,6 +133,8 @@ function CalendarioPage() {
   const [cercaCliente, setCercaCliente] = useState("");
   const [arretrateOpen, setArretrateOpen] = useState(false);
   const [openAzione, setOpenAzione] = useState<AzioneRow | null>(null);
+  // Email da fare da spedire con "Invia ora" (finestra unica di invio).
+  const [inviaAzione, setInviaAzione] = useState<AzioneRow | null>(null);
   const [creaOpen, setCreaOpen] = useState(false);
   const [creaData, setCreaData] = useState<Date | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -648,7 +652,7 @@ function CalendarioPage() {
           onOpenChange={(o) => !o && setOpenAzione(null)}
           azione={openAzione as unknown as AzioneModificabile}
           onSaved={invalidateAzioniQueries}
-          footerExtra={
+          footerExtra={<>
             <Button
               variant="outline"
               onClick={() => {
@@ -661,7 +665,27 @@ function CalendarioPage() {
               <ExternalLink className="size-4 mr-2" />
               Apri scheda cliente
             </Button>
-          }
+            {isEmailDaInviare(openAzione) && puoInviareComunicazioniRecupero(roles) && (
+              <Button
+                onClick={() => { const a = openAzione; setOpenAzione(null); setInviaAzione(a); }}
+                className="gap-1.5"
+              >
+                <Send className="size-4" /> Invia ora
+              </Button>
+            )}
+          </>}
+        />
+      )}
+
+      {inviaAzione && (
+        <InviaEmailRecuperoDialog
+          key={inviaAzione.id}
+          open={!!inviaAzione}
+          onOpenChange={(o) => !o && setInviaAzione(null)}
+          clienteId={inviaAzione.cliente_id}
+          modalitaIniziale="modello"
+          azioneEsistenteId={inviaAzione.id}
+          onSent={invalidateAzioniQueries}
         />
       )}
 
