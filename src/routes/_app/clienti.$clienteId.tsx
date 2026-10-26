@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { BackButton } from "@/components/back-button";
-import { InviaSollecitoDialog } from "@/components/invia-sollecito-dialog";
+import { InviaEmailRecuperoDialog } from "@/components/invia-email-recupero-dialog";
 import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
 import { useRef } from "react";
 import { toast } from "sonner";
@@ -510,10 +510,11 @@ function ClienteDetail() {
                 <Send className="size-4" /> Invia sollecito
               </Button>
             )}
-            <InviaSollecitoDialog
+            <InviaEmailRecuperoDialog
               open={openSollecito}
               onOpenChange={setOpenSollecito}
               clienteId={clienteId}
+              modalitaIniziale="modello"
             />
             {!isAgente && (
               <Dialog open={openEdit} onOpenChange={setOpenEdit}>

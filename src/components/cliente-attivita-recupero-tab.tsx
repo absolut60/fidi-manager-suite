@@ -26,8 +26,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { InviaSollecitoDialog } from "@/components/invia-sollecito-dialog";
-import { EmailLiberaDialog } from "@/components/email-libera-dialog";
+import { InviaEmailRecuperoDialog } from "@/components/invia-email-recupero-dialog";
 import { CreaAzioneDialog } from "@/components/crea-azione-dialog";
 import { EmailInviataView } from "@/components/email-inviata-view";
 import { ModificaAzioneDialog, type AzioneModificabile } from "@/components/modifica-azione-dialog";
@@ -291,7 +290,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda, onApriProm
       <div className="flex flex-wrap items-center gap-2">
         {puoInviare && (
           <Button size="sm" onClick={() => setSollecitoOpen(true)} className="gap-1.5">
-            <Send className="size-4" /> Invia sollecito
+            <Send className="size-4" /> Invia email
           </Button>
         )}
         {puoInviare && (
@@ -398,15 +397,17 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda, onApriProm
         </div>
       )}
 
-      <InviaSollecitoDialog
+      <InviaEmailRecuperoDialog
         open={sollecitoOpen}
         onOpenChange={setSollecitoOpen}
         clienteId={clienteId}
+        modalitaIniziale="modello"
       />
-      <EmailLiberaDialog
+      <InviaEmailRecuperoDialog
         open={emailLiberaOpen}
         onOpenChange={setEmailLiberaOpen}
         clienteId={clienteId}
+        modalitaIniziale="libera"
       />
       <CreaAzioneDialog
         open={creaOpen}
