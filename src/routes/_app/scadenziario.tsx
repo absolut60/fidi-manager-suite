@@ -1679,7 +1679,7 @@ function AzioneRecuperoDialog({
 
           {tipo === "email" && (
             <div className="text-xs rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 p-3">
-              L'invio email verrà collegato in un secondo momento; ora viene registrata solo l'azione.
+              Viene creata un'email da inviare per ogni cliente: la trovi in Attività recupero e nel Calendario, con il pulsante Invia ora.
             </div>
           )}
         </div>

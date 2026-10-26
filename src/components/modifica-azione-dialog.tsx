@@ -19,7 +19,7 @@ import {
 import { AllegatiSection } from "@/components/allegati-section";
 import { parseNumeroIt } from "@/lib/numero-it";
 
-import { ESITI_AZIONE as ESITI, isPromessaPagamento, tipoAzioneVisualizzato, type EsitoAzione as Esito } from "@/lib/azioni-recupero-ui";
+import { ESITI_AZIONE as ESITI, isEmailDaInviare, isPromessaPagamento, tipoAzioneVisualizzato, type EsitoAzione as Esito } from "@/lib/azioni-recupero-ui";
 import { SelettoreScadenzeAperte } from "@/components/selettore-scadenze-aperte";
 
 const TIPO_META: Record<string, { label: string; Icon: typeof Mail }> = {
@@ -66,6 +66,9 @@ export function ModificaAzioneDialog({
   const qc = useQueryClient();
   const { user, roles } = useAuth();
   const isEmail = azione.tipo === "email";
+  // Solo un'email effettivamente inviata è in sola lettura; un'email da inviare si modifica come le altre azioni.
+  const isEmailInviata = isEmail && !!azione.email_corpo_html;
+  const daInviare = isEmailDaInviare(azione);
   const isSollecito = isEmail && azione.livello_sollecito != null && azione.livello_sollecito > 0;
   // Promessa (tipo promessa_pagamento): campi propri, niente esito né cambio tipo.
   const isPromessa = isPromessaPagamento(azione);
@@ -144,7 +147,7 @@ export function ModificaAzioneDialog({
       };
       // L'esito di una promessa non si tocca (resta quello salvato).
       if (!isPromessa) patch.esito = esito;
-      if (!isEmail) {
+      if (!isEmailInviata) {
         patch.data_azione = dt.toISOString();
         const trimmed = importo.trim();
         if (trimmed === "") patch.importo_riferimento = null;
@@ -204,9 +207,11 @@ export function ModificaAzioneDialog({
             <Pencil className="size-5" /> Modifica {meta.label}
           </DialogTitle>
           <DialogDescription>
-            {isEmail
+            {isEmailInviata
               ? "Email già inviata: il contenuto è in sola lettura. Puoi aggiornare solo esito e note."
-              : "Aggiorna i dati dell'azione."}
+              : daInviare
+                ? "Email da inviare: usa Invia ora per scriverla e spedirla."
+                : "Aggiorna i dati dell'azione."}
           </DialogDescription>
         </DialogHeader>
 
@@ -228,7 +233,7 @@ export function ModificaAzioneDialog({
             </span>
           </div>
 
-          {isEmail && (
+          {isEmailInviata && (
             <div className="rounded-md border bg-muted/30 p-3 space-y-2">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Lock className="size-3.5" /> Prova di invio — non modificabile
@@ -249,7 +254,7 @@ export function ModificaAzioneDialog({
                 type="datetime-local"
                 value={dataAzione}
                 onChange={(e) => setDataAzione(e.target.value)}
-                disabled={isEmail}
+                disabled={isEmailInviata}
               />
             </div>
             {!isPromessa && <div className="space-y-1.5">
@@ -265,7 +270,7 @@ export function ModificaAzioneDialog({
             </div>}
           </div>
 
-          {!isEmail && (
+          {!isEmailInviata && (
             <div className="space-y-1.5">
               <Label>{isPromessa ? "Importo promesso (€) *" : "Importo di riferimento (€)"}</Label>
               <Input
