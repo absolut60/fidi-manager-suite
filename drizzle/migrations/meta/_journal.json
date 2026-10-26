@@ -512,6 +512,13 @@
       "when": 1792412029004,
       "tag": "0072_fm47_clienti_colonne_fido_teorico",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1793012679043,
+      "tag": "0073_fm48_email_recupero_copie",
+      "breakpoints": true
     }
   ]
 }
