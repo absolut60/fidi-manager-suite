@@ -526,6 +526,13 @@
       "when": 1793016493186,
       "tag": "0074_fm48_gestione_legale",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1793016829813,
+      "tag": "0075_fm48_legale_storage_pratiche",
+      "breakpoints": true
     }
   ]
 }
