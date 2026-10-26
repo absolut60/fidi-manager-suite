@@ -3718,8 +3718,6 @@ export const processBloccoFidoImport = inngest.createFunction(
           // trg_note_legali_gest_gestione_legale, che applica la regola unica
           // ricalcola_in_gestione_legale (una pratica chiusa non rientra per la nota).
 
-
-
           // Anomalie perde_gestione_legale: clienti nel file con in_gestione_legale=true
           // ma NON presenti nel foglio Note Legale.
           // Query mirata: in_gestione_legale=true AND codice_gestionale IN (codici), batch.
