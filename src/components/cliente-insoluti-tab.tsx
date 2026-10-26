@@ -49,12 +49,10 @@ function fmtDate(v: unknown): string {
   try { return new Date(String(v)).toLocaleDateString("it-IT"); } catch { return String(v); }
 }
 
-const TIPO_SOLLECITO = ["interno", "email", "telefono", "raccomandata", "avvocato", "legale", "altro"] as const;
-const STATO_SOLLECITO = ["inviato", "in_attesa_risposta", "risposto", "ignorato", "risolto"] as const;
 const TIPO_PRATICA = ["decreto_ingiuntivo", "pignoramento", "precetto", "azione_legale_generica", "messa_a_perdita", "concordato", "fallimento", "altro"] as const;
 const STATO_PRATICA = ["aperta", "in_corso", "decreto_ottenuto", "pignoramento_eseguito", "pignoramento_negativo", "chiusa_pagamento", "chiusa_perdita", "sospesa"] as const;
 
-export type SezioneInsoluti = "scadenziario" | "solleciti" | "piani" | "legali" | "assicurazioni";
+export type SezioneInsoluti = "scadenziario" | "piani" | "legali" | "assicurazioni";
 
 export function ClienteInsolutiTab({
   cliente,
@@ -109,7 +107,6 @@ export function ClienteInsolutiTab({
       )}
 
       {sezione === "scadenziario" && <ScadenziarioSection clienteId={cliente.id} canEdit={isAdminOrApprov} />}
-      {sezione === "solleciti" && <SollecitiSection clienteId={cliente.id} canEdit={isAdminOrApprov} />}
       {sezione === "piani" && <ClientePianiRientroTab clienteId={cliente.id} />}
       {sezione === "legali" && (
         <div className="space-y-4">
@@ -496,220 +493,6 @@ function PagatoBlock({
 }
 
 
-/* ============================== SOLLECITI ============================== */
-
-function SollecitiSection({ clienteId, canEdit }: { clienteId: string; canEdit: boolean }) {
-  const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
-
-  const { data: solleciti, isLoading } = useQuery({
-    queryKey: ["solleciti", clienteId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("solleciti" as never)
-        .select("*, profili:inserito_da(nome, cognome, email)")
-        .eq("cliente_id", clienteId)
-        .order("data_sollecito", { ascending: false });
-      if (error) throw error;
-      return data as Array<{ id: string; data_sollecito: string; tipo: string; nota: string; stato: string; risposta: string | null; profili: { nome: string | null; cognome: string | null; email: string | null } | null }>;
-    },
-  });
-
-  return (
-    <div className="space-y-3">
-      {canEdit && (
-        <div className="flex justify-end">
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" className="gap-1.5"><Plus className="size-4" /> Aggiungi sollecito</Button>
-            </DialogTrigger>
-            <NuovoSollecitoDialog clienteId={clienteId} onClose={() => setOpen(false)} onSaved={() => { qc.invalidateQueries({ queryKey: ["solleciti", clienteId] }); qc.invalidateQueries({ queryKey: ["riepilogo-insoluti", clienteId] }); }} />
-          </Dialog>
-        </div>
-      )}
-      {isLoading ? <Skeleton className="h-40" /> : !solleciti || solleciti.length === 0 ? (
-        <Card className="p-8 text-center text-sm text-muted-foreground">Nessun sollecito</Card>
-      ) : (
-        <div className="space-y-2">
-          {solleciti.map((s) => {
-            const tipoIcon = s.tipo === "email" ? Mail : s.tipo === "telefono" ? Phone : s.tipo === "raccomandata" ? FileText : s.tipo === "avvocato" || s.tipo === "legale" ? Scale : Bell;
-            const Icon = tipoIcon;
-            const autore = s.profili ? `${s.profili.nome ?? ""} ${s.profili.cognome ?? ""}`.trim() || s.profili.email || "—" : "—";
-            return (
-              <Card key={s.id} className="p-4">
-                <div className="flex items-start gap-3">
-                  <div className="size-8 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                    <Icon className="size-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-medium text-muted-foreground">{fmtDate(s.data_sollecito)}</span>
-                      <Badge variant="outline" className="capitalize">{s.tipo}</Badge>
-                      <Badge variant="secondary" className="capitalize">{s.stato.replace(/_/g, " ")}</Badge>
-                      <span className="text-xs text-muted-foreground">· {autore}</span>
-                    </div>
-                    <p className="text-sm mt-1.5 whitespace-pre-wrap">{s.nota}</p>
-                    {s.risposta && (
-                      <div className="mt-2 pl-3 border-l-2 border-primary/30">
-                        <p className="text-xs text-muted-foreground">Risposta cliente:</p>
-                        <p className="text-sm">{s.risposta}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-const sollSchema = z.object({
-  tipo: z.enum(TIPO_SOLLECITO),
-  data_sollecito: z.string().min(1),
-  nota: z.string().trim().min(1, "Nota obbligatoria").max(2000),
-  importo_ref: z.coerce.number().nonnegative().optional(),
-  reminder_attivo: z.boolean().default(false),
-  reminder_data: z.string().optional(),
-});
-
-function NuovoSollecitoDialog({ clienteId, onClose, onSaved }: { clienteId: string; onClose: () => void; onSaved: () => void }) {
-  const [form, setForm] = useState({
-    tipo: "interno" as typeof TIPO_SOLLECITO[number],
-    data_sollecito: new Date().toISOString().slice(0, 10),
-    nota: "",
-    importo_ref: "",
-    reminder_attivo: false,
-    reminder_data: "",
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const save = useMutation({
-    mutationFn: async () => {
-      const parsed = sollSchema.parse({
-        tipo: form.tipo,
-        data_sollecito: form.data_sollecito,
-        nota: form.nota,
-        importo_ref: form.importo_ref ? Number(form.importo_ref) : undefined,
-        reminder_attivo: form.reminder_attivo,
-        reminder_data: form.reminder_data || undefined,
-      });
-      const { data: { user } } = await supabase.auth.getUser();
-      const { data: sol, error } = await supabase.from("solleciti" as never).insert({
-        cliente_id: clienteId,
-        tipo: parsed.tipo,
-        data_sollecito: parsed.data_sollecito,
-        nota: parsed.nota,
-        importo_ref: parsed.importo_ref ?? null,
-        reminder_attivo: parsed.reminder_attivo,
-        reminder_data: parsed.reminder_attivo && parsed.reminder_data ? parsed.reminder_data : null,
-        inserito_da: user?.id ?? null,
-      } as never).select("id").single();
-      if (error) throw error;
-
-      // Crea reminder per admin + approvatore_liv3 + notifica nella campanella
-      if (parsed.reminder_attivo && parsed.reminder_data) {
-        const { data: utenti } = await supabase
-          .from("user_roles")
-          .select("user_id")
-          .in("role", ["amministratore", "approvatore_liv3"]);
-        const uniqueIds = Array.from(new Set((utenti ?? []).map((u) => u.user_id)));
-        const { data: cliente } = await supabase.from("clienti").select("ragione_sociale").eq("id", clienteId).maybeSingle();
-        const cName = cliente?.ragione_sociale ?? "Cliente";
-        const reminderRows = uniqueIds.map((uid) => ({
-          tipo: "sollecito_programmato" as const,
-          titolo: `Reminder sollecito — ${cName}`,
-          descrizione: parsed.nota.slice(0, 200),
-          cliente_id: clienteId,
-          sollecito_id: (sol as { id: string }).id,
-          utente_id: uid,
-          data_reminder: parsed.reminder_data,
-        }));
-        if (reminderRows.length) await supabase.from("reminder" as never).insert(reminderRows as never);
-
-        const notificheRows = uniqueIds.map((uid) => ({
-          user_id: uid,
-          tipo: "reminder_sollecito",
-          titolo: `Reminder sollecito — ${cName}`,
-          messaggio: `Programma sollecito per ${parsed.reminder_data}: ${parsed.nota.slice(0, 120)}`,
-          link: `/clienti/${clienteId}`,
-          metadata: { cliente_id: clienteId, sollecito_id: (sol as { id: string }).id, data_reminder: parsed.reminder_data },
-        }));
-        if (notificheRows.length) await supabase.from("notifiche").insert(notificheRows as never);
-      }
-    },
-    onSuccess: () => {
-      toast.success("Sollecito registrato");
-      onSaved();
-      onClose();
-    },
-    onError: (e: Error) => {
-      if (e instanceof z.ZodError) {
-        const errs: Record<string, string> = {};
-        e.issues.forEach((i) => { errs[String(i.path[0])] = i.message; });
-        setErrors(errs);
-      } else {
-        toast.error(e.message);
-      }
-    },
-  });
-
-  return (
-    <DialogContent className="max-w-lg">
-      <DialogHeader>
-        <DialogTitle>Nuovo sollecito</DialogTitle>
-        <DialogDescription>Registra un sollecito al cliente.</DialogDescription>
-      </DialogHeader>
-      <form onSubmit={(e) => { e.preventDefault(); setErrors({}); save.mutate(); }} className="space-y-3">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label>Tipo *</Label>
-            <Select value={form.tipo} onValueChange={(v) => setForm({ ...form, tipo: v as typeof TIPO_SOLLECITO[number] })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {TIPO_SOLLECITO.map((t) => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Data *</Label>
-            <Input type="date" value={form.data_sollecito} onChange={(e) => setForm({ ...form, data_sollecito: e.target.value })} />
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <Label>Nota *</Label>
-          <Textarea rows={3} value={form.nota} onChange={(e) => setForm({ ...form, nota: e.target.value })} />
-          {errors.nota && <p className="text-xs text-destructive">{errors.nota}</p>}
-        </div>
-        <div className="space-y-1.5">
-          <Label>Importo riferimento (€)</Label>
-          <Input type="number" step="0.01" value={form.importo_ref} onChange={(e) => setForm({ ...form, importo_ref: e.target.value })} />
-        </div>
-        <div className="rounded-md border p-3 space-y-2">
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox checked={form.reminder_attivo} onCheckedChange={(c) => setForm({ ...form, reminder_attivo: !!c })} />
-            Attiva reminder
-          </label>
-          {form.reminder_attivo && (
-            <div className="space-y-1.5">
-              <Label>Data reminder</Label>
-              <Input type="date" value={form.reminder_data} onChange={(e) => setForm({ ...form, reminder_data: e.target.value })} />
-            </div>
-          )}
-        </div>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose}>Annulla</Button>
-          <Button type="submit" disabled={save.isPending}>
-            {save.isPending && <Loader2 className="size-4 animate-spin mr-1" />}
-            Registra sollecito
-          </Button>
-        </DialogFooter>
-      </form>
-    </DialogContent>
-  );
-}
 
 /* ============================== NOTE LEGALI GESTIONALI (sola lettura) ============================== */
 
