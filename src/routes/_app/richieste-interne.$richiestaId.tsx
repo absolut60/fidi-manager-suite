@@ -18,6 +18,7 @@ import { NuovaRichiestaDialog } from "@/components/richieste-interne/nuova-richi
 import { ADMIN_LABEL } from "@/components/richieste-interne/richieste-table";
 import { notifyRichiestaEvento } from "@/lib/richieste-email.functions";
 import { sanitizeFileName } from "@/components/richieste-interne/utils";
+import { BonificoAccontoCard } from "@/components/richieste-interne/bonifico-acconto-card";
 
 
 
@@ -83,7 +84,7 @@ function DettaglioRichiesta() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("richieste_interne")
-        .select("*, richieste_interne_allegati(id, nome_file, storage_path, mime_type, dimensione_bytes, caricato_da, created_at, profili:caricato_da(nome, cognome))")
+        .select("*, richieste_interne_allegati(id, nome_file, storage_path, mime_type, dimensione_bytes, caricato_da, created_at, tipo, profili:caricato_da(nome, cognome))")
         .eq("id", richiestaId)
         .maybeSingle();
       if (error) throw error;
@@ -356,6 +357,8 @@ function DettaglioRichiesta() {
         </CardContent>
       </Card>
 
+      <BonificoAccontoCard r={r} allegati={(r.richieste_interne_allegati ?? []) as any} />
+
       <Card>
         <CardHeader><CardTitle className="text-base">Iter di approvazione</CardTitle></CardHeader>
         <CardContent className="text-sm space-y-3">
@@ -420,7 +423,7 @@ function DettaglioRichiesta() {
                     mimeType={a.mime_type}
                     dimensione={a.dimensione_bytes}
                     bucket="richieste-allegati"
-                    dettagli={<>{uploader} · {fmtDataOra(a.created_at)}</>}
+                    dettagli={<>{a.tipo === "cro_bonifico" && <Badge variant="secondary" className="mr-1">CRO</Badge>}{uploader} · {fmtDataOra(a.created_at)}</>}
                     azioni={canDeleteAllegato ? (
                       <Button size="icon" variant="ghost" className="size-10 text-destructive hover:text-destructive" onClick={() => setAllegatoDaEliminare(a)} title="Elimina" aria-label={`Elimina ${a.nome_file}`}>
                         <Trash2 className="size-4" />
@@ -514,6 +517,9 @@ function DettaglioRichiesta() {
             fornitore: r.fornitore ?? null,
             sede_id: r.sede_id ?? null,
             description: r.description ?? null,
+            acconto_richiesto: r.acconto_richiesto,
+            acconto_importo: r.acconto_importo,
+            acconto_data_prevista: r.acconto_data_prevista,
           }}
         />
       )}
