@@ -24,6 +24,9 @@ const EVENTS = [
   "sollecito",
   "info_request",
   "messaggio_interno",
+  "bonifico_da_eseguire",
+  "bonifico_promemoria",
+  "bonifico_eseguito",
 ] as const;
 
 const InputSchema = z.object({
