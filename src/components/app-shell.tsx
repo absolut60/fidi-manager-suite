@@ -70,7 +70,7 @@ type NavGroupKey =
   | "richieste_interne"
   | "marketing";
 
-type RichiesteScope = "all" | "manage" | "approve" | "gestione";
+type RichiesteScope = "all" | "manage" | "approve" | "gestione" | "tutte";
 
 type NavItem = {
   id?: string;
