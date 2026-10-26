@@ -21,7 +21,7 @@ export const iscriviWhatsapp = createServerFn({ method: "POST" })
       nome: z.string().trim().min(1, "Nome obbligatorio").max(100),
       cognome: z.string().trim().min(1, "Cognome obbligatorio").max(100),
       azienda: z.string().trim().max(150).optional(),
-      email: z.string().trim().toLowerCase().min(1, "Email obbligatoria").email("Email non valida").max(150),
+      email: z.string({ errorMap: () => ({ message: "Email obbligatoria" }) }).trim().toLowerCase().min(1, "Email obbligatoria").email("Email non valida").max(150),
       consenso: z.literal(true, {
         errorMap: () => ({ message: "Devi dare il consenso per iscriverti" }),
       }),
