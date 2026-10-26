@@ -55,9 +55,6 @@ export type RichiestaRow = {
   acconto_stato?: string | null;
 };
 
-/** Campi acconto da aggiungere alle select degli elenchi (FM48). */
-export const SELECT_ACCONTO = "acconto_richiesto,acconto_importo,acconto_stato";
-
 /** Bonifico di acconto da eseguire: richiesto, da_eseguire, richiesta approvata. */
 export function isBonificoDaEseguire(r: Pick<RichiestaRow, "acconto_richiesto" | "acconto_stato" | "status">): boolean {
   return !!r.acconto_richiesto && r.acconto_stato === "da_eseguire" && (r.status === "resp_approved" || r.status === "approved");

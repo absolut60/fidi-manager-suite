@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { RichiesteTable, type RichiestaRow } from "@/components/richieste-interne/richieste-table";
 import { useRichiesteNonLette } from "@/hooks/use-richieste-non-lette";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_app/richieste-interne/tutte")({
   component: TutteRichieste,
@@ -26,6 +27,10 @@ function TutteRichieste() {
   });
 
   const unreadIds = useRichiesteNonLette();
+  // FM48: chi ha solo la tesoreria (nessun ruolo di gestione/approvazione) apre già sui bonifici.
+  const { roles } = useAuth();
+  const soloTesoreria = roles.includes("tesoreria") && !roles.some((x) =>
+    ["amministratore", "approvatore_richieste_liv1", "approvatore_richieste_liv2", "gestore_richieste", "esecutore_richieste"].includes(x));
 
   return (
     <div className="space-y-4">
@@ -33,7 +38,7 @@ function TutteRichieste() {
         <h1 className="text-2xl font-semibold">Tutte le richieste</h1>
         <p className="text-sm text-muted-foreground">Elenco completo (esclusi archivi)</p>
       </div>
-      <RichiesteTable chiaveFiltri="richieste-interne:tutte" rows={data} isLoading={isLoading} unreadIds={unreadIds} />
+      <RichiesteTable chiaveFiltri="richieste-interne:tutte" filtroBonificiDefault={soloTesoreria} rows={data} isLoading={isLoading} unreadIds={unreadIds} />
     </div>
   );
 }
