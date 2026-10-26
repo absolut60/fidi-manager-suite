@@ -41,3 +41,9 @@ Estratto dal knowledge di progetto il 08/10/2026 (sessione 40). Si aggiorna modi
 - **PDF lettera:** fonte unica `costruisciLetteraPdf` (`src/lib/lettera-pdf.server.ts`), senza scritture. La usano `generaLetteraPdf` (che poi registra azione e allegato) e `inviaEmailRecupero`.
 
 - **Sollecito solo in Attività recupero (FM48):** la scheda cliente non ha più la scheda "Solleciti" né il pulsante in testata; `?tab=solleciti` (anche via `insolutiTab`) reindirizza a `tab=attivita`. L'"Ultimo sollecito" del Riepilogo legge `useStadioSollecitoCliente` (`stadio_data`). `public.solleciti` è legacy: non più usata dalla scheda cliente (restano solo le scritture degli import note solleciti).
+
+## Gestione legale (FM48)
+
+- **`clienti.in_gestione_legale`** lo calcola solo `ricalcola_in_gestione_legale(_cliente_id)` (trigger su `pratiche_legali` e su `note_legali_gestionali` per INSERT, UPDATE e DELETE): true se il cliente ha una pratica con stato diverso da `chiusa_pagamento`/`chiusa_perdita`, oppure ha la nota legale Gamma e **nessuna** pratica (né aperta né chiusa). Chiudere tutte le pratiche fa uscire il cliente dal legale anche se la nota Gamma resta.
+- **Variazioni legale nel registro del blocco:** il trigger `trg_clienti_variazione_legale` (`registra_variazione_legale()`) scrive in `clienti_blocco_variazioni` una riga `in_legale` / `uscito_legale` a ogni cambio di `in_gestione_legale`, con `importazione_id` e `notificato_at` NULL. Un errore lì non blocca mai l'aggiornamento del cliente. `rileva_variazioni_blocco` resta solo per bloccato/sbloccato.
+- **Esclusione legale dei promemoria di scadenza:** `get_promemoria_scadenze_dettaglio` e le due versioni di `get_promemoria_clienti_aggregato` con `_escludi_legale = true` escludono i clienti con `clienti.in_gestione_legale` (non più `scadenze.in_legale`, mai valorizzato).

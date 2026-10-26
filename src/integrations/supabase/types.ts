@@ -6810,6 +6810,7 @@ export type Database = {
       auth_puo_accedere_marketing: { Args: never; Returns: boolean }
       auth_puo_eliminare_contatti_clienti: { Args: never; Returns: boolean }
       auth_puo_gestire_anagrafiche_prev: { Args: never; Returns: boolean }
+      auth_puo_gestire_legale: { Args: never; Returns: boolean }
       auth_puo_inviare_recupero: { Args: never; Returns: boolean }
       auth_puo_modificare_contatto: {
         Args: { _cliente_id: string; _created_by: string; _lead_id: string }

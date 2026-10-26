@@ -519,6 +519,13 @@
       "when": 1793012679043,
       "tag": "0073_fm48_email_recupero_copie",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1793016493186,
+      "tag": "0074_fm48_gestione_legale",
+      "breakpoints": true
     }
   ]
 }
