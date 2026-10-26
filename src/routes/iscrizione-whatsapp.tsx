@@ -8,7 +8,6 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { isEmailValida } from "@/lib/email-validazione";
-
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -74,7 +73,6 @@ function IscrizioneWhatsappPage() {
     cognome.trim() &&
     isEmailValida(email) &&
     consenso;
-
 
   return (
     <div className="min-h-screen bg-muted/30 py-8 px-4">
