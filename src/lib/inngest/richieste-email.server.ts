@@ -7,7 +7,7 @@
 // - step.run per ogni fase principale (retry Inngest).
 // - withTimeout su ogni chiamata async (evita step "Running" per sempre).
 // - un invio per destinatario; se TUTTI falliscono, lancia throw così Inngest ritenta.
-import { inngest } from "./client";
+import { inngest, sendInngestEvent } from "./client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendEmailViaEdge } from "./send-email.server";
 import { buildRichiestaEmail, EVENT_CFG } from "@/lib/richieste-email-render";
@@ -36,7 +36,10 @@ type EventName =
   | "dir_rejected"
   | "sollecito"
   | "info_request"
-  | "messaggio_interno";
+  | "messaggio_interno"
+  | "bonifico_da_eseguire"
+  | "bonifico_promemoria"
+  | "bonifico_eseguito";
 
 type NotificaPayload = {
   event: EventName;
@@ -66,7 +69,7 @@ export const inviaEmailRichiesta = inngest.createFunction(
         supabaseAdmin
           .from("richieste_interne")
           .select(
-            "id, title, type, description, amount, fornitore, requester_id, requester_name, sede_id, sede_name, resp_approver_name, dir_approver_name, resp_note, dir_note",
+            "id, title, type, description, amount, fornitore, requester_id, requester_name, sede_id, sede_name, resp_approver_name, dir_approver_name, resp_note, dir_note, status, acconto_richiesto, acconto_importo, acconto_data_prevista, acconto_stato, acconto_eseguito_at, acconto_eseguito_da_name, acconto_note",
           )
           .eq("id", data.richiestaId)
           .maybeSingle(),
@@ -190,6 +193,14 @@ export const inviaEmailRichiesta = inngest.createFunction(
           push([await requesterEmail()]);
           pushUserIds([await requesterUserId()]);
           break;
+        case "bonifico_da_eseguire":
+        case "bonifico_promemoria":
+          push(await emailsFromRole("tesoreria"));
+          break;
+        case "bonifico_eseguito":
+          push([await requesterEmail()]);
+          pushUserIds([await requesterUserId()]);
+          break;
         case "resp_forwarded":
           push(await emailsFromRole("approvatore_richieste_liv2"));
           push([await requesterEmail()]);
@@ -239,12 +250,49 @@ export const inviaEmailRichiesta = inngest.createFunction(
       };
     });
 
+    // Bonifico di acconto (FM48): dopo un'approvazione definitiva (resp_approved
+    // o dir_approved) avvisa la tesoreria con un evento dedicato. Mai su rifiuti
+    // né su resp_forwarded. Rilegge la richiesta per lo stato attuale.
+    // Chiamato anche nel ramo "nessun destinatario", così lo skip non lo salta.
+    const accodaBonifico = async () => {
+      if (data.event !== "resp_approved" && data.event !== "dir_approved") return;
+      await step.run("accoda-bonifico", async () => {
+        const { data: r, error } = await withTimeout(
+          supabaseAdmin
+            .from("richieste_interne")
+            .select("acconto_richiesto, acconto_stato, status")
+            .eq("id", data.richiestaId)
+            .maybeSingle(),
+          T_MS,
+          "rilettura acconto",
+        );
+        if (error) throw new Error(error.message);
+        const daAvvisare =
+          !!r &&
+          r.acconto_richiesto === true &&
+          r.acconto_stato === "da_eseguire" &&
+          (r.status === "resp_approved" || r.status === "approved");
+        if (!daAvvisare) return { accodato: false };
+        await withTimeout(
+          sendInngestEvent("richieste/notifica", {
+            event: "bonifico_da_eseguire",
+            richiestaId: data.richiestaId,
+            actor: data.actor,
+          }),
+          T_MS,
+          "invio evento bonifico_da_eseguire",
+        );
+        return { accodato: true };
+      });
+    };
+
     if (destinatari.list.length === 0) {
       const motivo =
         destinatari.totalePrima === 0
           ? `Nessun utente attivo con ruolo per evento '${data.event}' (dest=${data.extra?.dest ?? "-"})`
           : `Unico destinatario era il mittente (${data.actor.email})`;
       logger.warn(`[richieste-invia-email][${data.event}] skip: ${motivo}`);
+      await accodaBonifico();
       return { ok: true, sent: 0, skipped: true, motivo };
     }
 
@@ -268,6 +316,11 @@ export const inviaEmailRichiesta = inngest.createFunction(
           dir_approver_name: req.dir_approver_name,
           resp_note: req.resp_note,
           dir_note: req.dir_note,
+          acconto_importo: req.acconto_importo,
+          acconto_data_prevista: req.acconto_data_prevista,
+          acconto_eseguito_at: req.acconto_eseguito_at,
+          acconto_eseguito_da_name: req.acconto_eseguito_da_name,
+          acconto_note: req.acconto_note,
         },
         sede: sedeDati,
         mittente: { nome: mittenteNome, email: data.actor.email ?? null },
@@ -359,6 +412,8 @@ export const inviaEmailRichiesta = inngest.createFunction(
       }
     });
 
+    await accodaBonifico();
+
     return {
       ok: true,
       event: data.event,
@@ -368,5 +423,72 @@ export const inviaEmailRichiesta = inngest.createFunction(
       falliti: esito.errors.length,
       notifiche_inserite: notificheInserite.inserite,
     };
+  },
+);
+
+// Promemoria bonifico di acconto (FM48): ogni mattina alle 8 (ora di Roma)
+// avvisa la tesoreria delle richieste approvate con bonifico ancora da eseguire
+// e data prevista oggi o passata. Un solo promemoria per richiesta
+// (acconto_promemoria_at). L'invio passa dal job sopra (evento bonifico_promemoria).
+export const promemoriaBonificoAcconto = inngest.createFunction(
+  {
+    id: "richieste-bonifico-promemoria",
+    name: "Richieste interne: promemoria bonifico di acconto",
+    retries: 3,
+    triggers: [{ cron: "TZ=Europe/Rome 0 8 * * *" }],
+  },
+  async ({ step, logger }) => {
+    const oggiRoma = await step.run("oggi-roma", () =>
+      new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Europe/Rome",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date()),
+    );
+
+    const ids = await step.run("seleziona-richieste", async () => {
+      const { data: rows, error } = await withTimeout(
+        supabaseAdmin
+          .from("richieste_interne")
+          .select("id")
+          .eq("acconto_richiesto", true)
+          .eq("acconto_stato", "da_eseguire")
+          .in("status", ["resp_approved", "approved"])
+          .lte("acconto_data_prevista", oggiRoma)
+          .is("acconto_promemoria_at", null),
+        T_MS,
+        "seleziona richieste promemoria bonifico",
+      );
+      if (error) throw new Error(error.message);
+      return (rows ?? []).map((r) => r.id);
+    });
+
+    let inviati = 0;
+    for (const id of ids) {
+      await step.run(`promemoria-${id}`, async () => {
+        await withTimeout(
+          sendInngestEvent("richieste/notifica", {
+            event: "bonifico_promemoria",
+            richiestaId: id,
+            actor: { id: null, nome: "FidiManager", email: null },
+          }),
+          T_MS,
+          `invio promemoria ${id}`,
+        );
+        const { error } = await withTimeout(
+          supabaseAdmin
+            .from("richieste_interne")
+            .update({ acconto_promemoria_at: new Date().toISOString() })
+            .eq("id", id),
+          T_MS,
+          `segna promemoria ${id}`,
+        );
+        if (error) throw new Error(error.message);
+      });
+      inviati++;
+    }
+    logger.info(`[richieste-bonifico-promemoria] ${inviati} promemoria accodati (oggi ${oggiRoma})`);
+    return { inviati };
   },
 );

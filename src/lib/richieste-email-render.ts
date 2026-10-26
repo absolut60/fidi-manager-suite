@@ -23,7 +23,10 @@ export type RichiestaEvent =
   | "dir_rejected"
   | "sollecito"
   | "info_request"
-  | "messaggio_interno";
+  | "messaggio_interno"
+  | "bonifico_da_eseguire"
+  | "bonifico_promemoria"
+  | "bonifico_eseguito";
 
 type EventCfg = { emoji: string; label: string; color: string };
 
@@ -37,7 +40,16 @@ export const EVENT_CFG: Record<RichiestaEvent, EventCfg> = {
   sollecito: { emoji: "⏰", label: "Sollecito approvazione", color: "#b45309" },
   info_request: { emoji: "💬", label: "Richiesta informazioni", color: "#6366f1" },
   messaggio_interno: { emoji: "💬", label: "Nuovo messaggio", color: "#0d1f3c" },
+  bonifico_da_eseguire: { emoji: "🏦", label: "Bonifico di acconto da eseguire", color: "#0f766e" },
+  bonifico_promemoria: { emoji: "⏰", label: "Promemoria: bonifico di acconto da eseguire", color: "#b45309" },
+  bonifico_eseguito: { emoji: "✅", label: "Bonifico di acconto eseguito", color: "#1a9e3a" },
 };
+
+const EVENTI_BONIFICO: ReadonlySet<RichiestaEvent> = new Set<RichiestaEvent>([
+  "bonifico_da_eseguire",
+  "bonifico_promemoria",
+  "bonifico_eseguito",
+]);
 
 const TIPO_LABEL: Record<string, string> = {
   preventivo: "Approvazione preventivo",
@@ -69,6 +81,12 @@ export type RichiestaDati = {
   dir_approver_name?: string | null;
   resp_note?: string | null;
   dir_note?: string | null;
+  // Bonifico di acconto (FM48): usati solo dagli eventi bonifico_*.
+  acconto_importo?: number | null;
+  acconto_data_prevista?: string | null;   // YYYY-MM-DD
+  acconto_eseguito_at?: string | null;     // timestamptz ISO
+  acconto_eseguito_da_name?: string | null;
+  acconto_note?: string | null;
 };
 
 // Payload aggiuntivo per eventi conversazionali.
@@ -88,6 +106,31 @@ function fmtEuro(n: number | null | undefined): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(n)}`;
+}
+
+function fmtEuroIt(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(Number(n))) return "-";
+  return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(Number(n));
+}
+
+// "YYYY-MM-DD" -> "gg/mm/aaaa" (senza passare da Date: niente slittamenti di fuso).
+function fmtDataIso(d: string | null | undefined): string {
+  if (!d) return "-";
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : d;
+}
+
+// timestamptz -> "gg/mm/aaaa" nel fuso di Roma.
+function fmtDataOraRoma(ts: string | null | undefined): string {
+  if (!ts) return "-";
+  const dt = new Date(ts);
+  if (Number.isNaN(dt.getTime())) return "-";
+  return new Intl.DateTimeFormat("it-IT", {
+    timeZone: "Europe/Rome",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(dt);
 }
 
 function shortId(id: string): string {
@@ -124,6 +167,32 @@ function boxDettagliHtml(r: RichiestaDati): string {
         <div style="color:#6b7280;font-weight:700;font-size:11px;letter-spacing:0.5px;margin-bottom:8px;">RICHIESTA #${shortId(r.id)}</div>
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rowsHtml}</table>
         ${descHtml}
+      </div>`;
+}
+
+function boxBonificoHtml(event: RichiestaEvent, r: RichiestaDati): string {
+  const rows: Array<[string, string]> = [
+    ["Importo", fmtEuroIt(r.acconto_importo)],
+    ["Data prevista", fmtDataIso(r.acconto_data_prevista)],
+  ];
+  if (r.fornitore?.trim()) rows.push(["Fornitore", r.fornitore.trim()]);
+  rows.push(["Richiedente", r.requester_name || "-"]);
+  rows.push(["Sede", r.sede_name || "-"]);
+  if (event === "bonifico_eseguito") {
+    rows.push(["Eseguito il", fmtDataOraRoma(r.acconto_eseguito_at)]);
+    rows.push(["Eseguito da", r.acconto_eseguito_da_name || "-"]);
+    if (r.acconto_note?.trim()) rows.push(["Note", r.acconto_note.trim()]);
+  }
+  const rowsHtml = rows
+    .map(
+      ([k, v]) =>
+        `<tr><td style="padding:4px 8px;color:#6b7280;font-weight:600;width:120px;vertical-align:top;">${escapeHtml(k)}</td><td style="padding:4px 8px;color:#111827;white-space:pre-wrap;">${escapeHtml(v)}</td></tr>`,
+    )
+    .join("");
+  return `
+      <div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:6px;padding:12px 14px;margin:16px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;">
+        <div style="color:#0f766e;font-weight:700;font-size:11px;letter-spacing:0.5px;margin-bottom:8px;">BONIFICO DI ACCONTO</div>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rowsHtml}</table>
       </div>`;
 }
 
@@ -197,6 +266,12 @@ function messaggioPrincipale(
       const dest = DEST_LABEL_MSG[extra?.dest ?? "tutti"] ?? "tutti i partecipanti";
       return `${by} ha inviato un messaggio a ${dest} riguardo alla richiesta indicata di seguito.`;
     }
+    case "bonifico_da_eseguire":
+      return "La richiesta indicata di seguito è stata approvata e prevede un bonifico di acconto da eseguire.";
+    case "bonifico_promemoria":
+      return `La data prevista del bonifico (${fmtDataIso(r.acconto_data_prevista)}) è oggi o è già passata e il bonifico non risulta ancora eseguito.`;
+    case "bonifico_eseguito":
+      return "Il bonifico di acconto della tua richiesta è stato eseguito.";
   }
 }
 
@@ -217,6 +292,8 @@ function corpoEvento(
     boxExtra = boxMessaggio("indigo", extra.testo.trim());
   } else if (event === "messaggio_interno" && extra?.testo?.trim()) {
     boxExtra = boxMessaggio("azzurro", extra.testo.trim());
+  } else if (EVENTI_BONIFICO.has(event)) {
+    boxExtra = boxBonificoHtml(event, r);
   }
 
   return `${bandaHtml(cfg)}${messaggioHtml}${boxExtra}${boxDettagliHtml(r)}${ctaHtml(appUrl, r.id)}`;
