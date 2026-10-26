@@ -611,6 +611,8 @@ export type Database = {
           created_at: string
           data_azione: string
           data_promessa_pagamento: string | null
+          email_bcc: string | null
+          email_cc: string | null
           email_corpo_html: string | null
           email_destinatario: string | null
           email_log_id: string | null
@@ -634,6 +636,8 @@ export type Database = {
           created_at?: string
           data_azione?: string
           data_promessa_pagamento?: string | null
+          email_bcc?: string | null
+          email_cc?: string | null
           email_corpo_html?: string | null
           email_destinatario?: string | null
           email_log_id?: string | null
@@ -657,6 +661,8 @@ export type Database = {
           created_at?: string
           data_azione?: string
           data_promessa_pagamento?: string | null
+          email_bcc?: string | null
+          email_cc?: string | null
           email_corpo_html?: string | null
           email_destinatario?: string | null
           email_log_id?: string | null
@@ -7445,6 +7451,17 @@ export type Database = {
           n_clienti_con_fido: number
           ordine: number
           tipo: string
+        }[]
+      }
+      get_destinatari_copia_recupero: {
+        Args: { _cliente_id: string }
+        Returns: {
+          cognome: string
+          email: string
+          nome: string
+          pertinente: boolean
+          ruolo: string
+          user_id: string
         }[]
       }
       get_destinatari_whatsapp_segmento: {
