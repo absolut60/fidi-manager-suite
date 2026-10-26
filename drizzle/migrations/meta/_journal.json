@@ -533,6 +533,13 @@
       "when": 1793016829813,
       "tag": "0075_fm48_legale_storage_pratiche",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1793021779938,
+      "tag": "0076_fm48_iscrizione_whatsapp_soggetto_sede",
+      "breakpoints": true
     }
   ]
 }

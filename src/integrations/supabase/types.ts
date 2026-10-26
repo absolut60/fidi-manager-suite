@@ -3025,6 +3025,7 @@ export type Database = {
         Row: {
           azienda: string | null
           cliente_id: string | null
+          codice_fiscale: string | null
           cognome: string | null
           consenso_log_id: string | null
           contatto_id: string | null
@@ -3036,12 +3037,16 @@ export type Database = {
           numero_norm: string
           numero_raw: string
           origine: string
+          partita_iva: string | null
           stato: string
+          store_id: string | null
+          tipo_soggetto: string | null
           whatsapp_opt_out: boolean
         }
         Insert: {
           azienda?: string | null
           cliente_id?: string | null
+          codice_fiscale?: string | null
           cognome?: string | null
           consenso_log_id?: string | null
           contatto_id?: string | null
@@ -3053,12 +3058,16 @@ export type Database = {
           numero_norm: string
           numero_raw: string
           origine?: string
+          partita_iva?: string | null
           stato?: string
+          store_id?: string | null
+          tipo_soggetto?: string | null
           whatsapp_opt_out?: boolean
         }
         Update: {
           azienda?: string | null
           cliente_id?: string | null
+          codice_fiscale?: string | null
           cognome?: string | null
           consenso_log_id?: string | null
           contatto_id?: string | null
@@ -3070,7 +3079,10 @@ export type Database = {
           numero_norm?: string
           numero_raw?: string
           origine?: string
+          partita_iva?: string | null
           stato?: string
+          store_id?: string | null
+          tipo_soggetto?: string | null
           whatsapp_opt_out?: boolean
         }
         Relationships: [
@@ -3114,6 +3126,13 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "lead"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "iscritti_whatsapp_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]
@@ -8307,6 +8326,7 @@ export type Database = {
       registra_consenso_whatsapp: {
         Args: {
           _azienda?: string
+          _codice_fiscale?: string
           _cognome?: string
           _consenso_marketing?: boolean
           _consenso_profilazione?: boolean
@@ -8317,7 +8337,10 @@ export type Database = {
           _nome?: string
           _numero_raw: string
           _origine?: string
+          _partita_iva?: string
           _secondi_permanenza?: number
+          _store_id?: string
+          _tipo_soggetto?: string
           _user_agent?: string
         }
         Returns: Json
