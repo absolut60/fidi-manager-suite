@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useRef, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { CheckCircle2, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -17,7 +17,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { iscriviWhatsapp } from "@/lib/iscrizione-whatsapp.functions";
+import {
+  getSediIscrizioneWhatsapp,
+  iscriviWhatsapp,
+} from "@/lib/iscrizione-whatsapp.functions";
+import {
+  isCodiceFiscaleValido,
+  isPartitaIvaValida,
+} from "@/lib/iscrizione-whatsapp-dati";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { INFORMATIVA_FULL } from "@/lib/consensi-testi";
 import { LOGO_MADE_BASE64 } from "@/lib/logo-made-base64";
 
@@ -31,12 +45,22 @@ export const Route = createFileRoute("/iscrizione-whatsapp")({
 function IscrizioneWhatsappPage() {
   const { origine } = Route.useSearch();
   const iscrivi = useServerFn(iscriviWhatsapp);
+  const caricaSedi = useServerFn(getSediIscrizioneWhatsapp);
+  const sedi = useQuery({
+    queryKey: ["iscrizione-whatsapp-sedi"],
+    queryFn: () => caricaSedi(),
+    staleTime: 10 * 60 * 1000,
+  });
   const apertaAl = useRef<number>(Date.now());
   const [numero, setNumero] = useState("");
   const [nome, setNome] = useState("");
   const [cognome, setCognome] = useState("");
   const [azienda, setAzienda] = useState("");
   const [email, setEmail] = useState("");
+  const [privato, setPrivato] = useState(false);
+  const [partitaIva, setPartitaIva] = useState("");
+  const [codiceFiscale, setCodiceFiscale] = useState("");
+  const [storeId, setStoreId] = useState("");
   const [consenso, setConsenso] = useState(false);
   const [consensoMarketing, setConsensoMarketing] = useState(false);
   const [consensoProfilazione, setConsensoProfilazione] = useState(false);
@@ -49,7 +73,11 @@ function IscrizioneWhatsappPage() {
           numero,
           nome,
           cognome,
-          azienda,
+          tipo_soggetto: privato ? "persona_fisica" : "azienda",
+          azienda: privato ? undefined : azienda,
+          partita_iva: privato ? undefined : partitaIva,
+          codice_fiscale: privato ? codiceFiscale : undefined,
+          store_id: storeId || undefined,
           email,
           consenso: true as const,
           consenso_marketing: consensoMarketing,
@@ -67,11 +95,16 @@ function IscrizioneWhatsappPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const pivaValida = isPartitaIvaValida(partitaIva);
+  const cfValido = isCodiceFiscaleValido(codiceFiscale);
   const canSubmit =
     numero.trim().length >= 6 &&
     nome.trim() &&
     cognome.trim() &&
     isEmailValida(email) &&
+    (privato
+      ? !codiceFiscale.trim() || cfValido
+      : azienda.trim() !== "" && (!partitaIva.trim() || pivaValida)) &&
     consenso;
 
   return (
@@ -131,14 +164,6 @@ function IscrizioneWhatsappPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Impresa</Label>
-              <Input
-                placeholder="es. Rossi Costruzioni Srl"
-                value={azienda}
-                onChange={(e) => setAzienda(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
               <Label>Email *</Label>
               <Input
                 type="email"
@@ -150,6 +175,72 @@ function IscrizioneWhatsappPage() {
               {email.trim() !== "" && !isEmailValida(email) && (
                 <p className="text-xs text-destructive">Email non valida</p>
               )}
+            </div>
+
+            <label className="flex items-center gap-2 text-sm cursor-pointer min-h-10">
+              <Checkbox
+                checked={privato}
+                onCheckedChange={(v) => setPrivato(v === true)}
+              />
+              <span>Sono un privato</span>
+            </label>
+
+            {privato ? (
+              <div className="space-y-1.5">
+                <Label>Codice fiscale</Label>
+                <Input
+                  autoCapitalize="characters"
+                  placeholder="es. RSSMRA80A01F205X"
+                  value={codiceFiscale}
+                  onChange={(e) => setCodiceFiscale(e.target.value)}
+                />
+                {codiceFiscale.trim() !== "" && !cfValido && (
+                  <p className="text-xs text-destructive">Codice fiscale non valido</p>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="space-y-1.5">
+                  <Label>Nome dell'impresa *</Label>
+                  <Input
+                    placeholder="es. Rossi Costruzioni Srl"
+                    value={azienda}
+                    onChange={(e) => setAzienda(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Partita IVA</Label>
+                  <Input
+                    inputMode="numeric"
+                    placeholder="es. 01234567890"
+                    value={partitaIva}
+                    onChange={(e) => setPartitaIva(e.target.value)}
+                  />
+                  {partitaIva.trim() !== "" && !pivaValida && (
+                    <p className="text-xs text-destructive">Partita IVA non valida</p>
+                  )}
+                </div>
+              </>
+            )}
+
+            <div className="space-y-1.5">
+              <Label>Sede di riferimento</Label>
+              <Select
+                value={storeId || "__nessuna__"}
+                onValueChange={(v) => setStoreId(v === "__nessuna__" ? "" : v)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Scegli una sede" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__nessuna__">Nessuna preferenza</SelectItem>
+                  {(sedi.data ?? []).map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.etichetta}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <label className="flex items-start gap-2 text-sm cursor-pointer rounded-md border p-3">
