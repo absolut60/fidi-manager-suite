@@ -5017,6 +5017,15 @@ export type Database = {
       }
       richieste_interne: {
         Row: {
+          acconto_data_prevista: string | null
+          acconto_eseguito_at: string | null
+          acconto_eseguito_da: string | null
+          acconto_eseguito_da_name: string | null
+          acconto_importo: number | null
+          acconto_note: string | null
+          acconto_promemoria_at: string | null
+          acconto_richiesto: boolean
+          acconto_stato: string | null
           admin_at: string | null
           admin_by_name: string | null
           admin_note: string | null
@@ -5052,6 +5061,15 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          acconto_data_prevista?: string | null
+          acconto_eseguito_at?: string | null
+          acconto_eseguito_da?: string | null
+          acconto_eseguito_da_name?: string | null
+          acconto_importo?: number | null
+          acconto_note?: string | null
+          acconto_promemoria_at?: string | null
+          acconto_richiesto?: boolean
+          acconto_stato?: string | null
           admin_at?: string | null
           admin_by_name?: string | null
           admin_note?: string | null
@@ -5087,6 +5105,15 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          acconto_data_prevista?: string | null
+          acconto_eseguito_at?: string | null
+          acconto_eseguito_da?: string | null
+          acconto_eseguito_da_name?: string | null
+          acconto_importo?: number | null
+          acconto_note?: string | null
+          acconto_promemoria_at?: string | null
+          acconto_richiesto?: boolean
+          acconto_stato?: string | null
           admin_at?: string | null
           admin_by_name?: string | null
           admin_note?: string | null
@@ -5122,6 +5149,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "richieste_interne_acconto_eseguito_da_fkey"
+            columns: ["acconto_eseguito_da"]
+            isOneToOne: false
+            referencedRelation: "profili"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "richieste_interne_dir_approver_id_fkey"
             columns: ["dir_approver_id"]
@@ -5162,6 +5196,7 @@ export type Database = {
           nome_file: string
           request_id: string
           storage_path: string
+          tipo: string | null
         }
         Insert: {
           caricato_da?: string | null
@@ -5172,6 +5207,7 @@ export type Database = {
           nome_file: string
           request_id: string
           storage_path: string
+          tipo?: string | null
         }
         Update: {
           caricato_da?: string | null
@@ -5182,6 +5218,7 @@ export type Database = {
           nome_file?: string
           request_id?: string
           storage_path?: string
+          tipo?: string | null
         }
         Relationships: [
           {
@@ -6830,6 +6867,7 @@ export type Database = {
       auth_puo_eliminare_contatti_clienti: { Args: never; Returns: boolean }
       auth_puo_gestire_anagrafiche_prev: { Args: never; Returns: boolean }
       auth_puo_gestire_legale: { Args: never; Returns: boolean }
+      auth_puo_gestire_tesoreria: { Args: never; Returns: boolean }
       auth_puo_inviare_recupero: { Args: never; Returns: boolean }
       auth_puo_modificare_contatto: {
         Args: { _cliente_id: string; _created_by: string; _lead_id: string }
@@ -8287,6 +8325,10 @@ export type Database = {
           ok: boolean
         }[]
       }
+      registra_bonifico_acconto: {
+        Args: { _eseguito_il: string; _note: string; _richiesta_id: string }
+        Returns: undefined
+      }
       registra_clic_campagna: {
         Args: { _ip?: string; _token: string; _ua?: string; _url: string }
         Returns: boolean
@@ -8586,6 +8628,7 @@ export type Database = {
         | "marketing_eventi"
         | "amministrazione_strumenti"
         | "recupero_crediti"
+        | "tesoreria"
       categoria_allegato:
         | "capitolato"
         | "disegni"
@@ -8902,6 +8945,7 @@ export const Constants = {
         "marketing_eventi",
         "amministrazione_strumenti",
         "recupero_crediti",
+        "tesoreria",
       ],
       categoria_allegato: [
         "capitolato",

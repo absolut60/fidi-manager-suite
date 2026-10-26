@@ -57,6 +57,7 @@ const RUOLI_RICHIESTE: AppRole[] = [
   "approvatore_richieste_liv2",
   "gestore_richieste",
   "esecutore_richieste",
+  "tesoreria",
 ];
 
 const RUOLI_MARKETING: AppRole[] = ["marketing", "marketing_eventi"];
