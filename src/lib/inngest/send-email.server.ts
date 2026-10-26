@@ -11,6 +11,9 @@ import { valutaEsitoEmail, type EsitoEmail } from "@/lib/email-esito";
 
 export async function sendEmailViaEdge(payload: {
   to: string;
+  // Copia e copia nascosta: passate così come sono alla edge `send-email`.
+  cc?: string[];
+  bcc?: string[];
   subject: string;
   html: string;
   // Se true, la edge allega logo-made.png inline con cid "logoMade"
