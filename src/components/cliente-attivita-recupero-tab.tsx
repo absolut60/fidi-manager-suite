@@ -290,7 +290,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda, onApriProm
       <div className="flex flex-wrap items-center gap-2">
         {puoInviare && (
           <Button size="sm" onClick={() => setSollecitoOpen(true)} className="gap-1.5">
-            <Send className="size-4" /> Invia email
+            <Send className="size-4" /> Invia sollecito
           </Button>
         )}
         {puoInviare && (
