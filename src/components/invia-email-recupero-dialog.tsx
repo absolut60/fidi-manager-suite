@@ -549,8 +549,6 @@ export function InviaEmailRecuperoDialog({
                     ? "Conta come sollecito: aggiorna lo stadio del cliente (1° sollecito, 2° sollecito, messa in mora)."
                     : "Comunicazione personalizzata: non conta come sollecito."}
                 </p>
-
-
                 {modalita === "modello" ? (
                   <div className="space-y-1.5">
                     <Label>Modello</Label>

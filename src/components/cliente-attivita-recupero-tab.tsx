@@ -292,8 +292,6 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda, onApriProm
             <Send className="size-4" /> Invia email
           </Button>
         )}
-
-
         <Button size="sm" variant="outline" onClick={() => openNuova("promemoria")} className="gap-1.5">
           <Bell className="size-4" /> Nuovo promemoria
         </Button>
