@@ -26,7 +26,6 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { BackButton } from "@/components/back-button";
-import { InviaEmailRecuperoDialog } from "@/components/invia-email-recupero-dialog";
 import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
 import { useRef } from "react";
 import { toast } from "sonner";
@@ -292,12 +291,14 @@ function ClienteDetail() {
   const isAdmin = role === "amministratore";
   const isStoreManager = role === "store_manager";
   // Retro-compatibilita': i vecchi link ?tab=insoluti&insolutiTab=x puntano ora al tab promosso
-  const effTab =
+  // "solleciti" (scheda rimossa, FM48): i vecchi link aprono Attività recupero.
+  const effTabRaw =
     tab === "insoluti"
       ? insolutiTab && insolutiTab !== "riepilogo"
         ? insolutiTab
         : "scadenziario"
       : (tab ?? "riepilogo");
+  const effTab = effTabRaw === "solleciti" ? "attivita" : effTabRaw;
   const isAgente = hasRole("agente");
   // Conteggio per l'etichetta della scheda Promesse: stessa cache di Attività recupero.
   const { azioni: azioniRecupero } = useAzioniRecuperoCliente(clienteId);
@@ -309,7 +310,6 @@ function ClienteDetail() {
   const [openNew, setOpenNew] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDisattiva, setOpenDisattiva] = useState(false);
-  const [openSollecito, setOpenSollecito] = useState(false);
   const [openElimina, setOpenElimina] = useState(false);
 
   useEffect(() => {
@@ -500,22 +500,6 @@ function ClienteDetail() {
                 <ShieldOff className="size-3" /> Privacy da richiedere
               </Badge>
             )}
-            {puoInviare && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5"
-                onClick={() => setOpenSollecito(true)}
-              >
-                <Send className="size-4" /> Invia sollecito
-              </Button>
-            )}
-            <InviaEmailRecuperoDialog
-              open={openSollecito}
-              onOpenChange={setOpenSollecito}
-              clienteId={clienteId}
-              modalitaIniziale="modello"
-            />
             {!isAgente && (
               <Dialog open={openEdit} onOpenChange={setOpenEdit}>
                 <DialogTrigger asChild>
@@ -598,7 +582,6 @@ function ClienteDetail() {
           <TabsTrigger value="commerciale">Commerciale</TabsTrigger>
           <TabsTrigger value="storico">Fido</TabsTrigger>
           <TabsTrigger value="scadenziario">Scadenziario</TabsTrigger>
-          <TabsTrigger value="solleciti">Solleciti</TabsTrigger>
           <TabsTrigger value="piani">Piani di rientro</TabsTrigger>
           <TabsTrigger value="promesse">Promesse ({nPromesseAttive} attive)</TabsTrigger>
           {!isStoreManager && <TabsTrigger value="legali">Pratiche legali</TabsTrigger>}
@@ -843,7 +826,7 @@ function ClienteDetail() {
           </SectionErrorBoundary>
         </TabsContent>
 
-        {(["scadenziario", "solleciti", "piani", "legali", "assicurazioni"] as const).map((s) =>
+        {(["scadenziario", "piani", "legali", "assicurazioni"] as const).map((s) =>
           (s === "legali" || s === "assicurazioni") && isStoreManager ? null : (
             <TabsContent key={s} value={s}>
               <SectionErrorBoundary nome={s}>
@@ -1033,6 +1016,8 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
     polizzaAttiva?.data_scadenza && new Date(polizzaAttiva.data_scadenza) < new Date()
   );
 
+  // Ultimo sollecito: fonte unica (azioni_recupero via get_recupero_clienti_aggregato).
+  const { data: stadioSoll } = useStadioSollecitoCliente(clienteId);
   const { data: ins } = useQuery({
     queryKey: ["riepilogo-tab-insoluti", clienteId],
     queryFn: async () => {
@@ -1070,13 +1055,6 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
             return g >= min && (max == null || g <= max);
           }),
         );
-      const { data: ultSoll } = await supabase
-        .from("solleciti")
-        .select("data_sollecito")
-        .eq("cliente_id", clienteId)
-        .order("data_sollecito", { ascending: false })
-        .limit(1)
-        .maybeSingle();
       return {
         // Scaduto con anticipi sottratti + clamp >=0 (src/lib/scadenze.ts).
         totale_scaduto: sommaScadutoCliente(scadute),
@@ -1085,8 +1063,6 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
         scaduto_0_30: fascia(1, 30),
         scaduto_30_60: fascia(31, 60),
         scaduto_oltre_60: fascia(61, null),
-        ultimo_sollecito:
-          (ultSoll as { data_sollecito: string | null } | null)?.data_sollecito ?? null,
       };
     },
   });
@@ -1369,7 +1345,7 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
             />
             <MiniStat
               label="Ultimo sollecito"
-              value={fmtDateIt(ins?.ultimo_sollecito)}
+              value={fmtDateIt(stadioSoll?.stadio_data)}
               icon={Bell}
             />
           </div>
