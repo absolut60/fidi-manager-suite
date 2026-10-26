@@ -16,3 +16,9 @@ Quando arrivano in blocco, le notifiche si raggruppano; mai una notifica (e una 
 - Ogni nuova azione di recupero di tipo "nota" notifica: tutti gli utenti attivi con ruolo `recupero_crediti` e gli `store_manager` attivi del negozio del cliente (`profili.store_id = clienti.store_id`, tutti se più di uno). Mai l'autore; ogni destinatario una sola volta.
 - Fonte unica: trigger `trg_notifica_nota_recupero` → `public.notifica_nota_recupero()`; un errore della notifica non blocca mai il salvataggio della nota.
 - Raggruppate per cliente (`chiave_metadata = cliente_id`), titolo di gruppo "{n} nuove note di recupero — {cliente}"; link alla scheda cliente, tab Attività.
+
+## Avvisi legale nel flusso delle variazioni di blocco (FM48)
+
+- Ingresso e uscita dalla gestione legale si avvisano come blocco/sblocco: stesso job `clienti-variazioni-blocco-notifica` (`src/lib/inngest/variazioni-blocco.server.ts`), stessi destinatari (store manager del negozio e agenti del cliente, mai l'autore dell'import), stessa modalità test `variazioni_blocco_email_test`, stesso link `/clienti-variazioni-blocco`.
+- Tipi `in_legale` / `uscito_legale` in `clienti_blocco_variazioni`; messaggio "N in legale", "N usciti dal legale" (solo se > 0); titolo e oggetto "Variazioni blocco e legale clienti — {negozio}"; nella mail le sezioni "Entrati in gestione legale" e "Usciti dalla gestione legale", solo se non vuote.
+- Origine: trigger `registra_variazione_legale()` → `net.http_post` verso `/api/public/hooks/variazioni-legale` (header `x-internal-secret` = `INTERNAL_EMAIL_SECRET`) → evento Inngest `clienti/blocco.variazioni.rileva` con `importazioneId: null` (emesso con `sendInngestEvent`, non `step.sendEvent`).
