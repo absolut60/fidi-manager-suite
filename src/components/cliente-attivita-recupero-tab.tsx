@@ -34,7 +34,7 @@ import { LetteraPdfDialog } from "@/components/lettera-pdf-dialog";
 import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
 import type { TipoAzione } from "@/components/reminder-controls";
 import { useAzioniRecuperoCliente, useOperatoriAttivita, useStadioSollecitoCliente, type Azione } from "@/hooks/use-azioni-recupero-cliente";
-import { ESITO_AZIONE_LABEL, TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL, isPromessaDaVerificare, isPromessaPagamento, testoAzione, tipoAzioneVisualizzato } from "@/lib/azioni-recupero-ui";
+import { ESITO_AZIONE_LABEL, TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL, isEmailDaInviare, isPromessaDaVerificare, isPromessaPagamento, testoAzione, tipoAzioneVisualizzato } from "@/lib/azioni-recupero-ui";
 import { StadioSollecitoBadge } from "@/components/stadio-sollecito-badge";
 
 export function fmtData(v: string) {
@@ -432,6 +432,10 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda, onApriProm
               destinatario={viewEmail.email_destinatario}
               oggetto={viewEmail.email_oggetto}
               corpoHtml={viewEmail.email_corpo_html}
+              cc={viewEmail.email_cc ?? null}
+              bcc={viewEmail.email_bcc ?? null}
+              azioneId={viewEmail.id}
+              clienteId={viewEmail.cliente_id}
             />
           )}
         </DialogContent>
@@ -519,7 +523,11 @@ export function TimelineItem({
   const promessa = isPromessaPagamento(azione);
   const Icon = TIPO_ICON[tipoVis] ?? Activity;
   const [showAllegati, setShowAllegati] = useState(false);
-  return (
+  // "Invia ora": stessa regola e stessa finestra ovunque compaia la riga (attività e promesse).
+  const { roles } = useAuth();
+  const mostraInviaOra = isEmailDaInviare(azione) && puoInviareComunicazioniRecupero(roles);
+  const [inviaOpen, setInviaOpen] = useState(false);
+  return (<>
     <div className={`rounded-md border p-3 ${highlight ? "border-yellow-500/40 bg-yellow-500/5" : "border-border bg-background"}`}>
       <div className="flex gap-3">
         <div className={`size-9 rounded-md flex items-center justify-center shrink-0 ${highlight ? "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400" : "bg-muted text-muted-foreground"}`}>
@@ -547,6 +555,11 @@ export function TimelineItem({
             {(azione.tipo === "email" || azione.tipo === "promemoria_scadenza") && azione.email_corpo_html && (
               <Button variant="link" size="sm" className="h-auto p-0 gap-1 text-xs" onClick={onViewEmail}>
                 <Eye className="size-3" /> Vedi email inviata
+              </Button>
+            )}
+            {mostraInviaOra && (
+              <Button size="sm" className="h-9 gap-1.5 text-xs" onClick={() => setInviaOpen(true)}>
+                <Send className="size-3.5" /> Invia ora
               </Button>
             )}
             <Button
@@ -606,5 +619,14 @@ export function TimelineItem({
         </div>
       )}
     </div>
-  );
+    {mostraInviaOra && (
+      <InviaEmailRecuperoDialog
+        open={inviaOpen}
+        onOpenChange={setInviaOpen}
+        clienteId={azione.cliente_id}
+        modalitaIniziale="modello"
+        azioneEsistenteId={azione.id}
+      />
+    )}
+  </>);
 }

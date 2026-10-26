@@ -95,3 +95,11 @@ export function isPromessaDaVerificare(
     && !!a.data_promessa_pagamento
     && a.data_promessa_pagamento.slice(0, 10) < oggi;
 }
+
+/**
+ * Fonte unica: email di recupero registrata come "da fare" e non ancora spedita
+ * (nessun corpo salvato). Su queste compare "Invia ora".
+ */
+export function isEmailDaInviare(a: { tipo?: string | null; esito?: string | null; email_corpo_html?: string | null }): boolean {
+  return a.tipo === "email" && a.esito === "da_fare" && !a.email_corpo_html;
+}

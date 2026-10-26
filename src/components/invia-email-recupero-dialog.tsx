@@ -258,12 +258,38 @@ export function InviaEmailRecuperoDialog({
     setTemplateId(t.id);
   }, [templatesInvio, stadioPronto, stadio]);
 
+  // Email da fare esistente: scadenze collegate all'azione (azioni_recupero_scadenze).
+  const { data: scadCollegate } = useQuery({
+    queryKey: ["invia-email-recupero-collegate", azioneEsistenteId],
+    enabled: open && !!azioneEsistenteId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("azioni_recupero_scadenze")
+        .select("scadenza_id")
+        .eq("azione_id", azioneEsistenteId!);
+      if (error) throw error;
+      return (data ?? []).map((r) => r.scadenza_id as string);
+    },
+  });
+  // Collegate ancora scadute: `scadute` è già filtrato con classificaScadenza.
+  const collegateScadute = useMemo(() => {
+    if (!azioneEsistenteId || !scadute || !scadCollegate) return null;
+    const ids = new Set(scadCollegate);
+    return scadute.filter((s) => ids.has(s.id)).map((s) => s.id);
+  }, [azioneEsistenteId, scadute, scadCollegate]);
+
   // Scadenze di default all'arrivo dei dati
   useEffect(() => {
     if (!scadute || scadInit.current) return;
+    if (azioneEsistenteId) {
+      if (!collegateScadute) return;
+      scadInit.current = true;
+      setSelScad(new Set(collegateScadute));
+      return;
+    }
     scadInit.current = true;
     setSelScad(modalita === "modello" ? new Set(scadute.map((s) => s.id)) : new Set());
-  }, [scadute, modalita]);
+  }, [scadute, modalita, azioneEsistenteId, collegateScadute]);
 
   function cambiaModalita(m: Modalita) {
     setModalita(m);
@@ -452,7 +478,7 @@ export function InviaEmailRecuperoDialog({
       <DialogContent className={contentCls}>
         <DialogHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 border-b border-border text-left shrink-0">
           <DialogTitle className="flex items-center gap-2 pr-8">
-            <Send className="size-5 shrink-0" /> Invia email al cliente
+            <Send className="size-5 shrink-0" /> {azioneEsistenteId ? "Invia l'email da fare" : "Invia email al cliente"}
           </DialogTitle>
           <DialogDescription className="break-words">
             {cliente ? <>Cliente: <strong>{cliente.ragione_sociale}</strong></> : "Caricamento cliente..."}
@@ -565,6 +591,11 @@ export function InviaEmailRecuperoDialog({
 
               {/* d) Scadenze */}
               <Sezione titolo="Scadenze">
+                {azioneEsistenteId && collegateScadute && collegateScadute.length === 0 && (
+                  <p className="mb-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+                    Le scadenze collegate a questa email non risultano più scadute
+                  </p>
+                )}
                 {scadLoading ? (
                   <Skeleton className="h-16 w-full" />
                 ) : !scadute?.length ? (
