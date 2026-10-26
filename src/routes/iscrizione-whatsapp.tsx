@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { isEmailValida } from "@/lib/email-validazione";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -70,6 +71,7 @@ function IscrizioneWhatsappPage() {
     numero.trim().length >= 6 &&
     nome.trim() &&
     cognome.trim() &&
+    isEmailValida(email) &&
     consenso;
 
   return (
@@ -137,7 +139,7 @@ function IscrizioneWhatsappPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Email</Label>
+              <Label>Email *</Label>
               <Input
                 type="email"
                 inputMode="email"
@@ -145,7 +147,11 @@ function IscrizioneWhatsappPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
+              {email.trim() !== "" && !isEmailValida(email) && (
+                <p className="text-xs text-destructive">Email non valida</p>
+              )}
             </div>
+
             <label className="flex items-start gap-2 text-sm cursor-pointer rounded-md border p-3">
               <Checkbox
                 checked={consenso}
