@@ -4,7 +4,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  Send, Plus, Bell, Phone, StickyNote, FileText, Mail, Activity, Eye, CalendarClock, Paperclip,
+  Send, Plus, Bell, Phone, StickyNote, FileText, Activity, Eye, CalendarClock, Paperclip,
   Pencil, Trash2, HandCoins,
 } from "lucide-react";
 import { RegistraPromessaDialog } from "@/components/registra-promessa-dialog";
@@ -123,7 +123,6 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda, onApriProm
   const puoInviare = puoInviareComunicazioniRecupero(roles as string[]);
 
   const [sollecitoOpen, setSollecitoOpen] = useState(false);
-  const [emailLiberaOpen, setEmailLiberaOpen] = useState(false);
   const [creaOpen, setCreaOpen] = useState(false);
   const [creaTipo, setCreaTipo] = useState<TipoAzione>("promemoria");
   const [letteraOpen, setLetteraOpen] = useState(false);
@@ -290,12 +289,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda, onApriProm
       <div className="flex flex-wrap items-center gap-2">
         {puoInviare && (
           <Button size="sm" onClick={() => setSollecitoOpen(true)} className="gap-1.5">
-            <Send className="size-4" /> Invia sollecito
-          </Button>
-        )}
-        {puoInviare && (
-          <Button size="sm" variant="outline" onClick={() => setEmailLiberaOpen(true)} className="gap-1.5">
-            <Mail className="size-4" /> Email libera
+            <Send className="size-4" /> Invia email
           </Button>
         )}
         <Button size="sm" variant="outline" onClick={() => openNuova("promemoria")} className="gap-1.5">
@@ -403,12 +397,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda, onApriProm
         clienteId={clienteId}
         modalitaIniziale="modello"
       />
-      <InviaEmailRecuperoDialog
-        open={emailLiberaOpen}
-        onOpenChange={setEmailLiberaOpen}
-        clienteId={clienteId}
-        modalitaIniziale="libera"
-      />
+
       <CreaAzioneDialog
         open={creaOpen}
         onOpenChange={setCreaOpen}

@@ -544,6 +544,11 @@ export function InviaEmailRecuperoDialog({
                     <TabsTrigger value="libera" className="min-h-9">Libera</TabsTrigger>
                   </TabsList>
                 </Tabs>
+                <p className="text-xs text-muted-foreground">
+                  {modalita === "modello"
+                    ? "Conta come sollecito: aggiorna lo stadio del cliente (1° sollecito, 2° sollecito, messa in mora)."
+                    : "Comunicazione personalizzata: non conta come sollecito."}
+                </p>
                 {modalita === "modello" ? (
                   <div className="space-y-1.5">
                     <Label>Modello</Label>
