@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { puoGestireLegale } from "@/lib/recupero-permessi";
+import { avvisaVariazioniLegale } from "@/lib/legale.functions";
 import { toast } from "sonner";
 import {
   AlertTriangle, AlertCircle, Plus, Calendar, FileText,
@@ -71,6 +74,9 @@ export function ClienteInsolutiTab({
     roles.includes("approvatore_liv1") ||
     roles.includes("approvatore_liv2") ||
     roles.includes("approvatore_liv3");
+  // FM48: il legale lo gestisce solo chi passa puoGestireLegale (gemello SQL
+  // auth_puo_gestire_legale). Le Assicurazioni restano con canManageAssicPratiche.
+  const canManageLegale = puoGestireLegale(roles);
 
   // I banner restano visibili sulle sezioni pertinenti
   const mostraBanner = sezione === "scadenziario" || sezione === "legali";
@@ -108,8 +114,8 @@ export function ClienteInsolutiTab({
       {sezione === "piani" && <ClientePianiRientroTab clienteId={cliente.id} />}
       {sezione === "legali" && (
         <div className="space-y-4">
-          <NoteLegaliGestionaliCard clienteId={cliente.id} canManage={canManageAssicPratiche} />
-          <PraticheLegaliSection clienteId={cliente.id} canManage={canManageAssicPratiche} />
+          <NoteLegaliGestionaliCard clienteId={cliente.id} canManage={canManageLegale} />
+          <PraticheLegaliSection clienteId={cliente.id} canManage={canManageLegale} />
         </div>
       )}
       {sezione === "assicurazioni" && (
@@ -504,8 +510,31 @@ const CATEGORIA_COLORS: Record<string, string> = {
   "Altro": "bg-secondary text-secondary-foreground border-border",
 };
 
+/**
+ * Unico punto da chiamare dopo un'operazione riuscita che può cambiare lo stato
+ * legale del cliente: aggiorna i dati del cliente (banner in_gestione_legale) e
+ * chiede l'avviso immediato. Un errore dell'avviso non annulla l'operazione.
+ */
+function useDopoVariazioneLegale(clienteId: string) {
+  const qc = useQueryClient();
+  const avvisa = useServerFn(avvisaVariazioniLegale);
+  return async () => {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ["cliente", clienteId] }),
+      qc.invalidateQueries({ queryKey: ["pratiche-legali", clienteId] }),
+      qc.invalidateQueries({ queryKey: ["note-legali-gest", clienteId] }),
+    ]);
+    try {
+      await avvisa();
+    } catch {
+      toast.warning("Operazione salvata, avviso non inviato");
+    }
+  };
+}
+
 function NoteLegaliGestionaliCard({ clienteId, canManage }: { clienteId: string; canManage: boolean }) {
   const qc = useQueryClient();
+  const dopoVariazioneLegale = useDopoVariazioneLegale(clienteId);
   const { data, isLoading } = useQuery({
     queryKey: ["note-legali-gest", clienteId],
     queryFn: async () => {
@@ -540,6 +569,7 @@ function NoteLegaliGestionaliCard({ clienteId, canManage }: { clienteId: string;
                 if (error) { toast.error(error.message); return; }
                 toast.success("Nota legale eliminata");
                 await qc.invalidateQueries({ queryKey: ["note-legali-gest", clienteId] });
+                await dopoVariazioneLegale();
               }}
             />
           )}
@@ -566,8 +596,8 @@ function NoteLegaliGestionaliCard({ clienteId, canManage }: { clienteId: string;
 type PraticaRow = { id: string; tipo: string; stato: string; importo_contestato: number | null; importo_recuperato: number | null; riferimento_avvocato: string | null; studio_legale: string | null; note: string | null; data_apertura: string; data_chiusura: string | null; updated_at?: string | null };
 
 function PraticheLegaliSection({ clienteId, canManage }: { clienteId: string; canManage: boolean }) {
-  const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const dopoVariazioneLegale = useDopoVariazioneLegale(clienteId);
 
   const { data: pratiche, isLoading } = useQuery({
     queryKey: ["pratiche-legali", clienteId],
@@ -591,7 +621,7 @@ function PraticheLegaliSection({ clienteId, canManage }: { clienteId: string; ca
             <DialogTrigger asChild>
               <Button size="sm" className="gap-1.5"><Plus className="size-4" /> Nuova pratica</Button>
             </DialogTrigger>
-            <NuovaPraticaDialog clienteId={clienteId} onClose={() => setOpen(false)} onSaved={() => qc.invalidateQueries({ queryKey: ["pratiche-legali", clienteId] })} />
+            <NuovaPraticaDialog clienteId={clienteId} onClose={() => setOpen(false)} onSaved={() => { void dopoVariazioneLegale(); }} />
           </Dialog>
         )}
       </div>
@@ -621,6 +651,8 @@ function PraticaCard({ pratica: p, clienteId, canManage }: { pratica: PraticaRow
     qc.invalidateQueries({ queryKey: ["pratica-timeline", p.id] });
     qc.invalidateQueries({ queryKey: ["pratica-allegati", p.id] });
   };
+  const dopoVariazioneLegale = useDopoVariazioneLegale(clienteId);
+  const invalidateLegale = () => { invalidate(); void dopoVariazioneLegale(); };
 
   async function handleDelete() {
     if (deleting) return;
@@ -645,7 +677,7 @@ function PraticaCard({ pratica: p, clienteId, canManage }: { pratica: PraticaRow
       if (error) throw error;
       toast.success("Pratica eliminata");
       setOpenDelete(false);
-      invalidate();
+      invalidateLegale();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Errore eliminazione");
     } finally {
@@ -686,13 +718,13 @@ function PraticaCard({ pratica: p, clienteId, canManage }: { pratica: PraticaRow
               <DialogTrigger asChild>
                 <Button size="sm" variant="outline">Cambia stato</Button>
               </DialogTrigger>
-              <CambiaStatoPraticaDialog pratica={p} onClose={() => setOpenChange(false)} onSaved={invalidate} />
+              <CambiaStatoPraticaDialog pratica={p} onClose={() => setOpenChange(false)} onSaved={invalidateLegale} />
             </Dialog>
             <Dialog open={openEdit} onOpenChange={setOpenEdit} key={p.id}>
               <DialogTrigger asChild>
                 <Button size="sm" variant="outline" className="gap-1.5"><Pencil className="size-3.5" /> Modifica</Button>
               </DialogTrigger>
-              <ModificaPraticaDialog pratica={p} onClose={() => setOpenEdit(false)} onSaved={invalidate} />
+              <ModificaPraticaDialog pratica={p} onClose={() => setOpenEdit(false)} onSaved={(statoCambiato) => (statoCambiato ? invalidateLegale() : invalidate())} />
             </Dialog>
             <Button size="sm" variant="outline" className="gap-1.5 text-destructive hover:text-destructive" onClick={() => setOpenDelete(true)}>
               <Trash2 className="size-3.5" /> Elimina
@@ -711,7 +743,7 @@ function PraticaCard({ pratica: p, clienteId, canManage }: { pratica: PraticaRow
           entitaTipo="pratica_legale"
           entitaId={p.id}
           clienteId={clienteId}
-          canEdit
+          canEdit={canManage}
         />
       </div>
 
@@ -742,7 +774,7 @@ function PraticaCard({ pratica: p, clienteId, canManage }: { pratica: PraticaRow
   );
 }
 
-function ModificaPraticaDialog({ pratica, onClose, onSaved }: { pratica: PraticaRow; onClose: () => void; onSaved: () => void }) {
+function ModificaPraticaDialog({ pratica, onClose, onSaved }: { pratica: PraticaRow; onClose: () => void; onSaved: (statoCambiato: boolean) => void }) {
   const [form, setForm] = useState({
     tipo: pratica.tipo as typeof TIPO_PRATICA[number],
     stato: pratica.stato as typeof STATO_PRATICA[number],
@@ -774,7 +806,7 @@ function ModificaPraticaDialog({ pratica, onClose, onSaved }: { pratica: Pratica
       const { error } = await supabase.from("pratiche_legali" as never).update(updates as never).eq("id", pratica.id);
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Pratica aggiornata"); onSaved(); onClose(); },
+    onSuccess: () => { toast.success("Pratica aggiornata"); onSaved(form.stato !== pratica.stato); onClose(); },
     onError: (e: Error) => toast.error(e.message),
   });
   return (
