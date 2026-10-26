@@ -53,6 +53,7 @@ import {
 import { ClientePicker } from "@/components/preventivatore/ClientePicker";
 import { salvaWorkbook } from "@/lib/salva-workbook";
 import { allegaPrivacyIscritti } from "@/lib/privacy-iscritti.functions";
+import { etichettaSede } from "@/lib/iscrizione-whatsapp-dati";
 
 export const Route = createFileRoute("/_app/marketing/iscritti-whatsapp")({
   component: IscrittiWhatsappPage,
@@ -70,6 +71,10 @@ type Iscritto = {
   nome: string | null;
   cognome: string | null;
   azienda: string | null;
+  tipo_soggetto: string | null;
+  partita_iva: string | null;
+  codice_fiscale: string | null;
+  store_id: string | null;
   email: string | null;
   origine: string | null;
   stato: string;
@@ -242,6 +247,20 @@ export default function IscrittiWhatsappPage() {
     },
   });
   const nomiCollegati = nomiCollegatiQuery.data ?? {};
+
+  // Etichette delle sedi di riferimento (stessa regola del modulo pubblico).
+  const sediQuery = useQuery({
+    queryKey: ["iscritti-whatsapp-sedi"],
+    staleTime: 10 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("stores").select("id, nome, citta");
+      if (error) throw error;
+      const m: Record<string, string> = {};
+      for (const st of data ?? []) m[st.id] = etichettaSede(st.nome, st.citta);
+      return m;
+    },
+  });
+  const sediMap = sediQuery.data ?? {};
 
   const apriRiga = (r: Iscritto) => {
     if (r.cliente_id && r.contatto_id)
@@ -533,7 +552,7 @@ export default function IscrittiWhatsappPage() {
             <TableRow>
               <TableHead>Numero</TableHead>
               <TableHead>Nome</TableHead>
-              <TableHead>Impresa</TableHead>
+              <TableHead>Impresa / privato</TableHead>
               <TableHead>Origine</TableHead>
               <TableHead>Data</TableHead>
               <TableHead>Stato</TableHead>
@@ -563,7 +582,27 @@ export default function IscrittiWhatsappPage() {
                   <TableCell>
                     {[r.nome, r.cognome].filter(Boolean).join(" ") || "—"}
                   </TableCell>
-                  <TableCell>{r.azienda || "—"}</TableCell>
+                  <TableCell>
+                    <div className="flex min-w-0 max-w-[16rem] flex-col items-start gap-1">
+                      {r.tipo_soggetto && (
+                        <Badge variant="outline">
+                          {r.tipo_soggetto === "persona_fisica" ? "Privato" : "Impresa"}
+                        </Badge>
+                      )}
+                      {r.tipo_soggetto !== "persona_fisica" && (
+                        <span className="text-sm break-words line-clamp-2">{r.azienda || "—"}</span>
+                      )}
+                      {r.partita_iva && (
+                        <span className="text-xs text-muted-foreground font-mono">P.IVA {r.partita_iva}</span>
+                      )}
+                      {r.codice_fiscale && (
+                        <span className="text-xs text-muted-foreground font-mono break-all">CF {r.codice_fiscale}</span>
+                      )}
+                      {r.store_id && sediMap[r.store_id] && (
+                        <span className="text-xs text-muted-foreground">Sede: {sediMap[r.store_id]}</span>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <Badge variant="outline">
                       {LABEL_ORIGINE[r.origine ?? ""] ?? r.origine ?? "—"}
