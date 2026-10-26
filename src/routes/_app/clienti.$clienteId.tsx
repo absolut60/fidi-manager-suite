@@ -284,7 +284,7 @@ function ClienteDetail() {
   const { edit, tab, insolutiTab } = Route.useSearch();
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const { role, hasRole, roles } = useAuth();
+  const { role, hasRole } = useAuth();
   const isAdmin = role === "amministratore";
   const isStoreManager = role === "store_manager";
   // Retro-compatibilita': i vecchi link ?tab=insoluti&insolutiTab=x puntano ora al tab promosso
