@@ -32,3 +32,8 @@ Estratto dal knowledge di progetto il 08/10/2026 (sessione 40). Si aggiorna modi
 - Creazione solo da `RegistraPromessaDialog`; modifica da `ModificaAzioneDialog` (scadenza, importo, note, scadenze collegate; niente esito, niente cambio tipo).
 - "Da verificare": fonte unica `isPromessaDaVerificare(a)` in `src/lib/azioni-recupero-ui.ts` (stato attiva — NULL vale attiva — e `data_promessa_pagamento` < oggi locale; giorni con `giorniDaOggi`). Usata da scheda Promesse del cliente (`cliente-promesse-tab.tsx`), pagina Promesse di pagamento e riquadro "Ultima promessa" di Attività recupero. Niente copie locali.
 - Scheda "Promesse" del cliente (`?tab=promesse`): dati da `useAzioniRecuperoCliente` filtrati con `isPromessaPagamento`; righe con `TimelineItem`, permessi/eliminazione/invalidazione dalle funzioni esportate da `cliente-attivita-recupero-tab.tsx` (`puoModificareAzione`, `eliminaAzioneConAllegati`, `invalidaRecuperoCliente`). I link aperti da una promessa puntano a `tab=promesse`.
+
+## Email di recupero singola e lettera PDF (FM48)
+
+- **Invio di una singola email di recupero:** punto unico `inviaEmailRecupero` (`src/lib/email-recupero.functions.ts`): modello o libera, CC/CCN (max 10 indirizzi totali, validati con `isEmailValida`), allegati solo PDF (≤ 10 MB totali, lettera compresa), registrazione dell'azione, scadenze collegate e copia dei file inviati come allegati dell'azione. Sostituirà `invia-sollecito-dialog` ed `email-libera-dialog` (fetta 3): nessun nuovo invio singolo fuori da qui.
+- **PDF lettera:** fonte unica `costruisciLetteraPdf` (`src/lib/lettera-pdf.server.ts`), senza scritture. La usano `generaLetteraPdf` (che poi registra azione e allegato) e `inviaEmailRecupero`.
