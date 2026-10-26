@@ -7,6 +7,33 @@ import {
   INFORMATIVA_VERSIONE,
   calcolaInformativaHash,
 } from "@/lib/consensi-testi";
+import {
+  CODICE_SEDE_CENTRALE,
+  etichettaSede,
+  isCodiceFiscaleValido,
+  isPartitaIvaValida,
+  normalizzaCodiceFiscale,
+  normalizzaPartitaIva,
+} from "@/lib/iscrizione-whatsapp-dati";
+
+type SedeIscrizione = { id: string; etichetta: string };
+
+/** Sedi selezionabili nel modulo (esclusa la sede centrale), ordinate per etichetta. */
+async function caricaSediIscrizione(): Promise<SedeIscrizione[]> {
+  const { data, error } = await supabaseAdmin
+    .from("stores")
+    .select("id, codice, nome, citta");
+  if (error) throw new Error(error.message);
+  return (data ?? [])
+    .filter((s) => String(s.codice ?? "").trim() !== CODICE_SEDE_CENTRALE)
+    .map((s) => ({ id: s.id, etichetta: etichettaSede(s.nome, s.citta) }))
+    .sort((a, b) => a.etichetta.localeCompare(b.etichetta, "it"));
+}
+
+/** Pubblica: restituisce SOLO id ed etichetta delle sedi per il menu del modulo. */
+export const getSediIscrizioneWhatsapp = createServerFn({ method: "GET" }).handler(
+  async (): Promise<SedeIscrizione[]> => caricaSediIscrizione()
+);
 
 /**
  * Registra un consenso WhatsApp raccolto dalla pagina pubblica (link o QR).
@@ -20,7 +47,11 @@ export const iscriviWhatsapp = createServerFn({ method: "POST" })
       numero: z.string().trim().min(6, "Numero non valido").max(40),
       nome: z.string().trim().min(1, "Nome obbligatorio").max(100),
       cognome: z.string().trim().min(1, "Cognome obbligatorio").max(100),
+      tipo_soggetto: z.enum(["azienda", "persona_fisica"]).default("azienda"),
       azienda: z.string().trim().max(150).optional(),
+      partita_iva: z.string().max(30).optional(),
+      codice_fiscale: z.string().max(30).optional(),
+      store_id: z.string().uuid().optional().or(z.literal("")),
       email: z.preprocess((v) => (typeof v === "string" ? v : ""), z.string().trim().toLowerCase().min(1, "Email obbligatoria").email("Email non valida").max(150)),
       consenso: z.literal(true, {
         errorMap: () => ({ message: "Devi dare il consenso per iscriverti" }),
@@ -29,7 +60,30 @@ export const iscriviWhatsapp = createServerFn({ method: "POST" })
       consenso_profilazione: z.boolean().default(false),
       origine: z.enum(["link", "qr_pagina"]).default("link"),
       secondi_permanenza: z.number().int().min(0).max(86400).nullable().optional(),
-    }).parse(d)
+    })
+      .superRefine((v, ctx) => {
+        if (v.tipo_soggetto === "azienda") {
+          if (!(v.azienda ?? "").trim())
+            ctx.addIssue({ code: "custom", path: ["azienda"], message: "Nome dell'impresa obbligatorio" });
+          if ((v.partita_iva ?? "").trim() && !isPartitaIvaValida(v.partita_iva))
+            ctx.addIssue({ code: "custom", path: ["partita_iva"], message: "Partita IVA non valida" });
+        } else if ((v.codice_fiscale ?? "").trim() && !isCodiceFiscaleValido(v.codice_fiscale)) {
+          ctx.addIssue({ code: "custom", path: ["codice_fiscale"], message: "Codice fiscale non valido" });
+        }
+      })
+      .transform((v) => {
+        const azienda = v.tipo_soggetto === "azienda";
+        const piva = azienda ? normalizzaPartitaIva(v.partita_iva) : "";
+        const cf = !azienda ? normalizzaCodiceFiscale(v.codice_fiscale) : "";
+        return {
+          ...v,
+          azienda: azienda ? v.azienda : undefined,
+          partita_iva: piva || undefined,
+          codice_fiscale: cf || undefined,
+          store_id: v.store_id || undefined,
+        };
+      })
+      .parse(d)
   )
   .handler(async ({ data }) => {
     // Prova GDPR: IP + user-agent dagli header della richiesta
@@ -49,6 +103,13 @@ export const iscriviWhatsapp = createServerFn({ method: "POST" })
 
     const informativaHash = await calcolaInformativaHash(INFORMATIVA_FULL);
 
+    // Sede: accettata solo se è una delle sedi selezionabili.
+    let sede: SedeIscrizione | null = null;
+    if (data.store_id) {
+      sede = (await caricaSediIscrizione()).find((s) => s.id === data.store_id) ?? null;
+      if (!sede) throw new Error("Sede di riferimento non valida");
+    }
+
     const { data: res, error } = await supabaseAdmin.rpc(
       "registra_consenso_whatsapp",
       {
@@ -66,6 +127,10 @@ export const iscriviWhatsapp = createServerFn({ method: "POST" })
         _informativa_versione: INFORMATIVA_VERSIONE,
         _informativa_hash: informativaHash,
         _secondi_permanenza: data.secondi_permanenza ?? undefined,
+        _tipo_soggetto: data.tipo_soggetto,
+        _partita_iva: data.partita_iva,
+        _codice_fiscale: data.codice_fiscale,
+        _store_id: sede?.id,
       }
     );
     if (error) throw new Error(error.message);
@@ -272,7 +337,10 @@ export const iscriviWhatsapp = createServerFn({ method: "POST" })
               : azienda
                 ? ` · Impresa dichiarata: ${azienda}`
                 : " · Nessuna impresa dichiarata") +
-            ` · Email: ${data.consenso_marketing ? "sì" : "no"}`;
+            ` · Email: ${data.consenso_marketing ? "sì" : "no"}` +
+            (sede ? ` · Sede: ${sede.etichetta}` : "") +
+            (data.partita_iva ? ` · P.IVA ${data.partita_iva}` : "") +
+            (data.codice_fiscale ? ` · CF ${data.codice_fiscale}` : "");
           const numeroNorm = iscr.numero_norm ?? out.numero;
           const righe = destinatari.map((user_id) => ({
             user_id,
