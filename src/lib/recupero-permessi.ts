@@ -36,3 +36,12 @@ export const RUOLI_STATO_PROMESSA = ["recupero_crediti", "amministrazione", "amm
 export function puoCambiareStatoPromessa(roles: readonly string[]): boolean {
   return RUOLI_STATO_PROMESSA.some((r) => roles.includes(r));
 }
+
+// Regola unica: chi gestisce il legale (pratiche legali, loro allegati e
+// aggiornamenti, note legali Gamma). Decisione di Andrea (FM48): stessi ruoli
+// dell'invio di recupero, quindi riusa RUOLI_INVIO_RECUPERO.
+// Gemello SQL: public.auth_puo_gestire_legale() (= auth_puo_inviare_recupero()).
+// Se cambia uno, cambia l'altro.
+export function puoGestireLegale(roles: readonly string[]): boolean {
+  return RUOLI_INVIO_RECUPERO.some((r) => roles.includes(r));
+}

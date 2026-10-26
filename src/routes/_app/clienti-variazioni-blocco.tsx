@@ -70,6 +70,8 @@ function fmtDataOra(v: unknown): string {
 function BadgeVariazione({ tipo }: { tipo: string | null }) {
   if (tipo === "bloccato") return <Badge variant="destructive">Bloccato</Badge>;
   if (tipo === "sbloccato") return <Badge className="bg-emerald-600/15 text-emerald-700">Sbloccato</Badge>;
+  if (tipo === "in_legale") return <Badge className="bg-amber-500/15 text-amber-700">In legale</Badge>;
+  if (tipo === "uscito_legale") return <Badge className="bg-emerald-500/10 text-emerald-600">Uscito dal legale</Badge>;
   return <Badge variant="outline">{tipo ?? "—"}</Badge>;
 }
 
@@ -78,7 +80,7 @@ function ClientiVariazioniBloccoPage() {
   // Filtri e pagina conservati (useFiltriPagina).
   const { user } = useAuth();
   const { filtri: FV, setCampo } = useFiltriPagina("clienti-variazioni-blocco", {
-    tipo: "tutte" as "tutte" | "bloccato" | "sbloccato", search: "", storeId: "all", pagina: 0,
+    tipo: "tutte" as "tutte" | "bloccato" | "sbloccato" | "in_legale" | "uscito_legale", search: "", storeId: "all", pagina: 0,
     periodo: "7g" as Periodo,
   }, { userId: user?.id, valida: { periodo: (v) => v === "7g" || v === "30g" || v === "tutto" } });
   const { tipo, search, pagina, periodo } = FV;
@@ -166,10 +168,10 @@ function ClientiVariazioniBloccoPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
-          <AlertTriangle className="size-7 text-primary" /> Variazioni blocco clienti
+          <AlertTriangle className="size-7 text-primary" /> Variazioni blocco e legale clienti
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Clienti passati a bloccato o sbloccati, rilevati a ogni import dal gestionale.
+          Clienti bloccati, sbloccati, entrati o usciti dalla gestione legale.
         </p>
       </div>
 
@@ -208,9 +210,11 @@ function ClientiVariazioniBloccoPage() {
               <Select value={tipo} onValueChange={(v) => { setTipo(v as typeof tipo); setPagina(0); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="tutte">Tutte le variazioni</SelectItem>
+                  <SelectItem value="tutte">Tutte</SelectItem>
                   <SelectItem value="bloccato">Bloccati</SelectItem>
                   <SelectItem value="sbloccato">Sbloccati</SelectItem>
+                  <SelectItem value="in_legale">Entrati in legale</SelectItem>
+                  <SelectItem value="uscito_legale">Usciti dal legale</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -242,12 +246,12 @@ function ClientiVariazioniBloccoPage() {
         ) : righe.length === 0 ? (
           periodo === "tutto" ? (
             <div className="p-12 text-center text-sm text-muted-foreground">
-              Nessuna variazione registrata. Le variazioni vengono rilevate a ogni import dei blocchi dal gestionale.
+              Nessuna variazione registrata. Le variazioni di blocco arrivano dagli import dal gestionale; quelle legali anche dalle pratiche legali.
             </div>
           ) : (
             <div className="p-8 sm:p-12 text-center space-y-3">
               <p className="text-sm text-muted-foreground">
-                Nessuna variazione {periodo === "7g" ? "negli ultimi 7 giorni" : "negli ultimi 30 giorni"}.
+                Nessuna variazione {periodo === "7g" ? "negli ultimi 7 giorni" : "negli ultimi 30 giorni"}. Le variazioni di blocco arrivano dagli import, quelle legali anche dalle pratiche.
               </p>
               <Button
                 variant="outline" size="sm" className="min-h-10"
