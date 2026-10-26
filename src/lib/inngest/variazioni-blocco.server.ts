@@ -100,10 +100,12 @@ async function marcaNotificate(ids: string[]): Promise<void> {
   }
 }
 
-function messaggioConteggi(n: number, m: number): string {
+function messaggioConteggi(n: number, m: number, l = 0, u = 0): string {
   const parti: string[] = [];
   if (n > 0) parti.push(`${n} ${n === 1 ? "bloccato" : "bloccati"}`);
   if (m > 0) parti.push(`${m} ${m === 1 ? "sbloccato" : "sbloccati"}`);
+  if (l > 0) parti.push(`${l} in legale`);
+  if (u > 0) parti.push(`${u} ${u === 1 ? "uscito" : "usciti"} dal legale`);
   return parti.join(", ");
 }
 
@@ -232,17 +234,21 @@ export const notificaVariazioniBlocco = inngest.createFunction(
         const negozi = Array.from(new Set(lista.map((r) => r.negozio ?? "sede")));
         const nB = lista.filter((r) => r.tipo === "bloccato").length;
         const nS = lista.filter((r) => r.tipo === "sbloccato").length;
+        const nL = lista.filter((r) => r.tipo === "in_legale").length;
+        const nU = lista.filter((r) => r.tipo === "uscito_legale").length;
         return {
           user_id: uid,
           tipo: "variazioni_blocco_clienti",
-          titolo: `Variazioni blocco clienti — ${negozi.join(", ")}`,
-          messaggio: messaggioConteggi(nB, nS),
+          titolo: `Variazioni blocco e legale clienti — ${negozi.join(", ")}`,
+          messaggio: messaggioConteggi(nB, nS, nL, nU),
           link: "/clienti-variazioni-blocco",
           metadata: {
             store_id: negozi.length === 1 ? lista[0].store_id : null,
             importazione_id: importazioneId,
             bloccati: nB,
             sbloccati: nS,
+            in_legale: nL,
+            usciti_legale: nU,
             test: false,
             destinatario: "agente",
           },
@@ -327,12 +333,20 @@ export const notificaVariazioniBlocco = inngest.createFunction(
         const sbloccati = righe
           .filter((r) => r.tipo === "sbloccato")
           .map((r) => ({ codice: r.codice_gestionale, ragione_sociale: r.ragione_sociale }));
+        const inLegale = righe
+          .filter((r) => r.tipo === "in_legale")
+          .map((r) => ({ codice: r.codice_gestionale, ragione_sociale: r.ragione_sociale }));
+        const uscitiLegale = righe
+          .filter((r) => r.tipo === "uscito_legale")
+          .map((r) => ({ codice: r.codice_gestionale, ragione_sociale: r.ragione_sociale }));
 
         // d) render
         const { oggetto, html } = buildVariazioniBloccoEmail({
           negozioNome,
           bloccati,
           sbloccati,
+          inLegale,
+          uscitiLegale,
           appUrl,
           dataRilevazione: new Date(),
           testInfo: emailTest ? { emailReali: reali.map((r) => r.email) } : null,
@@ -362,8 +376,8 @@ export const notificaVariazioniBlocco = inngest.createFunction(
         // f) notifiche in app (la push parte dal trigger esistente)
         let notifiche = 0;
         if (userIds.length) {
-          const titolo = `${isTest ? "[TEST] " : ""}Variazioni blocco clienti — ${negozioNome}`;
-          const messaggio = messaggioConteggi(bloccati.length, sbloccati.length);
+          const titolo = `${isTest ? "[TEST] " : ""}Variazioni blocco e legale clienti — ${negozioNome}`;
+          const messaggio = messaggioConteggi(bloccati.length, sbloccati.length, inLegale.length, uscitiLegale.length);
           const { error: eN } = await withTimeout(
             supabaseAdmin.from("notifiche").insert(
               userIds.map((uid) => ({
@@ -377,6 +391,8 @@ export const notificaVariazioniBlocco = inngest.createFunction(
                   importazione_id: importazioneId,
                   bloccati: bloccati.length,
                   sbloccati: sbloccati.length,
+                  in_legale: inLegale.length,
+                  usciti_legale: uscitiLegale.length,
                   test: isTest,
                 },
               })),
