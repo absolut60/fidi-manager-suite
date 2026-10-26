@@ -97,6 +97,7 @@ import { Route as ApiPublicInviaPushRouteImport } from './routes/api/public/invi
 import { Route as ApiPublicEmailImgSplatRouteImport } from './routes/api/public/email-img/$'
 import { Route as ApiPublicHooksCheckReminderRitardiRouteImport } from './routes/api/public/hooks/check-reminder-ritardi'
 import { Route as ApiPublicHooksCheckScadenzeRouteImport } from './routes/api/public/hooks/check-scadenze'
+import { Route as ApiPublicHooksVariazioniLegaleRouteImport } from './routes/api/public/hooks/variazioni-legale'
 import { Route as ApiWebhooksD360TokenRouteImport } from './routes/api/webhooks/d360/$token'
 
 const IndexRoute = IndexRouteImport.update({
@@ -557,6 +558,12 @@ const ApiPublicHooksCheckScadenzeRoute =
     path: '/api/public/hooks/check-scadenze',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksVariazioniLegaleRoute =
+  ApiPublicHooksVariazioniLegaleRouteImport.update({
+    id: '/api/public/hooks/variazioni-legale',
+    path: '/api/public/hooks/variazioni-legale',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiWebhooksD360TokenRoute = ApiWebhooksD360TokenRouteImport.update({
   id: '/api/webhooks/d360/$token',
   path: '/api/webhooks/d360/$token',
@@ -651,6 +658,7 @@ export interface FileRoutesByFullPath {
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
+  '/api/public/hooks/variazioni-legale': typeof ApiPublicHooksVariazioniLegaleRoute
   '/api/webhooks/d360/$token': typeof ApiWebhooksD360TokenRoute
 }
 export interface FileRoutesByTo {
@@ -738,6 +746,7 @@ export interface FileRoutesByTo {
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
+  '/api/public/hooks/variazioni-legale': typeof ApiPublicHooksVariazioniLegaleRoute
   '/api/webhooks/d360/$token': typeof ApiWebhooksD360TokenRoute
 }
 export interface FileRoutesById {
@@ -830,6 +839,7 @@ export interface FileRoutesById {
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
+  '/api/public/hooks/variazioni-legale': typeof ApiPublicHooksVariazioniLegaleRoute
   '/api/webhooks/d360/$token': typeof ApiWebhooksD360TokenRoute
 }
 export interface FileRouteTypes {
@@ -922,6 +932,7 @@ export interface FileRouteTypes {
     | '/api/public/email-img/$'
     | '/api/public/hooks/check-reminder-ritardi'
     | '/api/public/hooks/check-scadenze'
+    | '/api/public/hooks/variazioni-legale'
     | '/api/webhooks/d360/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -1009,6 +1020,7 @@ export interface FileRouteTypes {
     | '/api/public/email-img/$'
     | '/api/public/hooks/check-reminder-ritardi'
     | '/api/public/hooks/check-scadenze'
+    | '/api/public/hooks/variazioni-legale'
     | '/api/webhooks/d360/$token'
   id:
     | '__root__'
@@ -1100,6 +1112,7 @@ export interface FileRouteTypes {
     | '/api/public/email-img/$'
     | '/api/public/hooks/check-reminder-ritardi'
     | '/api/public/hooks/check-scadenze'
+    | '/api/public/hooks/variazioni-legale'
     | '/api/webhooks/d360/$token'
   fileRoutesById: FileRoutesById
 }
@@ -1119,6 +1132,7 @@ export interface RootRouteChildren {
   ApiPublicEmailImgSplatRoute: typeof ApiPublicEmailImgSplatRoute
   ApiPublicHooksCheckReminderRitardiRoute: typeof ApiPublicHooksCheckReminderRitardiRoute
   ApiPublicHooksCheckScadenzeRoute: typeof ApiPublicHooksCheckScadenzeRoute
+  ApiPublicHooksVariazioniLegaleRoute: typeof ApiPublicHooksVariazioniLegaleRoute
   ApiWebhooksD360TokenRoute: typeof ApiWebhooksD360TokenRoute
 }
 
@@ -1740,6 +1754,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksCheckScadenzeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/variazioni-legale': {
+      id: '/api/public/hooks/variazioni-legale'
+      path: '/api/public/hooks/variazioni-legale'
+      fullPath: '/api/public/hooks/variazioni-legale'
+      preLoaderRoute: typeof ApiPublicHooksVariazioniLegaleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/webhooks/d360/$token': {
       id: '/api/webhooks/d360/$token'
       path: '/api/webhooks/d360/$token'
@@ -1969,6 +1990,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksCheckReminderRitardiRoute:
     ApiPublicHooksCheckReminderRitardiRoute,
   ApiPublicHooksCheckScadenzeRoute: ApiPublicHooksCheckScadenzeRoute,
+  ApiPublicHooksVariazioniLegaleRoute: ApiPublicHooksVariazioniLegaleRoute,
   ApiWebhooksD360TokenRoute: ApiWebhooksD360TokenRoute,
 }
 export const routeTree = rootRouteImport
