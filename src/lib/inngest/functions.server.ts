@@ -3714,17 +3714,9 @@ export const processBloccoFidoImport = inngest.createFunction(
             }
           }
 
-          // Imposta in_gestione_legale = true sui nuovi
-          if (clientiInGestioneNuovi.size) {
-            const ids = Array.from(clientiInGestioneNuovi);
-            const BATCH = 500;
-            for (let i = 0; i < ids.length; i += BATCH) {
-              await supabaseAdmin
-                .from("clienti")
-                .update({ in_gestione_legale: true } as never)
-                .in("id", ids.slice(i, i + BATCH));
-            }
-          }
+          // in_gestione_legale NON si imposta qui: l'upsert delle note fa scattare
+          // trg_note_legali_gest_gestione_legale, che applica la regola unica
+          // ricalcola_in_gestione_legale (una pratica chiusa non rientra per la nota).
 
           // Anomalie perde_gestione_legale: clienti nel file con in_gestione_legale=true
           // ma NON presenti nel foglio Note Legale.

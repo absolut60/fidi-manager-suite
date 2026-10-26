@@ -43,6 +43,8 @@ export function buildVariazioniBloccoEmail({
   negozioNome,
   bloccati,
   sbloccati,
+  inLegale = [],
+  uscitiLegale = [],
   appUrl,
   dataRilevazione,
   testInfo,
@@ -50,12 +52,14 @@ export function buildVariazioniBloccoEmail({
   negozioNome: string;
   bloccati: ClienteVariazione[];
   sbloccati: ClienteVariazione[];
+  inLegale?: ClienteVariazione[];
+  uscitiLegale?: ClienteVariazione[];
   appUrl: string;
   dataRilevazione: Date | string;
   testInfo?: { emailReali: string[] } | null;
 }): { oggetto: string; html: string } {
   const isTest = !!testInfo;
-  const oggetto = `${isTest ? "[TEST] " : ""}Variazioni blocco clienti — ${negozioNome} — ${formatDataRoma(dataRilevazione)}`;
+  const oggetto = `${isTest ? "[TEST] " : ""}Variazioni blocco e legale clienti — ${negozioNome} — ${formatDataRoma(dataRilevazione)}`;
 
   const parti: string[] = [];
   if (isTest) {
@@ -67,7 +71,7 @@ export function buildVariazioniBloccoEmail({
     );
   }
   parti.push(
-    `<p style="margin:0 0 12px;">Dopo l'ultimo aggiornamento dal gestionale, per i clienti della ${escapeHtml(negozioNome)} risultano queste variazioni dello stato di blocco:</p>`,
+    `<p style="margin:0 0 12px;">Dopo l'ultimo aggiornamento dal gestionale, per i clienti della ${escapeHtml(negozioNome)} risultano queste variazioni dello stato di blocco o di gestione legale:</p>`,
   );
   if (bloccati.length) {
     parti.push(
@@ -79,6 +83,18 @@ export function buildVariazioniBloccoEmail({
     parti.push(
       `<h3 style="margin:16px 0 4px;font-size:15px;color:#15803d;">Clienti sbloccati (${sbloccati.length})</h3>`,
       tabella(sbloccati),
+    );
+  }
+  if (inLegale.length) {
+    parti.push(
+      `<h3 style="margin:16px 0 4px;font-size:15px;color:#b91c1c;">Entrati in gestione legale (${inLegale.length})</h3>`,
+      tabella(inLegale),
+    );
+  }
+  if (uscitiLegale.length) {
+    parti.push(
+      `<h3 style="margin:16px 0 4px;font-size:15px;color:#15803d;">Usciti dalla gestione legale (${uscitiLegale.length})</h3>`,
+      tabella(uscitiLegale),
     );
   }
   const link = `${appUrl.replace(/\/+$/, "")}/clienti-variazioni-blocco`;
