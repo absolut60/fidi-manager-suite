@@ -70,7 +70,7 @@ type NavGroupKey =
   | "richieste_interne"
   | "marketing";
 
-type RichiesteScope = "all" | "manage" | "approve" | "gestione";
+type RichiesteScope = "all" | "manage" | "approve" | "gestione" | "tutte";
 
 type NavItem = {
   id?: string;
@@ -128,7 +128,7 @@ const NAV: NavItem[] = [
   { to: "/richieste-interne/mie", label: "Le mie richieste", icon: FileText, group: "richieste_interne", richiesteScope: "all" },
   { to: "/richieste-interne/approva", label: "Da approvare", icon: CheckCheck, group: "richieste_interne", richiesteScope: "approve" },
   { to: "/richieste-interne/gestione", label: "Gestione", icon: ClipboardCheck, group: "richieste_interne", richiesteScope: "gestione" },
-  { to: "/richieste-interne/tutte", label: "Tutte le richieste", icon: FileSpreadsheet, group: "richieste_interne", richiesteScope: "manage" },
+  { to: "/richieste-interne/tutte", label: "Tutte le richieste", icon: FileSpreadsheet, group: "richieste_interne", richiesteScope: "tutte" },
   { to: "/richieste-interne/archivio", label: "Archivio", icon: ScrollText, group: "richieste_interne", richiesteScope: "manage" },
   // MARKETING
   { to: "/eventi", label: "Eventi", icon: CalendarDays, roles: ["admin", "direzione", "marketing", "marketing_eventi"], group: "marketing" },
@@ -307,6 +307,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     "approvatore_richieste_liv2",
     "gestore_richieste",
     "esecutore_richieste",
+    "tesoreria", // FM48: la tesoreria vede le richieste con bonifico di acconto
   ];
   const hasAnyRichiesteRole = RICHIESTE_ROLES.some((r) => hasUserRole(r));
   const isOnlyMarketingEventi =
@@ -318,6 +319,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isEsecutoreRich = hasUserRole("esecutore_richieste");
   const canApproveRich = isAdmin || isApprovatoreRichLiv1 || isApprovatoreRichLiv2;
   const canManageRich = isAdmin || isApprovatoreRichLiv1 || isApprovatoreRichLiv2 || isGestoreRich || isEsecutoreRich || isAmministrazione;
+  const isTesoreriaRich = hasUserRole("tesoreria");
   const canGestioneRich = isAdmin || isGestoreRich || isEsecutoreRich || isAmministrazione;
 
   const visibleNavRaw = NAV.filter((item) => {
@@ -325,6 +327,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       if (!canSeeRichiesteInterne) return false;
       if (item.richiesteScope === "approve") return canApproveRich;
       if (item.richiesteScope === "manage") return canManageRich;
+      if (item.richiesteScope === "tutte") return canManageRich || isTesoreriaRich;
       if (item.richiesteScope === "gestione") return canGestioneRich;
       return true;
     }

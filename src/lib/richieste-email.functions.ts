@@ -24,9 +24,8 @@ const EVENTS = [
   "sollecito",
   "info_request",
   "messaggio_interno",
-  "bonifico_da_eseguire",
-  "bonifico_promemoria",
-  "bonifico_eseguito",
+  // FM48: gli eventi bonifico_* NON sono qui di proposito. Partono solo dal
+  // server (job accoda-bonifico, cron promemoria, segnaBonificoEseguito).
 ] as const;
 
 const InputSchema = z.object({

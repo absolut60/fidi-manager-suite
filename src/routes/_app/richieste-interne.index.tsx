@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Inbox, Hourglass, CheckCircle2, XCircle, ClipboardList, Wrench } from "lucide-react";
+import { puoGestireTesoreria } from "@/lib/tesoreria-permessi";
+import { Banknote } from "lucide-react";
 import { NuovaRichiestaDialog } from "@/components/richieste-interne/nuova-richiesta-dialog";
 
 export const Route = createFileRoute("/_app/richieste-interne/")({
@@ -19,12 +21,13 @@ function DashboardRichiesteInterne() {
   const isApp2 = roles.includes("approvatore_richieste_liv2");
   const isGestore = roles.includes("gestore_richieste") || roles.includes("esecutore_richieste");
   const isAdmin = roles.includes("amministratore");
+  const isTesoreria = puoGestireTesoreria(roles);
 
   const { data: counts } = useQuery({
     queryKey: ["richieste-interne", "dashboard", uid],
     enabled: !!uid,
     queryFn: async () => {
-      const base = supabase.from("richieste_interne").select("id,status,admin_status,requester_id,archived", { count: "exact", head: false }).eq("archived", false);
+      const base = supabase.from("richieste_interne").select("id,status,admin_status,requester_id,archived,acconto_richiesto,acconto_stato", { count: "exact", head: false }).eq("archived", false);
       const { data, error } = await base;
       if (error) throw error;
       return data ?? [];
@@ -41,6 +44,7 @@ function DashboardRichiesteInterne() {
   const nApp1 = rows.filter((r) => r.status === "pending").length;
   const nApp2 = rows.filter((r) => r.status === "forwarded").length;
   const nDaGestire = rows.filter((r) => r.admin_status === "da_gestire" && (r.status === "resp_approved" || r.status === "approved")).length;
+  const nBonifici = rows.filter((r) => r.acconto_richiesto && r.acconto_stato === "da_eseguire" && (r.status === "resp_approved" || r.status === "approved")).length;
   const nInGestione = rows.filter((r) => r.admin_status === "in_gestione").length;
 
   return (
@@ -81,6 +85,15 @@ function DashboardRichiesteInterne() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <StatCard icon={<Wrench className="size-4" />} label="Da gestire" value={nDaGestire} />
             <StatCard icon={<Wrench className="size-4" />} label="In gestione" value={nInGestione} />
+          </div>
+        </section>
+      )}
+
+      {isTesoreria && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Tesoreria</h2>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <StatCard to="/richieste-interne/tutte" icon={<Banknote className="size-4" />} label="Bonifici da eseguire" value={nBonifici} />
           </div>
         </section>
       )}

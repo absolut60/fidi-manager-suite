@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowDown, ArrowUp, ArrowUpDown, MessageSquare, Paperclip, Search } from "lucide-react";
 import { SchedaLista, ElencoSchede, type CampoScheda } from "@/components/lista-responsive";
+import { puoGestireTesoreria } from "@/lib/tesoreria-permessi";
 
 
 export const STATUS_LABEL: Record<string, string> = {
@@ -49,7 +50,25 @@ export type RichiestaRow = {
   archived_by_name?: string | null;
   archived_at?: string | null;
   richieste_interne_allegati?: Array<{ id: string }> | null;
+  acconto_richiesto?: boolean | null;
+  acconto_importo?: number | null;
+  acconto_stato?: string | null;
 };
+
+/** Bonifico di acconto da eseguire: richiesto, da_eseguire, richiesta approvata. */
+export function isBonificoDaEseguire(r: Pick<RichiestaRow, "acconto_richiesto" | "acconto_stato" | "status">): boolean {
+  return !!r.acconto_richiesto && r.acconto_stato === "da_eseguire" && (r.status === "resp_approved" || r.status === "approved");
+}
+
+function BadgeAcconto({ r }: { r: RichiestaRow }) {
+  if (!r.acconto_richiesto) return null;
+  const eseguito = r.acconto_stato === "eseguito";
+  return (
+    <Badge variant="outline" className={`w-fit ${eseguito ? "bg-success/15 text-success border-success/30" : ""}`}>
+      {eseguito ? "✓ " : ""}Acconto {fmtEuro(r.acconto_importo ?? null)}
+    </Badge>
+  );
+}
 
 type SortKey =
   | "title"
@@ -81,6 +100,7 @@ export function RichiesteTable({
   onRipristina,
   gestisciLabel = "Gestisci",
   chiaveFiltri,
+  filtroBonificiDefault = false,
 }: {
   rows: RichiestaRow[] | undefined;
   isLoading: boolean;
@@ -94,15 +114,20 @@ export function RichiesteTable({
   gestisciLabel?: string;
   /** Chiave distinta per vista per conservare i filtri (es. "richieste-interne:tutte"). */
   chiaveFiltri: string;
+  /** Apre la vista già filtrata su "Bonifici da eseguire" (es. utenti solo tesoreria). */
+  filtroBonificiDefault?: boolean;
 }) {
   const navigate = useNavigate();
   const openDetail = (id: string) => navigate({ to: "/richieste-interne/$richiestaId", params: { richiestaId: id } });
   // Filtri e ordinamento conservati (useFiltriPagina), una chiave per vista.
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
+  const isTesoreria = puoGestireTesoreria(roles);
   const { filtri: FR, setCampo } = useFiltriPagina(chiaveFiltri, {
     q: "", periodo: "tutto" as Periodo, sortKey: defaultSortKey as SortKey, sortDir: "desc" as "asc" | "desc",
+    soloBonifici: filtroBonificiDefault,
   }, { userId: user?.id });
-  const { q, periodo, sortKey, sortDir } = FR;
+  const { q, periodo, sortKey, sortDir, soloBonifici } = FR;
+  const nBonifici = useMemo(() => (rows ?? []).filter(isBonificoDaEseguire).length, [rows]);
   const setQ = (v: string) => setCampo("q", v);
   const setPeriodo = (v: Periodo) => setCampo("periodo", v);
   const setSortKey = (v: SortKey) => setCampo("sortKey", v);
@@ -121,6 +146,7 @@ export function RichiesteTable({
     const cutoff =
       periodo === "tutto" ? null : Date.now() - Number(periodo) * 24 * 60 * 60 * 1000;
     const base = (rows ?? []).filter((r) => {
+      if (soloBonifici && !isBonificoDaEseguire(r)) return false;
       if (cutoff && new Date(r.created_at).getTime() < cutoff) return false;
       if (s) {
         const hit =
@@ -142,7 +168,7 @@ export function RichiesteTable({
       if (va > vb) return 1 * dir;
       return 0;
     });
-  }, [rows, q, periodo, sortKey, sortDir]);
+  }, [rows, q, periodo, sortKey, sortDir, soloBonifici]);
 
   const colSpan = 10 + (showArchivedColumns ? 2 : 0);
 
@@ -157,6 +183,18 @@ export function RichiesteTable({
             <SelectItem value="90">Ultimi 90 giorni</SelectItem>
           </SelectContent>
         </Select>
+        <Button
+          type="button"
+          variant={soloBonifici ? "default" : "outline"}
+          className="h-10"
+          aria-pressed={soloBonifici}
+          onClick={() => setCampo("soloBonifici", !soloBonifici)}
+        >
+          Bonifici da eseguire
+          {isTesoreria && (
+            <Badge variant="secondary" className="ml-2 tabular-nums">{nBonifici}</Badge>
+          )}
+        </Button>
         <div className="ml-auto relative w-full sm:w-auto">
           <Search className="size-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -214,6 +252,7 @@ export function RichiesteTable({
                     <Badge variant="secondary">{TIPO_LABEL[r.type] ?? r.type}</Badge>
                     <Badge variant="outline">{STATUS_LABEL[r.status] ?? r.status}</Badge>
                     {showAdmin && <Badge variant="outline">{ADMIN_LABEL[r.admin_status!] ?? r.admin_status}</Badge>}
+                    <BadgeAcconto r={r} />
                   </>
                 }
               />
@@ -292,6 +331,7 @@ export function RichiesteTable({
                     <div className="flex flex-col gap-1">
                       <Badge variant="outline" className="w-fit">{STATUS_LABEL[r.status] ?? r.status}</Badge>
                       {showAdmin && <Badge variant="outline" className="w-fit">{ADMIN_LABEL[r.admin_status!] ?? r.admin_status}</Badge>}
+                      <BadgeAcconto r={r} />
                     </div>
                   </TableCell>
                   <TableCell>{fmtData(r.created_at)}</TableCell>
