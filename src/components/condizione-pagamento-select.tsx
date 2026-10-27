@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ChevronsUpDown, X } from "lucide-react";
-import { CODICI_PAGAMENTO } from "@/lib/codici-pagamento";
+import { useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import {
   Command,
@@ -31,6 +31,13 @@ export function CondizionePagamentoSelect({
   clearable = true,
 }: CondizionePagamentoSelectProps) {
   const [open, setOpen] = useState(false);
+  // Fonte unica: tabella codici_pagamento (non il file legacy codici-pagamento.ts).
+  const { data: codiciDb, isLoading } = useCodiciPagamento();
+  const codici = (codiciDb ?? []).map((c) => ({ cod: c.cod, desc: c.descrizione?.trim() || "" }));
+  // Codice del cliente assente dal catalogo: resta visibile con la descrizione salvata.
+  if (cod && !codici.some((c) => c.cod.trim().toUpperCase() === cod.trim().toUpperCase())) {
+    codici.unshift({ cod, desc });
+  }
 
   const displayValue = cod ? `${cod} — ${desc}` : "";
 
@@ -62,9 +69,13 @@ export function CondizionePagamentoSelect({
             >
               <CommandInput placeholder={placeholder} />
               <CommandList>
-                <CommandEmpty>Nessun risultato</CommandEmpty>
+                {isLoading ? (
+                  <div className="py-6 text-center text-sm text-muted-foreground">Caricamento codici…</div>
+                ) : (
+                  <CommandEmpty>Nessun risultato</CommandEmpty>
+                )}
                 <CommandGroup>
-                  {CODICI_PAGAMENTO.map((c) => (
+                  {codici.map((c) => (
                     <CommandItem
                       key={c.cod}
                       value={`${c.cod} ${c.desc}`}
