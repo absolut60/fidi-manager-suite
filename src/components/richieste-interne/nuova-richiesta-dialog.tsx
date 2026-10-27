@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { STILE_TIPO, STILE_ACCONTO, STILE_ALLEGATI } from "@/components/richieste-interne/stili";
 import { notifyRichiestaEvento } from "@/lib/richieste-email.functions";
 import { RICHIESTE_ALLEGATI_BUCKET as BUCKET, sanitizeFileName } from "@/components/richieste-interne/utils";
+import { SchedaFileLocale } from "@/components/allegati/anteprima-allegato";
 
 
 type Tipo = "preventivo" | "attivita" | "acquisto";
@@ -529,19 +530,8 @@ export function NuovaRichiestaDialog({
               {files.length > 0 && (
                 <ul className="space-y-2">
                   {files.map((f, i) => (
-                    <li key={i} className="flex items-center gap-2 rounded-md border p-2 text-sm">
-                      <span className={`inline-flex size-8 shrink-0 items-center justify-center rounded-full ${STILE_ALLEGATI.tinta}`}>
-                        <Paperclip className="size-4" />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block break-all line-clamp-2">{f.name}</span>
-                        <span className="block text-xs text-muted-foreground">{fmtSize(f.size)}</span>
-                      </span>
-                      <Button type="button" variant="ghost" size="icon" className="size-10 shrink-0 text-muted-foreground hover:text-destructive"
-                        onClick={() => setFiles((prev) => prev.filter((_, k) => k !== i))} aria-label={`Rimuovi ${f.name}`}>
-                        <X className="size-4" />
-                      </Button>
-                    </li>
+                    <SchedaFileLocale key={`${i}-${f.name}-${f.size}`} file={f}
+                      onRimuovi={() => setFiles((prev) => prev.filter((_, k) => k !== i))} />
                   ))}
                 </ul>
               )}
