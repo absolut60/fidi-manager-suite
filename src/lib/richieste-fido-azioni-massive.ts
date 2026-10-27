@@ -63,13 +63,12 @@ export async function inviaRichiesteInApprovazione(ids: string[], onAvanzamento?
   }
   // Rilettura finale dal DB: fa fede lo stato reale, non la risposta (che può andare in timeout).
   let inviate = 0;
-  let giaInviate = 0;
   const rimasteInBozza: { id: string; cliente: string }[] = [];
   const visti = new Set<string>();
   for (const b of blocchi(unici, 200)) {
     const { data, error } = await supabase
       .from("richieste_fido")
-      .select("id, stato, data_invio, clienti(ragione_sociale)")
+      .select("id, stato, clienti(ragione_sociale)")
       .in("id", b);
     if (error) { errori.push(`Rilettura: ${msg(error)}`); continue; }
     for (const r of (data ?? []) as any[]) {
@@ -78,9 +77,6 @@ export async function inviaRichiesteInApprovazione(ids: string[], onAvanzamento?
       else inviate++;
     }
   }
-  // "Già inviate" = non più in bozza ma non toccate da questo invio non è distinguibile
-  // con certezza dalla rilettura: le contiamo a parte solo se il chiamante passa lo stato iniziale.
-  void giaInviate;
   return { inviate, giaInviate: 0, rimasteInBozza, errori: [...errori, ...(visti.size < unici.length ? [`${unici.length - visti.size} richieste non trovate`] : [])] };
 }
 
