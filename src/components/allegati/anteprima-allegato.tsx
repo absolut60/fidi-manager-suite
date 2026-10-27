@@ -5,7 +5,7 @@
  * pdf.js è configurato solo in src/lib/pdfjs.ts; il salvataggio passa da src/lib/salva-file.ts.
  */
 import { useEffect, useRef, useState } from "react";
-import { Download, FileText, Loader2 } from "lucide-react";
+import { Download, ExternalLink, FileText, Loader2, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -375,8 +375,80 @@ export function VisualizzatoreAllegato({
 /** Griglia standard per elenchi di allegati: 1–2 per riga a 360 px, affiancati su desktop. */
 export const GRIGLIA_ALLEGATI = "grid grid-cols-1 min-[360px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3";
 
+/** Apre l'allegato salvato in una nuova scheda (finestra aperta subito, per non essere bloccata). */
+export async function apriAllegatoInNuovaScheda(storagePath: string, bucket: string = BUCKET_DEFAULT) {
+  const w = window.open("", "_blank");
+  try {
+    const url = await urlFirmatoAllegato(storagePath, bucket);
+    if (w) w.location.href = url; else window.open(url, "_blank");
+  } catch {
+    w?.close();
+    toast.error("Impossibile aprire il file");
+  }
+}
+
+/** Azioni standard di un allegato salvato: Apri, Scarica e (se permesso) Elimina. Pulsanti da 40px. */
+function AzioniStandard({
+  storagePath, nomeFile, bucket = BUCKET_DEFAULT, onElimina,
+}: { storagePath: string; nomeFile: string; bucket?: string; onElimina?: () => void }) {
+  const [salvando, setSalvando] = useState(false);
+  async function scarica() {
+    setSalvando(true);
+    try { await salvaFileDaUrl(await urlFirmatoAllegato(storagePath, bucket), nomeFile); }
+    catch { toast.error("Impossibile scaricare il file"); }
+    finally { setSalvando(false); }
+  }
+  return (
+    <div className="mt-1.5 flex flex-wrap gap-1">
+      <Button type="button" size="sm" variant="outline" className="h-10 gap-1 px-2.5"
+        onClick={() => void apriAllegatoInNuovaScheda(storagePath, bucket)} aria-label={`Apri ${nomeFile}`}>
+        <ExternalLink className="size-4" /> Apri
+      </Button>
+      <Button type="button" size="sm" variant="outline" className="h-10 gap-1 px-2.5" onClick={scarica}
+        disabled={salvando} aria-label={`Scarica ${nomeFile}`}>
+        {salvando ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />} Scarica
+      </Button>
+      {onElimina && (
+        <Button type="button" size="sm" variant="outline" className="h-10 gap-1 px-2.5 text-destructive hover:text-destructive"
+          onClick={onElimina} aria-label={`Elimina ${nomeFile}`}>
+          <Trash2 className="size-4" /> Elimina
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/** Riga compatta: icona/miniatura piccola + nome e dimensione (senza riquadro alto di anteprima). */
+function RigaCompatta({
+  storagePath, nomeFile, mimeType, dimensione, bucket = BUCKET_DEFAULT,
+}: { storagePath: string; nomeFile: string; mimeType?: string | null; dimensione?: number | null; bucket?: string }) {
+  const tipo = tipoAllegato(mimeType, nomeFile);
+  const [imgUrl, setImgUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (tipo !== "img") return;
+    let attivo = true;
+    urlFirmatoAllegato(storagePath, bucket).then((u) => attivo && setImgUrl(u)).catch(() => {});
+    return () => { attivo = false; };
+  }, [tipo, storagePath, bucket]);
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      {tipo === "img" && imgUrl ? (
+        <img src={imgUrl} alt="" className="size-10 shrink-0 rounded border object-cover" />
+      ) : (
+        <span className="inline-flex size-10 shrink-0 items-center justify-center rounded border bg-muted/40">
+          <FileText className={tipo === "pdf" ? "size-5 text-destructive" : "size-5"} />
+        </span>
+      )}
+      <div className="min-w-0 flex-1">
+        <div className="text-xs font-medium break-all line-clamp-2">{nomeFile}</div>
+        {dimensione != null && <div className="text-[10px] text-muted-foreground">{formatBytes(dimensione)}</div>}
+      </div>
+    </div>
+  );
+}
+
 export function SchedaAllegato({
-  storagePath, nomeFile, mimeType, dimensione, bucket, dettagli, azioni,
+  storagePath, nomeFile, mimeType, dimensione, bucket, dettagli, azioni, azioniStandard, compatta,
 }: {
   storagePath: string;
   nomeFile: string;
@@ -385,16 +457,59 @@ export function SchedaAllegato({
   bucket?: string;
   dettagli?: React.ReactNode;
   azioni?: React.ReactNode;
+  /** Mostra Apri / Scarica e, se `onElimina` è presente, Elimina. */
+  azioniStandard?: { onElimina?: () => void };
+  /** Riga compatta senza miniatura grande. */
+  compatta?: boolean;
 }) {
   return (
     <li className="min-w-0 flex flex-col rounded-md border p-2">
-      <MiniaturaAllegato storagePath={storagePath} nomeFile={nomeFile} mimeType={mimeType} dimensione={dimensione} bucket={bucket} />
+      {compatta
+        ? <RigaCompatta storagePath={storagePath} nomeFile={nomeFile} mimeType={mimeType} dimensione={dimensione} bucket={bucket} />
+        : <MiniaturaAllegato storagePath={storagePath} nomeFile={nomeFile} mimeType={mimeType} dimensione={dimensione} bucket={bucket} />}
       {(dettagli || azioni) && (
         <div className="mt-1.5 flex items-start gap-1 min-w-0">
           <div className="min-w-0 flex-1 text-xs text-muted-foreground break-words">{dettagli}</div>
           {azioni && <div className="shrink-0 flex items-center">{azioni}</div>}
         </div>
       )}
+      {azioniStandard && (
+        <AzioniStandard storagePath={storagePath} nomeFile={nomeFile} bucket={bucket} onElimina={azioniStandard.onElimina} />
+      )}
+    </li>
+  );
+}
+
+/** Scheda di un file scelto ma non ancora caricato: anteprima, nome, dimensione, Apri e Rimuovi. */
+export function SchedaFileLocale({ file, onRimuovi }: { file: File; onRimuovi: () => void }) {
+  const tipo = tipoAllegato(file.type, file.name);
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    const u = URL.createObjectURL(file);
+    setUrl(u);
+    return () => URL.revokeObjectURL(u);
+  }, [file]);
+  return (
+    <li className="flex min-w-0 items-center gap-2 rounded-md border p-2 text-sm">
+      {tipo === "img" && url ? (
+        <img src={url} alt="" className="h-14 w-10 shrink-0 rounded border object-cover" />
+      ) : tipo === "pdf" ? (
+        <span className="shrink-0"><MiniaturaPdfLocale file={file} /></span>
+      ) : (
+        <span className="inline-flex h-14 w-10 shrink-0 items-center justify-center rounded border bg-muted/40"><FileText className="size-4" /></span>
+      )}
+      <span className="min-w-0 flex-1">
+        <span className="block break-all line-clamp-2">{file.name}</span>
+        <span className="block text-xs text-muted-foreground">{formatBytes(file.size)}</span>
+      </span>
+      <Button type="button" variant="outline" size="sm" className="h-10 shrink-0 gap-1 px-2.5" disabled={!url}
+        onClick={() => url && window.open(url, "_blank", "noopener")} aria-label={`Apri ${file.name}`}>
+        <ExternalLink className="size-4" /><span className="hidden min-[400px]:inline">Apri</span>
+      </Button>
+      <Button type="button" variant="ghost" size="icon" className="size-10 shrink-0 text-muted-foreground hover:text-destructive"
+        onClick={onRimuovi} aria-label={`Rimuovi ${file.name}`} title="Rimuovi">
+        <X className="size-4" />
+      </Button>
     </li>
   );
 }
