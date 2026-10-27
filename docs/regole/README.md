@@ -7,3 +7,4 @@ Queste regole sono parte delle istruzioni permanenti del progetto: valgono quant
 - `notifiche.md` — leggere prima di toccare: notifiche, raggruppamento nel database, push, schermata e contatore delle notifiche.
 - `fonti-uniche.md` — leggere prima di toccare: richiesta fido e decisione, lead ed eventi, import scadenziario e anagrafica, audit clienti, email solleciti, policy RLS.
 - `sicurezza-permessi.md` — leggere prima di toccare: invio comunicazioni di recupero al cliente, fido teorico, porte verso l'esterno, correzioni della scansione Security.
+- `responsive.md` — leggere prima di toccare qualsiasi pagina: responsive su ogni larghezza (anche desktop), contenitori, due colonne nei dettagli, card compatte.
