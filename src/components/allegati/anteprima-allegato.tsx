@@ -402,18 +402,6 @@ export function VisualizzatoreAllegato({
 /** Griglia standard per elenchi di allegati: 1–2 per riga a 360 px, affiancati su desktop. */
 export const GRIGLIA_ALLEGATI = "grid grid-cols-1 min-[360px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3";
 
-/** Apre l'allegato salvato in una nuova scheda (finestra aperta subito, per non essere bloccata). */
-export async function apriAllegatoInNuovaScheda(storagePath: string, bucket: string = BUCKET_DEFAULT) {
-  const w = window.open("", "_blank");
-  try {
-    const url = await urlFirmatoAllegato(storagePath, bucket);
-    if (w) w.location.href = url; else window.open(url, "_blank");
-  } catch {
-    w?.close();
-    toast.error("Impossibile aprire il file");
-  }
-}
-
 /** Azioni standard di un allegato salvato: Apri, Scarica e (se permesso) Elimina. Solo icone, su una riga. */
 function AzioniStandard({
   storagePath, nomeFile, mimeType, bucket = BUCKET_DEFAULT, onElimina,
