@@ -12,7 +12,7 @@ import { SchedaLista, ElencoSchede, type CampoScheda } from "@/components/lista-
 import { puoGestireTesoreria } from "@/lib/tesoreria-permessi";
 import { cn } from "@/lib/utils";
 import {
-  STILE_ACCONTO, STILE_ARCHIVIATA, stileAdmin, stilePrincipale, stileStatus, stileTipo, type StileVoce,
+  STILE_ARCHIVIATA, statoAcconto, stileAdmin, stilePrincipale, stileStatus, stileTipo, type StileVoce,
 } from "./stili";
 
 // Re-export per compatibilità: la fonte unica è ./stili.
@@ -50,6 +50,7 @@ export type RichiestaRow = {
   acconto_richiesto?: boolean | null;
   acconto_importo?: number | null;
   acconto_stato?: string | null;
+  acconto_data_prevista?: string | null;
 };
 
 /** Bonifico di acconto da eseguire: richiesto, da_eseguire, richiesta approvata. */
@@ -59,13 +60,8 @@ export function isBonificoDaEseguire(r: Pick<RichiestaRow, "acconto_richiesto" |
 
 function BadgeAcconto({ r }: { r: RichiestaRow }) {
   if (!r.acconto_richiesto) return null;
-  const eseguito = r.acconto_stato === "eseguito";
-  return (
-    <BadgeStile
-      stile={eseguito ? STILE_ACCONTO.eseguito : STILE_ACCONTO.da_eseguire}
-      testo={`${eseguito ? "✓ " : ""}Acconto ${fmtEuro(r.acconto_importo ?? null)}`}
-    />
-  );
+  const s = statoAcconto(r);
+  return <BadgeStile stile={s.stile} testo={s.testo} />;
 }
 
 type SortKey =

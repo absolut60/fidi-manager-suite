@@ -12,7 +12,7 @@ export const Route = createFileRoute("/_app/richieste-interne/approva")({
 });
 
 const SELECT =
-  "id,title,description,requester_name,sede_name,type,fornitore,amount,status,admin_status,created_at,acconto_richiesto,acconto_importo,acconto_stato,richieste_interne_allegati(id)";
+  "id,title,description,requester_name,sede_name,type,fornitore,amount,status,admin_status,created_at,acconto_richiesto,acconto_importo,acconto_stato,acconto_data_prevista,richieste_interne_allegati(id)";
 
 function ApprovaRichieste() {
   const { roles } = useAuth();

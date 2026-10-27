@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_app/richieste-interne/gestione")({
 });
 
 const SELECT =
-  "id,title,description,requester_name,sede_name,type,fornitore,amount,status,admin_status,admin_note,sent_to_gestionale,gestionale_ref,created_at,archived,archived_at,acconto_richiesto,acconto_importo,acconto_stato,richieste_interne_allegati(id)";
+  "id,title,description,requester_name,sede_name,type,fornitore,amount,status,admin_status,admin_note,sent_to_gestionale,gestionale_ref,created_at,archived,archived_at,acconto_richiesto,acconto_importo,acconto_stato,acconto_data_prevista,richieste_interne_allegati(id)";
 
 type AdminFilter = "tutte" | "aperte" | "da_gestire" | "in_gestione" | "conclusa";
 
