@@ -2394,18 +2394,19 @@ export const processScadenziarioChunk = inngest.createFunction(
             data: Array<{ chunks_completati: number; chunks_totali: number }> | null;
             error: { message: string } | null;
           }>
-        )("increment_importazione_counters", {
+        )("increment_importazione_counters_attese", {
           _id: importazioneId,
           _elaborate: result.elaborate,
           _create: result.created,
           _update: result.updated,
           _error: result.errori,
           _skipped: result.skipped,
+          _attese: result.attese,
         }),
         20_000,
-        `chunk ${chunkIndex} rpc increment_importazione_counters`,
+        `chunk ${chunkIndex} rpc increment_importazione_counters_attese`,
       );
-      if (rpcErr) throw new Error(`increment_importazione_counters: ${rpcErr.message}`);
+      if (rpcErr) throw new Error(`increment_importazione_counters_attese: ${rpcErr.message}`);
       const row = rpc?.[0] ?? { chunks_completati: 0, chunks_totali: totalChunks };
       logger.info(`[chunk ${chunkIndex}] D.end increment-counters in ${Date.now() - tD}ms progress=${row.chunks_completati}/${row.chunks_totali}`);
       return row;
