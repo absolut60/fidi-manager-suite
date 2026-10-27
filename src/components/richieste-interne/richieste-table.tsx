@@ -282,9 +282,9 @@ export function RichiesteTable({
                   </>
                 }
               />
-              {((onGestisci && !r.archived) || onRipristina) && (
+              {(mostraPulsanteGestisci(r) || onRipristina) && (
                 <div className="flex items-center gap-2">
-                  {onGestisci && !r.archived && (
+                  {mostraPulsanteGestisci(r) && (
                     <Button size="sm" variant="outline" className="flex-1" onClick={() => onGestisci(r)}>{gestisciLabel}</Button>
                   )}
                   {onRipristina && (
@@ -372,7 +372,7 @@ export function RichiesteTable({
                   )}
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-1 justify-end">
-                      {onGestisci && !r.archived && (
+                      {onGestisci && mostraPulsanteGestisci(r) && (
                         <Button size="sm" variant="outline" onClick={() => onGestisci(r)}>{gestisciLabel}</Button>
                       )}
                       {onRipristina && (
