@@ -453,6 +453,18 @@ const blocIter = (
             <Riquadro label="Tipo">
               <BadgeStile stile={stileTipo(r.type)} />
             </Riquadro>
+            <div className="col-span-2 md:col-span-3">
+              <Riquadro icona={CreditCard} label="Pagamento">
+                {r.modalita_pagamento_cod ? (
+                  <>
+                    <span className="break-words">{r.modalita_pagamento_testo || r.modalita_pagamento_cod}</span>
+                    <span className="block font-mono text-xs font-normal text-muted-foreground">{r.modalita_pagamento_cod}</span>
+                  </>
+                ) : (
+                  <span className="break-words">{r.modalita_pagamento_testo || "—"}</span>
+                )}
+              </Riquadro>
+            </div>
           </div>
           {r.description && (
             <div>
@@ -571,6 +583,8 @@ const blocIter = (
             acconto_richiesto: r.acconto_richiesto,
             acconto_importo: r.acconto_importo,
             acconto_data_prevista: r.acconto_data_prevista,
+            modalita_pagamento_cod: r.modalita_pagamento_cod,
+            modalita_pagamento_testo: r.modalita_pagamento_testo,
           }}
         />
       )}

@@ -12,7 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Plus, Paperclip, X, ChevronsUpDown, Check, Truck, Euro, Banknote, Calendar, AlertTriangle, Info } from "lucide-react";
+import { Plus, Paperclip, X, ChevronsUpDown, Check, Truck, Euro, Banknote, Calendar, AlertTriangle, Info, CreditCard } from "lucide-react";
+import { ModalitaPagamentoSelect, normalizzaModalitaPagamento, type ModalitaPagamento } from "@/components/richieste-interne/modalita-pagamento-select";
 import { cn } from "@/lib/utils";
 import { STILE_TIPO, STILE_ACCONTO, STILE_ALLEGATI } from "@/components/richieste-interne/stili";
 import { notifyRichiestaEvento } from "@/lib/richieste-email.functions";
@@ -54,6 +55,8 @@ export type RichiestaEditInitial = {
   acconto_richiesto?: boolean;
   acconto_importo?: number | null;
   acconto_data_prevista?: string | null;
+  modalita_pagamento_cod?: string | null;
+  modalita_pagamento_testo?: string | null;
 };
 
 function oggiIso(): string {
@@ -93,6 +96,7 @@ export function NuovaRichiestaDialog({
   const [sedeId, setSedeId] = useState<string>("");
   const [fornitore, setFornitore] = useState("");
   const [fornitoreOpen, setFornitoreOpen] = useState(false);
+  const [modPag, setModPag] = useState<ModalitaPagamento>({ cod: null, testo: null });
   const [files, setFiles] = useState<File[]>([]);
   const [acconto, setAcconto] = useState(false);
   const [accontoImporto, setAccontoImporto] = useState("");
@@ -130,6 +134,7 @@ export function NuovaRichiestaDialog({
       setDescrizione(initial.description ?? "");
       setSedeId(initial.sede_id ?? "");
       setFornitore(initial.fornitore ?? "");
+      setModPag({ cod: initial.modalita_pagamento_cod ?? null, testo: initial.modalita_pagamento_testo ?? null });
       setFiles([]);
       setAcconto(!!initial.acconto_richiesto);
       setAccontoImporto(initial.acconto_importo != null
@@ -144,7 +149,7 @@ export function NuovaRichiestaDialog({
 
   function reset() {
     setTitle(""); setTipo("acquisto"); setImporto(""); setDescrizione("");
-    setSedeId(""); setFornitore(""); setFiles([]);
+    setSedeId(""); setFornitore(""); setFiles([]); setModPag({ cod: null, testo: null });
     setAcconto(false); setAccontoImporto(""); setAccontoData("");
   }
 
@@ -185,6 +190,7 @@ export function NuovaRichiestaDialog({
       const sedeName = sedi?.find((s) => s.id === sedeId)?.nome ?? null;
       const amount = parseImporto(importo);
       const fornitoreTrim = fornitore.trim();
+      const mp = normalizzaModalitaPagamento(modPag);
 
       if (isEdit && initial) {
         const { error: updErr } = await supabase
@@ -195,6 +201,8 @@ export function NuovaRichiestaDialog({
             description: descrizione.trim() || null,
             amount,
             fornitore: fornitoreTrim || null,
+            modalita_pagamento_cod: mp.cod,
+            modalita_pagamento_testo: mp.testo,
             sede_id: sedeId || null,
             sede_name: sedeName,
             ...accontoPatch,
@@ -229,6 +237,8 @@ export function NuovaRichiestaDialog({
           description: descrizione.trim() || null,
           amount,
           fornitore: fornitoreTrim || null,
+          modalita_pagamento_cod: mp.cod,
+          modalita_pagamento_testo: mp.testo,
           requester_id: user.id,
           requester_name: requesterName,
           sede_id: sedeId || null,
@@ -431,6 +441,11 @@ export function NuovaRichiestaDialog({
                   onChange={(e) => setImporto(e.target.value)}
                   onBlur={() => { const n = parseImporto(importo); if (n != null) setImporto(fmtIt(n)); }}
                   placeholder="0,00" />
+              </div>
+
+              <div className="space-y-1.5 min-w-0 sm:col-span-2">
+                <Label htmlFor="rq-modpag" className="inline-flex items-center gap-1.5"><CreditCard className="size-4" />Modalità di pagamento</Label>
+                <ModalitaPagamentoSelect id="rq-modpag" value={modPag} onChange={setModPag} />
               </div>
             </div>
           </section>

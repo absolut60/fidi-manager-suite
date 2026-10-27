@@ -69,7 +69,7 @@ export const inviaEmailRichiesta = inngest.createFunction(
         supabaseAdmin
           .from("richieste_interne")
           .select(
-            "id, title, type, description, amount, fornitore, requester_id, requester_name, sede_id, sede_name, resp_approver_name, dir_approver_name, resp_note, dir_note, status, acconto_richiesto, acconto_importo, acconto_data_prevista, acconto_stato, acconto_eseguito_at, acconto_eseguito_da_name, acconto_note",
+            "id, title, type, description, amount, fornitore, modalita_pagamento_cod, modalita_pagamento_testo, requester_id, requester_name, sede_id, sede_name, resp_approver_name, dir_approver_name, resp_note, dir_note, status, acconto_richiesto, acconto_importo, acconto_data_prevista, acconto_stato, acconto_eseguito_at, acconto_eseguito_da_name, acconto_note",
           )
           .eq("id", data.richiestaId)
           .maybeSingle(),
