@@ -59,6 +59,15 @@ export function isBonificoDaEseguire(r: Pick<RichiestaRow, "acconto_richiesto" |
   return !!r.acconto_richiesto && r.acconto_stato === "da_eseguire" && (r.status === "resp_approved" || r.status === "approved");
 }
 
+/**
+ * Il pulsante "Controlla fatturazione" non compare sulle richieste già controllate
+ * (admin_status = conclusa) né su quelle archiviate: non c'è più un'azione da fare.
+ * Nel dettaglio della richiesta il pulsante resta, per permettere di modificare il controllo.
+ */
+export function mostraPulsanteGestisci(r: Pick<RichiestaRow, "archived" | "admin_status">): boolean {
+  return !r.archived && r.admin_status !== "conclusa";
+}
+
 function BadgeAcconto({ r }: { r: RichiestaRow }) {
   if (!r.acconto_richiesto) return null;
   const s = statoAcconto(r);
@@ -282,9 +291,9 @@ export function RichiesteTable({
                   </>
                 }
               />
-              {((onGestisci && !r.archived) || onRipristina) && (
+              {((onGestisci && mostraPulsanteGestisci(r)) || onRipristina) && (
                 <div className="flex items-center gap-2">
-                  {onGestisci && !r.archived && (
+                  {onGestisci && mostraPulsanteGestisci(r) && (
                     <Button size="sm" variant="outline" className="flex-1" onClick={() => onGestisci(r)}>{gestisciLabel}</Button>
                   )}
                   {onRipristina && (
@@ -372,7 +381,7 @@ export function RichiesteTable({
                   )}
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-1 justify-end">
-                      {onGestisci && !r.archived && (
+                      {onGestisci && mostraPulsanteGestisci(r) && (
                         <Button size="sm" variant="outline" onClick={() => onGestisci(r)}>{gestisciLabel}</Button>
                       )}
                       {onRipristina && (

@@ -400,9 +400,19 @@ const blocIter = (
             </Button>
           )}
           {canGestisci && (
-            <Button variant="outline" onClick={() => setGestOpen(true)}>
-              <Wrench className="size-4 mr-1" />Controlla fatturazione
-            </Button>
+            r.admin_status === "conclusa" ? (
+              <Button
+                variant="ghost"
+                className="border border-input text-muted-foreground hover:bg-muted hover:text-foreground"
+                onClick={() => setGestOpen(true)}
+              >
+                <Pencil className="size-4 mr-1" />Modifica controllo
+              </Button>
+            ) : (
+              <Button variant="outline" onClick={() => setGestOpen(true)}>
+                <Wrench className="size-4 mr-1" />Controlla fatturazione
+              </Button>
+            )
           )}
           {canManage && !r.archived && (
             <Button variant="outline" onClick={archivia} disabled={archiving}>
