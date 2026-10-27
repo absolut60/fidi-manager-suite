@@ -1,7 +1,7 @@
-// Avviso immediato delle variazioni legale (FM48).
+// Avviso delle variazioni legale (FM48, raggruppato da FM50).
 // Il trigger registra_variazione_legale() scrive solo la riga in
 // clienti_blocco_variazioni; dopo le operazioni sulle pratiche l'app chiama
-// questa funzione, che fa partire il job degli avvisi blocco/legale.
+// questa funzione, che accoda l'avviso differito (debounce 5 minuti).
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
@@ -22,7 +22,9 @@ export const avvisaVariazioniLegale = createServerFn({ method: "POST" })
     if (error) throw new Error(`Lettura variazioni legale: ${error.message}`);
     if (!count) return { ok: true, inviato: false };
 
+    // FM50: evento differito; il debounce (5 min) raggruppa le modifiche e
+    // poi emette una sola volta "clienti/blocco.variazioni.rileva".
     const { sendInngestEvent } = await import("@/lib/inngest/client");
-    await sendInngestEvent("clienti/blocco.variazioni.rileva", { importazioneId: null });
+    await sendInngestEvent("clienti/legale.variazioni.differita", {});
     return { ok: true, inviato: true };
   });
