@@ -8,7 +8,10 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Download,
+  EyeOff,
+  Link2,
   RefreshCcw,
+  UserPlus,
   Search,
 } from "lucide-react";
 import * as XLSX from "xlsx";
@@ -54,6 +57,7 @@ import { ClientePicker } from "@/components/preventivatore/ClientePicker";
 import { salvaWorkbook } from "@/lib/salva-workbook";
 import { allegaPrivacyIscritti } from "@/lib/privacy-iscritti.functions";
 import { etichettaSede } from "@/lib/iscrizione-whatsapp-dati";
+import { SchedaLista } from "@/components/lista-responsive";
 
 export const Route = createFileRoute("/_app/marketing/iscritti-whatsapp")({
   component: IscrittiWhatsappPage,
@@ -547,6 +551,84 @@ export default function IscrittiWhatsappPage() {
           </Select>
         </div>
 
+        {/* Telefono: schede (sotto md). Da md la tabella resta invariata. */}
+        <div className="md:hidden space-y-2">
+          {listaQuery.isLoading ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">Caricamento…</p>
+          ) : righe.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">Nessun iscritto trovato</p>
+          ) : (
+            righe.map((r) => {
+              const nome = [r.nome, r.cognome].filter(Boolean).join(" ");
+              const numero = r.numero_raw ?? r.numero_norm ?? "—";
+              const collegatoId = r.cliente_id ?? r.lead_id;
+              return (
+                <SchedaLista
+                  key={r.id}
+                  onClick={() => apriRiga(r)}
+                  titolo={
+                    <span className="flex min-w-0 flex-col">
+                      <span className="break-words">{nome || numero}</span>
+                      {nome && <span className="font-mono text-sm font-normal text-muted-foreground">{numero}</span>}
+                    </span>
+                  }
+                  badge={<span className="shrink-0">{badgeStato(r.stato)}</span>}
+                  campi={[
+                    ...(r.stato === "nuovo" && badgeDiagnostico(classifica[r.id])
+                      ? [{ etichetta: "Verifica", valore: <span className="flex flex-wrap gap-1">{badgeDiagnostico(classifica[r.id])}</span> }]
+                      : []),
+                    {
+                      etichetta: "Collegato a",
+                      valore: collegatoId ? (
+                        <span className="flex min-w-0 flex-wrap items-center gap-1">
+                          <Badge variant="secondary">{r.cliente_id ? "Cliente" : "Lead"}</Badge>
+                          {nomiCollegati[collegatoId] && <span className="break-words">{nomiCollegati[collegatoId]}</span>}
+                        </span>
+                      ) : "—",
+                    },
+                    {
+                      etichetta: "Soggetto",
+                      valore: (
+                        <span className="flex min-w-0 flex-col gap-0.5">
+                          <span className="break-words">
+                            {r.tipo_soggetto === "persona_fisica" ? "Privato" : r.tipo_soggetto ? "Impresa" : ""}
+                            {r.tipo_soggetto !== "persona_fisica" && r.azienda ? `${r.tipo_soggetto ? " · " : ""}${r.azienda}` : ""}
+                            {!r.tipo_soggetto && !r.azienda ? "—" : ""}
+                          </span>
+                          {r.partita_iva && <span className="font-mono text-xs text-muted-foreground">P.IVA {r.partita_iva}</span>}
+                          {r.codice_fiscale && <span className="font-mono text-xs text-muted-foreground break-all">CF {r.codice_fiscale}</span>}
+                        </span>
+                      ),
+                    },
+                    { etichetta: "Sede", valore: (r.store_id && sediMap[r.store_id]) || "—" },
+                    { etichetta: "Iscrizione", valore: `${fmtData(r.created_at)} · ${LABEL_ORIGINE[r.origine ?? ""] ?? r.origine ?? "—"}` },
+                    { etichetta: "Email", valore: <span className="break-all">{r.email || "—"}</span> },
+                  ]}
+                  footer={
+                    r.stato === "nuovo" ? (
+                      <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                        <Button size="icon" variant="ghost" className="size-10" aria-label="Riconcilia" title="Riconcilia"
+                          onClick={() => { setRiconcilia(r); setClienteScelto(null); }}>
+                          <Link2 className="size-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="size-10" aria-label="Crea lead" title="Crea lead"
+                          onClick={() => setDaCreareLead(r)}>
+                          <UserPlus className="size-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="size-10" aria-label="Ignora" title="Ignora"
+                          onClick={() => setDaIgnorare(r)}>
+                          <EyeOff className="size-4" />
+                        </Button>
+                      </div>
+                    ) : undefined
+                  }
+                />
+              );
+            })
+          )}
+        </div>
+
+        <div className="hidden md:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -661,6 +743,7 @@ export default function IscrittiWhatsappPage() {
             )}
           </TableBody>
         </Table>
+        </div>
 
         {totale > PAGE_SIZE && (
           <div className="flex items-center justify-between pt-2">
