@@ -22,6 +22,10 @@ import {
   classificaTelefono,
 } from "@/lib/email-validazione";
 import { calcolaEmailPecImport } from "@/lib/import-email-pec";
+import {
+  pulisciFileTemporaneiImport,
+  pulisciArretratoFileImport,
+} from "./pulizia-file-import.server";
 
 
 type EventData = { importazioneId: string; filePath: string; userId?: string };
@@ -2577,6 +2581,15 @@ export const finalizeScadenziarioImport = inngest.createFunction(
           });
       });
 
+
+      // Pulizia file temporanei: SOLO dopo la chiusura finale riuscita (mai dal catch).
+      // Step separato e mai bloccante; include un giro sull'arretrato (> 24 ore).
+      await step.run("pulizia-file-temporanei", async () => {
+        const proprio = await pulisciFileTemporaneiImport(importazioneId);
+        const arretrato = await pulisciArretratoFileImport();
+        return { proprio, arretrato };
+      });
+
       logger.info(
         `Finalize ${importazioneId}: chiuse=${reconc.totChiuse}, clienti=${reconc.totClienti}, orfani=${reconc.orfaniRimossi}`,
       );
@@ -3883,6 +3896,15 @@ export const processBloccoFidoImport = inngest.createFunction(
           );
         }
         return true;
+      });
+
+
+      // Pulizia file temporanei: SOLO dopo la chiusura finale riuscita (mai dal catch).
+      // Step separato e mai bloccante; include un giro sull'arretrato (> 24 ore).
+      await step.run("pulizia-file-temporanei", async () => {
+        const proprio = await pulisciFileTemporaneiImport(importazioneId);
+        const arretrato = await pulisciArretratoFileImport();
+        return { proprio, arretrato };
       });
 
       logger.info(
