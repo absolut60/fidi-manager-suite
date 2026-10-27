@@ -105,6 +105,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { name: "google", content: "notranslate" },
+      { httpEquiv: "content-language", content: "it" },
       { title: "FidiManager · Gruppo MADE" },
       { name: "description", content: "Gestione fidi commerciali del Gruppo MADE" },
       { property: "og:title", content: "FidiManager · Gruppo MADE" },
