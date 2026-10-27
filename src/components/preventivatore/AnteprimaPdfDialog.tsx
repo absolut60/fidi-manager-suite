@@ -5,7 +5,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Download, Loader2, Mail, Printer, X } from "lucide-react";
 import { toast } from "sonner";
-import { loadPdfJs } from "@/lib/pdfjs";
+import { apriPdf, canvasTuttoBianco } from "@/lib/pdfjs";
 import { salvaFile } from "@/lib/salva-file";
 
 export function AnteprimaPdfDialog({
@@ -57,10 +57,8 @@ export function AnteprimaPdfDialog({
       if (container) container.innerHTML = "";
 
       try {
-        const pdfjsLib = await loadPdfJs();
         const arrayBuffer = await pdfBlob!.arrayBuffer();
-        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
-        pdfDoc = await loadingTask.promise;
+        pdfDoc = await apriPdf(arrayBuffer);
         if (cancelled) return;
         setNumPages(pdfDoc.numPages);
 
@@ -91,13 +89,15 @@ export function AnteprimaPdfDialog({
 
           await page.render({ canvasContext: ctx, viewport, canvas }).promise;
           page.cleanup();
+          if (i === 1 && canvasTuttoBianco(canvas)) throw new Error("pagina bianca");
           if (i === 1) setLoading(false);
         }
         setLoading(false);
       } catch (e) {
         console.error("PDF render error", e);
+        if (canvasContainerRef.current) canvasContainerRef.current.innerHTML = "";
         if (!cancelled) {
-          setError("Impossibile generare l'anteprima del PDF.");
+          setError("Anteprima non disponibile.");
           setLoading(false);
         }
       }

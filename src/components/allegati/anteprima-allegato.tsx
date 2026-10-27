@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { loadPdfJs } from "@/lib/pdfjs";
+import { apriPdf, canvasTuttoBianco } from "@/lib/pdfjs";
 import { salvaFileDaUrl } from "@/lib/salva-file";
 
 const BUCKET_DEFAULT = "allegati";
@@ -50,8 +50,7 @@ const cacheMiniPdf = new Map<string, Promise<MiniPdf>>();
 const cacheMiniPdfLocale = new WeakMap<File, Promise<MiniPdf>>();
 
 async function renderPrimaPagina(data: ArrayBuffer): Promise<MiniPdf> {
-  const pdfjs = await loadPdfJs();
-  const doc = await pdfjs.getDocument({ data }).promise;
+  const doc = await apriPdf(data);
   try {
     const page = await doc.getPage(1);
     const base = page.getViewport({ scale: 1 });
@@ -64,6 +63,7 @@ async function renderPrimaPagina(data: ArrayBuffer): Promise<MiniPdf> {
     if (!ctx) throw new Error("canvas");
     await page.render({ canvasContext: ctx, viewport, canvas }).promise;
     page.cleanup();
+    if (canvasTuttoBianco(canvas)) throw new Error("pagina bianca");
     return { dataUrl: canvas.toDataURL("image/jpeg", 0.85), pagine: doc.numPages, ratio: base.height / base.width };
   } finally {
     (doc as { destroy?: () => Promise<void> }).destroy?.().catch(() => {});
@@ -296,8 +296,7 @@ export function VisualizzatoreAllegato({
           if (!res.ok) throw new Error("fetch");
           dati = await res.arrayBuffer();
         }
-        const pdfjs = await loadPdfJs();
-        doc = await pdfjs.getDocument({ data: dati }).promise;
+        doc = await apriPdf(dati);
         // attende il montaggio del contenitore nel Dialog
         await new Promise((r) => requestAnimationFrame(() => r(null)));
         const contenitore = paginaRef.current;
@@ -321,10 +320,12 @@ export function VisualizzatoreAllegato({
           if (!ctx) continue;
           await page.render({ canvasContext: ctx, viewport, canvas }).promise;
           page.cleanup();
+          if (i === 1 && canvasTuttoBianco(canvas)) throw new Error("pagina bianca");
           if (i === 1 && !annullato) setCaricamento(false);
         }
         if (!annullato) setCaricamento(false);
       } catch {
+        if (paginaRef.current) paginaRef.current.innerHTML = "";
         if (!annullato) { setErrore(true); setCaricamento(false); }
       }
     })();
@@ -385,7 +386,13 @@ export function VisualizzatoreAllegato({
           )}
           {errore && (
             <div className="p-6 text-center text-sm text-destructive">
-              {file ? "Anteprima non disponibile." : 'Anteprima non disponibile. Usa "Scarica / Condividi".'}
+              <p>Anteprima non disponibile.</p>
+              {!file && (
+                <Button size="sm" onClick={salva} disabled={salvando} className="mt-3 gap-1.5 h-10">
+                  {salvando ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+                  Scarica
+                </Button>
+              )}
             </div>
           )}
           {tipo === "img" && imgUrl && !errore && (
