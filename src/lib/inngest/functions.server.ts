@@ -129,6 +129,26 @@ async function setImportazioneError(importazioneId: string, message: string) {
 }
 
 /**
+ * FM50: aggiunge un problema a importazioni.problemi (letto dal finalize
+ * e mostrato come "da verificare"). Se non riesce, lancia: lo step fallisce
+ * e Inngest ritenta, così un errore di scrittura non resta mai silenzioso.
+ */
+async function aggiungiProblemaImportazione(importazioneId: string, problema: string) {
+  const { data: cur, error: selErr } = await supabaseAdmin
+    .from("importazioni")
+    .select("problemi")
+    .eq("id", importazioneId)
+    .single();
+  if (selErr) throw new Error(`aggiungi problema (lettura): ${selErr.message}`);
+  const esistenti = (cur?.problemi as string[] | null) ?? [];
+  const { error: updErr } = await supabaseAdmin
+    .from("importazioni")
+    .update({ problemi: [...esistenti, problema].slice(0, 300) } as never)
+    .eq("id", importazioneId);
+  if (updErr) throw new Error(`aggiungi problema (scrittura): ${updErr.message}`);
+}
+
+/**
  * Avvolge una Promise con un timeout: se non si risolve entro `ms`, rigetta
  * con un errore identificabile (label) che fa fallire lo step Inngest e
  * abilita il retry, invece di lasciarlo "Running" per sempre.
