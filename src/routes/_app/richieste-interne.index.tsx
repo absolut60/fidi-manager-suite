@@ -57,6 +57,7 @@ function DashboardRichiesteInterne() {
   return (
     <div className="space-y-6">
       <IntestazioneRichieste
+        indietroA="/"
         stile={STILE_PAGINA.dashboard}
         titolo="Richieste interne"
         sottotitolo="Dashboard delle richieste MADE"

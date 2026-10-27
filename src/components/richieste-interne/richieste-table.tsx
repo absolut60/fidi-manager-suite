@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo , useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { useNavigate } from "@tanstack/react-router";
@@ -98,6 +98,7 @@ export function RichiesteTable({
   defaultPeriodo = "tutto",
   nascondiRichiedente = false,
   righeRicerca,
+  filtroUrl,
 }: {
   rows: RichiestaRow[] | undefined;
   isLoading: boolean;
@@ -119,16 +120,22 @@ export function RichiesteTable({
   nascondiRichiedente?: boolean;
   /** Se passata, una ricerca non vuota avviene su queste righe ignorando periodo e filtri della vista. */
   righeRicerca?: RichiestaRow[];
+  /** Filtri arrivati dall'URL (es. ?bonifici=1): vincono sui salvati, applicati una volta. */
+  filtroUrl?: { soloBonifici?: boolean; periodo?: Periodo };
 }) {
   const navigate = useNavigate();
   const openDetail = (id: string) => navigate({ to: "/richieste-interne/$richiestaId", params: { richiestaId: id } });
   // Filtri e ordinamento conservati (useFiltriPagina), una chiave per vista.
   const { user, roles } = useAuth();
   const isTesoreria = puoGestireTesoreria(roles);
-  const { filtri: FR, setCampo } = useFiltriPagina(chiaveFiltri, {
+  const { filtri: FR, setCampo, setParziale } = useFiltriPagina(chiaveFiltri, {
     q: "", periodo: defaultPeriodo as Periodo, sortKey: defaultSortKey as SortKey, sortDir: "desc" as "asc" | "desc",
     soloBonifici: filtroBonificiDefault,
   }, { userId: user?.id });
+  useEffect(() => {
+    if (filtroUrl) setParziale(filtroUrl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtroUrl?.soloBonifici, filtroUrl?.periodo, setParziale]);
   const { q, periodo: periodoSalvato, sortKey, sortDir, soloBonifici } = FR;
   // "Ultima settimana" non esiste più: un vecchio "7" salvato vale "Ultimo mese".
   const periodo: Periodo = periodoSalvato === "7" ? "30" : periodoSalvato;
