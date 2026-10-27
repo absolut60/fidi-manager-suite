@@ -561,6 +561,13 @@
       "when": 1793088834374,
       "tag": "0079_0079_fm48_richieste_modalita_pagamento",
       "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1793103263701,
+      "tag": "0080_fm50_promemoria_escludi_anticipo",
+      "breakpoints": true
     }
   ]
 }

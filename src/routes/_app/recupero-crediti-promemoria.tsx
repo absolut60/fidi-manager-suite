@@ -1,3 +1,4 @@
+import { isAnticipo } from "@/lib/scadenze";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -883,6 +884,8 @@ function ScadenzeDettaglio({
       if (error) throw error;
       const filtered = (data ?? []).filter((s) => {
         if (!s.data_scadenza) return false;
+        // Righe ANTICIPO mai nei promemoria (gemello di public.is_anticipo).
+        if (isAnticipo(s)) return false;
         const k = s.data_scadenza.slice(0, 7);
         return mesi.includes(k);
       });
