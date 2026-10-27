@@ -130,13 +130,13 @@ export function BonificoAccontoCard({ r, allegati }: { r: BonificoRichiesta; all
   const stileAcc = sa.stile;
   return (
     <Card className={cn("border-l-4", stileAcc.bordo)}>
-      <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <CardHeader className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <CardTitle><TitoloCard stile={stileAcc}>Bonifico di acconto</TitoloCard></CardTitle>
         {puoSegnare && (
           <Button size="sm" className="h-10 w-full sm:w-auto" onClick={apri}>Segna bonifico eseguito</Button>
         )}
       </CardHeader>
-      <CardContent className="space-y-3 text-sm">
+      <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0 space-y-2 text-sm">
         <Riga label="Importo"><span className="font-mono">{fmtEuro(r.acconto_importo)}</span></Riga>
         <Riga label="Data prevista">{fmtData(r.acconto_data_prevista)}</Riga>
         <Riga label="Stato">
@@ -208,9 +208,9 @@ export function BonificoAccontoCard({ r, allegati }: { r: BonificoRichiesta; all
 
 function Riga({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3">
-      <div className="text-xs text-muted-foreground sm:w-28 shrink-0">{label}</div>
-      <div className="flex-1 min-w-0">{children}</div>
+    <div className="grid grid-cols-[7rem_minmax(0,1fr)] items-baseline gap-2">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="min-w-0 break-words">{children}</div>
     </div>
   );
 }
