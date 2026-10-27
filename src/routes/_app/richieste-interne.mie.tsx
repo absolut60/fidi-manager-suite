@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { IntestazioneRichieste } from "@/components/richieste-interne/intestazione";
+import { STILE_PAGINA } from "@/components/richieste-interne/stili";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -59,13 +61,7 @@ function MieRichieste() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold">Le mie richieste</h1>
-          <p className="text-sm text-muted-foreground">Richieste che hai creato</p>
-        </div>
-        <NuovaRichiestaDialog />
-      </div>
+      <IntestazioneRichieste stile={STILE_PAGINA.mie} titolo="Le mie richieste" sottotitolo="Richieste che hai creato" azioni={<NuovaRichiestaDialog />} />
 
       <div className="flex flex-wrap items-center gap-2">
         <PillFilter active={filtro === "tutte"} onClick={() => setFiltro("tutte")}>Tutte ({conteggi.tutte})</PillFilter>

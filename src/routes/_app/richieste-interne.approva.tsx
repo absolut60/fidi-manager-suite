@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { IntestazioneRichieste } from "@/components/richieste-interne/intestazione";
+import { STILE_PAGINA } from "@/components/richieste-interne/stili";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -52,15 +54,12 @@ function ApprovaRichieste() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Da approvare</h1>
-          <p className="text-sm text-muted-foreground">{sottotitolo}</p>
-        </div>
-        <div className="text-sm text-muted-foreground">
-          <span className="font-semibold text-foreground">{data?.length ?? 0}</span> in attesa
-        </div>
-      </div>
+      <IntestazioneRichieste
+        stile={STILE_PAGINA.approva}
+        titolo="Da approvare"
+        sottotitolo={sottotitolo}
+        azioni={<div className="text-sm text-muted-foreground sm:text-right"><span className="font-semibold text-foreground">{data?.length ?? 0}</span> in attesa</div>}
+      />
       <RichiesteTable chiaveFiltri="richieste-interne:approva" rows={data} isLoading={isLoading} showAdminBadge={false} emptyLabel="Nessuna richiesta da approvare" unreadIds={unreadIds} />
     </div>
   );

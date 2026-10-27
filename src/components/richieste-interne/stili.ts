@@ -2,6 +2,7 @@
 // Solo presentazione: nessuna regola di permesso o di business vive qui.
 import {
   Banknote, CheckCircle2, ClipboardList, Hourglass, Inbox, ShoppingCart, Wrench, XCircle, FileText,
+  Archive, Circle, FilePlus2, LayoutDashboard, ListChecks, Send, Paperclip, ClipboardCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -13,49 +14,92 @@ export type StileVoce = {
   bordo: string;
   /** Sfondo + testo per cerchietti icona / contatori. */
   tinta: string;
+  /** Bordo superiore (da usare con border-t-4). */
+  bordoAlto: string;
+  /** Fascia/sfondo leggero con testo colorato. */
+  fascia: string;
+  /** Pallino pieno per timeline. */
+  pallino: string;
   icona: LucideIcon;
 };
 
 const AMBRA = {
+  bordoAlto: "border-t-amber-500 dark:border-t-amber-400",
+  fascia: "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-900",
+  pallino: "bg-amber-500 dark:bg-amber-400",
   badge: "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900",
   bordo: "border-l-amber-500 dark:border-l-amber-400",
   tinta: "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300",
 };
 const VERDE = {
+  bordoAlto: "border-t-emerald-500 dark:border-t-emerald-400",
+  fascia: "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900",
+  pallino: "bg-emerald-500 dark:bg-emerald-400",
   badge: "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900",
   bordo: "border-l-emerald-500 dark:border-l-emerald-400",
   tinta: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300",
 };
 const ROSSO = {
+  bordoAlto: "border-t-red-500 dark:border-t-red-400",
+  fascia: "bg-red-50 text-red-800 border-red-200 dark:bg-red-950/30 dark:text-red-300 dark:border-red-900",
+  pallino: "bg-red-500 dark:bg-red-400",
   badge: "bg-red-50 text-red-800 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900",
   bordo: "border-l-red-500 dark:border-l-red-400",
   tinta: "bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300",
 };
 const BLU = {
+  bordoAlto: "border-t-blue-500 dark:border-t-blue-400",
+  fascia: "bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-900",
+  pallino: "bg-blue-500 dark:bg-blue-400",
   badge: "bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900",
   bordo: "border-l-blue-500 dark:border-l-blue-400",
   tinta: "bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300",
 };
 const VIOLA = {
+  bordoAlto: "border-t-violet-500 dark:border-t-violet-400",
+  fascia: "bg-violet-50 text-violet-800 border-violet-200 dark:bg-violet-950/30 dark:text-violet-300 dark:border-violet-900",
+  pallino: "bg-violet-500 dark:bg-violet-400",
   badge: "bg-violet-50 text-violet-800 border-violet-200 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-900",
   bordo: "border-l-violet-500 dark:border-l-violet-400",
   tinta: "bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300",
 };
 const AZZURRO = {
+  bordoAlto: "border-t-sky-500 dark:border-t-sky-400",
+  fascia: "bg-sky-50 text-sky-800 border-sky-200 dark:bg-sky-950/30 dark:text-sky-300 dark:border-sky-900",
+  pallino: "bg-sky-500 dark:bg-sky-400",
   badge: "bg-sky-50 text-sky-800 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-900",
   bordo: "border-l-sky-500 dark:border-l-sky-400",
   tinta: "bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300",
 };
 const TEAL = {
+  bordoAlto: "border-t-teal-500 dark:border-t-teal-400",
+  fascia: "bg-teal-50 text-teal-800 border-teal-200 dark:bg-teal-950/30 dark:text-teal-300 dark:border-teal-900",
+  pallino: "bg-teal-500 dark:bg-teal-400",
   badge: "bg-teal-50 text-teal-800 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-900",
   bordo: "border-l-teal-500 dark:border-l-teal-400",
   tinta: "bg-teal-100 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300",
 };
 const NEUTRO = {
+  bordoAlto: "border-t-border",
+  fascia: "bg-muted text-muted-foreground border-border",
+  pallino: "bg-muted-foreground/30",
   badge: "bg-muted text-muted-foreground border-border",
   bordo: "border-l-border",
   tinta: "bg-muted text-muted-foreground",
 };
+
+const ARDESIA = {
+  badge: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-900/60 dark:text-slate-300 dark:border-slate-800",
+  bordo: "border-l-slate-400 dark:border-l-slate-500",
+  tinta: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
+  bordoAlto: "border-t-slate-400 dark:border-t-slate-500",
+  fascia: "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-900/40 dark:text-slate-300 dark:border-slate-800",
+  pallino: "bg-slate-400 dark:bg-slate-500",
+};
+
+/** Tinte riusabili per riquadri/intestazioni (nessun significato di stato). */
+export const TINTE = { ambra: AMBRA, verde: VERDE, rosso: ROSSO, blu: BLU, viola: VIOLA, azzurro: AZZURRO, teal: TEAL, ardesia: ARDESIA, neutro: NEUTRO };
+export type Tinta = keyof typeof TINTE;
 
 export const STILE_STATUS: Record<string, StileVoce> = {
   pending: { label: "In attesa Liv.1", icona: Hourglass, ...AMBRA },
@@ -84,6 +128,32 @@ export const STILE_ACCONTO: Record<"da_eseguire" | "eseguito", StileVoce> = {
 
 /** Stile "Aperte" (da gestire + in gestione) per i contatori della Gestione. */
 export const STILE_APERTE: StileVoce = { label: "Aperte", icona: Inbox, ...BLU };
+
+/** Intestazioni di pagina della sezione. */
+export const STILE_PAGINA = {
+  dashboard: { label: "Richieste interne", icona: LayoutDashboard, ...BLU },
+  mie: { label: "Le mie richieste", icona: Inbox, ...BLU },
+  tutte: { label: "Tutte le richieste", icona: ListChecks, ...VIOLA },
+  approva: { label: "Da approvare", icona: Hourglass, ...AMBRA },
+  gestione: { label: "Gestione richieste", icona: Wrench, ...ROSSO },
+  archivio: { label: "Archivio richieste", icona: Archive, ...ARDESIA },
+  dettaglio: { label: "Richiesta", icona: FileText, ...BLU },
+} satisfies Record<string, StileVoce>;
+
+/** Pulsanti di decisione nella card Azioni. */
+export const STILE_DECISIONE = {
+  approva: { label: "Approva", icona: CheckCircle2, ...VERDE },
+  inoltra: { label: "Inoltra alla Direzione", icona: Send, ...BLU },
+  rifiuta: { label: "Rifiuta", icona: XCircle, ...ROSSO },
+} satisfies Record<string, StileVoce>;
+
+/** Passo "Creata" e passi futuri della timeline. */
+export const STILE_CREATA: StileVoce = { label: "Creata", icona: FilePlus2, ...BLU };
+export const STILE_IN_ATTESA: StileVoce = { label: "In attesa", icona: Circle, ...NEUTRO };
+export const STILE_ARCHIVIATA: StileVoce = { label: "Archiviata", icona: Archive, ...ARDESIA };
+
+export const STILE_ALLEGATI: StileVoce = { label: "Allegati", icona: Paperclip, ...ARDESIA };
+export const STILE_AZIONI: StileVoce = { label: "Azioni", icona: ClipboardCheck, ...BLU };
 
 export const STILE_NEUTRO: StileVoce = { label: "—", icona: FileText, ...NEUTRO };
 

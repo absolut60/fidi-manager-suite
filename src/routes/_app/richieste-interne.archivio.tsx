@@ -4,6 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { RichiesteTable, type RichiestaRow } from "@/components/richieste-interne/richieste-table";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
+import { Archive } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { IconaCerchio, IntestazioneRichieste } from "@/components/richieste-interne/intestazione";
+import { STILE_ARCHIVIATA, STILE_PAGINA } from "@/components/richieste-interne/stili";
 
 export const Route = createFileRoute("/_app/richieste-interne/archivio")({
   component: ArchivioRichieste,
@@ -31,6 +35,9 @@ function ArchivioRichieste() {
     },
   });
 
+  const nTot = data?.length ?? 0;
+  const nMese = (data ?? []).filter((r) => r.archived_at && Date.now() - new Date(r.archived_at).getTime() <= 30 * 86400000).length;
+
   async function ripristina(r: RichiestaRow) {
     if (!confirm(`Ripristinare la richiesta "${r.title}"?`)) return;
     const { error } = await supabase
@@ -47,10 +54,19 @@ function ArchivioRichieste() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Archivio richieste</h1>
-        <p className="text-sm text-muted-foreground">Richieste archiviate (sola lettura)</p>
+      <IntestazioneRichieste stile={STILE_PAGINA.archivio} titolo="Archivio richieste" sottotitolo="Richieste archiviate (sola lettura)" />
+      <div className="grid grid-cols-2 gap-2 sm:max-w-md sm:gap-3">
+        <Riquadro label="Archiviate totali" value={nTot} />
+        <Riquadro label="Archiviate nell'ultimo mese" value={nMese} />
       </div>
+      {!isLoading && (data?.length ?? 0) === 0 ? (
+        <div className="flex flex-col items-center gap-3 rounded-lg border bg-card px-4 py-10 text-center">
+          <Archive className="size-12 text-muted-foreground/40" aria-hidden />
+          <p className="max-w-sm text-sm text-muted-foreground">
+            Nessuna richiesta archiviata. Le richieste si archiviano dalla Gestione o dal dettaglio con il pulsante Archivia.
+          </p>
+        </div>
+      ) : (
       <RichiesteTable chiaveFiltri="richieste-interne:archivio"
         rows={data}
         isLoading={isLoading}
@@ -59,7 +75,20 @@ function ArchivioRichieste() {
         emptyLabel="Nessuna richiesta archiviata"
         onRipristina={canRestore ? ripristina : undefined}
       />
+      )}
     </div>
   );
 }
 
+
+function Riquadro({ label, value }: { label: string; value: number }) {
+  return (
+    <div className={cn("flex items-center gap-2 rounded-lg border border-l-4 bg-card p-3", STILE_ARCHIVIATA.bordo)}>
+      <IconaCerchio stile={STILE_ARCHIVIATA} size="sm" />
+      <div className="min-w-0">
+        <div className="text-xs text-muted-foreground break-words">{label}</div>
+        <div className="text-xl font-bold tabular-nums">{value}</div>
+      </div>
+    </div>
+  );
+}

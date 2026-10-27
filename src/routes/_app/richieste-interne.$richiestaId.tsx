@@ -15,7 +15,15 @@ import { toast } from "sonner";
 import { ChatMessaggi } from "@/components/richieste-interne/chat-messaggi";
 import { GestisciDialog, type GestisciTarget } from "@/components/richieste-interne/gestisci-dialog";
 import { NuovaRichiestaDialog } from "@/components/richieste-interne/nuova-richiesta-dialog";
-import { ADMIN_LABEL, STATUS_LABEL, TIPO_LABEL } from "@/components/richieste-interne/stili";
+import {
+  STILE_ACCONTO, STILE_ARCHIVIATA, STILE_CREATA, STILE_DECISIONE, STILE_IN_ATTESA, STILE_PAGINA, STILE_ALLEGATI, STILE_AZIONI,
+  stileAdmin, stilePrincipale, stileStatus, stileTipo, type StileVoce,
+} from "@/components/richieste-interne/stili";
+import { IntestazioneRichieste, TitoloCard } from "@/components/richieste-interne/intestazione";
+import { BadgeStile } from "@/components/richieste-interne/richieste-table";
+import { cn } from "@/lib/utils";
+
+
 import { notifyRichiestaEvento } from "@/lib/richieste-email.functions";
 import { sanitizeFileName } from "@/components/richieste-interne/utils";
 import { BonificoAccontoCard } from "@/components/richieste-interne/bonifico-acconto-card";
@@ -275,65 +283,85 @@ function DettaglioRichiesta() {
 
   return (
     <div className="space-y-4 max-w-4xl">
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <Button variant="ghost" size="sm" onClick={() => router.history.back()} className="-ml-2 mb-1">
+      <IntestazioneRichieste
+        sopra={
+          <Button variant="ghost" size="sm" onClick={() => router.history.back()} className="-ml-2 min-h-10">
             <ArrowLeft className="size-4 mr-1" />Indietro
           </Button>
-          <h1 className="text-2xl font-semibold">{r.title}</h1>
-          <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1">
+        }
+        stile={stilePrincipale(r)}
+        titolo={r.title}
+        sottotitolo={
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="font-mono">Richiesta #{shortId}</span>
             <span>·</span>
             <span>{r.requester_name}</span>
             {r.sede_name && (<><span>·</span><span className="inline-flex items-center gap-1"><MapPin className="size-3" />{r.sede_name}</span></>)}
+          </span>
+        }
+      />
+
+      {(() => {
+        const sp = stilePrincipale(r);
+        const Ic = sp.icona;
+        const approvata = r.status === "resp_approved" || r.status === "approved";
+        return (
+          <div className={cn("flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium", sp.fascia)}>
+            <Ic className="size-4 shrink-0" aria-hidden />
+            <span className="break-words">
+              {stileStatus(r.status).label}{approvata ? ` · ${stileAdmin(r.admin_status).label}` : ""}
+            </span>
+            {r.archived && <BadgeStile stile={STILE_ARCHIVIATA} className="ml-auto" />}
           </div>
+        );
+      })()}
+
+      {(ownerCanEdit || canGestisci || canManage || canDelete || ownerCanDelete) && (
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap [&_button]:min-h-10">
+          {ownerCanEdit && (
+            <Button variant="outline" onClick={() => setEditOpen(true)}>
+              <Pencil className="size-4 mr-1" />Modifica
+            </Button>
+          )}
+          {canGestisci && (
+            <Button variant="outline" onClick={() => setGestOpen(true)}>
+              <Wrench className="size-4 mr-1" />Gestisci
+            </Button>
+          )}
+          {canManage && !r.archived && (
+            <Button variant="outline" onClick={archivia} disabled={archiving}>
+              <Archive className="size-4 mr-1" />Archivia
+            </Button>
+          )}
+          {canManage && r.archived && (
+            <Button variant="outline" onClick={ripristina} disabled={archiving}>
+              <ArchiveRestore className="size-4 mr-1" />Ripristina
+            </Button>
+          )}
+          {(canDelete || ownerCanDelete) && (
+            <Button variant="destructive" className="sm:ml-auto" onClick={() => setConfirmDelete("one")}>
+              <Trash2 className="size-4 mr-1" />Elimina
+            </Button>
+          )}
         </div>
-        <div className="flex flex-col items-end gap-2">
-          <div className="flex flex-wrap gap-2 justify-end">
-            <Badge variant="outline" className="text-sm">{STATUS_LABEL[r.status] ?? r.status}</Badge>
-            {(r.status === "resp_approved" || r.status === "approved") && (
-              <Badge variant="outline" className="text-sm">{ADMIN_LABEL[r.admin_status ?? "da_gestire"]}</Badge>
-            )}
-            {r.archived && <Badge variant="secondary" className="text-sm">📦 Archiviata</Badge>}
-          </div>
-          <div className="flex flex-wrap gap-2 justify-end">
-            {ownerCanEdit && (
-              <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
-                <Pencil className="size-4 mr-1" />Modifica
-              </Button>
-            )}
-            {canGestisci && (
-              <Button size="sm" variant="outline" onClick={() => setGestOpen(true)}>
-                <Wrench className="size-4 mr-1" />Gestisci
-              </Button>
-            )}
-            {canManage && !r.archived && (
-              <Button size="sm" variant="outline" onClick={archivia} disabled={archiving}>
-                <Archive className="size-4 mr-1" />Archivia
-              </Button>
-            )}
-            {canManage && r.archived && (
-              <Button size="sm" variant="outline" onClick={ripristina} disabled={archiving}>
-                <ArchiveRestore className="size-4 mr-1" />Ripristina
-              </Button>
-            )}
-            {(canDelete || ownerCanDelete) && (
-              <Button size="sm" variant="destructive" onClick={() => setConfirmDelete("one")}>
-                <Trash2 className="size-4 mr-1" />Elimina
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
+      )}
 
       <Card>
-        <CardHeader><CardTitle className="text-base">Dati richiesta</CardTitle></CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          <Row label="Tipo"><Badge variant="secondary">{TIPO_LABEL[r.type] ?? r.type}</Badge></Row>
-          <Row label="Importo"><span className="font-mono">{fmtEuro(r.amount)}</span></Row>
-          <Row label="Fornitore">{r.fornitore || "—"}</Row>
-          <Row label="Sede">{r.sede_name || "—"}</Row>
-          <Row label="Richiedente">{r.requester_name} · <span className="text-muted-foreground">{fmtDataOra(r.created_at)}</span></Row>
+        <CardHeader><CardTitle><TitoloCard stile={STILE_PAGINA.dettaglio}>Dati richiesta</TitoloCard></CardTitle></CardHeader>
+        <CardContent className="space-y-4 text-sm">
+          <div className="flex flex-wrap items-end justify-between gap-3 rounded-lg border bg-muted/30 p-3">
+            <BadgeStile stile={stileTipo(r.type)} />
+            <div className="text-right">
+              <div className="text-xs text-muted-foreground">Importo</div>
+              <div className="font-mono text-2xl sm:text-3xl font-bold tabular-nums">{fmtEuro(r.amount)}</div>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <Row label="Fornitore">{r.fornitore || "—"}</Row>
+            <Row label="Sede">{r.sede_name || "—"}</Row>
+            <Row label="Richiedente">{r.requester_name}</Row>
+            <Row label="Creata il">{fmtDataOra(r.created_at)}</Row>
+          </div>
           {r.description && (
             <div>
               <div className="text-xs text-muted-foreground mb-1">Descrizione</div>
@@ -346,47 +374,73 @@ function DettaglioRichiesta() {
       <BonificoAccontoCard r={r} allegati={(r.richieste_interne_allegati ?? []) as any} />
 
       <Card>
-        <CardHeader><CardTitle className="text-base">Iter di approvazione</CardTitle></CardHeader>
-        <CardContent className="text-sm space-y-3">
-          <div>
-            <div className="text-xs text-muted-foreground mb-1">Responsabile Generale</div>
-            {r.resp_at ? (
-              <div className="space-y-1">
-                <div className="font-medium">{r.resp_approver_name}</div>
-                <div><Badge variant="outline">{RESP_ACTION_LABEL[r.resp_action!] ?? r.resp_action}</Badge></div>
-                {r.resp_note && <div className="text-muted-foreground whitespace-pre-wrap border-l-2 pl-2 mt-2">{r.resp_note}</div>}
-                <div className="text-xs text-muted-foreground mt-1">{fmtDataOra(r.resp_at)}</div>
-              </div>
-            ) : (
-              <div className="text-muted-foreground italic">In attesa</div>
+        <CardHeader><CardTitle><TitoloCard stile={STILE_CREATA}>Iter di approvazione</TitoloCard></CardTitle></CardHeader>
+        <CardContent className="text-sm">
+          <ol className="space-y-0">
+            <Passo stile={STILE_CREATA} titolo="Creata">
+              <div>{r.requester_name}</div>
+              <div className="text-xs text-muted-foreground">{fmtDataOra(r.created_at)}</div>
+            </Passo>
+            <Passo stile={r.resp_at ? esitoStile(r.resp_action) : STILE_IN_ATTESA} titolo="Responsabile Generale" ultimo={!(r.status === "forwarded" || r.dir_at) && !(r.status === "resp_approved" || r.status === "approved") && !r.acconto_richiesto}>
+              {r.resp_at ? (
+                <>
+                  <div className="font-medium">{r.resp_approver_name}</div>
+                  <BadgeStile stile={esitoStile(r.resp_action)} testo={RESP_ACTION_LABEL[r.resp_action!] ?? r.resp_action} />
+                  {r.resp_note && <div className="text-muted-foreground whitespace-pre-wrap break-words border-l-2 pl-2 mt-1">{r.resp_note}</div>}
+                  <div className="text-xs text-muted-foreground">{fmtDataOra(r.resp_at)}</div>
+                </>
+              ) : <div className="text-muted-foreground italic">In attesa</div>}
+            </Passo>
+            {(r.status === "forwarded" || r.dir_at) && (
+              <Passo stile={r.dir_at ? esitoStile(r.dir_action) : STILE_IN_ATTESA} titolo="Direzione" ultimo={!(r.status === "resp_approved" || r.status === "approved") && !r.acconto_richiesto}>
+                {r.dir_at ? (
+                  <>
+                    <div className="font-medium">{r.dir_approver_name}</div>
+                    <BadgeStile stile={esitoStile(r.dir_action)} testo={DIR_ACTION_LABEL[r.dir_action!] ?? r.dir_action} />
+                    {r.dir_note && <div className="text-muted-foreground whitespace-pre-wrap break-words border-l-2 pl-2 mt-1">{r.dir_note}</div>}
+                    <div className="text-xs text-muted-foreground">{fmtDataOra(r.dir_at)}</div>
+                  </>
+                ) : <div className="text-muted-foreground italic">In attesa</div>}
+              </Passo>
             )}
-          </div>
-
-          {(r.status === "forwarded" || r.dir_at) && (
-            <div className="border-t pt-3 mt-3">
-              <div className="text-xs text-muted-foreground mb-1">Direzione</div>
-              {r.dir_at ? (
-                <div className="space-y-1">
-                  <div className="font-medium">{r.dir_approver_name}</div>
-                  <div><Badge variant="outline">{DIR_ACTION_LABEL[r.dir_action!] ?? r.dir_action}</Badge></div>
-                  {r.dir_note && <div className="text-muted-foreground whitespace-pre-wrap border-l-2 pl-2 mt-2">{r.dir_note}</div>}
-                  <div className="text-xs text-muted-foreground mt-1">{fmtDataOra(r.dir_at)}</div>
-                </div>
-              ) : (
-                <div className="text-muted-foreground italic">In attesa</div>
-              )}
-            </div>
-          )}
+            {r.status !== "rejected" && (
+              <Passo
+                stile={(r.status === "resp_approved" || r.status === "approved") ? stileAdmin(r.admin_status) : STILE_IN_ATTESA}
+                titolo="Gestione"
+                ultimo={!r.acconto_richiesto}
+              >
+                {(r.status === "resp_approved" || r.status === "approved") ? (
+                  <>
+                    <BadgeStile stile={stileAdmin(r.admin_status)} />
+                    {r.admin_note && <div className="text-muted-foreground whitespace-pre-wrap break-words border-l-2 pl-2 mt-1">{r.admin_note}</div>}
+                  </>
+                ) : <div className="text-muted-foreground italic">In attesa</div>}
+              </Passo>
+            )}
+            {r.acconto_richiesto && (
+              <Passo
+                stile={r.acconto_stato === "eseguito" ? STILE_ACCONTO.eseguito : (r.status === "resp_approved" || r.status === "approved") ? STILE_ACCONTO.da_eseguire : STILE_IN_ATTESA}
+                titolo="Bonifico di acconto"
+                ultimo
+              >
+                {r.acconto_stato === "eseguito" ? (
+                  <BadgeStile stile={STILE_ACCONTO.eseguito} testo="✓ Eseguito" />
+                ) : (r.status === "resp_approved" || r.status === "approved") ? (
+                  <BadgeStile stile={STILE_ACCONTO.da_eseguire} testo="Da eseguire" />
+                ) : <div className="text-muted-foreground italic">In attesa</div>}
+              </Passo>
+            )}
+          </ol>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base inline-flex items-center gap-2"><Paperclip className="size-4" />Allegati ({r.richieste_interne_allegati?.length ?? 0})</CardTitle>
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+          <CardTitle><TitoloCard stile={STILE_ALLEGATI}>Allegati ({r.richieste_interne_allegati?.length ?? 0})</TitoloCard></CardTitle>
           {canUpload && (
             <>
               <input ref={fileInputRef} type="file" className="hidden" onChange={handleUpload} />
-              <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+              <Button size="sm" variant="outline" className="min-h-10" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
                 {uploading ? <Loader2 className="size-4 mr-1 animate-spin" /> : <Upload className="size-4 mr-1" />}
                 Carica
               </Button>
@@ -424,20 +478,20 @@ function DettaglioRichiesta() {
       </Card>
 
       {(canLiv1 || canLiv2) && (
-        <Card>
-          <CardHeader><CardTitle className="text-base">Azioni</CardTitle></CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
+        <Card className="border-2 border-primary/30">
+          <CardHeader><CardTitle><TitoloCard stile={STILE_AZIONI}>Azioni</TitoloCard></CardTitle></CardHeader>
+          <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {canLiv1 && (
               <>
-                <Button onClick={() => { setNote(""); setDialog({ level: 1, action: "approved" }); }}>Approva</Button>
-                <Button variant="secondary" onClick={() => { setNote(""); setDialog({ level: 1, action: "forwarded" }); }}>Inoltra alla Direzione</Button>
-                <Button variant="destructive" onClick={() => { setNote(""); setDialog({ level: 1, action: "rejected" }); }}>Rifiuta</Button>
+                <BottoneDecisione stile={STILE_DECISIONE.approva} onClick={() => { setNote(""); setDialog({ level: 1, action: "approved" }); }} />
+                <BottoneDecisione stile={STILE_DECISIONE.inoltra} onClick={() => { setNote(""); setDialog({ level: 1, action: "forwarded" }); }} />
+                <BottoneDecisione stile={STILE_DECISIONE.rifiuta} onClick={() => { setNote(""); setDialog({ level: 1, action: "rejected" }); }} />
               </>
             )}
             {canLiv2 && (
               <>
-                <Button onClick={() => { setNote(""); setDialog({ level: 2, action: "approved" }); }}>Approva</Button>
-                <Button variant="destructive" onClick={() => { setNote(""); setDialog({ level: 2, action: "rejected" }); }}>Rifiuta</Button>
+                <BottoneDecisione stile={STILE_DECISIONE.approva} onClick={() => { setNote(""); setDialog({ level: 2, action: "approved" }); }} />
+                <BottoneDecisione stile={STILE_DECISIONE.rifiuta} onClick={() => { setNote(""); setDialog({ level: 2, action: "rejected" }); }} />
               </>
             )}
           </CardContent>
@@ -564,11 +618,44 @@ function DettaglioRichiesta() {
   );
 }
 
+function esitoStile(a: string | null | undefined): StileVoce {
+  if (a === "approved") return STILE_DECISIONE.approva;
+  if (a === "forwarded") return STILE_DECISIONE.inoltra;
+  if (a === "rejected") return STILE_DECISIONE.rifiuta;
+  return STILE_IN_ATTESA;
+}
+
+function Passo({ stile, titolo, ultimo, children }: { stile: StileVoce; titolo: string; ultimo?: boolean; children: React.ReactNode }) {
+  return (
+    <li className="relative flex gap-3 pb-4 last:pb-0">
+      {!ultimo && <span className="absolute left-[7px] top-5 bottom-0 w-px bg-border" aria-hidden />}
+      <span className={cn("relative mt-1 size-4 shrink-0 rounded-full ring-4 ring-background", stile.pallino)} aria-hidden />
+      <div className="min-w-0 flex-1 space-y-1">
+        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{titolo}</div>
+        {children}
+      </div>
+    </li>
+  );
+}
+
+function BottoneDecisione({ stile, onClick }: { stile: StileVoce; onClick: () => void }) {
+  const Ic = stile.icona;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn("flex min-h-12 items-center justify-center gap-2 rounded-lg border border-t-4 px-4 py-2 text-sm font-semibold transition hover:opacity-90", stile.bordoAlto, stile.fascia)}
+    >
+      <Ic className="size-4" aria-hidden />{stile.label}
+    </button>
+  );
+}
+
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-baseline gap-3">
       <div className="text-xs text-muted-foreground w-24 shrink-0">{label}</div>
-      <div className="flex-1">{children}</div>
+      <div className="flex-1 min-w-0 break-words">{children}</div>
     </div>
   );
 }
