@@ -619,20 +619,23 @@ function BozzeTab({
   const navigate = useNavigate();
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
+  const [avanz, setAvanz] = useState<{ fatte: number; totali: number } | null>(null);
   const invioMut = useMutation({
     mutationFn: async (ids: string[]) => {
-      const { error } = await supabase
-        .from("richieste_fido")
-        .update({ stato: "in_approvazione", data_invio: new Date().toISOString() })
-        .in("id", ids);
-      if (error) throw error;
+      const righe = ids.map((id) => ({ id, stato: rows.find((r) => r.id === id)?.stato ?? "bozza" }));
+      return inviaBozzeInApprovazione(righe, (fatte, totali) => setAvanz({ fatte, totali }));
     },
-    onSuccess: (_d, ids) => {
-      toast.success(`${ids.length} richieste inviate in approvazione`);
-      setSelected(new Set());
+    onSuccess: (esito) => {
+      const n = esito.rimasteInBozza.length;
+      const fmt = (x: number) => x.toLocaleString("it-IT");
+      const extra = esito.giaInviate > 0 ? ` (${fmt(esito.giaInviate)} erano già inviate)` : "";
+      if (n === 0) toast.success(`${fmt(esito.inviate)} inviate${extra}`);
+      else toast.warning(`${fmt(esito.inviate)} inviate, ${fmt(n)} ancora in bozza: riprova${extra}`);
+      setSelected(new Set(esito.rimasteInBozza.map((r) => r.id)));
       onChanged();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => { toast.error(e.message); onChanged(); },
+    onSettled: () => setAvanz(null),
   });
 
   function toggle(id: string) {
@@ -647,12 +650,19 @@ function BozzeTab({
 
   return (
     <Card className="p-2 sm:p-3">
-      {selected.size > 0 && (
-        <div className="flex items-center justify-between gap-3 p-3 mb-2 bg-primary/5 rounded-md">
-          <p className="text-sm font-medium">{selected.size} selezionate</p>
-          <Button size="sm" onClick={() => invioMut.mutate(Array.from(selected))} disabled={invioMut.isPending}>
-            <Send className="size-4" /> Invia tutte
-          </Button>
+      {(selected.size > 0 || invioMut.isPending) && (
+        <div className="p-3 mb-2 bg-primary/5 rounded-md space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm font-medium min-w-0">
+              {invioMut.isPending && avanz
+                ? `Invio in corso: ${avanz.fatte.toLocaleString("it-IT")} di ${avanz.totali.toLocaleString("it-IT")}…`
+                : `${selected.size} selezionate`}
+            </p>
+            <Button size="sm" onClick={() => invioMut.mutate(Array.from(selected))} disabled={invioMut.isPending}>
+              <Send className="size-4" /> Invia tutte
+            </Button>
+          </div>
+          {invioMut.isPending && avanz && <Progress value={avanz.totali ? (avanz.fatte / avanz.totali) * 100 : 0} className="h-2" />}
         </div>
       )}
       <ElencoSchede>
