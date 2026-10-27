@@ -96,7 +96,7 @@ export function GestisciDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Gestione richiesta</DialogTitle>
+          <DialogTitle>Controllo fatturazione</DialogTitle>
           <DialogDescription className="truncate">{target?.title}</DialogDescription>
         </DialogHeader>
 
@@ -104,7 +104,7 @@ export function GestisciDialog({
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Stato attuale:</span>
             <Badge variant="outline">
-              {ADMIN_LABEL[target?.admin_status ?? "da_gestire"] ?? "Da gestire"}
+              {ADMIN_LABEL[target?.admin_status ?? "da_gestire"] ?? "Fatturazione da controllare"}
             </Badge>
           </div>
 
@@ -113,9 +113,9 @@ export function GestisciDialog({
             <Select value={status} onValueChange={(v) => setStatus(v as AdminStatus)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="da_gestire">🔴 Da gestire</SelectItem>
-                <SelectItem value="in_gestione">🟡 In gestione</SelectItem>
-                <SelectItem value="conclusa">🟢 Conclusa</SelectItem>
+                <SelectItem value="da_gestire">🔴 Fatturazione da controllare</SelectItem>
+                <SelectItem value="in_gestione">🟡 Controllo in corso</SelectItem>
+                <SelectItem value="conclusa">🟢 Fatturazione controllata</SelectItem>
               </SelectContent>
             </Select>
           </div>
