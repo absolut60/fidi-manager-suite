@@ -59,6 +59,15 @@ export function isBonificoDaEseguire(r: Pick<RichiestaRow, "acconto_richiesto" |
   return !!r.acconto_richiesto && r.acconto_stato === "da_eseguire" && (r.status === "resp_approved" || r.status === "approved");
 }
 
+/**
+ * Il pulsante "Controlla fatturazione" non compare sulle richieste già controllate
+ * (admin_status = conclusa) né su quelle archiviate: non c'è più un'azione da fare.
+ * Nel dettaglio della richiesta il pulsante resta, per permettere di modificare il controllo.
+ */
+export function mostraPulsanteGestisci(r: Pick<RichiestaRow, "archived" | "admin_status">): boolean {
+  return !r.archived && r.admin_status !== "conclusa";
+}
+
 function BadgeAcconto({ r }: { r: RichiestaRow }) {
   if (!r.acconto_richiesto) return null;
   const s = statoAcconto(r);
