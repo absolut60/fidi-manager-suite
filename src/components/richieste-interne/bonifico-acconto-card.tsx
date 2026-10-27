@@ -57,14 +57,6 @@ type Allegato = {
 
 const APPROVATA = ["resp_approved", "approved"];
 
-export function statoBonifico(r: Pick<BonificoRichiesta, "status" | "acconto_stato" | "acconto_data_prevista">) {
-  if (r.status === "rejected") return { label: "Annullato — richiesta rifiutata", cls: "bg-muted text-muted-foreground" };
-  if (r.acconto_stato === "eseguito") return { label: "Eseguito", cls: "bg-success/15 text-success border-success/30" };
-  if (!APPROVATA.includes(r.status)) return { label: "In attesa di approvazione", cls: "" };
-  const scaduto = !!r.acconto_data_prevista && r.acconto_data_prevista < oggiIso();
-  return { label: "Da eseguire", cls: scaduto ? "bg-warning/15 text-warning border-warning/40" : "" };
-}
-
 export function BonificoAccontoCard({ r, allegati }: { r: BonificoRichiesta; allegati: Allegato[] }) {
   const { user, roles } = useAuth();
   const qc = useQueryClient();
@@ -75,7 +67,6 @@ export function BonificoAccontoCard({ r, allegati }: { r: BonificoRichiesta; all
   const [saving, setSaving] = useState(false);
 
   if (!r.acconto_richiesto) return null;
-  const stato = statoBonifico(r);
   const cro = allegati.filter((a) => a.tipo === "cro_bonifico");
   const puoSegnare = puoGestireTesoreria(roles) && APPROVATA.includes(r.status) && r.acconto_stato === "da_eseguire";
 
