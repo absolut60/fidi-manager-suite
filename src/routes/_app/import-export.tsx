@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { leggiTutteLeRighe } from "@/lib/leggi-tutte-le-righe";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as XLSX from "xlsx";
@@ -2907,13 +2908,14 @@ function ExportCard() {
   async function exportRichieste() {
     setBusy("richieste");
     try {
-      const { data, error } = await supabase
+      const data = await leggiTutteLeRighe((da, a) => supabase
         .from("richieste_fido")
         .select(
           "tipo, importo_richiesto, importo_approvato, durata_mesi, stato, livello_richiesto, livello_corrente, data_invio, data_chiusura, data_scadenza, motivazione, clienti(ragione_sociale, partita_iva), stores(codice, nome)",
         )
-        .order("created_at", { ascending: false });
-      if (error) throw error;
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(da, a));
       const flat = (data ?? []).map((r) => ({
         cliente: (r.clienti as { ragione_sociale: string } | null)?.ragione_sociale ?? "",
         partita_iva: (r.clienti as { partita_iva: string | null } | null)?.partita_iva ?? "",
@@ -2953,14 +2955,15 @@ function ExportCard() {
   async function exportFidiGestionale() {
     setBusy("fidi_gestionale");
     try {
-      const { data, error } = await supabase
+      const data = await leggiTutteLeRighe((da, a) => supabase
         .from("richieste_fido")
         .select(TRACCIATO_FIDI_SELECT)
         .eq("stato", "approvata")
         .not("importo_approvato", "is", null)
         .order("data_chiusura", { ascending: false, nullsFirst: false })
-        .order("created_at", { ascending: false });
-      if (error) throw error;
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(da, a));
       if (!descrizioniCodici) throw new Error("Codici di pagamento non ancora caricati");
       const { fileName, rows } = generaTracciatoFidiGestionale((data ?? []) as any[], { descrizioniCodici });
       await logEsportazione(fileName, rows.length);

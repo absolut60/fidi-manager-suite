@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate, Outlet, useMatchRoute, Link } from "@tanstack/react-router";
+import { leggiTutteLeRighe } from "@/lib/leggi-tutte-le-righe";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -342,16 +343,17 @@ function RichiestePage() {
     queryKey: ["richieste", role, profilo?.store_id, user?.id],
     enabled: !!user,
     queryFn: async () => {
-      let q = supabase
-        .from("richieste_fido")
-        .select(RICHIESTA_FIDO_SELECT)
-        .order("created_at", { ascending: false });
-      if (isStoreManager) {
-        q = q.eq("created_by", user!.id);
-      }
-      const { data, error } = await q;
-      if (error) throw error;
-      return data ?? [];
+      return leggiTutteLeRighe((da, a) => {
+        let q = supabase
+          .from("richieste_fido")
+          .select(RICHIESTA_FIDO_SELECT)
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false });
+        if (isStoreManager) {
+          q = q.eq("created_by", user!.id);
+        }
+        return q.range(da, a);
+      });
     },
   });
 
