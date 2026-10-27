@@ -354,7 +354,7 @@ const blocIter = (
             {r.status !== "rejected" && (
               <Passo
                 stile={(r.status === "resp_approved" || r.status === "approved") ? stileAdmin(r.admin_status) : STILE_IN_ATTESA}
-                titolo="Gestione"
+                titolo="Controllo fatturazione"
                 ultimo={!r.acconto_richiesto}
               >
                 {(r.status === "resp_approved" || r.status === "approved") ? (
@@ -401,7 +401,7 @@ const blocIter = (
           )}
           {canGestisci && (
             <Button variant="outline" onClick={() => setGestOpen(true)}>
-              <Wrench className="size-4 mr-1" />Gestisci
+              <Wrench className="size-4 mr-1" />Controlla fatturazione
             </Button>
           )}
           {canManage && !r.archived && (

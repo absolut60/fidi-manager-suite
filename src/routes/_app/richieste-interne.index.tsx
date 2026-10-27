@@ -83,9 +83,9 @@ function DashboardRichiesteInterne() {
         )}
 
         {(isGestore || isAdmin) && (
-          <SezioneCard titolo="Gestione">
-            <StatCard dest={linkOptions({ to: "/richieste-interne/gestione", search: { filtro: "da_gestire" } })} tinta="rosso" icona={Inbox} label="Da gestire" value={nDaGestire} />
-            <StatCard dest={linkOptions({ to: "/richieste-interne/gestione", search: { filtro: "in_gestione" } })} tinta="ambra" icona={Wrench} label="In gestione" value={nInGestione} />
+          <SezioneCard titolo="Controllo fatturazione">
+            <StatCard dest={linkOptions({ to: "/richieste-interne/gestione", search: { filtro: "da_gestire" } })} tinta="rosso" icona={Inbox} label="Da controllare" value={nDaGestire} />
+            <StatCard dest={linkOptions({ to: "/richieste-interne/gestione", search: { filtro: "in_gestione" } })} tinta="ambra" icona={Wrench} label="In corso" value={nInGestione} />
           </SezioneCard>
         )}
 

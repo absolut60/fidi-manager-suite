@@ -93,7 +93,7 @@ export function RichiesteTable({
   unreadIds,
   onGestisci,
   onRipristina,
-  gestisciLabel = "Gestisci",
+  gestisciLabel = "Controlla fatturazione",
   chiaveFiltri,
   filtroBonificiDefault = false,
   defaultPeriodo = "tutto",

@@ -96,12 +96,12 @@ function GestionePage() {
     { key: "aperte", stile: STILE_APERTE, value: counts.aperte },
     { key: "da_gestire", stile: STILE_ADMIN.da_gestire, value: counts.da_gestire },
     { key: "in_gestione", stile: STILE_ADMIN.in_gestione, value: counts.in_gestione },
-    { key: "conclusa", stile: { ...STILE_ADMIN.conclusa, label: "Concluse" }, value: counts.conclusa },
+    { key: "conclusa", stile: { ...STILE_ADMIN.conclusa, label: "Controllate" }, value: counts.conclusa },
   ];
 
   return (
     <div className="space-y-4">
-      <IntestazioneRichieste stile={STILE_PAGINA.gestione} titolo="Gestione richieste" sottotitolo="Richieste approvate da lavorare" />
+      <IntestazioneRichieste stile={STILE_PAGINA.gestione} titolo="Controllo fatturazione" sottotitolo="Richieste approvate da controllare in amministrazione" />
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
         {voci.map((v) => (
@@ -113,7 +113,7 @@ function GestionePage() {
         key={filter === "conclusa" ? "concluse" : "aperte"}
         chiaveFiltri={filter === "conclusa" ? "richieste-interne:gestione:concluse" : "richieste-interne:gestione"}
         defaultPeriodo={filter === "conclusa" ? "30" : "tutto"}
-        emptyLabel={filter === "conclusa" ? "Nessuna richiesta conclusa nel periodo" : "Nessuna richiesta"}
+        emptyLabel={filter === "conclusa" ? "Nessuna richiesta controllata nel periodo" : "Nessuna richiesta"}
         rows={filtered}
         righeRicerca={data}
         isLoading={isLoading}
