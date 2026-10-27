@@ -12,7 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Plus, Paperclip, X, ChevronsUpDown, Check, Truck, Euro, Banknote, Calendar, AlertTriangle, CheckCircle2, Bell, Receipt } from "lucide-react";
+import { Plus, Paperclip, X, ChevronsUpDown, Check, Truck, Euro, Banknote, Calendar, AlertTriangle, Info } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { STILE_TIPO, STILE_ACCONTO, STILE_ALLEGATI } from "@/components/richieste-interne/stili";
 import { notifyRichiestaEvento } from "@/lib/richieste-email.functions";
 import { RICHIESTE_ALLEGATI_BUCKET as BUCKET, sanitizeFileName } from "@/components/richieste-interne/utils";
@@ -484,8 +485,15 @@ export function NuovaRichiestaDialog({
                   </div>
                   <div className="space-y-1.5 min-w-0">
                     <Label htmlFor="rq-acc-data" className="inline-flex items-center gap-1.5"><Calendar className="size-4" />Data prevista del bonifico</Label>
-                    <Input id="rq-acc-data" type="date" min={oggiIso()} value={accontoData} className="h-10 bg-background text-foreground"
-                      onChange={(e) => setAccontoData(e.target.value)} />
+                    <div className="relative min-w-0">
+                      <Input id="rq-acc-data" type="date" min={oggiIso()} value={accontoData}
+                        placeholder="gg/mm/aaaa"
+                        className="peer h-10 block w-full min-w-0 max-w-full appearance-none text-left bg-background text-foreground"
+                        onChange={(e) => setAccontoData(e.target.value)} />
+                      {!accontoData && (
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-muted-foreground peer-focus:hidden md:text-sm">gg/mm/aaaa</span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -496,22 +504,10 @@ export function NuovaRichiestaDialog({
                   </div>
                 )}
 
-                <div className="rounded-md border bg-background p-3 text-foreground">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Cosa succede</p>
-                  <ol className="space-y-2.5 text-sm">
-                    {[
-                      { Ic: CheckCircle2, t: "La richiesta viene approvata dal Responsabile (o dalla Direzione, se inoltrata)." },
-                      { Ic: Bell, t: "La tesoreria riceve un'email e una notifica per eseguire il bonifico. Se il bonifico non è ancora fatto, alla data prevista riceve un promemoria." },
-                      { Ic: Receipt, t: "Quando il bonifico è eseguito ricevi un'email e una notifica \"Bonifico di acconto eseguito\", con la ricevuta CRO nella richiesta." },
-                    ].map(({ Ic, t }, i) => (
-                      <li key={i} className="flex items-start gap-2.5">
-                        <span className={`inline-flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${stileAcc.tinta}`}>{i + 1}</span>
-                        <Ic className="size-4 shrink-0 mt-0.5 text-muted-foreground" aria-hidden />
-                        <span className="min-w-0 break-words">{t}</span>
-                      </li>
-                    ))}
-                  </ol>
-                </div>
+                <p className={cn("flex items-start gap-2 rounded-md border p-2 text-sm", stileAcc.fascia, "bg-transparent")}>
+                  <Info className="size-4 shrink-0 mt-0.5" aria-hidden />
+                  <span className="min-w-0 break-words">Dopo l'approvazione verrà eseguito il bonifico di acconto: riceverai un'email di conferma quando sarà fatto.</span>
+                </p>
               </>
             )}
           </div>
