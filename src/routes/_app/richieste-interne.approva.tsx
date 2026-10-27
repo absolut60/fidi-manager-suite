@@ -1,4 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { z } from "zod";
+import { useEffect, useMemo, useState } from "react";
 import { IntestazioneRichieste } from "@/components/richieste-interne/intestazione";
 import { STILE_PAGINA } from "@/components/richieste-interne/stili";
 import { useQuery } from "@tanstack/react-query";
@@ -8,6 +11,7 @@ import { RichiesteTable, type RichiestaRow } from "@/components/richieste-intern
 import { useRichiesteNonLette } from "@/hooks/use-richieste-non-lette";
 
 export const Route = createFileRoute("/_app/richieste-interne/approva")({
+  validateSearch: zodValidator(z.object({ livello: fallback(z.string().optional(), undefined) })),
   component: ApprovaRichieste,
 });
 
@@ -37,6 +41,17 @@ function ApprovaRichieste() {
         ? "Richieste inoltrate dal Responsabile"
         : "Nessun ruolo di approvazione";
 
+  // Livello dall'URL (riquadri dashboard): filtro solo di visualizzazione sulle righe già lette.
+  type Livello = "tutti" | "responsabile" | "direzione";
+  const [livello, setLivello] = useState<Livello>("tutti");
+  const { livello: livelloUrl } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  useEffect(() => {
+    if (livelloUrl === undefined) return;
+    if (livelloUrl === "responsabile" || livelloUrl === "direzione") setLivello(livelloUrl);
+    navigate({ search: {}, replace: true });
+  }, [livelloUrl, navigate]);
+
   const { data, isLoading } = useQuery({
     queryKey: ["richieste-interne", "approva", statuses.join(",")],
     enabled: statuses.length > 0,
@@ -52,15 +67,36 @@ function ApprovaRichieste() {
     },
   });
 
+  const righe = useMemo(() => {
+    if (!data || livello === "tutti") return data;
+    const s = livello === "responsabile" ? "pending" : "forwarded";
+    return data.filter((r) => r.status === s);
+  }, [data, livello]);
+  const mostraLivelli = (isLiv1 && isLiv2) || livello !== "tutti";
+
   return (
     <div className="space-y-4">
       <IntestazioneRichieste
         stile={STILE_PAGINA.approva}
         titolo="Da approvare"
         sottotitolo={sottotitolo}
-        azioni={<div className="text-sm text-muted-foreground sm:text-right"><span className="font-semibold text-foreground">{data?.length ?? 0}</span> in attesa</div>}
+        azioni={<div className="text-sm text-muted-foreground sm:text-right"><span className="font-semibold text-foreground">{righe?.length ?? 0}</span> in attesa</div>}
       />
-      <RichiesteTable chiaveFiltri="richieste-interne:approva" rows={data} isLoading={isLoading} showAdminBadge={false} emptyLabel="Nessuna richiesta da approvare" unreadIds={unreadIds} />
+      {mostraLivelli && (
+        <div className="flex flex-wrap items-center gap-2">
+          {([["tutti", "Tutte"], ["responsabile", "Responsabile"], ["direzione", "Direzione"]] as const).map(([k, l]) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setLivello(k)}
+              className={`h-10 px-3 rounded-full text-sm border transition-colors ${livello === k ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-accent"}`}
+            >
+              {l}
+            </button>
+          ))}
+        </div>
+      )}
+      <RichiesteTable chiaveFiltri="richieste-interne:approva" rows={righe} isLoading={isLoading} showAdminBadge={false} emptyLabel="Nessuna richiesta da approvare" unreadIds={unreadIds} />
     </div>
   );
 }

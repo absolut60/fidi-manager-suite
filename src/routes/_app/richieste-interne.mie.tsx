@@ -1,4 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { z } from "zod";
+import { useEffect } from "react";
 import { IntestazioneRichieste } from "@/components/richieste-interne/intestazione";
 import { STILE_PAGINA } from "@/components/richieste-interne/stili";
 import { useQuery } from "@tanstack/react-query";
@@ -11,6 +14,7 @@ import { RichiesteTable, type RichiestaRow } from "@/components/richieste-intern
 import { useRichiesteNonLette } from "@/hooks/use-richieste-non-lette";
 
 export const Route = createFileRoute("/_app/richieste-interne/mie")({
+  validateSearch: zodValidator(z.object({ stato: fallback(z.string().optional(), undefined) })),
   component: MieRichieste,
 });
 
@@ -26,6 +30,14 @@ function MieRichieste() {
   }, { userId: user?.id });
   const { filtro } = FM;
   const setFiltro = (v: FiltroStato) => setCampo("filtro", v);
+  // Filtro dall'URL (riquadri dashboard): vince sul salvato, poi l'URL si pulisce.
+  const { stato } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  useEffect(() => {
+    if (stato === undefined) return;
+    if ((["tutte", "attesa", "approvate", "rifiutate"] as const).includes(stato as FiltroStato)) setCampo("filtro", stato as FiltroStato);
+    navigate({ search: {}, replace: true });
+  }, [stato, setCampo, navigate]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["richieste-interne", "mie", uid],

@@ -1,5 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { z } from "zod";
+
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { RichiesteTable, type RichiestaRow } from "@/components/richieste-interne/richieste-table";
@@ -16,6 +19,7 @@ import { List } from "lucide-react";
 const STILE_TUTTE: StileVoce = { label: "Tutte", icona: List, ...TINTE.ardesia };
 
 export const Route = createFileRoute("/_app/richieste-interne/gestione")({
+  validateSearch: zodValidator(z.object({ filtro: fallback(z.string().optional(), undefined) })),
   component: GestionePage,
 });
 
@@ -33,6 +37,14 @@ function GestionePage() {
   // Valore salvato non più valido (es. vecchio "all") → Aperte.
   const filter: AdminFilter = (["tutte", "aperte", "da_gestire", "in_gestione", "conclusa"] as const).includes(FG.filtro) ? FG.filtro : "aperte";
   const setFilter = (v: AdminFilter) => setCampo("filtro", v);
+  // Filtro dall'URL (riquadri dashboard): vince sul salvato, poi l'URL si pulisce.
+  const { filtro: filtroUrl } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  useEffect(() => {
+    if (filtroUrl === undefined) return;
+    if ((["tutte", "aperte", "da_gestire", "in_gestione", "conclusa"] as const).includes(filtroUrl as AdminFilter)) setCampo("filtro", filtroUrl as AdminFilter);
+    navigate({ search: {}, replace: true });
+  }, [filtroUrl, setCampo, navigate]);
   const [target, setTarget] = useState<GestisciTarget | null>(null);
   const [open, setOpen] = useState(false);
 

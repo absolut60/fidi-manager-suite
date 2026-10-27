@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, linkOptions, type LinkOptions } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -57,6 +57,7 @@ function DashboardRichiesteInterne() {
   return (
     <div className="space-y-6">
       <IntestazioneRichieste
+        indietroA="/"
         stile={STILE_PAGINA.dashboard}
         titolo="Richieste interne"
         sottotitolo="Dashboard delle richieste MADE"
@@ -65,30 +66,30 @@ function DashboardRichiesteInterne() {
 
       {(isRichiedente || isAdmin) && (
         <Sezione titolo="Le mie richieste">
-          <StatCard to="/richieste-interne/mie" tinta="blu" icona={Inbox} label="Totali" value={nMie} />
-          <StatCard to="/richieste-interne/mie" tinta="ambra" icona={Hourglass} label="In attesa" value={nMieAttesa} />
-          <StatCard to="/richieste-interne/mie" tinta="verde" icona={CheckCircle2} label="Approvate" value={nMieApprovate} />
-          <StatCard to="/richieste-interne/mie" tinta="rosso" icona={XCircle} label="Rifiutate" value={nMieRifiutate} />
+          <StatCard dest={linkOptions({ to: "/richieste-interne/mie", search: { stato: "tutte" } })} tinta="blu" icona={Inbox} label="Totali" value={nMie} />
+          <StatCard dest={linkOptions({ to: "/richieste-interne/mie", search: { stato: "attesa" } })} tinta="ambra" icona={Hourglass} label="In attesa" value={nMieAttesa} />
+          <StatCard dest={linkOptions({ to: "/richieste-interne/mie", search: { stato: "approvate" } })} tinta="verde" icona={CheckCircle2} label="Approvate" value={nMieApprovate} />
+          <StatCard dest={linkOptions({ to: "/richieste-interne/mie", search: { stato: "rifiutate" } })} tinta="rosso" icona={XCircle} label="Rifiutate" value={nMieRifiutate} />
         </Sezione>
       )}
 
       {(isApp1 || isApp2 || isAdmin) && (
         <Sezione titolo="Approvazioni">
-          {(isApp1 || isAdmin) && <StatCard to="/richieste-interne/approva" tinta="ambra" icona={ClipboardList} label="Da approvare — Responsabile" value={nApp1} />}
-          {(isApp2 || isAdmin) && <StatCard to="/richieste-interne/approva" tinta="ambra" icona={ClipboardList} label="Da approvare — Direzione" value={nApp2} />}
+          {(isApp1 || isAdmin) && <StatCard dest={linkOptions({ to: "/richieste-interne/approva", search: { livello: "responsabile" } })} tinta="ambra" icona={ClipboardList} label="Da approvare — Responsabile" value={nApp1} />}
+          {(isApp2 || isAdmin) && <StatCard dest={linkOptions({ to: "/richieste-interne/approva", search: { livello: "direzione" } })} tinta="ambra" icona={ClipboardList} label="Da approvare — Direzione" value={nApp2} />}
         </Sezione>
       )}
 
       {(isGestore || isAdmin) && (
         <Sezione titolo="Gestione">
-          <StatCard to="/richieste-interne/gestione" tinta="rosso" icona={Inbox} label="Da gestire" value={nDaGestire} />
-          <StatCard to="/richieste-interne/gestione" tinta="ambra" icona={Wrench} label="In gestione" value={nInGestione} />
+          <StatCard dest={linkOptions({ to: "/richieste-interne/gestione", search: { filtro: "da_gestire" } })} tinta="rosso" icona={Inbox} label="Da gestire" value={nDaGestire} />
+          <StatCard dest={linkOptions({ to: "/richieste-interne/gestione", search: { filtro: "in_gestione" } })} tinta="ambra" icona={Wrench} label="In gestione" value={nInGestione} />
         </Sezione>
       )}
 
       {isTesoreria && (
         <Sezione titolo="Tesoreria">
-          <StatCard to="/richieste-interne/tutte" tinta="teal" icona={Banknote} label="Bonifici da eseguire" value={nBonifici} />
+          <StatCard dest={linkOptions({ to: "/richieste-interne/tutte", search: { bonifici: "1" } })} tinta="teal" icona={Banknote} label="Bonifici da eseguire" value={nBonifici} />
         </Sezione>
       )}
 
@@ -140,11 +141,11 @@ function Sezione({ titolo, children }: { titolo: string; children: React.ReactNo
   );
 }
 
-function StatCard({ to, tinta, icona: Icona, label, value }: { to: string; tinta: Tinta; icona: LucideIcon; label: string; value: number }) {
+function StatCard({ dest, tinta, icona: Icona, label, value }: { dest: LinkOptions; tinta: Tinta; icona: LucideIcon; label: string; value: number }) {
   const t = TINTE[tinta];
   return (
     <Link
-      to={to}
+      {...dest}
       className={cn(
         "flex min-h-[72px] items-center gap-2 sm:gap-3 rounded-lg border border-l-4 bg-card p-3 sm:p-4 transition hover:bg-muted/40",
         t.bordo,

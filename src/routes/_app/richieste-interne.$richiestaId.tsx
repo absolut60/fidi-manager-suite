@@ -284,11 +284,6 @@ function DettaglioRichiesta() {
   return (
     <div className="space-y-4 max-w-4xl">
       <IntestazioneRichieste
-        sopra={
-          <Button variant="ghost" size="sm" onClick={() => router.history.back()} className="-ml-2 min-h-10">
-            <ArrowLeft className="size-4 mr-1" />Indietro
-          </Button>
-        }
         stile={stilePrincipale(r)}
         titolo={r.title}
         sottotitolo={

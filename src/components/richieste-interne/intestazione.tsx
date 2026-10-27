@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { BackButton } from "@/components/back-button";
 import type { StileVoce } from "./stili";
 
 /** Cerchietto colorato con icona (fonte colori: stili.ts). */
@@ -19,10 +20,21 @@ export function IconaCerchio({ stile, size = "md", className }: { stile: StileVo
  * Azioni a destra su desktop, sotto il titolo a tutta larghezza su mobile.
  */
 export function IntestazioneRichieste({
-  stile, titolo, sottotitolo, azioni, sopra,
-}: { stile: StileVoce; titolo: ReactNode; sottotitolo?: ReactNode; azioni?: ReactNode; sopra?: ReactNode }) {
+  stile, titolo, sottotitolo, azioni, sopra, indietroA = "/richieste-interne",
+}: {
+  stile: StileVoce; titolo: ReactNode; sottotitolo?: ReactNode; azioni?: ReactNode; sopra?: ReactNode;
+  /** Destinazione dell'Indietro quando non c'è cronologia (arrivo diretto). Dashboard → home. */
+  indietroA?: "/" | "/richieste-interne";
+}) {
   return (
     <div className="space-y-2">
+      <div className="flex justify-start">
+        <BackButton
+          fallbackTo={indietroA}
+          fallbackLabel={indietroA === "/" ? "Home" : "Richieste interne"}
+          className="min-h-10"
+        />
+      </div>
       {sopra}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-start gap-3">

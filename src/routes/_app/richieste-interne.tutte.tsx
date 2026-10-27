@@ -1,4 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { z } from "zod";
+import { useEffect, useState } from "react";
 import { IntestazioneRichieste } from "@/components/richieste-interne/intestazione";
 import { STILE_PAGINA } from "@/components/richieste-interne/stili";
 import { useQuery } from "@tanstack/react-query";
@@ -8,6 +11,7 @@ import { useRichiesteNonLette } from "@/hooks/use-richieste-non-lette";
 import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_app/richieste-interne/tutte")({
+  validateSearch: zodValidator(z.object({ bonifici: fallback(z.union([z.string(), z.number()]).optional(), undefined) })),
   component: TutteRichieste,
 });
 
@@ -29,6 +33,15 @@ function TutteRichieste() {
   });
 
   const unreadIds = useRichiesteNonLette();
+  // ?bonifici=1 (riquadro Tesoreria): solo bonifici da eseguire, periodo "Tutto"; poi l'URL si pulisce.
+  const { bonifici } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const [filtroUrl, setFiltroUrl] = useState<{ soloBonifici: boolean; periodo: "tutto" } | undefined>(undefined);
+  useEffect(() => {
+    if (bonifici === undefined) return;
+    if (String(bonifici) === "1") setFiltroUrl({ soloBonifici: true, periodo: "tutto" });
+    navigate({ search: {}, replace: true });
+  }, [bonifici, navigate]);
   // FM48: chi ha solo la tesoreria (nessun ruolo di gestione/approvazione) apre già sui bonifici.
   const { roles } = useAuth();
   const soloTesoreria = roles.includes("tesoreria") && !roles.some((x) =>
@@ -37,7 +50,7 @@ function TutteRichieste() {
   return (
     <div className="space-y-4">
       <IntestazioneRichieste stile={STILE_PAGINA.tutte} titolo="Tutte le richieste" sottotitolo="Elenco completo (esclusi archivi)" />
-      <RichiesteTable chiaveFiltri="richieste-interne:tutte" filtroBonificiDefault={soloTesoreria} rows={data} isLoading={isLoading} unreadIds={unreadIds} />
+      <RichiesteTable chiaveFiltri="richieste-interne:tutte" filtroBonificiDefault={soloTesoreria} filtroUrl={filtroUrl} rows={data} isLoading={isLoading} unreadIds={unreadIds} />
     </div>
   );
 }

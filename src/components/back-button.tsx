@@ -1,13 +1,16 @@
 import { Link, useRouter, useCanGoBack } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export function BackButton({
   fallbackTo,
   fallbackLabel,
   iconOnly = false,
+  className,
 }: {
-  fallbackTo: "/clienti" | "/lead" | "/richieste" | "/task" | "/articoli" | "/kit" | "/preventivatore" | "/eventi";
+  className?: string;
+  fallbackTo: "/" | "/richieste-interne" | "/clienti" | "/lead" | "/richieste" | "/task" | "/articoli" | "/kit" | "/preventivatore" | "/eventi";
   fallbackLabel: string;
   iconOnly?: boolean;
 }) {
@@ -39,7 +42,7 @@ export function BackButton({
       <Button
         variant="ghost"
         size="sm"
-        className="gap-1.5 -ml-2"
+        className={cn("gap-1.5 -ml-2", className)}
         onClick={() => router.history.back()}
       >
         <ArrowLeft className="size-4" /> Indietro
@@ -48,7 +51,7 @@ export function BackButton({
   }
 
   return (
-    <Button asChild variant="ghost" size="sm" className="gap-1.5 -ml-2">
+    <Button asChild variant="ghost" size="sm" className={cn("gap-1.5 -ml-2", className)}>
       <Link to={fallbackTo}>
         <ArrowLeft className="size-4" /> {fallbackLabel}
       </Link>
