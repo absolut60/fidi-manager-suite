@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Archive, ArchiveRestore, Download, Eye, File as FileIcon, FileImage, FileText, Loader2, MapPin, Truck, Euro, User, Calendar, Paperclip, Pencil, Search, Trash2, Upload, Wrench } from "lucide-react";
+import { ArrowLeft, Archive, ArchiveRestore, Download, Eye, File as FileIcon, FileImage, FileText, Loader2, MapPin, Truck, Euro, User, Calendar, CreditCard, Paperclip, Pencil, Search, Trash2, Upload, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { ChatMessaggi } from "@/components/richieste-interne/chat-messaggi";
 import { GestisciDialog, type GestisciTarget } from "@/components/richieste-interne/gestisci-dialog";
