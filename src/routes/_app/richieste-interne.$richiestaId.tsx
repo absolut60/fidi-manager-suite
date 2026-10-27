@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Archive, ArchiveRestore, Download, Eye, File as FileIcon, FileImage, FileText, Loader2, MapPin, Paperclip, Pencil, Search, Trash2, Upload, Wrench } from "lucide-react";
+import { ArrowLeft, Archive, ArchiveRestore, Download, Eye, File as FileIcon, FileImage, FileText, Loader2, MapPin, Truck, Euro, User, Calendar, Paperclip, Pencil, Search, Trash2, Upload, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { ChatMessaggi } from "@/components/richieste-interne/chat-messaggi";
 import { GestisciDialog, type GestisciTarget } from "@/components/richieste-interne/gestisci-dialog";
@@ -309,7 +309,7 @@ function DettaglioRichiesta() {
           <div className={cn("flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium", sp.fascia)}>
             <Ic className="size-4 shrink-0" aria-hidden />
             <span className="break-words">
-              {stileStatus(r.status).label}{approvata ? ` · ${stileAdmin(r.admin_status).label}` : ""}
+              {r.status === "rejected" ? (r.dir_action === "rejected" ? "Rifiutata dalla Direzione" : "Rifiutata dal Responsabile") : stileStatus(r.status).label}{approvata ? ` · ${stileAdmin(r.admin_status).label}` : ""}
             </span>
             {r.archived && <BadgeStile stile={STILE_ARCHIVIATA} className="ml-auto" />}
           </div>
@@ -317,7 +317,7 @@ function DettaglioRichiesta() {
       })()}
 
       {(ownerCanEdit || canGestisci || canManage || canDelete || ownerCanDelete) && (
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap [&_button]:min-h-10">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap [&_button]:min-h-10 [&>*:last-child:nth-child(odd)]:col-span-2">
           {ownerCanEdit && (
             <Button variant="outline" onClick={() => setEditOpen(true)}>
               <Pencil className="size-4 mr-1" />Modifica
@@ -349,18 +349,28 @@ function DettaglioRichiesta() {
       <Card>
         <CardHeader><CardTitle><TitoloCard stile={STILE_PAGINA.dettaglio}>Dati richiesta</TitoloCard></CardTitle></CardHeader>
         <CardContent className="space-y-4 text-sm">
-          <div className="flex flex-wrap items-end justify-between gap-3 rounded-lg border bg-muted/30 p-3">
-            <BadgeStile stile={stileTipo(r.type)} />
-            <div className="text-right">
-              <div className="text-xs text-muted-foreground">Importo</div>
-              <div className="font-mono text-2xl sm:text-3xl font-bold tabular-nums">{fmtEuro(r.amount)}</div>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <Row label="Fornitore">{r.fornitore || "—"}</Row>
-            <Row label="Sede">{r.sede_name || "—"}</Row>
-            <Row label="Richiedente">{r.requester_name}</Row>
-            <Row label="Creata il">{fmtDataOra(r.created_at)}</Row>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <Riquadro icona={Truck} label="Fornitore" principale>
+              <span className="break-words">{r.fornitore || "—"}</span>
+            </Riquadro>
+            <Riquadro icona={Euro} label="Importo" principale>
+              <span className="font-mono tabular-nums break-words">{fmtEuro(r.amount)}</span>
+            </Riquadro>
+            <Riquadro icona={User} label="Richiesta da">
+              <span className="break-words">{r.requester_name || "—"}</span>
+            </Riquadro>
+            <Riquadro icona={Calendar} label="Data richiesta">
+              <span>{new Date(r.created_at).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" })}</span>
+              <span className="block text-xs font-normal text-muted-foreground">
+                ore {new Date(r.created_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            </Riquadro>
+            <Riquadro icona={MapPin} label="Sede">
+              <span className="break-words">{r.sede_name || "—"}</span>
+            </Riquadro>
+            <Riquadro label="Tipo">
+              <BadgeStile stile={stileTipo(r.type)} />
+            </Riquadro>
           </div>
           {r.description && (
             <div>
@@ -656,6 +666,18 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
     <div className="flex items-baseline gap-3">
       <div className="text-xs text-muted-foreground w-24 shrink-0">{label}</div>
       <div className="flex-1 min-w-0 break-words">{children}</div>
+    </div>
+  );
+}
+
+function Riquadro({ icona: Ic, label, principale, children }: { icona?: React.ComponentType<{ className?: string }>; label: string; principale?: boolean; children: React.ReactNode }) {
+  return (
+    <div className={cn("min-w-0 rounded-lg border p-3", principale ? "border-primary/25 bg-primary/10" : "bg-muted/30")}>
+      <div className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        {Ic && <Ic className="size-3.5 shrink-0" />}
+        <span className="truncate">{label}</span>
+      </div>
+      <div className="mt-1 text-lg sm:text-xl font-bold leading-tight">{children}</div>
     </div>
   );
 }
