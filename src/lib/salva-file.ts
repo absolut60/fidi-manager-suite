@@ -1,14 +1,23 @@
 /**
  * Fonte unica per salvare un file dal browser.
- * Su telefono (incluso iPhone in PWA) usa il foglio "Condividi" → "Salva su File";
- * altrimenti download classico, ultimo fallback apertura in nuova scheda.
+ * Su telefoni/tablet (iPhone, iPad incluso iPadOS, Android; pointer coarse o
+ * user agent mobile) usa il foglio "Condividi" → "Salva su File";
+ * su PC sempre download classico, ultimo fallback apertura in nuova scheda.
  */
+function isTelefonoOTablet(): boolean {
+  const ua = navigator.userAgent || "";
+  if (/Android|iPhone|iPad|iPod|Mobile/i.test(ua)) return true;
+  // iPadOS si presenta come Mac: lo riconosce lo schermo touch
+  if (/Macintosh/i.test(ua) && (navigator.maxTouchPoints ?? 0) > 1) return true;
+  return typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches;
+}
+
 export async function salvaFile(blob: Blob, nomeFile: string): Promise<void> {
   const file = new File([blob], nomeFile, { type: blob.type || "application/octet-stream" });
   const nav = navigator as Navigator & {
     canShare?: (d: { files: File[] }) => boolean;
   };
-  if (nav.canShare?.({ files: [file] })) {
+  if (isTelefonoOTablet() && nav.canShare?.({ files: [file] })) {
     try {
       await nav.share({ files: [file], title: nomeFile });
       return;
