@@ -4,22 +4,25 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { RichiesteTable, type RichiestaRow } from "@/components/richieste-interne/richieste-table";
 import { IntestazioneRichieste } from "@/components/richieste-interne/intestazione";
-import { STILE_ADMIN, STILE_APERTE, STILE_PAGINA, type StileVoce } from "@/components/richieste-interne/stili";
+import { STILE_ADMIN, STILE_APERTE, STILE_PAGINA, TINTE, type StileVoce } from "@/components/richieste-interne/stili";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { cn } from "@/lib/utils";
 import { useRichiesteNonLette } from "@/hooks/use-richieste-non-lette";
 import { GestisciDialog, type GestisciTarget } from "@/components/richieste-interne/gestisci-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { Navigate } from "@tanstack/react-router";
+import { List } from "lucide-react";
+
+const STILE_TUTTE: StileVoce = { label: "Tutte", icona: List, ...TINTE.ardesia };
 
 export const Route = createFileRoute("/_app/richieste-interne/gestione")({
   component: GestionePage,
 });
 
 const SELECT =
-  "id,title,description,requester_name,sede_name,type,fornitore,amount,status,admin_status,admin_note,sent_to_gestionale,gestionale_ref,created_at,acconto_richiesto,acconto_importo,acconto_stato,richieste_interne_allegati(id)";
+  "id,title,description,requester_name,sede_name,type,fornitore,amount,status,admin_status,admin_note,sent_to_gestionale,gestionale_ref,created_at,archived,archived_at,acconto_richiesto,acconto_importo,acconto_stato,richieste_interne_allegati(id)";
 
-type AdminFilter = "aperte" | "da_gestire" | "in_gestione" | "conclusa";
+type AdminFilter = "tutte" | "aperte" | "da_gestire" | "in_gestione" | "conclusa";
 
 function GestionePage() {
   const { hasRole, loading, user } = useAuth();
@@ -28,7 +31,7 @@ function GestionePage() {
     filtro: "aperte" as AdminFilter,
   }, { userId: user?.id });
   // Valore salvato non più valido (es. vecchio "all") → Aperte.
-  const filter: AdminFilter = (["aperte", "da_gestire", "in_gestione", "conclusa"] as const).includes(FG.filtro) ? FG.filtro : "aperte";
+  const filter: AdminFilter = (["tutte", "aperte", "da_gestire", "in_gestione", "conclusa"] as const).includes(FG.filtro) ? FG.filtro : "aperte";
   const setFilter = (v: AdminFilter) => setCampo("filtro", v);
   const [target, setTarget] = useState<GestisciTarget | null>(null);
   const [open, setOpen] = useState(false);
@@ -43,7 +46,6 @@ function GestionePage() {
         .from("richieste_interne")
         .select(SELECT)
         .in("status", ["resp_approved", "approved"])
-        .eq("archived", false)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as RichiestaRow[];
@@ -56,16 +58,19 @@ function GestionePage() {
   const counts = useMemo(() => {
     const c = { da_gestire: 0, in_gestione: 0, conclusa: 0 };
     for (const r of data ?? []) {
+      if (r.archived) continue;
       const s = (r.admin_status ?? "da_gestire") as keyof typeof c;
       if (s in c) c[s]++;
     }
-    return { ...c, aperte: c.da_gestire + c.in_gestione };
+    return { ...c, aperte: c.da_gestire + c.in_gestione, tutte: (data ?? []).length };
   }, [data]);
 
   // Filtro esclusivo: di default solo le aperte; le concluse solo su richiesta.
   const filtered = useMemo(() => {
     if (!data) return data;
+    if (filter === "tutte") return data;
     return data.filter((r) => {
+      if (r.archived) return false;
       const s = r.admin_status ?? "da_gestire";
       return filter === "aperte" ? s !== "conclusa" : s === filter;
     });
@@ -75,6 +80,7 @@ function GestionePage() {
   if (!canSee) return <Navigate to="/richieste-interne" />;
 
   const voci: { key: AdminFilter; stile: StileVoce; value: number }[] = [
+    { key: "tutte", stile: STILE_TUTTE, value: counts.tutte },
     { key: "aperte", stile: STILE_APERTE, value: counts.aperte },
     { key: "da_gestire", stile: STILE_ADMIN.da_gestire, value: counts.da_gestire },
     { key: "in_gestione", stile: STILE_ADMIN.in_gestione, value: counts.in_gestione },
@@ -85,9 +91,9 @@ function GestionePage() {
     <div className="space-y-4">
       <IntestazioneRichieste stile={STILE_PAGINA.gestione} titolo="Gestione richieste" sottotitolo="Richieste approvate da lavorare" />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
         {voci.map((v) => (
-          <CounterCard key={v.key} stile={v.stile} value={v.value} active={filter === v.key} onClick={() => setFilter(v.key)} />
+          <CounterCard key={v.key} className={v.key === "tutte" ? "col-span-2 lg:col-span-1" : undefined} stile={v.stile} value={v.value} active={filter === v.key} onClick={() => setFilter(v.key)} />
         ))}
       </div>
 
@@ -97,6 +103,7 @@ function GestionePage() {
         defaultPeriodo={filter === "conclusa" ? "30" : "tutto"}
         emptyLabel={filter === "conclusa" ? "Nessuna richiesta conclusa nel periodo" : "Nessuna richiesta"}
         rows={filtered}
+        righeRicerca={data}
         isLoading={isLoading}
         unreadIds={unreadIds}
         onGestisci={(r) => {
@@ -126,8 +133,8 @@ function GestionePage() {
 }
 
 function CounterCard({
-  stile, value, active, onClick,
-}: { stile: StileVoce; value: number; active: boolean; onClick: () => void }) {
+  stile, value, active, onClick, className,
+}: { stile: StileVoce; value: number; active: boolean; onClick: () => void; className?: string }) {
   const Icona = stile.icona;
   return (
     <button
@@ -137,6 +144,7 @@ function CounterCard({
       className={cn(
         "flex items-center gap-2 sm:gap-3 rounded-lg border bg-card p-2.5 sm:p-4 text-left min-h-[56px] transition",
         active ? "ring-2 ring-primary border-primary" : "hover:bg-muted/50",
+        className,
       )}
     >
       <span className={cn("flex size-8 sm:size-10 shrink-0 items-center justify-center rounded-full", stile.tinta)}>

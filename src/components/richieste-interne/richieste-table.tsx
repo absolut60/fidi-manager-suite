@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Archive, ArrowDown, ArrowUp, ArrowUpDown, MessageSquare, Paperclip, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, MessageSquare, Paperclip, Search } from "lucide-react";
 import { SchedaLista, ElencoSchede, type CampoScheda } from "@/components/lista-responsive";
 import { puoGestireTesoreria } from "@/lib/tesoreria-permessi";
 import { cn } from "@/lib/utils";
@@ -43,6 +43,7 @@ export type RichiestaRow = {
   sent_to_gestionale?: boolean | null;
   gestionale_ref?: string | null;
   created_at: string;
+  archived?: boolean | null;
   archived_by_name?: string | null;
   archived_at?: string | null;
   richieste_interne_allegati?: Array<{ id: string }> | null;
