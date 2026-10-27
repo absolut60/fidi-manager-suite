@@ -282,9 +282,9 @@ export function RichiesteTable({
                   </>
                 }
               />
-              {(mostraPulsanteGestisci(r) || onRipristina) && (
+              {((onGestisci && mostraPulsanteGestisci(r)) || onRipristina) && (
                 <div className="flex items-center gap-2">
-                  {mostraPulsanteGestisci(r) && (
+                  {onGestisci && mostraPulsanteGestisci(r) && (
                     <Button size="sm" variant="outline" className="flex-1" onClick={() => onGestisci(r)}>{gestisciLabel}</Button>
                   )}
                   {onRipristina && (
