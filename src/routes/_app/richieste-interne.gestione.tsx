@@ -2,10 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { RichiesteTable, type RichiestaRow, ADMIN_LABEL } from "@/components/richieste-interne/richieste-table";
+import { RichiesteTable, type RichiestaRow } from "@/components/richieste-interne/richieste-table";
+import { STILE_ADMIN, STILE_APERTE, type StileVoce } from "@/components/richieste-interne/stili";
+import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
+import { cn } from "@/lib/utils";
 import { useRichiesteNonLette } from "@/hooks/use-richieste-non-lette";
 import { GestisciDialog, type GestisciTarget } from "@/components/richieste-interne/gestisci-dialog";
-import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 import { Navigate } from "@tanstack/react-router";
 
@@ -16,12 +18,17 @@ export const Route = createFileRoute("/_app/richieste-interne/gestione")({
 const SELECT =
   "id,title,description,requester_name,sede_name,type,fornitore,amount,status,admin_status,admin_note,sent_to_gestionale,gestionale_ref,created_at,acconto_richiesto,acconto_importo,acconto_stato,richieste_interne_allegati(id)";
 
-type AdminFilter = "all" | "da_gestire" | "in_gestione" | "conclusa";
+type AdminFilter = "aperte" | "da_gestire" | "in_gestione" | "conclusa";
 
 function GestionePage() {
-  const { hasRole, loading } = useAuth();
+  const { hasRole, loading, user } = useAuth();
   const qc = useQueryClient();
-  const [filter, setFilter] = useState<AdminFilter>("all");
+  const { filtri: FG, setCampo } = useFiltriPagina("richieste-interne:gestione:contatori", {
+    filtro: "aperte" as AdminFilter,
+  }, { userId: user?.id });
+  // Valore salvato non più valido (es. vecchio "all") → Aperte.
+  const filter: AdminFilter = (["aperte", "da_gestire", "in_gestione", "conclusa"] as const).includes(FG.filtro) ? FG.filtro : "aperte";
+  const setFilter = (v: AdminFilter) => setCampo("filtro", v);
   const [target, setTarget] = useState<GestisciTarget | null>(null);
   const [open, setOpen] = useState(false);
 
@@ -51,17 +58,27 @@ function GestionePage() {
       const s = (r.admin_status ?? "da_gestire") as keyof typeof c;
       if (s in c) c[s]++;
     }
-    return c;
+    return { ...c, aperte: c.da_gestire + c.in_gestione };
   }, [data]);
 
+  // Filtro esclusivo: di default solo le aperte; le concluse solo su richiesta.
   const filtered = useMemo(() => {
     if (!data) return data;
-    if (filter === "all") return data;
-    return data.filter((r) => (r.admin_status ?? "da_gestire") === filter);
+    return data.filter((r) => {
+      const s = r.admin_status ?? "da_gestire";
+      return filter === "aperte" ? s !== "conclusa" : s === filter;
+    });
   }, [data, filter]);
 
   if (loading) return null;
   if (!canSee) return <Navigate to="/richieste-interne" />;
+
+  const voci: { key: AdminFilter; stile: StileVoce; value: number }[] = [
+    { key: "aperte", stile: STILE_APERTE, value: counts.aperte },
+    { key: "da_gestire", stile: STILE_ADMIN.da_gestire, value: counts.da_gestire },
+    { key: "in_gestione", stile: STILE_ADMIN.in_gestione, value: counts.in_gestione },
+    { key: "conclusa", stile: { ...STILE_ADMIN.conclusa, label: "Concluse" }, value: counts.conclusa },
+  ];
 
   return (
     <div className="space-y-4">
@@ -70,38 +87,17 @@ function GestionePage() {
         <p className="text-sm text-muted-foreground">Richieste approvate da lavorare</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <CounterCard
-          label="Da gestire"
-          value={counts.da_gestire}
-          color="bg-red-50 border-red-200 text-red-700 dark:bg-red-950/40 dark:border-red-900 dark:text-red-300"
-          active={filter === "da_gestire"}
-          onClick={() => setFilter((f) => (f === "da_gestire" ? "all" : "da_gestire"))}
-        />
-        <CounterCard
-          label="In gestione"
-          value={counts.in_gestione}
-          color="bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-950/40 dark:border-amber-900 dark:text-amber-300"
-          active={filter === "in_gestione"}
-          onClick={() => setFilter((f) => (f === "in_gestione" ? "all" : "in_gestione"))}
-        />
-        <CounterCard
-          label="Concluse"
-          value={counts.conclusa}
-          color="bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-900 dark:text-emerald-300"
-          active={filter === "conclusa"}
-          onClick={() => setFilter((f) => (f === "conclusa" ? "all" : "conclusa"))}
-        />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+        {voci.map((v) => (
+          <CounterCard key={v.key} stile={v.stile} value={v.value} active={filter === v.key} onClick={() => setFilter(v.key)} />
+        ))}
       </div>
 
-      {filter !== "all" && (
-        <div className="text-xs text-muted-foreground">
-          Filtro attivo: <strong>{ADMIN_LABEL[filter]}</strong> —{" "}
-          <button className="underline" onClick={() => setFilter("all")}>rimuovi</button>
-        </div>
-      )}
-
-      <RichiesteTable chiaveFiltri="richieste-interne:gestione"
+      <RichiesteTable
+        key={filter === "conclusa" ? "concluse" : "aperte"}
+        chiaveFiltri={filter === "conclusa" ? "richieste-interne:gestione:concluse" : "richieste-interne:gestione"}
+        defaultPeriodo={filter === "conclusa" ? "30" : "tutto"}
+        emptyLabel={filter === "conclusa" ? "Nessuna richiesta conclusa nel periodo" : "Nessuna richiesta"}
         rows={filtered}
         isLoading={isLoading}
         unreadIds={unreadIds}
@@ -132,19 +128,26 @@ function GestionePage() {
 }
 
 function CounterCard({
-  label, value, color, active, onClick,
-}: { label: string; value: number; color: string; active: boolean; onClick: () => void }) {
+  stile, value, active, onClick,
+}: { stile: StileVoce; value: number; active: boolean; onClick: () => void }) {
+  const Icona = stile.icona;
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`text-left rounded-lg border-2 transition ${color} ${active ? "ring-2 ring-offset-2 ring-current" : "opacity-90 hover:opacity-100"}`}
+      aria-pressed={active}
+      className={cn(
+        "flex items-center gap-2 sm:gap-3 rounded-lg border bg-card p-2.5 sm:p-4 text-left min-h-[56px] transition",
+        active ? "ring-2 ring-primary border-primary" : "hover:bg-muted/50",
+      )}
     >
-      <Card className="border-0 bg-transparent shadow-none">
-        <CardContent className="p-4">
-          <div className="text-sm font-medium">{label}</div>
-          <div className="text-3xl font-bold mt-1">{value}</div>
-        </CardContent>
-      </Card>
+      <span className={cn("flex size-8 sm:size-10 shrink-0 items-center justify-center rounded-full", stile.tinta)}>
+        <Icona className="size-4 sm:size-5" aria-hidden />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-xs sm:text-sm font-medium text-muted-foreground break-words">{stile.label}</span>
+        <span className="block text-xl sm:text-3xl font-bold tabular-nums leading-tight">{value}</span>
+      </span>
     </button>
   );
 }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { useNavigate } from "@tanstack/react-router";
@@ -10,27 +10,23 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ArrowDown, ArrowUp, ArrowUpDown, MessageSquare, Paperclip, Search } from "lucide-react";
 import { SchedaLista, ElencoSchede, type CampoScheda } from "@/components/lista-responsive";
 import { puoGestireTesoreria } from "@/lib/tesoreria-permessi";
+import { cn } from "@/lib/utils";
+import {
+  STILE_ACCONTO, stileAdmin, stilePrincipale, stileStatus, stileTipo, type StileVoce,
+} from "./stili";
 
+// Re-export per compatibilità: la fonte unica è ./stili.
+export { STATUS_LABEL, ADMIN_LABEL, TIPO_LABEL } from "./stili";
 
-export const STATUS_LABEL: Record<string, string> = {
-  pending: "⏳ Att. Resp. Gen.",
-  resp_approved: "✓ Approvata (Liv.1)",
-  forwarded: "→ Att. Direzione",
-  approved: "✓ Approvata",
-  rejected: "✕ Rifiutata",
-};
-
-export const ADMIN_LABEL: Record<string, string> = {
-  da_gestire: "🔴 Da gestire",
-  in_gestione: "🟡 In gestione",
-  conclusa: "🟢 Conclusa",
-};
-
-export const TIPO_LABEL: Record<string, string> = {
-  preventivo: "Approvazione preventivo",
-  attivita: "Richiesta attività",
-  acquisto: "Acquisto materiali/servizi",
-};
+export function BadgeStile({ stile, testo, className }: { stile: StileVoce; testo?: React.ReactNode; className?: string }) {
+  const Icona = stile.icona;
+  return (
+    <Badge variant="outline" className={cn("w-fit gap-1 font-medium", stile.badge, className)}>
+      <Icona className="size-3 shrink-0" aria-hidden />
+      <span className="break-words">{testo ?? stile.label}</span>
+    </Badge>
+  );
+}
 
 export type RichiestaRow = {
   id: string;
@@ -64,9 +60,10 @@ function BadgeAcconto({ r }: { r: RichiestaRow }) {
   if (!r.acconto_richiesto) return null;
   const eseguito = r.acconto_stato === "eseguito";
   return (
-    <Badge variant="outline" className={`w-fit ${eseguito ? "bg-success/15 text-success border-success/30" : ""}`}>
-      {eseguito ? "✓ " : ""}Acconto {fmtEuro(r.acconto_importo ?? null)}
-    </Badge>
+    <BadgeStile
+      stile={eseguito ? STILE_ACCONTO.eseguito : STILE_ACCONTO.da_eseguire}
+      testo={`${eseguito ? "✓ " : ""}Acconto ${fmtEuro(r.acconto_importo ?? null)}`}
+    />
   );
 }
 
@@ -82,7 +79,7 @@ type SortKey =
   | "created_at"
   | "archived_at";
 
-type Periodo = "tutto" | "30" | "90";
+export type Periodo = "tutto" | "7" | "30" | "90";
 
 const fmtEuro = (v: number | null) =>
   v == null ? "—" : new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(v);
@@ -101,6 +98,8 @@ export function RichiesteTable({
   gestisciLabel = "Gestisci",
   chiaveFiltri,
   filtroBonificiDefault = false,
+  defaultPeriodo = "tutto",
+  nascondiRichiedente = false,
 }: {
   rows: RichiestaRow[] | undefined;
   isLoading: boolean;
@@ -116,6 +115,10 @@ export function RichiesteTable({
   chiaveFiltri: string;
   /** Apre la vista già filtrata su "Bonifici da eseguire" (es. utenti solo tesoreria). */
   filtroBonificiDefault?: boolean;
+  /** Periodo iniziale se l'utente non ha ancora una scelta salvata. */
+  defaultPeriodo?: Periodo;
+  /** Nasconde la colonna/campo Richiedente (es. "Le mie richieste"). */
+  nascondiRichiedente?: boolean;
 }) {
   const navigate = useNavigate();
   const openDetail = (id: string) => navigate({ to: "/richieste-interne/$richiestaId", params: { richiestaId: id } });
@@ -123,7 +126,7 @@ export function RichiesteTable({
   const { user, roles } = useAuth();
   const isTesoreria = puoGestireTesoreria(roles);
   const { filtri: FR, setCampo } = useFiltriPagina(chiaveFiltri, {
-    q: "", periodo: "tutto" as Periodo, sortKey: defaultSortKey as SortKey, sortDir: "desc" as "asc" | "desc",
+    q: "", periodo: defaultPeriodo as Periodo, sortKey: defaultSortKey as SortKey, sortDir: "desc" as "asc" | "desc",
     soloBonifici: filtroBonificiDefault,
   }, { userId: user?.id });
   const { q, periodo, sortKey, sortDir, soloBonifici } = FR;
@@ -170,17 +173,18 @@ export function RichiesteTable({
     });
   }, [rows, q, periodo, sortKey, sortDir, soloBonifici]);
 
-  const colSpan = 10 + (showArchivedColumns ? 2 : 0);
+  const colSpan = 11 + (showArchivedColumns ? 2 : 0) - (nascondiRichiedente ? 1 : 0);
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         <Select value={periodo} onValueChange={(v) => setPeriodo(v as Periodo)}>
-          <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="h-10 w-full sm:w-48"><SelectValue /></SelectTrigger>
           <SelectContent>
+            <SelectItem value="7">Ultima settimana</SelectItem>
+            <SelectItem value="30">Ultimo mese</SelectItem>
+            <SelectItem value="90">Ultimi 3 mesi</SelectItem>
             <SelectItem value="tutto">Tutto</SelectItem>
-            <SelectItem value="30">Ultimi 30 giorni</SelectItem>
-            <SelectItem value="90">Ultimi 90 giorni</SelectItem>
           </SelectContent>
         </Select>
         <Button
@@ -220,7 +224,7 @@ export function RichiesteTable({
             r.admin_status &&
             r.admin_status !== "da_gestire";
           const campi: CampoScheda[] = [
-            { etichetta: "Richiedente", valore: r.requester_name },
+            ...(nascondiRichiedente ? [] : [{ etichetta: "Richiedente", valore: r.requester_name }]),
             { etichetta: "Sede", valore: r.sede_name || "—" },
             { etichetta: "Importo", valore: <span className="font-mono">{fmtEuro(r.amount)}</span> },
             { etichetta: "Data", valore: fmtData(r.created_at) },
@@ -232,6 +236,7 @@ export function RichiesteTable({
           return (
             <div key={r.id} className="space-y-1.5">
               <SchedaLista
+                className={cn("border-l-4", stilePrincipale(r).bordo)}
                 onClick={() => openDetail(r.id)}
                 titolo={
                   <span className={`inline-flex items-start gap-1.5 ${unreadIds?.has(r.id) ? "font-bold text-primary" : ""}`}>
@@ -249,9 +254,9 @@ export function RichiesteTable({
                 campi={campi}
                 footer={
                   <>
-                    <Badge variant="secondary">{TIPO_LABEL[r.type] ?? r.type}</Badge>
-                    <Badge variant="outline">{STATUS_LABEL[r.status] ?? r.status}</Badge>
-                    {showAdmin && <Badge variant="outline">{ADMIN_LABEL[r.admin_status!] ?? r.admin_status}</Badge>}
+                    <BadgeStile stile={stileTipo(r.type)} />
+                    <BadgeStile stile={stileStatus(r.status)} />
+                    {showAdmin && <BadgeStile stile={stileAdmin(r.admin_status)} />}
                     <BadgeAcconto r={r} />
                   </>
                 }
@@ -276,8 +281,9 @@ export function RichiesteTable({
         <Table className="min-w-[1000px]">
           <TableHeader>
             <TableRow>
+              <TableHead className="w-1 p-0" aria-hidden />
               <SortHead active={sortKey === "title"} dir={sortDir} onClick={() => toggleSort("title")}>Richiesta</SortHead>
-              <SortHead active={sortKey === "requester"} dir={sortDir} onClick={() => toggleSort("requester")}>Richiedente</SortHead>
+              {!nascondiRichiedente && <SortHead active={sortKey === "requester"} dir={sortDir} onClick={() => toggleSort("requester")}>Richiedente</SortHead>}
               <SortHead active={sortKey === "sede"} dir={sortDir} onClick={() => toggleSort("sede")}>Sede</SortHead>
               <SortHead active={sortKey === "type"} dir={sortDir} onClick={() => toggleSort("type")}>Tipo</SortHead>
               <SortHead active={sortKey === "fornitore"} dir={sortDir} onClick={() => toggleSort("fornitore")}>Fornitore</SortHead>
@@ -310,6 +316,7 @@ export function RichiesteTable({
                 r.admin_status !== "da_gestire";
               return (
                 <TableRow key={r.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openDetail(r.id)}>
+                  <TableCell className={cn("w-1 p-0 border-l-4", stilePrincipale(r).bordo)} aria-hidden />
                   <TableCell>
                     <div className={`flex items-center gap-1.5 ${unreadIds?.has(r.id) ? "font-bold text-primary" : "font-semibold"}`}>
                       {unreadIds?.has(r.id) && <MessageSquare className="size-3.5 text-primary shrink-0" aria-label="Messaggi non letti" />}
@@ -321,16 +328,16 @@ export function RichiesteTable({
                       </div>
                     )}
                   </TableCell>
-                  <TableCell>{r.requester_name}</TableCell>
+                  {!nascondiRichiedente && <TableCell>{r.requester_name}</TableCell>}
                   <TableCell>{r.sede_name || "—"}</TableCell>
-                  <TableCell><Badge variant="secondary">{TIPO_LABEL[r.type] ?? r.type}</Badge></TableCell>
+                  <TableCell><BadgeStile stile={stileTipo(r.type)} /></TableCell>
                   <TableCell>{r.fornitore || "—"}</TableCell>
                   <TableCell className="text-right font-mono">{fmtEuro(r.amount)}</TableCell>
                   <TableCell>{nAll > 0 ? <span className="inline-flex items-center gap-1"><Paperclip className="size-3" />{nAll}</span> : "—"}</TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1">
-                      <Badge variant="outline" className="w-fit">{STATUS_LABEL[r.status] ?? r.status}</Badge>
-                      {showAdmin && <Badge variant="outline" className="w-fit">{ADMIN_LABEL[r.admin_status!] ?? r.admin_status}</Badge>}
+                      <BadgeStile stile={stileStatus(r.status)} />
+                      {showAdmin && <BadgeStile stile={stileAdmin(r.admin_status)} />}
                       <BadgeAcconto r={r} />
                     </div>
                   </TableCell>

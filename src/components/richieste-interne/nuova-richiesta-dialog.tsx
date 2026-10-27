@@ -384,7 +384,7 @@ export function NuovaRichiestaDialog({
                 <SelectContent>
                   <SelectItem value="_none">— Nessuna —</SelectItem>
                   {(sedi ?? []).map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.nome}{s.codice ? ` (${s.codice})` : ""}</SelectItem>
+                    <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

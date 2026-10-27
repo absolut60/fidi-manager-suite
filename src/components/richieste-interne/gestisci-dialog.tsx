@@ -104,7 +104,7 @@ export function GestisciDialog({
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Stato attuale:</span>
             <Badge variant="outline">
-              {ADMIN_LABEL[target?.admin_status ?? "da_gestire"] ?? "🔴 Da gestire"}
+              {ADMIN_LABEL[target?.admin_status ?? "da_gestire"] ?? "Da gestire"}
             </Badge>
           </div>
 
