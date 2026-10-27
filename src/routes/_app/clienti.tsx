@@ -2343,6 +2343,7 @@ function ProposteFidoMassivoDialog({
   const [filtroFidoZero, setFiltroFidoZero] = useState<Tri>(FILTRI_DEFAULT.fidoZero);
   const [filtroInCorso, setFiltroInCorso] = useState<Tri>(FILTRI_DEFAULT.inCorso);
   const [submitting, setSubmitting] = useState(false);
+  const [avanzamentoCrea, setAvanzamentoCrea] = useState<{ fatte: number; totali: number } | null>(null);
 
   // Fido proposto = SEMPRE la RPC canonica get_fido_teorico (nessun calcolo locale)
   const ids = useMemo(() => selectedRows.map((c) => c.id as string), [selectedRows]);
@@ -2914,7 +2915,7 @@ function ProposteFidoMassivoDialog({
             </div>
             <Button variant="outline" className="w-full sm:w-auto" onClick={() => onOpenChange(false)} disabled={submitting}>Annulla</Button>
             <Button className="w-full sm:w-auto" onClick={creaRichieste} disabled={submitting || righeVisibiliIncluse.length === 0}>
-              {submitting ? "Creazione…" : `Crea ${righeVisibiliIncluse.length} richieste`}
+              {submitting ? (avanzamentoCrea ? `Creazione: ${avanzamentoCrea.fatte.toLocaleString("it-IT")} di ${avanzamentoCrea.totali.toLocaleString("it-IT")}…` : "Creazione…") : `Crea ${righeVisibiliIncluse.length} richieste`}
             </Button>
           </DialogFooter>
         </div>
