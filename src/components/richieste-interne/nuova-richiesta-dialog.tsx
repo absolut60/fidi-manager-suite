@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,17 +12,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Plus, Paperclip, X, ChevronsUpDown } from "lucide-react";
+import { Plus, Paperclip, X, ChevronsUpDown, Check, Truck, Euro, Banknote, Calendar, AlertTriangle, CheckCircle2, Bell, Receipt } from "lucide-react";
+import { STILE_TIPO, STILE_ACCONTO, STILE_ALLEGATI } from "@/components/richieste-interne/stili";
 import { notifyRichiestaEvento } from "@/lib/richieste-email.functions";
 import { RICHIESTE_ALLEGATI_BUCKET as BUCKET, sanitizeFileName } from "@/components/richieste-interne/utils";
 
 
 type Tipo = "preventivo" | "attivita" | "acquisto";
 
-const TIPI: Array<{ value: Tipo; label: string }> = [
-  { value: "preventivo", label: "Approvazione preventivo" },
-  { value: "attivita", label: "Richiesta attività" },
-  { value: "acquisto", label: "Acquisto materiali/servizi" },
+const TIPI: Array<{ value: Tipo; breve: string }> = [
+  { value: "preventivo", breve: "Preventivo" },
+  { value: "attivita", breve: "Attività" },
+  { value: "acquisto", breve: "Acquisto" },
 ];
 function fmtSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -295,6 +296,30 @@ export function NuovaRichiestaDialog({
     }
   }
 
+  const stileT = STILE_TIPO[tipo] ?? STILE_TIPO.acquisto;
+  const IconaTipo = stileT.icona;
+  const stileAcc = STILE_ACCONTO.da_eseguire;
+  const stileAvviso = STILE_ACCONTO.in_ritardo;
+  const importoNum = parseImporto(importo);
+  const accontoNum = parseImporto(accontoImporto);
+  const accontoSupera = acconto && importoNum != null && accontoNum != null && accontoNum > importoNum;
+  const fmtIt = (n: number) => n.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  function onTipoKey(e: React.KeyboardEvent, idx: number) {
+    let next = -1;
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") next = (idx + 1) % TIPI.length;
+    if (e.key === "ArrowLeft" || e.key === "ArrowUp") next = (idx - 1 + TIPI.length) % TIPI.length;
+    if (next < 0) return;
+    e.preventDefault();
+    setTipo(TIPI[next].value);
+    const el = document.getElementById(`rq-tipo-${TIPI[next].value}`);
+    el?.focus();
+  }
+
+  const Sezione = ({ children }: { children: React.ReactNode }) => (
+    <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{children}</h3>
+  );
+
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v && !isEdit) reset(); }}>
       {!isEdit && (
@@ -304,83 +329,116 @@ export function NuovaRichiestaDialog({
           )}
         </DialogTrigger>
       )}
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:w-screen max-sm:max-w-none max-sm:rounded-none">
-        <DialogHeader><DialogTitle>{isEdit ? "Modifica richiesta" : "Nuova richiesta interna"}</DialogTitle></DialogHeader>
-
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="rq-title">Titolo <span className="text-destructive">*</span></Label>
-            <Input id="rq-title" value={title} onChange={(e) => setTitle(e.target.value)}
-              placeholder="es. Acquisto laptop per sviluppo backend" maxLength={200} />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>Tipo</Label>
-              <Select value={tipo} onValueChange={(v) => setTipo(v as Tipo)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {TIPI.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="rq-importo">Importo (€)</Label>
-              <Input id="rq-importo" inputMode="decimal" value={importo}
-                onChange={(e) => setImporto(e.target.value)} placeholder="0,00" />
+      <DialogContent className={`max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden p-0 gap-0 border-t-4 ${stileT.bordoAlto} max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:w-screen max-sm:max-w-none max-sm:rounded-none flex flex-col`}>
+        <DialogHeader className="px-4 sm:px-6 pt-5 pb-3 text-left">
+          <div className="flex items-start gap-3 pr-8">
+            <span className={`inline-flex size-10 shrink-0 items-center justify-center rounded-full ${stileT.tinta}`}>
+              <IconaTipo className="size-5" />
+            </span>
+            <div className="min-w-0">
+              <DialogTitle className="break-words">{isEdit ? "Modifica richiesta" : "Nuova richiesta interna"}</DialogTitle>
+              <DialogDescription className="mt-1">
+                Compila i dati: verrà inviata al Responsabile per l'approvazione
+              </DialogDescription>
             </div>
           </div>
+        </DialogHeader>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>Fornitore</Label>
-              <Popover open={fornitoreOpen} onOpenChange={setFornitoreOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
-                    <span className={fornitore ? "" : "text-muted-foreground"}>
-                      {fornitore || "Scrivi il nome del fornitore..."}
+        <div className="flex-1 space-y-6 px-4 sm:px-6 pb-4 min-w-0">
+          <div className="space-y-2">
+            <Label id="rq-tipo-label">Tipo</Label>
+            <div role="radiogroup" aria-labelledby="rq-tipo-label" className="grid grid-cols-3 gap-2">
+              {TIPI.map((t, idx) => {
+                const st = STILE_TIPO[t.value];
+                const Ic = st.icona;
+                const sel = tipo === t.value;
+                return (
+                  <button key={t.value} id={`rq-tipo-${t.value}`} type="button" role="radio"
+                    aria-checked={sel} aria-label={st.label} tabIndex={sel ? 0 : -1}
+                    onClick={() => setTipo(t.value)} onKeyDown={(e) => onTipoKey(e, idx)}
+                    className={`relative flex min-h-[72px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-lg border-2 p-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${sel ? st.fascia : "border-border bg-background hover:bg-muted/50"}`}>
+                    {sel && <Check className="absolute right-1.5 top-1.5 size-4" aria-hidden />}
+                    <span className={`inline-flex size-8 items-center justify-center rounded-full ${st.tinta}`}>
+                      <Ic className="size-4" />
                     </span>
-                    <ChevronsUpDown className="size-4 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
-                  <Command shouldFilter={false}>
-                    <CommandInput placeholder="Cerca o scrivi un nuovo fornitore..."
-                      value={fornitore} onValueChange={setFornitore} />
-                    <CommandList>
-                      <CommandEmpty>
-                        {fornitore.trim() ? (
-                          <button className="w-full text-left px-3 py-2 text-sm hover:bg-accent"
-                            onClick={() => setFornitoreOpen(false)}>
-                            Usa "<strong>{fornitore.trim()}</strong>" (nuovo)
-                          </button>
-                        ) : "Nessun fornitore"}
-                      </CommandEmpty>
-                      <CommandGroup>
-                        {fornitoriFiltered.slice(0, 50).map((f) => (
-                          <CommandItem key={f.id} value={f.nome}
-                            onSelect={() => { setFornitore(f.nome); setFornitoreOpen(false); }}>
-                            {f.nome}
-                          </CommandItem>
-                        ))}
-                        {fornitore.trim() && !fornitoreExactMatch && (
-                          <CommandItem value={`__new__${fornitore}`}
-                            onSelect={() => setFornitoreOpen(false)}>
-                            Usa "<strong className="mx-1">{fornitore.trim()}</strong>" (nuovo)
-                          </CommandItem>
-                        )}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+                    <span className="text-xs sm:text-sm font-medium leading-tight break-words">{t.breve}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground">{stileT.label}</p>
+          </div>
+
+          <section className="space-y-3">
+            <Sezione>Cosa e da chi</Sezione>
+            <div className="space-y-1.5">
+              <Label htmlFor="rq-title">Titolo <span className="text-destructive">*</span></Label>
+              <Input id="rq-title" value={title} onChange={(e) => setTitle(e.target.value)}
+                placeholder="es. Acquisto laptop per sviluppo backend" maxLength={200} className="h-10" />
             </div>
 
+            <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-lg border p-3 ${stileT.fascia}`}>
+              <div className="space-y-1.5 min-w-0">
+                <Label className="inline-flex items-center gap-1.5"><Truck className="size-4" />Fornitore</Label>
+                <Popover open={fornitoreOpen} onOpenChange={setFornitoreOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" className="h-12 w-full justify-between font-normal text-base sm:text-lg bg-background text-foreground">
+                      <span className={`min-w-0 truncate ${fornitore ? "" : "text-muted-foreground text-sm sm:text-base"}`}>
+                        {fornitore || "Scrivi il nome del fornitore..."}
+                      </span>
+                      <ChevronsUpDown className="size-4 opacity-50 shrink-0" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
+                    <Command shouldFilter={false}>
+                      <CommandInput placeholder="Cerca o scrivi un nuovo fornitore..."
+                        value={fornitore} onValueChange={setFornitore} />
+                      <CommandList>
+                        <CommandEmpty>
+                          {fornitore.trim() ? (
+                            <button className="w-full text-left px-3 py-2 text-sm hover:bg-accent"
+                              onClick={() => setFornitoreOpen(false)}>
+                              Usa "<strong>{fornitore.trim()}</strong>" (nuovo)
+                            </button>
+                          ) : "Nessun fornitore"}
+                        </CommandEmpty>
+                        <CommandGroup>
+                          {fornitoriFiltered.slice(0, 50).map((f) => (
+                            <CommandItem key={f.id} value={f.nome}
+                              onSelect={() => { setFornitore(f.nome); setFornitoreOpen(false); }}>
+                              {f.nome}
+                            </CommandItem>
+                          ))}
+                          {fornitore.trim() && !fornitoreExactMatch && (
+                            <CommandItem value={`__new__${fornitore}`}
+                              onSelect={() => setFornitoreOpen(false)}>
+                              Usa "<strong className="mx-1">{fornitore.trim()}</strong>" (nuovo)
+                            </CommandItem>
+                          )}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="space-y-1.5 min-w-0">
+                <Label htmlFor="rq-importo" className="inline-flex items-center gap-1.5"><Euro className="size-4" />Importo (€)</Label>
+                <Input id="rq-importo" inputMode="decimal" value={importo}
+                  className="h-12 text-lg text-right bg-background text-foreground"
+                  onChange={(e) => setImporto(e.target.value)}
+                  onBlur={() => { const n = parseImporto(importo); if (n != null) setImporto(fmtIt(n)); }}
+                  placeholder="0,00" />
+              </div>
+            </div>
+          </section>
+
+          <section className="space-y-3">
+            <Sezione>Dove</Sezione>
             <div className="space-y-1.5">
               <Label>Sede</Label>
               <Select value={sedeId || "_none"} onValueChange={(v) => setSedeId(v === "_none" ? "" : v)}>
-                <SelectTrigger><SelectValue placeholder="Seleziona sede" /></SelectTrigger>
+                <SelectTrigger className="h-10"><SelectValue placeholder="Seleziona sede" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="_none">— Nessuna —</SelectItem>
                   {(sedi ?? []).map((s) => (
@@ -389,70 +447,104 @@ export function NuovaRichiestaDialog({
                 </SelectContent>
               </Select>
             </div>
-          </div>
+          </section>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="rq-desc">Descrizione</Label>
-            <Textarea id="rq-desc" value={descrizione}
-              onChange={(e) => setDescrizione(e.target.value)}
-              placeholder="Descrizione..." rows={4} maxLength={5000} />
-          </div>
+          <section className="space-y-3">
+            <Sezione>Dettagli</Sezione>
+            <div className="space-y-1.5">
+              <Label htmlFor="rq-desc">Descrizione</Label>
+              <Textarea id="rq-desc" value={descrizione}
+                onChange={(e) => setDescrizione(e.target.value)}
+                placeholder="Descrivi cosa serve e perché…" rows={4} maxLength={5000} />
+            </div>
+          </section>
 
-          <div className="space-y-3 rounded-md border p-3">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <Label htmlFor="rq-acconto" className="cursor-pointer">Richiesta bonifico di acconto</Label>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Alla approvazione la tesoreria riceverà un avviso per eseguire il bonifico.
-                </p>
-              </div>
+          <div className={`space-y-3 rounded-lg border p-3 ${acconto ? `border-l-4 ${stileAcc.bordo} ${stileAcc.fascia}` : ""}`}>
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="rq-acconto" className="cursor-pointer inline-flex items-center gap-2 min-w-0">
+                <span className={`inline-flex size-8 shrink-0 items-center justify-center rounded-full ${stileAcc.tinta}`}>
+                  <Banknote className="size-4" />
+                </span>
+                <span className="break-words">Richiesta bonifico di acconto</span>
+              </Label>
               <Switch id="rq-acconto" checked={acconto} onCheckedChange={setAcconto} className="shrink-0" />
             </div>
             {acconto && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="rq-acc-imp">Importo acconto (€) <span className="text-destructive">*</span></Label>
-                  <Input id="rq-acc-imp" inputMode="decimal" value={accontoImporto} className="h-10"
-                    onChange={(e) => setAccontoImporto(e.target.value)}
-                    onBlur={() => {
-                      const n = parseImporto(accontoImporto);
-                      if (n != null && n > 0) setAccontoImporto(n.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-                    }}
-                    placeholder="0,00" />
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5 min-w-0">
+                    <Label htmlFor="rq-acc-imp" className="inline-flex items-center gap-1.5"><Banknote className="size-4" />Importo acconto (€) <span className="text-destructive">*</span></Label>
+                    <Input id="rq-acc-imp" inputMode="decimal" value={accontoImporto} className="h-10 text-right bg-background text-foreground"
+                      onChange={(e) => setAccontoImporto(e.target.value)}
+                      onBlur={() => {
+                        const n = parseImporto(accontoImporto);
+                        if (n != null && n > 0) setAccontoImporto(fmtIt(n));
+                      }}
+                      placeholder="0,00" />
+                  </div>
+                  <div className="space-y-1.5 min-w-0">
+                    <Label htmlFor="rq-acc-data" className="inline-flex items-center gap-1.5"><Calendar className="size-4" />Data prevista del bonifico</Label>
+                    <Input id="rq-acc-data" type="date" min={oggiIso()} value={accontoData} className="h-10 bg-background text-foreground"
+                      onChange={(e) => setAccontoData(e.target.value)} />
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="rq-acc-data">Data prevista del bonifico</Label>
-                  <Input id="rq-acc-data" type="date" min={oggiIso()} value={accontoData} className="h-10"
-                    onChange={(e) => setAccontoData(e.target.value)} />
+
+                {accontoSupera && (
+                  <div role="status" className={`flex items-start gap-2 rounded-md border p-2 text-sm ${stileAvviso.fascia}`}>
+                    <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+                    <span className="min-w-0 break-words">L'acconto è maggiore dell'importo della richiesta: verifica</span>
+                  </div>
+                )}
+
+                <div className="rounded-md border bg-background p-3 text-foreground">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Cosa succede</p>
+                  <ol className="space-y-2.5 text-sm">
+                    {[
+                      { Ic: CheckCircle2, t: "La richiesta viene approvata dal Responsabile (o dalla Direzione, se inoltrata)." },
+                      { Ic: Bell, t: "La tesoreria riceve un'email e una notifica per eseguire il bonifico. Se il bonifico non è ancora fatto, alla data prevista riceve un promemoria." },
+                      { Ic: Receipt, t: "Quando il bonifico è eseguito ricevi un'email e una notifica \"Bonifico di acconto eseguito\", con la ricevuta CRO nella richiesta." },
+                    ].map(({ Ic, t }, i) => (
+                      <li key={i} className="flex items-start gap-2.5">
+                        <span className={`inline-flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${stileAcc.tinta}`}>{i + 1}</span>
+                        <Ic className="size-4 shrink-0 mt-0.5 text-muted-foreground" aria-hidden />
+                        <span className="min-w-0 break-words">{t}</span>
+                      </li>
+                    ))}
+                  </ol>
                 </div>
-              </div>
+              </>
             )}
           </div>
 
           {!isEdit && (
-            <div className="space-y-1.5">
-              <Label>Allegati</Label>
-              <div className="flex items-center gap-2">
-                <Input id="rq-files" type="file" multiple
+            <div className="space-y-2">
+              <Label htmlFor="rq-files">Allegati</Label>
+              <label htmlFor="rq-files"
+                className="flex min-h-[72px] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed p-4 text-center text-sm text-muted-foreground hover:bg-muted/50 focus-within:ring-2 focus-within:ring-ring">
+                <Paperclip className="size-5" />
+                <span className="break-words">Aggiungi allegati (preventivi, offerte, foto)</span>
+                <input id="rq-files" type="file" multiple className="sr-only"
                   onChange={(e) => {
                     const list = Array.from(e.target.files ?? []);
                     setFiles((prev) => [...prev, ...list]);
                     e.currentTarget.value = "";
                   }} />
-              </div>
+              </label>
               {files.length > 0 && (
-                <ul className="space-y-1 mt-2">
+                <ul className="space-y-2">
                   {files.map((f, i) => (
-                    <li key={i} className="flex items-center justify-between text-sm border rounded px-2 py-1">
-                      <span className="inline-flex items-center gap-2 truncate">
-                        <Paperclip className="size-3 shrink-0" />
-                        <span className="truncate">{f.name}</span>
-                        <span className="text-muted-foreground shrink-0">({fmtSize(f.size)})</span>
+                    <li key={i} className="flex items-center gap-2 rounded-md border p-2 text-sm">
+                      <span className={`inline-flex size-8 shrink-0 items-center justify-center rounded-full ${STILE_ALLEGATI.tinta}`}>
+                        <Paperclip className="size-4" />
                       </span>
-                      <button type="button" onClick={() => setFiles((prev) => prev.filter((_, k) => k !== i))}
-                        className="text-muted-foreground hover:text-destructive" aria-label="Rimuovi">
+                      <span className="min-w-0 flex-1">
+                        <span className="block break-all line-clamp-2">{f.name}</span>
+                        <span className="block text-xs text-muted-foreground">{fmtSize(f.size)}</span>
+                      </span>
+                      <Button type="button" variant="ghost" size="icon" className="size-10 shrink-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => setFiles((prev) => prev.filter((_, k) => k !== i))} aria-label={`Rimuovi ${f.name}`}>
                         <X className="size-4" />
-                      </button>
+                      </Button>
                     </li>
                   ))}
                 </ul>
@@ -466,9 +558,9 @@ export function NuovaRichiestaDialog({
           )}
         </div>
 
-        <DialogFooter className="gap-2">
-          <Button variant="outline" className="h-10" onClick={() => setOpen(false)} disabled={saving}>Annulla</Button>
-          <Button className="h-10" onClick={onSubmit} disabled={saving || !title.trim() || (acconto && !(parseImporto(accontoImporto) ?? 0))}>
+        <DialogFooter className="sticky bottom-0 z-10 mt-auto flex-col-reverse gap-2 border-t bg-background px-4 sm:px-6 py-3 sm:flex-row sm:space-x-0">
+          <Button variant="outline" className="h-10 w-full sm:w-auto" onClick={() => setOpen(false)} disabled={saving}>Annulla</Button>
+          <Button className="h-10 w-full sm:w-auto" onClick={onSubmit} disabled={saving || !title.trim() || (acconto && !(parseImporto(accontoImporto) ?? 0))}>
             {saving ? "Salvataggio…" : isEdit ? "Salva modifiche" : "Crea richiesta"}
           </Button>
         </DialogFooter>
