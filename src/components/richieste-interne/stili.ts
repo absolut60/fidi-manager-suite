@@ -2,7 +2,7 @@
 // Solo presentazione: nessuna regola di permesso o di business vive qui.
 import {
   Banknote, CheckCircle2, ClipboardList, Hourglass, Inbox, ShoppingCart, Wrench, XCircle, FileText,
-  Archive, Circle, FilePlus2, LayoutDashboard, ListChecks, Send,
+  Archive, Circle, FilePlus2, LayoutDashboard, ListChecks, Send, Paperclip, ClipboardCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -151,6 +151,9 @@ export const STILE_DECISIONE = {
 export const STILE_CREATA: StileVoce = { label: "Creata", icona: FilePlus2, ...BLU };
 export const STILE_IN_ATTESA: StileVoce = { label: "In attesa", icona: Circle, ...NEUTRO };
 export const STILE_ARCHIVIATA: StileVoce = { label: "Archiviata", icona: Archive, ...ARDESIA };
+
+export const STILE_ALLEGATI: StileVoce = { label: "Allegati", icona: Paperclip, ...ARDESIA };
+export const STILE_AZIONI: StileVoce = { label: "Azioni", icona: ClipboardCheck, ...BLU };
 
 export const STILE_NEUTRO: StileVoce = { label: "—", icona: FileText, ...NEUTRO };
 

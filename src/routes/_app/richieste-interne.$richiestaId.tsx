@@ -10,21 +10,20 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { ClipboardCheck, ArrowLeft, Archive, ArchiveRestore, Download, Eye, File as FileIcon, FileImage, FileText, Loader2, MapPin, Paperclip, Pencil, Search, Trash2, Upload, Wrench } from "lucide-react";
+import { ArrowLeft, Archive, ArchiveRestore, Download, Eye, File as FileIcon, FileImage, FileText, Loader2, MapPin, Paperclip, Pencil, Search, Trash2, Upload, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { ChatMessaggi } from "@/components/richieste-interne/chat-messaggi";
 import { GestisciDialog, type GestisciTarget } from "@/components/richieste-interne/gestisci-dialog";
 import { NuovaRichiestaDialog } from "@/components/richieste-interne/nuova-richiesta-dialog";
 import {
-  STILE_ACCONTO, STILE_ARCHIVIATA, STILE_CREATA, STILE_DECISIONE, STILE_IN_ATTESA, STILE_PAGINA, TINTE,
+  STILE_ACCONTO, STILE_ARCHIVIATA, STILE_CREATA, STILE_DECISIONE, STILE_IN_ATTESA, STILE_PAGINA, STILE_ALLEGATI, STILE_AZIONI,
   stileAdmin, stilePrincipale, stileStatus, stileTipo, type StileVoce,
 } from "@/components/richieste-interne/stili";
 import { IntestazioneRichieste, TitoloCard } from "@/components/richieste-interne/intestazione";
 import { BadgeStile } from "@/components/richieste-interne/richieste-table";
 import { cn } from "@/lib/utils";
 
-const STILE_ALLEGATI: StileVoce = { label: "Allegati", icona: Paperclip, ...TINTE.ardesia };
-const STILE_APERTE_AZIONI: StileVoce = { label: "Azioni", icona: ClipboardCheck, ...TINTE.blu };
+
 import { notifyRichiestaEvento } from "@/lib/richieste-email.functions";
 import { sanitizeFileName } from "@/components/richieste-interne/utils";
 import { BonificoAccontoCard } from "@/components/richieste-interne/bonifico-acconto-card";
@@ -480,7 +479,7 @@ function DettaglioRichiesta() {
 
       {(canLiv1 || canLiv2) && (
         <Card className="border-2 border-primary/30">
-          <CardHeader><CardTitle><TitoloCard stile={STILE_APERTE_AZIONI}>Azioni</TitoloCard></CardTitle></CardHeader>
+          <CardHeader><CardTitle><TitoloCard stile={STILE_AZIONI}>Azioni</TitoloCard></CardTitle></CardHeader>
           <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {canLiv1 && (
               <>
