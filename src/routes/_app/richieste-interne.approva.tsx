@@ -30,11 +30,11 @@ function ApprovaRichieste() {
         : [];
 
   const sottotitolo = isLiv1 && isLiv2
-    ? "Pending (Liv.1) e inoltrate (Liv.2)"
+    ? "In attesa del Responsabile e inoltrate alla Direzione"
     : isLiv1
       ? "Richieste in attesa del tuo esame"
       : isLiv2
-        ? "Richieste inoltrate dal Resp. Generale"
+        ? "Richieste inoltrate dal Responsabile"
         : "Nessun ruolo di approvazione";
 
   const { data, isLoading } = useQuery({

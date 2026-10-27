@@ -102,10 +102,10 @@ export const TINTE = { ambra: AMBRA, verde: VERDE, rosso: ROSSO, blu: BLU, viola
 export type Tinta = keyof typeof TINTE;
 
 export const STILE_STATUS: Record<string, StileVoce> = {
-  pending: { label: "In attesa Liv.1", icona: Hourglass, ...AMBRA },
-  forwarded: { label: "In attesa Direzione", icona: Hourglass, ...AMBRA },
-  resp_approved: { label: "Approvata Liv.1", icona: CheckCircle2, ...VERDE },
-  approved: { label: "Approvata", icona: CheckCircle2, ...VERDE },
+  pending: { label: "In attesa del Responsabile", icona: Hourglass, ...AMBRA },
+  forwarded: { label: "In attesa della Direzione", icona: Hourglass, ...AMBRA },
+  resp_approved: { label: "Approvata dal Responsabile", icona: CheckCircle2, ...VERDE },
+  approved: { label: "Approvata dalla Direzione", icona: CheckCircle2, ...VERDE },
   rejected: { label: "Rifiutata", icona: XCircle, ...ROSSO },
 };
 

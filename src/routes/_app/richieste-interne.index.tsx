@@ -24,6 +24,8 @@ function DashboardRichiesteInterne() {
   const isApp2 = roles.includes("approvatore_richieste_liv2");
   const isGestore = roles.includes("gestore_richieste") || roles.includes("esecutore_richieste");
   const isAdmin = roles.includes("amministratore");
+  const vediTutte = (["amministratore", "approvatore_richieste_liv1", "approvatore_richieste_liv2", "gestore_richieste", "esecutore_richieste", "tesoreria"] as string[]).some((x) => (roles as string[]).includes(x))
+    ? "/richieste-interne/tutte" : "/richieste-interne/mie";
   const isTesoreria = puoGestireTesoreria(roles);
 
   const { data: counts } = useQuery({
@@ -72,8 +74,8 @@ function DashboardRichiesteInterne() {
 
       {(isApp1 || isApp2 || isAdmin) && (
         <Sezione titolo="Approvazioni">
-          {(isApp1 || isAdmin) && <StatCard to="/richieste-interne/approva" tinta="ambra" icona={ClipboardList} label="Da approvare (Liv.1)" value={nApp1} />}
-          {(isApp2 || isAdmin) && <StatCard to="/richieste-interne/approva" tinta="ambra" icona={ClipboardList} label="Da approvare (Liv.2)" value={nApp2} />}
+          {(isApp1 || isAdmin) && <StatCard to="/richieste-interne/approva" tinta="ambra" icona={ClipboardList} label="Da approvare — Responsabile" value={nApp1} />}
+          {(isApp2 || isAdmin) && <StatCard to="/richieste-interne/approva" tinta="ambra" icona={ClipboardList} label="Da approvare — Direzione" value={nApp2} />}
         </Sezione>
       )}
 
@@ -93,7 +95,7 @@ function DashboardRichiesteInterne() {
       <section className="space-y-2">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Ultime richieste</h2>
-          <Link to="/richieste-interne/tutte" className="inline-flex min-h-10 items-center text-sm font-medium text-primary hover:underline">Vedi tutte</Link>
+          <Link to={vediTutte} className="inline-flex min-h-10 items-center text-sm font-medium text-primary hover:underline">Vedi tutte</Link>
         </div>
         {ultime.length === 0 ? (
           <div className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">Nessuna richiesta</div>
