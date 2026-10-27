@@ -75,6 +75,8 @@ export type RichiestaDati = {
   description: string | null;
   amount: number | null;
   fornitore: string | null;
+  modalita_pagamento_cod?: string | null;
+  modalita_pagamento_testo?: string | null;
   requester_name: string | null;
   sede_name: string | null;
   resp_approver_name?: string | null;
@@ -144,6 +146,14 @@ function bandaHtml(cfg: EventCfg): string {
       </div>`;
 }
 
+/** "descrizione (COD)" se c'è il codice, altrimenti il testo libero; null se assente. */
+function testoModalitaPagamento(r: RichiestaDati): string | null {
+  const cod = r.modalita_pagamento_cod?.trim();
+  const testo = r.modalita_pagamento_testo?.trim();
+  if (cod) return testo ? `${testo} (${cod})` : cod;
+  return testo || null;
+}
+
 function boxDettagliHtml(r: RichiestaDati): string {
   const rows: Array<[string, string]> = [
     ["Titolo", escapeHtml(r.title || "-")],
@@ -153,6 +163,8 @@ function boxDettagliHtml(r: RichiestaDati): string {
     ["Importo", escapeHtml(fmtEuro(r.amount))],
     ["Fornitore", escapeHtml(r.fornitore || "-")],
   ];
+  const pag = testoModalitaPagamento(r);
+  if (pag) rows.push(["Pagamento", escapeHtml(pag)]);
   const rowsHtml = rows
     .map(
       ([k, v]) =>

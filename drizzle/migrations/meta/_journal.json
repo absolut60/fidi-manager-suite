@@ -554,6 +554,13 @@
       "when": 1793044508555,
       "tag": "0078_fm48_richieste_bonifico_acconto",
       "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1793088834374,
+      "tag": "0079_0079_fm48_richieste_modalita_pagamento",
+      "breakpoints": true
     }
   ]
 }

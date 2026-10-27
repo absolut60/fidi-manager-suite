@@ -51,6 +51,7 @@ export type RichiestaRow = {
   acconto_importo?: number | null;
   acconto_stato?: string | null;
   acconto_data_prevista?: string | null;
+  modalita_pagamento_testo?: string | null;
 };
 
 /** Bonifico di acconto da eseguire: richiesto, da_eseguire, richiesta approvata. */
@@ -168,7 +169,8 @@ export function RichiesteTable({
           r.description?.toLowerCase().includes(s) ||
           r.requester_name?.toLowerCase().includes(s) ||
           r.fornitore?.toLowerCase().includes(s) ||
-          r.sede_name?.toLowerCase().includes(s);
+          r.sede_name?.toLowerCase().includes(s) ||
+          r.modalita_pagamento_testo?.toLowerCase().includes(s);
         if (!hit) return false;
       }
       return true;

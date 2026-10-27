@@ -14,7 +14,7 @@ export const Route = createFileRoute("/_app/richieste-interne/archivio")({
 });
 
 const SELECT =
-  "id,title,description,requester_name,sede_name,type,fornitore,amount,status,admin_status,created_at,archived_by_name,archived_at,acconto_richiesto,acconto_importo,acconto_stato,acconto_data_prevista,richieste_interne_allegati(id)";
+  "id,title,description,requester_name,sede_name,type,fornitore,amount,status,admin_status,created_at,archived_by_name,archived_at,acconto_richiesto,acconto_importo,acconto_stato,acconto_data_prevista,modalita_pagamento_testo,richieste_interne_allegati(id)";
 
 function ArchivioRichieste() {
   const qc = useQueryClient();

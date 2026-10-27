@@ -5045,6 +5045,8 @@ export type Database = {
           gestionale_ref: string | null
           gestionale_sent_at: string | null
           id: string
+          modalita_pagamento_cod: string | null
+          modalita_pagamento_testo: string | null
           requester_id: string | null
           requester_name: string
           resp_action: string | null
@@ -5089,6 +5091,8 @@ export type Database = {
           gestionale_ref?: string | null
           gestionale_sent_at?: string | null
           id?: string
+          modalita_pagamento_cod?: string | null
+          modalita_pagamento_testo?: string | null
           requester_id?: string | null
           requester_name: string
           resp_action?: string | null
@@ -5133,6 +5137,8 @@ export type Database = {
           gestionale_ref?: string | null
           gestionale_sent_at?: string | null
           id?: string
+          modalita_pagamento_cod?: string | null
+          modalita_pagamento_testo?: string | null
           requester_id?: string | null
           requester_name?: string
           resp_action?: string | null

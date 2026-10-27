@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Archive, ArchiveRestore, Download, Eye, File as FileIcon, FileImage, FileText, Loader2, MapPin, Truck, Euro, User, Calendar, Paperclip, Pencil, Search, Trash2, Upload, Wrench } from "lucide-react";
+import { ArrowLeft, Archive, ArchiveRestore, Download, Eye, File as FileIcon, FileImage, FileText, Loader2, MapPin, Truck, Euro, User, Calendar, CreditCard, Paperclip, Pencil, Search, Trash2, Upload, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { ChatMessaggi } from "@/components/richieste-interne/chat-messaggi";
 import { GestisciDialog, type GestisciTarget } from "@/components/richieste-interne/gestisci-dialog";
@@ -453,6 +453,18 @@ const blocIter = (
             <Riquadro label="Tipo">
               <BadgeStile stile={stileTipo(r.type)} />
             </Riquadro>
+            <div className="col-span-2 md:col-span-3">
+              <Riquadro icona={CreditCard} label="Pagamento">
+                {r.modalita_pagamento_cod ? (
+                  <>
+                    <span className="break-words">{r.modalita_pagamento_testo || r.modalita_pagamento_cod}</span>
+                    <span className="block font-mono text-xs font-normal text-muted-foreground">{r.modalita_pagamento_cod}</span>
+                  </>
+                ) : (
+                  <span className="break-words">{r.modalita_pagamento_testo || "—"}</span>
+                )}
+              </Riquadro>
+            </div>
           </div>
           {r.description && (
             <div>
@@ -571,6 +583,8 @@ const blocIter = (
             acconto_richiesto: r.acconto_richiesto,
             acconto_importo: r.acconto_importo,
             acconto_data_prevista: r.acconto_data_prevista,
+            modalita_pagamento_cod: r.modalita_pagamento_cod,
+            modalita_pagamento_testo: r.modalita_pagamento_testo,
           }}
         />
       )}
