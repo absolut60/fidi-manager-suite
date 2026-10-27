@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { IntestazioneRichieste } from "@/components/richieste-interne/intestazione";
+import { STILE_PAGINA } from "@/components/richieste-interne/stili";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { RichiesteTable, type RichiestaRow } from "@/components/richieste-interne/richieste-table";
@@ -34,10 +36,7 @@ function TutteRichieste() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Tutte le richieste</h1>
-        <p className="text-sm text-muted-foreground">Elenco completo (esclusi archivi)</p>
-      </div>
+      <IntestazioneRichieste stile={STILE_PAGINA.tutte} titolo="Tutte le richieste" sottotitolo="Elenco completo (esclusi archivi)" />
       <RichiesteTable chiaveFiltri="richieste-interne:tutte" filtroBonificiDefault={soloTesoreria} rows={data} isLoading={isLoading} unreadIds={unreadIds} />
     </div>
   );

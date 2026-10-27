@@ -2,8 +2,11 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Inbox, Hourglass, CheckCircle2, XCircle, ClipboardList, Wrench } from "lucide-react";
+import { Inbox, Hourglass, CheckCircle2, XCircle, ClipboardList, Wrench, type LucideIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { IntestazioneRichieste } from "@/components/richieste-interne/intestazione";
+import { BadgeStile } from "@/components/richieste-interne/richieste-table";
+import { STILE_PAGINA, TINTE, stileAdmin, stilePrincipale, stileStatus, stileTipo, type Tinta } from "@/components/richieste-interne/stili";
 import { puoGestireTesoreria } from "@/lib/tesoreria-permessi";
 import { Banknote } from "lucide-react";
 import { NuovaRichiestaDialog } from "@/components/richieste-interne/nuova-richiesta-dialog";
@@ -27,7 +30,7 @@ function DashboardRichiesteInterne() {
     queryKey: ["richieste-interne", "dashboard", uid],
     enabled: !!uid,
     queryFn: async () => {
-      const base = supabase.from("richieste_interne").select("id,status,admin_status,requester_id,archived,acconto_richiesto,acconto_stato", { count: "exact", head: false }).eq("archived", false);
+      const base = supabase.from("richieste_interne").select("id,status,admin_status,requester_id,archived,acconto_richiesto,acconto_stato,title,created_at,type,amount", { count: "exact", head: false }).eq("archived", false);
       const { data, error } = await base;
       if (error) throw error;
       return data ?? [];
@@ -47,72 +50,112 @@ function DashboardRichiesteInterne() {
   const nBonifici = rows.filter((r) => r.acconto_richiesto && r.acconto_stato === "da_eseguire" && (r.status === "resp_approved" || r.status === "approved")).length;
   const nInGestione = rows.filter((r) => r.admin_status === "in_gestione").length;
 
+  const ultime = [...rows].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? "")).slice(0, 5);
+
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Richieste interne</h1>
-          <p className="text-sm text-muted-foreground">Dashboard delle richieste MADE</p>
-        </div>
-        {(isRichiedente || isAdmin) && <NuovaRichiestaDialog />}
-      </div>
+      <IntestazioneRichieste
+        stile={STILE_PAGINA.dashboard}
+        titolo="Richieste interne"
+        sottotitolo="Dashboard delle richieste MADE"
+        azioni={(isRichiedente || isAdmin) ? <NuovaRichiestaDialog /> : undefined}
+      />
 
       {(isRichiedente || isAdmin) && (
-        <section className="space-y-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Le mie richieste</h2>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <StatCard to="/richieste-interne/mie" icon={<Inbox className="size-4" />} label="Totali" value={nMie} />
-            <StatCard to="/richieste-interne/mie" icon={<Hourglass className="size-4" />} label="In attesa" value={nMieAttesa} />
-            <StatCard to="/richieste-interne/mie" icon={<CheckCircle2 className="size-4" />} label="Approvate" value={nMieApprovate} />
-            <StatCard to="/richieste-interne/mie" icon={<XCircle className="size-4" />} label="Rifiutate" value={nMieRifiutate} />
-          </div>
-        </section>
+        <Sezione titolo="Le mie richieste">
+          <StatCard to="/richieste-interne/mie" tinta="blu" icona={Inbox} label="Totali" value={nMie} />
+          <StatCard to="/richieste-interne/mie" tinta="ambra" icona={Hourglass} label="In attesa" value={nMieAttesa} />
+          <StatCard to="/richieste-interne/mie" tinta="verde" icona={CheckCircle2} label="Approvate" value={nMieApprovate} />
+          <StatCard to="/richieste-interne/mie" tinta="rosso" icona={XCircle} label="Rifiutate" value={nMieRifiutate} />
+        </Sezione>
       )}
 
       {(isApp1 || isApp2 || isAdmin) && (
-        <section className="space-y-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Approvazioni</h2>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {(isApp1 || isAdmin) && <StatCard icon={<ClipboardList className="size-4" />} label="Da approvare (Liv.1)" value={nApp1} />}
-            {(isApp2 || isAdmin) && <StatCard icon={<ClipboardList className="size-4" />} label="Da approvare (Liv.2)" value={nApp2} />}
-          </div>
-        </section>
+        <Sezione titolo="Approvazioni">
+          {(isApp1 || isAdmin) && <StatCard to="/richieste-interne/approva" tinta="ambra" icona={ClipboardList} label="Da approvare (Liv.1)" value={nApp1} />}
+          {(isApp2 || isAdmin) && <StatCard to="/richieste-interne/approva" tinta="ambra" icona={ClipboardList} label="Da approvare (Liv.2)" value={nApp2} />}
+        </Sezione>
       )}
 
       {(isGestore || isAdmin) && (
-        <section className="space-y-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Gestione</h2>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <StatCard icon={<Wrench className="size-4" />} label="Da gestire" value={nDaGestire} />
-            <StatCard icon={<Wrench className="size-4" />} label="In gestione" value={nInGestione} />
-          </div>
-        </section>
+        <Sezione titolo="Gestione">
+          <StatCard to="/richieste-interne/gestione" tinta="rosso" icona={Inbox} label="Da gestire" value={nDaGestire} />
+          <StatCard to="/richieste-interne/gestione" tinta="ambra" icona={Wrench} label="In gestione" value={nInGestione} />
+        </Sezione>
       )}
 
       {isTesoreria && (
-        <section className="space-y-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Tesoreria</h2>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <StatCard to="/richieste-interne/tutte" icon={<Banknote className="size-4" />} label="Bonifici da eseguire" value={nBonifici} />
-          </div>
-        </section>
+        <Sezione titolo="Tesoreria">
+          <StatCard to="/richieste-interne/tutte" tinta="teal" icona={Banknote} label="Bonifici da eseguire" value={nBonifici} />
+        </Sezione>
       )}
+
+      <section className="space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Ultime richieste</h2>
+          <Link to="/richieste-interne/tutte" className="inline-flex min-h-10 items-center text-sm font-medium text-primary hover:underline">Vedi tutte</Link>
+        </div>
+        {ultime.length === 0 ? (
+          <div className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">Nessuna richiesta</div>
+        ) : (
+          <ul className="space-y-2">
+            {ultime.map((r) => (
+              <li key={r.id}>
+                <Link
+                  to="/richieste-interne/$richiestaId"
+                  params={{ richiestaId: r.id }}
+                  className={cn("flex flex-col gap-2 rounded-lg border border-l-4 bg-card p-3 hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between", stilePrincipale(r).bordo)}
+                >
+                  <div className="min-w-0">
+                    <div className="font-medium break-words line-clamp-2">{r.title}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {fmtData(r.created_at)} · {stileTipo(r.type).label}{r.amount != null ? ` · ${fmtEuro(r.amount)}` : ""}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-1 sm:shrink-0">
+                    <BadgeStile stile={stileStatus(r.status)} />
+                    {(r.status === "resp_approved" || r.status === "approved") && <BadgeStile stile={stileAdmin(r.admin_status)} />}
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }
 
-function StatCard({ to, icon, label, value }: { to?: string; icon: React.ReactNode; label: string; value: number }) {
-  const inner = (
-    <Card className="hover:bg-accent/40 transition-colors">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-          {icon} {label}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-semibold tabular-nums">{value}</div>
-      </CardContent>
-    </Card>
+const fmtEuro = (v: number) => new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(v);
+const fmtData = (v: string | null) => (v ? new Date(v).toLocaleDateString("it-IT") : "—");
+
+function Sezione({ titolo, children }: { titolo: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-2">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{titolo}</h2>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">{children}</div>
+    </section>
   );
-  return to ? <Link to={to}>{inner}</Link> : inner;
+}
+
+function StatCard({ to, tinta, icona: Icona, label, value }: { to: string; tinta: Tinta; icona: LucideIcon; label: string; value: number }) {
+  const t = TINTE[tinta];
+  return (
+    <Link
+      to={to}
+      className={cn(
+        "flex min-h-[72px] items-center gap-2 sm:gap-3 rounded-lg border border-l-4 bg-card p-3 sm:p-4 transition hover:bg-muted/40",
+        t.bordo,
+        value === 0 && "opacity-60",
+      )}
+    >
+      <span className={cn("flex size-9 sm:size-10 shrink-0 items-center justify-center rounded-full", t.tinta)}>
+        <Icona className="size-4 sm:size-5" aria-hidden />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-xs sm:text-sm font-medium text-muted-foreground break-words">{label}</span>
+        <span className="block text-2xl sm:text-3xl font-bold tabular-nums leading-tight">{value}</span>
+      </span>
+    </Link>
+  );
 }

@@ -3,7 +3,8 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { RichiesteTable, type RichiestaRow } from "@/components/richieste-interne/richieste-table";
-import { STILE_ADMIN, STILE_APERTE, type StileVoce } from "@/components/richieste-interne/stili";
+import { IntestazioneRichieste } from "@/components/richieste-interne/intestazione";
+import { STILE_ADMIN, STILE_APERTE, STILE_PAGINA, type StileVoce } from "@/components/richieste-interne/stili";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { cn } from "@/lib/utils";
 import { useRichiesteNonLette } from "@/hooks/use-richieste-non-lette";
@@ -82,10 +83,7 @@ function GestionePage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Gestione richieste</h1>
-        <p className="text-sm text-muted-foreground">Richieste approvate da lavorare</p>
-      </div>
+      <IntestazioneRichieste stile={STILE_PAGINA.gestione} titolo="Gestione richieste" sottotitolo="Richieste approvate da lavorare" />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
         {voci.map((v) => (
