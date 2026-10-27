@@ -491,7 +491,7 @@ export function NuovaRichiestaDialog({
                         className="peer h-10 block w-full min-w-0 max-w-full appearance-none text-left bg-background text-foreground"
                         onChange={(e) => setAccontoData(e.target.value)} />
                       {!accontoData && (
-                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-muted-foreground peer-focus:hidden sm:text-sm">gg/mm/aaaa</span>
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-muted-foreground peer-focus:hidden md:text-sm">gg/mm/aaaa</span>
                       )}
                     </div>
                   </div>

@@ -176,7 +176,7 @@ export function BonificoAccontoCard({ r, allegati }: { r: BonificoRichiesta; all
               <div className="relative min-w-0">
                 <Input id="bon-data" type="date" className="peer h-10 block w-full min-w-0 max-w-full appearance-none text-left bg-background text-foreground" placeholder="gg/mm/aaaa" max={oggiIso()} value={data} onChange={(e) => setData(e.target.value)} />
                 {!data && (
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-muted-foreground peer-focus:hidden sm:text-sm">gg/mm/aaaa</span>
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-muted-foreground peer-focus:hidden md:text-sm">gg/mm/aaaa</span>
                 )}
               </div>
               {data > oggiIso() && <p className="text-xs text-destructive">La data non può essere futura</p>}
