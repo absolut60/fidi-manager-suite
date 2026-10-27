@@ -110,9 +110,9 @@ export const STILE_STATUS: Record<string, StileVoce> = {
 };
 
 export const STILE_ADMIN: Record<string, StileVoce> = {
-  da_gestire: { label: "Da gestire", icona: Inbox, ...ROSSO },
-  in_gestione: { label: "In gestione", icona: Wrench, ...AMBRA },
-  conclusa: { label: "Conclusa", icona: CheckCircle2, ...VERDE },
+  da_gestire: { label: "Fatturazione da controllare", icona: Inbox, ...ROSSO },
+  in_gestione: { label: "Controllo fatturazione in corso", icona: Wrench, ...AMBRA },
+  conclusa: { label: "Fatturazione controllata", icona: CheckCircle2, ...VERDE },
 };
 
 export const STILE_TIPO: Record<string, StileVoce> = {
@@ -156,7 +156,7 @@ export function statoAcconto(r: {
     : { chiave: "da_eseguire", stile: STILE_ACCONTO.da_eseguire, testo: `Bonifico da fare · ${imp}` };
 }
 
-/** Stile "Aperte" (da gestire + in gestione) per i contatori della Gestione. */
+/** Stile "Aperte" (fatturazione da controllare + controllo in corso) per i contatori del Controllo fatturazione. */
 export const STILE_APERTE: StileVoce = { label: "Aperte", icona: Inbox, ...BLU };
 
 /** Intestazioni di pagina della sezione. */
@@ -165,7 +165,7 @@ export const STILE_PAGINA = {
   mie: { label: "Le mie richieste", icona: Inbox, ...BLU },
   tutte: { label: "Tutte le richieste", icona: ListChecks, ...VIOLA },
   approva: { label: "Da approvare", icona: Hourglass, ...AMBRA },
-  gestione: { label: "Gestione richieste", icona: Wrench, ...ROSSO },
+  gestione: { label: "Controllo fatturazione", icona: Wrench, ...ROSSO },
   archivio: { label: "Archivio richieste", icona: Archive, ...ARDESIA },
   dettaglio: { label: "Richiesta", icona: FileText, ...BLU },
 } satisfies Record<string, StileVoce>;
