@@ -129,6 +129,26 @@ async function setImportazioneError(importazioneId: string, message: string) {
 }
 
 /**
+ * FM50: aggiunge un problema a importazioni.problemi (letto dal finalize
+ * e mostrato come "da verificare"). Se non riesce, lancia: lo step fallisce
+ * e Inngest ritenta, così un errore di scrittura non resta mai silenzioso.
+ */
+async function aggiungiProblemaImportazione(importazioneId: string, problema: string) {
+  const { data: cur, error: selErr } = await supabaseAdmin
+    .from("importazioni")
+    .select("problemi")
+    .eq("id", importazioneId)
+    .single();
+  if (selErr) throw new Error(`aggiungi problema (lettura): ${selErr.message}`);
+  const esistenti = (cur?.problemi as string[] | null) ?? [];
+  const { error: updErr } = await supabaseAdmin
+    .from("importazioni")
+    .update({ problemi: [...esistenti, problema].slice(0, 300) } as never)
+    .eq("id", importazioneId);
+  if (updErr) throw new Error(`aggiungi problema (scrittura): ${updErr.message}`);
+}
+
+/**
  * Avvolge una Promise con un timeout: se non si risolve entro `ms`, rigetta
  * con un errore identificabile (label) che fa fallire lo step Inngest e
  * abilita il retry, invece di lasciarlo "Running" per sempre.
@@ -2049,24 +2069,25 @@ export const processScadenziarioChunk = inngest.createFunction(
         if (!slice.length) continue;
         const tB = Date.now();
         logger.info(`[chunk ${chunkIndex}] B.start lookup-clienti batch=${i} size=${slice.length}`);
-        try {
-          const { data: cdata } = await withTimeout(
-            supabaseAdmin
-              .from("clienti")
-              .select("id, codice_gestionale")
-              .in("codice_gestionale", slice as string[]),
-            30_000,
-            `chunk ${chunkIndex} lookup-clienti batch=${i}`,
-          );
-          (cdata ?? []).forEach((c) => {
-            if (c.codice_gestionale) clientMap[c.codice_gestionale] = c.id;
-          });
-          logger.info(`[chunk ${chunkIndex}] B.end lookup-clienti batch=${i} in ${Date.now() - tB}ms`);
-        } catch (err) {
-          logger.warn(
-            `Lookup clienti fallito (chunk ${chunkIndex}, batch ${i}): ${err instanceof Error ? err.message : String(err)}`,
+        // FM50: un errore (o data null) NON è "nessun cliente": lo step fallisce
+        // e Inngest ritenta, altrimenti le righe verrebbero saltate in silenzio.
+        const { data: cdata, error: cErr } = await withTimeout(
+          supabaseAdmin
+            .from("clienti")
+            .select("id, codice_gestionale")
+            .in("codice_gestionale", slice as string[]),
+          30_000,
+          `chunk ${chunkIndex} lookup-clienti batch=${i}`,
+        );
+        if (cErr || !cdata) {
+          throw new Error(
+            `Lookup clienti fallito (chunk ${chunkIndex}, batch ${i}): ${cErr?.message ?? "risposta vuota"}`,
           );
         }
+        cdata.forEach((c) => {
+          if (c.codice_gestionale) clientMap[c.codice_gestionale] = c.id;
+        });
+        logger.info(`[chunk ${chunkIndex}] B.end lookup-clienti batch=${i} in ${Date.now() - tB}ms`);
       }
     }
 
@@ -2078,6 +2099,7 @@ export const processScadenziarioChunk = inngest.createFunction(
         ...missing.map((idx) => ({ riga: idx, errore: "COD_CLI mancante" })),
       ];
       const batchErrs: Array<{ riga: number; errore: string }> = [];
+      let righePerse = 0;
       const rawValidRows: Array<Record<string, unknown>> = [];
       let skipped = 0;
       // Dettagli completi dei codici non trovati (senza cap): codice -> { ragione_sociale, count }
@@ -2270,6 +2292,7 @@ export const processScadenziarioChunk = inngest.createFunction(
             }
           } else {
             const messaggio = ultimoErr ?? "errore sconosciuto";
+            righePerse += rows.length;
             batchErrs.push({
               riga: chunkIndex,
               errore: `Upsert chunk ${chunkIndex} sotto-blocco ${n}/${tot} (${rows.length} righe) fallito dopo ${SCAD_UPSERT_TENTATIVI} tentativi${pezzoFallito ? `, ${pezzoFallito} fallito anche in pezzi da 50` : ""}: ${messaggio}`,
@@ -2284,7 +2307,9 @@ export const processScadenziarioChunk = inngest.createFunction(
               stato: "in_attesa",
             } as never);
             if (anErr) {
+              // FM50: senza questa anomalia il finalize non saprebbe del blocco perso.
               logger.error(`[chunk ${chunkIndex}] insert anomalia upsert_chunk_fallito fallito: ${anErr.message}`);
+              throw new Error(`chunk ${chunkIndex} anomalia upsert_chunk_fallito non registrata: ${anErr.message}`);
             }
           }
         }
@@ -2293,12 +2318,13 @@ export const processScadenziarioChunk = inngest.createFunction(
 
 
       // Persisti errori/codici mancanti + report_saltati ricco (no cap)
-      const totalErrs = rowErrs.length + batchErrs.length;
+      // FM50: un sotto-blocco fallito conta le righe perse, non 1.
+      const totalErrs = rowErrs.length + righePerse;
       const skippedCodesArr = Object.keys(skippedDetails);
       if (rowErrs.length || batchErrs.length || skippedCodesArr.length) {
         const tSel = Date.now();
         logger.info(`[chunk ${chunkIndex}] C.start select-importazioni`);
-        const { data: cur } = await withTimeout(
+        const { data: cur, error: selErr } = await withTimeout(
           supabaseAdmin
             .from("importazioni")
             .select("log_errori, codici_mancanti, report_saltati")
@@ -2307,6 +2333,8 @@ export const processScadenziarioChunk = inngest.createFunction(
           30_000,
           `chunk ${chunkIndex} select-importazioni`,
         );
+        // Senza la lettura si sovrascriverebbero i log degli altri chunk: ritenta.
+        if (selErr) throw new Error(`chunk ${chunkIndex} select-importazioni: ${selErr.message}`);
         logger.info(`[chunk ${chunkIndex}] C.end select-importazioni in ${Date.now() - tSel}ms`);
         const updates: Record<string, unknown> = {};
         if (rowErrs.length || batchErrs.length) {
@@ -2359,7 +2387,7 @@ export const processScadenziarioChunk = inngest.createFunction(
         }
         const tUpd = Date.now();
         logger.info(`[chunk ${chunkIndex}] C.start update-importazioni`);
-        await withTimeout(
+        const { error: updErr } = await withTimeout(
           supabaseAdmin
             .from("importazioni")
             .update(updates as never)
@@ -2367,6 +2395,16 @@ export const processScadenziarioChunk = inngest.createFunction(
           30_000,
           `chunk ${chunkIndex} update-importazioni`,
         );
+        if (updErr) {
+          // FM50: mai in silenzio. Log + problema; se nemmeno il problema
+          // si scrive, lo step fallisce e Inngest ritenta (upsert idempotente,
+          // contatori non ancora incrementati).
+          logger.error(`[chunk ${chunkIndex}] scrittura log_errori/report_saltati fallita: ${updErr.message}`);
+          await aggiungiProblemaImportazione(
+            importazioneId,
+            `Chunk ${chunkIndex}: scrittura del dettaglio errori/saltati non riuscita (${updErr.message.slice(0, 200)})`,
+          );
+        }
         logger.info(`[chunk ${chunkIndex}] C.end update-importazioni in ${Date.now() - tUpd}ms`);
       }
 
@@ -2378,6 +2416,8 @@ export const processScadenziarioChunk = inngest.createFunction(
         elaborate: rows.length + missing.length + parseRowErrors.length,
         skipped,
         errori: totalErrs,
+        // FM50: righe valide da scrivere (dopo unione doppi, senza clienti inesistenti)
+        attese: validRows.length,
       };
     });
 
@@ -2394,18 +2434,19 @@ export const processScadenziarioChunk = inngest.createFunction(
             data: Array<{ chunks_completati: number; chunks_totali: number }> | null;
             error: { message: string } | null;
           }>
-        )("increment_importazione_counters", {
+        )("increment_importazione_counters_attese", {
           _id: importazioneId,
           _elaborate: result.elaborate,
           _create: result.created,
           _update: result.updated,
           _error: result.errori,
           _skipped: result.skipped,
+          _attese: result.attese,
         }),
         20_000,
-        `chunk ${chunkIndex} rpc increment_importazione_counters`,
+        `chunk ${chunkIndex} rpc increment_importazione_counters_attese`,
       );
-      if (rpcErr) throw new Error(`increment_importazione_counters: ${rpcErr.message}`);
+      if (rpcErr) throw new Error(`increment_importazione_counters_attese: ${rpcErr.message}`);
       const row = rpc?.[0] ?? { chunks_completati: 0, chunks_totali: totalChunks };
       logger.info(`[chunk ${chunkIndex}] D.end increment-counters in ${Date.now() - tD}ms progress=${row.chunks_completati}/${row.chunks_totali}`);
       return row;
@@ -2456,24 +2497,42 @@ export const finalizeScadenziarioImport = inngest.createFunction(
       const reconc = { totChiuse: 0, totClienti: 0, orfaniRimossi: 0 };
       void timestampInizio;
 
-      // STEP pulizia: il file Gamma è lo scadenziario COMPLETO. Dopo un import
-      // verificato completo, rimuovi_orfani_scadenze toglie ogni scadenza non
-      // scritta da questo import e la registra in anomalie_import
-      // (scadenza_non_nel_file). Guardia nella funzione: se l'import ha scritto
-      // meno del 90% delle scadenze presenti non cancella nulla e restituisce -1.
-      // Eseguito UNA volta dopo l'upsert di tutti i chunk.
-      // Verifica completezza: se qualche sotto-blocco non è stato scritto,
-      // la pulizia potrebbe cancellare righe valide → va saltata.
-      const sottoBlocchiFalliti = await step.run("verifica-completezza", async () => {
-        const { count, error } = await supabaseAdmin
+      // STEP pulizia (FM50): il file Gamma è lo scadenziario COMPLETO.
+      // rimuovi_orfani_scadenze parte SOLO se l'import ha scritto davvero il
+      // 100% delle righe attese (importazioni.righe_attese, sommate per chunk),
+      // contate sul DB come scadenze con importato_da = id, e nessun
+      // sotto-blocco è fallito. In ogni altro caso nessuna cancellazione.
+      // La guardia del 90% dentro la funzione DB resta come protezione in più.
+      const verifica = await step.run("verifica-completezza", async () => {
+        const { data: falliti, error } = await supabaseAdmin
           .from("anomalie_import" as never)
-          .select("id", { count: "exact", head: true })
+          .select("valore_attuale")
           .eq("importazione_id", importazioneId)
-          .eq("tipo_anomalia", "upsert_chunk_fallito");
-        if (error) throw new Error(`verifica-completezza: ${error.message}`);
-        return count ?? 0;
+          .eq("tipo_anomalia", "upsert_chunk_fallito")
+          .limit(200);
+        if (error) throw new Error(`verifica-completezza anomalie: ${error.message}`);
+        const { data: imp, error: impErr } = await supabaseAdmin
+          .from("importazioni")
+          .select("righe_attese")
+          .eq("id", importazioneId)
+          .single();
+        if (impErr || !imp) throw new Error(`verifica-completezza importazione: ${impErr?.message ?? "riga non trovata"}`);
+        const { count, error: cntErr } = await supabaseAdmin
+          .from("scadenze")
+          .select("id", { count: "exact", head: true })
+          .eq("importato_da", importazioneId);
+        if (cntErr || count == null) throw new Error(`verifica-completezza conteggio scadenze: ${cntErr?.message ?? "conteggio nullo"}`);
+        return {
+          attese: ((imp as { righe_attese: number | null }).righe_attese ?? 0),
+          scritte: count,
+          falliti: ((falliti ?? []) as Array<{ valore_attuale: string | null }>).map(
+            (f) => f.valore_attuale ?? "blocco non scritto",
+          ),
+        };
       });
-      let pulizia_saltata = sottoBlocchiFalliti > 0;
+      const sottoBlocchiFalliti = verifica.falliti.length;
+      const completo = verifica.scritte === verifica.attese && sottoBlocchiFalliti === 0;
+      let pulizia_saltata = !completo;
       let puliziaSottoSoglia = false;
 
       if (!pulizia_saltata) {
@@ -2501,7 +2560,7 @@ export const finalizeScadenziarioImport = inngest.createFunction(
         }
       } else {
         logger.warn(
-          `Finalize ${importazioneId}: ${sottoBlocchiFalliti} sotto-blocchi non scritti, pulizia orfani SALTATA`,
+          `Finalize ${importazioneId}: attese=${verifica.attese}, scritte=${verifica.scritte}, sotto-blocchi falliti=${sottoBlocchiFalliti}: pulizia orfani SALTATA`,
         );
       }
 
@@ -2544,40 +2603,44 @@ export const finalizeScadenziarioImport = inngest.createFunction(
 
       // Aggiornamento finale dello stato
       await step.run("set-final-state", async () => {
-        const { data: cur } = await supabaseAdmin
+        const { data: cur, error: curErr } = await supabaseAdmin
           .from("importazioni")
-          .select("righe_errore, log_errori")
+          .select("righe_errore, log_errori, problemi")
           .eq("id", importazioneId)
           .single();
+        if (curErr) throw new Error(`set-final-state lettura: ${curErr.message}`);
         const errs = (cur?.righe_errore as number | null) ?? 0;
         const existing = (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
+        // Problemi già scritti dai chunk (es. errori di scrittura dei log).
+        const problemiChunk = (cur?.problemi as string[] | null) ?? [];
         const summary: Array<{ riga: number; errore: string }> = [];
-        if (pulizia_saltata) {
-          summary.push({
-            riga: 0,
-            errore: puliziaSottoSoglia
-              ? "ATTENZIONE: pulizia scadenze non eseguita: righe scritte dall'import inferiori al 90% delle scadenze presenti. Verificare il file."
-              : `ATTENZIONE: ${sottoBlocchiFalliti} sotto-blocchi non scritti dopo ${SCAD_UPSERT_TENTATIVI} tentativi. Pulizia scadenze orfane NON eseguita per sicurezza. Ripetere l'import.`,
-          });
+        const problemi: string[] = [];
+        if (!completo) {
+          const msg = `Pulizia scadenze non eseguita: attese ${verifica.attese}, scritte ${verifica.scritte}`;
+          problemi.push(msg);
+          summary.push({ riga: 0, errore: `ATTENZIONE: ${msg}. Ripetere l'import.` });
+        } else if (puliziaSottoSoglia) {
+          const msg =
+            "Righe scritte inferiori al 90% delle scadenze presenti: pulizia non eseguita, verificare il file";
+          problemi.push(msg);
+          summary.push({ riga: 0, errore: `ATTENZIONE: ${msg}.` });
         }
+        // Ogni sotto-blocco fallito definitivamente finisce in problemi.
+        for (const f of verifica.falliti) problemi.push(`Blocco non scritto: ${f}`);
         summary.push({
           riga: 0,
           errore: `Reconciliation: chiuse ${reconc.totChiuse} scadenze su ${reconc.totClienti} clienti; scadenze non più presenti nel file rimosse: ${reconc.orfaniRimossi}`,
         });
+        const problemiFinali = [...problemi, ...problemiChunk];
 
         await chiudiImportazione(importazioneId, {
-            stato: errs > 0 || pulizia_saltata ? "completata_con_errori" : "completata",
+            stato:
+              errs > 0 || pulizia_saltata || problemiFinali.length > 0
+                ? "completata_con_errori"
+                : "completata",
             completata_at: new Date().toISOString(),
             log_errori: [...summary, ...existing].slice(0, 500),
-            problemi: puliziaSottoSoglia
-              ? [
-                  "Righe scritte inferiori al 90% delle scadenze presenti: pulizia non eseguita, verificare il file",
-                ]
-              : sottoBlocchiFalliti > 0
-                ? [
-                    `${sottoBlocchiFalliti} blocchi di scadenze non scritti dopo ${SCAD_UPSERT_TENTATIVI} tentativi: pulizia non eseguita`,
-                  ]
-                : [],
+            problemi: problemiFinali.slice(0, 300),
           });
       });
 
