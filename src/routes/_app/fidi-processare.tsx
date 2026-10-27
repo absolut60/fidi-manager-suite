@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useNomiUtenti } from "@/hooks/use-nomi-utenti";
 import { supabase } from "@/integrations/supabase/client";
+import { aggiornaRichiesteABlocchi } from "@/lib/richieste-fido-azioni-massive";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { Button } from "@/components/ui/button";
@@ -121,11 +122,9 @@ function FidiProcessarePage() {
         patch.data_processata = new Date().toISOString();
         patch.processata_da = user!.id;
       }
-      const { error } = await supabase
-        .from("richieste_fido")
-        .update(patch)
-        .in("id", vars.ids);
-      if (error) throw error;
+      // FM50: a blocchi da 25 (fonte unica richieste-fido-azioni-massive).
+      const { errori } = await aggiornaRichiesteABlocchi(vars.ids, patch);
+      if (errori.length) throw new Error(errori[0]);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["fidi-processare"] }),
     onError: (e: any) => toast.error(e?.message ?? "Errore"),
@@ -134,18 +133,16 @@ function FidiProcessarePage() {
   /** Riporta righe da "Storico processati" a "Da gestire". */
   async function riportaDaGestire(ids: string[]) {
     if (!ids.length) return;
-    const { error } = await supabase
-      .from("richieste_fido")
-      .update({
-        stato_export: "da_esportare",
-        data_processata: null,
-        processata_da: null,
-        data_export: null,
-        esportata_da: null,
-      })
-      .in("id", ids);
-    if (error) {
-      toast.error(error.message);
+    const { errori } = await aggiornaRichiesteABlocchi(ids, {
+      stato_export: "da_esportare",
+      data_processata: null,
+      processata_da: null,
+      data_export: null,
+      esportata_da: null,
+    });
+    if (errori.length) {
+      toast.error(errori[0]);
+      await qc.invalidateQueries({ queryKey: ["fidi-processare"] });
       return;
     }
     await qc.invalidateQueries({ queryKey: ["fidi-processare"] });
