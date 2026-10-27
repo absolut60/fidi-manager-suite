@@ -9,7 +9,7 @@ import { BadgeStile } from "./richieste-table";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +19,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { GRIGLIA_ALLEGATI, SchedaAllegato } from "@/components/allegati/anteprima-allegato";
+import { ScegliFile } from "@/components/ui/scegli-file";
+import { GRIGLIA_ALLEGATI, SchedaAllegato, SchedaFileLocale } from "@/components/allegati/anteprima-allegato";
 import { RICHIESTE_ALLEGATI_BUCKET as BUCKET, sanitizeFileName } from "@/components/richieste-interne/utils";
 import { puoGestireTesoreria } from "@/lib/tesoreria-permessi";
 import { segnaBonificoEseguito } from "@/lib/richieste-bonifico.functions";
@@ -50,14 +51,30 @@ export type BonificoRichiesta = {
   acconto_note: string | null;
 };
 
-type Allegato = {
+export type AllegatoBonifico = {
   id: string; nome_file: string; storage_path: string; mime_type: string | null;
-  dimensione_bytes: number | null; created_at: string; tipo?: string | null;
+  dimensione_bytes: number | null; created_at: string; tipo?: string | null; caricato_da?: string | null;
 };
+type Allegato = AllegatoBonifico;
 
 const APPROVATA = ["resp_approved", "approved"];
+const ACCEPT_CRO = "application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png";
 
-export function BonificoAccontoCard({ r, allegati }: { r: BonificoRichiesta; allegati: Allegato[] }) {
+function erroreFileCro(f: File): string | null {
+  return !MIME_OK.includes(f.type) ? "Formato non ammesso: solo PDF, JPG o PNG"
+    : f.size > MAX_BYTES ? "File troppo grande: massimo 10 MB" : null;
+}
+
+export function BonificoAccontoCard({
+  r, allegati, onEliminaAllegato, puoEliminareAllegato,
+}: {
+  r: BonificoRichiesta;
+  allegati: Allegato[];
+  /** Chiede conferma ed elimina (gestito dal dettaglio, stessa logica degli altri allegati). */
+  onEliminaAllegato?: (a: Allegato) => void;
+  /** Stessa regola delle policy: chi ha caricato il file o l'amministratore. */
+  puoEliminareAllegato?: (a: Allegato) => boolean;
+}) {
   const { user, roles } = useAuth();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -65,6 +82,7 @@ export function BonificoAccontoCard({ r, allegati }: { r: BonificoRichiesta; all
   const [note, setNote] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const [caricandoCro, setCaricandoCro] = useState(false);
 
   if (!r.acconto_richiesto) return null;
   const cro = allegati.filter((a) => a.tipo === "cro_bonifico");
@@ -72,11 +90,36 @@ export function BonificoAccontoCard({ r, allegati }: { r: BonificoRichiesta; all
 
   function apri() { setData(oggiIso()); setNote(""); setFile(null); setOpen(true); }
 
-  const erroreFile = file
-    ? !MIME_OK.includes(file.type) ? "Formato non ammesso: solo PDF, JPG o PNG"
-      : file.size > MAX_BYTES ? "File troppo grande: massimo 10 MB" : null
-    : null;
+  /** Ricevuta aggiunta dopo l'esecuzione: stesso upload del CRO, senza toccare la registrazione. */
+  async function aggiungiRicevuta(f: File) {
+    const err = erroreFileCro(f);
+    if (err) { toast.error(err); return; }
+    if (!user?.id) return;
+    setCaricandoCro(true);
+    const path = `${r.id}/${Date.now()}_${sanitizeFileName(f.name)}`;
+    try {
+      const up = await supabase.storage.from(BUCKET).upload(path, f, { contentType: f.type, upsert: false });
+      if (up.error) throw new Error("Caricamento ricevuta fallito: " + up.error.message);
+      const ins = await supabase.from("richieste_interne_allegati").insert({
+        request_id: r.id, nome_file: f.name, storage_path: path, mime_type: f.type,
+        dimensione_bytes: f.size, caricato_da: user.id, tipo: "cro_bonifico",
+      });
+      if (ins.error) {
+        await supabase.storage.from(BUCKET).remove([path]);
+        throw new Error("Registrazione ricevuta fallita: " + ins.error.message);
+      }
+      toast.success("Ricevuta aggiunta");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore imprevisto");
+    } finally {
+      setCaricandoCro(false);
+      qc.invalidateQueries({ queryKey: ["richiesta-interna", r.id] });
+    }
+  }
+
+  const erroreFile = file ? erroreFileCro(file) : null;
   const valido = !!data && data <= oggiIso() && note.length <= 2000 && !!file && !erroreFile;
+
 
   async function conferma() {
     if (!valido || !file || !user?.id) return;
@@ -155,11 +198,25 @@ export function BonificoAccontoCard({ r, allegati }: { r: BonificoRichiesta; all
             <div className="text-xs text-muted-foreground mb-1">Ricevute CRO</div>
             <ul className={GRIGLIA_ALLEGATI}>
               {cro.map((a) => (
-                <SchedaAllegato key={a.id} storagePath={a.storage_path} nomeFile={a.nome_file}
+                <SchedaAllegato key={a.id} compatta storagePath={a.storage_path} nomeFile={a.nome_file}
                   mimeType={a.mime_type} dimensione={a.dimensione_bytes} bucket={BUCKET}
-                  dettagli={<Badge variant="secondary">CRO</Badge>} />
+                  dettagli={<Badge variant="secondary">CRO</Badge>}
+                  azioniStandard={{ onElimina: onEliminaAllegato && puoEliminareAllegato?.(a) ? () => onEliminaAllegato(a) : undefined }} />
               ))}
             </ul>
+          </div>
+        )}
+        {r.acconto_stato === "eseguito" && cro.length === 0 && (
+          <div className="flex flex-col gap-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-amber-800 sm:flex-row sm:items-center dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+            <span className="flex min-w-0 flex-1 items-start gap-2">
+              <AlertTriangle className="size-4 shrink-0 mt-0.5" aria-hidden />
+              <span className="min-w-0 break-words">Nessuna ricevuta CRO allegata</span>
+            </span>
+            {puoGestireTesoreria(roles) && (
+              <ScegliFile accept={ACCEPT_CRO} etichetta={caricandoCro ? "Caricamento…" : "Aggiungi ricevuta"}
+                disabled={caricandoCro} nomi={[]} className="sm:w-auto [&>span]:hidden"
+                onFiles={(fs) => fs[0] && void aggiungiRicevuta(fs[0])} />
+            )}
           </div>
         )}
       </CardContent>
@@ -188,8 +245,11 @@ export function BonificoAccontoCard({ r, allegati }: { r: BonificoRichiesta; all
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="bon-cro">Ricevuta CRO <span className="text-destructive">*</span></Label>
-              <Input id="bon-cro" type="file" className="h-10" accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+              {file ? (
+                <ul><SchedaFileLocale file={file} onRimuovi={() => setFile(null)} /></ul>
+              ) : (
+                <ScegliFile id="bon-cro" accept={ACCEPT_CRO} onFiles={(fs) => setFile(fs[0] ?? null)} />
+              )}
               <p className="text-xs text-muted-foreground">PDF, JPG o PNG, massimo 10 MB.</p>
               {erroreFile && <p className="text-xs text-destructive">{erroreFile}</p>}
             </div>
