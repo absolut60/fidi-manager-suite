@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { leggiTutteLeRighe } from "@/lib/leggi-tutte-le-righe";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -71,14 +72,14 @@ function FidiProcessarePage() {
     queryKey: ["fidi-processare", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await supabase
+      return leggiTutteLeRighe((da, a) => supabase
         .from("richieste_fido")
         .select(`*, clienti(${TRACCIATO_CLIENTE_CAMPI}, codice_assegnato, partita_iva, fido_aziendale_concesso), stores(nome, codice), richiedente:profili!richieste_fido_created_by_fkey(nome, cognome, email), approvatore:profili!richieste_fido_approvato_da_fkey(nome, cognome, email)`)
         .eq("stato", "approvata")
         .not("stato_export", "is", null)
-        .order("data_chiusura", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
+        .order("data_chiusura", { ascending: false })
+        .order("id", { ascending: false })
+        .range(da, a));
     },
   });
 
