@@ -836,17 +836,29 @@ function InApprovazioneTab({
     if (error) throw error;
   }
 
+  const [avanzDec, setAvanzDec] = useState<{ fatte: number; totali: number } | null>(null);
+  const [esitoDec, setEsitoDec] = useState<(EsitoDecisione & { kind: "approva" | "rifiuta" }) | null>(null);
   const decisionMut = useMutation({
     mutationFn: async (input: { kind: "approva" | "rifiuta"; rows: any[]; note: string }) => {
       const esito = input.kind === "approva" ? "approvata" : "rifiutata";
-      for (const r of input.rows) await processaRichiesta(r, esito, input.note.trim() || null);
+      const noteDec = input.note.trim() || null;
+      return decidiRichiesteInBlocco(input.rows, esito, (r) => processaRichiesta(r, esito, noteDec),
+        (fatte, totali) => setAvanzDec({ fatte, totali }));
     },
-    onSuccess: (_d, v) => {
-      toast.success(`${v.rows.length} richieste ${v.kind === "approva" ? "approvate" : "rifiutate"}`);
-      setAction(null); setNote(""); setSelected(new Set());
+    onSuccess: (res, v) => {
+      const verbo = v.kind === "approva" ? "approvate" : "rifiutate";
+      const n = res.nonRiuscite.length;
+      if (n === 0) toast.success(`${res.riuscite.toLocaleString("it-IT")} ${verbo}`);
+      else {
+        toast.warning(`${res.riuscite.toLocaleString("it-IT")} ${verbo}, ${n.toLocaleString("it-IT")} non riuscite`);
+        setEsitoDec({ ...res, kind: v.kind });
+      }
+      setAction(null); setNote("");
+      setSelected(new Set(res.nonRiuscite.map((x) => x.id)));
       onChanged();
     },
     onError: (e: Error) => { toast.error(e.message); onChanged(); },
+    onSettled: () => setAvanzDec(null),
   });
 
   if (loading) return <SkeletonTable />;
