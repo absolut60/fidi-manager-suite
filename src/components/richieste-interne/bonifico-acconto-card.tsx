@@ -1,7 +1,8 @@
 // Bonifico di acconto nel dettaglio richiesta interna (FM48, fetta 3).
 import { cn } from "@/lib/utils";
 import { TitoloCard } from "./intestazione";
-import { STILE_ACCONTO } from "./stili";
+import { statoAcconto } from "./stili";
+import { BadgeStile } from "./richieste-table";
 // Permesso: puoGestireTesoreria (fonte unica src/lib/tesoreria-permessi.ts).
 // Registrazione: SOLO segnaBonificoEseguito (server); qui carichiamo il CRO
 // come allegato tipo 'cro_bonifico' e, se la registrazione fallisce, lo togliamo.
@@ -134,7 +135,8 @@ export function BonificoAccontoCard({ r, allegati }: { r: BonificoRichiesta; all
     }
   }
 
-  const stileAcc = r.acconto_stato === "eseguito" ? STILE_ACCONTO.eseguito : STILE_ACCONTO.da_eseguire;
+  const sa = statoAcconto(r);
+  const stileAcc = sa.stile;
   return (
     <Card className={cn("border-l-4", stileAcc.bordo)}>
       <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -148,7 +150,7 @@ export function BonificoAccontoCard({ r, allegati }: { r: BonificoRichiesta; all
         <Riga label="Data prevista">{fmtData(r.acconto_data_prevista)}</Riga>
         <Riga label="Stato">
           <div className="space-y-1">
-            <Badge variant="outline" className={cn(stato.cls, APPROVATA.includes(r.status) && stileAcc.badge)}>{stato.label === "Eseguito" ? "✓ Eseguito" : stato.label}</Badge>
+            <BadgeStile stile={sa.stile} testo={sa.testo} />
             {r.acconto_stato === "eseguito" && (
               <div className="text-muted-foreground">
                 il {fmtData(r.acconto_eseguito_at)}{r.acconto_eseguito_da_name ? ` da ${r.acconto_eseguito_da_name}` : ""}

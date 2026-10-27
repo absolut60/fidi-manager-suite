@@ -33,7 +33,7 @@ function MieRichieste() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("richieste_interne")
-        .select("id,title,description,requester_name,sede_name,type,fornitore,amount,status,admin_status,created_at,updated_at,acconto_richiesto,acconto_importo,acconto_stato,richieste_interne_allegati(id)")
+        .select("id,title,description,requester_name,sede_name,type,fornitore,amount,status,admin_status,created_at,updated_at,acconto_richiesto,acconto_importo,acconto_stato,acconto_data_prevista,richieste_interne_allegati(id)")
         .eq("requester_id", uid)
         .eq("archived", false)
         .order("updated_at", { ascending: false });

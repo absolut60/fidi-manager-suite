@@ -16,7 +16,7 @@ import { ChatMessaggi } from "@/components/richieste-interne/chat-messaggi";
 import { GestisciDialog, type GestisciTarget } from "@/components/richieste-interne/gestisci-dialog";
 import { NuovaRichiestaDialog } from "@/components/richieste-interne/nuova-richiesta-dialog";
 import {
-  STILE_ACCONTO, STILE_ARCHIVIATA, STILE_CREATA, STILE_DECISIONE, STILE_IN_ATTESA, STILE_PAGINA, STILE_ALLEGATI, STILE_AZIONI,
+  statoAcconto, STILE_ARCHIVIATA, STILE_CREATA, STILE_DECISIONE, STILE_IN_ATTESA, STILE_PAGINA, STILE_ALLEGATI, STILE_AZIONI,
   stileAdmin, stilePrincipale, stileStatus, stileTipo, type StileVoce,
 } from "@/components/richieste-interne/stili";
 import { IntestazioneRichieste, TitoloCard } from "@/components/richieste-interne/intestazione";
@@ -429,15 +429,11 @@ function DettaglioRichiesta() {
             )}
             {r.acconto_richiesto && (
               <Passo
-                stile={r.acconto_stato === "eseguito" ? STILE_ACCONTO.eseguito : (r.status === "resp_approved" || r.status === "approved") ? STILE_ACCONTO.da_eseguire : STILE_IN_ATTESA}
+                stile={statoAcconto(r).stile}
                 titolo="Bonifico di acconto"
                 ultimo
               >
-                {r.acconto_stato === "eseguito" ? (
-                  <BadgeStile stile={STILE_ACCONTO.eseguito} testo="✓ Eseguito" />
-                ) : (r.status === "resp_approved" || r.status === "approved") ? (
-                  <BadgeStile stile={STILE_ACCONTO.da_eseguire} testo="Da eseguire" />
-                ) : <div className="text-muted-foreground italic">In attesa</div>}
+                <BadgeStile stile={statoAcconto(r).stile} testo={statoAcconto(r).testo} />
               </Passo>
             )}
           </ol>

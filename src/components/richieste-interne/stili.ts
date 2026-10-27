@@ -121,10 +121,40 @@ export const STILE_TIPO: Record<string, StileVoce> = {
   acquisto: { label: "Acquisto materiali/servizi", icona: ShoppingCart, ...AZZURRO },
 };
 
-export const STILE_ACCONTO: Record<"da_eseguire" | "eseguito", StileVoce> = {
-  da_eseguire: { label: "Acconto da eseguire", icona: Banknote, ...TEAL },
-  eseguito: { label: "✓ Acconto eseguito", icona: CheckCircle2, ...VERDE },
+export const STILE_ACCONTO: Record<"in_attesa" | "da_eseguire" | "in_ritardo" | "eseguito" | "annullato", StileVoce> = {
+  in_attesa: { label: "In attesa di approvazione", icona: Banknote, ...ARDESIA },
+  da_eseguire: { label: "Bonifico da fare", icona: Banknote, ...TEAL },
+  in_ritardo: { label: "Bonifico da fare · in ritardo", icona: Banknote, ...AMBRA },
+  eseguito: { label: "Bonifico eseguito", icona: CheckCircle2, ...VERDE },
+  annullato: { label: "Bonifico annullato", icona: Banknote, ...ARDESIA },
 };
+
+const fmtEuroAcconto = (v: number | null | undefined) =>
+  v == null ? "—" : new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(v);
+
+function oggiIsoLocale() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Fonte unica di stile e dicitura dello stato del bonifico di acconto (liste, card, timeline). */
+export function statoAcconto(r: {
+  status: string;
+  acconto_stato?: string | null;
+  acconto_importo?: number | null;
+  acconto_data_prevista?: string | null;
+}): { chiave: keyof typeof STILE_ACCONTO; stile: StileVoce; testo: string } {
+  const imp = fmtEuroAcconto(r.acconto_importo);
+  if (r.status === "rejected") return { chiave: "annullato", stile: STILE_ACCONTO.annullato, testo: "Bonifico annullato" };
+  if (r.acconto_stato === "eseguito") return { chiave: "eseguito", stile: STILE_ACCONTO.eseguito, testo: `Bonifico eseguito · ${imp}` };
+  if (r.status !== "resp_approved" && r.status !== "approved") {
+    return { chiave: "in_attesa", stile: STILE_ACCONTO.in_attesa, testo: `Bonifico ${imp} · in attesa di approvazione` };
+  }
+  const ritardo = !!r.acconto_data_prevista && r.acconto_data_prevista.slice(0, 10) < oggiIsoLocale();
+  return ritardo
+    ? { chiave: "in_ritardo", stile: STILE_ACCONTO.in_ritardo, testo: `Bonifico da fare · ${imp} · in ritardo` }
+    : { chiave: "da_eseguire", stile: STILE_ACCONTO.da_eseguire, testo: `Bonifico da fare · ${imp}` };
+}
 
 /** Stile "Aperte" (da gestire + in gestione) per i contatori della Gestione. */
 export const STILE_APERTE: StileVoce = { label: "Aperte", icona: Inbox, ...BLU };
