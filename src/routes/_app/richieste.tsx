@@ -58,6 +58,8 @@ import { semaforoUI, semaforoDaCliente } from "@/lib/semaforo-ui";
 import { SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 import { RichiestaFormDialog } from "@/components/richiesta-fido-form-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Progress } from "@/components/ui/progress";
+import { inviaBozzeInApprovazione, decidiRichiesteInBlocco, type EsitoDecisione } from "@/lib/richieste-fido-azioni-massive";
 
 const TAB_RICHIESTE = ["bozze", "in_approvazione", "approvate", "rifiutate", "tutto"] as const;
 
