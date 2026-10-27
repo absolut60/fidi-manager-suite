@@ -173,7 +173,7 @@ export function BonificoAccontoCard({ r, allegati }: { r: BonificoRichiesta; all
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="bon-data">Data del bonifico <span className="text-destructive">*</span></Label>
-              <Input id="bon-data" type="date" className="h-10" max={oggiIso()} value={data} onChange={(e) => setData(e.target.value)} />
+              <Input id="bon-data" type="date" className="h-10 block w-full min-w-0 max-w-full appearance-none text-left bg-background text-foreground" placeholder="gg/mm/aaaa" max={oggiIso()} value={data} onChange={(e) => setData(e.target.value)} />
               {data > oggiIso() && <p className="text-xs text-destructive">La data non può essere futura</p>}
             </div>
             <div className="space-y-1.5">
