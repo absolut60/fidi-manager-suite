@@ -281,22 +281,7 @@ function DettaglioRichiesta() {
   const shortId = r.id.slice(0, 8).toUpperCase();
   const canUpload = !r.archived;
 
-  return (
-    <div className="space-y-4 max-w-4xl">
-      <IntestazioneRichieste
-        stile={stilePrincipale(r)}
-        titolo={r.title}
-        sottotitolo={
-          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="font-mono">Richiesta #{shortId}</span>
-            <span>·</span>
-            <span>{r.requester_name}</span>
-            {r.sede_name && (<><span>·</span><span className="inline-flex items-center gap-1"><MapPin className="size-3" />{r.sede_name}</span></>)}
-          </span>
-        }
-      />
-
-      {(() => {
+      const blocStato = (() => {
         const sp = stilePrincipale(r);
         const Ic = sp.icona;
         const approvata = r.status === "resp_approved" || r.status === "approved";
@@ -309,78 +294,31 @@ function DettaglioRichiesta() {
             {r.archived && <BadgeStile stile={STILE_ARCHIVIATA} className="ml-auto" />}
           </div>
         );
-      })()}
-
-      {(ownerCanEdit || canGestisci || canManage || canDelete || ownerCanDelete) && (
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap [&_button]:min-h-10 [&>*:last-child:nth-child(odd)]:col-span-2">
-          {ownerCanEdit && (
-            <Button variant="outline" onClick={() => setEditOpen(true)}>
-              <Pencil className="size-4 mr-1" />Modifica
-            </Button>
-          )}
-          {canGestisci && (
-            <Button variant="outline" onClick={() => setGestOpen(true)}>
-              <Wrench className="size-4 mr-1" />Gestisci
-            </Button>
-          )}
-          {canManage && !r.archived && (
-            <Button variant="outline" onClick={archivia} disabled={archiving}>
-              <Archive className="size-4 mr-1" />Archivia
-            </Button>
-          )}
-          {canManage && r.archived && (
-            <Button variant="outline" onClick={ripristina} disabled={archiving}>
-              <ArchiveRestore className="size-4 mr-1" />Ripristina
-            </Button>
-          )}
-          {(canDelete || ownerCanDelete) && (
-            <Button variant="destructive" className="sm:ml-auto" onClick={() => setConfirmDelete("one")}>
-              <Trash2 className="size-4 mr-1" />Elimina
-            </Button>
-          )}
-        </div>
-      )}
-
+      })();
+      const blocAzioni = (canLiv1 || canLiv2) ? (
+        <Card className="border-2 border-primary/30">
+          <CardHeader className="p-3 sm:p-4"><CardTitle><TitoloCard stile={STILE_AZIONI}>Azioni</TitoloCard></CardTitle></CardHeader>
+          <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0 grid grid-cols-1 gap-2 sm:grid-cols-3 xl:grid-cols-1">
+            {canLiv1 && (
+              <>
+                <BottoneDecisione stile={STILE_DECISIONE.approva} onClick={() => { setNote(""); setDialog({ level: 1, action: "approved" }); }} />
+                <BottoneDecisione stile={STILE_DECISIONE.inoltra} onClick={() => { setNote(""); setDialog({ level: 1, action: "forwarded" }); }} />
+                <BottoneDecisione stile={STILE_DECISIONE.rifiuta} onClick={() => { setNote(""); setDialog({ level: 1, action: "rejected" }); }} />
+              </>
+            )}
+            {canLiv2 && (
+              <>
+                <BottoneDecisione stile={STILE_DECISIONE.approva} onClick={() => { setNote(""); setDialog({ level: 2, action: "approved" }); }} />
+                <BottoneDecisione stile={STILE_DECISIONE.rifiuta} onClick={() => { setNote(""); setDialog({ level: 2, action: "rejected" }); }} />
+              </>
+            )}
+          </CardContent>
+        </Card>
+      ) : null;
+const blocIter = (
       <Card>
-        <CardHeader><CardTitle><TitoloCard stile={STILE_PAGINA.dettaglio}>Dati richiesta</TitoloCard></CardTitle></CardHeader>
-        <CardContent className="space-y-4 text-sm">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            <Riquadro icona={Truck} label="Fornitore" principale>
-              <span className="break-words">{r.fornitore || "—"}</span>
-            </Riquadro>
-            <Riquadro icona={Euro} label="Importo" principale>
-              <span className="font-mono tabular-nums break-words">{fmtEuro(r.amount)}</span>
-            </Riquadro>
-            <Riquadro icona={User} label="Richiesta da">
-              <span className="break-words">{r.requester_name || "—"}</span>
-            </Riquadro>
-            <Riquadro icona={Calendar} label="Data richiesta">
-              <span>{new Date(r.created_at).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" })}</span>
-              <span className="block text-xs font-normal text-muted-foreground">
-                ore {new Date(r.created_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
-              </span>
-            </Riquadro>
-            <Riquadro icona={MapPin} label="Sede">
-              <span className="break-words">{r.sede_name || "—"}</span>
-            </Riquadro>
-            <Riquadro label="Tipo">
-              <BadgeStile stile={stileTipo(r.type)} />
-            </Riquadro>
-          </div>
-          {r.description && (
-            <div>
-              <div className="text-xs text-muted-foreground mb-1">Descrizione</div>
-              <div className="whitespace-pre-wrap rounded-md border bg-muted/30 p-3">{r.description}</div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <BonificoAccontoCard r={r} allegati={(r.richieste_interne_allegati ?? []) as any} />
-
-      <Card>
-        <CardHeader><CardTitle><TitoloCard stile={STILE_CREATA}>Iter di approvazione</TitoloCard></CardTitle></CardHeader>
-        <CardContent className="text-sm">
+        <CardHeader className="p-3 sm:p-4"><CardTitle><TitoloCard stile={STILE_CREATA}>Iter di approvazione</TitoloCard></CardTitle></CardHeader>
+        <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0 text-sm">
           <ol className="space-y-0">
             <Passo stile={STILE_CREATA} titolo="Creata">
               <div>{r.requester_name}</div>
@@ -434,9 +372,95 @@ function DettaglioRichiesta() {
           </ol>
         </CardContent>
       </Card>
+);
+  return (
+    <div className="space-y-3 max-w-7xl">
+      <IntestazioneRichieste
+        stile={stilePrincipale(r)}
+        titolo={r.title}
+        sottotitolo={
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="font-mono">Richiesta #{shortId}</span>
+            <span>·</span>
+            <span>{r.requester_name}</span>
+            {r.sede_name && (<><span>·</span><span className="inline-flex items-center gap-1"><MapPin className="size-3" />{r.sede_name}</span></>)}
+          </span>
+        }
+      />
+      {(ownerCanEdit || canGestisci || canManage || canDelete || ownerCanDelete) && (
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap [&_button]:min-h-10 [&>*:last-child:nth-child(odd)]:col-span-2">
+          {ownerCanEdit && (
+            <Button variant="outline" onClick={() => setEditOpen(true)}>
+              <Pencil className="size-4 mr-1" />Modifica
+            </Button>
+          )}
+          {canGestisci && (
+            <Button variant="outline" onClick={() => setGestOpen(true)}>
+              <Wrench className="size-4 mr-1" />Gestisci
+            </Button>
+          )}
+          {canManage && !r.archived && (
+            <Button variant="outline" onClick={archivia} disabled={archiving}>
+              <Archive className="size-4 mr-1" />Archivia
+            </Button>
+          )}
+          {canManage && r.archived && (
+            <Button variant="outline" onClick={ripristina} disabled={archiving}>
+              <ArchiveRestore className="size-4 mr-1" />Ripristina
+            </Button>
+          )}
+          {(canDelete || ownerCanDelete) && (
+            <Button variant="destructive" className="sm:ml-auto" onClick={() => setConfirmDelete("one")}>
+              <Trash2 className="size-4 mr-1" />Elimina
+            </Button>
+          )}
+        </div>
+      )}
 
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] xl:items-start">
+        <div className="min-w-0 space-y-3">
+          <div className="space-y-3 xl:hidden">
+            {blocStato}
+            {blocAzioni}
+          </div>
       <Card>
-        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+        <CardHeader className="p-3 sm:p-4"><CardTitle><TitoloCard stile={STILE_PAGINA.dettaglio}>Dati richiesta</TitoloCard></CardTitle></CardHeader>
+        <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0 space-y-3 text-sm">
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+            <Riquadro icona={Truck} label="Fornitore" principale={stileTipo(r.type).fascia}>
+              <span className="break-words">{r.fornitore || "—"}</span>
+            </Riquadro>
+            <Riquadro icona={Euro} label="Importo" principale={stileTipo(r.type).fascia}>
+              <span className="font-mono tabular-nums break-words">{fmtEuro(r.amount)}</span>
+            </Riquadro>
+            <Riquadro icona={User} label="Richiesta da">
+              <span className="break-words">{r.requester_name || "—"}</span>
+            </Riquadro>
+            <Riquadro icona={Calendar} label="Data richiesta">
+              <span>{new Date(r.created_at).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" })}</span>
+              <span className="block text-xs font-normal text-muted-foreground">
+                ore {new Date(r.created_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            </Riquadro>
+            <Riquadro icona={MapPin} label="Sede">
+              <span className="break-words">{r.sede_name || "—"}</span>
+            </Riquadro>
+            <Riquadro label="Tipo">
+              <BadgeStile stile={stileTipo(r.type)} />
+            </Riquadro>
+          </div>
+          {r.description && (
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Descrizione</div>
+              <div className="whitespace-pre-wrap rounded-md border bg-muted/30 px-2.5 py-2">{r.description}</div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      <BonificoAccontoCard r={r} allegati={(r.richieste_interne_allegati ?? []) as any} />
+          <div className="xl:hidden">{blocIter}</div>
+      <Card>
+        <CardHeader className="p-3 sm:p-4 flex flex-row flex-wrap items-center justify-between gap-2">
           <CardTitle><TitoloCard stile={STILE_ALLEGATI}>Allegati ({r.richieste_interne_allegati?.length ?? 0})</TitoloCard></CardTitle>
           {canUpload && (
             <>
@@ -448,7 +472,7 @@ function DettaglioRichiesta() {
             </>
           )}
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0">
           {(r.richieste_interne_allegati?.length ?? 0) === 0 ? (
             <div className="text-sm text-muted-foreground text-center py-4">Nessun allegato</div>
           ) : (
@@ -476,30 +500,14 @@ function DettaglioRichiesta() {
             </ul>
           )}
         </CardContent>
-      </Card>
-
-      {(canLiv1 || canLiv2) && (
-        <Card className="border-2 border-primary/30">
-          <CardHeader><CardTitle><TitoloCard stile={STILE_AZIONI}>Azioni</TitoloCard></CardTitle></CardHeader>
-          <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {canLiv1 && (
-              <>
-                <BottoneDecisione stile={STILE_DECISIONE.approva} onClick={() => { setNote(""); setDialog({ level: 1, action: "approved" }); }} />
-                <BottoneDecisione stile={STILE_DECISIONE.inoltra} onClick={() => { setNote(""); setDialog({ level: 1, action: "forwarded" }); }} />
-                <BottoneDecisione stile={STILE_DECISIONE.rifiuta} onClick={() => { setNote(""); setDialog({ level: 1, action: "rejected" }); }} />
-              </>
-            )}
-            {canLiv2 && (
-              <>
-                <BottoneDecisione stile={STILE_DECISIONE.approva} onClick={() => { setNote(""); setDialog({ level: 2, action: "approved" }); }} />
-                <BottoneDecisione stile={STILE_DECISIONE.rifiuta} onClick={() => { setNote(""); setDialog({ level: 2, action: "rejected" }); }} />
-              </>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
       <ChatMessaggi richiestaId={r.id} disabled={r.archived} status={r.status} archived={r.archived} />
+        </div>
+        <aside className="hidden min-w-0 space-y-3 xl:block xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto">
+          {blocStato}
+          {blocAzioni}
+          {blocIter}
+        </aside>
+      </div>
 
       {/* Dialog conferma azione */}
       <Dialog open={!!dialog} onOpenChange={(o) => { if (!o) { setDialog(null); setNote(""); } }}>
@@ -652,14 +660,14 @@ function BottoneDecisione({ stile, onClick }: { stile: StileVoce; onClick: () =>
   );
 }
 
-function Riquadro({ icona: Ic, label, principale, children }: { icona?: React.ComponentType<{ className?: string }>; label: string; principale?: boolean; children: React.ReactNode }) {
+function Riquadro({ icona: Ic, label, principale, children }: { icona?: React.ComponentType<{ className?: string }>; label: string; principale?: string; children: React.ReactNode }) {
   return (
-    <div className={cn("min-w-0 rounded-lg border p-3", principale ? "border-primary/25 bg-primary/10" : "bg-muted/30")}>
+    <div className={cn("min-w-0 rounded-lg border p-2.5", principale ?? "bg-muted/30")}>
       <div className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
         {Ic && <Ic className="size-3.5 shrink-0" />}
         <span className="truncate">{label}</span>
       </div>
-      <div className="mt-1 text-lg sm:text-xl font-bold leading-tight">{children}</div>
+      <div className={cn("mt-0.5 font-semibold leading-tight", principale ? "text-lg" : "text-base")}>{children}</div>
     </div>
   );
 }
