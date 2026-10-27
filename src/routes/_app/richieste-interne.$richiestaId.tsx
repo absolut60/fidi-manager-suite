@@ -500,6 +500,7 @@ const blocIter = (
             </ul>
           )}
         </CardContent>
+      </Card>
       <ChatMessaggi richiestaId={r.id} disabled={r.archived} status={r.status} archived={r.archived} />
         </div>
         <aside className="hidden min-w-0 space-y-3 xl:block xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto">
