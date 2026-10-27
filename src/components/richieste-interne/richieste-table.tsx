@@ -10,27 +10,23 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ArrowDown, ArrowUp, ArrowUpDown, MessageSquare, Paperclip, Search } from "lucide-react";
 import { SchedaLista, ElencoSchede, type CampoScheda } from "@/components/lista-responsive";
 import { puoGestireTesoreria } from "@/lib/tesoreria-permessi";
+import { cn } from "@/lib/utils";
+import {
+  STILE_ACCONTO, stileAdmin, stilePrincipale, stileStatus, stileTipo, type StileVoce,
+} from "./stili";
 
+// Re-export per compatibilità: la fonte unica è ./stili.
+export { STATUS_LABEL, ADMIN_LABEL, TIPO_LABEL } from "./stili";
 
-export const STATUS_LABEL: Record<string, string> = {
-  pending: "⏳ Att. Resp. Gen.",
-  resp_approved: "✓ Approvata (Liv.1)",
-  forwarded: "→ Att. Direzione",
-  approved: "✓ Approvata",
-  rejected: "✕ Rifiutata",
-};
-
-export const ADMIN_LABEL: Record<string, string> = {
-  da_gestire: "🔴 Da gestire",
-  in_gestione: "🟡 In gestione",
-  conclusa: "🟢 Conclusa",
-};
-
-export const TIPO_LABEL: Record<string, string> = {
-  preventivo: "Approvazione preventivo",
-  attivita: "Richiesta attività",
-  acquisto: "Acquisto materiali/servizi",
-};
+export function BadgeStile({ stile, testo, className }: { stile: StileVoce; testo?: React.ReactNode; className?: string }) {
+  const Icona = stile.icona;
+  return (
+    <Badge variant="outline" className={cn("w-fit gap-1 font-medium", stile.badge, className)}>
+      <Icona className="size-3 shrink-0" aria-hidden />
+      <span className="break-words">{testo ?? stile.label}</span>
+    </Badge>
+  );
+}
 
 export type RichiestaRow = {
   id: string;
@@ -64,9 +60,10 @@ function BadgeAcconto({ r }: { r: RichiestaRow }) {
   if (!r.acconto_richiesto) return null;
   const eseguito = r.acconto_stato === "eseguito";
   return (
-    <Badge variant="outline" className={`w-fit ${eseguito ? "bg-success/15 text-success border-success/30" : ""}`}>
-      {eseguito ? "✓ " : ""}Acconto {fmtEuro(r.acconto_importo ?? null)}
-    </Badge>
+    <BadgeStile
+      stile={eseguito ? STILE_ACCONTO.eseguito : STILE_ACCONTO.da_eseguire}
+      testo={`${eseguito ? "✓ " : ""}Acconto ${fmtEuro(r.acconto_importo ?? null)}`}
+    />
   );
 }
 
@@ -82,7 +79,7 @@ type SortKey =
   | "created_at"
   | "archived_at";
 
-type Periodo = "tutto" | "30" | "90";
+export type Periodo = "tutto" | "7" | "30" | "90";
 
 const fmtEuro = (v: number | null) =>
   v == null ? "—" : new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(v);
