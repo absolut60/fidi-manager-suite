@@ -1043,8 +1043,30 @@ function InApprovazioneTab({
               className={action?.kind === "approva" ? "bg-success text-success-foreground hover:bg-success/90" : "bg-destructive text-destructive-foreground hover:bg-destructive/90"}
               onClick={() => { if (action) decisionMut.mutate({ kind: action.kind, rows: action.rows, note }); }}
             >
-              {decisionMut.isPending ? "Elaborazione..." : action?.kind === "approva" ? "Conferma approvazione" : "Conferma rifiuto"}
+              {decisionMut.isPending ? (avanzDec ? `Elaborazione: ${avanzDec.fatte.toLocaleString("it-IT")} di ${avanzDec.totali.toLocaleString("it-IT")}…` : "Elaborazione…") : action?.kind === "approva" ? "Conferma approvazione" : "Conferma rifiuto"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!esitoDec} onOpenChange={(o) => !o && setEsitoDec(null)}>
+        <DialogContent className="w-[calc(100%-2rem)] max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Esito {esitoDec?.kind === "approva" ? "approvazione" : "rifiuto"} in blocco</DialogTitle>
+            <DialogDescription>
+              {esitoDec?.riuscite.toLocaleString("it-IT")} {esitoDec?.kind === "approva" ? "approvate" : "rifiutate"}, {esitoDec?.nonRiuscite.length.toLocaleString("it-IT")} non riuscite. Le non riuscite restano selezionate.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-72 overflow-y-auto rounded-md border bg-muted/30 p-2 text-xs space-y-1.5">
+            {(esitoDec?.nonRiuscite ?? []).map((x) => (
+              <div key={x.id} className="min-w-0">
+                <p className="font-medium break-words">{x.cliente}</p>
+                <p className="text-muted-foreground break-words">{x.motivo}</p>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setEsitoDec(null)}>Chiudi</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
