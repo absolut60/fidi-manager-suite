@@ -568,6 +568,13 @@
       "when": 1793103263701,
       "tag": "0080_fm50_promemoria_escludi_anticipo",
       "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1793119950853,
+      "tag": "0081_fm50_import_scadenziario_righe_attese",
+      "breakpoints": true
     }
   ]
 }

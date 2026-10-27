@@ -2954,6 +2954,7 @@ export type Database = {
           problemi: string[]
           report_saltati: Json | null
           righe_aggiornate: number | null
+          righe_attese: number
           righe_create: number | null
           righe_elaborate: number | null
           righe_errore: number | null
@@ -2979,6 +2980,7 @@ export type Database = {
           problemi?: string[]
           report_saltati?: Json | null
           righe_aggiornate?: number | null
+          righe_attese?: number
           righe_create?: number | null
           righe_elaborate?: number | null
           righe_errore?: number | null
@@ -3004,6 +3006,7 @@ export type Database = {
           problemi?: string[]
           report_saltati?: Json | null
           righe_aggiornate?: number | null
+          righe_attese?: number
           righe_create?: number | null
           righe_elaborate?: number | null
           righe_errore?: number | null
@@ -8218,6 +8221,21 @@ export type Database = {
               chunks_totali: number
             }[]
           }
+      increment_importazione_counters_attese: {
+        Args: {
+          _attese?: number
+          _create: number
+          _elaborate: number
+          _error: number
+          _id: string
+          _skipped?: number
+          _update: number
+        }
+        Returns: {
+          chunks_completati: number
+          chunks_totali: number
+        }[]
+      }
       invia_comunicazione_richiesta: {
         Args: { _destinatario: string; _richiesta_id: string; _testo: string }
         Returns: Json
