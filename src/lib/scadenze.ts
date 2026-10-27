@@ -97,6 +97,8 @@ export function fasciaAnzianita(tempi_scadenza?: string | null): string | null {
 //
 // Fonte di verita' TS: queste funzioni. Le RPC SQL replicano la stessa formula.
 
+// Gemello TS di public.is_anticipo(numero_documento) (= ILIKE '%ANTICIPO%').
+// Usato anche per escludere le righe ANTICIPO dai promemoria di scadenza.
 export function isAnticipo(s: { numero_documento?: string | null }): boolean {
   const nd = s.numero_documento ?? "";
   return /ANTICIPO/i.test(nd);
