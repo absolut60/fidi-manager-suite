@@ -93,7 +93,7 @@ export function RichiesteTable({
   unreadIds,
   onGestisci,
   onRipristina,
-  gestisciLabel = "Gestisci",
+  gestisciLabel = "Controlla fatturazione",
   chiaveFiltri,
   filtroBonificiDefault = false,
   defaultPeriodo = "tutto",
@@ -226,7 +226,7 @@ export function RichiesteTable({
 
       {ricercaGlobale && !isLoading && (
         <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-          Ricerca su tutte le richieste (anche concluse e archiviate) · {filtered.length} {filtered.length === 1 ? "risultato" : "risultati"}
+          Ricerca su tutte le richieste (anche controllate e archiviate) · {filtered.length} {filtered.length === 1 ? "risultato" : "risultati"}
         </div>
       )}
 
