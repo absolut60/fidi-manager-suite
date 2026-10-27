@@ -7,12 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowDown, ArrowUp, ArrowUpDown, MessageSquare, Paperclip, Search } from "lucide-react";
+import { Archive, ArrowDown, ArrowUp, ArrowUpDown, MessageSquare, Paperclip, Search } from "lucide-react";
 import { SchedaLista, ElencoSchede, type CampoScheda } from "@/components/lista-responsive";
 import { puoGestireTesoreria } from "@/lib/tesoreria-permessi";
 import { cn } from "@/lib/utils";
 import {
-  STILE_ACCONTO, stileAdmin, stilePrincipale, stileStatus, stileTipo, type StileVoce,
+  STILE_ACCONTO, STILE_ARCHIVIATA, stileAdmin, stilePrincipale, stileStatus, stileTipo, type StileVoce,
 } from "./stili";
 
 // Re-export per compatibilità: la fonte unica è ./stili.
@@ -100,6 +100,7 @@ export function RichiesteTable({
   filtroBonificiDefault = false,
   defaultPeriodo = "tutto",
   nascondiRichiedente = false,
+  righeRicerca,
 }: {
   rows: RichiestaRow[] | undefined;
   isLoading: boolean;
@@ -119,6 +120,8 @@ export function RichiesteTable({
   defaultPeriodo?: Periodo;
   /** Nasconde la colonna/campo Richiedente (es. "Le mie richieste"). */
   nascondiRichiedente?: boolean;
+  /** Se passata, una ricerca non vuota avviene su queste righe ignorando periodo e filtri della vista. */
+  righeRicerca?: RichiestaRow[];
 }) {
   const navigate = useNavigate();
   const openDetail = (id: string) => navigate({ to: "/richieste-interne/$richiestaId", params: { richiestaId: id } });
@@ -129,7 +132,10 @@ export function RichiesteTable({
     q: "", periodo: defaultPeriodo as Periodo, sortKey: defaultSortKey as SortKey, sortDir: "desc" as "asc" | "desc",
     soloBonifici: filtroBonificiDefault,
   }, { userId: user?.id });
-  const { q, periodo, sortKey, sortDir, soloBonifici } = FR;
+  const { q, periodo: periodoSalvato, sortKey, sortDir, soloBonifici } = FR;
+  // "Ultima settimana" non esiste più: un vecchio "7" salvato vale "Ultimo mese".
+  const periodo: Periodo = periodoSalvato === "7" ? "30" : periodoSalvato;
+  const ricercaGlobale = !!righeRicerca && q.trim() !== "";
   const nBonifici = useMemo(() => (rows ?? []).filter(isBonificoDaEseguire).length, [rows]);
   const setQ = (v: string) => setCampo("q", v);
   const setPeriodo = (v: Periodo) => setCampo("periodo", v);
@@ -148,14 +154,17 @@ export function RichiesteTable({
     const s = q.trim().toLowerCase();
     const cutoff =
       periodo === "tutto" ? null : Date.now() - Number(periodo) * 24 * 60 * 60 * 1000;
-    const base = (rows ?? []).filter((r) => {
-      if (soloBonifici && !isBonificoDaEseguire(r)) return false;
-      if (cutoff && new Date(r.created_at).getTime() < cutoff) return false;
+    const sorgente = ricercaGlobale ? righeRicerca! : (rows ?? []);
+    const base = sorgente.filter((r) => {
+      if (!ricercaGlobale && soloBonifici && !isBonificoDaEseguire(r)) return false;
+      if (!ricercaGlobale && cutoff && new Date(r.created_at).getTime() < cutoff) return false;
       if (s) {
         const hit =
           r.title?.toLowerCase().includes(s) ||
           r.description?.toLowerCase().includes(s) ||
-          r.requester_name?.toLowerCase().includes(s);
+          r.requester_name?.toLowerCase().includes(s) ||
+          r.fornitore?.toLowerCase().includes(s) ||
+          r.sede_name?.toLowerCase().includes(s);
         if (!hit) return false;
       }
       return true;
@@ -171,7 +180,7 @@ export function RichiesteTable({
       if (va > vb) return 1 * dir;
       return 0;
     });
-  }, [rows, q, periodo, sortKey, sortDir, soloBonifici]);
+  }, [rows, righeRicerca, ricercaGlobale, q, periodo, sortKey, sortDir, soloBonifici]);
 
   const colSpan = 11 + (showArchivedColumns ? 2 : 0) - (nascondiRichiedente ? 1 : 0);
 
@@ -181,7 +190,6 @@ export function RichiesteTable({
         <Select value={periodo} onValueChange={(v) => setPeriodo(v as Periodo)}>
           <SelectTrigger className="h-10 w-full sm:w-48"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="7">Ultima settimana</SelectItem>
             <SelectItem value="30">Ultimo mese</SelectItem>
             <SelectItem value="90">Ultimi 3 mesi</SelectItem>
             <SelectItem value="tutto">Tutto</SelectItem>
@@ -204,11 +212,17 @@ export function RichiesteTable({
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Cerca titolo, descrizione o richiedente…"
+            placeholder="Cerca titolo, fornitore, richiedente…"
             className="pl-8 w-full sm:w-72"
           />
         </div>
       </div>
+
+      {ricercaGlobale && !isLoading && (
+        <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+          Ricerca su tutte le richieste (anche concluse e archiviate) · {filtered.length} {filtered.length === 1 ? "risultato" : "risultati"}
+        </div>
+      )}
 
       {/* Sotto md: schede */}
       <ElencoSchede>
@@ -258,12 +272,13 @@ export function RichiesteTable({
                     <BadgeStile stile={stileStatus(r.status)} />
                     {showAdmin && <BadgeStile stile={stileAdmin(r.admin_status)} />}
                     <BadgeAcconto r={r} />
+                    {r.archived && !showArchivedColumns && <BadgeStile stile={STILE_ARCHIVIATA} />}
                   </>
                 }
               />
-              {(onGestisci || onRipristina) && (
+              {((onGestisci && !r.archived) || onRipristina) && (
                 <div className="flex items-center gap-2">
-                  {onGestisci && (
+                  {onGestisci && !r.archived && (
                     <Button size="sm" variant="outline" className="flex-1" onClick={() => onGestisci(r)}>{gestisciLabel}</Button>
                   )}
                   {onRipristina && (
@@ -339,6 +354,7 @@ export function RichiesteTable({
                       <BadgeStile stile={stileStatus(r.status)} />
                       {showAdmin && <BadgeStile stile={stileAdmin(r.admin_status)} />}
                       <BadgeAcconto r={r} />
+                      {r.archived && !showArchivedColumns && <BadgeStile stile={STILE_ARCHIVIATA} />}
                     </div>
                   </TableCell>
                   <TableCell>{fmtData(r.created_at)}</TableCell>
@@ -350,7 +366,7 @@ export function RichiesteTable({
                   )}
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-1 justify-end">
-                      {onGestisci && (
+                      {onGestisci && !r.archived && (
                         <Button size="sm" variant="outline" onClick={() => onGestisci(r)}>{gestisciLabel}</Button>
                       )}
                       {onRipristina && (
