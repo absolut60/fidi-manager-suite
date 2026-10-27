@@ -606,7 +606,7 @@ export default function IscrittiWhatsappPage() {
                   ]}
                   footer={
                     r.stato === "nuovo" ? (
-                      <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex w-full justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                         <Button size="icon" variant="ghost" className="size-10" aria-label="Riconcilia" title="Riconcilia"
                           onClick={() => { setRiconcilia(r); setClienteScelto(null); }}>
                           <Link2 className="size-4" />
