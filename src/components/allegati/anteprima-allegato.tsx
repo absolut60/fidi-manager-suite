@@ -9,7 +9,7 @@ import { Download, ExternalLink, FileText, Loader2, Trash2, X } from "lucide-rea
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { loadPdfJs } from "@/lib/pdfjs";
 import { salvaFileDaUrl } from "@/lib/salva-file";
 
@@ -250,12 +250,15 @@ export function MiniaturaPdfLocale({ file }: { file: File }) {
 
 // ---------- Visualizzatore ----------
 export function VisualizzatoreAllegato({
-  open, onOpenChange, storagePath, nomeFile, tipo, bucket = BUCKET_DEFAULT,
+  open, onOpenChange, storagePath, file, nomeFile, tipo, bucket = BUCKET_DEFAULT,
 }: {
   bucket?: string;
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  storagePath: string;
+  /** Sorgente remota (allegato salvato)… */
+  storagePath?: string;
+  /** …oppure file locale scelto ma non ancora caricato. */
+  file?: File;
   nomeFile: string;
   tipo: "img" | "pdf";
 }) {
@@ -270,20 +273,31 @@ export function VisualizzatoreAllegato({
     if (!open) return;
     let annullato = false;
     let doc: import("pdfjs-dist").PDFDocumentProxy | null = null;
+    let urlLocale: string | null = null;
     setErrore(false);
     setCaricamento(true);
 
     (async () => {
       try {
-        const url = await urlFirmatoAllegato(storagePath, bucket);
         if (tipo === "img") {
+          if (file) {
+            urlLocale = URL.createObjectURL(file);
+            if (!annullato) { setImgUrl(urlLocale); setCaricamento(false); }
+            return;
+          }
+          const url = await urlFirmatoAllegato(storagePath!, bucket);
           if (!annullato) { setImgUrl(url); setCaricamento(false); }
           return;
         }
-        const res = await fetch(url);
-        if (!res.ok) throw new Error("fetch");
+        let dati: ArrayBuffer;
+        if (file) dati = await file.arrayBuffer();
+        else {
+          const res = await fetch(await urlFirmatoAllegato(storagePath!, bucket));
+          if (!res.ok) throw new Error("fetch");
+          dati = await res.arrayBuffer();
+        }
         const pdfjs = await loadPdfJs();
-        doc = await pdfjs.getDocument({ data: await res.arrayBuffer() }).promise;
+        doc = await pdfjs.getDocument({ data: dati }).promise;
         // attende il montaggio del contenitore nel Dialog
         await new Promise((r) => requestAnimationFrame(() => r(null)));
         const contenitore = paginaRef.current;
@@ -317,12 +331,14 @@ export function VisualizzatoreAllegato({
 
     return () => {
       annullato = true;
+      if (urlLocale) { URL.revokeObjectURL(urlLocale); setImgUrl(null); }
       (doc as { destroy?: () => Promise<void> } | null)?.destroy?.().catch(() => {});
       if (paginaRef.current) paginaRef.current.innerHTML = "";
     };
-  }, [open, storagePath, tipo, bucket]);
+  }, [open, storagePath, file, tipo, bucket]);
 
   async function salva() {
+    if (!storagePath) return;
     setSalvando(true);
     try {
       await salvaFileDaUrl(await urlFirmatoAllegato(storagePath, bucket), nomeFile);
@@ -337,18 +353,29 @@ export function VisualizzatoreAllegato({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         onClick={(e) => e.stopPropagation()}
-        className="flex flex-col gap-0 p-0 w-screen max-w-none h-[100dvh] rounded-none sm:rounded-lg sm:w-[95vw] sm:max-w-4xl sm:h-[90vh] overflow-hidden"
+        className="flex flex-col gap-0 p-0 w-screen max-w-none h-[100dvh] rounded-none sm:rounded-lg sm:w-[95vw] sm:max-w-4xl sm:h-[90vh] overflow-hidden [&>button.absolute]:hidden"
       >
-        <div className="flex items-center gap-2 border-b px-3 py-2 pr-12 min-w-0">
+        <div className="flex items-center gap-2 border-b px-3 py-2 min-w-0">
           <div className="min-w-0 flex-1">
             <DialogTitle className="text-sm font-semibold break-all line-clamp-2" title={nomeFile}>{nomeFile}</DialogTitle>
             <DialogDescription className="sr-only">Anteprima dell'allegato</DialogDescription>
           </div>
-          <Button size="sm" onClick={salva} disabled={salvando} className="shrink-0 gap-1.5 h-10 sm:h-9">
-            {salvando ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
-            <span className="hidden sm:inline">Scarica / Condividi</span>
-            <span className="sm:hidden">Salva</span>
-          </Button>
+          {file ? (
+            <DialogClose asChild>
+              <Button size="sm" variant="secondary" className="shrink-0 h-10">Chiudi</Button>
+            </DialogClose>
+          ) : (
+            <Button size="sm" onClick={salva} disabled={salvando} className="shrink-0 gap-1.5 h-10">
+              {salvando ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+              <span className="hidden sm:inline">Scarica / Condividi</span>
+              <span className="sm:hidden">Salva</span>
+            </Button>
+          )}
+          <DialogClose asChild>
+            <Button size="icon" variant="ghost" className="size-10 shrink-0" aria-label="Chiudi anteprima" title="Chiudi">
+              <X className="size-5" />
+            </Button>
+          </DialogClose>
         </div>
         <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden bg-muted/40 p-2">
           {caricamento && (
@@ -358,7 +385,7 @@ export function VisualizzatoreAllegato({
           )}
           {errore && (
             <div className="p-6 text-center text-sm text-destructive">
-              Anteprima non disponibile. Usa "Scarica / Condividi".
+              {file ? "Anteprima non disponibile." : 'Anteprima non disponibile. Usa "Scarica / Condividi".'}
             </div>
           )}
           {tipo === "img" && imgUrl && !errore && (
@@ -375,23 +402,13 @@ export function VisualizzatoreAllegato({
 /** Griglia standard per elenchi di allegati: 1–2 per riga a 360 px, affiancati su desktop. */
 export const GRIGLIA_ALLEGATI = "grid grid-cols-1 min-[360px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3";
 
-/** Apre l'allegato salvato in una nuova scheda (finestra aperta subito, per non essere bloccata). */
-export async function apriAllegatoInNuovaScheda(storagePath: string, bucket: string = BUCKET_DEFAULT) {
-  const w = window.open("", "_blank");
-  try {
-    const url = await urlFirmatoAllegato(storagePath, bucket);
-    if (w) w.location.href = url; else window.open(url, "_blank");
-  } catch {
-    w?.close();
-    toast.error("Impossibile aprire il file");
-  }
-}
-
 /** Azioni standard di un allegato salvato: Apri, Scarica e (se permesso) Elimina. Solo icone, su una riga. */
 function AzioniStandard({
-  storagePath, nomeFile, bucket = BUCKET_DEFAULT, onElimina,
-}: { storagePath: string; nomeFile: string; bucket?: string; onElimina?: () => void }) {
+  storagePath, nomeFile, mimeType, bucket = BUCKET_DEFAULT, onElimina,
+}: { storagePath: string; nomeFile: string; mimeType?: string | null; bucket?: string; onElimina?: () => void }) {
   const [salvando, setSalvando] = useState(false);
+  const [aperto, setAperto] = useState(false);
+  const tipo = tipoAllegato(mimeType, nomeFile);
   async function scarica() {
     setSalvando(true);
     try { await salvaFileDaUrl(await urlFirmatoAllegato(storagePath, bucket), nomeFile); }
@@ -400,19 +417,32 @@ function AzioniStandard({
   }
   return (
     <div className="flex shrink-0 flex-nowrap items-center gap-0.5">
-      <Button type="button" size="icon" variant="ghost" className="h-9 w-9 shrink-0 sm:h-8 sm:w-8"
-        onClick={() => void apriAllegatoInNuovaScheda(storagePath, bucket)} aria-label={`Apri ${nomeFile}`} title="Apri">
-        <ExternalLink className="size-4" />
-      </Button>
-      <Button type="button" size="icon" variant="ghost" className="h-9 w-9 shrink-0 sm:h-8 sm:w-8" onClick={scarica}
-        disabled={salvando} aria-label={`Scarica ${nomeFile}`} title="Scarica">
-        {salvando ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
-      </Button>
+      {tipo !== "altro" ? (
+        <Button type="button" size="icon" variant="ghost" className="h-9 w-9 shrink-0 sm:h-8 sm:w-8"
+          onClick={() => setAperto(true)} aria-label={`Apri anteprima di ${nomeFile}`} title="Apri anteprima">
+          <ExternalLink className="size-4" />
+        </Button>
+      ) : (
+        <Button type="button" size="icon" variant="ghost" className="h-9 w-9 shrink-0 sm:h-8 sm:w-8" onClick={scarica}
+          disabled={salvando} aria-label={`Scarica ${nomeFile} (anteprima non disponibile)`} title="Anteprima non disponibile: scarica il file">
+          <Download className="size-4" />
+        </Button>
+      )}
+      {tipo !== "altro" && (
+        <Button type="button" size="icon" variant="ghost" className="h-9 w-9 shrink-0 sm:h-8 sm:w-8" onClick={scarica}
+          disabled={salvando} aria-label={`Scarica ${nomeFile}`} title="Scarica">
+          {salvando ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+        </Button>
+      )}
       {onElimina && (
         <Button type="button" size="icon" variant="ghost" className="h-9 w-9 shrink-0 text-destructive hover:text-destructive sm:h-8 sm:w-8"
           onClick={onElimina} aria-label={`Elimina ${nomeFile}`} title="Elimina">
           <Trash2 className="size-4" />
         </Button>
+      )}
+      {tipo !== "altro" && (
+        <VisualizzatoreAllegato open={aperto} onOpenChange={setAperto} storagePath={storagePath}
+          nomeFile={nomeFile} tipo={tipo} bucket={bucket} />
       )}
     </div>
   );
@@ -464,7 +494,7 @@ export function SchedaAllegato({
   compatta?: boolean;
 }) {
   const azioniIcone = azioniStandard ? (
-    <AzioniStandard storagePath={storagePath} nomeFile={nomeFile} bucket={bucket} onElimina={azioniStandard.onElimina} />
+    <AzioniStandard storagePath={storagePath} nomeFile={nomeFile} mimeType={mimeType} bucket={bucket} onElimina={azioniStandard.onElimina} />
   ) : null;
   const azioniRiga = (azioni || (!compatta && azioniIcone)) ? (
     <div className="ml-auto flex shrink-0 flex-nowrap items-center gap-1">
@@ -492,6 +522,7 @@ export function SchedaAllegato({
 export function SchedaFileLocale({ file, onRimuovi }: { file: File; onRimuovi: () => void }) {
   const tipo = tipoAllegato(file.type, file.name);
   const [url, setUrl] = useState<string | null>(null);
+  const [aperto, setAperto] = useState(false);
   useEffect(() => {
     const u = URL.createObjectURL(file);
     setUrl(u);
@@ -511,15 +542,20 @@ export function SchedaFileLocale({ file, onRimuovi }: { file: File; onRimuovi: (
         <span className="block text-xs text-muted-foreground">{formatBytes(file.size)}</span>
       </span>
       <div className="ml-auto flex shrink-0 flex-nowrap items-center gap-0.5">
-        <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 sm:h-8 sm:w-8" disabled={!url}
-          onClick={() => url && window.open(url, "_blank", "noopener")} aria-label={`Apri ${file.name}`} title="Apri">
-          <ExternalLink className="size-4" />
-        </Button>
+        {tipo !== "altro" && (
+          <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 sm:h-8 sm:w-8"
+            onClick={() => setAperto(true)} aria-label={`Apri anteprima di ${file.name}`} title="Apri anteprima">
+            <ExternalLink className="size-4" />
+          </Button>
+        )}
         <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-muted-foreground hover:text-destructive sm:h-8 sm:w-8"
           onClick={onRimuovi} aria-label={`Rimuovi ${file.name}`} title="Rimuovi">
           <X className="size-4" />
         </Button>
       </div>
+      {tipo !== "altro" && (
+        <VisualizzatoreAllegato open={aperto} onOpenChange={setAperto} file={file} nomeFile={file.name} tipo={tipo} />
+      )}
     </li>
   );
 }
