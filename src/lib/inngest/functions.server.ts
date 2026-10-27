@@ -2049,24 +2049,25 @@ export const processScadenziarioChunk = inngest.createFunction(
         if (!slice.length) continue;
         const tB = Date.now();
         logger.info(`[chunk ${chunkIndex}] B.start lookup-clienti batch=${i} size=${slice.length}`);
-        try {
-          const { data: cdata } = await withTimeout(
-            supabaseAdmin
-              .from("clienti")
-              .select("id, codice_gestionale")
-              .in("codice_gestionale", slice as string[]),
-            30_000,
-            `chunk ${chunkIndex} lookup-clienti batch=${i}`,
-          );
-          (cdata ?? []).forEach((c) => {
-            if (c.codice_gestionale) clientMap[c.codice_gestionale] = c.id;
-          });
-          logger.info(`[chunk ${chunkIndex}] B.end lookup-clienti batch=${i} in ${Date.now() - tB}ms`);
-        } catch (err) {
-          logger.warn(
-            `Lookup clienti fallito (chunk ${chunkIndex}, batch ${i}): ${err instanceof Error ? err.message : String(err)}`,
+        // FM50: un errore (o data null) NON è "nessun cliente": lo step fallisce
+        // e Inngest ritenta, altrimenti le righe verrebbero saltate in silenzio.
+        const { data: cdata, error: cErr } = await withTimeout(
+          supabaseAdmin
+            .from("clienti")
+            .select("id, codice_gestionale")
+            .in("codice_gestionale", slice as string[]),
+          30_000,
+          `chunk ${chunkIndex} lookup-clienti batch=${i}`,
+        );
+        if (cErr || !cdata) {
+          throw new Error(
+            `Lookup clienti fallito (chunk ${chunkIndex}, batch ${i}): ${cErr?.message ?? "risposta vuota"}`,
           );
         }
+        cdata.forEach((c) => {
+          if (c.codice_gestionale) clientMap[c.codice_gestionale] = c.id;
+        });
+        logger.info(`[chunk ${chunkIndex}] B.end lookup-clienti batch=${i} in ${Date.now() - tB}ms`);
       }
     }
 
@@ -2078,6 +2079,7 @@ export const processScadenziarioChunk = inngest.createFunction(
         ...missing.map((idx) => ({ riga: idx, errore: "COD_CLI mancante" })),
       ];
       const batchErrs: Array<{ riga: number; errore: string }> = [];
+      let righePerse = 0;
       const rawValidRows: Array<Record<string, unknown>> = [];
       let skipped = 0;
       // Dettagli completi dei codici non trovati (senza cap): codice -> { ragione_sociale, count }
@@ -2270,6 +2272,7 @@ export const processScadenziarioChunk = inngest.createFunction(
             }
           } else {
             const messaggio = ultimoErr ?? "errore sconosciuto";
+            righePerse += rows.length;
             batchErrs.push({
               riga: chunkIndex,
               errore: `Upsert chunk ${chunkIndex} sotto-blocco ${n}/${tot} (${rows.length} righe) fallito dopo ${SCAD_UPSERT_TENTATIVI} tentativi${pezzoFallito ? `, ${pezzoFallito} fallito anche in pezzi da 50` : ""}: ${messaggio}`,
@@ -2284,7 +2287,9 @@ export const processScadenziarioChunk = inngest.createFunction(
               stato: "in_attesa",
             } as never);
             if (anErr) {
+              // FM50: senza questa anomalia il finalize non saprebbe del blocco perso.
               logger.error(`[chunk ${chunkIndex}] insert anomalia upsert_chunk_fallito fallito: ${anErr.message}`);
+              throw new Error(`chunk ${chunkIndex} anomalia upsert_chunk_fallito non registrata: ${anErr.message}`);
             }
           }
         }
@@ -2293,12 +2298,13 @@ export const processScadenziarioChunk = inngest.createFunction(
 
 
       // Persisti errori/codici mancanti + report_saltati ricco (no cap)
-      const totalErrs = rowErrs.length + batchErrs.length;
+      // FM50: un sotto-blocco fallito conta le righe perse, non 1.
+      const totalErrs = rowErrs.length + righePerse;
       const skippedCodesArr = Object.keys(skippedDetails);
       if (rowErrs.length || batchErrs.length || skippedCodesArr.length) {
         const tSel = Date.now();
         logger.info(`[chunk ${chunkIndex}] C.start select-importazioni`);
-        const { data: cur } = await withTimeout(
+        const { data: cur, error: selErr } = await withTimeout(
           supabaseAdmin
             .from("importazioni")
             .select("log_errori, codici_mancanti, report_saltati")
@@ -2307,6 +2313,8 @@ export const processScadenziarioChunk = inngest.createFunction(
           30_000,
           `chunk ${chunkIndex} select-importazioni`,
         );
+        // Senza la lettura si sovrascriverebbero i log degli altri chunk: ritenta.
+        if (selErr) throw new Error(`chunk ${chunkIndex} select-importazioni: ${selErr.message}`);
         logger.info(`[chunk ${chunkIndex}] C.end select-importazioni in ${Date.now() - tSel}ms`);
         const updates: Record<string, unknown> = {};
         if (rowErrs.length || batchErrs.length) {
@@ -2359,7 +2367,7 @@ export const processScadenziarioChunk = inngest.createFunction(
         }
         const tUpd = Date.now();
         logger.info(`[chunk ${chunkIndex}] C.start update-importazioni`);
-        await withTimeout(
+        const { error: updErr } = await withTimeout(
           supabaseAdmin
             .from("importazioni")
             .update(updates as never)
@@ -2367,6 +2375,16 @@ export const processScadenziarioChunk = inngest.createFunction(
           30_000,
           `chunk ${chunkIndex} update-importazioni`,
         );
+        if (updErr) {
+          // FM50: mai in silenzio. Log + problema; se nemmeno il problema
+          // si scrive, lo step fallisce e Inngest ritenta (upsert idempotente,
+          // contatori non ancora incrementati).
+          logger.error(`[chunk ${chunkIndex}] scrittura log_errori/report_saltati fallita: ${updErr.message}`);
+          await aggiungiProblemaImportazione(
+            importazioneId,
+            `Chunk ${chunkIndex}: scrittura del dettaglio errori/saltati non riuscita (${updErr.message.slice(0, 200)})`,
+          );
+        }
         logger.info(`[chunk ${chunkIndex}] C.end update-importazioni in ${Date.now() - tUpd}ms`);
       }
 
@@ -2378,6 +2396,8 @@ export const processScadenziarioChunk = inngest.createFunction(
         elaborate: rows.length + missing.length + parseRowErrors.length,
         skipped,
         errori: totalErrs,
+        // FM50: righe valide da scrivere (dopo unione doppi, senza clienti inesistenti)
+        attese: validRows.length,
       };
     });
 
