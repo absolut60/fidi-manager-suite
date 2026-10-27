@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ScegliFile } from "@/components/ui/scegli-file";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -233,15 +234,11 @@ export function MailSinistroDialog({
           </div>
           <div>
             <Label>Allegati (PDF o immagini)</Label>
-            <Input
-              type="file"
+            <ScegliFile
               multiple
               accept="application/pdf,image/*"
-              onChange={(e) => {
-                const nuovi = Array.from(e.target.files ?? []);
-                if (nuovi.length) setFiles((prev) => [...prev, ...nuovi]);
-                e.target.value = "";
-              }}
+              nomi={files.map((f) => f.name)}
+              onFiles={(nuovi) => setFiles((prev) => [...prev, ...nuovi])}
             />
             {files.length > 0 && (
               <ul className="mt-2 space-y-1">

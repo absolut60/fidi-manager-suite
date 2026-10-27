@@ -222,6 +222,11 @@ function DettaglioRichiesta() {
     refresh();
   }
 
+  // Stessa regola delle policy su richieste_interne_allegati: chi ha caricato o amministratore.
+  function puoEliminareAllegato(a: { caricato_da?: string | null }) {
+    return hasRole("amministratore") || (!!uid && a.caricato_da === uid);
+  }
+
   async function eliminaAllegato(a: any) {
     const { error: rmErr } = await supabase.storage.from("richieste-allegati").remove([a.storage_path]);
     if (rmErr) console.warn("Rimozione file fallita:", rmErr.message);
@@ -457,7 +462,8 @@ const blocIter = (
           )}
         </CardContent>
       </Card>
-      <BonificoAccontoCard r={r} allegati={(r.richieste_interne_allegati ?? []) as any} />
+      <BonificoAccontoCard r={r} allegati={(r.richieste_interne_allegati ?? []) as any}
+        puoEliminareAllegato={puoEliminareAllegato} onEliminaAllegato={(a) => setAllegatoDaEliminare(a)} />
           <div className="xl:hidden">{blocIter}</div>
       <Card>
         <CardHeader className="p-3 sm:p-4 flex flex-row flex-wrap items-center justify-between gap-2">
@@ -479,7 +485,6 @@ const blocIter = (
             <ul className={GRIGLIA_ALLEGATI}>
               {r.richieste_interne_allegati!.map((a: any) => {
                 const uploader = a.profili ? [a.profili.nome, a.profili.cognome].filter(Boolean).join(" ") : "—";
-                const canDeleteAllegato = hasRole("amministratore") || a.caricato_da === uid;
                 return (
                   <SchedaAllegato
                     key={a.id}
@@ -489,11 +494,7 @@ const blocIter = (
                     dimensione={a.dimensione_bytes}
                     bucket="richieste-allegati"
                     dettagli={<>{a.tipo === "cro_bonifico" && <Badge variant="secondary" className="mr-1">CRO</Badge>}{uploader} · {fmtDataOra(a.created_at)}</>}
-                    azioni={canDeleteAllegato ? (
-                      <Button size="icon" variant="ghost" className="size-10 text-destructive hover:text-destructive" onClick={() => setAllegatoDaEliminare(a)} title="Elimina" aria-label={`Elimina ${a.nome_file}`}>
-                        <Trash2 className="size-4" />
-                      </Button>
-                    ) : null}
+                    azioniStandard={{ onElimina: puoEliminareAllegato(a) ? () => setAllegatoDaEliminare(a) : undefined }}
                   />
                 );
               })}
@@ -605,7 +606,7 @@ const blocIter = (
           <DialogHeader>
             <DialogTitle>Elimina allegato</DialogTitle>
             <DialogDescription>
-              Vuoi eliminare l&apos;allegato &quot;{allegatoDaEliminare?.nome_file}&quot;? L&apos;operazione è irreversibile.
+              Eliminare l&apos;allegato {allegatoDaEliminare?.nome_file}? L&apos;operazione non si può annullare.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
