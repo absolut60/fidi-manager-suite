@@ -55,7 +55,7 @@ function DashboardRichiesteInterne() {
   const ultime = [...rows].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? "")).slice(0, 5);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 max-w-6xl">
       <IntestazioneRichieste
         indietroA="/"
         stile={STILE_PAGINA.dashboard}
@@ -64,64 +64,68 @@ function DashboardRichiesteInterne() {
         azioni={(isRichiedente || isAdmin) ? <NuovaRichiestaDialog /> : undefined}
       />
 
-      {(isRichiedente || isAdmin) && (
-        <Sezione titolo="Le mie richieste">
-          <StatCard dest={linkOptions({ to: "/richieste-interne/mie", search: { stato: "tutte" } })} tinta="blu" icona={Inbox} label="Totali" value={nMie} />
-          <StatCard dest={linkOptions({ to: "/richieste-interne/mie", search: { stato: "attesa" } })} tinta="ambra" icona={Hourglass} label="In attesa" value={nMieAttesa} />
-          <StatCard dest={linkOptions({ to: "/richieste-interne/mie", search: { stato: "approvate" } })} tinta="verde" icona={CheckCircle2} label="Approvate" value={nMieApprovate} />
-          <StatCard dest={linkOptions({ to: "/richieste-interne/mie", search: { stato: "rifiutate" } })} tinta="rosso" icona={XCircle} label="Rifiutate" value={nMieRifiutate} />
-        </Sezione>
-      )}
+      {/* Card di sezione affiancate da lg: solo quelle visibili dall'utente. */}
+      <div className="grid items-start gap-3 lg:grid-cols-2">
+        {(isRichiedente || isAdmin) && (
+          <SezioneCard titolo="Le mie richieste" griglia="2xl:grid-cols-4">
+            <StatCard dest={linkOptions({ to: "/richieste-interne/mie", search: { stato: "tutte" } })} tinta="blu" icona={Inbox} label="Totali" value={nMie} />
+            <StatCard dest={linkOptions({ to: "/richieste-interne/mie", search: { stato: "attesa" } })} tinta="ambra" icona={Hourglass} label="In attesa" value={nMieAttesa} />
+            <StatCard dest={linkOptions({ to: "/richieste-interne/mie", search: { stato: "approvate" } })} tinta="verde" icona={CheckCircle2} label="Approvate" value={nMieApprovate} />
+            <StatCard dest={linkOptions({ to: "/richieste-interne/mie", search: { stato: "rifiutate" } })} tinta="rosso" icona={XCircle} label="Rifiutate" value={nMieRifiutate} />
+          </SezioneCard>
+        )}
 
-      {(isApp1 || isApp2 || isAdmin) && (
-        <Sezione titolo="Approvazioni">
-          {(isApp1 || isAdmin) && <StatCard dest={linkOptions({ to: "/richieste-interne/approva", search: { livello: "responsabile" } })} tinta="ambra" icona={ClipboardList} label="Da approvare — Responsabile" value={nApp1} />}
-          {(isApp2 || isAdmin) && <StatCard dest={linkOptions({ to: "/richieste-interne/approva", search: { livello: "direzione" } })} tinta="ambra" icona={ClipboardList} label="Da approvare — Direzione" value={nApp2} />}
-        </Sezione>
-      )}
+        {(isApp1 || isApp2 || isAdmin) && (
+          <SezioneCard titolo="Da approvare">
+            {(isApp1 || isAdmin) && <StatCard dest={linkOptions({ to: "/richieste-interne/approva", search: { livello: "responsabile" } })} tinta="ambra" icona={ClipboardList} label="Responsabile" value={nApp1} />}
+            {(isApp2 || isAdmin) && <StatCard dest={linkOptions({ to: "/richieste-interne/approva", search: { livello: "direzione" } })} tinta="ambra" icona={ClipboardList} label="Direzione" value={nApp2} />}
+          </SezioneCard>
+        )}
 
-      {(isGestore || isAdmin) && (
-        <Sezione titolo="Gestione">
-          <StatCard dest={linkOptions({ to: "/richieste-interne/gestione", search: { filtro: "da_gestire" } })} tinta="rosso" icona={Inbox} label="Da gestire" value={nDaGestire} />
-          <StatCard dest={linkOptions({ to: "/richieste-interne/gestione", search: { filtro: "in_gestione" } })} tinta="ambra" icona={Wrench} label="In gestione" value={nInGestione} />
-        </Sezione>
-      )}
+        {(isGestore || isAdmin) && (
+          <SezioneCard titolo="Gestione">
+            <StatCard dest={linkOptions({ to: "/richieste-interne/gestione", search: { filtro: "da_gestire" } })} tinta="rosso" icona={Inbox} label="Da gestire" value={nDaGestire} />
+            <StatCard dest={linkOptions({ to: "/richieste-interne/gestione", search: { filtro: "in_gestione" } })} tinta="ambra" icona={Wrench} label="In gestione" value={nInGestione} />
+          </SezioneCard>
+        )}
 
-      {isTesoreria && (
-        <Sezione titolo="Tesoreria">
-          <StatCard dest={linkOptions({ to: "/richieste-interne/tutte", search: { bonifici: "1" } })} tinta="teal" icona={Banknote} label="Bonifici da eseguire" value={nBonifici} />
-        </Sezione>
-      )}
+        {isTesoreria && (
+          <SezioneCard titolo="Tesoreria" griglia="grid-cols-1">
+            <StatCard dest={linkOptions({ to: "/richieste-interne/tutte", search: { bonifici: "1" } })} tinta="teal" icona={Banknote} label="Bonifici da eseguire" value={nBonifici} />
+          </SezioneCard>
+        )}
+      </div>
 
-      <section className="space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Ultime richieste</h2>
+      <section className="overflow-hidden rounded-lg border bg-card">
+        <div className="flex items-center justify-between gap-2 border-b px-3 py-2">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ultime richieste</h2>
           <Link to={vediTutte} className="inline-flex min-h-10 items-center text-sm font-medium text-primary hover:underline">Vedi tutte</Link>
         </div>
         {ultime.length === 0 ? (
-          <div className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">Nessuna richiesta</div>
+          <div className="p-6 text-center text-sm text-muted-foreground">Nessuna richiesta</div>
         ) : (
-          <ul className="space-y-2">
-            {ultime.map((r) => (
-              <li key={r.id}>
-                <Link
-                  to="/richieste-interne/$richiestaId"
-                  params={{ richiestaId: r.id }}
-                  className={cn("flex flex-col gap-2 rounded-lg border border-l-4 bg-card p-3 hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between", stilePrincipale(r).bordo)}
-                >
-                  <div className="min-w-0">
-                    <div className="font-medium break-words line-clamp-2">{r.title}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {fmtData(r.created_at)} · {stileTipo(r.type).label}{r.amount != null ? ` · ${fmtEuro(r.amount)}` : ""}
+          <ul className="divide-y">
+            {ultime.map((r) => {
+              const meta = `${fmtData(r.created_at)} · ${stileTipo(r.type).label}${r.amount != null ? ` · ${fmtEuro(r.amount)}` : ""}`;
+              return (
+                <li key={r.id}>
+                  <Link
+                    to="/richieste-interne/$richiestaId"
+                    params={{ richiestaId: r.id }}
+                    className={cn("flex flex-col gap-1 border-l-4 px-3 py-2 hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between", stilePrincipale(r).bordo)}
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium" title={r.title}>{r.title}</div>
+                      <div className="truncate text-xs text-muted-foreground" title={meta}>{meta}</div>
                     </div>
-                  </div>
-                  <div className="flex flex-wrap gap-1 sm:shrink-0">
-                    <BadgeStile stile={stileStatus(r.status)} />
-                    {(r.status === "resp_approved" || r.status === "approved") && <BadgeStile stile={stileAdmin(r.admin_status)} />}
-                  </div>
-                </Link>
-              </li>
-            ))}
+                    <div className="flex flex-wrap gap-1 sm:shrink-0">
+                      <BadgeStile stile={stileStatus(r.status)} />
+                      {(r.status === "resp_approved" || r.status === "approved") && <BadgeStile stile={stileAdmin(r.admin_status)} />}
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
@@ -132,11 +136,12 @@ function DashboardRichiesteInterne() {
 const fmtEuro = (v: number) => new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(v);
 const fmtData = (v: string | null) => (v ? new Date(v).toLocaleDateString("it-IT") : "—");
 
-function Sezione({ titolo, children }: { titolo: string; children: React.ReactNode }) {
+/** Card di sezione: titolo piccolo maiuscolo + riquadri compatti. */
+function SezioneCard({ titolo, griglia = "grid-cols-2", children }: { titolo: string; griglia?: string; children: React.ReactNode }) {
   return (
-    <section className="space-y-2">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{titolo}</h2>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">{children}</div>
+    <section className="rounded-lg border bg-card p-2.5">
+      <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{titolo}</h2>
+      <div className={cn("grid grid-cols-2 gap-2", griglia)}>{children}</div>
     </section>
   );
 }
@@ -146,18 +151,19 @@ function StatCard({ dest, tinta, icona: Icona, label, value }: { dest: LinkOptio
   return (
     <Link
       {...dest}
+      title={label}
       className={cn(
-        "flex min-h-[72px] items-center gap-2 sm:gap-3 rounded-lg border border-l-4 bg-card p-3 sm:p-4 transition hover:bg-muted/40",
+        "flex min-h-[56px] items-center gap-2 rounded-lg border border-l-4 bg-card p-2.5 transition hover:bg-muted/40",
         t.bordo,
         value === 0 && "opacity-60",
       )}
     >
-      <span className={cn("flex size-9 sm:size-10 shrink-0 items-center justify-center rounded-full", t.tinta)}>
-        <Icona className="size-4 sm:size-5" aria-hidden />
+      <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-full", t.tinta)}>
+        <Icona className="size-4" aria-hidden />
       </span>
       <span className="min-w-0">
-        <span className="block text-xs sm:text-sm font-medium text-muted-foreground break-words">{label}</span>
-        <span className="block text-2xl sm:text-3xl font-bold tabular-nums leading-tight">{value}</span>
+        <span className="block truncate text-xs font-medium text-muted-foreground">{label}</span>
+        <span className="block text-xl font-bold tabular-nums leading-tight">{value}</span>
       </span>
     </Link>
   );
