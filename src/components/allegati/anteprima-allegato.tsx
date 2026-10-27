@@ -387,7 +387,7 @@ export async function apriAllegatoInNuovaScheda(storagePath: string, bucket: str
   }
 }
 
-/** Azioni standard di un allegato salvato: Apri, Scarica e (se permesso) Elimina. Pulsanti da 40px. */
+/** Azioni standard di un allegato salvato: Apri, Scarica e (se permesso) Elimina. Solo icone, su una riga. */
 function AzioniStandard({
   storagePath, nomeFile, bucket = BUCKET_DEFAULT, onElimina,
 }: { storagePath: string; nomeFile: string; bucket?: string; onElimina?: () => void }) {
@@ -399,19 +399,19 @@ function AzioniStandard({
     finally { setSalvando(false); }
   }
   return (
-    <div className="mt-1.5 flex flex-wrap gap-1">
-      <Button type="button" size="sm" variant="outline" className="h-10 gap-1 px-2.5"
-        onClick={() => void apriAllegatoInNuovaScheda(storagePath, bucket)} aria-label={`Apri ${nomeFile}`}>
-        <ExternalLink className="size-4" /> Apri
+    <div className="flex shrink-0 flex-nowrap items-center gap-0.5">
+      <Button type="button" size="icon" variant="ghost" className="h-9 w-9 shrink-0 sm:h-8 sm:w-8"
+        onClick={() => void apriAllegatoInNuovaScheda(storagePath, bucket)} aria-label={`Apri ${nomeFile}`} title="Apri">
+        <ExternalLink className="size-4" />
       </Button>
-      <Button type="button" size="sm" variant="outline" className="h-10 gap-1 px-2.5" onClick={scarica}
-        disabled={salvando} aria-label={`Scarica ${nomeFile}`}>
-        {salvando ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />} Scarica
+      <Button type="button" size="icon" variant="ghost" className="h-9 w-9 shrink-0 sm:h-8 sm:w-8" onClick={scarica}
+        disabled={salvando} aria-label={`Scarica ${nomeFile}`} title="Scarica">
+        {salvando ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
       </Button>
       {onElimina && (
-        <Button type="button" size="sm" variant="outline" className="h-10 gap-1 px-2.5 text-destructive hover:text-destructive"
-          onClick={onElimina} aria-label={`Elimina ${nomeFile}`}>
-          <Trash2 className="size-4" /> Elimina
+        <Button type="button" size="icon" variant="ghost" className="h-9 w-9 shrink-0 text-destructive hover:text-destructive sm:h-8 sm:w-8"
+          onClick={onElimina} aria-label={`Elimina ${nomeFile}`} title="Elimina">
+          <Trash2 className="size-4" />
         </Button>
       )}
     </div>
@@ -420,8 +420,8 @@ function AzioniStandard({
 
 /** Riga compatta: icona/miniatura piccola + nome e dimensione (senza riquadro alto di anteprima). */
 function RigaCompatta({
-  storagePath, nomeFile, mimeType, dimensione, bucket = BUCKET_DEFAULT,
-}: { storagePath: string; nomeFile: string; mimeType?: string | null; dimensione?: number | null; bucket?: string }) {
+  storagePath, nomeFile, mimeType, dimensione, bucket = BUCKET_DEFAULT, azioni,
+}: { storagePath: string; nomeFile: string; mimeType?: string | null; dimensione?: number | null; bucket?: string; azioni?: React.ReactNode }) {
   const tipo = tipoAllegato(mimeType, nomeFile);
   const [imgUrl, setImgUrl] = useState<string | null>(null);
   useEffect(() => {
@@ -431,7 +431,7 @@ function RigaCompatta({
     return () => { attivo = false; };
   }, [tipo, storagePath, bucket]);
   return (
-    <div className="flex min-w-0 items-center gap-2">
+    <div className="flex min-w-0 flex-wrap items-center gap-2">
       {tipo === "img" && imgUrl ? (
         <img src={imgUrl} alt="" className="size-10 shrink-0 rounded border object-cover" />
       ) : (
@@ -439,10 +439,11 @@ function RigaCompatta({
           <FileText className={tipo === "pdf" ? "size-5 text-destructive" : "size-5"} />
         </span>
       )}
-      <div className="min-w-0 flex-1">
+      <div className="min-w-[3.5rem] flex-1">
         <div className="text-xs font-medium break-all line-clamp-2">{nomeFile}</div>
         {dimensione != null && <div className="text-[10px] text-muted-foreground">{formatBytes(dimensione)}</div>}
       </div>
+      {azioni && <div className="ml-auto flex shrink-0 flex-nowrap items-center">{azioni}</div>}
     </div>
   );
 }
@@ -462,19 +463,26 @@ export function SchedaAllegato({
   /** Riga compatta senza miniatura grande. */
   compatta?: boolean;
 }) {
+  const azioniIcone = azioniStandard ? (
+    <AzioniStandard storagePath={storagePath} nomeFile={nomeFile} bucket={bucket} onElimina={azioniStandard.onElimina} />
+  ) : null;
+  const azioniRiga = (azioni || (!compatta && azioniIcone)) ? (
+    <div className="ml-auto flex shrink-0 flex-nowrap items-center gap-1">
+      {azioni}
+      {!compatta && azioniIcone}
+    </div>
+  ) : null;
   return (
     <li className="min-w-0 flex flex-col rounded-md border p-2">
       {compatta
-        ? <RigaCompatta storagePath={storagePath} nomeFile={nomeFile} mimeType={mimeType} dimensione={dimensione} bucket={bucket} />
+        ? <RigaCompatta storagePath={storagePath} nomeFile={nomeFile} mimeType={mimeType} dimensione={dimensione} bucket={bucket}
+            azioni={azioniIcone ?? undefined} />
         : <MiniaturaAllegato storagePath={storagePath} nomeFile={nomeFile} mimeType={mimeType} dimensione={dimensione} bucket={bucket} />}
-      {(dettagli || azioni) && (
-        <div className="mt-1.5 flex items-start gap-1 min-w-0">
-          <div className="min-w-0 flex-1 text-xs text-muted-foreground break-words">{dettagli}</div>
-          {azioni && <div className="shrink-0 flex items-center">{azioni}</div>}
+      {(dettagli || azioniRiga) && (
+        <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-1">
+          {dettagli ? <div className="min-w-[3.5rem] flex-1 text-xs text-muted-foreground break-words">{dettagli}</div> : null}
+          {azioniRiga}
         </div>
-      )}
-      {azioniStandard && (
-        <AzioniStandard storagePath={storagePath} nomeFile={nomeFile} bucket={bucket} onElimina={azioniStandard.onElimina} />
       )}
     </li>
   );
@@ -490,7 +498,7 @@ export function SchedaFileLocale({ file, onRimuovi }: { file: File; onRimuovi: (
     return () => URL.revokeObjectURL(u);
   }, [file]);
   return (
-    <li className="flex min-w-0 items-center gap-2 rounded-md border p-2 text-sm">
+    <li className="flex min-w-0 flex-wrap items-center gap-2 rounded-md border p-2 text-sm">
       {tipo === "img" && url ? (
         <img src={url} alt="" className="h-14 w-10 shrink-0 rounded border object-cover" />
       ) : tipo === "pdf" ? (
@@ -498,18 +506,20 @@ export function SchedaFileLocale({ file, onRimuovi }: { file: File; onRimuovi: (
       ) : (
         <span className="inline-flex h-14 w-10 shrink-0 items-center justify-center rounded border bg-muted/40"><FileText className="size-4" /></span>
       )}
-      <span className="min-w-0 flex-1">
+      <span className="min-w-[3.5rem] flex-1">
         <span className="block break-all line-clamp-2">{file.name}</span>
         <span className="block text-xs text-muted-foreground">{formatBytes(file.size)}</span>
       </span>
-      <Button type="button" variant="outline" size="sm" className="h-10 shrink-0 gap-1 px-2.5" disabled={!url}
-        onClick={() => url && window.open(url, "_blank", "noopener")} aria-label={`Apri ${file.name}`}>
-        <ExternalLink className="size-4" /><span className="hidden min-[400px]:inline">Apri</span>
-      </Button>
-      <Button type="button" variant="ghost" size="icon" className="size-10 shrink-0 text-muted-foreground hover:text-destructive"
-        onClick={onRimuovi} aria-label={`Rimuovi ${file.name}`} title="Rimuovi">
-        <X className="size-4" />
-      </Button>
+      <div className="ml-auto flex shrink-0 flex-nowrap items-center gap-0.5">
+        <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 sm:h-8 sm:w-8" disabled={!url}
+          onClick={() => url && window.open(url, "_blank", "noopener")} aria-label={`Apri ${file.name}`} title="Apri">
+          <ExternalLink className="size-4" />
+        </Button>
+        <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-muted-foreground hover:text-destructive sm:h-8 sm:w-8"
+          onClick={onRimuovi} aria-label={`Rimuovi ${file.name}`} title="Rimuovi">
+          <X className="size-4" />
+        </Button>
+      </div>
     </li>
   );
 }
