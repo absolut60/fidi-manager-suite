@@ -485,10 +485,15 @@ export function NuovaRichiestaDialog({
                   </div>
                   <div className="space-y-1.5 min-w-0">
                     <Label htmlFor="rq-acc-data" className="inline-flex items-center gap-1.5"><Calendar className="size-4" />Data prevista del bonifico</Label>
-                    <Input id="rq-acc-data" type="date" min={oggiIso()} value={accontoData}
-                      placeholder="gg/mm/aaaa"
-                      className="h-10 block w-full min-w-0 max-w-full appearance-none text-left bg-background text-foreground"
-                      onChange={(e) => setAccontoData(e.target.value)} />
+                    <div className="relative min-w-0">
+                      <Input id="rq-acc-data" type="date" min={oggiIso()} value={accontoData}
+                        placeholder="gg/mm/aaaa"
+                        className="peer h-10 block w-full min-w-0 max-w-full appearance-none text-left bg-background text-foreground"
+                        onChange={(e) => setAccontoData(e.target.value)} />
+                      {!accontoData && (
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-muted-foreground peer-focus:hidden sm:text-sm">gg/mm/aaaa</span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
