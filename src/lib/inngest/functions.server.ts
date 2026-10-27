@@ -2456,24 +2456,42 @@ export const finalizeScadenziarioImport = inngest.createFunction(
       const reconc = { totChiuse: 0, totClienti: 0, orfaniRimossi: 0 };
       void timestampInizio;
 
-      // STEP pulizia: il file Gamma è lo scadenziario COMPLETO. Dopo un import
-      // verificato completo, rimuovi_orfani_scadenze toglie ogni scadenza non
-      // scritta da questo import e la registra in anomalie_import
-      // (scadenza_non_nel_file). Guardia nella funzione: se l'import ha scritto
-      // meno del 90% delle scadenze presenti non cancella nulla e restituisce -1.
-      // Eseguito UNA volta dopo l'upsert di tutti i chunk.
-      // Verifica completezza: se qualche sotto-blocco non è stato scritto,
-      // la pulizia potrebbe cancellare righe valide → va saltata.
-      const sottoBlocchiFalliti = await step.run("verifica-completezza", async () => {
-        const { count, error } = await supabaseAdmin
+      // STEP pulizia (FM50): il file Gamma è lo scadenziario COMPLETO.
+      // rimuovi_orfani_scadenze parte SOLO se l'import ha scritto davvero il
+      // 100% delle righe attese (importazioni.righe_attese, sommate per chunk),
+      // contate sul DB come scadenze con importato_da = id, e nessun
+      // sotto-blocco è fallito. In ogni altro caso nessuna cancellazione.
+      // La guardia del 90% dentro la funzione DB resta come protezione in più.
+      const verifica = await step.run("verifica-completezza", async () => {
+        const { data: falliti, error } = await supabaseAdmin
           .from("anomalie_import" as never)
-          .select("id", { count: "exact", head: true })
+          .select("valore_attuale")
           .eq("importazione_id", importazioneId)
-          .eq("tipo_anomalia", "upsert_chunk_fallito");
-        if (error) throw new Error(`verifica-completezza: ${error.message}`);
-        return count ?? 0;
+          .eq("tipo_anomalia", "upsert_chunk_fallito")
+          .limit(200);
+        if (error) throw new Error(`verifica-completezza anomalie: ${error.message}`);
+        const { data: imp, error: impErr } = await supabaseAdmin
+          .from("importazioni")
+          .select("righe_attese")
+          .eq("id", importazioneId)
+          .single();
+        if (impErr || !imp) throw new Error(`verifica-completezza importazione: ${impErr?.message ?? "riga non trovata"}`);
+        const { count, error: cntErr } = await supabaseAdmin
+          .from("scadenze")
+          .select("id", { count: "exact", head: true })
+          .eq("importato_da", importazioneId);
+        if (cntErr || count == null) throw new Error(`verifica-completezza conteggio scadenze: ${cntErr?.message ?? "conteggio nullo"}`);
+        return {
+          attese: ((imp as { righe_attese: number | null }).righe_attese ?? 0),
+          scritte: count,
+          falliti: ((falliti ?? []) as Array<{ valore_attuale: string | null }>).map(
+            (f) => f.valore_attuale ?? "blocco non scritto",
+          ),
+        };
       });
-      let pulizia_saltata = sottoBlocchiFalliti > 0;
+      const sottoBlocchiFalliti = verifica.falliti.length;
+      const completo = verifica.scritte === verifica.attese && sottoBlocchiFalliti === 0;
+      let pulizia_saltata = !completo;
       let puliziaSottoSoglia = false;
 
       if (!pulizia_saltata) {
@@ -2501,7 +2519,7 @@ export const finalizeScadenziarioImport = inngest.createFunction(
         }
       } else {
         logger.warn(
-          `Finalize ${importazioneId}: ${sottoBlocchiFalliti} sotto-blocchi non scritti, pulizia orfani SALTATA`,
+          `Finalize ${importazioneId}: attese=${verifica.attese}, scritte=${verifica.scritte}, sotto-blocchi falliti=${sottoBlocchiFalliti}: pulizia orfani SALTATA`,
         );
       }
 
@@ -2544,40 +2562,44 @@ export const finalizeScadenziarioImport = inngest.createFunction(
 
       // Aggiornamento finale dello stato
       await step.run("set-final-state", async () => {
-        const { data: cur } = await supabaseAdmin
+        const { data: cur, error: curErr } = await supabaseAdmin
           .from("importazioni")
-          .select("righe_errore, log_errori")
+          .select("righe_errore, log_errori, problemi")
           .eq("id", importazioneId)
           .single();
+        if (curErr) throw new Error(`set-final-state lettura: ${curErr.message}`);
         const errs = (cur?.righe_errore as number | null) ?? 0;
         const existing = (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
+        // Problemi già scritti dai chunk (es. errori di scrittura dei log).
+        const problemiChunk = (cur?.problemi as string[] | null) ?? [];
         const summary: Array<{ riga: number; errore: string }> = [];
-        if (pulizia_saltata) {
-          summary.push({
-            riga: 0,
-            errore: puliziaSottoSoglia
-              ? "ATTENZIONE: pulizia scadenze non eseguita: righe scritte dall'import inferiori al 90% delle scadenze presenti. Verificare il file."
-              : `ATTENZIONE: ${sottoBlocchiFalliti} sotto-blocchi non scritti dopo ${SCAD_UPSERT_TENTATIVI} tentativi. Pulizia scadenze orfane NON eseguita per sicurezza. Ripetere l'import.`,
-          });
+        const problemi: string[] = [];
+        if (!completo) {
+          const msg = `Pulizia scadenze non eseguita: attese ${verifica.attese}, scritte ${verifica.scritte}`;
+          problemi.push(msg);
+          summary.push({ riga: 0, errore: `ATTENZIONE: ${msg}. Ripetere l'import.` });
+        } else if (puliziaSottoSoglia) {
+          const msg =
+            "Righe scritte inferiori al 90% delle scadenze presenti: pulizia non eseguita, verificare il file";
+          problemi.push(msg);
+          summary.push({ riga: 0, errore: `ATTENZIONE: ${msg}.` });
         }
+        // Ogni sotto-blocco fallito definitivamente finisce in problemi.
+        for (const f of verifica.falliti) problemi.push(`Blocco non scritto: ${f}`);
         summary.push({
           riga: 0,
           errore: `Reconciliation: chiuse ${reconc.totChiuse} scadenze su ${reconc.totClienti} clienti; scadenze non più presenti nel file rimosse: ${reconc.orfaniRimossi}`,
         });
+        const problemiFinali = [...problemi, ...problemiChunk];
 
         await chiudiImportazione(importazioneId, {
-            stato: errs > 0 || pulizia_saltata ? "completata_con_errori" : "completata",
+            stato:
+              errs > 0 || pulizia_saltata || problemiFinali.length > 0
+                ? "completata_con_errori"
+                : "completata",
             completata_at: new Date().toISOString(),
             log_errori: [...summary, ...existing].slice(0, 500),
-            problemi: puliziaSottoSoglia
-              ? [
-                  "Righe scritte inferiori al 90% delle scadenze presenti: pulizia non eseguita, verificare il file",
-                ]
-              : sottoBlocchiFalliti > 0
-                ? [
-                    `${sottoBlocchiFalliti} blocchi di scadenze non scritti dopo ${SCAD_UPSERT_TENTATIVI} tentativi: pulizia non eseguita`,
-                  ]
-                : [],
+            problemi: problemiFinali.slice(0, 300),
           });
       });
 
