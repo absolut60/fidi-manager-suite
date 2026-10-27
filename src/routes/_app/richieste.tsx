@@ -58,6 +58,8 @@ import { semaforoUI, semaforoDaCliente } from "@/lib/semaforo-ui";
 import { SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 import { RichiestaFormDialog } from "@/components/richiesta-fido-form-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Progress } from "@/components/ui/progress";
+import { inviaBozzeInApprovazione, decidiRichiesteInBlocco, type EsitoDecisione } from "@/lib/richieste-fido-azioni-massive";
 
 const TAB_RICHIESTE = ["bozze", "in_approvazione", "approvate", "rifiutate", "tutto"] as const;
 
@@ -619,20 +621,23 @@ function BozzeTab({
   const navigate = useNavigate();
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
+  const [avanz, setAvanz] = useState<{ fatte: number; totali: number } | null>(null);
   const invioMut = useMutation({
     mutationFn: async (ids: string[]) => {
-      const { error } = await supabase
-        .from("richieste_fido")
-        .update({ stato: "in_approvazione", data_invio: new Date().toISOString() })
-        .in("id", ids);
-      if (error) throw error;
+      const righe = ids.map((id) => ({ id, stato: rows.find((r) => r.id === id)?.stato ?? "bozza" }));
+      return inviaBozzeInApprovazione(righe, (fatte, totali) => setAvanz({ fatte, totali }));
     },
-    onSuccess: (_d, ids) => {
-      toast.success(`${ids.length} richieste inviate in approvazione`);
-      setSelected(new Set());
+    onSuccess: (esito) => {
+      const n = esito.rimasteInBozza.length;
+      const fmt = (x: number) => x.toLocaleString("it-IT");
+      const extra = esito.giaInviate > 0 ? ` (${fmt(esito.giaInviate)} erano già inviate)` : "";
+      if (n === 0) toast.success(`${fmt(esito.inviate)} inviate${extra}`);
+      else toast.warning(`${fmt(esito.inviate)} inviate, ${fmt(n)} ancora in bozza: riprova${extra}`);
+      setSelected(new Set(esito.rimasteInBozza.map((r) => r.id)));
       onChanged();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => { toast.error(e.message); onChanged(); },
+    onSettled: () => setAvanz(null),
   });
 
   function toggle(id: string) {
@@ -647,12 +652,19 @@ function BozzeTab({
 
   return (
     <Card className="p-2 sm:p-3">
-      {selected.size > 0 && (
-        <div className="flex items-center justify-between gap-3 p-3 mb-2 bg-primary/5 rounded-md">
-          <p className="text-sm font-medium">{selected.size} selezionate</p>
-          <Button size="sm" onClick={() => invioMut.mutate(Array.from(selected))} disabled={invioMut.isPending}>
-            <Send className="size-4" /> Invia tutte
-          </Button>
+      {(selected.size > 0 || invioMut.isPending) && (
+        <div className="p-3 mb-2 bg-primary/5 rounded-md space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm font-medium min-w-0">
+              {invioMut.isPending && avanz
+                ? `Invio in corso: ${avanz.fatte.toLocaleString("it-IT")} di ${avanz.totali.toLocaleString("it-IT")}…`
+                : `${selected.size} selezionate`}
+            </p>
+            <Button size="sm" onClick={() => invioMut.mutate(Array.from(selected))} disabled={invioMut.isPending}>
+              <Send className="size-4" /> Invia tutte
+            </Button>
+          </div>
+          {invioMut.isPending && avanz && <Progress value={avanz.totali ? (avanz.fatte / avanz.totali) * 100 : 0} className="h-2" />}
         </div>
       )}
       <ElencoSchede>
@@ -824,17 +836,29 @@ function InApprovazioneTab({
     if (error) throw error;
   }
 
+  const [avanzDec, setAvanzDec] = useState<{ fatte: number; totali: number } | null>(null);
+  const [esitoDec, setEsitoDec] = useState<(EsitoDecisione & { kind: "approva" | "rifiuta" }) | null>(null);
   const decisionMut = useMutation({
     mutationFn: async (input: { kind: "approva" | "rifiuta"; rows: any[]; note: string }) => {
       const esito = input.kind === "approva" ? "approvata" : "rifiutata";
-      for (const r of input.rows) await processaRichiesta(r, esito, input.note.trim() || null);
+      const noteDec = input.note.trim() || null;
+      return decidiRichiesteInBlocco(input.rows, esito, (r) => processaRichiesta(r, esito, noteDec),
+        (fatte, totali) => setAvanzDec({ fatte, totali }));
     },
-    onSuccess: (_d, v) => {
-      toast.success(`${v.rows.length} richieste ${v.kind === "approva" ? "approvate" : "rifiutate"}`);
-      setAction(null); setNote(""); setSelected(new Set());
+    onSuccess: (res, v) => {
+      const verbo = v.kind === "approva" ? "approvate" : "rifiutate";
+      const n = res.nonRiuscite.length;
+      if (n === 0) toast.success(`${res.riuscite.toLocaleString("it-IT")} ${verbo}`);
+      else {
+        toast.warning(`${res.riuscite.toLocaleString("it-IT")} ${verbo}, ${n.toLocaleString("it-IT")} non riuscite`);
+        setEsitoDec({ ...res, kind: v.kind });
+      }
+      setAction(null); setNote("");
+      setSelected(new Set(res.nonRiuscite.map((x) => x.id)));
       onChanged();
     },
     onError: (e: Error) => { toast.error(e.message); onChanged(); },
+    onSettled: () => setAvanzDec(null),
   });
 
   if (loading) return <SkeletonTable />;
@@ -1019,8 +1043,30 @@ function InApprovazioneTab({
               className={action?.kind === "approva" ? "bg-success text-success-foreground hover:bg-success/90" : "bg-destructive text-destructive-foreground hover:bg-destructive/90"}
               onClick={() => { if (action) decisionMut.mutate({ kind: action.kind, rows: action.rows, note }); }}
             >
-              {decisionMut.isPending ? "Elaborazione..." : action?.kind === "approva" ? "Conferma approvazione" : "Conferma rifiuto"}
+              {decisionMut.isPending ? (avanzDec ? `Elaborazione: ${avanzDec.fatte.toLocaleString("it-IT")} di ${avanzDec.totali.toLocaleString("it-IT")}…` : "Elaborazione…") : action?.kind === "approva" ? "Conferma approvazione" : "Conferma rifiuto"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!esitoDec} onOpenChange={(o) => !o && setEsitoDec(null)}>
+        <DialogContent className="w-[calc(100%-2rem)] max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Esito {esitoDec?.kind === "approva" ? "approvazione" : "rifiuto"} in blocco</DialogTitle>
+            <DialogDescription>
+              {esitoDec?.riuscite.toLocaleString("it-IT")} {esitoDec?.kind === "approva" ? "approvate" : "rifiutate"}, {esitoDec?.nonRiuscite.length.toLocaleString("it-IT")} non riuscite. Le non riuscite restano selezionate.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-72 overflow-y-auto rounded-md border bg-muted/30 p-2 text-xs space-y-1.5">
+            {(esitoDec?.nonRiuscite ?? []).map((x) => (
+              <div key={x.id} className="min-w-0">
+                <p className="font-medium break-words">{x.cliente}</p>
+                <p className="text-muted-foreground break-words">{x.motivo}</p>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setEsitoDec(null)}>Chiudi</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

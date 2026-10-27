@@ -9,6 +9,7 @@ import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/list
 import * as RadixSlider from "@radix-ui/react-slider";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { inserisciRichiesteABlocchi } from "@/lib/richieste-fido-azioni-massive";
 import { getFidoAttuale, FIDO_CLIENTE_SELECT } from "@/lib/fido-cliente";
 import { CambioCondizionePagamento } from "@/components/cambio-condizione-pagamento";
 import { CondizionePagamentoRichiestaSelect, CondizionePagamentoTesto, useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
@@ -2342,6 +2343,7 @@ function ProposteFidoMassivoDialog({
   const [filtroFidoZero, setFiltroFidoZero] = useState<Tri>(FILTRI_DEFAULT.fidoZero);
   const [filtroInCorso, setFiltroInCorso] = useState<Tri>(FILTRI_DEFAULT.inCorso);
   const [submitting, setSubmitting] = useState(false);
+  const [avanzamentoCrea, setAvanzamentoCrea] = useState<{ fatte: number; totali: number } | null>(null);
 
   // Fido proposto = SEMPRE la RPC canonica get_fido_teorico (nessun calcolo locale)
   const ids = useMemo(() => selectedRows.map((c) => c.id as string), [selectedRows]);
@@ -2545,10 +2547,18 @@ function ProposteFidoMassivoDialog({
           condizione_pagamento_cod: r.cond_proposta || null,
         };
       });
-      const { error } = await supabase.from("richieste_fido").insert(payload as any);
-      if (error) throw error;
-      toast.success(`${righeVisibiliIncluse.length} richieste create`);
-      onSuccess();
+      // FM50: insert a blocchi da 25 (fonte unica richieste-fido-azioni-massive).
+      const { create, errori } = await inserisciRichiesteABlocchi(payload as Record<string, unknown>[],
+        (fatte, totali) => setAvanzamentoCrea({ fatte, totali }));
+      if (errori.length === 0) {
+        toast.success(`${create.toLocaleString("it-IT")} richieste create`);
+        onSuccess();
+      } else {
+        const nonCreate = payload.length - create;
+        if (create === 0) throw new Error(errori[0]);
+        toast.warning(`${create.toLocaleString("it-IT")} richieste create, ${nonCreate.toLocaleString("it-IT")} non create: ${errori[0]}. Controlla l'elenco richieste prima di riprovare.`);
+        onSuccess();
+      }
     } catch (e: any) {
       const msg = String(e?.message ?? "");
       if (msg.includes("richieste_fido_importo_richiesto_check")) {
@@ -2558,6 +2568,7 @@ function ProposteFidoMassivoDialog({
       }
     } finally {
       setSubmitting(false);
+      setAvanzamentoCrea(null);
     }
   }
 
@@ -2904,7 +2915,7 @@ function ProposteFidoMassivoDialog({
             </div>
             <Button variant="outline" className="w-full sm:w-auto" onClick={() => onOpenChange(false)} disabled={submitting}>Annulla</Button>
             <Button className="w-full sm:w-auto" onClick={creaRichieste} disabled={submitting || righeVisibiliIncluse.length === 0}>
-              {submitting ? "Creazione…" : `Crea ${righeVisibiliIncluse.length} richieste`}
+              {submitting ? (avanzamentoCrea ? `Creazione: ${avanzamentoCrea.fatte.toLocaleString("it-IT")} di ${avanzamentoCrea.totali.toLocaleString("it-IT")}…` : "Creazione…") : `Crea ${righeVisibiliIncluse.length} richieste`}
             </Button>
           </DialogFooter>
         </div>
