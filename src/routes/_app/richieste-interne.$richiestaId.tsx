@@ -661,15 +661,6 @@ function BottoneDecisione({ stile, onClick }: { stile: StileVoce; onClick: () =>
   );
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-baseline gap-3">
-      <div className="text-xs text-muted-foreground w-24 shrink-0">{label}</div>
-      <div className="flex-1 min-w-0 break-words">{children}</div>
-    </div>
-  );
-}
-
 function Riquadro({ icona: Ic, label, principale, children }: { icona?: React.ComponentType<{ className?: string }>; label: string; principale?: boolean; children: React.ReactNode }) {
   return (
     <div className={cn("min-w-0 rounded-lg border p-3", principale ? "border-primary/25 bg-primary/10" : "bg-muted/30")}>
