@@ -57,3 +57,44 @@ export function scegliTemplatePerLivello<T extends TemplatePerEscalation>(
   }
   return candidati[0];
 }
+
+/** Valida che esista un solo modello attivo per ciascuno dei livelli 1, 2 e 3. */
+export function scegliTemplateProgressivi<T extends TemplatePerEscalation>(
+  templatesAttivi: readonly T[],
+): Record<LivelloSollecito, T> {
+  return {
+    1: scegliTemplatePerLivello(templatesAttivi, 1),
+    2: scegliTemplatePerLivello(templatesAttivi, 2),
+    3: scegliTemplatePerLivello(templatesAttivi, 3),
+  };
+}
+
+function dataIt(v: string | null): string {
+  if (!v) return "—";
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v);
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+  return new Date(v).toLocaleDateString("it-IT", { timeZone: "Europe/Rome" });
+}
+
+export type EsitoProgressivo =
+  | { stato: "saltato_in_legale" | "saltato_no_scaduto" | "saltato_attesa"; motivo_salto: string }
+  | { stato: "da_inviare"; livello: LivelloSollecito };
+
+/**
+ * Fonte unica TS delle regole di invio progressivo (in quest'ordine):
+ * in gestione legale → nessuno scaduto → attesa minima non trascorsa → invia al livello successivo.
+ */
+export function classificaDestinatarioProgressivo(s: StadioSollecito): EsitoProgressivo {
+  if (s.in_gestione_legale) return { stato: "saltato_in_legale", motivo_salto: "Cliente in gestione legale" };
+  if (!(Number(s.totale_scaduto ?? 0) > 0)) return { stato: "saltato_no_scaduto", motivo_salto: "Nessuno scaduto" };
+  if (!s.attesa_ok) {
+    const ultima = s.stadio_data
+      ? new Date(s.stadio_data).toLocaleDateString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit", year: "numeric" })
+      : "—";
+    return {
+      stato: "saltato_attesa",
+      motivo_salto: `Ultimo sollecito il ${ultima}: risollecitabile dal ${dataIt(s.data_prossimo_possibile)}`,
+    };
+  }
+  return { stato: "da_inviare", livello: s.livello_successivo };
+}

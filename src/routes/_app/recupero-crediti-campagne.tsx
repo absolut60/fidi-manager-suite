@@ -187,7 +187,7 @@ function CampagnePage() {
                     <TableCell className="cursor-pointer" onClick={() => setOpenDettaglio(c.id)}>{`${c.operatore?.nome ?? ""} ${c.operatore?.cognome ?? ""}`.trim() || "—"}</TableCell>
                     <TableCell className="cursor-pointer" onClick={() => setOpenDettaglio(c.id)}>
                       <div className="flex items-center gap-2">
-                        <span>{c.template?.nome ?? "—"}</span>
+                        <span>{c.tipo_campagna === "sollecito_progressivo" ? "Progressivo (1° / 2° / Messa in mora)" : (c.template?.nome ?? "—")}</span>
                         {c.tipo_campagna === "promemoria_scadenza" && (
                           <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">Promemoria</Badge>
                         )}
@@ -284,6 +284,7 @@ function CampagnePage() {
 
 
 import { MessageIdCell } from "@/components/message-id-cell";
+import { STADIO_LABEL } from "@/components/stadio-sollecito-badge";
 
 type DestRow = {
   id: string;
@@ -294,6 +295,8 @@ type DestRow = {
   azione_id: string | null;
   inviato_at: string | null;
   message_id: string | null;
+  livello: number | null;
+  motivo_salto: string | null;
   cliente: { ragione_sociale: string | null } | null;
 };
 
@@ -305,6 +308,9 @@ function statoLabel(s: string) {
   if (s === "saltato_no_indirizzo") return <Badge className="bg-amber-500 text-white hover:bg-amber-500"><MailWarning className="size-3 mr-1" />Senza indirizzo</Badge>;
   if (s === "email_non_valida") return <Badge className="bg-amber-600 text-white hover:bg-amber-600"><MailWarning className="size-3 mr-1" />Email non valida</Badge>;
   if (s === "fallito") return <Badge className="bg-destructive text-destructive-foreground hover:bg-destructive"><XCircle className="size-3 mr-1" />Fallito</Badge>;
+  if (s === "saltato_attesa") return <Badge className="bg-amber-500 text-white hover:bg-amber-500"><Clock className="size-3 mr-1" />Attesa 15 gg</Badge>;
+  if (s === "saltato_no_scaduto") return <Badge variant="outline">Senza scaduto</Badge>;
+  if (s === "saltato_in_legale") return <Badge variant="outline">In legale</Badge>;
   if (s === "annullato") return <Badge variant="outline"><Ban className="size-3 mr-1" />Annullato</Badge>;
   return <Badge variant="outline">{s}</Badge>;
 
@@ -322,7 +328,7 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
       const { data, error } = await supabase
         .from("campagne_sollecito_destinatari")
         .select(`
-          id, cliente_id, indirizzo_usato, stato, errore, azione_id, inviato_at, message_id,
+          id, cliente_id, indirizzo_usato, stato, errore, azione_id, inviato_at, message_id, livello, motivo_salto,
           cliente:clienti(ragione_sociale)
         `)
         .eq("campagna_id", campagnaId)
@@ -371,12 +377,15 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
 
         <div className="flex items-center gap-3 py-2 flex-wrap">
           <Select value={statoFilter} onValueChange={setStatoFilter}>
-            <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-[200px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="tutti">Tutti</SelectItem>
               <SelectItem value="inviato">Inviati</SelectItem>
               <SelectItem value="saltato_no_indirizzo">Senza indirizzo</SelectItem>
               <SelectItem value="email_non_valida">Email non valida</SelectItem>
+              <SelectItem value="saltato_attesa">Attesa 15 gg</SelectItem>
+              <SelectItem value="saltato_no_scaduto">Senza scaduto</SelectItem>
+              <SelectItem value="saltato_in_legale">In legale</SelectItem>
               <SelectItem value="fallito">Falliti</SelectItem>
               <SelectItem value="da_inviare">In coda</SelectItem>
             </SelectContent>
@@ -401,10 +410,12 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
           </div>
         </div>
 
+        <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Cliente</TableHead>
+              <TableHead>Livello</TableHead>
               <TableHead>Indirizzo usato</TableHead>
               <TableHead>Stato</TableHead>
               <TableHead>Inviato il</TableHead>
@@ -415,15 +426,21 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={7}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+              <TableRow><TableCell colSpan={8}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">Nessun destinatario</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-6">Nessun destinatario</TableCell></TableRow>
             ) : (
               filtered.map((r) => (
                 <TableRow key={r.id}>
-                  <TableCell className="font-medium">{r.cliente?.ragione_sociale ?? "—"}</TableCell>
+                  <TableCell className="font-medium min-w-[160px] break-words">{r.cliente?.ragione_sociale ?? "—"}</TableCell>
+                  <TableCell className="whitespace-nowrap text-sm">{r.livello ? (STADIO_LABEL[r.livello] ?? r.livello) : "—"}</TableCell>
                   <TableCell className="font-mono text-xs">{r.indirizzo_usato ?? "—"}</TableCell>
-                  <TableCell>{statoLabel(r.stato)}</TableCell>
+                  <TableCell>
+                    {statoLabel(r.stato)}
+                    {r.motivo_salto && r.stato.startsWith("saltato_") && (
+                      <div className="mt-1 text-xs text-muted-foreground max-w-[220px] break-words">{r.motivo_salto}</div>
+                    )}
+                  </TableCell>
                   <TableCell className="whitespace-nowrap text-sm">{fmtDateTime(r.inviato_at)}</TableCell>
                   <TableCell><MessageIdCell messageId={r.message_id} /></TableCell>
                   <TableCell className="text-xs text-destructive max-w-[280px] truncate">{r.errore ?? ""}</TableCell>
@@ -441,6 +458,7 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
             )}
           </TableBody>
         </Table>
+        </div>
       </DialogContent>
     </Dialog>
   );

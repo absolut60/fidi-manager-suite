@@ -2,14 +2,19 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertPuoInviareRecupero } from "@/lib/recupero-permessi.server";
+import {
+  classificaDestinatarioProgressivo,
+  scegliTemplateProgressivi,
+  type StadioSollecito,
+} from "@/lib/escalation-solleciti";
 
 const AvviaSchema = z.object({
-  templateId: z.string().uuid(),
+  templateId: z.string().uuid().optional().nullable(),
   preferenzaIndirizzo: z.enum(["email", "pec"]).default("email"),
   nota: z.string().nullable().optional(),
   clienteIds: z.array(z.string().uuid()).min(1),
   indirizziCorretti: z.record(z.string().uuid(), z.string()).optional().default({}),
-  tipoCampagna: z.enum(["sollecito", "promemoria_scadenza"]).default("sollecito"),
+  tipoCampagna: z.enum(["sollecito", "promemoria_scadenza", "sollecito_progressivo"]).default("sollecito"),
   // Mesi in formato YYYY-MM, usato per filtrare le scadenze future nei promemoria.
   mesi: z.array(z.string().regex(/^\d{4}-\d{2}$/)).optional().default([]),
 });
@@ -19,6 +24,8 @@ const AvviaSchema = z.object({
  * - operatore_id = utente loggato (forzato server-side).
  * - RLS: l'insert dei destinatari passa attraverso user_can_access_cliente,
  *   quindi uno Store Manager può creare destinatari solo per i suoi clienti.
+ * - 'sollecito_progressivo' (FM51): livello per cliente da get_stadio_sollecito_clienti,
+ *   regole in classificaDestinatarioProgressivo (escalation-solleciti.ts).
  */
 export const avviaCampagnaSollecito = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -32,12 +39,42 @@ export const avviaCampagnaSollecito = createServerFn({ method: "POST" })
       throw new Error("Nessun cliente selezionato");
     }
 
+    const isProgressivo = data.tipoCampagna === "sollecito_progressivo";
+    if (!isProgressivo && !data.templateId) {
+      throw new Error("Seleziona il modello email da inviare");
+    }
+
+    // Progressivo: valida i tre modelli PRIMA di creare qualsiasi cosa.
+    let templatesProg: Record<1 | 2 | 3, { id: string }> | null = null;
+    if (isProgressivo) {
+      const { data: tpls, error: et } = await supabase
+        .from("template_email")
+        .select("id, tipo, attivo")
+        .eq("attivo", true);
+      if (et) throw new Error(`Lettura modelli email fallita: ${et.message}`);
+      templatesProg = scegliTemplateProgressivi(tpls ?? []);
+    }
+
+    // Progressivo: calcola lo stadio (RLS dell'utente) prima di creare la campagna.
+    const stadi = new Map<string, StadioSollecito>();
+    const CHUNK = 200;
+    if (isProgressivo) {
+      for (let i = 0; i < clienteIds.length; i += CHUNK) {
+        const slice = clienteIds.slice(i, i + CHUNK);
+        const { data: st, error: es } = await supabase.rpc("get_stadio_sollecito_clienti", {
+          _cliente_ids: slice,
+        });
+        if (es) throw new Error(`Calcolo livello sollecito fallito: ${es.message}`);
+        ((st ?? []) as unknown as StadioSollecito[]).forEach((r) => stadi.set(r.cliente_id, r));
+      }
+    }
+
     // Crea campagna
     const { data: camp, error: e1 } = await supabase
       .from("campagne_sollecito")
       .insert({
         operatore_id: userId,
-        template_id: data.templateId,
+        template_id: isProgressivo ? null : data.templateId,
         stato: "in_coda",
         preferenza_indirizzo: data.preferenzaIndirizzo,
         totale_destinatari: clienteIds.length,
@@ -52,12 +89,14 @@ export const avviaCampagnaSollecito = createServerFn({ method: "POST" })
     // Calcola importo_riferimento per ciascun cliente:
     // - "sollecito" => totale SCADUTO
     // - "promemoria_scadenza" => totale A SCADERE nei mesi selezionati
+    // - "sollecito_progressivo" => totale_scaduto canonico dallo stadio
     const importi: Record<string, number> = {};
-    const CHUNK = 200;
     const isPromemoria = data.tipoCampagna === "promemoria_scadenza";
     const oggi = new Date().toISOString().slice(0, 10);
     const mesiSet = new Set(data.mesi);
-    for (let i = 0; i < clienteIds.length; i += CHUNK) {
+    if (isProgressivo) {
+      stadi.forEach((s, cid) => { importi[cid] = Number(s.totale_scaduto ?? 0); });
+    } else for (let i = 0; i < clienteIds.length; i += CHUNK) {
       const slice = clienteIds.slice(i, i + CHUNK);
       const { data: sc } = await supabase
         .from("scadenze")
@@ -84,15 +123,28 @@ export const avviaCampagnaSollecito = createServerFn({ method: "POST" })
     // Se l'utente ha corretto/inserito un indirizzo in anteprima, lo persistiamo
     // subito in indirizzo_usato così il job lo userà direttamente.
     const overrides = data.indirizziCorretti ?? {};
+    let saltatiCreazione = 0;
     const rows = clienteIds.map((cid) => {
       const ov = (overrides[cid] ?? "").trim();
-      return {
+      const base = {
         campagna_id: camp.id,
         cliente_id: cid,
-        stato: "da_inviare" as const,
+        stato: "da_inviare" as string,
         importo_riferimento: importi[cid] ?? null,
         indirizzo_usato: ov ? ov : null,
       };
+      if (!isProgressivo) return base;
+      const st = stadi.get(cid);
+      if (!st) {
+        saltatiCreazione += 1;
+        return { ...base, stato: "saltato_no_scaduto", motivo_salto: "Cliente non accessibile o non trovato" };
+      }
+      const esito = classificaDestinatarioProgressivo(st);
+      if (esito.stato !== "da_inviare") {
+        saltatiCreazione += 1;
+        return { ...base, stato: esito.stato, motivo_salto: esito.motivo_salto };
+      }
+      return { ...base, livello: esito.livello, template_id: templatesProg![esito.livello].id };
     });
     const INSERT_BATCH = 500;
     for (let i = 0; i < rows.length; i += INSERT_BATCH) {
@@ -108,6 +160,13 @@ export const avviaCampagnaSollecito = createServerFn({ method: "POST" })
           .eq("id", camp.id);
         throw new Error(`Insert destinatari fallito: ${e2.message}`);
       }
+    }
+
+    if (saltatiCreazione > 0) {
+      await supabase
+        .from("campagne_sollecito")
+        .update({ saltati: saltatiCreazione } as never)
+        .eq("id", camp.id);
     }
 
     // Invia evento Inngest dal server (chiavi disponibili in process.env)
@@ -226,7 +285,7 @@ export const riprovaCampagnaFalliti = createServerFn({ method: "POST" })
       .from("campagne_sollecito_destinatari")
       .select("*", { count: "exact", head: true })
       .eq("campagna_id", data.campagnaId)
-      .eq("stato", "saltato_no_indirizzo");
+      .in("stato", ["saltato_no_indirizzo", "saltato_attesa", "saltato_no_scaduto", "saltato_in_legale"]);
     const { count: cFalliti } = await supabase
       .from("campagne_sollecito_destinatari")
       .select("*", { count: "exact", head: true })
