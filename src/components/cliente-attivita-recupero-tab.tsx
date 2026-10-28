@@ -88,6 +88,7 @@ export function invalidaRecuperoCliente(qc: QueryClient, clienteId: string) {
   qc.invalidateQueries({ queryKey: ["recupero-clienti"] });
   qc.invalidateQueries({ queryKey: ["clienti-avvisati"] });
   qc.invalidateQueries({ queryKey: ["recupero-stadio-cliente", clienteId] });
+  qc.invalidateQueries({ queryKey: ["scadenziario-stadi-sollecito"] });
 }
 
 /** Permesso modifica/eliminazione di un'azione (stessa regola della timeline). */

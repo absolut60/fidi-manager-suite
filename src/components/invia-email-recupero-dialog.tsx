@@ -485,6 +485,7 @@ export function InviaEmailRecuperoDialog({
       qc.invalidateQueries({ queryKey: ["azioni-recupero-cliente", clienteId] });
       qc.invalidateQueries({ queryKey: ["allegati"] });
       qc.invalidateQueries({ queryKey: ["recupero-stadio-cliente", clienteId] });
+      qc.invalidateQueries({ queryKey: ["scadenziario-stadi-sollecito"] });
       qc.invalidateQueries({ queryKey: ["invia-email-stadio", clienteId] });
       qc.invalidateQueries({ queryKey: ["recupero-agenzia"] });
       onSent?.();
