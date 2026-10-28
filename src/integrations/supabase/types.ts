@@ -1113,8 +1113,11 @@ export type Database = {
           importo_riferimento: number | null
           indirizzo_usato: string | null
           inviato_at: string | null
+          livello: number | null
           message_id: string | null
+          motivo_salto: string | null
           stato: string
+          template_id: string | null
         }
         Insert: {
           azione_id?: string | null
@@ -1126,8 +1129,11 @@ export type Database = {
           importo_riferimento?: number | null
           indirizzo_usato?: string | null
           inviato_at?: string | null
+          livello?: number | null
           message_id?: string | null
+          motivo_salto?: string | null
           stato?: string
+          template_id?: string | null
         }
         Update: {
           azione_id?: string | null
@@ -1139,8 +1145,11 @@ export type Database = {
           importo_riferimento?: number | null
           indirizzo_usato?: string | null
           inviato_at?: string | null
+          livello?: number | null
           message_id?: string | null
+          motivo_salto?: string | null
           stato?: string
+          template_id?: string | null
         }
         Relationships: [
           {
@@ -1177,6 +1186,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "campagne_sollecito_destinatari_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "template_email"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2038,6 +2054,7 @@ export type Database = {
           id: string
           importazione_id: string | null
           max_gg: number
+          motivo: string
           notificato_at: string | null
           ragione_sociale: string | null
           rilevato_at: string
@@ -2051,6 +2068,7 @@ export type Database = {
           id?: string
           importazione_id?: string | null
           max_gg: number
+          motivo?: string
           notificato_at?: string | null
           ragione_sociale?: string | null
           rilevato_at?: string
@@ -2064,6 +2082,7 @@ export type Database = {
           id?: string
           importazione_id?: string | null
           max_gg?: number
+          motivo?: string
           notificato_at?: string | null
           ragione_sociale?: string | null
           rilevato_at?: string
@@ -8135,6 +8154,22 @@ export type Database = {
           store_nome: string
         }[]
       }
+      get_stadio_sollecito_clienti: {
+        Args: { _cliente_ids?: string[] }
+        Returns: {
+          attesa_ok: boolean
+          cliente_id: string
+          data_prossimo_possibile: string
+          giorni_minimi: number
+          in_gestione_legale: boolean
+          livello_successivo: number
+          ripetizione_mora: boolean
+          stadio: number
+          stadio_data: string
+          stadio_giorni: number
+          totale_scaduto: number
+        }[]
+      }
       get_stato_consensi: {
         Args: { _contatto_ids: string[] }
         Returns: {
@@ -8435,6 +8470,10 @@ export type Database = {
       registra_opt_out_marketing: {
         Args: { _ip?: string; _token: string; _ua?: string }
         Returns: boolean
+      }
+      registra_proposta_legale_mora: {
+        Args: { _azione_sollecito_id: string; _cliente_id: string }
+        Returns: string
       }
       registra_stop_whatsapp: { Args: { _numero_raw: string }; Returns: Json }
       revoca_consensi_batch: {
