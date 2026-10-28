@@ -1,7 +1,7 @@
 // Badge dello stadio di sollecito di un cliente (fonte unica:
 // usato in recupero-crediti.tsx e nella striscia recupero dello scadenziario).
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 export const STADIO_LABEL: Record<number, string> = {
@@ -55,6 +55,7 @@ export function StadioSollecitoBadgeCompatto({ stadio, data, giorni }: {
     : "—";
   const testo = `${STADIO_LABEL[s]} del ${dataStr}${giorni != null ? ` — da ${giorni} gg` : ""}`;
   return (
+    <TooltipProvider delayDuration={200}>
     <Tooltip>
       <TooltipTrigger asChild>
         <Badge className={cn("whitespace-nowrap text-[10px] px-1.5 h-5", classeStadioSollecito(s))} aria-label={testo}>
@@ -63,5 +64,6 @@ export function StadioSollecitoBadgeCompatto({ stadio, data, giorni }: {
       </TooltipTrigger>
       <TooltipContent>{testo}</TooltipContent>
     </Tooltip>
+    </TooltipProvider>
   );
 }

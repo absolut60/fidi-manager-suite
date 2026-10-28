@@ -36,7 +36,7 @@ import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
 import type { TipoAzione } from "@/components/reminder-controls";
 import { useAzioniRecuperoCliente, useOperatoriAttivita, useStadioSollecitoCliente, type Azione } from "@/hooks/use-azioni-recupero-cliente";
 import { ESITO_AZIONE_LABEL, TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL, isEmailDaInviare, isPromessaDaVerificare, isPromessaPagamento, testoAzione, tipoAzioneVisualizzato } from "@/lib/azioni-recupero-ui";
-import { StadioSollecitoBadge } from "@/components/stadio-sollecito-badge";
+import { STADIO_LABEL, StadioSollecitoBadge } from "@/components/stadio-sollecito-badge";
 
 export function fmtData(v: string) {
   const d = v.slice(0, 10).split("-");
