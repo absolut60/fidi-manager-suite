@@ -20,6 +20,7 @@ import {
   type DatiSede,
   type ScadenzaSollecito,
 } from "@/lib/template-email-render";
+import type { StadioSollecito } from "@/lib/escalation-solleciti";
 
 const MAX_INDIRIZZI = 10;
 const MAX_ALLEGATI_BYTES = 10 * 1024 * 1024;
@@ -220,6 +221,23 @@ export const inviaEmailRecupero = createServerFn({ method: "POST" })
       sorgente = { oggetto: data.oggetto ?? "", corpo: sembraHtml ? corpo : corpo.replace(/\n/g, "<br/>") };
     }
 
+    // Sollecito (livello 1-3): deve essere collegato ad almeno una fattura scaduta
+    // per contare nella scala (stesso vincolo della finestra).
+    const livelloInviato = data.modalita === "modello" ? livelloSollecitoFromTipo(tipoTemplate) : null;
+    if (livelloInviato && scadenzeScelte.length === 0) {
+      throw new Error("Seleziona almeno una fattura scaduta: il sollecito deve essere collegato alle fatture per contare nella scala.");
+    }
+
+    // Stadio PRIMA dell'invio (fonte unica get_stadio_sollecito_clienti, RLS utente).
+    let stadioPrima: StadioSollecito | null = null;
+    if (livelloInviato === 3) {
+      const { data: st, error: eSt } = await supabase.rpc("get_stadio_sollecito_clienti", {
+        _cliente_ids: [data.clienteId],
+      });
+      if (eSt) throw new Error(`Lettura livello sollecito fallita: ${eSt.message}`);
+      stadioPrima = ((st ?? []) as unknown as StadioSollecito[])[0] ?? null;
+    }
+
     const datiTemplate = {
       ragione_sociale: cliente.ragione_sociale ?? "",
       nome_operatore: nomeOperatore,
@@ -390,5 +408,37 @@ export const inviaEmailRecupero = createServerFn({ method: "POST" })
       }
     }
 
-    return { ok: true as const, azioneId, messageId: esito.messageId ?? null, avvisi };
+    // d) Messa in mora ripetuta → proposta di passaggio al legale (FM51).
+    // Un errore qui non annulla l'invio: finisce negli avvisi.
+    let propostaLegaleCreata = false;
+    if (livelloInviato === 3 && stadioPrima?.stadio === 3) {
+      try {
+        const { data: ingId, error: eP } = await supabase.rpc("registra_proposta_legale_mora", {
+          _cliente_id: data.clienteId,
+          _azione_sollecito_id: azioneId,
+        });
+        if (eP) throw new Error(eP.message);
+        if (ingId) {
+          propostaLegaleCreata = true;
+          const { notificaProposteLegale } = await import("@/lib/inngest/proposte-legale.server");
+          try {
+            await notificaProposteLegale(
+              [{
+                id: String(ingId),
+                ragione_sociale: cliente.ragione_sociale ?? "Cliente",
+                negozio: sede?.nome ?? null,
+                totale: Number(stadioPrima.totale_scaduto ?? 0),
+              }],
+              { azione_id: azioneId, cliente_id: data.clienteId },
+            );
+          } catch (eN) {
+            avvisi.push(`Cliente proposto per il legale, ma notifica non inviata: ${eN instanceof Error ? eN.message : String(eN)}`);
+          }
+        }
+      } catch (eProp) {
+        avvisi.push(`Proposta di passaggio al legale non registrata: ${eProp instanceof Error ? eProp.message : String(eProp)}`);
+      }
+    }
+
+    return { ok: true as const, azioneId, messageId: esito.messageId ?? null, avvisi, propostaLegaleCreata };
   });
