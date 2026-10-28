@@ -3,8 +3,6 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { renderTemplate, isScaduto, wrapEmailHtml, livelloSollecitoFromTipo, type DatiSede, type ScadenzaSollecito } from "@/lib/template-email-render";
 import { isEmailValida } from "@/lib/email-validazione";
 import { sendEmailViaEdge } from "./send-email.server";
-import { getDestinatariRecuperoCrediti } from "./destinatari-recupero.server";
-import { formatEuro } from "@/lib/fidi";
 import {
   classificaDestinatarioProgressivo,
   scegliTemplateProgressivi,
@@ -13,7 +11,7 @@ import {
 } from "@/lib/escalation-solleciti";
 
 type TemplateRow = { id: string; nome: string; oggetto: string; corpo: string; tipo: string };
-type PropostaLegale = { id: string; ragione_sociale: string; negozio: string | null; totale: number };
+import { notificaProposteLegale, type PropostaLegale } from "./proposte-legale.server";
 
 type EventData = { campagna_id: string };
 
@@ -602,33 +600,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
 
     if (proposteLegale.length > 0) {
       await step.run("notifica-proposte-legale", async () => {
-        const destinatari = await getDestinatariRecuperoCrediti();
-        const ids = proposteLegale.map((p) => p.id);
-        if (destinatari.length) {
-          const n = proposteLegale.length;
-          const righe = proposteLegale
-            .slice(0, 5)
-            .map((p) => `${p.ragione_sociale}${p.negozio ? ` (${p.negozio})` : ""} — ${formatEuro(p.totale)}`);
-          if (n > 5) righe.push(`e altri ${n - 5}`);
-          const { error } = await supabaseAdmin.from("notifiche").insert(
-            destinatari.map((uid) => ({
-              user_id: uid,
-              tipo: "proposta_legale",
-              titolo: `${n} ${n === 1 ? "cliente" : "clienti"} da valutare per il legale — messa in mora ripetuta`,
-              messaggio: righe.join("\n"),
-              link: "/recupero-agenzia",
-              metadata: { campagna_id, ingressi: ids },
-            })),
-          );
-          if (error) throw new Error(`insert notifiche: ${error.message}`);
-        } else {
-          logger.warn(`[sollecito-massivo] nessun destinatario recupero_crediti per ${ids.length} proposte legale`);
-        }
-        const { error: eM } = await supabaseAdmin
-          .from("clienti_scaduto60_ingressi" as never)
-          .update({ notificato_at: new Date().toISOString() } as never)
-          .in("id", ids);
-        if (eM) throw new Error(`marca notificati: ${(eM as { message: string }).message}`);
+        await notificaProposteLegale(proposteLegale, { campagna_id });
         return true;
       });
     }

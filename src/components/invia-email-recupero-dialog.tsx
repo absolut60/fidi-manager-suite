@@ -3,15 +3,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Send, AlertTriangle, Upload, X, FileText } from "lucide-react";
+import { Send, AlertTriangle, Upload, X, FileText, Gavel } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useConfig } from "@/hooks/use-config";
-import { useStadioSollecitoCliente } from "@/hooks/use-azioni-recupero-cliente";
 import { inviaEmailRecupero } from "@/lib/email-recupero.functions";
 import { caricaSedeCliente, renderTemplate, wrapEmailHtml, type TemplateEmail } from "@/lib/template-email";
-import { formatEuro, formatDateIt, type ScadenzaSollecito } from "@/lib/template-email-render";
+import { formatEuro, formatDateIt, livelloSollecitoFromTipo, type ScadenzaSollecito } from "@/lib/template-email-render";
+import { scegliTemplatePerLivello, TIPO_TEMPLATE_PER_LIVELLO, type StadioSollecito } from "@/lib/escalation-solleciti";
+import { STADIO_LABEL, StadioSollecitoBadge } from "@/components/stadio-sollecito-badge";
 import { caricaDatiClienteLettera, renderLettera, type TemplateLettera } from "@/lib/template-lettera";
 import { classificaScadenza } from "@/lib/scadenze";
 import { isEmailValida } from "@/lib/email-validazione";
@@ -78,10 +79,9 @@ function leggiBase64(file: File): Promise<string> {
   });
 }
 
-function tipoDaStadio(stadio: number | null | undefined): string {
-  if (!stadio) return "sollecito_1";
-  if (stadio === 1) return "sollecito_2";
-  return "messa_in_mora";
+function dataIt(v: string | null): string {
+  if (!v) return "—";
+  return new Date(v).toLocaleDateString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
 function Sezione({ titolo, children }: { titolo: string; children: React.ReactNode }) {
@@ -123,6 +123,7 @@ export function InviaEmailRecuperoDialog({
   const [letteraCorpo, setLetteraCorpo] = useState("");
   const [reminder, setReminder] = useState<ReminderState>(defaultReminderFor("email"));
   const [sending, setSending] = useState(false);
+  const [erroreModello, setErroreModello] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const destInit = useRef(false);
   const tplInit = useRef(false);
@@ -136,6 +137,7 @@ export function InviaEmailRecuperoDialog({
     setSelScad(new Set()); setNuoviFile([]); setSelAllegati(new Set());
     setLetteraOn(false); setLetteraTplId(""); setLetteraOggetto(""); setLetteraCorpo("");
     setReminder(defaultReminderFor("email"));
+    setErroreModello(null);
     destInit.current = false; tplInit.current = false; scadInit.current = false;
   }, [open, modalitaIniziale]);
 
@@ -181,7 +183,16 @@ export function InviaEmailRecuperoDialog({
     [templates],
   );
 
-  const { data: stadio, isFetched: stadioPronto } = useStadioSollecitoCliente(clienteId);
+  // Stadio del cliente: fonte unica get_stadio_sollecito_clienti.
+  const { data: stadioCli, isFetched: stadioPronto } = useQuery({
+    queryKey: ["invia-email-stadio", clienteId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_stadio_sollecito_clienti", { _cliente_ids: [clienteId] });
+      if (error) throw error;
+      return (((data ?? []) as unknown as StadioSollecito[])[0] ?? null);
+    },
+    enabled: abilitato,
+  });
 
   const { data: scadute, isLoading: scadLoading } = useQuery({
     queryKey: ["invia-email-recupero-scadute", clienteId],
@@ -249,14 +260,22 @@ export function InviaEmailRecuperoDialog({
     if (primo) { setDestSource(primo); setDestEmail(cliente[primo]!.trim()); }
   }, [cliente]);
 
-  // Modello preselezionato dallo stadio del cliente
+  // Modello preselezionato dal livello successivo (fonte unica scegliTemplatePerLivello).
+  // In caso di errore: selezione di prima (tipo atteso o primo modello) + errore in piccolo.
   useEffect(() => {
     if (tplInit.current || !templatesInvio.length || !stadioPronto) return;
     tplInit.current = true;
-    const atteso = tipoDaStadio(stadio?.stadio_sollecito);
-    const t = templatesInvio.find((x) => x.tipo === atteso) ?? templatesInvio[0];
-    setTemplateId(t.id);
-  }, [templatesInvio, stadioPronto, stadio]);
+    const livello = stadioCli?.livello_successivo ?? 1;
+    try {
+      setTemplateId(scegliTemplatePerLivello(templatesInvio, livello).id);
+      setErroreModello(null);
+    } catch (e) {
+      setErroreModello(e instanceof Error ? e.message : String(e));
+      const atteso = TIPO_TEMPLATE_PER_LIVELLO[livello];
+      const t = templatesInvio.find((x) => x.tipo === atteso) ?? templatesInvio[0];
+      setTemplateId(t.id);
+    }
+  }, [templatesInvio, stadioPronto, stadioCli]);
 
   // Email da fare esistente: scadenze collegate all'azione (azioni_recupero_scadenze).
   const { data: scadCollegate } = useQuery({
@@ -396,9 +415,13 @@ export function InviaEmailRecuperoDialog({
   }
 
   const testoOk = modalita === "modello" ? !!selectedTemplate : !!oggetto.trim() && !!corpo.trim();
+  // Livello del modello scelto (null se non è un sollecito) e vincolo fatture scadute.
+  const livelloScelto = modalita === "modello" && selectedTemplate ? livelloSollecitoFromTipo(selectedTemplate.tipo) : null;
+  const livelloProposto = stadioCli?.livello_successivo ?? null;
+  const bloccoSenzaScaduto = !!livelloScelto && scadenzeScelte.length === 0;
   const puoInviareOra =
     !sending && !!rendered && testoOk && isEmailValida(dest) && !destDuplicato &&
-    tuttiIndirizzi.length <= MAX_INDIRIZZI && !oltreLimite && letteraOk;
+    tuttiIndirizzi.length <= MAX_INDIRIZZI && !oltreLimite && letteraOk && !bloccoSenzaScaduto;
 
   async function handleInvia() {
     if (!puoInviare || !puoInviareOra) return;
@@ -428,7 +451,9 @@ export function InviaEmailRecuperoDialog({
         },
       });
 
-      toast.success("Email inviata");
+      toast.success(
+        res.propostaLegaleCreata ? "Email inviata · Cliente proposto per il passaggio al legale" : "Email inviata",
+      );
       if (res.avvisi.length) {
         toast.warning(`Email inviata con avvisi:\n${res.avvisi.join("\n")}`, { duration: 15000 });
       }
@@ -459,6 +484,9 @@ export function InviaEmailRecuperoDialog({
       qc.invalidateQueries({ queryKey: ["azioni-recupero-calendario"] });
       qc.invalidateQueries({ queryKey: ["azioni-recupero-cliente", clienteId] });
       qc.invalidateQueries({ queryKey: ["allegati"] });
+      qc.invalidateQueries({ queryKey: ["recupero-stadio-cliente", clienteId] });
+      qc.invalidateQueries({ queryKey: ["invia-email-stadio", clienteId] });
+      qc.invalidateQueries({ queryKey: ["recupero-agenzia"] });
       onSent?.();
       onOpenChange(false);
     } catch (err: any) {
@@ -538,6 +566,25 @@ export function InviaEmailRecuperoDialog({
 
               {/* c) Modalità */}
               <Sezione titolo="Testo dell'email">
+                {modalita === "modello" && (
+                  stadioCli ? (
+                    <div className="flex flex-col gap-1.5 text-xs sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4">
+                      <span className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-muted-foreground">Livello attuale:</span>
+                        <StadioSollecitoBadge stadio={stadioCli.stadio} data={null} giorni={null} />
+                        {stadioCli.stadio > 0 && (
+                          <span className="text-muted-foreground">(ultimo il {dataIt(stadioCli.stadio_data)})</span>
+                        )}
+                      </span>
+                      <span className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-muted-foreground">Proposto:</span>
+                        <StadioSollecitoBadge stadio={stadioCli.livello_successivo} data={null} giorni={null} />
+                      </span>
+                    </div>
+                  ) : !stadioPronto ? (
+                    <Skeleton className="h-6 w-full max-w-md" />
+                  ) : null
+                )}
                 <Tabs value={modalita} onValueChange={(v) => cambiaModalita(v as Modalita)}>
                   <TabsList className="grid w-full grid-cols-2 h-auto">
                     <TabsTrigger value="modello" className="min-h-9">Da modello</TabsTrigger>
@@ -560,6 +607,28 @@ export function InviaEmailRecuperoDialog({
                     </Select>
                     {templates && templatesInvio.length === 0 && (
                       <p className="text-xs text-destructive">Nessun modello attivo. Creane uno in Template Email.</p>
+                    )}
+                    {erroreModello && <p className="text-xs text-destructive">{erroreModello}</p>}
+                    {livelloScelto && livelloProposto && livelloScelto !== livelloProposto && (
+                      <p className="text-xs text-muted-foreground">
+                        Stai inviando {STADIO_LABEL[livelloScelto]} invece di {STADIO_LABEL[livelloProposto]}
+                      </p>
+                    )}
+                    {stadioCli && !stadioCli.attesa_ok && (
+                      <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+                        <AlertTriangle className="size-4 mt-0.5 shrink-0" />
+                        <span>
+                          Ultimo sollecito il {dataIt(stadioCli.stadio_data)}, sono passati {stadioCli.stadio_giorni ?? 0} giorni (minimo {stadioCli.giorni_minimi}). Puoi inviare comunque.
+                        </span>
+                      </div>
+                    )}
+                    {stadioCli?.stadio === 3 && livelloScelto === 3 && (
+                      <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                        <Gavel className="size-4 mt-0.5 shrink-0" />
+                        <span>
+                          È la seconda messa in mora: dopo l'invio il cliente verrà proposto per il passaggio al legale (Da passare all'agenzia)
+                        </span>
+                      </div>
                     )}
                   </div>
                 ) : (
@@ -776,6 +845,11 @@ export function InviaEmailRecuperoDialog({
               </Sezione>
             </div>
 
+            {bloccoSenzaScaduto && (
+              <p className="shrink-0 border-t border-border px-4 pt-2 sm:px-6 text-xs text-destructive">
+                Seleziona almeno una fattura scaduta: il sollecito deve essere collegato alle fatture per contare nella scala
+              </p>
+            )}
             <DialogFooter className="shrink-0 border-t border-border px-4 py-3 sm:px-6 gap-2 flex-col-reverse sm:flex-row [&>button]:w-full sm:[&>button]:w-auto">
               <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={sending}>Annulla</Button>
               <Button onClick={handleInvia} disabled={!puoInviareOra} className="gap-1.5">
