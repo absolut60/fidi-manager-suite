@@ -2,13 +2,20 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Send, Users, ListChecks, AlertTriangle, Eye, ChevronLeft, ChevronRight, Pencil, AlertCircle, CheckCircle2, Trash2, RotateCcw } from "lucide-react";
+import { Send, Users, ListChecks, AlertTriangle, Eye, ChevronLeft, ChevronRight, Pencil, AlertCircle, CheckCircle2, Trash2, RotateCcw, Gavel } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useConfig } from "@/hooks/use-config";
 import { classificaScadenza } from "@/lib/scadenze";
 import { renderTemplate, wrapEmailHtml, caricaSedeCliente, type TemplateEmail, type DatiTemplate } from "@/lib/template-email";
-import { livelloSollecitoFromTipo } from "@/lib/template-email-render";
+import {
+  classificaDestinatarioProgressivo,
+  scegliTemplateProgressivi,
+  type LivelloSollecito,
+  type StadioSollecito,
+} from "@/lib/escalation-solleciti";
+import { STADIO_LABEL, StadioSollecitoBadge } from "@/components/stadio-sollecito-badge";
+import { formatEuro } from "@/lib/fidi";
 import { useAuth } from "@/hooks/use-auth";
 import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
 import { avviaCampagnaSollecito } from "@/lib/sollecito-massivo.functions";
@@ -38,6 +45,83 @@ type ClientePreviewData = {
   pec: string | null;
   dati: DatiTemplate;
 };
+
+type StadioConNome = StadioSollecito & { ragione_sociale: string };
+type VoceCliente = { id: string; nome: string; scaduto: number; dettaglio: string };
+type Classificazione = {
+  inviabili: string[];
+  livelli: Record<LivelloSollecito, { n: number; importo: number }>;
+  moraRipetuta: VoceCliente[];
+  attesa: VoceCliente[];
+  noScaduto: VoceCliente[];
+  legale: VoceCliente[];
+};
+
+function dataIt(v: string | null): string {
+  if (!v) return "—";
+  return new Date(v).toLocaleDateString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function sommaScaduto(l: VoceCliente[]) {
+  return l.reduce((a, v) => a + v.scaduto, 0);
+}
+
+function RigaGruppo({ label, n, importo, voci, tono }: {
+  label: React.ReactNode;
+  n: number;
+  importo: number;
+  voci?: VoceCliente[];
+  tono?: "danger";
+}) {
+  const testa = (
+    <span className={`flex items-start gap-2 ${tono === "danger" ? "text-destructive" : ""}`}>
+      <span className="min-w-0 flex-1 break-words">{label}</span>
+      <span className="shrink-0 tabular-nums font-medium">{n}</span>
+      <span className="shrink-0 tabular-nums text-muted-foreground w-24 text-right">{formatEuro(importo)}</span>
+    </span>
+  );
+  if (!voci || voci.length === 0) return <div className="py-0.5">{testa}</div>;
+  return (
+    <details className="py-0.5 group">
+      <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+        <span className="flex items-start gap-1">
+          <ChevronRight className="size-3.5 mt-0.5 shrink-0 transition-transform group-open:rotate-90" />
+          <span className="min-w-0 flex-1">{testa}</span>
+        </span>
+      </summary>
+      <ul className="mt-1 ml-5 max-h-40 overflow-y-auto space-y-0.5 border-l border-border pl-2">
+        {voci.map((v) => (
+          <li key={v.id} className="text-[11px]">
+            <span className="font-medium text-foreground break-words">{v.nome}</span>
+            <span className="text-muted-foreground"> — {v.dettaglio}</span>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
+function RiepilogoLivelli({ c, giorniMinimi }: { c: Classificazione; giorniMinimi: number }) {
+  return (
+    <div className="rounded-md border border-border bg-muted/20 px-3 py-2 text-xs space-y-0.5">
+      <div className="font-medium mb-1">Riepilogo per livello</div>
+      <RigaGruppo label="Riceveranno il 1° sollecito" n={c.livelli[1].n} importo={c.livelli[1].importo} />
+      <RigaGruppo label="Riceveranno il 2° sollecito" n={c.livelli[2].n} importo={c.livelli[2].importo} />
+      <RigaGruppo label="Riceveranno la messa in mora" n={c.livelli[3].n} importo={c.livelli[3].importo} />
+      <RigaGruppo
+        tono="danger"
+        label={<span className="inline-flex items-start gap-1"><Gavel className="size-3.5 mt-0.5 shrink-0" />di cui messa in mora ripetuta → proposta di passaggio al legale</span>}
+        n={c.moraRipetuta.length}
+        importo={sommaScaduto(c.moraRipetuta)}
+        voci={c.moraRipetuta}
+      />
+      <div className="pt-1 mt-1 border-t border-border text-muted-foreground font-medium">Saltati</div>
+      <RigaGruppo label={`Attesa ${giorniMinimi} gg`} n={c.attesa.length} importo={sommaScaduto(c.attesa)} voci={c.attesa} />
+      <RigaGruppo label="Senza scaduto" n={c.noScaduto.length} importo={sommaScaduto(c.noScaduto)} voci={c.noScaduto} />
+      <RigaGruppo label="In gestione legale" n={c.legale.length} importo={sommaScaduto(c.legale)} voci={c.legale} />
+    </div>
+  );
+}
 
 export function InvioMassivoDialog({
   open,
@@ -101,9 +185,6 @@ export function InvioMassivoDialog({
   useEffect(() => {
     setJumpInput("");
   }, [modo]);
-  useEffect(() => {
-    setIndice((i) => (i >= totale ? Math.max(0, totale - 1) : i));
-  }, [totale]);
 
   const { data: templates } = useQuery({
     queryKey: ["template-email-attivi", tipoCampagna],
@@ -133,61 +214,103 @@ export function InvioMassivoDialog({
     [templates, templateId],
   );
 
-  // Determina il livello del template selezionato e quello precedente per il check coerenza
-  const livelloCorrente = selectedTemplate
-    ? livelloSollecitoFromTipo(selectedTemplate.tipo)
-    : null;
-  const livelloPrecedente = livelloCorrente && livelloCorrente >= 2 ? livelloCorrente - 1 : null;
+  // ── Solleciti progressivi (FM51): fonti uniche get_stadio_sollecito_clienti +
+  // escalation-solleciti.ts. La modalità promemoria_scadenza resta invariata.
+  const isSollecito = tipoCampagna !== "promemoria_scadenza";
 
-  const clienteIdsKey = useMemo(() => clienteIds.join(","), [clienteIds]);
+  const { modelliLivello, erroreModelli } = useMemo((): {
+    modelliLivello: Record<LivelloSollecito, TemplateEmail> | null;
+    erroreModelli: string | null;
+  } => {
+    if (!isSollecito || !templates) return { modelliLivello: null, erroreModelli: null };
+    try {
+      return { modelliLivello: scegliTemplateProgressivi(templates), erroreModelli: null };
+    } catch (e) {
+      return { modelliLivello: null, erroreModelli: e instanceof Error ? e.message : String(e) };
+    }
+  }, [isSollecito, templates]);
 
-  type CoerenzaRow = {
-    cliente_id: string;
-    scaduto_cambiato: boolean;
-    ha_azione_precedente: boolean;
-    data_azione_precedente: string | null;
-  };
+  const clienteIdsBaseKey = useMemo(() => clienteIdsBase.join(","), [clienteIdsBase]);
 
-  const { data: coerenza } = useQuery<Record<string, CoerenzaRow>>({
-    queryKey: ["sollecito-massivo-coerenza", livelloPrecedente, clienteIdsKey],
-    enabled: open && puoInviare && livelloPrecedente !== null && clienteIds.length > 0,
+  const { data: stadi, error: erroreStadi } = useQuery<Map<string, StadioConNome>>({
+    queryKey: ["sollecito-massivo-stadi", clienteIdsBaseKey],
+    enabled: open && puoInviare && isSollecito && clienteIdsBase.length > 0,
     staleTime: 60_000,
     queryFn: async () => {
-      const out: Record<string, CoerenzaRow> = {};
-      // chunk per evitare URL troppo lunghi
+      const out = new Map<string, StadioConNome>();
       const CHUNK = 200;
-      for (let i = 0; i < clienteIds.length; i += CHUNK) {
-        const slice = clienteIds.slice(i, i + CHUNK);
-        const { data, error } = await supabase.rpc(
-          "get_coerenza_escalation" as never,
-          { _cliente_ids: slice, _livello_precedente: livelloPrecedente } as never,
-        );
-        if (error) throw error;
-        for (const r of (data ?? []) as CoerenzaRow[]) {
-          out[r.cliente_id] = r;
+      for (let i = 0; i < clienteIdsBase.length; i += CHUNK) {
+        const slice = clienteIdsBase.slice(i, i + CHUNK);
+        const [rs, rc] = await Promise.all([
+          supabase.rpc("get_stadio_sollecito_clienti", { _cliente_ids: slice }),
+          supabase.from("clienti").select("id, ragione_sociale").in("id", slice),
+        ]);
+        if (rs.error) throw rs.error;
+        if (rc.error) throw rc.error;
+        const nomi = new Map((rc.data ?? []).map((c) => [c.id, c.ragione_sociale ?? "—"]));
+        for (const r of (rs.data ?? []) as unknown as StadioSollecito[]) {
+          out.set(r.cliente_id, { ...r, ragione_sociale: nomi.get(r.cliente_id) ?? "—" });
         }
       }
       return out;
     },
   });
 
-  const coerenzaSummary = useMemo(() => {
-    if (livelloPrecedente === null) return null;
-    let cambiati = 0;
-    let senzaPrec = 0;
-    let coerenti = 0;
+  const classificazione = useMemo((): Classificazione | null => {
+    if (!isSollecito || !stadi) return null;
+    const c: Classificazione = {
+      inviabili: [],
+      livelli: { 1: { n: 0, importo: 0 }, 2: { n: 0, importo: 0 }, 3: { n: 0, importo: 0 } },
+      moraRipetuta: [],
+      attesa: [],
+      noScaduto: [],
+      legale: [],
+    };
     for (const cid of clienteIds) {
-      const c = coerenza?.[cid];
-      if (!c) continue;
-      if (!c.ha_azione_precedente) senzaPrec += 1;
-      else if (c.scaduto_cambiato) cambiati += 1;
-      else coerenti += 1;
+      const s = stadi.get(cid);
+      if (!s) {
+        // Stesso trattamento del server: registrato come "Senza scaduto".
+        c.noScaduto.push({ id: cid, nome: cid.slice(0, 8), scaduto: 0, dettaglio: "Cliente non accessibile o non trovato" });
+        continue;
+      }
+      const esito = classificaDestinatarioProgressivo(s);
+      const voce: VoceCliente = { id: cid, nome: s.ragione_sociale, scaduto: Number(s.totale_scaduto ?? 0), dettaglio: "" };
+      if (esito.stato === "da_inviare") {
+        c.inviabili.push(cid);
+        c.livelli[esito.livello].n += 1;
+        c.livelli[esito.livello].importo += voce.scaduto;
+        if (s.ripetizione_mora) c.moraRipetuta.push({ ...voce, dettaglio: `Ultima messa in mora il ${dataIt(s.stadio_data)}` });
+      } else if (esito.stato === "saltato_attesa") c.attesa.push({ ...voce, dettaglio: esito.motivo_salto });
+      else if (esito.stato === "saltato_no_scaduto") c.noScaduto.push({ ...voce, dettaglio: esito.motivo_salto });
+      else c.legale.push({ ...voce, dettaglio: esito.motivo_salto });
     }
-    return { cambiati, senzaPrec, coerenti };
-  }, [clienteIds, coerenza, livelloPrecedente]);
+    return c;
+  }, [isSollecito, stadi, clienteIds]);
 
-  const clienteCorrenteId = clienteIds[indice] ?? null;
-  const coerenzaCorrente = clienteCorrenteId ? coerenza?.[clienteCorrenteId] : undefined;
+  const giorniMinimi = useMemo(() => {
+    if (!stadi) return null;
+    for (const s of stadi.values()) return s.giorni_minimi;
+    return null;
+  }, [stadi]);
+
+  // Coda dell'anteprima: per i solleciti solo chi verrà davvero inviato.
+  const codaAnteprima = useMemo(
+    () => (isSollecito ? classificazione?.inviabili ?? [] : clienteIds),
+    [isSollecito, classificazione, clienteIds],
+  );
+  const totaleAnteprima = codaAnteprima.length;
+  const totaleInvio = totaleAnteprima;
+  const saltatiRegistrati = isSollecito ? totale - totaleInvio : 0;
+
+  useEffect(() => {
+    setIndice((i) => (i >= totaleAnteprima ? Math.max(0, totaleAnteprima - 1) : i));
+  }, [totaleAnteprima]);
+
+  const clienteCorrenteId = codaAnteprima[indice] ?? null;
+  const stadioCorrente = isSollecito && clienteCorrenteId ? stadi?.get(clienteCorrenteId) ?? null : null;
+  const templateAnteprima: TemplateEmail | null = isSollecito
+    ? (modelliLivello && stadioCorrente ? modelliLivello[stadioCorrente.livello_successivo] : null)
+    : selectedTemplate;
 
   // Carica on-demand i dati del cliente corrente (no precaricamento)
   const mesiKey = useMemo(() => [...mesi].sort().join(","), [mesi]);
@@ -293,22 +416,22 @@ export function InvioMassivoDialog({
   });
 
   const anteprima = useMemo(() => {
-    if (!selectedTemplate || !clientePreview) return null;
+    if (!templateAnteprima || !clientePreview) return null;
     const dati: DatiTemplate = {
       ...clientePreview.dati,
       nome_operatore: nomeOperatore,
     };
     const base = renderTemplate(
-      { oggetto: selectedTemplate.oggetto, corpo: selectedTemplate.corpo },
+      { oggetto: templateAnteprima.oggetto, corpo: templateAnteprima.corpo },
       dati,
-      { tipo: selectedTemplate.tipo, speseImportoUnitario: cfg.spese_insoluto_riba_eur },
+      { tipo: templateAnteprima.tipo, speseImportoUnitario: cfg.spese_insoluto_riba_eur },
     );
     const corpo = wrapEmailHtml(base.corpo, sedeCorrente ?? null, {
       nome: nomeOperatore,
       email: user?.email ?? null,
-    }, { tipo: selectedTemplate.tipo });
+    }, { tipo: templateAnteprima.tipo });
     return { oggetto: base.oggetto, corpo };
-  }, [selectedTemplate, clientePreview, sedeCorrente, nomeOperatore, user?.email, cfg.spese_insoluto_riba_eur]);
+  }, [templateAnteprima, clientePreview, sedeCorrente, nomeOperatore, user?.email, cfg.spese_insoluto_riba_eur]);
 
   // Conteggi rapidi: si basano solo su ciò che è stato esplorato/corretto
   const numeroCorretti = useMemo(
@@ -320,48 +443,53 @@ export function InvioMassivoDialog({
   );
   const senzaIndirizzoVisti = useMemo(() => {
     let n = 0;
-    for (const cid of clienteIds) {
+    for (const cid of codaAnteprima) {
       const ov = overrides[cid];
       const eff = ov !== undefined ? ov : risolti[cid];
       if (eff === undefined) continue; // non ancora caricato → non lo contiamo qui
       if (!eff || !eff.trim()) n += 1;
     }
     return n;
-  }, [clienteIds, overrides, risolti]);
+  }, [codaAnteprima, overrides, risolti]);
   const conIndirizzoVisti = useMemo(() => {
     let n = 0;
-    for (const cid of clienteIds) {
+    for (const cid of codaAnteprima) {
       const ov = overrides[cid];
       const eff = ov !== undefined ? ov : risolti[cid];
       if (eff === undefined) continue;
       if (eff && eff.trim()) n += 1;
     }
     return n;
-  }, [clienteIds, overrides, risolti]);
-  const nonEsplorati = totale - conIndirizzoVisti - senzaIndirizzoVisti;
+  }, [codaAnteprima, overrides, risolti]);
+  const nonEsplorati = Math.max(0, totaleAnteprima - conIndirizzoVisti - senzaIndirizzoVisti);
 
-  // Throttling stima
+  // Throttling stima (solo i clienti che verranno davvero inviati)
   const blocco = Math.max(1, cfg.sollecito_massivo_blocco);
   const pausa = Math.max(0, cfg.sollecito_massivo_pausa_sec);
-  const numBlocchi = Math.max(1, Math.ceil(totale / blocco));
+  const numBlocchi = Math.max(1, Math.ceil(totaleInvio / blocco));
   const secondiStimati = (numBlocchi - 1) * pausa + numBlocchi * blocco * 2;
-  const minutiStimati = Math.ceil(secondiStimati / 60);
+  const minutiStimati = totaleInvio === 0 ? 0 : Math.ceil(secondiStimati / 60);
+
+  const avvioDisabilitato =
+    submitting ||
+    totaleInvio === 0 ||
+    (isSollecito ? !modelliLivello || !classificazione || !!erroreModelli : !templateId);
 
   function vai(delta: number) {
-    if (!totale) return;
-    setIndice((i) => Math.min(totale - 1, Math.max(0, i + delta)));
+    if (!totaleAnteprima) return;
+    setIndice((i) => Math.min(totaleAnteprima - 1, Math.max(0, i + delta)));
   }
   function handleJump() {
     const n = parseInt(jumpInput, 10);
-    if (!Number.isFinite(n)) return;
-    setIndice(Math.min(totale - 1, Math.max(0, n - 1)));
+    if (!Number.isFinite(n) || !totaleAnteprima) return;
+    setIndice(Math.min(totaleAnteprima - 1, Math.max(0, n - 1)));
   }
 
   async function handleAvvia() {
     if (!puoInviare) return;
-    if (!selectedTemplate) return;
-    if (totale === 0) {
-      toast.error("Nessun cliente selezionato");
+    if (isSollecito ? !modelliLivello || !classificazione : !selectedTemplate) return;
+    if (totaleInvio === 0) {
+      toast.error("Nessun cliente da inviare");
       return;
     }
     setSubmitting(true);
@@ -379,14 +507,16 @@ export function InvioMassivoDialog({
         setSubmitting(false);
         return;
       }
+      // Progressivo: si passano tutti i clienti della coda; il server ricalcola lo
+      // stadio e registra i saltati con il motivo.
       const res = await avvia({
         data: {
-          templateId: selectedTemplate.id,
+          templateId: isSollecito ? null : selectedTemplate!.id,
           preferenzaIndirizzo: preferenza,
           nota: nota.trim() || null,
           clienteIds,
           indirizziCorretti,
-          tipoCampagna,
+          tipoCampagna: isSollecito ? "sollecito_progressivo" : tipoCampagna,
           mesi,
         },
       });
@@ -430,6 +560,12 @@ export function InvioMassivoDialog({
         ) : (
         <>
         <div className="space-y-4 py-2">
+          {isSollecito && erroreModelli && (
+            <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <AlertCircle className="size-4 mt-0.5 shrink-0" />
+              <span>{erroreModelli}</span>
+            </div>
+          )}
           {/* Modalità destinatari */}
           <div className="space-y-2">
             <Label>Destinatari</Label>
@@ -450,6 +586,11 @@ export function InvioMassivoDialog({
           </div>
 
           {/* Template */}
+          {isSollecito ? (
+            <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+              Il modello si sceglie da solo per ogni cliente in base all'ultimo sollecito ricevuto: 1° sollecito → 2° sollecito → Messa in mora. Tra un sollecito e il successivo devono passare almeno {giorniMinimi ?? "…"} giorni.
+            </div>
+          ) : (
           <div className="space-y-1.5">
             <Label>Template</Label>
             <Select value={templateId} onValueChange={setTemplateId}>
@@ -464,6 +605,7 @@ export function InvioMassivoDialog({
               <p className="text-xs text-destructive">Nessun template attivo. Creane uno in Template Email.</p>
             )}
           </div>
+          )}
 
           {/* Preferenza indirizzo */}
           <div className="space-y-1.5">
@@ -492,9 +634,26 @@ export function InvioMassivoDialog({
             <AlertTriangle className="size-4 mt-0.5 shrink-0" />
             <div>
               L'invio è graduale: ~<strong>{blocco}</strong> email ogni <strong>{pausa}s</strong>. Per{" "}
-              <strong>{totale}</strong> clienti durerà circa <strong>{minutiStimati} min</strong>.
+              <strong>{totaleInvio}</strong> clienti durerà circa <strong>{minutiStimati} min</strong>.
             </div>
           </div>
+
+          {/* Riepilogo per livello (solo solleciti progressivi) */}
+          {isSollecito && totale > 0 && (
+            erroreStadi ? (
+              <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                Calcolo del livello di sollecito non riuscito: {erroreStadi instanceof Error ? erroreStadi.message : String(erroreStadi)}
+              </div>
+            ) : !classificazione ? (
+              <div className="space-y-1.5">
+                <Skeleton className="h-5 w-full" />
+                <Skeleton className="h-5 w-full" />
+                <Skeleton className="h-5 w-3/4" />
+              </div>
+            ) : (
+              <RiepilogoLivelli c={classificazione} giorniMinimi={giorniMinimi ?? 15} />
+            )
+          )}
 
           {/* Anteprima scorrevole */}
           <div className="space-y-2 pt-2 border-t border-border">
@@ -524,13 +683,13 @@ export function InvioMassivoDialog({
                   <Trash2 className="size-3.5" />
                   Elimina dall'invio
                 </Button>
-                <Button type="button" variant="outline" size="sm" onClick={() => vai(-1)} disabled={indice === 0 || totale === 0}>
+                <Button type="button" variant="outline" size="sm" onClick={() => vai(-1)} disabled={indice === 0 || totaleAnteprima === 0}>
                   <ChevronLeft className="size-4" />
                 </Button>
                 <span className="text-xs tabular-nums px-1">
-                  {totale === 0 ? "0 di 0" : `${indice + 1} di ${totale}`}
+                  {totaleAnteprima === 0 ? "0 di 0" : `${indice + 1} di ${totaleAnteprima}`}
                 </span>
-                <Button type="button" variant="outline" size="sm" onClick={() => vai(1)} disabled={indice >= totale - 1}>
+                <Button type="button" variant="outline" size="sm" onClick={() => vai(1)} disabled={indice >= totaleAnteprima - 1}>
                   <ChevronRight className="size-4" />
                 </Button>
                 <Input
@@ -563,7 +722,7 @@ export function InvioMassivoDialog({
                 <ul className="space-y-0.5 max-h-28 overflow-y-auto">
                   {Array.from(esclusi).map((cid) => (
                     <li key={cid} className="flex items-center justify-between gap-2">
-                      <span className="truncate text-foreground/80">{nomiCache[cid] ?? cid.slice(0, 8)}</span>
+                      <span className="min-w-0 break-words text-foreground/80">{nomiCache[cid] ?? stadi?.get(cid)?.ragione_sociale ?? cid.slice(0, 8)}</span>
                       <button
                         type="button"
                         onClick={() =>
@@ -586,49 +745,43 @@ export function InvioMassivoDialog({
               </div>
             )}
 
-            {totale === 0 ? (
-              <div className="text-sm text-muted-foreground">Nessun destinatario.</div>
+            {isSollecito && (!classificazione || (!modelliLivello && !erroreModelli)) && totale > 0 ? (
+              <Skeleton className="h-48 w-full" />
+            ) : totaleAnteprima === 0 ? (
+              <div className="text-sm text-muted-foreground">Nessun destinatario da inviare.</div>
             ) : loadingPreview && !clientePreview ? (
               <Skeleton className="h-48 w-full" />
             ) : !clientePreview ? (
               <Skeleton className="h-48 w-full" />
             ) : (
               <div className="space-y-2">
-                <div>
-                  <div className="text-[11px] uppercase text-muted-foreground mb-1">Ragione sociale</div>
-                  <div className="rounded border border-border bg-muted/30 px-3 py-2 text-sm font-medium">
-                    {clientePreview.ragione_sociale || "—"}
-                  </div>
-                </div>
-
-
-                {/* Check coerenza escalation */}
-                {livelloPrecedente !== null && coerenzaCorrente && (
+                {isSollecito && stadioCorrente && (
                   <div className="space-y-1.5">
-                    {coerenzaCorrente.scaduto_cambiato && (
-                      <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
-                        <AlertTriangle className="size-4 mt-0.5 shrink-0" />
-                        <span>
-                          <strong>Scaduto cambiato dal sollecito precedente — verifica.</strong>{" "}
-                          Le scadenze ancora aperte non coincidono con quelle del{" "}
-                          {livelloPrecedente === 1 ? "1° sollecito" : "2° sollecito"} inviato il{" "}
-                          {coerenzaCorrente.data_azione_precedente
-                            ? new Date(coerenzaCorrente.data_azione_precedente).toLocaleDateString("it-IT")
-                            : "—"}.
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className="text-muted-foreground">Riceverà:</span>
+                      <StadioSollecitoBadge stadio={stadioCorrente.livello_successivo} data={null} giorni={null} />
+                      {stadioCorrente.stadio > 0 && (
+                        <span className="text-muted-foreground">
+                          ultimo sollecito: {STADIO_LABEL[stadioCorrente.stadio]} del {dataIt(stadioCorrente.stadio_data)}
                         </span>
-                      </div>
-                    )}
-                    {!coerenzaCorrente.ha_azione_precedente && (
-                      <div className="flex items-start gap-2 rounded-md border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-xs text-sky-700 dark:text-sky-400">
-                        <AlertCircle className="size-4 mt-0.5 shrink-0" />
+                      )}
+                    </div>
+                    {stadioCorrente.ripetizione_mora && (
+                      <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                        <Gavel className="size-4 mt-0.5 shrink-0" />
                         <span>
-                          Nessun {livelloPrecedente === 1 ? "1° sollecito" : "2° sollecito"} email
-                          collegato a scadenze aperte trovato per questo cliente.
+                          È la seconda messa in mora: dopo l'invio il cliente verrà proposto per il passaggio al legale (Da passare all'agenzia)
                         </span>
                       </div>
                     )}
                   </div>
                 )}
+                <div>
+                  <div className="text-[11px] uppercase text-muted-foreground mb-1">Ragione sociale</div>
+                  <div className="rounded border border-border bg-muted/30 px-3 py-2 text-sm font-medium break-words">
+                    {clientePreview.ragione_sociale || "—"}
+                  </div>
+                </div>
                 {/* (la rimozione dalla coda avviene tramite "Elimina dall'invio" nell'header) */}
 
 
@@ -690,8 +843,8 @@ export function InvioMassivoDialog({
             <div className="flex items-center gap-2 font-medium">
               <CheckCircle2 className="size-3.5" /> Riepilogo invio
             </div>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-muted-foreground">
-              <div>Totale destinatari:</div><div className="text-right text-foreground font-medium">{totale}</div>
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-0.5 text-muted-foreground">
+              <div>{isSollecito ? "Clienti che verranno inviati:" : "Totale destinatari:"}</div><div className="text-right text-foreground font-medium">{totaleInvio}</div>
               <div>Con indirizzo (esplorati):</div><div className="text-right text-emerald-600 dark:text-emerald-400 font-medium">{conIndirizzoVisti}</div>
               <div>Senza indirizzo (saltati):</div><div className="text-right text-destructive font-medium">{senzaIndirizzoVisti}</div>
               <div>Indirizzi corretti manualmente:</div><div className="text-right text-foreground font-medium">{numeroCorretti}</div>
@@ -707,22 +860,12 @@ export function InvioMassivoDialog({
                 Per i destinatari non esplorati l'indirizzo verrà risolto al momento dell'invio (preferenza {preferenza}, con fallback).
               </p>
             )}
-            {coerenzaSummary && livelloPrecedente !== null && (
-              <div className="pt-1 mt-1 border-t border-border space-y-0.5">
-                <div className="font-medium text-foreground flex items-center gap-1.5">
-                  <AlertTriangle className="size-3.5 text-amber-600" />
-                  Coerenza con il {livelloPrecedente === 1 ? "1°" : "2°"} sollecito
-                </div>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-muted-foreground">
-                  <div>Coerenti (scaduto invariato):</div>
-                  <div className="text-right text-emerald-600 dark:text-emerald-400 font-medium">{coerenzaSummary.coerenti}</div>
-                  <div>Scaduto cambiato — verifica:</div>
-                  <div className="text-right text-amber-600 dark:text-amber-400 font-medium">{coerenzaSummary.cambiati}</div>
-                  <div>Senza sollecito precedente:</div>
-                  <div className="text-right text-foreground font-medium">{coerenzaSummary.senzaPrec}</div>
-                  <div>Esclusi manualmente:</div>
-                  <div className="text-right text-foreground font-medium">{esclusi.size}</div>
-                </div>
+            {isSollecito && classificazione && (
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-0.5 text-muted-foreground pt-1 mt-1 border-t border-border">
+                <div>Saltati registrati nella campagna con il motivo:</div>
+                <div className="text-right text-foreground font-medium">{saltatiRegistrati}</div>
+                <div>Esclusi manualmente:</div>
+                <div className="text-right text-foreground font-medium">{esclusi.size}</div>
               </div>
             )}
           </div>
@@ -732,9 +875,9 @@ export function InvioMassivoDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting}>
             Annulla
           </Button>
-          <Button onClick={handleAvvia} disabled={submitting || !templateId || totale === 0} className="gap-1.5">
+          <Button onClick={handleAvvia} disabled={avvioDisabilitato} className="gap-1.5">
             <Send className="size-4" />
-            {submitting ? "Avvio..." : `Avvia campagna (${totale})`}
+            {submitting ? "Avvio..." : `Avvia campagna (${totaleInvio})`}
           </Button>
 
         </DialogFooter>
