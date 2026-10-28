@@ -285,7 +285,7 @@ export const riprovaCampagnaFalliti = createServerFn({ method: "POST" })
       .from("campagne_sollecito_destinatari")
       .select("*", { count: "exact", head: true })
       .eq("campagna_id", data.campagnaId)
-      .eq("stato", "saltato_no_indirizzo");
+      .in("stato", ["saltato_no_indirizzo", "saltato_attesa", "saltato_no_scaduto", "saltato_in_legale"]);
     const { count: cFalliti } = await supabase
       .from("campagne_sollecito_destinatari")
       .select("*", { count: "exact", head: true })

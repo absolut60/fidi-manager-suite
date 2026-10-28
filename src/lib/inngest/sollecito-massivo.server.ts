@@ -3,6 +3,17 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { renderTemplate, isScaduto, wrapEmailHtml, livelloSollecitoFromTipo, type DatiSede, type ScadenzaSollecito } from "@/lib/template-email-render";
 import { isEmailValida } from "@/lib/email-validazione";
 import { sendEmailViaEdge } from "./send-email.server";
+import { getDestinatariRecuperoCrediti } from "./destinatari-recupero.server";
+import { formatEuro } from "@/lib/fidi";
+import {
+  classificaDestinatarioProgressivo,
+  scegliTemplateProgressivi,
+  type LivelloSollecito,
+  type StadioSollecito,
+} from "@/lib/escalation-solleciti";
+
+type TemplateRow = { id: string; nome: string; oggetto: string; corpo: string; tipo: string };
+type PropostaLegale = { id: string; ragione_sociale: string; negozio: string | null; totale: number };
 
 type EventData = { campagna_id: string };
 
@@ -129,9 +140,17 @@ export const invioMassivoSolleciti = inngest.createFunction(
       }
 
       if (saltati > 0) {
+        const isProg = (camp as { tipo_campagna?: string | null }).tipo_campagna === "sollecito_progressivo";
+        let base = 0;
+        if (isProg) {
+          // Progressivo: i saltati in creazione sono già conteggiati, si somma.
+          const { data: cn } = await supabaseAdmin
+            .from("campagne_sollecito").select("saltati").eq("id", campagna_id).maybeSingle();
+          base = Number(cn?.saltati ?? 0);
+        }
         await supabaseAdmin
           .from("campagne_sollecito")
-          .update({ saltati })
+          .update({ saltati: base + saltati })
           .eq("id", campagna_id);
       }
 
@@ -151,7 +170,9 @@ export const invioMassivoSolleciti = inngest.createFunction(
 
 
 
-    if (!prep.templateId) {
+    const isProgressivo = prep.tipoCampagna === "sollecito_progressivo";
+
+    if (!isProgressivo && !prep.templateId) {
       await supabaseAdmin
         .from("campagne_sollecito")
         .update({
@@ -181,16 +202,44 @@ export const invioMassivoSolleciti = inngest.createFunction(
       };
     });
 
-    // Carica template UNA volta
-    const tpl = await step.run("load-template", async () => {
+    // Carica template UNA volta (progressivo: i tre modelli 1° / 2° / messa in mora)
+    const tplRes = await step.run("load-template", async (): Promise<{
+      singolo: TemplateRow | null;
+      prog: Record<LivelloSollecito, TemplateRow> | null;
+      errore: string | null;
+    }> => {
+      if (isProgressivo) {
+        const { data, error } = await supabaseAdmin
+          .from("template_email")
+          .select("id, nome, oggetto, corpo, tipo, attivo")
+          .eq("attivo", true);
+        if (error) throw new Error(`Lettura modelli fallita: ${error.message}`);
+        try {
+          return { singolo: null, prog: scegliTemplateProgressivi(data ?? []), errore: null };
+        } catch (e) {
+          return { singolo: null, prog: null, errore: e instanceof Error ? e.message : String(e) };
+        }
+      }
       const { data, error } = await supabaseAdmin
         .from("template_email")
         .select("id, nome, oggetto, corpo, tipo")
         .eq("id", prep.templateId!)
         .maybeSingle();
       if (error || !data) throw new Error(`Template non trovato: ${prep.templateId}`);
-      return data as { id: string; nome: string; oggetto: string; corpo: string; tipo: string };
+      return { singolo: data as TemplateRow, prog: null, errore: null };
     });
+
+    if (tplRes.errore) {
+      await supabaseAdmin
+        .from("campagne_sollecito")
+        .update({
+          stato: "completata_con_errori",
+          completata_at: new Date().toISOString(),
+          note: tplRes.errore,
+        })
+        .eq("id", campagna_id);
+      return { ok: false, reason: "template-progressivi" };
+    }
 
     // Recupera gli ID dei destinatari ancora da inviare (solo id, ordinati)
     const idsRes = await step.run("collect-pending-ids", async () => {
@@ -223,6 +272,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
     const numBlocchi = Math.ceil(total / cfg.blocco);
 
     let annullataInCorso = false;
+    const proposteLegale: PropostaLegale[] = [];
     for (let b = 0; b < numBlocchi; b++) {
       // Guard: prima di ogni blocco rileggi lo stato campagna e fermati se annullata
       const guard = await step.run(`guard-${b}`, async () => {
@@ -246,11 +296,13 @@ export const invioMassivoSolleciti = inngest.createFunction(
         let inviati = 0;
         let falliti = 0;
         let emailNonValide = 0;
+        let saltatiProg = 0;
+        const proposte: PropostaLegale[] = [];
 
         // Carica i dati necessari del blocco
         const { data: destBlock } = await supabaseAdmin
           .from("campagne_sollecito_destinatari")
-          .select("id, cliente_id, indirizzo_usato")
+          .select("id, cliente_id, indirizzo_usato, livello, template_id")
           .in("id", slice);
 
         for (const d of destBlock ?? []) {
@@ -278,6 +330,41 @@ export const invioMassivoSolleciti = inngest.createFunction(
               continue;
             }
 
+
+            // Progressivo: ricalcolo dello stadio SUBITO prima dell'invio.
+            let tpl: TemplateRow;
+            let stadioLetto: StadioSollecito | null = null;
+            if (isProgressivo) {
+              const { data: stRows, error: eSt } = await supabaseAdmin.rpc("get_stadio_sollecito_clienti", {
+                _cliente_ids: [d.cliente_id],
+              });
+              if (eSt) throw new Error(`Calcolo livello fallito: ${eSt.message}`);
+              stadioLetto = ((stRows ?? []) as unknown as StadioSollecito[])[0] ?? null;
+              if (!stadioLetto) throw new Error("Livello sollecito non disponibile per il cliente");
+              const esito = classificaDestinatarioProgressivo(stadioLetto);
+              if (esito.stato !== "da_inviare") {
+                await supabaseAdmin
+                  .from("campagne_sollecito_destinatari")
+                  .update({
+                    stato: esito.stato,
+                    motivo_salto: esito.motivo_salto,
+                    importo_riferimento: Number(stadioLetto.totale_scaduto ?? 0),
+                  } as never)
+                  .eq("id", d.id);
+                saltatiProg += 1;
+                continue;
+              }
+              tpl = tplRes.prog![esito.livello];
+              const dd = d as { livello?: number | null; template_id?: string | null };
+              if (dd.livello !== esito.livello || dd.template_id !== tpl.id) {
+                await supabaseAdmin
+                  .from("campagne_sollecito_destinatari")
+                  .update({ livello: esito.livello, template_id: tpl.id } as never)
+                  .eq("id", d.id);
+              }
+            } else {
+              tpl = tplRes.singolo!;
+            }
 
             // Cliente: ragione sociale + store (per dati sede footer)
             const { data: cliente } = await supabaseAdmin
@@ -338,6 +425,19 @@ export const invioMassivoSolleciti = inngest.createFunction(
               if (s.stato_contabile !== "Aperta") return false;
               return isScaduto(s);
             });
+            if (!isPromemoria && scadenzeRilevanti.length === 0) {
+              // Un sollecito deve sempre essere collegato ad almeno una fattura.
+              await supabaseAdmin
+                .from("campagne_sollecito_destinatari")
+                .update({ stato: "saltato_no_scaduto", motivo_salto: "Nessuno scaduto" } as never)
+                .eq("id", d.id);
+              if (isProgressivo) { saltatiProg += 1; continue; }
+              // Sollecito classico: comportamento invariato (prosegue all'invio).
+              await supabaseAdmin
+                .from("campagne_sollecito_destinatari")
+                .update({ stato: "da_inviare", motivo_salto: null } as never)
+                .eq("id", d.id);
+            }
             const totaleRif = scadenzeRilevanti.reduce(
               (a, s) => a + Number(s.importo_scadenza ?? 0),
               0,
@@ -426,6 +526,38 @@ export const invioMassivoSolleciti = inngest.createFunction(
               })
               .eq("id", d.id);
             inviati += 1;
+
+            // Messa in mora ripetuta → proposta di passaggio al legale (non blocca l'invio).
+            if (isProgressivo && stadioLetto?.ripetizione_mora && tpl.id === tplRes.prog![3].id && azione?.id) {
+              try {
+                const { data: ingId, error: eP } = await supabaseAdmin.rpc("registra_proposta_legale_mora", {
+                  _cliente_id: d.cliente_id,
+                  _azione_sollecito_id: azione.id,
+                });
+                if (eP) throw new Error(eP.message);
+                if (ingId) {
+                  let negozio: string | null = null;
+                  if (cliente?.store_id) {
+                    const { data: stN } = await supabaseAdmin
+                      .from("stores").select("nome").eq("id", cliente.store_id).maybeSingle();
+                    negozio = stN?.nome ?? null;
+                  }
+                  proposte.push({
+                    id: String(ingId),
+                    ragione_sociale: cliente?.ragione_sociale ?? "Cliente",
+                    negozio,
+                    totale: Number(stadioLetto.totale_scaduto ?? 0),
+                  });
+                }
+              } catch (eProp) {
+                const m = eProp instanceof Error ? eProp.message : String(eProp);
+                logger.error(`[sollecito-massivo] proposta legale fallita per ${d.cliente_id}: ${m}`);
+                await supabaseAdmin
+                  .from("campagne_sollecito_destinatari")
+                  .update({ errore: `Inviato, ma proposta legale non registrata: ${m}`.slice(0, 500) })
+                  .eq("id", d.id);
+              }
+            }
           } catch (e) {
             const msg = e instanceof Error ? e.message : String(e);
             await supabaseAdmin
@@ -450,12 +582,13 @@ export const invioMassivoSolleciti = inngest.createFunction(
           .update({
             inviati: Number(campNow?.inviati ?? 0) + inviati,
             falliti: Number(campNow?.falliti ?? 0) + falliti,
-            saltati: Number(campNow?.saltati ?? 0) + emailNonValide,
+            saltati: Number(campNow?.saltati ?? 0) + emailNonValide + saltatiProg,
           })
           .eq("id", campagna_id);
 
-        return { inviati, falliti, emailNonValide };
+        return { inviati, falliti, emailNonValide, saltatiProg, proposte };
       });
+      proposteLegale.push(...blockResult.proposte);
 
 
       logger.info(`[sollecito-massivo] blocco ${b + 1}/${numBlocchi}`, blockResult);
@@ -469,6 +602,39 @@ export const invioMassivoSolleciti = inngest.createFunction(
     if (annullataInCorso) {
       // Non sovrascrivere lo stato 'annullata' impostato dall'utente
       return { ok: true, annullata: true };
+    }
+
+    if (proposteLegale.length > 0) {
+      await step.run("notifica-proposte-legale", async () => {
+        const destinatari = await getDestinatariRecuperoCrediti();
+        const ids = proposteLegale.map((p) => p.id);
+        if (destinatari.length) {
+          const n = proposteLegale.length;
+          const righe = proposteLegale
+            .slice(0, 5)
+            .map((p) => `${p.ragione_sociale}${p.negozio ? ` (${p.negozio})` : ""} — ${formatEuro(p.totale)}`);
+          if (n > 5) righe.push(`e altri ${n - 5}`);
+          const { error } = await supabaseAdmin.from("notifiche").insert(
+            destinatari.map((uid) => ({
+              user_id: uid,
+              tipo: "proposta_legale",
+              titolo: `${n} ${n === 1 ? "cliente" : "clienti"} da valutare per il legale — messa in mora ripetuta`,
+              messaggio: righe.join("\n"),
+              link: "/recupero-agenzia",
+              metadata: { campagna_id, ingressi: ids },
+            })),
+          );
+          if (error) throw new Error(`insert notifiche: ${error.message}`);
+        } else {
+          logger.warn(`[sollecito-massivo] nessun destinatario recupero_crediti per ${ids.length} proposte legale`);
+        }
+        const { error: eM } = await supabaseAdmin
+          .from("clienti_scaduto60_ingressi" as never)
+          .update({ notificato_at: new Date().toISOString() } as never)
+          .in("id", ids);
+        if (eM) throw new Error(`marca notificati: ${(eM as { message: string }).message}`);
+        return true;
+      });
     }
 
     await step.run("finalize", async () => {
