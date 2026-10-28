@@ -3,8 +3,6 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { renderTemplate, isScaduto, wrapEmailHtml, livelloSollecitoFromTipo, type DatiSede, type ScadenzaSollecito } from "@/lib/template-email-render";
 import { isEmailValida } from "@/lib/email-validazione";
 import { sendEmailViaEdge } from "./send-email.server";
-import { getDestinatariRecuperoCrediti } from "./destinatari-recupero.server";
-import { formatEuro } from "@/lib/fidi";
 import {
   classificaDestinatarioProgressivo,
   scegliTemplateProgressivi,
