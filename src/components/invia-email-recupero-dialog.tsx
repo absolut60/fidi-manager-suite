@@ -137,6 +137,7 @@ export function InviaEmailRecuperoDialog({
     setSelScad(new Set()); setNuoviFile([]); setSelAllegati(new Set());
     setLetteraOn(false); setLetteraTplId(""); setLetteraOggetto(""); setLetteraCorpo("");
     setReminder(defaultReminderFor("email"));
+    setErroreModello(null);
     destInit.current = false; tplInit.current = false; scadInit.current = false;
   }, [open, modalitaIniziale]);
 
