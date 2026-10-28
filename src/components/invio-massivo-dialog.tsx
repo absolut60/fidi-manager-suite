@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
@@ -67,7 +67,7 @@ function sommaScaduto(l: VoceCliente[]) {
 }
 
 function RigaGruppo({ label, n, importo, voci, tono }: {
-  label: React.ReactNode;
+  label: ReactNode;
   n: number;
   importo: number;
   voci?: VoceCliente[];
