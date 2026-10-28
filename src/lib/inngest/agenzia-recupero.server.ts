@@ -5,6 +5,7 @@
 import { inngest } from "./client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { formatEuro } from "@/lib/fidi";
+import { getDestinatariRecuperoCrediti } from "./destinatari-recupero.server";
 
 function withTimeout<T>(p: PromiseLike<T>, ms: number, label: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -114,23 +115,9 @@ export const rilevaAgenziaRecupero = inngest.createFunction(
       return { notificati: 0, destinatari: 0 };
     }
 
-    const destinatari = await step.run("destinatari", async (): Promise<string[]> => {
-      const { data: ruoli, error: eR } = await withTimeout(
-        supabaseAdmin.from("user_roles").select("user_id").eq("role", "recupero_crediti" as never),
-        T_MS,
-        "user_roles recupero_crediti",
-      );
-      if (eR) throw new Error(`user_roles: ${eR.message}`);
-      const ids = Array.from(new Set((ruoli ?? []).map((r) => r.user_id).filter(Boolean)));
-      if (!ids.length) return [];
-      const { data: prof, error: eP } = await withTimeout(
-        supabaseAdmin.from("profili").select("id").in("id", ids).eq("attivo", true),
-        T_MS,
-        "profili attivi",
-      );
-      if (eP) throw new Error(`profili: ${eP.message}`);
-      return ((prof ?? []) as Array<{ id: string }>).map((p) => p.id);
-    });
+    const destinatari = await step.run("destinatari", async (): Promise<string[]> =>
+      getDestinatariRecuperoCrediti(T_MS),
+    );
 
     const ids = pendenti.map((p) => p.id);
 
