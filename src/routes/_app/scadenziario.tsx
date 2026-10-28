@@ -29,7 +29,8 @@ import { useEsperienzaPagamentoCliente, testiPagateInRitardo } from "@/hooks/use
 import { useAzioniRecuperoCliente, useOperatoriAttivita, useStadioSollecitoCliente } from "@/hooks/use-azioni-recupero-cliente";
 import { TIPO_PROMESSA, TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL, testoAzione, tipoAzioneVisualizzato } from "@/lib/azioni-recupero-ui";
 import { TooltipAzioneRecupero } from "@/components/tooltip-azione-recupero";
-import { StadioSollecitoBadge } from "@/components/stadio-sollecito-badge";
+import { StadioSollecitoBadge, StadioSollecitoBadgeCompatto } from "@/components/stadio-sollecito-badge";
+import type { StadioSollecito } from "@/lib/escalation-solleciti";
 import { ClienteAttivitaRecuperoTab } from "@/components/cliente-attivita-recupero-tab";
 import { ScadenziarioKpi, DettaglioCoperturaRiga } from "@/components/scadenziario/scadenziario-kpi";
 import { CopertureScadenziario } from "@/components/scadenziario/coperture-scadenziario";
@@ -665,6 +666,24 @@ function ScadenziarioPage() {
   }
 
   const pageRows = rows ?? [];
+  // Stadio di sollecito dei clienti della pagina: UNA chiamata alla fonte unica.
+  const idsPagina = pageRows.map((r) => r.cliente_id);
+  const { data: stadiPagina } = useQuery({
+    queryKey: ["scadenziario-stadi-sollecito", idsPagina.join(",")],
+    enabled: idsPagina.length > 0,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_stadio_sollecito_clienti", { _cliente_ids: idsPagina });
+      if (error) throw error;
+      const m = new Map<string, StadioSollecito>();
+      for (const r of (data ?? []) as unknown as StadioSollecito[]) m.set(r.cliente_id, r);
+      return m;
+    },
+  });
+  const badgeStadio = (cid: string) => {
+    const st = stadiPagina?.get(cid);
+    return <StadioSollecitoBadgeCompatto stadio={st?.stadio ?? 0} data={st?.stadio_data ?? null} giorni={st?.stadio_giorni ?? null} />;
+  };
   const schedaMobile = pageRows.find((r) => r.cliente_id === schedaMobileId);
 
   return (
@@ -995,6 +1014,7 @@ function ScadenziarioPage() {
                         <>
                           {blockBadge(r)}
                           {legaleBadge(r)}
+                          {(stadiPagina?.get(r.cliente_id)?.stadio ?? 0) > 0 && badgeStadio(r.cliente_id)}
                           {totScad < 0 && <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">A credito</Badge>}
                           {r.ha_promessa && <Badge variant="outline" className="text-orange-600 border-orange-300">Promessa</Badge>}
                           {r.ha_piano_rientro && <Badge variant="outline" className="text-emerald-600 border-emerald-300">Piano rientro</Badge>}
@@ -1034,6 +1054,7 @@ function ScadenziarioPage() {
                   {sortHead("store_nome", "Store")}
                   {sortHead("bloccato", "Stato blocco")}
                   <TableHead>Legale</TableHead>
+                  <TableHead>Sollecito</TableHead>
                   {sortHead("fatturato_cur", `Fatt. ${annoCorrente} (IVA escl.)`, true)}
                   {sortHead("fatturato_prec", `Fatt. ${annoPrec} (IVA escl.)`, true)}
                   {sortHead("n_scadute", "N. Fatt. scadute", true)}
@@ -1123,6 +1144,7 @@ function ScadenziarioPage() {
                         <TableCell className="text-xs">{r.store_nome ?? "—"}</TableCell>
                         <TableCell>{blockBadge(r)}</TableCell>
                         <TableCell>{legaleBadge(r)}</TableCell>
+                        <TableCell>{badgeStadio(r.cliente_id)}</TableCell>
                         <TableCell className="text-right tabular-nums">{fattCur > 0 ? fmtEuro(fattCur) : "—"}</TableCell>
                         <TableCell className="text-right tabular-nums text-muted-foreground">{fattPrev > 0 ? fmtEuro(fattPrev) : "—"}</TableCell>
                         <TableCell className="text-right tabular-nums">{r.n_scadute || "—"}</TableCell>
@@ -1142,7 +1164,7 @@ function ScadenziarioPage() {
                       </TableRow>
                       {isExpanded && (
                         <TableRow key={`${r.cliente_id}-exp`} className="bg-muted/40 hover:bg-muted/40">
-                          <TableCell colSpan={16} className="px-4 py-3 space-y-3 whitespace-normal" onClick={(e) => e.stopPropagation()}>
+                          <TableCell colSpan={17} className="px-4 py-3 space-y-3 whitespace-normal" onClick={(e) => e.stopPropagation()}>
                             {r.ha_promessa && <PromesseAttiveBlock clienteId={r.cliente_id} />}
                             <ExpandedRischioPanel
                               loading={loadingRischio}
@@ -1309,6 +1331,7 @@ function RecuperoStriscia({ clienteId, pianoRientro, aperto, onToggle }: {
       void qc.invalidateQueries({ queryKey: ["scadenziario-paginata-v1"] });
       void qc.invalidateQueries({ queryKey: ["scadenziario-totali-v1"] });
       void qc.invalidateQueries({ queryKey: ["recupero-stadio-cliente", clienteId] });
+      void qc.invalidateQueries({ queryKey: ["scadenziario-stadi-sollecito"] });
     }
   }, [dataUpdatedAt, qc, clienteId]);
 

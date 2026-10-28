@@ -29,13 +29,14 @@ import {
 import { InviaEmailRecuperoDialog } from "@/components/invia-email-recupero-dialog";
 import { CreaAzioneDialog } from "@/components/crea-azione-dialog";
 import { EmailInviataView } from "@/components/email-inviata-view";
+import { SollecitiInviatiLista } from "@/components/solleciti-inviati-lista";
 import { ModificaAzioneDialog, type AzioneModificabile } from "@/components/modifica-azione-dialog";
 import { LetteraPdfDialog } from "@/components/lettera-pdf-dialog";
 import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
 import type { TipoAzione } from "@/components/reminder-controls";
 import { useAzioniRecuperoCliente, useOperatoriAttivita, useStadioSollecitoCliente, type Azione } from "@/hooks/use-azioni-recupero-cliente";
 import { ESITO_AZIONE_LABEL, TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL, isEmailDaInviare, isPromessaDaVerificare, isPromessaPagamento, testoAzione, tipoAzioneVisualizzato } from "@/lib/azioni-recupero-ui";
-import { StadioSollecitoBadge } from "@/components/stadio-sollecito-badge";
+import { STADIO_LABEL, StadioSollecitoBadge } from "@/components/stadio-sollecito-badge";
 
 export function fmtData(v: string) {
   const d = v.slice(0, 10).split("-");
@@ -87,6 +88,7 @@ export function invalidaRecuperoCliente(qc: QueryClient, clienteId: string) {
   qc.invalidateQueries({ queryKey: ["recupero-clienti"] });
   qc.invalidateQueries({ queryKey: ["clienti-avvisati"] });
   qc.invalidateQueries({ queryKey: ["recupero-stadio-cliente", clienteId] });
+  qc.invalidateQueries({ queryKey: ["scadenziario-stadi-sollecito"] });
 }
 
 /** Permesso modifica/eliminazione di un'azione (stessa regola della timeline). */
@@ -284,6 +286,8 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda, onApriProm
           </div>
         </div>
       </Card>
+
+      <SollecitiInviatiLista clienteId={clienteId} onVediEmail={setViewEmail} />
 
       {/* Azioni dirette */}
       <div className="flex flex-wrap items-center gap-2">
@@ -533,7 +537,7 @@ export function TimelineItem({
               <span className="text-xs text-muted-foreground">· rif. {fmtEuro(azione.importo_riferimento)}</span>
             )}
             {azione.tipo === "email" && azione.livello_sollecito != null && azione.livello_sollecito > 0 && (
-              <Badge variant="outline" className="text-[10px] h-5">Sollecito {azione.livello_sollecito}</Badge>
+              <Badge variant="outline" className="text-[10px] h-5">{STADIO_LABEL[azione.livello_sollecito] ?? `Sollecito ${azione.livello_sollecito}`}</Badge>
             )}
           </div>
           {extra}
