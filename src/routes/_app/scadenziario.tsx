@@ -29,7 +29,8 @@ import { useEsperienzaPagamentoCliente, testiPagateInRitardo } from "@/hooks/use
 import { useAzioniRecuperoCliente, useOperatoriAttivita, useStadioSollecitoCliente } from "@/hooks/use-azioni-recupero-cliente";
 import { TIPO_PROMESSA, TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL, testoAzione, tipoAzioneVisualizzato } from "@/lib/azioni-recupero-ui";
 import { TooltipAzioneRecupero } from "@/components/tooltip-azione-recupero";
-import { StadioSollecitoBadge } from "@/components/stadio-sollecito-badge";
+import { StadioSollecitoBadge, StadioSollecitoBadgeCompatto } from "@/components/stadio-sollecito-badge";
+import type { StadioSollecito } from "@/lib/escalation-solleciti";
 import { ClienteAttivitaRecuperoTab } from "@/components/cliente-attivita-recupero-tab";
 import { ScadenziarioKpi, DettaglioCoperturaRiga } from "@/components/scadenziario/scadenziario-kpi";
 import { CopertureScadenziario } from "@/components/scadenziario/coperture-scadenziario";
