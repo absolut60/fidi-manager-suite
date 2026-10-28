@@ -425,18 +425,14 @@ export const invioMassivoSolleciti = inngest.createFunction(
               if (s.stato_contabile !== "Aperta") return false;
               return isScaduto(s);
             });
-            if (!isPromemoria && scadenzeRilevanti.length === 0) {
+            if (isProgressivo && scadenzeRilevanti.length === 0) {
               // Un sollecito deve sempre essere collegato ad almeno una fattura.
               await supabaseAdmin
                 .from("campagne_sollecito_destinatari")
                 .update({ stato: "saltato_no_scaduto", motivo_salto: "Nessuno scaduto" } as never)
                 .eq("id", d.id);
-              if (isProgressivo) { saltatiProg += 1; continue; }
-              // Sollecito classico: comportamento invariato (prosegue all'invio).
-              await supabaseAdmin
-                .from("campagne_sollecito_destinatari")
-                .update({ stato: "da_inviare", motivo_salto: null } as never)
-                .eq("id", d.id);
+              saltatiProg += 1;
+              continue;
             }
             const totaleRif = scadenzeRilevanti.reduce(
               (a, s) => a + Number(s.importo_scadenza ?? 0),
