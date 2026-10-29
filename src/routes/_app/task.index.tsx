@@ -9,6 +9,7 @@ import { useNomiUtenti } from "@/hooks/use-nomi-utenti";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -48,7 +49,6 @@ export const Route = createFileRoute("/_app/task/")({
 
 
 const NESSUNO = "__nessuno__";
-const TUTTI = "__tutti__";
 
 function TaskPage() {
   const { user, role } = useAuth();
@@ -60,10 +60,10 @@ function TaskPage() {
   const [creating, setCreating] = useState(false);
   // Filtri conservati con la fonte unica useFiltriPagina ("Solo miei" restringe soltanto).
   const { filtri: FT, setCampo: setCampoTask } = useFiltriPagina("task", {
-    filtroStato: TUTTI as string, soloMiei: false,
+    filtroStato: [] as string[], soloMiei: false,
   }, { userId });
   const { filtroStato, soloMiei } = FT;
-  const setFiltroStato = (v: string) => setCampoTask("filtroStato", v);
+  const setFiltroStato = (v: string[]) => setCampoTask("filtroStato", v);
   const setSoloMiei = (v: boolean) => setCampoTask("soloMiei", v);
 
   const { data: task, isLoading } = useQuery({
@@ -114,10 +114,11 @@ function TaskPage() {
 
   const righe = useMemo(() => {
     let lista = task ?? [];
-    if (filtroStato === TUTTI) {
+    // Elenco vuoto = default di sempre: tutti tranne gli annullati.
+    if (filtroStato.length === 0) {
       lista = lista.filter((t) => t.stato !== "annullato");
     } else {
-      lista = lista.filter((t) => t.stato === filtroStato);
+      lista = lista.filter((t) => filtroStato.includes(t.stato));
     }
     if (soloMiei && userId) {
       lista = lista.filter(
@@ -145,15 +146,12 @@ function TaskPage() {
         <div className="flex flex-wrap items-center gap-4 mb-4">
           <div className="flex items-center gap-2">
             <Label className="text-sm">Stato</Label>
-            <Select value={filtroStato} onValueChange={setFiltroStato}>
-              <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={TUTTI}>Tutti (esclusi annullati)</SelectItem>
-                {STATI.map((s) => (
-                  <SelectItem key={s} value={s}>{STATO_LABEL[s]}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Stato" testoTutti="Tutti (esclusi annullati)"
+              className="w-44"
+              opzioni={STATI.map((s) => ({ valore: s, label: STATO_LABEL[s] }))}
+              selezionati={filtroStato} onChange={setFiltroStato}
+            />
           </div>
           <div className="flex items-center gap-2">
             <Checkbox
