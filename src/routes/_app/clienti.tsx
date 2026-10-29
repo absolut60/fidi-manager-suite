@@ -936,6 +936,7 @@ function ClientiPage() {
   });
   const clienti = (clientiResp?.rows ?? []) as any[];
   const totaleClienti = clientiResp?.count ?? 0;
+  const tuttiClientiSel = clienti.length > 0 && clienti.every((c: any) => selectedIds.has(c.id));
   // FM47: attesa onesta delle mappe da cui dipende la query principale (disabilitata nel frattempo).
   const listaInAttesa = isListRoute && !(scadReady && isConfigReady && virtualSortReady && fermiReady && richiesteReady);
   const listaInErrore = clientiError || scadError || fermiError || richiesteError;
