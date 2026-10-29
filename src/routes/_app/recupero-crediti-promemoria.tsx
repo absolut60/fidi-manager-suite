@@ -116,8 +116,8 @@ function PromemoriaScadenzaPage() {
 
   const mesiRosa = useMemo(() => buildMesiRosa(6), []);
   const [mesiSel, setMesiSel] = useState<Set<string>>(() => new Set([mesiRosa[0]]));
-  const [storeId, setStoreId] = useState<string>(
-    isStoreManager && myStoreId ? myStoreId : "all"
+  const [storeId, setStoreId] = useState<string[]>(
+    isStoreManager && myStoreId ? [myStoreId] : []
   );
   const [search, setSearch] = useState("");
   const [searchDeb, setSearchDeb] = useState("");
@@ -176,7 +176,7 @@ function PromemoriaScadenzaPage() {
         "get_promemoria_clienti_aggregato" as never,
         {
           _mesi: mesiArr,
-          _store_id: storeId !== "all" ? storeId : null,
+          _store_ids: storeId.length > 0 ? storeId : null,
           _search: searchDeb || null,
           _importo_min: importoMin ? Number(importoMin) : null,
           _escludi_legale: escludiLegale,
@@ -297,17 +297,11 @@ function PromemoriaScadenzaPage() {
           </div>
 
           {!isStoreManager && (
-            <Select value={storeId} onValueChange={setStoreId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Store" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tutti gli store</SelectItem>
-                {(stores ?? []).map((s) => (
-                  <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Store" testoTutti="Tutti gli store"
+              opzioni={(stores ?? []).map((s) => ({ valore: s.id, label: s.nome }))}
+              selezionati={storeId} onChange={setStoreId}
+            />
           )}
 
           <Input
@@ -582,7 +576,7 @@ function InviiAutomaticiSection() {
     d.setDate(d.getDate() - 30);
     return d.toISOString();
   }, []);
-  const [filtroEsito, setFiltroEsito] = useState<string>("tutti");
+  const [filtroEsito, setFiltroEsito] = useState<string[]>([]);
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
 
   const { data, isLoading, error } = useQuery({
@@ -610,7 +604,7 @@ function InviiAutomaticiSection() {
     return { inviati, falliti, saltati };
   }, [rows]);
 
-  const filtered = filtroEsito === "tutti" ? rows : rows.filter((r) => r.esito === filtroEsito);
+  const filtered = filtroEsito.length === 0 ? rows : rows.filter((r) => filtroEsito.includes(r.esito));
 
   if (error) {
     return (
@@ -639,15 +633,15 @@ function InviiAutomaticiSection() {
           <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
             Saltati (no email): {counts.saltati}
           </Badge>
-          <Select value={filtroEsito} onValueChange={setFiltroEsito}>
-            <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="tutti">Tutti gli esiti</SelectItem>
-              <SelectItem value="inviato">Solo inviati</SelectItem>
-              <SelectItem value="fallito">Solo falliti</SelectItem>
-              <SelectItem value="saltato_no_email">Solo saltati</SelectItem>
-            </SelectContent>
-          </Select>
+          <FiltroMultiplo
+            etichetta="Esito" testoTutti="Tutti gli esiti" className="w-[180px]"
+            opzioni={[
+              { valore: "inviato", label: "Inviati" },
+              { valore: "fallito", label: "Falliti" },
+              { valore: "saltato_no_email", label: "Saltati" },
+            ]}
+            selezionati={filtroEsito} onChange={setFiltroEsito}
+          />
         </div>
       </div>
 
