@@ -40,7 +40,7 @@ function PrivacyPage() {
 
   const [stato, setStato] = useState("tutti");
   const [storeId, setStoreId] = useState<string[]>([]);
-  const [consensoFiltro, setConsensoFiltro] = useState("tutti");
+  const [consensoFiltro, setConsensoFiltro] = useState<string[]>([]);
   const [q, setQ] = useState("");
 
   const { data: stores } = useQuery({
@@ -69,9 +69,15 @@ function PrivacyPage() {
       if (storeId.length > 0 && !storeId.includes(r.clienti?.store_id ?? "")) return false;
       if (stato === "firmata" && !r.privacy_firmata) return false;
       if (stato === "non_firmata" && r.privacy_firmata) return false;
-      if (consensoFiltro === "profilazione" && !r.consenso_profilazione) return false;
-      if (consensoFiltro === "marketing" && !r.consenso_marketing_media) return false;
-      if (consensoFiltro === "whatsapp" && !r.consenso_marketing_diretto) return false;
+      // Più consensi scelti: basta soddisfarne almeno uno (OR).
+      if (consensoFiltro.length > 0) {
+        const ok = consensoFiltro.some((v) =>
+          v === "profilazione" ? !!r.consenso_profilazione
+          : v === "marketing" ? !!r.consenso_marketing_media
+          : v === "whatsapp" ? !!r.consenso_marketing_diretto
+          : true);
+        if (!ok) return false;
+      }
       if (q) {
         const ql = q.toLowerCase();
         const hay = `${r.nome ?? ""} ${r.cognome ?? ""} ${r.clienti?.ragione_sociale ?? ""}`.toLowerCase();
@@ -118,15 +124,15 @@ function PrivacyPage() {
             </Select>
           </div>
           <div className="w-56">
-            <Select value={consensoFiltro} onValueChange={setConsensoFiltro}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutti">Tutti i consensi</SelectItem>
-                <SelectItem value="profilazione">Profilazione ✓</SelectItem>
-                <SelectItem value="marketing">Marketing ✓</SelectItem>
-                <SelectItem value="whatsapp">WhatsApp ✓</SelectItem>
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Consenso" testoTutti="Tutti i consensi"
+              opzioni={[
+                { valore: "profilazione", label: "Profilazione ✓" },
+                { valore: "marketing", label: "Marketing ✓" },
+                { valore: "whatsapp", label: "WhatsApp ✓" },
+              ]}
+              selezionati={consensoFiltro} onChange={setConsensoFiltro}
+            />
           </div>
           {!isStoreManager && (
             <div className="w-56">
