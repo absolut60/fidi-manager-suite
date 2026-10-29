@@ -197,10 +197,6 @@ function etichettaElenco(valori: string[], label: (v: string) => string): string
   return valori.length === 1 ? label(valori[0]) : `${valori.length} selezionati`;
 }
 
-/**
- * Filtro a elenco su una colonna: vuoto = nessun filtro; "__none__" = colonna vuota (null),
- * in OR con i valori scelti. Con un solo valore equivale al vecchio .eq / .is.
- */
 function ClientiPage() {
   const navigate = useNavigate();
   const currentPath = useRouterState({ select: (s) => s.location.pathname });

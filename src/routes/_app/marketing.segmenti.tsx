@@ -113,7 +113,6 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
 }
 
 
-/** Filtro a elenco su colonna testo; "__none__" = valore NULL, in OR con gli altri. */
 const TIPO_SOGGETTO_DB: Record<string, string> = { fisica: "persona_fisica", giuridica: "azienda" };
 
 function MarketingSegmentiPage() {

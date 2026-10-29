@@ -2,7 +2,7 @@
 
 Queste regole sono parte delle istruzioni permanenti del progetto: valgono quanto il knowledge. In caso di dubbio vale il knowledge, poi questi file.
 
-- `brand-e-navigazione.md` — leggere prima di toccare: logo MADE e sue varianti, pagina di dettaglio con pulsante "Indietro".
+- `brand-e-navigazione.md` — leggere prima di toccare: logo MADE e sue varianti, pagina di dettaglio con pulsante "Indietro", filtri delle pagine elenco (§7-bis), filtri a scelta multipla e selezione su telefono (§7-ter).
 - `tassonomia.md` — leggere prima di toccare: categorie_segmento, Mestiere e Settore su lead, clienti e opportunità, storico categorie.
 - `notifiche.md` — leggere prima di toccare: notifiche, raggruppamento nel database, push, schermata e contatore delle notifiche.
 - `fonti-uniche.md` — leggere prima di toccare: richiesta fido e decisione, lead ed eventi, import scadenziario e anagrafica, audit clienti, email solleciti, policy RLS.
