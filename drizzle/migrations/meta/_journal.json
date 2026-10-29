@@ -666,6 +666,13 @@
       "when": 1793311528555,
       "tag": "0094_fm54_scadenze_chiuse_anticipo_uso",
       "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1793312676889,
+      "tag": "0095_fm54_inline_funzioni_scadenze_chiuse",
+      "breakpoints": true
     }
   ]
 }
