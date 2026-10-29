@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { puoAccedereMarketing } from "@/lib/ruoli-marketing";
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -592,7 +593,7 @@ function statoLabel(s: string) {
 function DettaglioCampagnaDialog({ campagnaId, inCorso, onClose }: { campagnaId: string; inCorso: boolean; onClose: () => void }) {
   const qc = useQueryClient();
   const riprova = useServerFn(riprovaCampagnaMarketingFalliti);
-  const [statoFilter, setStatoFilter] = useState<string>("tutti");
+  const [statoFilter, setStatoFilter] = useState<string[]>([]);
   const [ricerca, setRicerca] = useState<string>("");
   const [retrying, setRetrying] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -646,9 +647,10 @@ function DettaglioCampagnaDialog({ campagnaId, inCorso, onClose }: { campagnaId:
   const filtered = useMemo(() => {
     if (!rows) return [];
     let out = rows;
-    if (statoFilter !== "tutti") {
-      if (statoFilter === "__ha_cliccato__") out = out.filter((r) => (clicDest?.[r.id]?.clic_reali ?? 0) > 0);
-      else out = out.filter((r) => r.stato_invio === statoFilter);
+    // Più stati scelti: basta soddisfarne almeno uno ("Ha cliccato" compreso).
+    if (statoFilter.length > 0) {
+      out = out.filter((r) => statoFilter.some((v) =>
+        v === "__ha_cliccato__" ? (clicDest?.[r.id]?.clic_reali ?? 0) > 0 : r.stato_invio === v));
     }
     const q = ricerca.trim().toLowerCase();
     if (q) {
@@ -721,18 +723,18 @@ function DettaglioCampagnaDialog({ campagnaId, inCorso, onClose }: { campagnaId:
         </DialogHeader>
 
         <div className="flex items-center gap-3 py-2 flex-wrap">
-          <Select value={statoFilter} onValueChange={setStatoFilter}>
-            <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="tutti">Tutti</SelectItem>
-              <SelectItem value="inviato">Inviati</SelectItem>
-              <SelectItem value="email_non_valida">Email non valida</SelectItem>
-              <SelectItem value="fallito">Falliti</SelectItem>
-              <SelectItem value="da_inviare">In coda</SelectItem>
-              <SelectItem value="saltato">Saltati</SelectItem>
-              <SelectItem value="__ha_cliccato__">Ha cliccato</SelectItem>
-            </SelectContent>
-          </Select>
+          <FiltroMultiplo
+            etichetta="Stato" testoTutti="Tutti" className="w-[200px]"
+            opzioni={[
+              { valore: "inviato", label: "Inviati" },
+              { valore: "email_non_valida", label: "Email non valida" },
+              { valore: "fallito", label: "Falliti" },
+              { valore: "da_inviare", label: "In coda" },
+              { valore: "saltato", label: "Saltati" },
+              { valore: "__ha_cliccato__", label: "Ha cliccato" },
+            ]}
+            selezionati={statoFilter} onChange={setStatoFilter}
+          />
           <div className="relative w-[240px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
