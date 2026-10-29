@@ -6745,14 +6745,6 @@ export type Database = {
         Args: { c: Database["public"]["Tables"]["clienti"]["Row"] }
         Returns: number
       }
-      fido_proposto: {
-        Args: { c: Database["public"]["Tables"]["clienti"]["Row"] }
-        Returns: number
-      }
-      fido_scostamento: {
-        Args: { c: Database["public"]["Tables"]["clienti"]["Row"] }
-        Returns: number
-      }
       fn_email_valida: { Args: { _raw: string }; Returns: boolean }
       fn_telefono_valido: { Args: { _raw: string }; Returns: boolean }
       genera_snapshot: { Args: { _data: string }; Returns: string }
@@ -6912,17 +6904,6 @@ export type Database = {
           store_nome: string
           totale_a_scadere: number
           totale_scaduto: number
-        }[]
-      }
-      get_coerenza_escalation: {
-        Args: { _cliente_ids: string[]; _livello_precedente: number }
-        Returns: {
-          cliente_id: string
-          data_azione_precedente: string
-          ha_azione_precedente: boolean
-          scadenze_aperte_correnti: string[]
-          scadenze_precedente: string[]
-          scaduto_cambiato: boolean
         }[]
       }
       get_conteggi_campagne_email: {
