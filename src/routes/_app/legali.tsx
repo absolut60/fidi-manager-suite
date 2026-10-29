@@ -1,3 +1,4 @@
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -77,15 +78,20 @@ function PraticheLegaliPage() {
   // Filtri conservati (useFiltriPagina).
   const { user } = useAuth();
   const { filtri: FL, setCampo } = useFiltriPagina("legali", {
-    stato: "tutti", storeId: "all", tipoFilter: "tutti", origine: "tutte", q: "",
-  }, { userId: user?.id });
+    // Origine, tipo e store a scelta multipla (vuoto = tutti); stato resta a scelta singola.
+    stato: "tutti", storeId: [] as string[], tipoFilter: [] as string[], origine: [] as string[], q: "",
+  }, {
+    userId: user?.id,
+    // Formato vecchio (stringa) scartato: si riparte dal default.
+    valida: { storeId: (v) => Array.isArray(v) && v.every((x) => typeof x === "string"), tipoFilter: (v) => Array.isArray(v) && v.every((x) => typeof x === "string"), origine: (v) => Array.isArray(v) && v.every((x) => typeof x === "string") },
+  });
   const { stato, tipoFilter, origine, q } = FL;
   // Store manager: sempre il proprio negozio, qualunque valore sia salvato.
-  const storeId = isStoreManager && myStoreId ? myStoreId : FL.storeId;
+  const storeId: string[] = isStoreManager && myStoreId ? [myStoreId] : FL.storeId;
   const setStato = (v: string) => setCampo("stato", v);
-  const setStoreId = (v: string) => setCampo("storeId", v);
-  const setTipoFilter = (v: string) => setCampo("tipoFilter", v);
-  const setOrigine = (v: string) => setCampo("origine", v);
+  const setStoreId = (v: string[]) => setCampo("storeId", v);
+  const setTipoFilter = (v: string[]) => setCampo("tipoFilter", v);
+  const setOrigine = (v: string[]) => setCampo("origine", v);
   const setQ = (v: string) => setCampo("q", v);
 
   const { data: stores } = useQuery({
@@ -171,15 +177,18 @@ function PraticheLegaliPage() {
 
   const rows = useMemo(() => {
     return allRows.filter((r) => {
-      if (origine === "manuali" && r.origine !== "manuale") return false;
-      if (origine === "gestionali" && r.origine !== "gestionale") return false;
-      if (storeId !== "all" && r.store_id !== storeId) return false;
-      if (tipoFilter !== "tutti") {
+      if (origine.length > 0 && !origine.includes(r.origine === "manuale" ? "manuali" : "gestionali")) return false;
+      if (storeId.length > 0 && !storeId.includes(r.store_id ?? "")) return false;
+      if (tipoFilter.length > 0) {
         const c = (r.categoria ?? "").toLowerCase();
-        if (tipoFilter === "decreto" && !c.includes("decreto")) return false;
-        if (tipoFilter === "pignoramento" && !c.includes("pignoramento")) return false;
-        if (tipoFilter === "pouey" && !c.includes("pouey")) return false;
-        if (tipoFilter === "fallimento" && !(c.includes("fallimento") || c.includes("concordato"))) return false;
+        // Passa se corrisponde ad almeno uno dei tipi scelti (stesse regole di prima per ciascun tipo).
+        const corrisponde = (t: string) =>
+          t === "decreto" ? c.includes("decreto")
+          : t === "pignoramento" ? c.includes("pignoramento")
+          : t === "pouey" ? c.includes("pouey")
+          : t === "fallimento" ? (c.includes("fallimento") || c.includes("concordato"))
+          : true;
+        if (!tipoFilter.some(corrisponde)) return false;
       }
       if (stato !== "tutti" && r.origine === "manuale") {
         if (stato === "aperte" && !STATI_APERTI.has(r.stato)) return false;
@@ -280,26 +289,18 @@ function PraticheLegaliPage() {
             </div>
           </div>
           <div className="w-44">
-            <Select value={origine} onValueChange={setOrigine}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutte">Tutte le origini</SelectItem>
-                <SelectItem value="manuali">Solo manuali</SelectItem>
-                <SelectItem value="gestionali">Solo gestionali</SelectItem>
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Origine" testoTutti="Tutte le origini"
+              opzioni={[{ valore: "manuali", label: "Solo manuali" }, { valore: "gestionali", label: "Solo gestionali" }]}
+              selezionati={origine} onChange={setOrigine}
+            />
           </div>
           <div className="w-44">
-            <Select value={tipoFilter} onValueChange={setTipoFilter}>
-              <SelectTrigger><SelectValue placeholder="Tipo pratica" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutti">Tutti i tipi</SelectItem>
-                <SelectItem value="decreto">Decreto Ingiuntivo</SelectItem>
-                <SelectItem value="pignoramento">Pignoramento</SelectItem>
-                <SelectItem value="pouey">POUEY</SelectItem>
-                <SelectItem value="fallimento">Fallimento/Concordato</SelectItem>
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Tipo pratica" testoTutti="Tutti i tipi"
+              opzioni={[{ valore: "decreto", label: "Decreto Ingiuntivo" }, { valore: "pignoramento", label: "Pignoramento" }, { valore: "pouey", label: "POUEY" }, { valore: "fallimento", label: "Fallimento/Concordato" }]}
+              selezionati={tipoFilter} onChange={setTipoFilter}
+            />
           </div>
           <div className="w-44">
             <Select value={stato} onValueChange={setStato}>
@@ -318,15 +319,11 @@ function PraticheLegaliPage() {
           </div>
           {!isStoreManager && (
             <div className="w-56">
-              <Select value={storeId} onValueChange={setStoreId}>
-                <SelectTrigger><SelectValue placeholder="Store" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tutti gli store</SelectItem>
-                  {stores?.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FiltroMultiplo
+                etichetta="Store" testoTutti="Tutti gli store"
+                opzioni={(stores ?? []).map((s) => ({ valore: s.id, label: s.nome }))}
+                selezionati={storeId} onChange={setStoreId}
+              />
             </div>
           )}
         </div>

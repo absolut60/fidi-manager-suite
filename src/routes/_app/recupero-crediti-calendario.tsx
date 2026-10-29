@@ -1,3 +1,4 @@
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { testoAzione } from "@/lib/azioni-recupero-ui";
 import { TIPO_PROMESSA, isEmailDaInviare } from "@/lib/azioni-recupero-ui";
 import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
@@ -27,13 +28,6 @@ import { CreaAzioneDialog } from "@/components/crea-azione-dialog";
 import { ModificaAzioneDialog, type AzioneModificabile } from "@/components/modifica-azione-dialog";
 import { RegistraPromessaDialog } from "@/components/registra-promessa-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -124,8 +118,9 @@ function CalendarioPage() {
   const calendarRef = useRef<FullCalendar | null>(null);
 
   const [range, setRange] = useState<{ start: string; end: string } | null>(null);
-  const [storeId, setStoreId] = useState<string>(
-    isStoreManager && myStoreId ? myStoreId : "all"
+  // Store a scelta multipla: elenco vuoto = tutti; lo store manager vede solo il suo negozio.
+  const [storeId, setStoreId] = useState<string[]>(
+    isStoreManager && myStoreId ? [myStoreId] : []
   );
   const [tipoFilter, setTipoFilter] = useState<Set<Tipo>>(new Set());
   const [soloMie, setSoloMie] = useState(false);
@@ -175,7 +170,7 @@ function CalendarioPage() {
       if (tipoFilter.size > 0) q = q.in("tipo", Array.from(tipoFilter));
       // Le promesse hanno il loro evento (promesseQuery): qui solo le altre azioni.
       q = q.neq("tipo", "promessa_pagamento");
-      if (storeId !== "all") q = q.eq("cliente.store_id", storeId);
+      if (storeId.length > 0) q = q.in("cliente.store_id", storeId);
 
       const { data, error } = await q;
       if (error) throw error;
@@ -194,7 +189,7 @@ function CalendarioPage() {
           .select("id, cliente_id, tipo, esito, data_azione, data_promessa_pagamento, importo_riferimento, note, email_oggetto, email_corpo_html, email_destinatario, livello_sollecito, operatore_id, cliente:clienti!inner(id, ragione_sociale, store_id)")
           .eq("esito", "da_fare").lt("data_azione", cutoff)
           .order("data_azione", { ascending: true }).range(offset, offset + 499);
-        if (storeId !== "all") q = q.eq("cliente.store_id", storeId);
+        if (storeId.length > 0) q = q.in("cliente.store_id", storeId);
         const { data, error } = await q;
         if (error) throw error;
         const batch = (data ?? []) as unknown as AzioneRow[];
@@ -226,7 +221,7 @@ function CalendarioPage() {
       const rows = (data ?? []) as unknown as RR[];
       return rows
         .filter((r) => r.piano.stato === "attivo")
-        .filter((r) => storeId === "all" || r.piano.cliente.store_id === storeId);
+        .filter((r) => storeId.length === 0 || storeId.includes(r.piano.cliente.store_id ?? ""));
     },
   });
 
@@ -245,7 +240,7 @@ function CalendarioPage() {
         .not("data_promessa_pagamento", "is", null)
         .gte("data_promessa_pagamento", startISO)
         .lt("data_promessa_pagamento", endISO);
-      if (storeId !== "all") q = q.eq("cliente.store_id", storeId);
+      if (storeId.length > 0) q = q.in("cliente.store_id", storeId);
       const { data, error } = await q;
       if (error) throw error;
       type PR = { id: string; cliente_id: string; data_promessa_pagamento: string; importo_riferimento: number | null; note: string | null; cliente: { id: string; ragione_sociale: string; store_id: string | null } | null };
@@ -515,17 +510,11 @@ function CalendarioPage() {
           </DropdownMenu>
 
           {!isStoreManager && (
-            <Select value={storeId} onValueChange={setStoreId}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Store" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tutti gli store</SelectItem>
-                {(stores ?? []).map((s) => (
-                  <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Store" testoTutti="Tutti gli store" className="w-[200px]"
+              opzioni={(stores ?? []).map((s) => ({ valore: s.id, label: s.nome }))}
+              selezionati={storeId} onChange={setStoreId}
+            />
           )}
 
           <label className="flex min-h-10 items-center gap-2 text-sm whitespace-nowrap">

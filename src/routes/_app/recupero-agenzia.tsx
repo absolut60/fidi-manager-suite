@@ -8,6 +8,7 @@ import { ChevronDown, ChevronUp, Users, Euro, CalendarClock, Gavel, Loader2 } fr
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { formatEuro, formatDate } from "@/lib/fidi";
 import { classificaScadenza, isAnticipo } from "@/lib/scadenze";
@@ -128,11 +129,16 @@ function RecuperoAgenziaPage() {
   const { data: righe = [], isLoading, error } = useIngressi();
   // Filtri e ordinamento conservati (useFiltriPagina); la scheda resta nell'URL (?tab=).
   const { filtri: FA, setCampo } = useFiltriPagina("recupero-agenzia", {
-    cerca: "", negozio: "tutti", ordina: "rilevato" as Ordina,
-  }, { userId: user?.id });
+    // Negozio a scelta multipla: elenco vuoto = tutti.
+    cerca: "", negozio: [] as string[], ordina: "rilevato" as Ordina,
+  }, {
+    userId: user?.id,
+    // Formato vecchio (stringa) scartato: si riparte dal default.
+    valida: { negozio: (v) => Array.isArray(v) && v.every((x) => typeof x === "string") },
+  });
   const { cerca, negozio, ordina } = FA;
   const setCerca = (v: string) => setCampo("cerca", v);
-  const setNegozio = (v: string) => setCampo("negozio", v);
+  const setNegozio = (v: string[]) => setCampo("negozio", v);
   const setOrdina = (v: Ordina) => setCampo("ordina", v);
   const [espansaId, setEspansaId] = useState<string | null>(null);
   const [chiudi, setChiudi] = useState<Riga | null>(null);
@@ -151,7 +157,7 @@ function RecuperoAgenziaPage() {
     const q = cerca.trim().toLowerCase();
     const arr = righe.filter((r) => {
       if (tab === "da_gestire" ? !daGestire(r) : daGestire(r)) return false;
-      if (negozio !== "tutti" && r.negozio !== negozio) return false;
+      if (negozio.length > 0 && !negozio.includes(r.negozio ?? "")) return false;
       if (q) {
         const t = `${r.ragione_sociale ?? ""} ${r.codice_gestionale ?? ""}`.toLowerCase();
         if (!t.includes(q)) return false;
@@ -207,13 +213,11 @@ function RecuperoAgenziaPage() {
             onChange={(e) => setCerca(e.target.value)}
             className="sm:max-w-xs"
           />
-          <Select value={negozio} onValueChange={setNegozio}>
-            <SelectTrigger className="sm:w-56"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="tutti">Tutti i negozi</SelectItem>
-              {negozi.map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <FiltroMultiplo
+            etichetta="Negozio" testoTutti="Tutti i negozi" className="sm:w-56"
+            opzioni={negozi.map((n) => ({ valore: n, label: n }))}
+            selezionati={negozio} onChange={setNegozio}
+          />
           <Select value={ordina} onValueChange={(v) => setOrdina(v as Ordina)}>
             <SelectTrigger className="sm:w-56"><SelectValue /></SelectTrigger>
             <SelectContent>

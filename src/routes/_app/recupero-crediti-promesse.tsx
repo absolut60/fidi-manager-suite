@@ -13,6 +13,7 @@ import { RegistraPromessaSelectorDialog } from "@/components/registra-promessa-s
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { useNomiUtenti } from "@/hooks/use-nomi-utenti";
 import { FiltriCollassabili } from "@/components/lista-responsive";
 import { Card } from "@/components/ui/card";
@@ -21,7 +22,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BadgeStatoPromessa, SelettoreStatoPromessa, STATI_PROMESSA } from "@/components/stato-promessa";
 
@@ -74,12 +74,17 @@ function PromessePage() {
   const { nomeUtente } = useNomiUtenti();
   const { daVerificare: daVerificareUrl } = Route.useSearch();
   const { filtri, setCampo, setParziale } = useFiltriPagina("recupero-crediti-promesse", {
-    stato: "attiva", negozio: "tutti", agente: "tutti", search: "", soloDaVerificare: false,
+    // Scelta multipla: elenco vuoto = tutti; in agente "__none__" = senza agente.
+    stato: ["attiva"] as string[], negozio: [] as string[], agente: [] as string[], search: "", soloDaVerificare: false,
     sortKey: "data" as SortKey, sortDir: "asc" as "asc" | "desc",
-  }, { userId: user?.id });
+  }, {
+    userId: user?.id,
+    // Formato vecchio (stringa) scartato: si riparte dal default.
+    valida: { stato: (v) => Array.isArray(v) && v.every((x) => typeof x === "string"), negozio: (v) => Array.isArray(v) && v.every((x) => typeof x === "string"), agente: (v) => Array.isArray(v) && v.every((x) => typeof x === "string") },
+  });
   const { stato, negozio, agente, search, soloDaVerificare, sortKey, sortDir } = filtri;
   useEffect(() => {
-    if (daVerificareUrl) setParziale({ stato: "attiva", soloDaVerificare: true });
+    if (daVerificareUrl) setParziale({ stato: ["attiva"], soloDaVerificare: true });
   }, [daVerificareUrl, setParziale]);
 
   const { data: stores = [] } = useQuery({
@@ -137,12 +142,12 @@ function PromessePage() {
     },
   });
 
-  const pStore = negozio === "tutti" ? null : negozio;
-  const pAgente = agente === "tutti" ? null : agente;
+  const pStore = negozio.length > 0 ? negozio : null;
+  const pAgente = agente.length > 0 ? agente : null;
   const { data: previsione } = useQuery({
     queryKey: ["promesse-previsione", pStore, pAgente],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_previsione_incassi_coperture" as never, { p_store_ids: pStore ? [pStore] : null, p_agenti: pAgente ? [pAgente] : null } as never);
+      const { data, error } = await supabase.rpc("get_previsione_incassi_coperture" as never, { p_store_ids: pStore, p_agenti: pAgente } as never);
       if (error) throw error;
       const r = ((data ?? []) as unknown as Array<Record<string, number | string | null>>).find((x) => x.origine === "promessa");
       return r ?? null;
@@ -159,8 +164,8 @@ function PromessePage() {
   const perimetro = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
-      if (pStore && r.store_id !== pStore) return false;
-      if (pAgente && (pAgente === "__none__" ? r.codice_agente != null : r.codice_agente !== pAgente)) return false;
+      if (pStore && !pStore.includes(r.store_id ?? "")) return false;
+      if (pAgente && !(r.codice_agente == null ? pAgente.includes("__none__") : pAgente.includes(r.codice_agente))) return false;
       if (q && !r.ragione_sociale.toLowerCase().includes(q)) return false;
       return true;
     });
@@ -180,7 +185,7 @@ function PromessePage() {
 
   const elenco = useMemo(() => {
     const arr = perimetro.filter((r) => {
-      if (stato !== "tutti" && r.stato !== stato) return false;
+      if (stato.length > 0 && !stato.includes(r.stato)) return false;
       if (soloDaVerificare && !daVerificare(r)) return false;
       return true;
     });
@@ -204,7 +209,7 @@ function PromessePage() {
     if (sortKey === k) setCampo("sortDir", sortDir === "asc" ? "desc" : "asc");
     else { setCampo("sortKey", k); setCampo("sortDir", "asc"); }
   }
-  const filtriAttivi = [stato !== "attiva", negozio !== "tutti", agente !== "tutti", !!search, soloDaVerificare].filter(Boolean).length;
+  const filtriAttivi = [!(stato.length === 1 && stato[0] === "attiva"), negozio.length > 0, agente.length > 0, !!search, soloDaVerificare].filter(Boolean).length;
 
   function Th({ k, children, right }: { k: SortKey; children: React.ReactNode; right?: boolean }) {
     const Icon = sortDir === "asc" ? ArrowUp : ArrowDown;
@@ -248,28 +253,21 @@ function PromessePage() {
               <Search className="size-4 absolute left-2.5 top-3 text-muted-foreground" />
               <Input placeholder="Cerca cliente…" value={search} onChange={(e) => setCampo("search", e.target.value)} className="pl-8 h-10" />
             </div>
-            <Select value={stato} onValueChange={(v) => setCampo("stato", v)}>
-              <SelectTrigger className="h-10 lg:w-40"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutti">Tutti gli stati</SelectItem>
-                {STATI_PROMESSA.map((s) => <SelectItem key={s.value} value={s.value}>{s.label === "Attiva" ? "Attive" : s.label === "Mantenuta" ? "Mantenute" : s.label === "Disattesa" ? "Disattese" : "Annullate"}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={negozio} onValueChange={(v) => setCampo("negozio", v)}>
-              <SelectTrigger className="h-10 lg:w-44"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutti">Tutti i negozi</SelectItem>
-                {stores.map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={agente} onValueChange={(v) => setCampo("agente", v)}>
-              <SelectTrigger className="h-10 lg:w-44"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutti">Tutti gli agenti</SelectItem>
-                <SelectItem value="__none__">Senza agente</SelectItem>
-                {agenti.map((a) => <SelectItem key={a.codice} value={a.codice}>{a.descrizione}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Stato" testoTutti="Tutti gli stati" className="h-10 lg:w-40"
+              opzioni={STATI_PROMESSA.map((s) => ({ valore: s.value, label: s.label === "Attiva" ? "Attive" : s.label === "Mantenuta" ? "Mantenute" : s.label === "Disattesa" ? "Disattese" : "Annullate" }))}
+              selezionati={stato} onChange={(v) => setCampo("stato", v)}
+            />
+            <FiltroMultiplo
+              etichetta="Negozio" testoTutti="Tutti i negozi" className="h-10 lg:w-44"
+              opzioni={stores.map((s) => ({ valore: s.id, label: s.nome }))}
+              selezionati={negozio} onChange={(v) => setCampo("negozio", v)}
+            />
+            <FiltroMultiplo
+              etichetta="Agente" testoTutti="Tutti gli agenti" cercabile className="h-10 lg:w-44"
+              opzioni={[{ valore: "__none__", label: "Senza agente" }, ...agenti.map((a) => ({ valore: a.codice, label: a.descrizione }))]}
+              selezionati={agente} onChange={(v) => setCampo("agente", v)}
+            />
             <div className="flex items-center gap-2 h-10">
               <Switch id="solo-ver" checked={soloDaVerificare} onCheckedChange={(v) => setCampo("soloDaVerificare", v)} />
               <Label htmlFor="solo-ver" className="text-sm">Solo da verificare</Label>

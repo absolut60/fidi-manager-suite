@@ -1,3 +1,4 @@
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -18,9 +19,6 @@ import { Progress } from "@/components/ui/progress";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -319,7 +317,8 @@ function statoLabel(s: string) {
 function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; onClose: () => void }) {
   const qc = useQueryClient();
   const riprova = useServerFn(riprovaCampagnaFalliti);
-  const [statoFilter, setStatoFilter] = useState<string>("tutti");
+  // Stato destinatario a scelta multipla: elenco vuoto = tutti.
+  const [statoFilter, setStatoFilter] = useState<string[]>([]);
   const [retrying, setRetrying] = useState(false);
 
   const { data: rows, isLoading } = useQuery({
@@ -342,8 +341,8 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
 
   const filtered = useMemo(() => {
     if (!rows) return [];
-    if (statoFilter === "tutti") return rows;
-    return rows.filter((r) => r.stato === statoFilter);
+    if (statoFilter.length === 0) return rows;
+    return rows.filter((r) => statoFilter.includes(r.stato));
   }, [rows, statoFilter]);
 
   const senzaIndirizzoCount = (rows ?? []).filter((r) => r.stato === "saltato_no_indirizzo").length;
@@ -376,20 +375,20 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
         </DialogHeader>
 
         <div className="flex items-center gap-3 py-2 flex-wrap">
-          <Select value={statoFilter} onValueChange={setStatoFilter}>
-            <SelectTrigger className="w-full sm:w-[200px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="tutti">Tutti</SelectItem>
-              <SelectItem value="inviato">Inviati</SelectItem>
-              <SelectItem value="saltato_no_indirizzo">Senza indirizzo</SelectItem>
-              <SelectItem value="email_non_valida">Email non valida</SelectItem>
-              <SelectItem value="saltato_attesa">Attesa 15 gg</SelectItem>
-              <SelectItem value="saltato_no_scaduto">Senza scaduto</SelectItem>
-              <SelectItem value="saltato_in_legale">In legale</SelectItem>
-              <SelectItem value="fallito">Falliti</SelectItem>
-              <SelectItem value="da_inviare">In coda</SelectItem>
-            </SelectContent>
-          </Select>
+          <FiltroMultiplo
+            etichetta="Stato destinatario" testoTutti="Tutti" className="w-full sm:w-[200px]"
+            opzioni={[
+              { valore: "inviato", label: "Inviati" },
+              { valore: "saltato_no_indirizzo", label: "Senza indirizzo" },
+              { valore: "email_non_valida", label: "Email non valida" },
+              { valore: "saltato_attesa", label: "Attesa 15 gg" },
+              { valore: "saltato_no_scaduto", label: "Senza scaduto" },
+              { valore: "saltato_in_legale", label: "In legale" },
+              { valore: "fallito", label: "Falliti" },
+              { valore: "da_inviare", label: "In coda" },
+            ]}
+            selezionati={statoFilter} onChange={setStatoFilter}
+          />
           <div className="text-sm text-muted-foreground">
             {filtered.length} righe
           </div>
