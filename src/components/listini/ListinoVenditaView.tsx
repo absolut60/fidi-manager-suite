@@ -429,7 +429,7 @@ function BulkVenditaDialog({
   open: boolean;
   onOpenChange: (b: boolean) => void;
   fascia: FasciaListino;
-  scope: { categoria: string | null };
+  scope: { categoria: string[] };
   scopeCount: number;
   onApply: (delta: number) => void | Promise<void>;
 }) {
@@ -438,7 +438,7 @@ function BulkVenditaDialog({
 
   const scopeLabel = useMemo(() => {
     const parts = [`fascia ${fascia}`];
-    if (scope.categoria) parts.push(`categoria "${scope.categoria}"`);
+    if (scope.categoria.length > 0) parts.push(`${scope.categoria.length === 1 ? "categoria" : "categorie"} ${scope.categoria.map((c) => `"${c}"`).join(", ")}`);
     else parts.push("tutte le categorie");
     return parts.join(" · ");
   }, [fascia, scope.categoria]);
