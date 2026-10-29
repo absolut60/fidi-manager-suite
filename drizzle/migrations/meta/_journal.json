@@ -638,6 +638,13 @@
       "when": 1793290251239,
       "tag": "0090_fm54_drop_vista_clienti_con_rischio",
       "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1793290516488,
+      "tag": "0091_fm54_pulizia_funzioni_inutilizzate",
+      "breakpoints": true
     }
   ]
 }
