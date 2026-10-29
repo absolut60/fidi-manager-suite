@@ -603,6 +603,13 @@
       "when": 1793286457779,
       "tag": "0085_fm52_recupero_promemoria_filtri_multipli",
       "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1793287901835,
+      "tag": "0086_fm52_cruscotto_incassi_sede_multipla",
+      "breakpoints": true
     }
   ]
 }

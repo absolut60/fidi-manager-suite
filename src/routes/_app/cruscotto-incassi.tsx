@@ -26,9 +26,7 @@ import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
 import { RegistraPromessaDialog } from "@/components/registra-promessa-dialog";
 import { isRiBa } from "@/lib/spese-insoluto";
 import { useAuth } from "@/hooks/use-auth";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 
 type StoreOpt = { id: string; nome: string };
 
@@ -181,9 +179,10 @@ function CruscottoIncassiPage() {
   }, [meseSel, anno]);
 
   const { trasversale, stores } = useStorePerimetro();
-  // Sede selezionata: null = "tutte le sedi consentite" (per trasversali).
+  // Sedi selezionate: [] = "tutte le sedi consentite" (per trasversali).
   // Per utenti ristretti il server IGNORA comunque il valore e forza la loro sede.
-  const [storeSel, setStoreSel] = useState<string | null>(null);
+  const [storeSel, setStoreSel] = useState<string[]>([]);
+  const storeIds = storeSel.length > 0 ? storeSel : null;
   // Reset selezione clienti quando cambia sede
   useEffect(() => { setSelezionati(new Set()); }, [storeSel]);
 
@@ -192,7 +191,7 @@ function CruscottoIncassiPage() {
     queryFn: async () => {
       const { data, error } = await supabase.rpc(
         "get_cruscotto_incassi_mensile" as never,
-        { _anno: anno, _store_id: storeSel } as never,
+        { _anno: anno, _store_ids: storeIds } as never,
       );
       if (error) throw error;
       return ((data as unknown) as RigaMese[]) ?? [];
@@ -221,7 +220,7 @@ function CruscottoIncassiPage() {
     queryFn: async () => {
       const { data, error } = await supabase.rpc(
         "get_cruscotto_incassi_mese_dettaglio" as never,
-        { _anno: anno, _mese: meseSel!, _store_id: storeSel } as never,
+        { _anno: anno, _mese: meseSel!, _store_ids: storeIds } as never,
       );
       if (error) throw error;
       return ((data as unknown) as RigaDettaglio[]) ?? [];
@@ -234,7 +233,7 @@ function CruscottoIncassiPage() {
     queryFn: async () => {
       const { data, error } = await supabase.rpc(
         "get_cruscotto_incassi_mese_scadenze" as never,
-        { _anno: anno, _mese: meseSel!, _store_id: storeSel } as never,
+        { _anno: anno, _mese: meseSel!, _store_ids: storeIds } as never,
       );
       if (error) throw error;
       return ((data as unknown) as RigaScadenza[]) ?? [];
@@ -302,24 +301,20 @@ function CruscottoIncassiPage() {
             {/* Selettore Sede: per trasversali mostra "Tutte" + elenco;
                 per ristretti mostra solo la propria (disabilitato). */}
             {stores.length > 0 && (
-              <Select
-                value={storeSel ?? "__all__"}
-                onValueChange={(v) => {
-                  setStoreSel(v === "__all__" ? null : v);
-                  setMeseSel(null);
-                }}
-                disabled={!trasversale && stores.length <= 1}
-              >
-                <SelectTrigger className="h-8 w-[200px]">
-                  <SelectValue placeholder="Sede" />
-                </SelectTrigger>
-                <SelectContent>
-                  {trasversale && <SelectItem value="__all__">Tutte le sedi</SelectItem>}
-                  {stores.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              trasversale ? (
+                <FiltroMultiplo
+                  etichetta="Sede"
+                  testoTutti="Tutte le sedi"
+                  opzioni={stores.map((s) => ({ valore: s.id, label: s.nome }))}
+                  selezionati={storeSel}
+                  onChange={(v) => { setStoreSel(v); setMeseSel(null); }}
+                  className="h-8 w-[200px]"
+                />
+              ) : (
+                <Button variant="outline" disabled className="h-8 w-[200px] justify-start font-normal">
+                  <span className="truncate">{stores[0]?.nome}</span>
+                </Button>
+              )
             )}
             <div className="flex items-center gap-1 border rounded-md bg-background">
               <Button
@@ -1156,7 +1151,7 @@ type SortKey = "cliente" | "n_incassi" | "totale_incassato" | "ultimo_incasso";
 type SortDir = "asc" | "desc";
 type DettSortKey = "cliente" | "codice" | "importo";
 
-function RicercaIncassiBlock({ storeSel }: { storeSel: string | null }) {
+function RicercaIncassiBlock({ storeSel }: { storeSel: string[] }) {
   const oggi = new Date();
   oggi.setHours(0, 0, 0, 0);
   const primoDelMese = new Date(oggi.getFullYear(), oggi.getMonth(), 1);
@@ -1210,7 +1205,7 @@ function RicercaIncassiBlock({ storeSel }: { storeSel: string | null }) {
           _al: al,
           _cliente_search: clienteDebounced || null,
           _metodi: metodi.length === METODI_OPZIONI.length ? null : metodi,
-          _store_id: storeSel,
+          _store_ids: storeSel.length > 0 ? storeSel : null,
         } as never,
       );
       if (error) throw error;
@@ -1554,7 +1549,7 @@ function RicercaIncassiBlock({ storeSel }: { storeSel: string | null }) {
 function DettaglioIncassiCliente({
   clienteId, dal, al, totaleAtteso, metodi, storeSel,
 }: {
-  clienteId: string; dal: string; al: string; totaleAtteso: number; metodi: string[] | null; storeSel: string | null;
+  clienteId: string; dal: string; al: string; totaleAtteso: number; metodi: string[] | null; storeSel: string[];
 }) {
   const metodiKey = metodi ? metodi.slice().sort().join(",") : "*";
   const { data, isLoading } = useQuery({
@@ -1562,7 +1557,7 @@ function DettaglioIncassiCliente({
     queryFn: async () => {
       const { data, error } = await supabase.rpc(
         "get_incassi_periodo_dettaglio" as never,
-        { _dal: dal, _al: al, _cliente_id: clienteId, _metodi: metodi, _store_id: storeSel } as never,
+        { _dal: dal, _al: al, _cliente_id: clienteId, _metodi: metodi, _store_ids: storeSel.length > 0 ? storeSel : null } as never,
       );
       if (error) throw error;
       return ((data as unknown) as RigaIncassoDettaglio[]) ?? [];
