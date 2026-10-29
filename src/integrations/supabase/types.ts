@@ -7382,7 +7382,7 @@ export type Database = {
         }[]
       }
       get_cruscotto_incassi_mensile: {
-        Args: { _anno: number; _store_id?: string }
+        Args: { _anno: number; _store_ids?: string[] }
         Returns: {
           a_scadere: number
           a_scadere_riba: number
@@ -7399,7 +7399,7 @@ export type Database = {
         }[]
       }
       get_cruscotto_incassi_mese_dettaglio: {
-        Args: { _anno: number; _mese: number; _store_id?: string }
+        Args: { _anno: number; _mese: number; _store_ids?: string[] }
         Returns: {
           a_scadere_mese: number
           bloccato: boolean
@@ -7423,7 +7423,7 @@ export type Database = {
         }[]
       }
       get_cruscotto_incassi_mese_scadenze: {
-        Args: { _anno: number; _mese: number; _store_id?: string }
+        Args: { _anno: number; _mese: number; _store_ids?: string[] }
         Returns: {
           bloccato: boolean
           cliente_id: string
@@ -7742,7 +7742,7 @@ export type Database = {
           _cliente_search?: string
           _dal: string
           _metodi?: string[]
-          _store_id?: string
+          _store_ids?: string[]
         }
         Returns: {
           cliente_id: string
@@ -7765,7 +7765,7 @@ export type Database = {
           _cliente_id: string
           _dal: string
           _metodi?: string[]
-          _store_id?: string
+          _store_ids?: string[]
         }
         Returns: {
           codice_pagamento: string
