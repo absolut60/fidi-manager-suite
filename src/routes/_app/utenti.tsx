@@ -23,6 +23,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/lista-responsive";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -145,8 +146,8 @@ function UtentiPage() {
   const [editing, setEditing] = useState<UserRow | null>(null);
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
-  const [filtroRuolo, setFiltroRuolo] = useState<string>("tutti");
-  const [filtroStore, setFiltroStore] = useState("tutti");
+  const [filtroRuolo, setFiltroRuolo] = useState<string[]>([]);
+  const [filtroStore, setFiltroStore] = useState<string[]>([]);
   const [filtroStato, setFiltroStato] = useState("tutti");
   const [ordina, setOrdina] = useState<{ chiave: OrdinaChiave; dir: OrdinaDir }>({ chiave: "nome", dir: "asc" });
 
@@ -185,8 +186,8 @@ function UtentiPage() {
 
   const filtriAttivi = [
     search.trim() !== "",
-    filtroRuolo !== "tutti",
-    filtroStore !== "tutti",
+    filtroRuolo.length > 0,
+    filtroStore.length > 0,
     filtroStato !== "tutti",
   ].filter(Boolean).length;
 
@@ -203,9 +204,10 @@ function UtentiPage() {
   const filtrati = useMemo(() => {
     const q = search.trim().toLowerCase();
     return (utenti ?? []).filter((u) => {
-      if (filtroRuolo !== "tutti" && !u.ruoli.includes(filtroRuolo as AppRole)) return false;
-      if (filtroStore === "nessuno" && u.store_id !== null) return false;
-      if (filtroStore !== "tutti" && filtroStore !== "nessuno" && u.store_id !== filtroStore) return false;
+      // Più ruoli scelti: basta averne almeno uno.
+      if (filtroRuolo.length > 0 && !filtroRuolo.some((r) => u.ruoli.includes(r as AppRole))) return false;
+      // "nessuno" = senza punto vendita; si combina in OR con i punti vendita scelti.
+      if (filtroStore.length > 0 && !filtroStore.includes(u.store_id ?? "nessuno")) return false;
       if (filtroStato === "attivi" && !u.attivo) return false;
       if (filtroStato === "inattivi" && u.attivo) return false;
       if (q) {
@@ -256,8 +258,8 @@ function UtentiPage() {
 
   const azzeraFiltri = () => {
     setSearch("");
-    setFiltroRuolo("tutti");
-    setFiltroStore("tutti");
+    setFiltroRuolo([]);
+    setFiltroStore([]);
     setFiltroStato("tutti");
   };
 
@@ -311,27 +313,21 @@ function UtentiPage() {
                   />
                 </div>
                 <div className="min-w-[160px] flex-1 sm:w-auto sm:min-w-[11rem] sm:flex-none">
-                  <Select value={filtroRuolo} onValueChange={setFiltroRuolo}>
-                    <SelectTrigger className="h-9 w-full"><SelectValue placeholder="Ruolo" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="tutti">Tutti i ruoli</SelectItem>
-                      {ORDINE_GRUPPI.map((r) => (
-                        <SelectItem key={r} value={r}>{RUOLI_LABEL[r]}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FiltroMultiplo
+                    etichetta="Ruolo" testoTutti="Tutti i ruoli"
+                    opzioni={ORDINE_GRUPPI.map((r) => ({ valore: r, label: RUOLI_LABEL[r] }))}
+                    selezionati={filtroRuolo} onChange={setFiltroRuolo}
+                  />
                 </div>
                 <div className="min-w-[160px] flex-1 sm:w-auto sm:min-w-[13rem] sm:flex-none">
-                  <Select value={filtroStore} onValueChange={setFiltroStore}>
-                    <SelectTrigger className="h-9 w-full"><SelectValue placeholder="Punto vendita" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="tutti">Tutti i punti vendita</SelectItem>
-                      <SelectItem value="nessuno">Senza punto vendita</SelectItem>
-                      {opzioniStore.map(([id, label]) => (
-                        <SelectItem key={id} value={id}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FiltroMultiplo
+                    etichetta="Punto vendita" testoTutti="Tutti i punti vendita" cercabile
+                    opzioni={[
+                      { valore: "nessuno", label: "Senza punto vendita" },
+                      ...opzioniStore.map(([id, label]) => ({ valore: id, label })),
+                    ]}
+                    selezionati={filtroStore} onChange={setFiltroStore}
+                  />
                 </div>
                 <div className="min-w-[160px] flex-1 sm:w-auto sm:min-w-[10rem] sm:flex-none">
                   <Select value={filtroStato} onValueChange={setFiltroStato}>
