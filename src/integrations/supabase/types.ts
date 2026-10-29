@@ -7840,52 +7840,29 @@ export type Database = {
           ultimo_invio_at: string
         }[]
       }
-      get_promemoria_clienti_aggregato:
-        | {
-            Args: {
-              _escludi_bloccati?: boolean
-              _escludi_legale?: boolean
-              _importo_min?: number
-              _mesi: string[]
-              _search?: string
-              _store_id?: string
-            }
-            Returns: {
-              bloccato: boolean
-              cliente_id: string
-              email: string
-              n_scadenze: number
-              pec: string
-              prima_scadenza: string
-              ragione_sociale: string
-              store_id: string
-              store_nome: string
-              totale_a_scadere: number
-            }[]
-          }
-        | {
-            Args: {
-              _escludi_bloccati?: boolean
-              _escludi_bos?: boolean
-              _escludi_legale?: boolean
-              _importo_min?: number
-              _mesi: string[]
-              _search?: string
-              _store_id?: string
-            }
-            Returns: {
-              bloccato: boolean
-              cliente_id: string
-              email: string
-              n_scadenze: number
-              pec: string
-              prima_scadenza: string
-              ragione_sociale: string
-              store_id: string
-              store_nome: string
-              totale_a_scadere: number
-            }[]
-          }
+      get_promemoria_clienti_aggregato: {
+        Args: {
+          _escludi_bloccati?: boolean
+          _escludi_bos?: boolean
+          _escludi_legale?: boolean
+          _importo_min?: number
+          _mesi: string[]
+          _search?: string
+          _store_ids?: string[]
+        }
+        Returns: {
+          bloccato: boolean
+          cliente_id: string
+          email: string
+          n_scadenze: number
+          pec: string
+          prima_scadenza: string
+          ragione_sociale: string
+          store_id: string
+          store_nome: string
+          totale_a_scadere: number
+        }[]
+      }
       get_promemoria_scadenze_dettaglio: {
         Args: {
           _data: string
@@ -7922,10 +7899,10 @@ export type Database = {
           _data_a?: string
           _data_da?: string
           _esiti?: string[]
-          _operatore_id?: string
+          _operatore_ids?: string[]
           _search?: string
           _stadi?: number[]
-          _store_id?: string
+          _store_ids?: string[]
           _tipi?: string[]
         }
         Returns: {
