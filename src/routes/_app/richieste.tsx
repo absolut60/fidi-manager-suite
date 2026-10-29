@@ -21,6 +21,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { useConfig } from "@/hooks/use-config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -108,19 +109,20 @@ function semaforoCli(c: any) {
 /** Stato unico dei filtri della pagina Richieste fido. */
 type OrdinaRichieste = "importo" | "data_invio" | "giorni";
 type FiltriRichieste = {
-  cerca: string; agente: string;
-  store: string; tipo: string; rischio: string; livello: string;
+  cerca: string;
+  /** Scelta multipla, vuoto = tutti. In agente "__none__" = cliente senza agente. */
+  agente: string[]; store: string[]; tipo: string[]; rischio: string[]; livello: string[];
   importoMin: string; importoMax: string; giorniMin: string;
   /** Ordinamento della lista "In approvazione" (non e' un filtro). */
   ordina: OrdinaRichieste;
   /** Interruttore approvatori limitati: nasconde le richieste in attesa di livelli superiori (non e' un filtro). */
   soloDecidibili: boolean;
 };
-const FILTRI_VUOTI: FiltriRichieste = { cerca: "", agente: "tutti", store: "tutti", tipo: "tutti", rischio: "tutti", livello: "tutti", importoMin: "", importoMax: "", giorniMin: "", ordina: "importo", soloDecidibili: false };
+const FILTRI_VUOTI: FiltriRichieste = { cerca: "", agente: [], store: [], tipo: [], rischio: [], livello: [], importoMin: "", importoMax: "", giorniMin: "", ordina: "importo", soloDecidibili: false };
 const STADI_RISCHIO = ["verde", "giallo", "arancione", "rosso", "spento"] as const;
 
 function filtriAttivi(f: FiltriRichieste): boolean {
-  return !!f.cerca.trim() || f.agente !== "tutti" || f.store !== "tutti" || f.tipo !== "tutti" || f.rischio !== "tutti" || f.livello !== "tutti" || !!f.importoMin || !!f.importoMax || !!f.giorniMin;
+  return !!f.cerca.trim() || f.agente.length > 0 || f.store.length > 0 || f.tipo.length > 0 || f.rischio.length > 0 || f.livello.length > 0 || !!f.importoMin || !!f.importoMax || !!f.giorniMin;
 }
 
 /**
@@ -137,12 +139,15 @@ function filtraRichieste(righe: any[], f: FiltriRichieste, roles: readonly strin
   return righe.filter((r) => {
     const c = r.clienti;
     if (q && ![c?.ragione_sociale, c?.partita_iva, c?.codice_fiscale, c?.codice_gestionale].some((v) => normalizzaRicerca(v).includes(q))) return false;
-    if (f.agente === "__none__" ? !!c?.codice_agente : f.agente !== "tutti" && c?.codice_agente !== f.agente) return false;
-    if (f.store !== "tutti" && r.clienti?.store_id !== f.store) return false;
+    if (f.agente.length > 0) {
+      const ok = c?.codice_agente ? f.agente.includes(c.codice_agente) : f.agente.includes("__none__");
+      if (!ok) return false;
+    }
+    if (f.store.length > 0 && !f.store.includes(r.clienti?.store_id)) return false;
     // "Nuovo fido": l'enum ha anche il valore storico "nuovo" (stessa etichetta).
-    if (f.tipo !== "tutti" && !(r.tipo === f.tipo || (f.tipo === "nuovo_fido" && r.tipo === "nuovo"))) return false;
-    if (f.rischio !== "tutti" && semaforoDaCliente(r.clienti).stadio !== f.rischio) return false;
-    if (f.livello !== "tutti" && Number(r.livello_richiesto) !== Number(f.livello)) return false;
+    if (f.tipo.length > 0 && !(f.tipo.includes(r.tipo) || (r.tipo === "nuovo" && f.tipo.includes("nuovo_fido")))) return false;
+    if (f.rischio.length > 0 && !f.rischio.includes(semaforoDaCliente(r.clienti).stadio)) return false;
+    if (f.livello.length > 0 && !f.livello.map(Number).includes(Number(r.livello_richiesto))) return false;
     if (f.importoMin && Number(r.importo_richiesto) < Number(f.importoMin)) return false;
     if (f.importoMax && Number(r.importo_richiesto) > Number(f.importoMax)) return false;
     if (f.giorniMin && STATI_IN_APPROVAZIONE.includes(r.stato) && giorniDa(r.data_invio) < Number(f.giorniMin)) return false;
@@ -166,7 +171,7 @@ function FiltriRichiesteBar({ filtri, onChange, stores, approvatoreLimitato, sol
   filtri: FiltriRichieste; onChange: (f: FiltriRichieste) => void; stores: [string, string][];
   approvatoreLimitato: boolean; soloDecidibiliIniziale: boolean; decidibiliInAttesa: number;
 }) {
-  const set = (k: keyof FiltriRichieste, v: string) => onChange({ ...filtri, [k]: v });
+  const set = (k: keyof FiltriRichieste, v: string | string[]) => onChange({ ...filtri, [k]: v });
   // Stessa query (e cache) del filtro Agente dello scadenziario.
   const { data: agenti } = useQuery({
     queryKey: ["agenti-list"],
@@ -196,59 +201,38 @@ function FiltriRichiesteBar({ filtri, onChange, stores, approvatoreLimitato, sol
         value={cercaInput}
         onChange={(e) => setCercaInput(e.target.value)}
       />
-      <Select value={filtri.agente} onValueChange={(v) => set("agente", v)}>
-        <SelectTrigger className="flex-1 min-w-[160px] sm:flex-none sm:w-48"><SelectValue placeholder="Agente" /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="tutti">Tutti gli agenti</SelectItem>
-          <SelectItem value="__none__">Senza agente</SelectItem>
-          {(agenti ?? []).map((a) => <SelectItem key={a.codice} value={a.codice}>{a.descrizione}</SelectItem>)}
-        </SelectContent>
-      </Select>
+      <FiltroMultiplo
+        etichetta="Agente" testoTutti="Tutti gli agenti" cercabile
+        className="h-10 flex-1 min-w-[160px] sm:flex-none sm:w-48"
+        opzioni={[{ valore: "__none__", label: "Senza agente" }, ...(agenti ?? []).map((a) => ({ valore: a.codice, label: a.descrizione }))]}
+        selezionati={filtri.agente} onChange={(v) => set("agente", v)}
+      />
       {stores.length > 1 && (
-        <Select value={filtri.store} onValueChange={(v) => set("store", v)}>
-          <SelectTrigger className="flex-1 min-w-[160px] sm:flex-none sm:w-44"><SelectValue placeholder="Store" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="tutti">Tutti gli store</SelectItem>
-            {stores.map(([id, nome]) => <SelectItem key={id} value={id}>{nome}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <FiltroMultiplo
+          etichetta="Store" testoTutti="Tutti gli store"
+          className="h-10 flex-1 min-w-[160px] sm:flex-none sm:w-44"
+          opzioni={stores.map(([id, nome]) => ({ valore: id, label: nome }))}
+          selezionati={filtri.store} onChange={(v) => set("store", v)}
+        />
       )}
-      <Select value={filtri.tipo} onValueChange={(v) => set("tipo", v)}>
-        <SelectTrigger className="flex-1 min-w-[160px] sm:flex-none sm:w-40"><SelectValue placeholder="Tipo" /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="tutti">Tutti i tipi</SelectItem>
-          <SelectItem value="nuovo_fido">Nuovo fido</SelectItem>
-          <SelectItem value="aumento">Aumento</SelectItem>
-          <SelectItem value="diminuzione">Diminuzione</SelectItem>
-          <SelectItem value="rinnovo">Rinnovo</SelectItem>
-        </SelectContent>
-      </Select>
-      <Select value={filtri.rischio} onValueChange={(v) => set("rischio", v)}>
-        <SelectTrigger className="flex-1 min-w-[160px] sm:flex-none sm:w-40"><SelectValue placeholder="Rischio" /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="tutti">Tutti i rischi</SelectItem>
-          {STADI_RISCHIO.map((st) => {
-            const ui = semaforoUI(st);
-            return (
-              <SelectItem key={st} value={st}>
-                <span className="inline-flex items-center gap-2">
-                  <span className={`size-2.5 shrink-0 rounded-full ${ui.dotClass}`} />
-                  {ui.label}
-                </span>
-              </SelectItem>
-            );
-          })}
-        </SelectContent>
-      </Select>
-      <Select value={filtri.livello} onValueChange={(v) => set("livello", v)}>
-        <SelectTrigger className="flex-1 min-w-[140px] sm:flex-none sm:w-32"><SelectValue placeholder="Livello" /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="tutti">Tutti i livelli</SelectItem>
-          <SelectItem value="1">Liv. 1</SelectItem>
-          <SelectItem value="2">Liv. 2</SelectItem>
-          <SelectItem value="3">Liv. 3</SelectItem>
-        </SelectContent>
-      </Select>
+      <FiltroMultiplo
+        etichetta="Tipo" testoTutti="Tutti i tipi"
+        className="h-10 flex-1 min-w-[160px] sm:flex-none sm:w-40"
+        opzioni={[{ valore: "nuovo_fido", label: "Nuovo fido" }, { valore: "aumento", label: "Aumento" }, { valore: "diminuzione", label: "Diminuzione" }, { valore: "rinnovo", label: "Rinnovo" }]}
+        selezionati={filtri.tipo} onChange={(v) => set("tipo", v)}
+      />
+      <FiltroMultiplo
+        etichetta="Rischio" testoTutti="Tutti i rischi"
+        className="h-10 flex-1 min-w-[160px] sm:flex-none sm:w-40"
+        opzioni={STADI_RISCHIO.map((st) => ({ valore: st, label: semaforoUI(st).label }))}
+        selezionati={filtri.rischio} onChange={(v) => set("rischio", v)}
+      />
+      <FiltroMultiplo
+        etichetta="Livello" testoTutti="Tutti i livelli"
+        className="h-10 flex-1 min-w-[140px] sm:flex-none sm:w-32"
+        opzioni={[{ valore: "1", label: "Liv. 1" }, { valore: "2", label: "Liv. 2" }, { valore: "3", label: "Liv. 3" }]}
+        selezionati={filtri.livello} onChange={(v) => set("livello", v)}
+      />
       <Input className="flex-1 min-w-[140px] sm:flex-none sm:min-w-0 sm:w-28" type="number" placeholder="Importo min" value={filtri.importoMin} onChange={(e) => set("importoMin", e.target.value)} />
       <Input className="flex-1 min-w-[140px] sm:flex-none sm:min-w-0 sm:w-28" type="number" placeholder="Importo max" value={filtri.importoMax} onChange={(e) => set("importoMax", e.target.value)} />
       <Input className="flex-1 min-w-[140px] sm:flex-none sm:min-w-0 sm:w-32" type="number" placeholder="Giorni attesa ≥" title="Vale solo per le richieste in attesa di decisione" value={filtri.giorniMin} onChange={(e) => set("giorniMin", e.target.value)} />
@@ -326,7 +310,11 @@ function RichiestePage() {
       filtri: (v) => {
         const o = v as Record<string, unknown>;
         if (!o || typeof o !== "object") return false;
-        return (Object.keys(FILTRI_VUOTI) as (keyof FiltriRichieste)[]).every((k) => typeof o[k] === typeof FILTRI_VUOTI[k]);
+        // Formato vecchio (stringhe) per i filtri multipli: scartato, si riparte dai default.
+        return (Object.keys(FILTRI_VUOTI) as (keyof FiltriRichieste)[]).every((k) =>
+          Array.isArray(FILTRI_VUOTI[k])
+            ? Array.isArray(o[k]) && (o[k] as unknown[]).every((x) => typeof x === "string")
+            : typeof o[k] === typeof FILTRI_VUOTI[k]);
       },
     },
   });
@@ -392,7 +380,7 @@ function RichiestePage() {
   // compare (piu' di un punto vendita), interruttore solo per approvatori limitati.
   const filtri = useMemo<FiltriRichieste>(() => ({
     ...FS.filtri,
-    store: storesFiltro.length > 1 ? FS.filtri.store : "tutti",
+    store: storesFiltro.length > 1 ? FS.filtri.store : [],
     soloDecidibili: approvatoreLimitato ? FS.filtri.soloDecidibili : false,
   }), [FS.filtri, storesFiltro.length, approvatoreLimitato]);
   const setFiltri = (f: FiltriRichieste) => setCampoRichieste("filtri", f);
