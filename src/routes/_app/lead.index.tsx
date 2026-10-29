@@ -16,6 +16,7 @@ import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/list
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
+import { filtroElenco } from "@/lib/filtro-elenco";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -82,15 +83,6 @@ type LeadRow = {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type QueryLibera = any;
 
-/** Elenco multiplo con eventuale "__none__" → .in / .is null / .or(in, is null). */
-function filtroMultiplo(q: QueryLibera, col: string, valori: string[]): QueryLibera {
-  if (valori.length === 0) return q;
-  const veri = valori.filter((v) => v !== NESSUNO);
-  const conNull = veri.length !== valori.length;
-  if (!conNull) return q.in(col, veri);
-  if (veri.length === 0) return q.is(col, null);
-  return q.or(`${col}.in.(${veri.join(",")}),${col}.is.null`);
-}
 
 const BLOCCO_SPOSTA = 200;
 const BLOCCO_ID = 1000;
@@ -257,9 +249,9 @@ function LeadListaPage() {
       if (mestiere === NESSUNO) q = q.is("mestiere_id", null);
       else q = q.eq("mestiere_id", mestiere);
     }
-    q = filtroMultiplo(q, "store_id", storeFiltro);
-    q = filtroMultiplo(q, "agente_codice", agente);
-    q = filtroMultiplo(q, "assegnato_a", assegnatario);
+    q = filtroElenco(q, "store_id", storeFiltro);
+    q = filtroElenco(q, "agente_codice", agente);
+    q = filtroElenco(q, "assegnato_a", assegnatario);
     if (ambito === "eventi" && evento !== TUTTI) q = q.eq("fonte_dettaglio", evento);
     if (tab === "ricontattare") {
       q = q.not("prossima_azione_il", "is", null).lte("prossima_azione_il", limiteData);
