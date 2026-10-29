@@ -16,10 +16,11 @@ export const FASCE: FasciaListino[] = ["A", "B", "C", "SOCI"];
 
 export interface ArticoliFilters {
   search?: string;
-  categoria?: string | null;
-  tipologia?: string | null;
-  fornitore_id?: string | null;
-  stato?: StatoArticolo | null;
+  // Elenchi: vuoto o assente = nessun filtro; più valori = almeno uno.
+  categoria?: string[];
+  tipologia?: string[];
+  fornitore_id?: string[];
+  stato?: StatoArticolo[];
 }
 
 export async function fetchArticoli(
@@ -41,10 +42,10 @@ export async function fetchArticoli(
     const s = filters.search.trim().replace(/[%,]/g, " ");
     q = q.or(`cod_gamma.ilike.%${s}%,descrizione.ilike.%${s}%,cod_fornitore.ilike.%${s}%`);
   }
-  if (filters.categoria) q = q.eq("categoria", filters.categoria);
-  if (filters.tipologia) q = q.eq("tipologia", filters.tipologia);
-  if (filters.fornitore_id) q = q.eq("fornitore_id", filters.fornitore_id);
-  if (filters.stato) q = q.eq("stato", filters.stato);
+  if (filters.categoria?.length) q = q.in("categoria", filters.categoria);
+  if (filters.tipologia?.length) q = q.in("tipologia", filters.tipologia);
+  if (filters.fornitore_id?.length) q = q.in("fornitore_id", filters.fornitore_id);
+  if (filters.stato?.length) q = q.in("stato", filters.stato);
 
   const { data, error, count } = await q;
   if (error) throw error;
