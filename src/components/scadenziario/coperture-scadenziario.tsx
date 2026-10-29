@@ -71,13 +71,14 @@ function BarraPrevisione({ p, colore }: { p: Previsione | undefined; colore: "em
 
 export function CopertureScadenziario({ totali, storeId, agente }: {
   totali: CopertureTotali;
-  storeId: string | null;
-  agente: string | null;
+  /** Elenchi dei filtri Store/Agente dello Scadenziario; null o vuoto = tutti. */
+  storeId: string[] | null;
+  agente: string[] | null;
 }) {
   const { data: previsione } = useQuery({
     queryKey: [QK_PREVISIONE_COPERTURE, storeId, agente],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_previsione_incassi_coperture" as never, { p_store_id: storeId, p_agente: agente } as never);
+      const { data, error } = await supabase.rpc("get_previsione_incassi_coperture" as never, { p_store_ids: storeId && storeId.length > 0 ? storeId : null, p_agenti: agente && agente.length > 0 ? agente : null } as never);
       if (error) throw error;
       return (data ?? []) as unknown as Previsione[];
     },

@@ -741,9 +741,8 @@ function ScadenziarioPage() {
             qui, la query get_previsione_incassi_coperture non parte a filtro spento. */}
         {nettoCoperture && totali && (
           <CopertureScadenziario
-            // Riquadro con filtro a valore singolo: con piu' valori scelti mostra il totale non filtrato.
-            storeId={storeId.length === 1 ? storeId[0] : null}
-            agente={agenteFiltro.length === 1 ? agenteFiltro[0] : null}
+            storeId={commonParams.p_store_ids}
+            agente={commonParams.p_agenti}
             totali={{
               totCopertoPiani: Number(totali.tot_coperto_piani ?? 0),
               totCopertoPromesse: Number(totali.tot_coperto_promesse ?? 0),

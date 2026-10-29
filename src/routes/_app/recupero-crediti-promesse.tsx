@@ -142,7 +142,7 @@ function PromessePage() {
   const { data: previsione } = useQuery({
     queryKey: ["promesse-previsione", pStore, pAgente],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_previsione_incassi_coperture" as never, { p_store_id: pStore, p_agente: pAgente } as never);
+      const { data, error } = await supabase.rpc("get_previsione_incassi_coperture" as never, { p_store_ids: pStore ? [pStore] : null, p_agenti: pAgente ? [pAgente] : null } as never);
       if (error) throw error;
       const r = ((data ?? []) as unknown as Array<Record<string, number | string | null>>).find((x) => x.origine === "promessa");
       return r ?? null;
