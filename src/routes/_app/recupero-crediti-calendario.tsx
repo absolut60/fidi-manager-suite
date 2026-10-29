@@ -29,13 +29,6 @@ import { ModificaAzioneDialog, type AzioneModificabile } from "@/components/modi
 import { RegistraPromessaDialog } from "@/components/registra-promessa-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
