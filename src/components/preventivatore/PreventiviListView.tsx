@@ -6,9 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -25,7 +23,6 @@ import { SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 import { computeEvasione } from "@/lib/evasione";
 
 
-const ANY = "__any";
 
 /**
  * Lista documenti (preventivi o ordini) — stesso componente riusato per
@@ -42,23 +39,23 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
   const labelEmpty = isOrdine ? "Nessun ordine." : "Nessun preventivo.";
 
   // Filtri conservati (useFiltriPagina), chiave distinta per preventivi e ordini.
-  // null salvato come "" perche' l'hook scarta i valori null.
+  // Elenco vuoto = tutti.
   const { user } = useAuth();
   const { filtri: FV, setCampo: setCampoLista } = useFiltriPagina(isOrdine ? "ordini" : "preventivatore", {
-    search: "", clienteId: "", stato: "", tipoDoc: "",
-  }, { userId: user?.id });
+    search: "", clienteId: [] as string[], stato: [] as string[], tipoDoc: [] as string[],
+  }, { userId: user?.id, valida: { clienteId: Array.isArray, stato: Array.isArray, tipoDoc: Array.isArray } });
   const search = FV.search;
-  const clienteId = FV.clienteId || null;
-  const stato = (FV.stato || null) as StatoPreventivo | null;
-  const tipoDoc = (FV.tipoDoc || null) as TipoDoc | null;
+  const clienteId = FV.clienteId;
+  const stato = FV.stato as StatoPreventivo[];
+  const tipoDoc = FV.tipoDoc as TipoDoc[];
   const setSearch = (v: string) => setCampoLista("search", v);
-  const setClienteId = (v: string | null) => setCampoLista("clienteId", v ?? "");
-  const setStato = (v: StatoPreventivo | null) => setCampoLista("stato", v ?? "");
-  const setTipoDoc = (v: TipoDoc | null) => setCampoLista("tipoDoc", v ?? "");
+  const setClienteId = (v: string[]) => setCampoLista("clienteId", v);
+  const setStato = (v: string[]) => setCampoLista("stato", v);
+  const setTipoDoc = (v: string[]) => setCampoLista("tipoDoc", v);
   const [dSearch, setDSearch] = useState(() => FV.search);
   const [openNew, setOpenNew] = useState(false);
   const [mostraFiltri, setMostraFiltri] = useState(false);
-  const nFiltriAttivi = [clienteId, stato, tipoDoc].filter(Boolean).length;
+  const nFiltriAttivi = [clienteId, stato, tipoDoc].filter((l) => l.length > 0).length;
 
   useEffect(() => {
     const t = setTimeout(() => setDSearch(search), 300);
@@ -132,34 +129,25 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
               className="pl-8"
             />
           </div>
-          <Select value={clienteId ?? ANY} onValueChange={(v) => setClienteId(v === ANY ? null : v)}>
-            <SelectTrigger className="h-9 text-sm lg:h-10 lg:w-56"><SelectValue placeholder="Cliente" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ANY}>Tutti i clienti</SelectItem>
-              {clienti.map((c) => (
-                <SelectItem key={c.id} value={c.id}>{c.ragione_sociale}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={stato ?? ANY} onValueChange={(v) => setStato(v === ANY ? null : (v as StatoPreventivo))}>
-            <SelectTrigger className="h-9 text-sm lg:h-10 lg:w-40"><SelectValue placeholder="Stato" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ANY}>Tutti gli stati</SelectItem>
-              {STATI.map((s) => (
-                <SelectItem key={s} value={s}>{STATI_LABEL[s]}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <FiltroMultiplo
+            etichetta="Cliente" testoTutti="Tutti i clienti" cercabile
+            className="h-9 text-sm lg:h-10 lg:w-56"
+            opzioni={clienti.map((c) => ({ valore: c.id, label: c.ragione_sociale ?? "" }))}
+            selezionati={clienteId} onChange={setClienteId}
+          />
+          <FiltroMultiplo
+            etichetta="Stato" testoTutti="Tutti gli stati"
+            className="h-9 text-sm lg:h-10 lg:w-40"
+            opzioni={STATI.map((s) => ({ valore: s, label: STATI_LABEL[s] }))}
+            selezionati={stato} onChange={setStato}
+          />
           {!isOrdine && (
-            <Select value={tipoDoc ?? ANY} onValueChange={(v) => setTipoDoc(v === ANY ? null : (v as TipoDoc))}>
-              <SelectTrigger className="h-9 text-sm lg:h-10 lg:w-56"><SelectValue placeholder="Tipo doc" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ANY}>Tutti i tipi</SelectItem>
-                {TIPI_DOC.map((t) => (
-                  <SelectItem key={t} value={t}>{TIPI_DOC_LABEL[t]}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Tipo documento" testoTutti="Tutti i tipi"
+              className="h-9 text-sm lg:h-10 lg:w-56"
+              opzioni={TIPI_DOC.map((t) => ({ valore: t, label: TIPI_DOC_LABEL[t] }))}
+              selezionati={tipoDoc} onChange={setTipoDoc}
+            />
           )}
         </div>
 

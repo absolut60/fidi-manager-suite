@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -49,7 +50,6 @@ interface ArticoloLite {
   fornitore_id: string | null;
 }
 
-const ANY = "__any";
 
 export function ListinoVenditaView() {
   const navigate = useNavigate();
@@ -57,10 +57,10 @@ export function ListinoVenditaView() {
   const [fascia, setFascia] = useState<FasciaListino>("A");
   const [search, setSearch] = useState("");
   const [dSearch, setDSearch] = useState("");
-  const [categoria, setCategoria] = useState<string | null>(null);
+  const [categoria, setCategoria] = useState<string[]>([]);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [mostraFiltri, setMostraFiltri] = useState(false);
-  const nFiltriAttivi = [categoria].filter(Boolean).length;
+  const nFiltriAttivi = [categoria.length > 0].filter(Boolean).length;
 
 
   useEffect(() => {
@@ -80,7 +80,7 @@ export function ListinoVenditaView() {
         const s = dSearch.trim().replace(/[%,]/g, " ");
         aq = aq.or(`cod_gamma.ilike.%${s}%,descrizione.ilike.%${s}%`);
       }
-      if (categoria) aq = aq.eq("categoria", categoria);
+      if (categoria.length > 0) aq = aq.in("categoria", categoria);
       const { data: arts, error: aErr } = await aq;
       if (aErr) {
         console.error("ListinoVenditaView articoli error:", aErr);
@@ -265,22 +265,12 @@ export function ListinoVenditaView() {
             />
           </div>
           <div className="lg:col-span-3">
-            <Select
-              value={categoria ?? ANY}
-              onValueChange={(v) => setCategoria(v === ANY ? null : v)}
-            >
-              <SelectTrigger className="h-9 text-sm">
-                <SelectValue placeholder="Categoria" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ANY}>Tutte le categorie</SelectItem>
-                {categorie.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Categoria" testoTutti="Tutte le categorie" cercabile
+              className="text-sm"
+              opzioni={categorie.map((c) => ({ valore: c, label: c }))}
+              selezionati={categoria} onChange={setCategoria}
+            />
           </div>
           <div className="flex items-center justify-end gap-2 lg:col-span-3">
             <span className="hidden text-xs text-muted-foreground lg:inline">
@@ -439,7 +429,7 @@ function BulkVenditaDialog({
   open: boolean;
   onOpenChange: (b: boolean) => void;
   fascia: FasciaListino;
-  scope: { categoria: string | null };
+  scope: { categoria: string[] };
   scopeCount: number;
   onApply: (delta: number) => void | Promise<void>;
 }) {
@@ -448,7 +438,7 @@ function BulkVenditaDialog({
 
   const scopeLabel = useMemo(() => {
     const parts = [`fascia ${fascia}`];
-    if (scope.categoria) parts.push(`categoria "${scope.categoria}"`);
+    if (scope.categoria.length > 0) parts.push(`${scope.categoria.length === 1 ? "categoria" : "categorie"} ${scope.categoria.map((c) => `"${c}"`).join(", ")}`);
     else parts.push("tutte le categorie");
     return parts.join(" · ");
   }, [fascia, scope.categoria]);

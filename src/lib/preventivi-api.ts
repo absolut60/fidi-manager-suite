@@ -190,9 +190,10 @@ const n = (v: unknown): number => {
 
 export interface PreventiviFilters {
   search?: string;
-  cliente_id?: string | null;
-  stato?: StatoPreventivo | null;
-  tipo_doc?: TipoDoc | null;
+  // Elenchi: vuoto o assente = nessun filtro; più valori = almeno uno.
+  cliente_id?: string[];
+  stato?: StatoPreventivo[];
+  tipo_doc?: TipoDoc[];
   tipo?: TipoDocumento | null;
 }
 
@@ -216,9 +217,9 @@ export async function fetchPreventivi(f: PreventiviFilters): Promise<PreventivoL
     .order("created_at", { ascending: false })
     .limit(500);
   if (f.tipo) q = q.eq("tipo", f.tipo);
-  if (f.cliente_id) q = q.eq("cliente_id", f.cliente_id);
-  if (f.stato) q = q.eq("stato", f.stato);
-  if (f.tipo_doc) q = q.eq("tipo_doc", f.tipo_doc);
+  if (f.cliente_id?.length) q = q.in("cliente_id", f.cliente_id);
+  if (f.stato?.length) q = q.in("stato", f.stato);
+  if (f.tipo_doc?.length) q = q.in("tipo_doc", f.tipo_doc);
   if (f.search?.trim()) {
     const s = f.search.trim().replace(/[%,]/g, " ");
     q = q.or(`numero.ilike.%${s}%`);

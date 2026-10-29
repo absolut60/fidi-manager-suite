@@ -4,13 +4,7 @@ import { Check, ChevronsUpDown, Search } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchArticoliFacets } from "@/lib/articoli-api";
 import type { ArticoloConListini } from "@/lib/kit-api";
@@ -23,7 +17,6 @@ const ARTICOLO_SELECT = `
   listini_vendita:listini_vendita(*)
 `;
 
-const ALL = "__all__";
 
 export function ArticoloPicker({
   value,
@@ -38,8 +31,8 @@ export function ArticoloPicker({
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
-  const [fornitoreFiltro, setFornitoreFiltro] = useState("");
-  const [tipologiaFiltro, setTipologiaFiltro] = useState("");
+  const [fornitoreFiltro, setFornitoreFiltro] = useState<string[]>([]);
+  const [tipologiaFiltro, setTipologiaFiltro] = useState<string[]>([]);
 
   useEffect(() => {
     if (autoOpen) setOpen(true);
@@ -73,8 +66,8 @@ export function ArticoloPicker({
         .select(ARTICOLO_SELECT)
         .order("cod_gamma", { ascending: true, nullsFirst: false })
         .limit(50);
-      if (fornitoreFiltro) qb = qb.eq("fornitore_id", fornitoreFiltro);
-      if (tipologiaFiltro) qb = qb.eq("tipologia", tipologiaFiltro);
+      if (fornitoreFiltro.length > 0) qb = qb.in("fornitore_id", fornitoreFiltro);
+      if (tipologiaFiltro.length > 0) qb = qb.in("tipologia", tipologiaFiltro);
       if (q.trim()) {
         const s = q.trim().replace(/[%,]/g, " ");
         qb = qb.or(`cod_gamma.ilike.%${s}%,descrizione.ilike.%${s}%,cod_fornitore.ilike.%${s}%`);
@@ -111,7 +104,7 @@ export function ArticoloPicker({
     return `${selected.cod_gamma ?? "—"} · ${selected.descrizione}`;
   }, [selected]);
 
-  const hasFilters = !!(fornitoreFiltro || tipologiaFiltro || q);
+  const hasFilters = !!(fornitoreFiltro.length > 0 || tipologiaFiltro.length > 0 || q);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -127,38 +120,18 @@ export function ArticoloPicker({
       </PopoverTrigger>
       <PopoverContent className="w-[480px] p-0" align="start">
         <div className="grid grid-cols-1 gap-1.5 border-b p-2 sm:grid-cols-2">
-          <Select
-            value={fornitoreFiltro || ALL}
-            onValueChange={(v) => setFornitoreFiltro(v === ALL ? "" : v)}
-          >
-            <SelectTrigger className="h-7 text-xs">
-              <SelectValue placeholder="Fornitore" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>Tutti i fornitori</SelectItem>
-              {fornitori.map((f) => (
-                <SelectItem key={f.id} value={f.id}>
-                  {f.ragione_sociale}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={tipologiaFiltro || ALL}
-            onValueChange={(v) => setTipologiaFiltro(v === ALL ? "" : v)}
-          >
-            <SelectTrigger className="h-7 text-xs">
-              <SelectValue placeholder="Tipologia" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>Tutte le tipologie</SelectItem>
-              {tipologie.map((t) => (
-                <SelectItem key={t} value={t}>
-                  {t}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <FiltroMultiplo
+            etichetta="Fornitore" testoTutti="Tutti i fornitori" cercabile
+            className="h-7 text-xs"
+            opzioni={fornitori.map((f) => ({ valore: f.id, label: f.ragione_sociale ?? "" }))}
+            selezionati={fornitoreFiltro} onChange={setFornitoreFiltro}
+          />
+          <FiltroMultiplo
+            etichetta="Tipologia" testoTutti="Tutte le tipologie" cercabile
+            className="h-7 text-xs"
+            opzioni={tipologie.map((t) => ({ valore: t, label: t }))}
+            selezionati={tipologiaFiltro} onChange={setTipologiaFiltro}
+          />
         </div>
         <div className="flex items-center gap-2 border-b px-2 py-1.5">
           <Search className="h-3.5 w-3.5 text-muted-foreground" />
@@ -173,8 +146,8 @@ export function ArticoloPicker({
             <button
               type="button"
               onClick={() => {
-                setFornitoreFiltro("");
-                setTipologiaFiltro("");
+                setFornitoreFiltro([]);
+                setTipologiaFiltro([]);
                 setQ("");
               }}
               className="shrink-0 text-[11px] text-muted-foreground underline hover:text-foreground"
