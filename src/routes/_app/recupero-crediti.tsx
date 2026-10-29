@@ -34,6 +34,7 @@ import { useNomiUtentiQuery } from "@/hooks/use-nomi-utenti";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -554,45 +555,31 @@ function RecuperoCreditiPage() {
           />
 
           {!isRistretto && (
-            <Select value={storeId} onValueChange={setStoreId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Store" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tutti gli store</SelectItem>
-                {(stores ?? []).map((s) => (
-                  <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Store" testoTutti="Tutti gli store"
+              opzioni={(stores ?? []).map((s) => ({ valore: s.id, label: s.nome }))}
+              selezionati={storeId} onChange={setStoreId}
+            />
           )}
 
           {!isRistretto && (
-            <Select value={operatoreId} onValueChange={setOperatoreId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Operatore" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tutti gli operatori</SelectItem>
-                {(operatori ?? []).map((o) => (
-                  <SelectItem key={o.id} value={o.id}>{operatoreMap[o.id] ?? "—"}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Operatore" testoTutti="Tutti gli operatori" cercabile
+              opzioni={(operatori ?? []).map((o) => ({ valore: o.id, label: operatoreMap[o.id] ?? "—" }))}
+              selezionati={operatoreId} onChange={setOperatoreId}
+            />
           )}
 
-          <Select value={stadioFilter} onValueChange={(v) => setStadioFilter(v as StadioFilter)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Stadio sollecito" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tutti gli stadi</SelectItem>
-              <SelectItem value="0">Mai sollecitato</SelectItem>
-              <SelectItem value="1">1° sollecito</SelectItem>
-              <SelectItem value="2">2° sollecito</SelectItem>
-              <SelectItem value="3">Messa in mora</SelectItem>
-            </SelectContent>
-          </Select>
+          <FiltroMultiplo
+            etichetta="Stadio sollecito" testoTutti="Tutti gli stadi"
+            opzioni={[
+              { valore: "0", label: "Mai sollecitato" },
+              { valore: "1", label: "1° sollecito" },
+              { valore: "2", label: "2° sollecito" },
+              { valore: "3", label: "Messa in mora" },
+            ]}
+            selezionati={stadioFilter} onChange={setStadioFilter}
+          />
 
           <DateRangePicker label="Da" date={dataDa} onChange={setDataDa} />
           <DateRangePicker label="A" date={dataA} onChange={setDataA} />
