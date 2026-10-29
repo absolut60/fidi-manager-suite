@@ -6,13 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import * as XLSX from "xlsx";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import {
   fetchArticoli,
   fetchFornitori,
@@ -32,29 +26,28 @@ export const Route = createFileRoute("/_app/articoli/")({
   component: ArticoliListPage,
 });
 
-const ANY = "__any";
 
 function ArticoliListPage() {
   const navigate = useNavigate();
-  // Filtri e pagina conservati (useFiltriPagina); null salvato come "".
+  // Filtri e pagina conservati (useFiltriPagina); elenco vuoto = tutti.
   const { user } = useAuth();
   const { filtri: FA, setCampo } = useFiltriPagina("articoli", {
-    search: "", categoria: "", tipologia: "", fornitoreId: "", stato: "", page: 1,
-  }, { userId: user?.id });
+    search: "", categoria: [] as string[], tipologia: [] as string[], fornitoreId: [] as string[], stato: [] as string[], page: 1,
+  }, { userId: user?.id, valida: { categoria: Array.isArray, tipologia: Array.isArray, fornitoreId: Array.isArray, stato: Array.isArray } });
   const search = FA.search;
-  const categoria = FA.categoria || null;
-  const tipologia = FA.tipologia || null;
-  const fornitoreId = FA.fornitoreId || null;
-  const stato = (FA.stato || null) as StatoArticolo | null;
+  const categoria = FA.categoria;
+  const tipologia = FA.tipologia;
+  const fornitoreId = FA.fornitoreId;
+  const stato = FA.stato as StatoArticolo[];
   const setSearch = (v: string) => setCampo("search", v);
-  const setCategoria = (v: string | null) => setCampo("categoria", v ?? "");
-  const setTipologia = (v: string | null) => setCampo("tipologia", v ?? "");
-  const setFornitoreId = (v: string | null) => setCampo("fornitoreId", v ?? "");
-  const setStato = (v: StatoArticolo | null) => setCampo("stato", v ?? "");
+  const setCategoria = (v: string[]) => setCampo("categoria", v);
+  const setTipologia = (v: string[]) => setCampo("tipologia", v);
+  const setFornitoreId = (v: string[]) => setCampo("fornitoreId", v);
+  const setStato = (v: string[]) => setCampo("stato", v);
   const [debouncedSearch, setDebouncedSearch] = useState(() => FA.search);
   const [importOpen, setImportOpen] = useState(false);
   const [mostraFiltri, setMostraFiltri] = useState(false);
-  const nFiltriAttivi = [categoria, tipologia, fornitoreId, stato].filter(Boolean).length;
+  const nFiltriAttivi = [categoria, tipologia, fornitoreId, stato].filter((l) => l.length > 0).length;
 
   // Debounce search 300ms
   useEffect(() => {
@@ -109,7 +102,7 @@ function ArticoliListPage() {
   async function exportCsv(onlyPotenziali: boolean) {
     // Fetch ALL matching records for export, not just the current page
     const exportFilters = onlyPotenziali
-      ? { ...filters, stato: "potenziale" as StatoArticolo }
+      ? { ...filters, stato: ["potenziale"] as StatoArticolo[] }
       : filters;
     const { rows } = await fetchArticoli(exportFilters, { page: 1, pageSize: 10000 });
     if (!rows.length) {
@@ -221,37 +214,23 @@ function ArticoliListPage() {
             className="lg:col-span-2"
           />
           <div className="lg:col-span-2">
-            <Select
-              value={fornitoreId ?? ANY}
-              onValueChange={(v) => setFornitoreId(v === ANY ? null : v)}
-            >
-              <SelectTrigger className="h-9 text-sm">
-                <SelectValue placeholder="Fornitore" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ANY}>Tutti i fornitori</SelectItem>
-                {fornitori.map((f) => (
-                  <SelectItem key={f.id} value={f.id}>
-                    {f.ragione_sociale}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Fornitore" testoTutti="Tutti i fornitori" cercabile
+              className="text-sm"
+              opzioni={fornitori.map((f) => ({ valore: f.id, label: f.ragione_sociale ?? "" }))}
+              selezionati={fornitoreId} onChange={setFornitoreId}
+            />
           </div>
           <div className="lg:col-span-2">
-            <Select
-              value={stato ?? ANY}
-              onValueChange={(v) => setStato(v === ANY ? null : (v as StatoArticolo))}
-            >
-              <SelectTrigger className="h-9 text-sm">
-                <SelectValue placeholder="Stato" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ANY}>Tutti gli stati</SelectItem>
-                <SelectItem value="attivo">Attivo</SelectItem>
-                <SelectItem value="potenziale">Potenziale</SelectItem>
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Stato" testoTutti="Tutti gli stati"
+              className="text-sm"
+              opzioni={[
+                { valore: "attivo", label: "Attivo" },
+                { valore: "potenziale", label: "Potenziale" },
+              ]}
+              selezionati={stato} onChange={setStato}
+            />
           </div>
         </div>
       </div>
@@ -356,26 +335,18 @@ function FacetSelect({
   className,
 }: {
   label: string;
-  value: string | null;
+  value: string[];
   options: string[];
-  onChange: (v: string | null) => void;
+  onChange: (v: string[]) => void;
   className?: string;
 }) {
   return (
     <div className={className}>
-      <Select value={value ?? ANY} onValueChange={(v) => onChange(v === ANY ? null : v)}>
-        <SelectTrigger className="h-9">
-          <SelectValue placeholder={label} />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={ANY}>Tutte — {label}</SelectItem>
-          {options.map((o) => (
-            <SelectItem key={o} value={o}>
-              {o}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <FiltroMultiplo
+        etichetta={label} testoTutti={`Tutte — ${label}`} cercabile
+        opzioni={options.map((o) => ({ valore: o, label: o }))}
+        selezionati={value} onChange={onChange}
+      />
     </div>
   );
 }

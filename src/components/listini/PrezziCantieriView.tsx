@@ -2,13 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import {
   Tooltip,
   TooltipContent,
@@ -23,7 +17,6 @@ import {
   type ListinoSpecialeCantiere,
 } from "@/lib/cantiere-listini-api";
 
-const ANY = "__any";
 
 function fmt(n: number | null | undefined, dec = 5) {
   if (n == null || !Number.isFinite(n)) return "—";
@@ -87,8 +80,8 @@ export function PrezziCantieriView() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [dSearch, setDSearch] = useState("");
-  const [clienteId, setClienteId] = useState<string | null>(null);
-  const [categoria, setCategoria] = useState<string | null>(null);
+  const [clienteId, setClienteId] = useState<string[]>([]);
+  const [categoria, setCategoria] = useState<string[]>([]);
 
   useEffect(() => {
     const t = setTimeout(() => setDSearch(search), 250);
@@ -117,8 +110,8 @@ export function PrezziCantieriView() {
   const filtered = useMemo(() => {
     const q = dSearch.trim().toLowerCase();
     return data.filter((r) => {
-      if (clienteId && r.cliente_id !== clienteId) return false;
-      if (categoria && r.categoria !== categoria) return false;
+      if (clienteId.length > 0 && !clienteId.includes(r.cliente_id ?? "")) return false;
+      if (categoria.length > 0 && !categoria.includes(r.categoria ?? "")) return false;
       if (q) {
         const hay = [r.cod_gamma, r.descrizione, r.cantiere_nome, r.cliente_nome]
           .filter(Boolean)
@@ -162,38 +155,18 @@ export function PrezziCantieriView() {
               className="h-8 pl-7 text-xs"
             />
           </div>
-          <Select
-            value={clienteId ?? ANY}
-            onValueChange={(v) => setClienteId(v === ANY ? null : v)}
-          >
-            <SelectTrigger className="h-8 w-[220px] text-xs">
-              <SelectValue placeholder="Tutti i clienti" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ANY}>Tutti i clienti</SelectItem>
-              {clienti.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.nome}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={categoria ?? ANY}
-            onValueChange={(v) => setCategoria(v === ANY ? null : v)}
-          >
-            <SelectTrigger className="h-8 w-[180px] text-xs">
-              <SelectValue placeholder="Tutte le categorie" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ANY}>Tutte le categorie</SelectItem>
-              {categorie.map((c) => (
-                <SelectItem key={c} value={c}>
-                  {c}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <FiltroMultiplo
+            etichetta="Cliente" testoTutti="Tutti i clienti" cercabile
+            className="h-8 w-[220px] text-xs"
+            opzioni={clienti.map((c) => ({ valore: c.id, label: c.nome }))}
+            selezionati={clienteId} onChange={setClienteId}
+          />
+          <FiltroMultiplo
+            etichetta="Categoria" testoTutti="Tutte le categorie"
+            className="h-8 w-[180px] text-xs"
+            opzioni={categorie.map((c) => ({ valore: c, label: c }))}
+            selezionati={categoria} onChange={setCategoria}
+          />
           <div className="ml-auto text-xs text-muted-foreground">
             <span className="font-semibold text-navy">{filtered.length}</span> prezzi speciali su{" "}
             <span className="font-semibold text-navy">{nCantieri}</span> cantieri

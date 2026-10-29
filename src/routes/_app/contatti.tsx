@@ -13,9 +13,6 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog } from "@/components/ui/dialog";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { NuovoContattoWizard } from "@/components/nuovo-contatto-wizard";
@@ -39,22 +36,22 @@ function ContattiPage() {
   const isStoreManager = role === "store_manager";
   // Filtri conservati con la fonte unica useFiltriPagina.
   const { filtri: F, setCampo } = useFiltriPagina("contatti", {
-    search: "", storeId: [] as string[], clienteId: [] as string[], statoConsenso: "tutti",
-  }, { userId: user?.id, valida: { storeId: Array.isArray, clienteId: Array.isArray } });
+    search: "", storeId: [] as string[], clienteId: [] as string[], statoConsenso: [] as string[],
+  }, { userId: user?.id, valida: { storeId: Array.isArray, clienteId: Array.isArray, statoConsenso: Array.isArray } });
   const { search, clienteId, statoConsenso } = F;
   // Store manager: filtro negozio non visibile, il valore salvato non si applica mai.
   const storeId = isStoreManager ? [] : F.storeId;
   const setSearch = (v: string) => setCampo("search", v);
   const setStoreId = (v: string[]) => setCampo("storeId", v);
   const setClienteId = (v: string[]) => setCampo("clienteId", v);
-  const setStatoConsenso = (v: string) => setCampo("statoConsenso", v);
+  const setStatoConsenso = (v: string[]) => setCampo("statoConsenso", v);
   const [wizardOpen, setWizardOpen] = useState(false);
 
   const attiviCount = [
     search.trim() !== "",
     storeId.length > 0,
     clienteId.length > 0,
-    statoConsenso !== "tutti",
+    statoConsenso.length > 0,
   ].filter(Boolean).length;
 
 
@@ -96,10 +93,16 @@ function ContattiPage() {
       if (storeId.length > 0 && !storeId.includes(c.clienti?.store_id ?? "")) return false;
       if (clienteId.length > 0 && !clienteId.includes(c.clienti?.id ?? "")) return false;
       const st = statoConsensi?.get(c.id) ?? STATO_CONSENSI_VUOTO;
-      if (statoConsenso === "trattamento" && !st.trattamento_dati) return false;
-      if (statoConsenso === "whatsapp" && !st.whatsapp) return false;
-      if (statoConsenso === "email" && !st.email) return false;
-      if (statoConsenso === "nessuno" && (st.trattamento_dati || st.whatsapp || st.email)) return false;
+      // Più consensi scelti: basta soddisfarne almeno uno (OR), "nessuno" compreso.
+      if (statoConsenso.length > 0) {
+        const ok = statoConsenso.some((v) =>
+          v === "trattamento" ? st.trattamento_dati
+          : v === "whatsapp" ? st.whatsapp
+          : v === "email" ? st.email
+          : v === "nessuno" ? !(st.trattamento_dati || st.whatsapp || st.email)
+          : true);
+        if (!ok) return false;
+      }
       if (search.trim()) {
         const q = search.toLowerCase();
         const hay = `${c.nome ?? ""} ${c.cognome ?? ""} ${c.email ?? ""} ${c.clienti?.ragione_sociale ?? ""}`.toLowerCase();
@@ -157,16 +160,16 @@ function ContattiPage() {
             </div>
           )}
           <div>
-            <Select value={statoConsenso} onValueChange={setStatoConsenso}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutti">Tutti i consensi</SelectItem>
-                <SelectItem value="trattamento">Trattamento dati OK</SelectItem>
-                <SelectItem value="whatsapp">WhatsApp attivo</SelectItem>
-                <SelectItem value="email">Email attiva</SelectItem>
-                <SelectItem value="nessuno">Nessun consenso</SelectItem>
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Consensi" testoTutti="Tutti i consensi"
+              opzioni={[
+                { valore: "trattamento", label: "Trattamento dati OK" },
+                { valore: "whatsapp", label: "WhatsApp attivo" },
+                { valore: "email", label: "Email attiva" },
+                { valore: "nessuno", label: "Nessun consenso" },
+              ]}
+              selezionati={statoConsenso} onChange={setStatoConsenso}
+            />
           </div>
         </div>
         </FiltriCollassabili>
