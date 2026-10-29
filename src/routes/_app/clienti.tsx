@@ -1,4 +1,5 @@
 import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
+import { filtroElenco } from "@/lib/filtro-elenco";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -200,16 +201,6 @@ function etichettaElenco(valori: string[], label: (v: string) => string): string
  * Filtro a elenco su una colonna: vuoto = nessun filtro; "__none__" = colonna vuota (null),
  * in OR con i valori scelti. Con un solo valore equivale al vecchio .eq / .is.
  */
-function filtroElenco<Q extends { in: (c: string, v: string[]) => Q; is: (c: string, v: null) => Q; or: (f: string) => Q }>(q: Q, colonna: string, valori: string[]): Q {
-  if (valori.length === 0) return q;
-  const senza = valori.includes("__none__");
-  const altri = valori.filter((v) => v !== "__none__");
-  if (senza && altri.length === 0) return q.is(colonna, null);
-  if (!senza) return q.in(colonna, altri);
-  const elenco = altri.map((v) => `"${v.replace(/"/g, '\\"')}"`).join(",");
-  return q.or(`${colonna}.in.(${elenco}),${colonna}.is.null`);
-}
-
 function ClientiPage() {
   const navigate = useNavigate();
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
