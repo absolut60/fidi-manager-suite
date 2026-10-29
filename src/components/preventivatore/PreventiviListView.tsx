@@ -132,7 +132,7 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
           <FiltroMultiplo
             etichetta="Cliente" testoTutti="Tutti i clienti" cercabile
             className="h-9 text-sm lg:h-10 lg:w-56"
-            opzioni={clienti.map((c) => ({ valore: c.id, label: c.ragione_sociale }))}
+            opzioni={clienti.map((c) => ({ valore: c.id, label: c.ragione_sociale ?? "" }))}
             selezionati={clienteId} onChange={setClienteId}
           />
           <FiltroMultiplo
