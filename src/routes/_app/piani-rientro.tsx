@@ -8,6 +8,7 @@ import { CalendarClock, Search, AlertTriangle, CheckCircle2, Plus } from "lucide
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -58,12 +59,17 @@ function PianiRientroPage() {
   const { roles, user } = useAuth();
   // Filtri e ordinamento conservati con la fonte unica useFiltriPagina.
   const { filtri: FP, setCampo: setCampoPiani } = useFiltriPagina("piani-rientro", {
-    statoF: "tutti" as string, livelloF: "tutti" as string, search: "",
+    // Scelta multipla: elenco vuoto = tutti.
+    statoF: [] as string[], livelloF: [] as string[], search: "",
     sortKey: "prossima" as SortKey, sortDir: "asc" as "asc" | "desc",
-  }, { userId: user?.id });
+  }, {
+    userId: user?.id,
+    // Formato vecchio (stringa) scartato: si riparte dal default.
+    valida: { statoF: (v) => Array.isArray(v) && v.every((x) => typeof x === "string"), livelloF: (v) => Array.isArray(v) && v.every((x) => typeof x === "string") },
+  });
   const { statoF, livelloF, search, sortKey, sortDir } = FP;
-  const setStatoF = (v: string) => setCampoPiani("statoF", v);
-  const setLivelloF = (v: string) => setCampoPiani("livelloF", v);
+  const setStatoF = (v: string[]) => setCampoPiani("statoF", v);
+  const setLivelloF = (v: string[]) => setCampoPiani("livelloF", v);
   const setSearch = (v: string) => setCampoPiani("search", v);
   const setSortKey = (v: SortKey) => setCampoPiani("sortKey", v);
   const setSortDir = (v: "asc" | "desc" | ((d: "asc" | "desc") => "asc" | "desc")) => setCampoPiani("sortDir", v);
@@ -145,8 +151,8 @@ function PianiRientroPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
-      if (statoF !== "tutti" && r.stato !== statoF) return false;
-      if (livelloF !== "tutti" && String(r.livello) !== livelloF) return false;
+      if (statoF.length > 0 && !statoF.includes(r.stato)) return false;
+      if (livelloF.length > 0 && !livelloF.includes(String(r.livello))) return false;
       if (q && !r.ragione_sociale.toLowerCase().includes(q)) return false;
       return true;
     });
@@ -212,24 +218,16 @@ function PianiRientroPage() {
           <Search className="size-4 absolute left-2.5 top-2.5 text-muted-foreground" />
           <Input placeholder="Cerca cliente…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8" />
         </div>
-        <Select value={statoF} onValueChange={setStatoF}>
-          <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="tutti">Tutti gli stati</SelectItem>
-            <SelectItem value="attivo">Attivi</SelectItem>
-            <SelectItem value="completato">Completati</SelectItem>
-            <SelectItem value="non_rispettato">Non rispettati</SelectItem>
-            <SelectItem value="annullato">Annullati</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={livelloF} onValueChange={setLivelloF}>
-          <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="tutti">Tutti i livelli</SelectItem>
-            <SelectItem value="1">Livello 1</SelectItem>
-            <SelectItem value="2">Livello 2</SelectItem>
-          </SelectContent>
-        </Select>
+        <FiltroMultiplo
+          etichetta="Stato" testoTutti="Tutti gli stati" className="w-48"
+          opzioni={[{ valore: "attivo", label: "Attivi" }, { valore: "completato", label: "Completati" }, { valore: "non_rispettato", label: "Non rispettati" }, { valore: "annullato", label: "Annullati" }]}
+          selezionati={statoF} onChange={setStatoF}
+        />
+        <FiltroMultiplo
+          etichetta="Livello" testoTutti="Tutti i livelli" className="w-36"
+          opzioni={[{ valore: "1", label: "Livello 1" }, { valore: "2", label: "Livello 2" }]}
+          selezionati={livelloF} onChange={setLivelloF}
+        />
       </Card>
 
       <Card>
