@@ -23,7 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import {
   DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -89,7 +89,7 @@ function CalendarioCommercialePage() {
 
   const [range, setRange] = useState<{ start: string; end: string } | null>(null);
   const [tipoFilter, setTipoFilter] = useState<Set<TipoAttivita>>(new Set());
-  const [agenteF, setAgenteF] = useState<string>("all");
+  const [agenteF, setAgenteF] = useState<string[]>([]);
   const [mostraCompletate, setMostraCompletate] = useState(true);
   const [aperta, setAperta] = useState<AttivitaCalendario | null>(null);
   const [creaOpen, setCreaOpen] = useState(false);
@@ -129,7 +129,7 @@ function CalendarioCommercialePage() {
     const now = Date.now();
     return (attivitaQuery.data ?? [])
       .filter((a) => (tipoFilter.size === 0 ? true : tipoFilter.has(a.tipo)))
-      .filter((a) => (agenteF === "all" ? true : (a.agente_codice ?? "") === agenteF))
+      .filter((a) => (agenteF.length === 0 ? true : agenteF.includes(a.agente_codice ?? "")))
       .filter((a) => (mostraCompletate ? true : !a.completata))
       .map((a) => {
         const cfg = TIPI.find((t) => t.value === a.tipo);
@@ -266,15 +266,12 @@ function CalendarioCommercialePage() {
           </DropdownMenu>
 
           {!soloAgente && (
-            <Select value={agenteF} onValueChange={setAgenteF}>
-              <SelectTrigger className="w-full sm:w-[220px]"><SelectValue placeholder="Agente" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tutti gli agenti</SelectItem>
-                {agenti.map((a) => (
-                  <SelectItem key={a.codice} value={a.codice}>{a.descrizione ?? a.codice}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Agente" testoTutti="Tutti gli agenti" cercabile
+              className="sm:w-[220px]"
+              opzioni={agenti.map((a) => ({ valore: a.codice, label: a.descrizione ?? a.codice }))}
+              selezionati={agenteF} onChange={setAgenteF}
+            />
           )}
 
           <div className="flex items-center gap-2">

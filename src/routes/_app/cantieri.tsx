@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -65,16 +66,16 @@ function CantieriPage() {
   // Filtri conservati (useFiltriPagina). Con ?focus= nell'URL si parte dai default,
   // cosi' il cantiere richiesto non resta nascosto da filtri salvati.
   const { filtri: FC, setCampo: setCampoCantieri } = useFiltriPagina("cantieri", {
-    search: "", geoF: "tutti", agenteF: "tutti", attivoF: "tutti", categoriaF: "tutte",
-  }, { userId: user?.id, partiDaiDefault: !!focus });
+    search: "", geoF: [] as string[], agenteF: [] as string[], attivoF: "tutti", categoriaF: [] as string[],
+  }, { userId: user?.id, partiDaiDefault: !!focus, valida: { geoF: Array.isArray, agenteF: Array.isArray, categoriaF: Array.isArray } });
   const { search, geoF, attivoF, categoriaF } = FC;
   // Filtro agente visibile solo ai trasversali: altrimenti il salvato non si applica.
-  const agenteF = isTrasversale ? FC.agenteF : "tutti";
+  const agenteF = isTrasversale ? FC.agenteF : [];
   const setSearch = (v: string) => setCampoCantieri("search", v);
-  const setGeoF = (v: string) => setCampoCantieri("geoF", v);
-  const setAgenteF = (v: string) => setCampoCantieri("agenteF", v);
+  const setGeoF = (v: string[]) => setCampoCantieri("geoF", v);
+  const setAgenteF = (v: string[]) => setCampoCantieri("agenteF", v);
   const setAttivoF = (v: string) => setCampoCantieri("attivoF", v);
-  const setCategoriaF = (v: string) => setCampoCantieri("categoriaF", v);
+  const setCategoriaF = (v: string[]) => setCampoCantieri("categoriaF", v);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [inModifica, setInModifica] = useState<CantiereRow | null>(null);
 
@@ -127,10 +128,10 @@ function CantieriPage() {
         if (!testo.includes(q)) return false;
       }
       const stato = (c.geocodifica_stato ?? "da_geocodificare") as GeoStato;
-      if (geoF !== "tutti" && stato !== geoF) return false;
-      if (agenteF !== "tutti" && (c.agente_codice ?? "") !== agenteF) return false;
+      if (geoF.length > 0 && !geoF.includes(stato)) return false;
+      if (agenteF.length > 0 && !agenteF.includes(c.agente_codice ?? "")) return false;
       if (attivoF !== "tutti" && String(c.attivo ?? true) !== attivoF) return false;
-      if (categoriaF !== "tutte" && (c.categoria ?? "") !== categoriaF) return false;
+      if (categoriaF.length > 0 && !categoriaF.includes(c.categoria ?? "")) return false;
       return true;
     });
   }, [rows, search, geoF, agenteF, attivoF, categoriaF]);
@@ -229,7 +230,7 @@ function CantieriPage() {
               (senza coordinate o con geocodifica fallita): non compaiono sulla mappa.
             </span>
           </p>
-          <Button variant="outline" size="sm" className="ml-auto" onClick={() => setGeoF("fallita")}>
+          <Button variant="outline" size="sm" className="ml-auto" onClick={() => setGeoF(["fallita"])}>
             Mostra falliti
           </Button>
         </Card>
@@ -433,10 +434,10 @@ function Filtri({
   categoriaF, setCategoriaF, agenti, isTrasversale,
 }: {
   search: string; setSearch: (v: string) => void;
-  geoF: string; setGeoF: (v: string) => void;
-  agenteF: string; setAgenteF: (v: string) => void;
+  geoF: string[]; setGeoF: (v: string[]) => void;
+  agenteF: string[]; setAgenteF: (v: string[]) => void;
   attivoF: string; setAttivoF: (v: string) => void;
-  categoriaF: string; setCategoriaF: (v: string) => void;
+  categoriaF: string[]; setCategoriaF: (v: string[]) => void;
   agenti: Array<{ codice: string; descrizione: string | null }>;
   isTrasversale: boolean;
 }) {
@@ -450,23 +451,17 @@ function Filtri({
             value={search} onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <Select value={geoF} onValueChange={setGeoF}>
-          <SelectTrigger><SelectValue placeholder="Geocodifica" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="tutti">Tutte le geocodifiche</SelectItem>
-            {GEO_STATI.map((s) => <SelectItem key={s} value={s}>{GEO_LABEL[s]}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <FiltroMultiplo
+          etichetta="Geocodifica" testoTutti="Tutte le geocodifiche"
+          opzioni={GEO_STATI.map((s) => ({ valore: s, label: GEO_LABEL[s] }))}
+          selezionati={geoF} onChange={setGeoF}
+        />
         {isTrasversale && (
-          <Select value={agenteF} onValueChange={setAgenteF}>
-            <SelectTrigger><SelectValue placeholder="Agente" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="tutti">Tutti gli agenti</SelectItem>
-              {agenti.map((a) => (
-                <SelectItem key={a.codice} value={a.codice}>{a.descrizione ?? a.codice}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <FiltroMultiplo
+            etichetta="Agente" testoTutti="Tutti gli agenti" cercabile
+            opzioni={agenti.map((a) => ({ valore: a.codice, label: a.descrizione ?? a.codice }))}
+            selezionati={agenteF} onChange={setAgenteF}
+          />
         )}
         <Select value={attivoF} onValueChange={setAttivoF}>
           <SelectTrigger><SelectValue placeholder="Stato" /></SelectTrigger>
@@ -476,15 +471,11 @@ function Filtri({
             <SelectItem value="false">Solo chiusi</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={categoriaF} onValueChange={setCategoriaF}>
-          <SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="tutte">Tutte le categorie</SelectItem>
-            {CATEGORIE_CANTIERE.map((c) => (
-              <SelectItem key={c} value={c}>{CATEGORIA_LABEL[c]}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <FiltroMultiplo
+          etichetta="Categoria" testoTutti="Tutte le categorie"
+          opzioni={CATEGORIE_CANTIERE.map((c) => ({ valore: c, label: CATEGORIA_LABEL[c] }))}
+          selezionati={categoriaF} onChange={setCategoriaF}
+        />
       </div>
     </FiltriCollassabili>
   );

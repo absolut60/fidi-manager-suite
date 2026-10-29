@@ -5,6 +5,7 @@ import { Search, Users, Star, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 
@@ -38,21 +39,21 @@ function ContattiPage() {
   const isStoreManager = role === "store_manager";
   // Filtri conservati con la fonte unica useFiltriPagina.
   const { filtri: F, setCampo } = useFiltriPagina("contatti", {
-    search: "", storeId: "all", clienteId: "all", statoConsenso: "tutti",
-  }, { userId: user?.id });
+    search: "", storeId: [] as string[], clienteId: [] as string[], statoConsenso: "tutti",
+  }, { userId: user?.id, valida: { storeId: Array.isArray, clienteId: Array.isArray } });
   const { search, clienteId, statoConsenso } = F;
   // Store manager: filtro negozio non visibile, il valore salvato non si applica mai.
-  const storeId = isStoreManager ? "all" : F.storeId;
+  const storeId = isStoreManager ? [] : F.storeId;
   const setSearch = (v: string) => setCampo("search", v);
-  const setStoreId = (v: string) => setCampo("storeId", v);
-  const setClienteId = (v: string) => setCampo("clienteId", v);
+  const setStoreId = (v: string[]) => setCampo("storeId", v);
+  const setClienteId = (v: string[]) => setCampo("clienteId", v);
   const setStatoConsenso = (v: string) => setCampo("statoConsenso", v);
   const [wizardOpen, setWizardOpen] = useState(false);
 
   const attiviCount = [
     search.trim() !== "",
-    storeId !== "all",
-    clienteId !== "all",
+    storeId.length > 0,
+    clienteId.length > 0,
     statoConsenso !== "tutti",
   ].filter(Boolean).length;
 
@@ -92,8 +93,8 @@ function ContattiPage() {
 
   const filtered = useMemo(() => {
     return (data ?? []).filter((c: any) => {
-      if (storeId !== "all" && c.clienti?.store_id !== storeId) return false;
-      if (clienteId !== "all" && c.clienti?.id !== clienteId) return false;
+      if (storeId.length > 0 && !storeId.includes(c.clienti?.store_id ?? "")) return false;
+      if (clienteId.length > 0 && !clienteId.includes(c.clienti?.id ?? "")) return false;
       const st = statoConsensi?.get(c.id) ?? STATO_CONSENSI_VUOTO;
       if (statoConsenso === "trattamento" && !st.trattamento_dati) return false;
       if (statoConsenso === "whatsapp" && !st.whatsapp) return false;
@@ -140,27 +141,19 @@ function ContattiPage() {
             </div>
           </div>
           <div>
-            <Select value={clienteId} onValueChange={setClienteId}>
-              <SelectTrigger><SelectValue placeholder="Cliente" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tutti i clienti</SelectItem>
-                {clientiOptions.map(([id, nome]) => (
-                  <SelectItem key={id} value={id}>{nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Cliente" testoTutti="Tutti i clienti" cercabile
+              opzioni={clientiOptions.map(([id, nome]) => ({ valore: id, label: nome }))}
+              selezionati={clienteId} onChange={setClienteId}
+            />
           </div>
           {!isStoreManager && (
             <div>
-              <Select value={storeId} onValueChange={setStoreId}>
-                <SelectTrigger><SelectValue placeholder="Store" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tutti gli store</SelectItem>
-                  {stores?.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FiltroMultiplo
+                etichetta="Store" testoTutti="Tutti gli store"
+                opzioni={(stores ?? []).map((s) => ({ valore: s.id, label: s.nome }))}
+                selezionati={storeId} onChange={setStoreId}
+              />
             </div>
           )}
           <div>

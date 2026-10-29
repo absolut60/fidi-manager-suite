@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -48,15 +49,15 @@ function OpportunitaPage() {
 
   // Filtri conservati con la fonte unica useFiltriPagina.
   const { filtri: F, setCampo, reset: resetFiltri } = useFiltriPagina("opportunita", {
-    search: "", statoF: "tutti" as string, tipoF: "tutti" as string, agenteF: "tutti" as string,
-  }, { userId: user?.id });
+    search: "", statoF: [] as string[], tipoF: [] as string[], agenteF: [] as string[],
+  }, { userId: user?.id, valida: { statoF: Array.isArray, tipoF: Array.isArray, agenteF: Array.isArray } });
   const { search, statoF, tipoF } = F;
   // Filtro agente non visibile (non trasversale): il valore salvato non si applica.
-  const agenteF = isTrasversale ? F.agenteF : "tutti";
+  const agenteF = isTrasversale ? F.agenteF : [];
   const setSearch = (v: string) => setCampo("search", v);
-  const setStatoF = (v: string) => setCampo("statoF", v);
-  const setTipoF = (v: string) => setCampo("tipoF", v);
-  const setAgenteF = (v: string) => setCampo("agenteF", v);
+  const setStatoF = (v: string[]) => setCampo("statoF", v);
+  const setTipoF = (v: string[]) => setCampo("tipoF", v);
+  const setAgenteF = (v: string[]) => setCampo("agenteF", v);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [inModifica, setInModifica] = useState<OpportunitaRow | null>(null);
 
@@ -100,9 +101,9 @@ function OpportunitaPage() {
   const filtrate = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((o) => {
-      if (statoF !== "tutti" && o.stato !== statoF) return false;
-      if (tipoF !== "tutti" && o.tipo !== tipoF) return false;
-      if (agenteF !== "tutti" && (o.agente_codice ?? "") !== agenteF) return false;
+      if (statoF.length > 0 && !statoF.includes(o.stato)) return false;
+      if (tipoF.length > 0 && !tipoF.includes(o.tipo)) return false;
+      if (agenteF.length > 0 && !agenteF.includes(o.agente_codice ?? "")) return false;
       if (q) {
         const hay = `${o.titolo} ${nomeSoggetto(o)}`.toLowerCase();
         if (!hay.includes(q)) return false;
@@ -123,7 +124,7 @@ function OpportunitaPage() {
   }, [filtrate]);
 
   const filtriAttivi =
-    (search.trim() ? 1 : 0) + (statoF !== "tutti" ? 1 : 0) + (tipoF !== "tutti" ? 1 : 0) + (agenteF !== "tutti" ? 1 : 0);
+    (search.trim() ? 1 : 0) + (statoF.length > 0 ? 1 : 0) + (tipoF.length > 0 ? 1 : 0) + (agenteF.length > 0 ? 1 : 0);
 
   async function cambiaStato(o: OpportunitaRow, nuovo: StatoOpportunita) {
     const chiude = nuovo === "vinta" || nuovo === "persa";
@@ -198,30 +199,22 @@ function OpportunitaPage() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <Select value={statoF} onValueChange={setStatoF}>
-              <SelectTrigger><SelectValue placeholder="Stato" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutti">Tutti gli stati</SelectItem>
-                {STATI_OPPORTUNITA.map((s) => <SelectItem key={s} value={s}>{STATO_LABEL[s]}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={tipoF} onValueChange={setTipoF}>
-              <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutti">Tutti i tipi</SelectItem>
-                {TIPI_OPPORTUNITA.map((t) => <SelectItem key={t} value={t}>{TIPO_LABEL[t]}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Stato" testoTutti="Tutti gli stati"
+              opzioni={STATI_OPPORTUNITA.map((s) => ({ valore: s, label: STATO_LABEL[s] }))}
+              selezionati={statoF} onChange={setStatoF}
+            />
+            <FiltroMultiplo
+              etichetta="Tipo" testoTutti="Tutti i tipi"
+              opzioni={TIPI_OPPORTUNITA.map((t) => ({ valore: t, label: TIPO_LABEL[t] }))}
+              selezionati={tipoF} onChange={setTipoF}
+            />
             {isTrasversale && (
-              <Select value={agenteF} onValueChange={setAgenteF}>
-                <SelectTrigger><SelectValue placeholder="Agente" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="tutti">Tutti gli agenti</SelectItem>
-                  {agenti.map((a) => (
-                    <SelectItem key={a.codice} value={a.codice}>{a.descrizione ?? a.codice}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FiltroMultiplo
+                etichetta="Agente" testoTutti="Tutti gli agenti" cercabile
+                opzioni={agenti.map((a) => ({ valore: a.codice, label: a.descrizione ?? a.codice }))}
+                selezionati={agenteF} onChange={setAgenteF}
+              />
             )}
           </div>
         </FiltriCollassabili>
