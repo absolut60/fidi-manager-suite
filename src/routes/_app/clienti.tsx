@@ -1175,6 +1175,11 @@ function ClientiPage() {
     });
   }
   const [loadingSelection, setLoadingSelection] = useState(false);
+  /** Stessa azione della casella in intestazione tabella. */
+  async function toggleTuttiClienti(v: boolean) {
+    if (v) await selezionaTuttiFiltrati();
+    else clearSelection();
+  }
   function clearSelection() {
     setSelectedIds(new Set());
     setSelectedRows(new Map());
@@ -1862,7 +1867,14 @@ function ClientiPage() {
               )}
             </div>
           )}
-          <ElencoSchede>
+          <ElencoSchede
+            selezioneTutti={!isAgente ? {
+              tutti: tuttiClientiSel,
+              alcuni: selectedIds.size > 0,
+              onChange: (v) => void toggleTuttiClienti(v),
+              etichetta: `Seleziona tutti i filtrati (${totaleClienti.toLocaleString("it-IT")})`,
+            } : undefined}
+          >
             {clienti.map((c: any) => {
               const sc = (scadenziarioMap ?? scadenziarioDisplayMap)?.get(c.id);
               const isBlocked = !!c.bloccato || Number(c.ind_blocco ?? 0) > 0;
@@ -1933,14 +1945,8 @@ function ClientiPage() {
                   {!isAgente && (
                     <TableHead className="w-8">
                       <Checkbox
-                        checked={clienti.length > 0 && clienti.every((c: any) => selectedIds.has(c.id))}
-                        onCheckedChange={async (v) => {
-                          if (v) {
-                            await selezionaTuttiFiltrati();
-                          } else {
-                            clearSelection();
-                          }
-                        }}
+                        checked={tuttiClientiSel}
+                        onCheckedChange={(v) => void toggleTuttiClienti(v === true)}
                       />
                     </TableHead>
                   )}
