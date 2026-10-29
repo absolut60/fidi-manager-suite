@@ -370,7 +370,7 @@ function ScadenziarioPage() {
 
   function resetFiltri(sit: Situazione) {
     setSearchDebounced("");
-    // storeId torna a "all"; per lo store manager resta comunque il suo negozio (storeDefault).
+    // storeId torna a [] (tutti); per lo store manager resta comunque il suo negozio (storeDefault).
     // Ordinamento e pagina restano come prima; la pagina torna a 1 se un filtro cambia.
     resetFiltriSalvati({ situazione: sit, sortBy, sortDir, page });
   }
@@ -759,6 +759,7 @@ function ScadenziarioPage() {
           onToggle={() => setCampo("perStoreAperto", (filtri.perStoreAperto === "auto" ? !isMobile : filtri.perStoreAperto === "si") ? "no" : "si")}
           storeSelezionato={storeId}
           cliccabile={!isStoreManager}
+          onMostraTutti={() => setStoreId([])}
           onSelezionaStore={(id) => {
             setStoreId(storeId.includes(id) ? storeId.filter((x) => x !== id) : [...storeId, id]);
             document.getElementById("scadenziario-dashboard")?.scrollIntoView({ behavior: "smooth", block: "start" });

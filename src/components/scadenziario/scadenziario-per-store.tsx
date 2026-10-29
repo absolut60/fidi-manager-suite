@@ -45,11 +45,13 @@ function Barretta({ v, max }: { v: number; max: number }) {
   );
 }
 
-export function ScadenziarioPerStore({ params, aperto, onToggle, storeSelezionato, onSelezionaStore, cliccabile }: {
+export function ScadenziarioPerStore({ params, aperto, onToggle, storeSelezionato, onSelezionaStore, onMostraTutti, cliccabile }: {
   params: Record<string, unknown>;
   aperto: boolean;
   onToggle: () => void;
   storeSelezionato: string[];
+  /** Toglie tutti gli store selezionati. */
+  onMostraTutti: () => void;
   onSelezionaStore: (id: string) => void;
   cliccabile: boolean;
 }) {
@@ -134,12 +136,13 @@ export function ScadenziarioPerStore({ params, aperto, onToggle, storeSelezionat
       </button>
       {aperto && (
         <div className="border-t">
-          {cliccabile && storeSelezionato !== "all" && (() => {
-            const nome = righe.find((r) => r.store_id === storeSelezionato)?.store_nome;
+          {cliccabile && storeSelezionato.length > 0 && (() => {
+            const nomi = righe.filter((r) => !!r.store_id && storeSelezionato.includes(r.store_id)).map((r) => r.store_nome);
+            const nome = nomi.length > 0 ? nomi.join(", ") : null;
             return nome ? (
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-1.5 text-xs text-muted-foreground border-b min-w-0">
                 <span className="min-w-0">Filtro: <span className="font-medium text-foreground break-words">{nome}</span></span>
-                <button type="button" onClick={() => onSelezionaStore(storeSelezionato)} className="underline underline-offset-2 hover:text-foreground shrink-0">
+                <button type="button" onClick={onMostraTutti} className="underline underline-offset-2 hover:text-foreground shrink-0">
                   Mostra tutti
                 </button>
               </div>
