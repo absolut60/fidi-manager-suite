@@ -43,6 +43,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SignaturePad, getCanvasDataURL } from "@/components/signature-pad";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { useConfig, useConfigReady, isClienteAttivo } from "@/hooks/use-config";
 import { CondizionePagamentoSelect } from "@/components/condizione-pagamento-select";
 import { CategoriaSelect } from "@/components/categoria-select";
@@ -181,6 +182,34 @@ function SearchInput({
   );
 }
 
+/** Opzioni del filtro Semaforo (stessi valori e testi del selettore precedente). */
+const OPZIONI_SEMAFORO = [
+  { valore: "verde", label: "🟢 Verde" },
+  { valore: "giallo", label: "🟡 Giallo" },
+  { valore: "arancione", label: "🟠 Arancione" },
+  { valore: "rosso", label: "🔴 Rosso" },
+  { valore: "spento", label: "⚪ Spento" },
+];
+
+/** Testo del chip: un valore → la sua etichetta; piu' valori → "N selezionati". */
+function etichettaElenco(valori: string[], label: (v: string) => string): string {
+  return valori.length === 1 ? label(valori[0]) : `${valori.length} selezionati`;
+}
+
+/**
+ * Filtro a elenco su una colonna: vuoto = nessun filtro; "__none__" = colonna vuota (null),
+ * in OR con i valori scelti. Con un solo valore equivale al vecchio .eq / .is.
+ */
+function filtroElenco<Q extends { in: (c: string, v: string[]) => Q; is: (c: string, v: null) => Q; or: (f: string) => Q }>(q: Q, colonna: string, valori: string[]): Q {
+  if (valori.length === 0) return q;
+  const senza = valori.includes("__none__");
+  const altri = valori.filter((v) => v !== "__none__");
+  if (senza && altri.length === 0) return q.is(colonna, null);
+  if (!senza) return q.in(colonna, altri);
+  const elenco = altri.map((v) => `"${v.replace(/"/g, '\\"')}"`).join(",");
+  return q.or(`${colonna}.in.(${elenco}),${colonna}.is.null`);
+}
+
 function ClientiPage() {
   const navigate = useNavigate();
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
@@ -215,17 +244,18 @@ function ClientiPage() {
     searchInput: "",
     statoCliente: "attivi" as "attivi" | "disattivati" | "tutti",
     statoAttivita: "attivi" as "tutti" | "attivi" | "non_attivi",
-    storeFiltro: "tutti" as string,
+    // Scelta multipla (vuoto = tutti); "__none__" = senza punto vendita / agente / mestiere.
+    storeFiltro: [] as string[],
     statoFido: [] as string[],
-    semaforoFiltro: "tutti" as string,
+    semaforoFiltro: [] as string[],
     filtroBlocco: "tutti" as "tutti" | "bloccati" | "non_bloccati",
     privacyFiltro: "tutti" as "tutti" | "ok" | "da_richiedere",
     filtroAssic: "tutti" as "tutti" | "assicurati" | "non_assicurati",
     filtroLegale: "tutti" as "tutti" | "in_legale" | "non_in_legale",
     // Default: "giuridica" → mostra solo Imprese, esclude i Privati (persona_fisica)
     filtroTipoSoggetto: "giuridica" as "tutti" | "fisica" | "giuridica",
-    filtroAgente: "tutti" as string,
-    filtroMestiere: "tutti" as string,
+    filtroAgente: [] as string[],
+    filtroMestiere: [] as string[],
     filtroRichiesta: "tutti" as "tutti" | "escludi" | "solo",
     scadenziarioFiltro: "tutti" as string,
     totaleRischioFiltro: "tutti" as string,
@@ -253,6 +283,11 @@ function ClientiPage() {
     partiDaiDefault: _linkConFiltri,
     valida: {
       statoFido: (v) => Array.isArray(v) && v.every((x) => typeof x === "string"),
+      // Formato vecchio (stringa) scartato: si riparte dal default.
+      storeFiltro: (v) => Array.isArray(v) && v.every((x) => typeof x === "string"),
+      semaforoFiltro: (v) => Array.isArray(v) && v.every((x) => typeof x === "string"),
+      filtroAgente: (v) => Array.isArray(v) && v.every((x) => typeof x === "string"),
+      filtroMestiere: (v) => Array.isArray(v) && v.every((x) => typeof x === "string"),
       sliderCommitted: (v) => Array.isArray(v) && v.length === 2 && v.every((x) => typeof x === "number" && Number.isFinite(x)),
       advApplied: (v) => {
         const o = v as Record<string, unknown>;
@@ -265,23 +300,23 @@ function ClientiPage() {
   });
   const { searchInput, statoCliente, statoAttivita, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, scadenziarioFiltro, totaleRischioFiltro, fatturatoFiltro, mostraFidoTeorico, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, aScadereFiltro, fasciaConcesso, fidoFascia, sliderCommitted, advApplied, page, pageSize, sortBy, sortDir } = F;
   // Store manager: sempre il proprio negozio, qualunque valore sia salvato.
-  const storeFiltro = isStoreManager && myStoreId ? myStoreId : F.storeFiltro;
+  const storeFiltro: string[] = isStoreManager && myStoreId ? [myStoreId] : F.storeFiltro;
   // Set ricostruito al confine (salvato come array di stringhe).
   const statoFido = useMemo(() => new Set(F.statoFido), [F.statoFido]);
   const setSearchInput = (v: string) => setCampo("searchInput", v);
   const setStatoCliente = (v: typeof statoCliente) => setCampo("statoCliente", v);
   const setStatoAttivita = (v: typeof statoAttivita) => setCampo("statoAttivita", v);
-  const setStoreFiltro = (v: string) => setCampo("storeFiltro", v);
+  const setStoreFiltro = (v: string[]) => setCampo("storeFiltro", v);
   const setStatoFido = (v: Set<string> | ((prev: Set<string>) => Set<string>)) =>
     setCampo("statoFido", (prev) => Array.from(typeof v === "function" ? v(new Set(prev)) : v));
-  const setSemaforoFiltro = (v: string) => setCampo("semaforoFiltro", v);
+  const setSemaforoFiltro = (v: string[]) => setCampo("semaforoFiltro", v);
   const setFiltroBlocco = (v: typeof filtroBlocco) => setCampo("filtroBlocco", v);
   const setPrivacyFiltro = (v: typeof privacyFiltro) => setCampo("privacyFiltro", v);
   const setFiltroAssic = (v: typeof filtroAssic) => setCampo("filtroAssic", v);
   const setFiltroLegale = (v: typeof filtroLegale) => setCampo("filtroLegale", v);
   const setFiltroTipoSoggetto = (v: typeof filtroTipoSoggetto) => setCampo("filtroTipoSoggetto", v);
-  const setFiltroAgente = (v: string) => setCampo("filtroAgente", v);
-  const setFiltroMestiere = (v: string) => setCampo("filtroMestiere", v);
+  const setFiltroAgente = (v: string[]) => setCampo("filtroAgente", v);
+  const setFiltroMestiere = (v: string[]) => setCampo("filtroMestiere", v);
   const setFiltroRichiesta = (v: typeof filtroRichiesta) => setCampo("filtroRichiesta", v);
   const setScadenziarioFiltro = (v: string) => setCampo("scadenziarioFiltro", v);
   const setTotaleRischioFiltro = (v: string) => setCampo("totaleRischioFiltro", v);
@@ -319,7 +354,7 @@ function ClientiPage() {
   useEffect(() => {
     if (storeSearch && sedeApplicata.current !== storeSearch) {
       sedeApplicata.current = storeSearch;
-      setStoreFiltro(storeSearch);
+      setStoreFiltro([storeSearch]);
       setFiltroTipoSoggetto("tutti");
     }
     if (fasciaSearch && sedeApplicata.current !== `f:${fasciaSearch}`) {
@@ -615,9 +650,9 @@ function ClientiPage() {
     // un solo embed interno su fido_teorico_cliente (chi non ha riga resta escluso).
     // FM47 4c-bis: ordinamento per Fido proposto / Scostamento via embed.
     const sortFidoTeorico = sortBy === "fido_proposto" || sortBy === "scostamento";
-    const embedFiltroAttivo = semaforoFiltro !== "tutti" || scostamentoFiltro !== "tutti" || soloDaVerificare;
+    const embedFiltroAttivo = semaforoFiltro.length > 0 || scostamentoFiltro !== "tutti" || soloDaVerificare;
     let ftcCols: string[] = [];
-    if (semaforoFiltro !== "tutti") ftcCols.push("semaforo_stadio");
+    if (semaforoFiltro.length > 0) ftcCols.push("semaforo_stadio");
     if (scostamentoFiltro !== "tutti" && !ftcCols.includes("scostamento")) ftcCols.push("scostamento");
     if (soloDaVerificare) ftcCols.push("richiede_verifica");
     if (sortFidoTeorico) {
@@ -634,7 +669,7 @@ function ClientiPage() {
       .from("clienti")
       .select(selectFinale, count ? { count } : undefined);
 
-    if (semaforoFiltro !== "tutti") q = q.eq("fido_teorico_cliente.semaforo_stadio", semaforoFiltro);
+    if (semaforoFiltro.length > 0) q = q.in("fido_teorico_cliente.semaforo_stadio", semaforoFiltro);
     if (scostamentoFiltro === "positivo") q = q.gt("fido_teorico_cliente.scostamento", 0);
     else if (scostamentoFiltro === "negativo") q = q.lt("fido_teorico_cliente.scostamento", 0);
     // Come oggi: scostamento vuoto conta come 0.
@@ -675,8 +710,7 @@ function ClientiPage() {
         .or(`ultima_data_fatturazione.is.null,ultima_data_fatturazione.lt.${cutoffIso}`)
         .or(`doc_da_fatturare.is.null,doc_da_fatturare.lte.0`);
     }
-    if (storeFiltro === "__none__") q = q.is("store_id", null);
-    else if (storeFiltro !== "tutti") q = q.eq("store_id", storeFiltro);
+    q = filtroElenco(q, "store_id", storeFiltro);
     if (soloConFidoAttivo) q = q.gt("fido_gestionale", 0);
     if (fasciaConcesso !== "tutti") {
       const range = FASCE_CONCESSO[fasciaConcesso];
@@ -696,10 +730,8 @@ function ClientiPage() {
     else if (filtroLegale === "non_in_legale") q = q.eq("in_gestione_legale", false);
     if (filtroTipoSoggetto === "fisica") q = q.eq("tipo_soggetto", "persona_fisica");
     else if (filtroTipoSoggetto === "giuridica") q = q.eq("tipo_soggetto", "azienda");
-    if (filtroAgente === "__none__") q = q.is("codice_agente", null);
-    else if (filtroAgente !== "tutti") q = q.eq("codice_agente", filtroAgente);
-    if (filtroMestiere === "__none__") q = q.is("mestiere_id", null);
-    else if (filtroMestiere !== "tutti") q = q.eq("mestiere_id", filtroMestiere);
+    q = filtroElenco(q, "codice_agente", filtroAgente);
+    q = filtroElenco(q, "mestiere_id", filtroMestiere);
 
 
     // Fido residuo: fascia E range slider applicati insieme
@@ -1102,16 +1134,16 @@ function ClientiPage() {
     (search ? 1 : 0) +
     (statoCliente !== "attivi" ? 1 : 0) +
     (statoAttivita !== "attivi" ? 1 : 0) +
-    (storeFiltro !== "tutti" ? 1 : 0) +
+    (storeFiltro.length > 0 ? 1 : 0) +
     (statoFido.size > 0 ? 1 : 0) +
-    (semaforoFiltro !== "tutti" ? 1 : 0) +
+    (semaforoFiltro.length > 0 ? 1 : 0) +
     (filtroBlocco !== "tutti" ? 1 : 0) +
     (privacyFiltro !== "tutti" ? 1 : 0) +
     (filtroAssic !== "tutti" ? 1 : 0) +
     (filtroLegale !== "tutti" ? 1 : 0) +
     (filtroTipoSoggetto !== "giuridica" ? 1 : 0) +
-    (filtroAgente !== "tutti" ? 1 : 0) +
-    (filtroMestiere !== "tutti" ? 1 : 0) +
+    (filtroAgente.length > 0 ? 1 : 0) +
+    (filtroMestiere.length > 0 ? 1 : 0) +
     (filtroRichiesta !== "tutti" ? 1 : 0) +
     (scadenziarioFiltro !== "tutti" ? 1 : 0) +
     (totaleRischioFiltro !== "tutti" ? 1 : 0) +
@@ -1220,16 +1252,11 @@ function ClientiPage() {
   }
 
   const StoreSelect = isStoreManager ? null : (
-    <Select value={storeFiltro} onValueChange={setStoreFiltro}>
-      <SelectTrigger className="w-full"><SelectValue placeholder="Punto vendita" /></SelectTrigger>
-      <SelectContent>
-        <SelectItem value="tutti">Tutti i punti vendita</SelectItem>
-        <SelectItem value="__none__">Senza punto vendita</SelectItem>
-        {(stores ?? []).map((s) => (
-          <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <FiltroMultiplo
+      etichetta="Punto vendita" testoTutti="Tutti i punti vendita" className="h-10"
+      opzioni={[{ valore: "__none__", label: "Senza punto vendita" }, ...(stores ?? []).map((s) => ({ valore: s.id, label: s.nome }))]}
+      selezionati={storeFiltro} onChange={setStoreFiltro}
+    />
   );
 
   const StatoFidoPopover = (
@@ -1259,17 +1286,11 @@ function ClientiPage() {
   );
 
   const SemaforoSelect = (
-    <Select value={semaforoFiltro} onValueChange={setSemaforoFiltro}>
-      <SelectTrigger className="w-full"><SelectValue placeholder="Semaforo" /></SelectTrigger>
-      <SelectContent>
-        <SelectItem value="tutti">Tutti i semafori</SelectItem>
-        <SelectItem value="verde">🟢 Verde</SelectItem>
-        <SelectItem value="giallo">🟡 Giallo</SelectItem>
-        <SelectItem value="arancione">🟠 Arancione</SelectItem>
-        <SelectItem value="rosso">🔴 Rosso</SelectItem>
-        <SelectItem value="spento">⚪ Spento</SelectItem>
-      </SelectContent>
-    </Select>
+    <FiltroMultiplo
+      etichetta="Semaforo" testoTutti="Tutti i semafori" className="h-10"
+      opzioni={OPZIONI_SEMAFORO}
+      selezionati={semaforoFiltro} onChange={setSemaforoFiltro}
+    />
   );
 
   const StatoAttivitaSelect = (
@@ -1443,29 +1464,19 @@ function ClientiPage() {
   );
 
   const AgenteSelect = (
-    <Select value={filtroAgente} onValueChange={setFiltroAgente}>
-      <SelectTrigger className="w-full"><SelectValue placeholder="Agente" /></SelectTrigger>
-      <SelectContent>
-        <SelectItem value="tutti">Tutti gli agenti</SelectItem>
-        <SelectItem value="__none__">Senza agente</SelectItem>
-        {(agenti ?? []).map((a) => (
-          <SelectItem key={a.codice} value={a.codice}>{a.descrizione}</SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <FiltroMultiplo
+      etichetta="Agente" testoTutti="Tutti gli agenti" cercabile className="h-10"
+      opzioni={[{ valore: "__none__", label: "Senza agente" }, ...(agenti ?? []).map((a) => ({ valore: a.codice, label: a.descrizione }))]}
+      selezionati={filtroAgente} onChange={setFiltroAgente}
+    />
   );
 
   const MestiereSelect = (
-    <Select value={filtroMestiere} onValueChange={setFiltroMestiere}>
-      <SelectTrigger className="w-full"><SelectValue placeholder="Mestiere" /></SelectTrigger>
-      <SelectContent>
-        <SelectItem value="tutti">Tutti i mestieri</SelectItem>
-        <SelectItem value="__none__">Senza mestiere</SelectItem>
-        {(mestieriFiltro ?? []).map((m) => (
-          <SelectItem key={m.id} value={m.id}>{m.parent_id ? `— ${m.label}` : m.label}</SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <FiltroMultiplo
+      etichetta="Mestiere" testoTutti="Tutti i mestieri" cercabile className="h-10"
+      opzioni={[{ valore: "__none__", label: "Senza mestiere" }, ...(mestieriFiltro ?? []).map((m) => ({ valore: m.id, label: m.parent_id ? `— ${m.label}` : m.label }))]}
+      selezionati={filtroMestiere} onChange={setFiltroMestiere}
+    />
   );
 
   const ScostamentoSelect = (
@@ -1496,15 +1507,14 @@ function ClientiPage() {
   if (search) activeChips.push({ key: "search", label: `Ricerca: "${search}"`, onRemove: () => { setSearchInput(""); setSearch(""); } });
   if (statoCliente !== "attivi") activeChips.push({ key: "statoCliente", label: statoCliente === "disattivati" ? "Solo disattivati" : "Attivi+disattivati", onRemove: () => setStatoCliente("attivi") });
   if (statoAttivita !== "attivi") activeChips.push({ key: "statoAttivita", label: statoAttivita === "non_attivi" ? "Solo non attivi" : "Tutti (attività)", onRemove: () => setStatoAttivita("attivi") });
-  if (storeFiltro !== "tutti") {
-    const s = storeFiltro === "__none__" ? null : (stores ?? []).find((x) => x.id === storeFiltro);
-    const etichetta = storeFiltro === "__none__" ? "Senza punto vendita" : (s?.nome ?? "—");
-    activeChips.push({ key: "store", label: `Punto vendita: ${etichetta}`, onRemove: () => setStoreFiltro("tutti") });
+  if (storeFiltro.length > 0) {
+    const etichetta = etichettaElenco(storeFiltro, (v) => v === "__none__" ? "Senza punto vendita" : ((stores ?? []).find((x) => x.id === v)?.nome ?? "—"));
+    activeChips.push({ key: "store", label: `Punto vendita: ${etichetta}`, onRemove: () => setStoreFiltro([]) });
   }
   if (statoFido.size > 0) {
     activeChips.push({ key: "statoFido", label: `Stato fido: ${Array.from(statoFido).join(", ")}`, onRemove: () => setStatoFido(new Set()) });
   }
-  if (semaforoFiltro !== "tutti") activeChips.push({ key: "semaforo", label: `Semaforo: ${semaforoFiltro}`, onRemove: () => setSemaforoFiltro("tutti") });
+  if (semaforoFiltro.length > 0) activeChips.push({ key: "semaforo", label: `Semaforo: ${etichettaElenco(semaforoFiltro, (v) => v)}`, onRemove: () => setSemaforoFiltro([]) });
   if (scadenziarioFiltro !== "tutti") {
     const lbl = scadenziarioFiltro === "con_scaduto" ? "Con scaduto" : "Senza scaduto";
     activeChips.push({ key: "scaduto", label: lbl, onRemove: () => setScadenziarioFiltro("tutti") });
@@ -1524,13 +1534,13 @@ function ClientiPage() {
   if (filtroLegale !== "tutti") activeChips.push({ key: "legale", label: filtroLegale === "in_legale" ? "In gestione legale" : "Non in gestione legale", onRemove: () => setFiltroLegale("tutti") });
   if (filtroAssic !== "tutti") activeChips.push({ key: "assic", label: filtroAssic === "assicurati" ? "Assicurati" : "Non assicurati", onRemove: () => setFiltroAssic("tutti") });
   if (filtroTipoSoggetto !== "giuridica") activeChips.push({ key: "tipo", label: filtroTipoSoggetto === "fisica" ? "Tipo: Solo Privati" : "Tipo: Tutti (privati+imprese)", onRemove: () => setFiltroTipoSoggetto("giuridica") });
-  if (filtroAgente !== "tutti") {
-    const desc = filtroAgente === "__none__" ? "Senza agente" : ((agenti ?? []).find((a) => a.codice === filtroAgente)?.descrizione ?? filtroAgente);
-    activeChips.push({ key: "agente", label: `Agente: ${desc}`, onRemove: () => setFiltroAgente("tutti") });
+  if (filtroAgente.length > 0) {
+    const desc = etichettaElenco(filtroAgente, (v) => v === "__none__" ? "Senza agente" : ((agenti ?? []).find((a) => a.codice === v)?.descrizione ?? v));
+    activeChips.push({ key: "agente", label: `Agente: ${desc}`, onRemove: () => setFiltroAgente([]) });
   }
-  if (filtroMestiere !== "tutti") {
-    const desc = filtroMestiere === "__none__" ? "Senza mestiere" : ((mestieriFiltro ?? []).find((m) => m.id === filtroMestiere)?.label ?? filtroMestiere);
-    activeChips.push({ key: "mestiere", label: `Mestiere: ${desc}`, onRemove: () => setFiltroMestiere("tutti") });
+  if (filtroMestiere.length > 0) {
+    const desc = etichettaElenco(filtroMestiere, (v) => v === "__none__" ? "Senza mestiere" : ((mestieriFiltro ?? []).find((m) => m.id === v)?.label ?? v));
+    activeChips.push({ key: "mestiere", label: `Mestiere: ${desc}`, onRemove: () => setFiltroMestiere([]) });
   }
   if (filtroRichiesta !== "tutti") {
     activeChips.push({ key: "richiesta", label: filtroRichiesta === "escludi" ? "Esclusi con richiesta in corso" : "Solo con richiesta in corso", onRemove: () => setFiltroRichiesta("tutti") });
