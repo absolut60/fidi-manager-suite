@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { PdfPrivacyButton } from "@/components/pdf-privacy-button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -38,7 +39,7 @@ function PrivacyPage() {
   const isStoreManager = role === "store_manager";
 
   const [stato, setStato] = useState("tutti");
-  const [storeId, setStoreId] = useState("all");
+  const [storeId, setStoreId] = useState<string[]>([]);
   const [consensoFiltro, setConsensoFiltro] = useState("tutti");
   const [q, setQ] = useState("");
 
@@ -65,7 +66,7 @@ function PrivacyPage() {
 
   const rows = useMemo(() => {
     return (data ?? []).filter((r: any) => {
-      if (storeId !== "all" && r.clienti?.store_id !== storeId) return false;
+      if (storeId.length > 0 && !storeId.includes(r.clienti?.store_id ?? "")) return false;
       if (stato === "firmata" && !r.privacy_firmata) return false;
       if (stato === "non_firmata" && r.privacy_firmata) return false;
       if (consensoFiltro === "profilazione" && !r.consenso_profilazione) return false;
@@ -129,15 +130,11 @@ function PrivacyPage() {
           </div>
           {!isStoreManager && (
             <div className="w-56">
-              <Select value={storeId} onValueChange={setStoreId}>
-                <SelectTrigger><SelectValue placeholder="Store" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tutti gli store</SelectItem>
-                  {stores?.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FiltroMultiplo
+                etichetta="Store" testoTutti="Tutti gli store"
+                opzioni={(stores ?? []).map((s) => ({ valore: s.id, label: s.nome }))}
+                selezionati={storeId} onChange={setStoreId}
+              />
             </div>
           )}
         </div>

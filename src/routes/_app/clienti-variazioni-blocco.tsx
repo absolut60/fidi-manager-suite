@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { AlertTriangle, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,9 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -80,15 +78,15 @@ function ClientiVariazioniBloccoPage() {
   // Filtri e pagina conservati (useFiltriPagina).
   const { user } = useAuth();
   const { filtri: FV, setCampo } = useFiltriPagina("clienti-variazioni-blocco", {
-    tipo: "tutte" as "tutte" | "bloccato" | "sbloccato" | "in_legale" | "uscito_legale", search: "", storeId: "all", pagina: 0,
+    tipo: [] as string[], search: "", storeId: [] as string[], pagina: 0,
     periodo: "7g" as Periodo,
-  }, { userId: user?.id, valida: { periodo: (v) => v === "7g" || v === "30g" || v === "tutto" } });
+  }, { userId: user?.id, valida: { tipo: Array.isArray, storeId: Array.isArray, periodo: (v) => v === "7g" || v === "30g" || v === "tutto" } });
   const { tipo, search, pagina, periodo } = FV;
   const setPeriodo = (v: Periodo) => setCampo("periodo", v);
 
-  const setTipo = (v: typeof tipo) => setCampo("tipo", v);
+  const setTipo = (v: string[]) => setCampo("tipo", v);
   const setSearch = (v: string) => setCampo("search", v);
-  const setStoreId = (v: string) => setCampo("storeId", v);
+  const setStoreId = (v: string[]) => setCampo("storeId", v);
   const setPagina = (v: number | ((p: number) => number)) => setCampo("pagina", v);
   const [qApplied, setQApplied] = useState(() => FV.search.trim());
 
@@ -126,12 +124,12 @@ function ClientiVariazioniBloccoPage() {
   });
   const showStoreFilter = (negozi?.length ?? 0) > 1;
   // Filtro negozio non visibile (un solo negozio): il valore salvato non si applica.
-  const storeId = showStoreFilter ? FV.storeId : "all";
+  const storeId = showStoreFilter ? FV.storeId : [];
 
   const attiviCount = [
-    tipo !== "tutte",
+    tipo.length > 0,
     qApplied !== "",
-    storeId !== "all",
+    storeId.length > 0,
   ].filter(Boolean).length;
 
   const { data, isLoading } = useQuery({
@@ -145,9 +143,9 @@ function ClientiVariazioniBloccoPage() {
         .order("rilevato_at", { ascending: false })
         .range(pagina * PER_PAGE, pagina * PER_PAGE + PER_PAGE - 1);
       if (soglia) q = q.gte("rilevato_at", soglia);
-      if (tipo !== "tutte") q = q.eq("tipo", tipo);
+      if (tipo.length > 0) q = q.in("tipo", tipo);
 
-      if (storeId !== "all") q = q.eq("store_id", storeId);
+      if (storeId.length > 0) q = q.in("store_id", storeId);
       if (qApplied) {
         q = q.or(`codice_gestionale.ilike.%${qApplied}%,ragione_sociale.ilike.%${qApplied}%`);
       }
@@ -207,28 +205,24 @@ function ClientiVariazioniBloccoPage() {
               </div>
             </div>
             <div className="w-full sm:w-44">
-              <Select value={tipo} onValueChange={(v) => { setTipo(v as typeof tipo); setPagina(0); }}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="tutte">Tutte</SelectItem>
-                  <SelectItem value="bloccato">Bloccati</SelectItem>
-                  <SelectItem value="sbloccato">Sbloccati</SelectItem>
-                  <SelectItem value="in_legale">Entrati in legale</SelectItem>
-                  <SelectItem value="uscito_legale">Usciti dal legale</SelectItem>
-                </SelectContent>
-              </Select>
+              <FiltroMultiplo
+                etichetta="Tipo" testoTutti="Tutte"
+                opzioni={[
+                  { valore: "bloccato", label: "Bloccati" },
+                  { valore: "sbloccato", label: "Sbloccati" },
+                  { valore: "in_legale", label: "Entrati in legale" },
+                  { valore: "uscito_legale", label: "Usciti dal legale" },
+                ]}
+                selezionati={tipo} onChange={(v) => { setTipo(v); setPagina(0); }}
+              />
             </div>
             {showStoreFilter && (
               <div className="w-full sm:w-52">
-                <Select value={storeId} onValueChange={(v) => { setStoreId(v); setPagina(0); }}>
-                  <SelectTrigger><SelectValue placeholder="Negozio" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tutti i negozi</SelectItem>
-                    {(negozi ?? []).map(([id, nome]) => (
-                      <SelectItem key={id} value={id}>{nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <FiltroMultiplo
+                  etichetta="Negozio" testoTutti="Tutti i negozi"
+                  opzioni={(negozi ?? []).map(([id, nome]) => ({ valore: id, label: nome }))}
+                  selezionati={storeId} onChange={(v) => { setStoreId(v); setPagina(0); }}
+                />
               </div>
             )}
           </div>

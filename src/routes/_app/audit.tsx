@@ -19,13 +19,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 
@@ -46,7 +40,7 @@ export const Route = createFileRoute("/_app/audit")({
 function AuditPage() {
   const { role, loading } = useAuth();
   const [rows, setRows] = useState<AuditRow[]>([]);
-  const [filtroEntita, setFiltroEntita] = useState<string>("tutte");
+  const [filtroEntita, setFiltroEntita] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [loadingData, setLoadingData] = useState(true);
 
@@ -77,7 +71,7 @@ function AuditPage() {
   }
 
   const filtered = rows.filter((r) => {
-    if (filtroEntita !== "tutte" && r.entita !== filtroEntita) return false;
+    if (filtroEntita.length > 0 && !filtroEntita.includes(r.entita)) return false;
     if (search) {
       const s = search.toLowerCase();
       return (
@@ -105,16 +99,14 @@ function AuditPage() {
               onChange={(e) => setSearch(e.target.value)}
               className="max-w-sm"
             />
-            <Select value={filtroEntita} onValueChange={setFiltroEntita}>
-              <SelectTrigger className="w-48">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutte">Tutte le entità</SelectItem>
-                <SelectItem value="richiesta_fido">Richieste fido</SelectItem>
-                <SelectItem value="cliente">Clienti</SelectItem>
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Entità" testoTutti="Tutte le entità" className="w-48"
+              opzioni={[
+                { valore: "richiesta_fido", label: "Richieste fido" },
+                { valore: "cliente", label: "Clienti" },
+              ]}
+              selezionati={filtroEntita} onChange={setFiltroEntita}
+            />
           </div>
         </CardHeader>
         <CardContent>

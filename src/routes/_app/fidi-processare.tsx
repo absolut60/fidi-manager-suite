@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { aggiornaRichiesteABlocchi } from "@/lib/richieste-fido-azioni-massive";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -319,19 +320,20 @@ function GestireTab({
   // Filtri conservati (useFiltriPagina); date gia' stringhe "AAAA-MM-GG".
   const { user: utenteFiltri } = useAuth();
   const { filtri: FG, setCampo, reset: resetFiltri } = useFiltriPagina("fidi-processare:gestire", {
-    storeFilter: "all", statoFilter: "all", dataDa: "", dataA: "", search: "",
+    storeFilter: [] as string[], statoFilter: [] as string[], dataDa: "", dataA: "", search: "",
   }, { userId: utenteFiltri?.id, valida: {
+    storeFilter: Array.isArray, statoFilter: Array.isArray,
     dataDa: (v) => v === "" || /^\d{4}-\d{2}-\d{2}$/.test(String(v)),
     dataA: (v) => v === "" || /^\d{4}-\d{2}-\d{2}$/.test(String(v)),
   } });
   const { storeFilter, statoFilter, dataDa, dataA, search } = FG;
-  const setStoreFilter = (v: string) => setCampo("storeFilter", v);
-  const setStatoFilter = (v: string) => setCampo("statoFilter", v);
+  const setStoreFilter = (v: string[]) => setCampo("storeFilter", v);
+  const setStatoFilter = (v: string[]) => setCampo("statoFilter", v);
   const setDataDa = (v: string) => setCampo("dataDa", v);
   const setDataA = (v: string) => setCampo("dataA", v);
   const setSearch = (v: string) => setCampo("search", v);
 
-  const filtriAttivi = [search.trim() !== "", storeFilter !== "all", statoFilter !== "all", !!dataDa, !!dataA].filter(Boolean).length;
+  const filtriAttivi = [search.trim() !== "", storeFilter.length > 0, statoFilter.length > 0, !!dataDa, !!dataA].filter(Boolean).length;
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [erroreDialog, setErroreDialog] = useState<any | null>(null);
   const [erroreNote, setErroreNote] = useState("");
@@ -339,8 +341,8 @@ function GestireTab({
 
   const filtered = useMemo(() => {
     return rows.filter((r) => {
-      if (storeFilter !== "all" && r.store_id !== storeFilter) return false;
-      if (statoFilter !== "all" && r.stato_export !== statoFilter) return false;
+      if (storeFilter.length > 0 && !storeFilter.includes(r.store_id)) return false;
+      if (statoFilter.length > 0 && !statoFilter.includes(r.stato_export)) return false;
       const d = (r.data_chiusura ?? r.updated_at)?.slice(0, 10) ?? "";
       if (dataDa && d < dataDa) return false;
       if (dataA && d > dataA) return false;
@@ -379,22 +381,22 @@ function GestireTab({
         >
           <div className="flex flex-wrap items-center gap-2">
             <Input placeholder="Cerca ragione sociale, cod. gestionale o P.IVA..." value={search} onChange={(e) => setSearch(e.target.value)} className="flex-1 min-w-[220px]" />
-            <Select value={storeFilter} onValueChange={setStoreFilter}>
-              <SelectTrigger className="flex-1 min-w-[160px] sm:flex-none sm:w-44"><SelectValue placeholder="Store" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tutti gli store</SelectItem>
-                {stores.map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={statoFilter} onValueChange={setStatoFilter}>
-              <SelectTrigger className="flex-1 min-w-[160px] sm:flex-none sm:w-44"><SelectValue placeholder="Stato export" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tutti gli stati</SelectItem>
-                <SelectItem value="da_esportare">Da esportare</SelectItem>
-                <SelectItem value="esportata">Esportata</SelectItem>
-                <SelectItem value="errore_export">Errore</SelectItem>
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Store" testoTutti="Tutti gli store"
+              className="flex-1 min-w-[160px] sm:flex-none sm:w-44"
+              opzioni={stores.map((s) => ({ valore: s.id, label: s.nome }))}
+              selezionati={storeFilter} onChange={setStoreFilter}
+            />
+            <FiltroMultiplo
+              etichetta="Stato export" testoTutti="Tutti gli stati"
+              className="flex-1 min-w-[160px] sm:flex-none sm:w-44"
+              opzioni={[
+                { valore: "da_esportare", label: "Da esportare" },
+                { valore: "esportata", label: "Esportata" },
+                { valore: "errore_export", label: "Errore" },
+              ]}
+              selezionati={statoFilter} onChange={setStatoFilter}
+            />
             <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
               <Label className="text-xs">Dal</Label>
               <Input type="date" value={dataDa} onChange={(e) => setDataDa(e.target.value)} className="flex-1 min-w-[140px] sm:flex-none sm:w-40" />
@@ -623,10 +625,10 @@ function StoricoTab({
   // Filtri conservati (useFiltriPagina); "mostra tutto" non si conserva.
   const { user: utenteFiltri } = useAuth();
   const { filtri: FS, setCampo } = useFiltriPagina("fidi-processare:storico", {
-    storeFilter: "all", meseFiltro: "ultimi3",
-  }, { userId: utenteFiltri?.id });
+    storeFilter: [] as string[], meseFiltro: "ultimi3",
+  }, { userId: utenteFiltri?.id, valida: { storeFilter: Array.isArray } });
   const { storeFilter, meseFiltro } = FS;
-  const setStoreFilter = (v: string) => setCampo("storeFilter", v);
+  const setStoreFilter = (v: string[]) => setCampo("storeFilter", v);
   const setMeseFiltro = (v: string) => setCampo("meseFiltro", v);
   const [mostraTutto, setMostraTutto] = useState(false);
 
@@ -642,7 +644,7 @@ function StoricoTab({
 
   const filtered = useMemo(() => {
     let r = rows;
-    if (storeFilter !== "all") r = r.filter((x) => x.store_id === storeFilter);
+    if (storeFilter.length > 0) r = r.filter((x) => storeFilter.includes(x.store_id));
     if (!mostraTutto && meseFiltro === "ultimi3") {
       r = r.filter((x) => (x.data_processata ?? x.data_export ?? x.data_chiusura) >= cutoff);
     }
@@ -657,13 +659,11 @@ function StoricoTab({
   return (
     <div className="space-y-3">
       <Card className="p-3 flex flex-wrap items-center gap-2">
-        <Select value={storeFilter} onValueChange={setStoreFilter}>
-          <SelectTrigger className="w-44"><SelectValue placeholder="Store" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tutti gli store</SelectItem>
-            {stores.map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <FiltroMultiplo
+          etichetta="Store" testoTutti="Tutti gli store" className="w-44"
+          opzioni={stores.map((s) => ({ valore: s.id, label: s.nome }))}
+          selezionati={storeFilter} onChange={setStoreFilter}
+        />
         <Select value={meseFiltro} onValueChange={setMeseFiltro}>
           <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
           <SelectContent>
