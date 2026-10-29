@@ -87,13 +87,6 @@ export type Database = {
             foreignKeyName: "allegati_cliente_id_fkey"
             columns: ["cliente_id"]
             isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "allegati_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
           },
@@ -151,13 +144,6 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clienti"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "anomalie_import_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
             referencedColumns: ["id"]
           },
           {
@@ -447,13 +433,6 @@ export type Database = {
             foreignKeyName: "assicurazioni_credito_cliente_id_fkey"
             columns: ["cliente_id"]
             isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "assicurazioni_credito_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
           },
@@ -533,13 +512,6 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clienti"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "attivita_commerciale_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
             referencedColumns: ["id"]
           },
           {
@@ -687,13 +659,6 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clienti"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "azioni_recupero_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
             referencedColumns: ["id"]
           },
           {
@@ -958,13 +923,6 @@ export type Database = {
             foreignKeyName: "campagne_email_destinatari_cliente_id_fkey"
             columns: ["cliente_id"]
             isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "campagne_email_destinatari_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
           },
@@ -1171,13 +1129,6 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clienti"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "campagne_sollecito_destinatari_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
             referencedColumns: ["id"]
           },
           {
@@ -1495,13 +1446,6 @@ export type Database = {
             foreignKeyName: "cantieri_cliente_id_fkey"
             columns: ["cliente_id"]
             isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cantieri_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
           },
@@ -1558,13 +1502,6 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clienti"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "categoria_storico_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
             referencedColumns: ["id"]
           },
           {
@@ -1962,13 +1899,6 @@ export type Database = {
             foreignKeyName: "clienti_blocco_stato_cliente_id_fkey"
             columns: ["cliente_id"]
             isOneToOne: true
-            referencedRelation: "clienti_con_rischio"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "clienti_blocco_stato_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: true
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
           },
@@ -2014,13 +1944,6 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clienti"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "clienti_blocco_variazioni_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
             referencedColumns: ["id"]
           },
           {
@@ -2108,13 +2031,6 @@ export type Database = {
             foreignKeyName: "clienti_scaduto60_ingressi_cliente_id_fkey"
             columns: ["cliente_id"]
             isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "clienti_scaduto60_ingressi_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
           },
@@ -2156,13 +2072,6 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: true
             referencedRelation: "clienti"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "clienti_scaduto60_stato_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: true
-            referencedRelation: "clienti_con_rischio"
             referencedColumns: ["id"]
           },
           {
@@ -2342,13 +2251,6 @@ export type Database = {
             foreignKeyName: "consensi_log_cliente_id_fkey"
             columns: ["cliente_id"]
             isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "consensi_log_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
           },
@@ -2511,13 +2413,6 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clienti"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "contatti_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
             referencedColumns: ["id"]
           },
           {
@@ -2782,13 +2677,6 @@ export type Database = {
             foreignKeyName: "eventi_partecipanti_cliente_id_fkey"
             columns: ["cliente_id"]
             isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "eventi_partecipanti_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
           },
@@ -2906,13 +2794,6 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: true
             referencedRelation: "clienti"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fido_teorico_cliente_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: true
-            referencedRelation: "clienti_con_rischio"
             referencedColumns: ["id"]
           },
           {
@@ -3113,13 +2994,6 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clienti"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "iscritti_whatsapp_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
             referencedColumns: ["id"]
           },
           {
@@ -3394,13 +3268,6 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clienti"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lead_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
             referencedColumns: ["id"]
           },
           {
@@ -3700,13 +3567,6 @@ export type Database = {
             foreignKeyName: "marketing_opt_out_cliente_id_fkey"
             columns: ["cliente_id"]
             isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "marketing_opt_out_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
           },
@@ -3903,13 +3763,6 @@ export type Database = {
             foreignKeyName: "messaggi_whatsapp_cliente_id_fkey"
             columns: ["cliente_id"]
             isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "messaggi_whatsapp_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
           },
@@ -3983,13 +3836,6 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: true
             referencedRelation: "clienti"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "note_legali_gestionali_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: true
-            referencedRelation: "clienti_con_rischio"
             referencedColumns: ["id"]
           },
           {
@@ -4169,13 +4015,6 @@ export type Database = {
             foreignKeyName: "opportunita_cliente_id_fkey"
             columns: ["cliente_id"]
             isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "opportunita_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
           },
@@ -4239,13 +4078,6 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clienti"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "piani_rientro_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
             referencedColumns: ["id"]
           },
           {
@@ -4404,13 +4236,6 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clienti"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pratiche_legali_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
             referencedColumns: ["id"]
           },
           {
@@ -4580,13 +4405,6 @@ export type Database = {
             foreignKeyName: "preventivi_cliente_id_fkey"
             columns: ["cliente_id"]
             isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "preventivi_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
           },
@@ -4698,13 +4516,6 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clienti"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "promemoria_scadenza_log_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
             referencedColumns: ["id"]
           },
           {
@@ -4843,13 +4654,6 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clienti"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reminder_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
             referencedColumns: ["id"]
           },
           {
@@ -5005,13 +4809,6 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clienti"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "richieste_fido_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
             referencedColumns: ["id"]
           },
           {
@@ -5549,13 +5346,6 @@ export type Database = {
             foreignKeyName: "scadenze_cliente_id_fkey"
             columns: ["cliente_id"]
             isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "scadenze_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
           },
@@ -5623,13 +5413,6 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clienti"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "segmenti_marketing_clienti_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
             referencedColumns: ["id"]
           },
           {
@@ -5784,13 +5567,6 @@ export type Database = {
             foreignKeyName: "snapshot_scaduto_cliente_cliente_id_fkey"
             columns: ["cliente_id"]
             isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "snapshot_scaduto_cliente_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
           },
@@ -5898,13 +5674,6 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clienti"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "solleciti_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
             referencedColumns: ["id"]
           },
           {
@@ -6045,13 +5814,6 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clienti"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "storico_fido_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
             referencedColumns: ["id"]
           },
           {
@@ -6336,179 +6098,6 @@ export type Database = {
       }
     }
     Views: {
-      clienti_con_rischio: {
-        Row: {
-          a_scadere: number | null
-          abi: string | null
-          agenzia: string | null
-          attivo: boolean | null
-          banca: string | null
-          cab: string | null
-          cap: string | null
-          citta: string | null
-          codice_fiscale: string | null
-          codice_gestionale: string | null
-          codice_sdi: string | null
-          condizione_pagamento_cod: string | null
-          condizione_pagamento_desc: string | null
-          condizioni_pagamento: string | null
-          created_at: string | null
-          created_by: string | null
-          data_firma: string | null
-          dichiarante_cognome: string | null
-          dichiarante_nome: string | null
-          dilazione_concordata: number | null
-          dilazione_effettiva: number | null
-          doc_da_evadere: number | null
-          doc_da_fatturare: number | null
-          effetti_a_rischio: number | null
-          email: string | null
-          fido: number | null
-          fido_gestionale: number | null
-          fido_residuo: number | null
-          firma_url: string | null
-          id: string | null
-          indirizzo: string | null
-          note: string | null
-          num_insoluti: number | null
-          partita_iva: string | null
-          pec: string | null
-          percentuale_utilizzo_fido: number | null
-          privacy_firmata: boolean | null
-          privacy_pdf_url: string | null
-          privacy_token: string | null
-          privacy_token_expires_at: string | null
-          provincia: string | null
-          ragione_sociale: string | null
-          saldo_contabile: number | null
-          scaduto: number | null
-          scheda_pdf_url: string | null
-          semaforo_rischio: string | null
-          store_id: string | null
-          telefono: string | null
-          tipo_soggetto: string | null
-          totale_rischio: number | null
-          ultima_sincronizzazione: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          a_scadere?: number | null
-          abi?: string | null
-          agenzia?: string | null
-          attivo?: boolean | null
-          banca?: string | null
-          cab?: string | null
-          cap?: string | null
-          citta?: string | null
-          codice_fiscale?: string | null
-          codice_gestionale?: string | null
-          codice_sdi?: string | null
-          condizione_pagamento_cod?: string | null
-          condizione_pagamento_desc?: string | null
-          condizioni_pagamento?: string | null
-          created_at?: string | null
-          created_by?: string | null
-          data_firma?: string | null
-          dichiarante_cognome?: string | null
-          dichiarante_nome?: string | null
-          dilazione_concordata?: number | null
-          dilazione_effettiva?: number | null
-          doc_da_evadere?: number | null
-          doc_da_fatturare?: number | null
-          effetti_a_rischio?: number | null
-          email?: string | null
-          fido?: number | null
-          fido_gestionale?: number | null
-          fido_residuo?: number | null
-          firma_url?: string | null
-          id?: string | null
-          indirizzo?: string | null
-          note?: string | null
-          num_insoluti?: number | null
-          partita_iva?: string | null
-          pec?: string | null
-          percentuale_utilizzo_fido?: never
-          privacy_firmata?: boolean | null
-          privacy_pdf_url?: string | null
-          privacy_token?: string | null
-          privacy_token_expires_at?: string | null
-          provincia?: string | null
-          ragione_sociale?: string | null
-          saldo_contabile?: number | null
-          scaduto?: number | null
-          scheda_pdf_url?: string | null
-          semaforo_rischio?: never
-          store_id?: string | null
-          telefono?: string | null
-          tipo_soggetto?: string | null
-          totale_rischio?: number | null
-          ultima_sincronizzazione?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          a_scadere?: number | null
-          abi?: string | null
-          agenzia?: string | null
-          attivo?: boolean | null
-          banca?: string | null
-          cab?: string | null
-          cap?: string | null
-          citta?: string | null
-          codice_fiscale?: string | null
-          codice_gestionale?: string | null
-          codice_sdi?: string | null
-          condizione_pagamento_cod?: string | null
-          condizione_pagamento_desc?: string | null
-          condizioni_pagamento?: string | null
-          created_at?: string | null
-          created_by?: string | null
-          data_firma?: string | null
-          dichiarante_cognome?: string | null
-          dichiarante_nome?: string | null
-          dilazione_concordata?: number | null
-          dilazione_effettiva?: number | null
-          doc_da_evadere?: number | null
-          doc_da_fatturare?: number | null
-          effetti_a_rischio?: number | null
-          email?: string | null
-          fido?: number | null
-          fido_gestionale?: number | null
-          fido_residuo?: number | null
-          firma_url?: string | null
-          id?: string | null
-          indirizzo?: string | null
-          note?: string | null
-          num_insoluti?: number | null
-          partita_iva?: string | null
-          pec?: string | null
-          percentuale_utilizzo_fido?: never
-          privacy_firmata?: boolean | null
-          privacy_pdf_url?: string | null
-          privacy_token?: string | null
-          privacy_token_expires_at?: string | null
-          provincia?: string | null
-          ragione_sociale?: string | null
-          saldo_contabile?: number | null
-          scaduto?: number | null
-          scheda_pdf_url?: string | null
-          semaforo_rischio?: never
-          store_id?: string | null
-          telefono?: string | null
-          tipo_soggetto?: string | null
-          totale_rischio?: number | null
-          ultima_sincronizzazione?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "clienti_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       fatturato_annuale_globale: {
         Row: {
           anno: number | null
@@ -6531,13 +6120,6 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clienti"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "scadenze_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
             referencedColumns: ["id"]
           },
           {
@@ -6568,13 +6150,6 @@ export type Database = {
             foreignKeyName: "scadenze_cliente_id_fkey"
             columns: ["cliente_id"]
             isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "scadenze_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
           },
@@ -6593,13 +6168,6 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clienti"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "scadenze_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
             referencedColumns: ["id"]
           },
           {
@@ -6735,13 +6303,6 @@ export type Database = {
             foreignKeyName: "eventi_partecipanti_cliente_id_fkey"
             columns: ["cliente_id"]
             isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "eventi_partecipanti_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
           },
@@ -6782,13 +6343,6 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clienti"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "consensi_log_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
-            referencedRelation: "clienti_con_rischio"
             referencedColumns: ["id"]
           },
           {
