@@ -648,6 +648,7 @@ function BozzeTab({
     setSelected(next);
   }
   const allSel = rows.length > 0 && selected.size === rows.length;
+  const toggleTutte = () => setSelected(allSel ? new Set() : new Set(rows.map((r) => r.id)));
 
   if (loading) return <SkeletonTable />;
   if (rows.length === 0) return <Empty label="Nessuna bozza" hint="Crea una nuova richiesta" />;
@@ -669,7 +670,9 @@ function BozzeTab({
           {invioMut.isPending && avanz && <Progress value={avanz.totali ? (avanz.fatte / avanz.totali) * 100 : 0} className="h-2" />}
         </div>
       )}
-      <ElencoSchede>
+      <ElencoSchede
+        selezioneTutti={{ tutti: allSel, alcuni: selected.size > 0, onChange: toggleTutte, etichetta: `Seleziona tutte (${rows.length.toLocaleString("it-IT")})` }}
+      >
         {rows.map((r) => (
           <SchedaLista
             key={r.id}
@@ -694,7 +697,7 @@ function BozzeTab({
       <Table className="min-w-[900px]">
         <TableHeader>
           <TableRow>
-            <TableHead className="w-8"><Checkbox checked={allSel} onCheckedChange={() => setSelected(allSel ? new Set() : new Set(rows.map((r) => r.id)))} /></TableHead>
+            <TableHead className="w-8"><Checkbox checked={allSel} onCheckedChange={toggleTutte} /></TableHead>
             <TableHead>Cliente</TableHead>
                 <TableHead className="w-16 text-center">Rischio</TableHead>
             <TableHead>Tipo</TableHead>
@@ -821,6 +824,7 @@ function InApprovazioneTab({
     setSelected(next);
   }
   const allSel = decidibili.length > 0 && decidibili.every((r) => selected.has(r.id));
+  const toggleTutte = () => setSelected(allSel ? new Set() : new Set(decidibili.map((r) => r.id)));
 
   // Stessa logica di approvazioni.tsx: una chiamata alla RPC (SECURITY DEFINER,
   // valida livello e stato) per ogni richiesta; importo approvato = richiesto.
@@ -889,7 +893,15 @@ function InApprovazioneTab({
               </div>
             </div>
           )}
-          <ElencoSchede>
+          <ElencoSchede
+            selezioneTutti={canApprove ? {
+              tutti: allSel,
+              alcuni: decidibili.some((r) => selected.has(r.id)),
+              disabled: decidibili.length === 0,
+              onChange: toggleTutte,
+              etichetta: `Seleziona tutte (${decidibili.length.toLocaleString("it-IT")})`,
+            } : undefined}
+          >
             {filtered.map((r) => {
               const g = giorniDa(r.data_invio);
               const livMio = canApprove && decidibile(r);
@@ -927,7 +939,7 @@ function InApprovazioneTab({
           <Table className="min-w-[1300px]">
             <TableHeader>
               <TableRow>
-                {canApprove && <TableHead className="w-8"><Checkbox checked={allSel} disabled={decidibili.length === 0} title="Seleziona tutte le richieste su cui puoi decidere" onCheckedChange={() => setSelected(allSel ? new Set() : new Set(decidibili.map((r) => r.id)))} /></TableHead>}
+                {canApprove && <TableHead className="w-8"><Checkbox checked={allSel} disabled={decidibili.length === 0} title="Seleziona tutte le richieste su cui puoi decidere" onCheckedChange={toggleTutte} /></TableHead>}
                 <TableHead>Cliente</TableHead>
                 <TableHead className="w-16 text-center">Rischio</TableHead>
                 {!isStoreManagerView(canApprove) && <TableHead>Store</TableHead>}
