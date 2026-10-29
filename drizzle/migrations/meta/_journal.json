@@ -624,6 +624,13 @@
       "when": 1793288287475,
       "tag": "0088_fm52_dashboard_iscritti_filtri_multipli_v2",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1793288931693,
+      "tag": "0089_fm52_segmenti_filtri_multipli",
+      "breakpoints": true
     }
   ]
 }
