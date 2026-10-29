@@ -5,6 +5,7 @@ import { ShieldCheck, Search, ShieldAlert, Clock, Wallet, AlertCircle, CalendarD
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -45,13 +46,13 @@ export default function AssicurazioniPage() {
   // Filtri conservati (useFiltriPagina).
   const { user } = useAuth();
   const { filtri: FS, setCampo } = useFiltriPagina("assicurazioni", {
-    stato: "tutti" as StatoFilter, storeId: "all", q: "", scadenza30: false,
-  }, { userId: user?.id });
+    stato: [] as string[], storeId: [] as string[], q: "", scadenza30: false,
+  }, { userId: user?.id, valida: { stato: Array.isArray, storeId: Array.isArray } });
   const { stato, q, scadenza30 } = FS;
   // Store manager: sempre il proprio negozio, qualunque valore sia salvato.
-  const storeId = isStoreManager && myStoreId ? myStoreId : FS.storeId;
-  const setStato = (v: StatoFilter) => setCampo("stato", v);
-  const setStoreId = (v: string) => setCampo("storeId", v);
+  const storeId = isStoreManager && myStoreId ? [myStoreId] : FS.storeId;
+  const setStato = (v: string[]) => setCampo("stato", v);
+  const setStoreId = (v: string[]) => setCampo("storeId", v);
   const setQ = (v: string) => setCampo("q", v);
   const setScadenza30 = (v: boolean | ((p: boolean) => boolean)) => setCampo("scadenza30", v);
 
@@ -84,7 +85,7 @@ export default function AssicurazioniPage() {
         .select("id, store_id, assicurazione_attiva, scaduto", { count: "exact", head: false })
         .eq("assicurazione_attiva", false)
         .gt("scaduto", 0);
-      if (storeId !== "all") q = q.eq("store_id", storeId);
+      if (storeId.length > 0) q = q.in("store_id", storeId);
       const { data, error } = await q;
       if (error) throw error;
       return data ?? [];
@@ -98,7 +99,7 @@ export default function AssicurazioniPage() {
     return (data ?? []).filter((r: any) => {
       const cli = r.clienti;
       if (!cli) return false;
-      if (storeId !== "all" && cli.store_id !== storeId) return false;
+      if (storeId.length > 0 && !storeId.includes(cli.store_id)) return false;
       return true;
     });
   }, [data, storeId]);
@@ -135,13 +136,15 @@ export default function AssicurazioniPage() {
         if (r.stato !== "attiva") return false;
         if (!r.data_scadenza || r.data_scadenza < today || r.data_scadenza > in30) return false;
       }
-      if (stato === "sinistro" && !r.sinistro_aperto) return false;
-      if (stato === "attiva") {
-        if (r.stato !== "attiva") return false;
-        if (r.data_scadenza && r.data_scadenza < today) return false;
-      }
-      if (stato === "scaduta") {
-        if (!r.data_scadenza || r.data_scadenza >= today) return false;
+      // Più stati scelti: basta che la polizza corrisponda ad almeno uno.
+      if (stato.length > 0) {
+        const corrisponde = (s: string) => {
+          if (s === "sinistro") return !!r.sinistro_aperto;
+          if (s === "attiva") return r.stato === "attiva" && !(r.data_scadenza && r.data_scadenza < today);
+          if (s === "scaduta") return !!r.data_scadenza && r.data_scadenza < today;
+          return true;
+        };
+        if (!stato.some(corrisponde)) return false;
       }
       return true;
     });
@@ -164,9 +167,9 @@ export default function AssicurazioniPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <KpiCard label="Polizze attive" value={String(kpi.attive)} icon={ShieldCheck} accent="success" />
           <KpiCard label="Polizze scadute" value={String(kpi.scadute)} icon={ShieldAlert} accent="orange"
-            onClick={() => { setStato("scaduta"); setScadenza30(false); }} />
+            onClick={() => { setStato(["scaduta"]); setScadenza30(false); }} />
           <KpiCard label="In scadenza entro 30gg" value={String(kpi.inScad30)} icon={Clock} accent="amber"
-            onClick={() => { setScadenza30(true); setStato("tutti"); }} active={scadenza30} />
+            onClick={() => { setScadenza30(true); setStato([]); }} active={scadenza30} />
           <KpiCard label="Massimale totale coperto" value={fmtEuro(kpi.massimale)} icon={Wallet} accent="navy" />
           <KpiCard label="Clienti scoperti con insoluto" value={String(kpi.scoperti)} icon={AlertCircle} accent="destructive"
             tooltip="Clienti senza polizza attiva che hanno fatture scadute"
@@ -190,27 +193,23 @@ export default function AssicurazioniPage() {
             </div>
           </div>
           <div className="w-48">
-            <Select value={stato} onValueChange={(v) => setStato(v as StatoFilter)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutti">Tutti gli stati</SelectItem>
-                <SelectItem value="attiva">Attiva</SelectItem>
-                <SelectItem value="scaduta">Scaduta</SelectItem>
-                <SelectItem value="sinistro">Sinistro aperto</SelectItem>
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Stato" testoTutti="Tutti gli stati"
+              opzioni={[
+                { valore: "attiva", label: "Attiva" },
+                { valore: "scaduta", label: "Scaduta" },
+                { valore: "sinistro", label: "Sinistro aperto" },
+              ]}
+              selezionati={stato} onChange={setStato}
+            />
           </div>
           {!isStoreManager && (
             <div className="w-56">
-              <Select value={storeId} onValueChange={setStoreId}>
-                <SelectTrigger><SelectValue placeholder="Store" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tutti gli store</SelectItem>
-                  {stores?.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FiltroMultiplo
+                etichetta="Store" testoTutti="Tutti gli store"
+                opzioni={(stores ?? []).map((s) => ({ valore: s.id, label: s.nome }))}
+                selezionati={storeId} onChange={setStoreId}
+              />
             </div>
           )}
         </div>
