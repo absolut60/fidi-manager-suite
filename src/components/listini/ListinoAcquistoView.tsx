@@ -2,13 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { fetchFornitori, type ListinoAcquisto } from "@/lib/articoli-api";
 import { calcCosto } from "@/lib/pricing";
 import { EditableNumberCell } from "@/components/preventivatore/EditableNumberCell";
@@ -27,17 +21,16 @@ interface ArticoloLite {
 }
 interface ListinoRow extends ListinoAcquisto {}
 
-const ANY = "__any";
 
 export function ListinoAcquistoView() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [dSearch, setDSearch] = useState("");
-  const [fornId, setFornId] = useState<string | null>(null);
+  const [fornId, setFornId] = useState<string[]>([]);
   const [dataFrom, setDataFrom] = useState<string>("");
   const [mostraFiltri, setMostraFiltri] = useState(false);
-  const nFiltriAttivi = [fornId, dataFrom].filter(Boolean).length;
+  const nFiltriAttivi = [fornId.length > 0, !!dataFrom].filter(Boolean).length;
 
   useEffect(() => {
     const t = setTimeout(() => setDSearch(search), 300);
@@ -62,7 +55,7 @@ export function ListinoAcquistoView() {
         const s = dSearch.trim().replace(/[%,]/g, " ");
         aq = aq.or(`cod_gamma.ilike.%${s}%,descrizione.ilike.%${s}%`);
       }
-      if (fornId) aq = aq.eq("fornitore_id", fornId);
+      if (fornId.length > 0) aq = aq.in("fornitore_id", fornId);
       const { data: arts, error: aErr } = await aq;
       if (aErr) {
         console.error("ListinoAcquistoView articoli query error:", aErr);
@@ -200,19 +193,12 @@ export function ListinoAcquistoView() {
             />
           </div>
           <div className="lg:col-span-3">
-            <Select value={fornId ?? ANY} onValueChange={(v) => setFornId(v === ANY ? null : v)}>
-              <SelectTrigger className="h-9 text-sm">
-                <SelectValue placeholder="Fornitore" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ANY}>Tutti i fornitori</SelectItem>
-                {fornitori.map((f) => (
-                  <SelectItem key={f.id} value={f.id}>
-                    {f.ragione_sociale}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Fornitore" testoTutti="Tutti i fornitori" cercabile
+              className="text-sm"
+              opzioni={fornitori.map((f) => ({ valore: f.id, label: f.ragione_sociale }))}
+              selezionati={fornId} onChange={setFornId}
+            />
           </div>
           <div className="lg:col-span-2">
             <Input
