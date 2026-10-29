@@ -652,6 +652,20 @@
       "when": 1793303714321,
       "tag": "0092_fm54_osservazione_ricollegamento_scadenze",
       "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1793311485792,
+      "tag": "0093_0093_fm54_scadenze_chiuse_anticipo_helper",
+      "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1793311528555,
+      "tag": "0094_fm54_scadenze_chiuse_anticipo_uso",
+      "breakpoints": true
     }
   ]
 }

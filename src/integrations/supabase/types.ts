@@ -6522,6 +6522,18 @@ export type Database = {
         }
         Returns: string
       }
+      categoria_scadenza_riga: {
+        Args: {
+          _data_pagamento_effettiva: string
+          _data_scadenza: string
+          _giorni_ritardo: number
+          _importo_pagato: number
+          _oggi: string
+          _stato_contabile: string
+          _tempi_scadenza_key: string
+        }
+        Returns: string
+      }
       cerca_candidati_per_dati: {
         Args: {
           _cellulare: string
@@ -8047,6 +8059,15 @@ export type Database = {
         Returns: {
           cliente_id: string
         }[]
+      }
+      scadenza_chiusa_anticipata: {
+        Args: {
+          _data_pagamento_effettiva: string
+          _importo_pagato: number
+          _stato_contabile: string
+          _tempi_scadenza_key: string
+        }
+        Returns: boolean
       }
       scadenziario_clienti_base: {
         Args: {
