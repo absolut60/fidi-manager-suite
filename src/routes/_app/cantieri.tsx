@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -470,15 +471,11 @@ function Filtri({
             <SelectItem value="false">Solo chiusi</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={categoriaF} onValueChange={setCategoriaF}>
-          <SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="tutte">Tutte le categorie</SelectItem>
-            {CATEGORIE_CANTIERE.map((c) => (
-              <SelectItem key={c} value={c}>{CATEGORIA_LABEL[c]}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <FiltroMultiplo
+          etichetta="Categoria" testoTutti="Tutte le categorie"
+          opzioni={CATEGORIE_CANTIERE.map((c) => ({ valore: c, label: CATEGORIA_LABEL[c] }))}
+          selezionati={categoriaF} onChange={setCategoriaF}
+        />
       </div>
     </FiltriCollassabili>
   );
