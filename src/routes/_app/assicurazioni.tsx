@@ -34,7 +34,6 @@ function fmtDate(v: unknown): string {
   try { return new Date(String(v)).toLocaleDateString("it-IT"); } catch { return String(v); }
 }
 
-type StatoFilter = "tutti" | "attiva" | "scaduta" | "sinistro";
 
 export default function AssicurazioniPage() {
   const navigate = useNavigate();
