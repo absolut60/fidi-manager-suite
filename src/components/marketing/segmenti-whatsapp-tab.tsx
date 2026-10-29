@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -24,17 +25,16 @@ import {
   type DestinatarioWhatsappInput,
 } from "@/lib/campagne-destinatari-whatsapp";
 
-type SemaforoValue = "tutti" | "rosso" | "arancione" | "giallo" | "verde";
-
 /** Sottoinsieme dei filtri email che ha senso per il canale WhatsApp. */
 type FiltriWa = {
-  storeFiltro: string;
-  filtroAgente: string;
-  macrocategoria: string;
-  categoria: string;
-  semaforo: SemaforoValue;
+  // Scelta multipla (FM52): elenco vuoto = tutti; passati come array a risolvi_pubblico_segmento.
+  storeFiltro: string[];
+  filtroAgente: string[];
+  macrocategoria: string[];
+  categoria: string[];
+  semaforo: string[];
   filtroBlocco: "tutti" | "bloccati" | "non_bloccati";
-  filtroTipoSoggetto: "tutti" | "fisica" | "giuridica";
+  filtroTipoSoggetto: string[];
   fatturato: "tutti" | "nessuno" | "0_10k" | "10k_50k" | "50k_100k" | "oltre_100k";
   citta: string;
   provincia: string;
@@ -42,13 +42,13 @@ type FiltriWa = {
 };
 
 const FILTRI_WA_DEFAULT: FiltriWa = {
-  storeFiltro: "tutti",
-  filtroAgente: "tutti",
-  macrocategoria: "tutti",
-  categoria: "tutti",
-  semaforo: "tutti",
+  storeFiltro: [],
+  filtroAgente: [],
+  macrocategoria: [],
+  categoria: [],
+  semaforo: [],
   filtroBlocco: "tutti",
-  filtroTipoSoggetto: "giuridica",
+  filtroTipoSoggetto: ["giuridica"],
   fatturato: "tutti",
   citta: "",
   provincia: "",
@@ -124,7 +124,7 @@ export function SegmentiWhatsappTab() {
   const filtriRpc = useMemo(
     () => ({
       ...filtri,
-      filtroConsenso: "tutti",
+      filtroConsenso: [] as string[],
       filtroEmail: "tutti",
       filtroDisiscritti: "tutti",
     }),
@@ -267,65 +267,62 @@ export function SegmentiWhatsappTab() {
           </div>
           <div>
             <Label className="text-xs">Punto vendita</Label>
-            <Select value={filtri.storeFiltro} onValueChange={(v) => setFiltri((p) => ({ ...p, storeFiltro: v }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutti">Tutti gli store</SelectItem>
-                {(stores ?? []).map((s: any) => (
-                  <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Punto vendita"
+              testoTutti="Tutti gli store"
+              cercabile
+              className="w-full"
+              opzioni={(stores ?? []).map((s: any) => ({ valore: s.id as string, label: s.nome as string }))}
+              selezionati={filtri.storeFiltro}
+              onChange={(v) => setFiltri((p) => ({ ...p, storeFiltro: v }))}
+            />
           </div>
           <div>
             <Label className="text-xs">Agente</Label>
-            <Select value={filtri.filtroAgente} onValueChange={(v) => setFiltri((p) => ({ ...p, filtroAgente: v }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutti">Tutti gli agenti</SelectItem>
-                <SelectItem value="__none__">Senza agente</SelectItem>
-                {(agenti ?? []).map((a) => (
-                  <SelectItem key={a.codice} value={a.codice}>{a.descrizione}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Agente"
+              testoTutti="Tutti gli agenti"
+              cercabile
+              className="w-full"
+              opzioni={[{ valore: "__none__", label: "Senza agente" }, ...(agenti ?? []).map((a) => ({ valore: a.codice, label: a.descrizione ?? a.codice }))]}
+              selezionati={filtri.filtroAgente}
+              onChange={(v) => setFiltri((p) => ({ ...p, filtroAgente: v }))}
+            />
           </div>
           <div>
             <Label className="text-xs">Macrocategoria</Label>
-            <Select value={filtri.macrocategoria} onValueChange={(v) => setFiltri((p) => ({ ...p, macrocategoria: v }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutti">Tutte</SelectItem>
-                {MACROCATEGORIE.map((m) => (
-                  <SelectItem key={m.codice} value={m.codice}>{m.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Macrocategoria"
+              testoTutti="Tutte"
+              cercabile
+              className="w-full"
+              opzioni={MACROCATEGORIE.map((m) => ({ valore: m.codice, label: m.label }))}
+              selezionati={filtri.macrocategoria}
+              onChange={(v) => setFiltri((p) => ({ ...p, macrocategoria: v }))}
+            />
           </div>
           <div>
             <Label className="text-xs">Categoria</Label>
-            <Select value={filtri.categoria} onValueChange={(v) => setFiltri((p) => ({ ...p, categoria: v }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutti">Tutte</SelectItem>
-                {CATEGORIE.map((c) => (
-                  <SelectItem key={c.codice} value={c.codice}>{c.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Categoria"
+              testoTutti="Tutte"
+              cercabile
+              className="w-full"
+              opzioni={CATEGORIE.map((c) => ({ valore: c.codice, label: c.label }))}
+              selezionati={filtri.categoria}
+              onChange={(v) => setFiltri((p) => ({ ...p, categoria: v }))}
+            />
           </div>
           <div>
             <Label className="text-xs">Semaforo rischio</Label>
-            <Select value={filtri.semaforo} onValueChange={(v) => setFiltri((p) => ({ ...p, semaforo: v as SemaforoValue }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutti">Tutti</SelectItem>
-                <SelectItem value="verde">Verde — regolari</SelectItem>
-                <SelectItem value="giallo">Giallo — scaduto</SelectItem>
-                <SelectItem value="arancione">Arancione — fido quasi esaurito</SelectItem>
-                <SelectItem value="rosso">Rosso — critici</SelectItem>
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Semaforo rischio"
+              testoTutti="Tutti"
+              className="w-full"
+              opzioni={[{ valore: "verde", label: "Verde — regolari" }, { valore: "giallo", label: "Giallo — scaduto" }, { valore: "arancione", label: "Arancione — fido quasi esaurito" }, { valore: "rosso", label: "Rosso — critici" }]}
+              selezionati={filtri.semaforo}
+              onChange={(v) => setFiltri((p) => ({ ...p, semaforo: v }))}
+            />
           </div>
           <div>
             <Label className="text-xs">Stato blocco</Label>
@@ -340,14 +337,14 @@ export function SegmentiWhatsappTab() {
           </div>
           <div>
             <Label className="text-xs">Tipo soggetto</Label>
-            <Select value={filtri.filtroTipoSoggetto} onValueChange={(v) => setFiltri((p) => ({ ...p, filtroTipoSoggetto: v as FiltriWa["filtroTipoSoggetto"] }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutti">Tutti</SelectItem>
-                <SelectItem value="giuridica">Solo imprese</SelectItem>
-                <SelectItem value="fisica">Solo privati</SelectItem>
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Tipo soggetto"
+              testoTutti="Tutti"
+              className="w-full"
+              opzioni={[{ valore: "giuridica", label: "Solo imprese" }, { valore: "fisica", label: "Solo privati" }]}
+              selezionati={filtri.filtroTipoSoggetto}
+              onChange={(v) => setFiltri((p) => ({ ...p, filtroTipoSoggetto: v }))}
+            />
           </div>
           <div>
             <Label className="text-xs">Fatturato</Label>

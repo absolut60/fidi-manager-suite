@@ -18,6 +18,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
+import { normalizzaFiltriSegmento } from "@/lib/segmenti-filtri";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -42,7 +44,6 @@ import { MARKETING_ROLES } from "@/lib/ruoli-marketing";
 
 // Stato filtri — stessi nomi/valori usati nella pagina Clienti (fonte unica),
 // serializzabile su segmenti_marketing.filtri (jsonb).
-type SemaforoValue = "tutti" | "rosso" | "arancione" | "giallo" | "verde" | "spento";
 type ConsensoFiltro = "tutti" | "marketing_diretto" | "marketing_media" | "profilazione";
 
 const CONSENSO_COLONNA: Record<Exclude<ConsensoFiltro, "tutti">, string> = {
@@ -52,15 +53,16 @@ const CONSENSO_COLONNA: Record<Exclude<ConsensoFiltro, "tutti">, string> = {
 };
 
 type Filtri = {
-  storeFiltro: string;                 // "tutti" | store_id
-  filtroAgente: string;                // "tutti" | "__none__" | codice_agente
-  macrocategoria: string;              // "tutti" | codice
-  categoria: string;                   // "tutti" | codice
-  semaforo: SemaforoValue;
+  // Scelta multipla (FM52): elenco vuoto = tutti. Segmenti vecchi (stringhe) via normalizzaFiltriSegmento.
+  storeFiltro: string[];               // store_id
+  filtroAgente: string[];              // "__none__" | codice_agente
+  macrocategoria: string[];            // codice
+  categoria: string[];                 // codice
+  semaforo: string[];                  // semaforo_stadio
   filtroBlocco: "tutti" | "bloccati" | "non_bloccati";
-  filtroTipoSoggetto: "tutti" | "fisica" | "giuridica";
+  filtroTipoSoggetto: string[];        // "fisica" | "giuridica"
   fatturato: "tutti" | "nessuno" | "0_10k" | "10k_50k" | "50k_100k" | "oltre_100k";
-  filtroConsenso: ConsensoFiltro;      // almeno un contatto con quel consenso attivo
+  filtroConsenso: string[];            // almeno un contatto con almeno uno dei consensi scelti
   filtroEmail: "tutti" | "con" | "senza";
   filtroDisiscritti: "tutti" | "escludi" | "solo";
   citta: string;
@@ -71,15 +73,15 @@ const TAB_ELENCO = "elenco";
 const TAB_SALVATI = "salvati";
 
 const FILTRI_DEFAULT: Filtri = {
-  storeFiltro: "tutti",
-  filtroAgente: "tutti",
-  macrocategoria: "tutti",
-  categoria: "tutti",
-  semaforo: "tutti",
+  storeFiltro: [],
+  filtroAgente: [],
+  macrocategoria: [],
+  categoria: [],
+  semaforo: [],
   filtroBlocco: "tutti",
-  filtroTipoSoggetto: "giuridica",
+  filtroTipoSoggetto: ["giuridica"],
   fatturato: "tutti",
-  filtroConsenso: "tutti",
+  filtroConsenso: [],
   filtroEmail: "tutti",
   filtroDisiscritti: "tutti",
   citta: "",
@@ -109,6 +111,19 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
   return out;
 }
 
+
+/** Filtro a elenco su colonna testo; "__none__" = valore NULL, in OR con gli altri. */
+function filtroElencoSegmento<Q extends { in: (c: string, v: string[]) => Q; is: (c: string, v: null) => Q; or: (f: string) => Q }>(q: Q, colonna: string, valori: string[]): Q {
+  if (valori.length === 0) return q;
+  const conNull = valori.includes("__none__");
+  const altri = valori.filter((v) => v !== "__none__");
+  if (conNull && altri.length === 0) return q.is(colonna, null);
+  if (!conNull) return q.in(colonna, altri);
+  const lista = altri.map((v) => `"${v.replace(/"/g, '\\"')}"`).join(",");
+  return q.or(`${colonna}.is.null,${colonna}.in.(${lista})`);
+}
+
+const TIPO_SOGGETTO_DB: Record<string, string> = { fisica: "persona_fisica", giuridica: "azienda" };
 
 function MarketingSegmentiPage() {
   const { roles, loading, user } = useAuth();
@@ -181,9 +196,10 @@ function MarketingSegmentiPage() {
   });
 
   const semaforoIds = useMemo<string[] | null>(() => {
-    if (filtri.semaforo === "tutti" || !classifList) return null;
+    if (filtri.semaforo.length === 0 || !classifList) return null;
+    const scelti = new Set(filtri.semaforo);
     return classifList
-      .filter((c: any) => c.semaforo_stadio === filtri.semaforo)
+      .filter((c: any) => scelti.has(c.semaforo_stadio))
       .map((c: any) => c.cliente_id as string);
   }, [classifList, filtri.semaforo]);
 
@@ -235,10 +251,15 @@ function MarketingSegmentiPage() {
   // === Filtro consenso: clienti con ALMENO UN contatto col consenso attivo ===
   const { data: consensoIds } = useQuery({
     queryKey: ["consenso-ids-marketing", filtri.filtroConsenso],
-    enabled: canSee && filtri.filtroConsenso !== "tutti",
+    enabled: canSee && filtri.filtroConsenso.length > 0,
     staleTime: 60_000,
     queryFn: async () => {
-      const col = CONSENSO_COLONNA[filtri.filtroConsenso as Exclude<ConsensoFiltro, "tutti">];
+      // OR tra i consensi scelti: contatto con almeno uno di quelli attivi.
+      const condizione = filtri.filtroConsenso
+        .map((k) => CONSENSO_COLONNA[k as Exclude<ConsensoFiltro, "tutti">])
+        .filter(Boolean)
+        .map((col) => `${col}.eq.true`)
+        .join(",");
       const ids = new Set<string>();
       let off = 0;
       const size = 1000;
@@ -247,7 +268,7 @@ function MarketingSegmentiPage() {
         const { data, error } = await supabase
           .from("contatti")
           .select("cliente_id")
-          .eq(col as any, true)
+          .or(condizione)
           .range(off, off + size - 1);
         if (error) throw error;
         const batch = (data ?? []) as Array<{ cliente_id: string }>;
@@ -328,15 +349,15 @@ function MarketingSegmentiPage() {
     let q = supabase.from("clienti").select(select, count ? { count } : undefined);
     // Solo clienti anagraficamente attivi (default coerente con clienti.tsx)
     q = q.eq("attivo", true);
-    if (filtri.storeFiltro !== "tutti") q = q.eq("store_id", filtri.storeFiltro);
-    if (filtri.filtroAgente === "__none__") q = q.is("codice_agente", null);
-    else if (filtri.filtroAgente !== "tutti") q = q.eq("codice_agente", filtri.filtroAgente);
-    if (filtri.macrocategoria !== "tutti") q = q.eq("codice_macrocategoria", filtri.macrocategoria);
-    if (filtri.categoria !== "tutti") q = q.eq("codice_categoria", filtri.categoria);
+    if (filtri.storeFiltro.length > 0) q = q.in("store_id", filtri.storeFiltro);
+    q = filtroElencoSegmento(q, "codice_agente", filtri.filtroAgente);
+    if (filtri.macrocategoria.length > 0) q = q.in("codice_macrocategoria", filtri.macrocategoria);
+    if (filtri.categoria.length > 0) q = q.in("codice_categoria", filtri.categoria);
     if (filtri.filtroBlocco === "bloccati") q = q.eq("bloccato", true);
     else if (filtri.filtroBlocco === "non_bloccati") q = q.eq("bloccato", false);
-    if (filtri.filtroTipoSoggetto === "fisica") q = q.eq("tipo_soggetto", "persona_fisica");
-    else if (filtri.filtroTipoSoggetto === "giuridica") q = q.eq("tipo_soggetto", "azienda");
+    if (filtri.filtroTipoSoggetto.length > 0) {
+      q = q.in("tipo_soggetto", filtri.filtroTipoSoggetto.map((t) => TIPO_SOGGETTO_DB[t] ?? t));
+    }
     if (filtri.ricerca.trim()) q = q.ilike("ragione_sociale", `%${filtri.ricerca.trim()}%`);
     if (filtri.citta.trim()) q = q.ilike("citta", `%${filtri.citta.trim()}%`);
     if (filtri.provincia.trim()) q = q.ilike("provincia", `%${filtri.provincia.trim()}%`);
@@ -348,9 +369,9 @@ function MarketingSegmentiPage() {
     return { q };
   }
 
-  const classifReady = filtri.semaforo === "tutti" || !!classifList;
+  const classifReady = filtri.semaforo.length === 0 || !!classifList;
   const fatturatoReady = filtri.fatturato === "tutti" || !!fatturatoIds;
-  const consensoReady = filtri.filtroConsenso === "tutti" || !!consensoIds;
+  const consensoReady = filtri.filtroConsenso.length === 0 || !!consensoIds;
   const emailReady = filtri.filtroEmail === "tutti" || !!emailValidaIds;
   const disiscrittiReady = filtri.filtroDisiscritti === "tutti" || !!disiscrittiIds;
 
@@ -654,7 +675,7 @@ function MarketingSegmentiPage() {
       if (error) throw error;
       return (data ?? []) as Array<{
         id: string; nome: string; descrizione: string | null;
-        filtri: Filtri; tipo: string | null; created_at: string;
+        filtri: unknown; tipo: string | null; created_at: string;
       }>;
     },
   });
@@ -738,19 +759,18 @@ function MarketingSegmentiPage() {
     onError: (e: any) => toast.error(e?.message ?? "Errore nell'eliminazione"),
   });
 
-  function caricaSegmento(f: Filtri | string | null) {
+  function caricaSegmento(f: unknown) {
     // jsonb può arrivare come stringa in alcuni casi: parse difensivo
-    let parsed: Partial<Filtri> = {};
     if (typeof f === "string") {
       try {
-        parsed = JSON.parse(f) as Partial<Filtri>;
+        JSON.parse(f);
       } catch {
         toast.error("Filtri del segmento non validi");
         return;
       }
-    } else if (f && typeof f === "object") {
-      parsed = f;
     }
+    // Fonte unica: formato vecchio (stringhe) -> elenchi.
+    const parsed = normalizzaFiltriSegmento(f) as Partial<Filtri>;
     // Merge con i default per essere robusti a salvataggi vecchi/parziali
     setListaStatica(null);
     setFiltri({ ...FILTRI_DEFAULT, ...parsed });
@@ -784,7 +804,7 @@ function MarketingSegmentiPage() {
       // Filtri neutri: la lista deve mostrare esattamente i clienti congelati.
       // Il reset-selezione legato al cambio filtri va saltato.
       skipResetSelezione.current = true;
-      setFiltri({ ...FILTRI_DEFAULT, filtroTipoSoggetto: "tutti" });
+      setFiltri({ ...FILTRI_DEFAULT, filtroTipoSoggetto: [] });
       setRicercaInput("");
       setListaStatica({ id: s.id, nome: s.nome, ids });
       setSelezionati(new Set(ids));
@@ -960,66 +980,62 @@ function MarketingSegmentiPage() {
           </div>
           <div>
             <Label className="text-xs">Punto vendita</Label>
-            <Select value={filtri.storeFiltro} onValueChange={(v) => setFiltri((p) => ({ ...p, storeFiltro: v }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutti">Tutti gli store</SelectItem>
-                {(stores ?? []).map((s: any) => (
-                  <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Punto vendita"
+              testoTutti="Tutti gli store"
+              cercabile
+              className="w-full"
+              opzioni={(stores ?? []).map((s: any) => ({ valore: s.id as string, label: s.nome as string }))}
+              selezionati={filtri.storeFiltro}
+              onChange={(v) => setFiltri((p) => ({ ...p, storeFiltro: v }))}
+            />
           </div>
           <div>
             <Label className="text-xs">Agente</Label>
-            <Select value={filtri.filtroAgente} onValueChange={(v) => setFiltri((p) => ({ ...p, filtroAgente: v }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutti">Tutti gli agenti</SelectItem>
-                <SelectItem value="__none__">Senza agente</SelectItem>
-                {(agenti ?? []).map((a) => (
-                  <SelectItem key={a.codice} value={a.codice}>{a.descrizione}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Agente"
+              testoTutti="Tutti gli agenti"
+              cercabile
+              className="w-full"
+              opzioni={[{ valore: "__none__", label: "Senza agente" }, ...(agenti ?? []).map((a) => ({ valore: a.codice, label: a.descrizione ?? a.codice }))]}
+              selezionati={filtri.filtroAgente}
+              onChange={(v) => setFiltri((p) => ({ ...p, filtroAgente: v }))}
+            />
           </div>
           <div>
             <Label className="text-xs">Macrocategoria</Label>
-            <Select value={filtri.macrocategoria} onValueChange={(v) => setFiltri((p) => ({ ...p, macrocategoria: v }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutti">Tutte</SelectItem>
-                {MACROCATEGORIE.map((m) => (
-                  <SelectItem key={m.codice} value={m.codice}>{m.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Macrocategoria"
+              testoTutti="Tutte"
+              cercabile
+              className="w-full"
+              opzioni={MACROCATEGORIE.map((m) => ({ valore: m.codice, label: m.label }))}
+              selezionati={filtri.macrocategoria}
+              onChange={(v) => setFiltri((p) => ({ ...p, macrocategoria: v }))}
+            />
           </div>
           <div>
             <Label className="text-xs">Categoria</Label>
-            <Select value={filtri.categoria} onValueChange={(v) => setFiltri((p) => ({ ...p, categoria: v }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutti">Tutte</SelectItem>
-                {CATEGORIE.map((c) => (
-                  <SelectItem key={c.codice} value={c.codice}>{c.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Categoria"
+              testoTutti="Tutte"
+              cercabile
+              className="w-full"
+              opzioni={CATEGORIE.map((c) => ({ valore: c.codice, label: c.label }))}
+              selezionati={filtri.categoria}
+              onChange={(v) => setFiltri((p) => ({ ...p, categoria: v }))}
+            />
           </div>
           <div>
             <Label className="text-xs">Semaforo rischio</Label>
-            <Select value={filtri.semaforo} onValueChange={(v) => setFiltri((p) => ({ ...p, semaforo: v as SemaforoValue }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutti">Tutti</SelectItem>
-                <SelectItem value="verde">Verde — regolari</SelectItem>
-                <SelectItem value="giallo">Giallo — scaduto</SelectItem>
-                <SelectItem value="arancione">Arancione — fido quasi esaurito</SelectItem>
-                <SelectItem value="rosso">Rosso — critici</SelectItem>
-                <SelectItem value="spento">Spento — nessun pagamento</SelectItem>
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Semaforo rischio"
+              testoTutti="Tutti"
+              className="w-full"
+              opzioni={[{ valore: "verde", label: "Verde — regolari" }, { valore: "giallo", label: "Giallo — scaduto" }, { valore: "arancione", label: "Arancione — fido quasi esaurito" }, { valore: "rosso", label: "Rosso — critici" }, { valore: "spento", label: "Spento — nessun pagamento" }]}
+              selezionati={filtri.semaforo}
+              onChange={(v) => setFiltri((p) => ({ ...p, semaforo: v }))}
+            />
           </div>
           <div>
             <Label className="text-xs">Stato blocco</Label>
@@ -1034,14 +1050,14 @@ function MarketingSegmentiPage() {
           </div>
           <div>
             <Label className="text-xs">Tipo soggetto</Label>
-            <Select value={filtri.filtroTipoSoggetto} onValueChange={(v) => setFiltri((p) => ({ ...p, filtroTipoSoggetto: v as Filtri["filtroTipoSoggetto"] }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutti">Tutti</SelectItem>
-                <SelectItem value="giuridica">Solo imprese</SelectItem>
-                <SelectItem value="fisica">Solo privati</SelectItem>
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Tipo soggetto"
+              testoTutti="Tutti"
+              className="w-full"
+              opzioni={[{ valore: "giuridica", label: "Solo imprese" }, { valore: "fisica", label: "Solo privati" }]}
+              selezionati={filtri.filtroTipoSoggetto}
+              onChange={(v) => setFiltri((p) => ({ ...p, filtroTipoSoggetto: v }))}
+            />
           </div>
           <div>
             <Label className="text-xs">Fatturato {annoCorrente}</Label>
@@ -1059,18 +1075,14 @@ function MarketingSegmentiPage() {
           </div>
           <div>
             <Label className="text-xs">Consenso marketing</Label>
-            <Select
-              value={filtri.filtroConsenso}
-              onValueChange={(v) => setFiltri((p) => ({ ...p, filtroConsenso: v as ConsensoFiltro }))}
-            >
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutti">Tutti</SelectItem>
-                <SelectItem value="marketing_diretto">Con {CONSENSO_LABEL.marketing_diretto}</SelectItem>
-                <SelectItem value="marketing_media">Con {CONSENSO_LABEL.marketing_media}</SelectItem>
-                <SelectItem value="profilazione">Con {CONSENSO_LABEL.profilazione}</SelectItem>
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Consenso marketing"
+              testoTutti="Tutti"
+              className="w-full"
+              opzioni={[{ valore: "marketing_diretto", label: `Con ${CONSENSO_LABEL.marketing_diretto}` }, { valore: "marketing_media", label: `Con ${CONSENSO_LABEL.marketing_media}` }, { valore: "profilazione", label: `Con ${CONSENSO_LABEL.profilazione}` }]}
+              selezionati={filtri.filtroConsenso}
+              onChange={(v) => setFiltri((p) => ({ ...p, filtroConsenso: v }))}
+            />
           </div>
           <div>
             <Label className="text-xs">Email valida</Label>
