@@ -26,9 +26,43 @@ export type DatiEsitoImport = {
   scartate: Array<{ codice: string; motivo: string; righe: number }>;
   anomalie: Array<{ tipo: string; totale: number; righe: RigaAnomaliaImport[] }>;
   scadenzeTolteElenco: RigaAnomaliaImport[];
+  /** FM54 osservazione: 'scadenza_ricollegabile' (nulla è stato spostato). */
+  ricollegabili?: number;
+  ricollegabiliConCollegamenti?: number;
+  ricollegabiliElenco?: RigaAnomaliaImport[];
+  /** FM54 osservazione: 'scadenza_collegamenti_persi'. */
+  collegamentiPersi?: number;
+  collegamentiPersiElenco?: RigaAnomaliaImport[];
   createdAt: string | null;
   completataAt: string | null;
 };
+
+/** Conteggi della coda " | azioni N | piani N | ... | segno_promemoria si/no". */
+function conteggiOsservazione(v: string | null | undefined) {
+  const t = v ?? "";
+  const num = (k: string) => Number(new RegExp(`(?:^|\\| )${k} (\\d+)`).exec(t)?.[1] ?? 0);
+  return {
+    azioni: num("azioni"), piani: num("piani"), promemoria: num("promemoria"),
+    solleciti: num("solleciti"), reminder: num("reminder"),
+    segno: /segno_promemoria si/.test(t),
+  };
+}
+
+export function haCollegamentiOsservazione(v: string | null | undefined): boolean {
+  const c = conteggiOsservazione(v);
+  return c.segno || c.azioni + c.piani + c.promemoria + c.solleciti + c.reminder > 0;
+}
+
+function testoCollegamenti(v: string | null | undefined): string {
+  const c = conteggiOsservazione(v);
+  const p = (q: number, s: string, pl: string) => (q > 0 ? `${n(q)} ${q === 1 ? s : pl}` : null);
+  const parti = [
+    p(c.azioni, "azione", "azioni"), p(c.piani, "piano", "piani"),
+    p(c.promemoria, "promemoria", "promemoria"), p(c.solleciti, "sollecito", "solleciti"),
+    p(c.reminder, "reminder", "reminder"), c.segno ? "segno promemoria" : null,
+  ].filter(Boolean);
+  return parti.length ? parti.join(", ") : "nessuno";
+}
 
 const ETICHETTE_FONTE: Record<string, string> = {
   scadenziario: "Scadenziario",
@@ -122,6 +156,7 @@ export function messaggioEsitoImport(d: DatiEsitoImport): string {
   const emailCorrette = d.anomalie.find((a) => a.tipo === "email_corretta")?.totale ?? 0;
   if (emailCorrette > 0) parti.push(`${n(emailCorrette)} ${emailCorrette === 1 ? "email corretta" : "email corrette"} automaticamente`);
   if (d.scadenzeTolte > 0) parti.push(`${n(d.scadenzeTolte)} scadenze tolte perché non più nel file`);
+  if ((d.ricollegabiliConCollegamenti ?? 0) > 0) parti.push(`${n(d.ricollegabiliConCollegamenti ?? 0)} scadenze cambiate in Gamma con collegamenti da ricollegare`);
   if (livelloEsitoImport(d) === "da_verificare") {
     parti.push(d.problemi[0] ?? "Import fallito");
   }
@@ -211,7 +246,26 @@ ${riga("Scadenze tolte perché non più nel file", n(d.scadenzeTolte))}
         return [[r.codice_gestionale, r.ragione_sociale].filter(Boolean).join(" — ") || "—", documento || "—", dataScadenza(data), importo(valore), stato || "—"];
       })) + (d.scadenzeTolte > 30 ? `<p>e altre ${n(d.scadenzeTolte - 30)}</p>` : "")
     : "";
-  const body = `<p>Import <strong>${escHtml(etichettaFonteImport(d.fonte))}</strong> concluso.</p>${tabella}${righeScartate}${anomalie}${scadenze}${riquadro}`;
+  const cliente = (r: RigaAnomaliaImport) => [r.codice_gestionale, r.ragione_sociale].filter(Boolean).join(" — ") || "—";
+  const parti5 = (v: string | null | undefined) => (v ?? "").split(" | ").map((x) => x.trim());
+  const ricollegabiliElenco = d.ricollegabiliElenco ?? [];
+  const ricollegabili = ricollegabiliElenco.length
+    ? titoloSezione("Scadenze cambiate in Gamma — collegamenti da ricollegare (osservazione, nulla è stato spostato)") +
+      tabellaDettagli(["Cliente", "Documento", "Variazione", "Collegamenti"], ricollegabiliElenco.map((r) => {
+        const [doc = "", , dataO = "", impO = ""] = parti5(r.valore_attuale);
+        const [, , dataN = "", impN = ""] = parti5(r.valore_nuovo);
+        return [cliente(r), doc || "—", `dal ${dataScadenza(dataO)} ${importo(impO)} al ${dataScadenza(dataN)} ${importo(impN)}`, testoCollegamenti(r.valore_nuovo)];
+      })) + ((d.ricollegabili ?? 0) > 30 ? `<p>e altre ${n((d.ricollegabili ?? 0) - 30)}</p>` : "")
+    : "";
+  const persiElenco = d.collegamentiPersiElenco ?? [];
+  const persi = persiElenco.length
+    ? titoloSezione("Collegamenti persi (documento non più nel file)") +
+      tabellaDettagli(["Cliente", "Documento", "Scadenza", "Collegamenti"], persiElenco.map((r) => {
+        const [doc = "", , dataO = "", impO = ""] = parti5(r.valore_attuale);
+        return [cliente(r), doc || "—", `dal ${dataScadenza(dataO)} ${importo(impO)}`, testoCollegamenti(r.valore_nuovo)];
+      })) + ((d.collegamentiPersi ?? 0) > 30 ? `<p>e altre ${n((d.collegamentiPersi ?? 0) - 30)}</p>` : "")
+    : "";
+  const body = `<p>Import <strong>${escHtml(etichettaFonteImport(d.fonte))}</strong> concluso.</p>${tabella}${righeScartate}${anomalie}${scadenze}${ricollegabili}${persi}${riquadro}`;
   const template = buildEmailTemplate({
     title: subject,
     body,

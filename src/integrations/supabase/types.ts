@@ -7810,6 +7810,10 @@ export type Database = {
       marca_messaggi_letti: { Args: { _richiesta_id: string }; Returns: number }
       normalizza_numero_it: { Args: { _raw: string }; Returns: string }
       normalizza_ragione_sociale: { Args: { _s: string }; Returns: string }
+      osserva_ricollegamento_scadenze: {
+        Args: { _importazione_id: string }
+        Returns: number
+      }
       peso_mese_fido: { Args: { _eta: number }; Returns: number }
       processa_richiesta_fido: {
         Args: {

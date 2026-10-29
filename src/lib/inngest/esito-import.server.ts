@@ -10,10 +10,12 @@ import { sendEmailViaEdge } from "./send-email.server";
 import {
   emailEsitoImport,
   dettaglioScartateImport,
+  haCollegamentiOsservazione,
   livelloEsitoImport,
   messaggioEsitoImport,
   titoloEsitoImport,
   type DatiEsitoImport,
+  type RigaAnomaliaImport,
 } from "@/lib/esito-import-messaggio";
 
 type RigaImportazione = {
@@ -72,13 +74,35 @@ export const notificaEsitoImport = inngest.createFunction(
         for (let offset = 0; ; offset += 1000) {
           const { data, error } = await supabaseAdmin.from("anomalie_import")
             .select("tipo_anomalia").eq("importazione_id", id)
-            .neq("tipo_anomalia", "scadenza_non_nel_file")
+            .not("tipo_anomalia", "in", "(scadenza_non_nel_file,scadenza_ricollegabile,scadenza_collegamenti_persi)")
             .order("id").range(offset, offset + 999);
           if (error) { logger.error(`tipi anomalie ${id}: ${error.message}`); break; }
           for (const r of data ?? []) tipi.add(r.tipo_anomalia);
           if ((data?.length ?? 0) < 1000) break;
         }
         const colonneAnomalia = "codice_gestionale, ragione_sociale, valore_attuale, valore_nuovo";
+        // Osservazione FM54: count exact sul tipo; le righe con almeno un
+        // collegamento (letto dalla coda dei conteggi) vengono mostrate per prime.
+        const leggiOsservazione = async (tipo: string) => {
+          const righe: RigaAnomaliaImport[] = [];
+          let totale = 0;
+          for (let offset = 0; ; offset += 1000) {
+            const { data, count, error } = await supabaseAdmin.from("anomalie_import")
+              .select(colonneAnomalia, { count: "exact" }).eq("importazione_id", id).eq("tipo_anomalia", tipo)
+              .order("id").range(offset, offset + 999);
+            if (error) { logger.error(`${tipo} ${id}: ${error.message}`); break; }
+            totale = count ?? totale;
+            righe.push(...(data ?? []));
+            if ((data?.length ?? 0) < 1000) break;
+          }
+          const conColl = righe.filter((r) => haCollegamentiOsservazione(r.valore_nuovo));
+          const senza = righe.filter((r) => !haCollegamentiOsservazione(r.valore_nuovo));
+          return { totale, conCollegamenti: conColl.length, righe: [...conColl, ...senza].slice(0, 30) };
+        };
+        const [ricollegabili, persi] = await Promise.all([
+          leggiOsservazione("scadenza_ricollegabile"),
+          leggiOsservazione("scadenza_collegamenti_persi"),
+        ]);
         const [tolte, ...gruppi] = await Promise.all([
           supabaseAdmin
           .from("anomalie_import")
@@ -107,6 +131,11 @@ export const notificaEsitoImport = inngest.createFunction(
           problemi: riga.problemi ?? [],
           scadenzeTolte: tolte.count ?? 0,
           scadenzeTolteElenco: tolte.data ?? [],
+          ricollegabili: ricollegabili.totale,
+          ricollegabiliConCollegamenti: ricollegabili.conCollegamenti,
+          ricollegabiliElenco: ricollegabili.righe,
+          collegamentiPersi: persi.totale,
+          collegamentiPersiElenco: persi.righe,
           scartate: dettaglioScartateImport(riga.report_saltati, riga.codici_mancanti),
           anomalie: gruppi.filter((g) => g.totale > 0),
           createdAt: riga.created_at,
