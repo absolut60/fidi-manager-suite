@@ -582,6 +582,13 @@
       "when": 1793209300106,
       "tag": "0082_fm51_escalation_solleciti",
       "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1793284059262,
+      "tag": "0083_fm52_scadenziario_filtri_multipli",
+      "breakpoints": true
     }
   ]
 }

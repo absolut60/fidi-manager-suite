@@ -7961,11 +7961,11 @@ export type Database = {
       get_richieste_con_messaggi_non_letti: { Args: never; Returns: string[] }
       get_scadenziario_ids: {
         Args: {
-          p_agente?: string
+          p_agenti?: string[]
           p_avvisato?: string
           p_escludi_bonifici?: boolean
           p_escludi_legale?: boolean
-          p_fascia?: string
+          p_fasce?: string[]
           p_importo_min?: number
           p_importo_min_a_scadere?: number
           p_mostra_a_credito?: boolean
@@ -7974,7 +7974,7 @@ export type Database = {
           p_situazione?: string
           p_stato_blocco?: string
           p_stato_legale?: string
-          p_store_id?: string
+          p_store_ids?: string[]
         }
         Returns: {
           cliente_id: string
@@ -7982,13 +7982,13 @@ export type Database = {
       }
       get_scadenziario_lista_paginata: {
         Args: {
-          p_agente?: string
+          p_agenti?: string[]
           p_anno_corrente?: number
           p_anno_prec?: number
           p_avvisato?: string
           p_escludi_bonifici?: boolean
           p_escludi_legale?: boolean
-          p_fascia?: string
+          p_fasce?: string[]
           p_importo_min?: number
           p_importo_min_a_scadere?: number
           p_mostra_a_credito?: boolean
@@ -8001,7 +8001,7 @@ export type Database = {
           p_sort_dir?: string
           p_stato_blocco?: string
           p_stato_legale?: string
-          p_store_id?: string
+          p_store_ids?: string[]
         }
         Returns: {
           avvisato_ha_email: boolean
@@ -8042,11 +8042,11 @@ export type Database = {
       }
       get_scadenziario_per_store: {
         Args: {
-          p_agente?: string
+          p_agenti?: string[]
           p_avvisato?: string
           p_escludi_bonifici?: boolean
           p_escludi_legale?: boolean
-          p_fascia?: string
+          p_fasce?: string[]
           p_importo_min?: number
           p_importo_min_a_scadere?: number
           p_mostra_a_credito?: boolean
@@ -8055,7 +8055,7 @@ export type Database = {
           p_situazione?: string
           p_stato_blocco?: string
           p_stato_legale?: string
-          p_store_id?: string
+          p_store_ids?: string[]
         }
         Returns: {
           n_bloccati: number
@@ -8071,11 +8071,11 @@ export type Database = {
       }
       get_scadenziario_totali: {
         Args: {
-          p_agente?: string
+          p_agenti?: string[]
           p_avvisato?: string
           p_escludi_bonifici?: boolean
           p_escludi_legale?: boolean
-          p_fascia?: string
+          p_fasce?: string[]
           p_importo_min?: number
           p_importo_min_a_scadere?: number
           p_mostra_a_credito?: boolean
@@ -8084,7 +8084,7 @@ export type Database = {
           p_situazione?: string
           p_stato_blocco?: string
           p_stato_legale?: string
-          p_store_id?: string
+          p_store_ids?: string[]
         }
         Returns: {
           n_bonifici_esclusi: number
@@ -8533,11 +8533,11 @@ export type Database = {
       }
       scadenziario_clienti_base: {
         Args: {
-          p_agente?: string
+          p_agenti?: string[]
           p_avvisato?: string
           p_escludi_bonifici?: boolean
           p_escludi_legale?: boolean
-          p_fascia?: string
+          p_fasce?: string[]
           p_importo_min?: number
           p_importo_min_a_scadere?: number
           p_mostra_a_credito?: boolean
@@ -8546,7 +8546,7 @@ export type Database = {
           p_situazione?: string
           p_stato_blocco?: string
           p_stato_legale?: string
-          p_store_id?: string
+          p_store_ids?: string[]
         }
         Returns: {
           avvisato_n: number

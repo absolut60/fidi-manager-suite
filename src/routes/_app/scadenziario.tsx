@@ -25,6 +25,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { useEsperienzaPagamentoCliente, testiPagateInRitardo } from "@/hooks/use-esperienza-pagamento";
 import { useAzioniRecuperoCliente, useOperatoriAttivita, useStadioSollecitoCliente } from "@/hooks/use-azioni-recupero-cliente";
 import { TIPO_PROMESSA, TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL, testoAzione, tipoAzioneVisualizzato } from "@/lib/azioni-recupero-ui";
@@ -247,9 +248,10 @@ function ScadenziarioPage() {
   const storeDefault = isStoreManager && myStoreId ? myStoreId : "all";
   // Filtri conservati per utente e scheda del browser (fonte unica useFiltriPagina).
   const { filtri, setCampo, reset: resetFiltriSalvati } = useFiltriPagina("scadenziario", {
-    storeId: "all" as string,
-    agenteFiltro: "tutti" as string,
-    fascia: "tutte" as string,
+    // Scelta multipla: elenco vuoto = tutti. In agenteFiltro "__none__" = cliente senza agente.
+    storeId: [] as string[],
+    agenteFiltro: [] as string[],
+    fascia: [] as string[],
     importoMin: "",
     importoMinAScadere: "",
     situazione: "con_scaduto" as Situazione,
@@ -266,13 +268,21 @@ function ScadenziarioPage() {
     page: 1,
     sortBy: "tot_scaduto" as SortKey,
     sortDir: "desc" as "asc" | "desc",
-  }, { userId: user?.id });
+  }, {
+    userId: user?.id,
+    // Formato vecchio (stringa singola) scartato: si riparte dal default.
+    valida: {
+      storeId: (v) => Array.isArray(v) && v.every((x) => typeof x === "string"),
+      agenteFiltro: (v) => Array.isArray(v) && v.every((x) => typeof x === "string"),
+      fascia: (v) => Array.isArray(v) && v.every((x) => typeof x === "string"),
+    },
+  });
   // Store manager: sempre il proprio negozio, qualunque valore sia salvato (anche se il profilo arriva dopo).
-  const storeId = isStoreManager ? (myStoreId ?? "all") : filtri.storeId;
+  const storeId: string[] = isStoreManager ? (myStoreId ? [myStoreId] : []) : filtri.storeId;
   const { agenteFiltro, fascia, importoMin, importoMinAScadere, situazione, statoBlocco, statoLegale, escludiBonifici, escludiLegale, avvisatoFilter, mostraACredito, nettoCoperture, search, page, sortBy, sortDir } = filtri;
-  const setStoreId = (v: string) => setCampo("storeId", v);
-  const setAgenteFiltro = (v: string) => setCampo("agenteFiltro", v);
-  const setFascia = (v: string) => setCampo("fascia", v);
+  const setStoreId = (v: string[]) => setCampo("storeId", v);
+  const setAgenteFiltro = (v: string[]) => setCampo("agenteFiltro", v);
+  const setFascia = (v: string[]) => setCampo("fascia", v);
   const setImportoMin = (v: string) => setCampo("importoMin", v);
   const setImportoMinAScadere = (v: string) => setCampo("importoMinAScadere", v);
   const setSituazione = (v: Situazione) => setCampo("situazione", v);
@@ -331,8 +341,8 @@ function ScadenziarioPage() {
   const minAScad = Number(importoMinAScadere) || 0;
   const avanzatiAttivi = [
     situazione !== "con_scaduto",
-    agenteFiltro !== "tutti",
-    fascia !== "tutte",
+    agenteFiltro.length > 0,
+    fascia.length > 0,
     minImp > 0,
     minAScad > 0,
     statoBlocco !== "tutti",
@@ -344,10 +354,10 @@ function ScadenziarioPage() {
   ].filter(Boolean).length;
   const filtriAttivi = [
     searchDebounced !== "",
-    !isStoreManager && storeId !== "all",
+    !isStoreManager && storeId.length > 0,
     situazione !== "con_scaduto",
-    agenteFiltro !== "tutti",
-    fascia !== "tutte",
+    agenteFiltro.length > 0,
+    fascia.length > 0,
     minImp > 0,
     minAScad > 0,
     statoBlocco !== "tutti",
@@ -360,7 +370,7 @@ function ScadenziarioPage() {
 
   function resetFiltri(sit: Situazione) {
     setSearchDebounced("");
-    // storeId torna a "all"; per lo store manager resta comunque il suo negozio (storeDefault).
+    // storeId torna a [] (tutti); per lo store manager resta comunque il suo negozio (storeDefault).
     // Ordinamento e pagina restano come prima; la pagina torna a 1 se un filtro cambia.
     resetFiltriSalvati({ situazione: sit, sortBy, sortDir, page });
   }
@@ -376,8 +386,8 @@ function ScadenziarioPage() {
 
   const commonParams = useMemo(() => ({
     p_search: searchDebounced || null,
-    p_store_id: storeId === "all" ? null : storeId,
-    p_fascia: fascia,
+    p_store_ids: storeId.length > 0 ? storeId : null,
+    p_fasce: fascia.length > 0 ? fascia : null,
     p_stato_blocco: statoBlocco,
     p_stato_legale: statoLegale,
     p_escludi_bonifici: escludiBonifici,
@@ -385,7 +395,7 @@ function ScadenziarioPage() {
     p_avvisato: avvisatoFilter,
     p_importo_min: minImp,
     p_mostra_a_credito: mostraACredito,
-    p_agente: agenteFiltro === "tutti" ? null : agenteFiltro,
+    p_agenti: agenteFiltro.length > 0 ? agenteFiltro : null,
     p_situazione: situazione,
     p_importo_min_a_scadere: minAScad,
     p_netto_coperture: nettoCoperture,
@@ -422,7 +432,7 @@ function ScadenziarioPage() {
   // Totali lordi (stessi filtri, netto spento): servono solo per "lordo X €" / "su N" a filtro acceso.
   const paramsLordo = useMemo(() => ({ ...commonParams, p_netto_coperture: false }), [commonParams]);
   // "Per punto vendita" mostra sempre tutti i negozi: senza il filtro Store (il negozio scelto resta solo evidenziato).
-  const paramsPerStore = useMemo(() => ({ ...commonParams, p_store_id: null }), [commonParams]);
+  const paramsPerStore = useMemo(() => ({ ...commonParams, p_store_ids: null }), [commonParams]);
   const { data: totaliLordo } = useQuery({
     queryKey: ["scadenziario-totali-v1", paramsLordo],
     enabled: nettoCoperture,
@@ -588,8 +598,9 @@ function ScadenziarioPage() {
       ws["!cols"] = intest.map((h, i) => ({ wch: i === 0 ? 40 : Math.max(12, h.length + 2) }));
       ws["!autofilter"] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: righe.length, c: intest.length - 1 } }) };
 
-      const storeNome = storeId === "all" ? "Tutti gli store" : (stores ?? []).find((s) => s.id === storeId)?.nome ?? storeId;
-      const agenteNome = agenteFiltro === "tutti" ? "Tutti gli agenti" : agenteFiltro === "__none__" ? "Senza agente" : (agenti ?? []).find((a) => a.codice === agenteFiltro)?.descrizione ?? agenteFiltro;
+      const storeNome = storeId.length === 0 ? "Tutti gli store" : storeId.map((id) => (stores ?? []).find((s) => s.id === id)?.nome ?? id).join(", ");
+      const agenteNome = agenteFiltro.length === 0 ? "Tutti gli agenti" : agenteFiltro.map((c) => c === "__none__" ? "Senza agente" : (agenti ?? []).find((a) => a.codice === c)?.descrizione ?? c).join(", ");
+      const fasciaNome = fascia.length === 0 ? FASCIA_LABEL.tutte : fascia.map((f) => FASCIA_LABEL[f] ?? f).join(", ");
       const filtriAoa: unknown[][] = [
         ["Voce", "Valore"],
         ["Estrazione", estrattoIl.toLocaleString("it-IT")],
@@ -599,7 +610,7 @@ function ScadenziarioPage() {
         ["Situazione", SITUAZIONE_LABEL[situazione]],
         ["Store", storeNome],
         ["Agente", agenteNome],
-        ["Fascia scaduto", FASCIA_LABEL[fascia] ?? fascia],
+        ["Fascia scaduto", fasciaNome],
         ["Stato blocco", BLOCCO_LABEL[statoBlocco]],
         ["Stato legale", LEGALE_LABEL[statoLegale]],
         ["Importo minimo scaduto €", minImp],
@@ -730,8 +741,9 @@ function ScadenziarioPage() {
             qui, la query get_previsione_incassi_coperture non parte a filtro spento. */}
         {nettoCoperture && totali && (
           <CopertureScadenziario
-            storeId={storeId === "all" ? null : storeId}
-            agente={agenteFiltro === "tutti" ? null : agenteFiltro}
+            // Riquadro con filtro a valore singolo: con piu' valori scelti mostra il totale non filtrato.
+            storeId={storeId.length === 1 ? storeId[0] : null}
+            agente={agenteFiltro.length === 1 ? agenteFiltro[0] : null}
             totali={{
               totCopertoPiani: Number(totali.tot_coperto_piani ?? 0),
               totCopertoPromesse: Number(totali.tot_coperto_promesse ?? 0),
@@ -747,8 +759,9 @@ function ScadenziarioPage() {
           onToggle={() => setCampo("perStoreAperto", (filtri.perStoreAperto === "auto" ? !isMobile : filtri.perStoreAperto === "si") ? "no" : "si")}
           storeSelezionato={storeId}
           cliccabile={!isStoreManager}
+          onMostraTutti={() => setStoreId([])}
           onSelezionaStore={(id) => {
-            setStoreId(storeId === id ? "all" : id);
+            setStoreId(storeId.includes(id) ? storeId.filter((x) => x !== id) : [...storeId, id]);
             document.getElementById("scadenziario-dashboard")?.scrollIntoView({ behavior: "smooth", block: "start" });
           }}
         />
@@ -773,13 +786,11 @@ function ScadenziarioPage() {
             {!isStoreManager && (
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Store</label>
-                <Select value={storeId} onValueChange={setStoreId}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tutti gli store</SelectItem>
-                    {(stores ?? []).map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <FiltroMultiplo
+                  etichetta="Store" testoTutti="Tutti gli store" className="mt-1 h-10"
+                  opzioni={(stores ?? []).map((s) => ({ valore: s.id, label: s.nome }))}
+                  selezionati={storeId} onChange={setStoreId}
+                />
               </div>
             )}
             <div>
@@ -826,23 +837,19 @@ function ScadenziarioPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">Agente</label>
-                  <Select value={agenteFiltro} onValueChange={setAgenteFiltro}>
-                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="tutti">Tutti gli agenti</SelectItem>
-                      <SelectItem value="__none__">Senza agente</SelectItem>
-                      {(agenti ?? []).map((a) => <SelectItem key={a.codice} value={a.codice}>{a.descrizione}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <FiltroMultiplo
+                    etichetta="Agente" testoTutti="Tutti gli agenti" cercabile className="mt-1 h-10"
+                    opzioni={[{ valore: "__none__", label: "Senza agente" }, ...(agenti ?? []).map((a) => ({ valore: a.codice, label: a.descrizione }))]}
+                    selezionati={agenteFiltro} onChange={setAgenteFiltro}
+                  />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">Fascia scaduto</label>
-                  <Select value={fascia} onValueChange={setFascia}>
-                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(FASCIA_LABEL).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <FiltroMultiplo
+                    etichetta="Fascia scaduto" testoTutti="Tutte le fasce" className="mt-1 h-10"
+                    opzioni={Object.entries(FASCIA_LABEL).filter(([k]) => k !== "tutte").map(([k, l]) => ({ valore: k, label: l }))}
+                    selezionati={fascia} onChange={setFascia}
+                  />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">Stato blocco</label>
