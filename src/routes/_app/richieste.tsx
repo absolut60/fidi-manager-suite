@@ -146,7 +146,7 @@ function filtraRichieste(righe: any[], f: FiltriRichieste, roles: readonly strin
     if (f.store.length > 0 && !f.store.includes(r.clienti?.store_id)) return false;
     // "Nuovo fido": l'enum ha anche il valore storico "nuovo" (stessa etichetta).
     if (f.tipo.length > 0 && !(f.tipo.includes(r.tipo) || (r.tipo === "nuovo" && f.tipo.includes("nuovo_fido")))) return false;
-    if (f.rischio.length > 0 && !f.rischio.includes(semaforoDaCliente(r.clienti).stadio)) return false;
+    if (f.rischio.length > 0 && !f.rischio.includes(semaforoDaCliente(r.clienti).stadio ?? "")) return false;
     if (f.livello.length > 0 && !f.livello.map(Number).includes(Number(r.livello_richiesto))) return false;
     if (f.importoMin && Number(r.importo_richiesto) < Number(f.importoMin)) return false;
     if (f.importoMax && Number(r.importo_richiesto) > Number(f.importoMax)) return false;
