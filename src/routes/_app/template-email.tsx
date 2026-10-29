@@ -356,7 +356,7 @@ function PreviewDialog({
     const corpo = wrapEmailHtml(base.corpo, sede ?? null, {
       nome: nomeOperatore,
       email: profilo?.email ?? null,
-    }, { tipo: template.tipo });
+    }, { tipo: template.tipo, piedeRiservatezza: true });
     return { oggetto: base.oggetto, corpo };
   }, [template, dati, sede, nomeOperatore, profilo?.email, speseUnit]);
 

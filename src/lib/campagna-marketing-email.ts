@@ -98,6 +98,7 @@ export function buildEmailCampagna(params: {
       tipo: "libero",
       senzaBande: true,
       sottotitolo: "Comunicazione commerciale",
+      piedeRiservatezza: true,
     }),
   };
 }

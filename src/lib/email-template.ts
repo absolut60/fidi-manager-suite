@@ -1,4 +1,5 @@
 import { LOGO_MADE_EMAIL_BASE64 } from "@/lib/logo-made-email-base64";
+import { buildPiedeRiservatezzaHtml } from "@/lib/email-piede-riservatezza";
 
 /** Escape HTML — condiviso da tutti i compositori di email. */
 export function escHtml(s: string): string {
@@ -16,8 +17,10 @@ export function buildEmailTemplate(options: {
   body: string;
   ctaText?: string;
   ctaUrl?: string;
+  /** true SOLO per email a destinatari esterni (v. email-piede-riservatezza.ts). */
+  piedeRiservatezza?: boolean;
 }): string {
-  const { title, body, ctaText, ctaUrl } = options;
+  const { title, body, ctaText, ctaUrl, piedeRiservatezza } = options;
   const cta =
     ctaText && ctaUrl
       ? `<div style="margin:24px 0;">
@@ -58,6 +61,7 @@ export function buildEmailTemplate(options: {
                 Non rispondere a questa email.
               </td>
             </tr>
+            ${piedeRiservatezza ? `<tr><td style="padding:0;background:#ffffff;">${buildPiedeRiservatezzaHtml()}</td></tr>` : ""}
           </table>
         </td>
       </tr>
@@ -93,6 +97,7 @@ export function buildPrivacyPdfEmailPayload(options: {
   const subject = `Informativa Privacy GDPR — ${ragioneSociale}`;
   const html = buildEmailTemplate({
     title: "Informativa Privacy GDPR firmata",
+    piedeRiservatezza: true,
     body: `
         <p>Gentile ${escHtml(toName)},</p>
         <p>in allegato trova copia dell'informativa sulla privacy (GDPR Rev.06) firmata in data <strong>${escHtml(dataFirmaFormatted)}</strong> per conto di <strong>${escHtml(ragioneSociale)}</strong>.</p>
@@ -130,6 +135,7 @@ export function buildRichiestaFirmaEmailPayload(options: {
   const subject = "Richiesta firma consenso privacy — MADE";
   const html = buildEmailTemplate({
     title: "Richiesta firma consenso privacy",
+    piedeRiservatezza: true,
     body: `
         <p>Gentile ${escHtml(nomeDestinatario)},</p>
         <p>per completare la pratica di <strong>${escHtml(ragioneSociale)}</strong> le chiediamo di firmare l'informativa privacy (Reg. UE 2016/679 — GDPR) tramite il link sicuro qui sotto.</p>

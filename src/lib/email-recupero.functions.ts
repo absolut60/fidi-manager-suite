@@ -251,7 +251,9 @@ export const inviaEmailRecupero = createServerFn({ method: "POST" })
         : { speseImportoUnitario: speseUnit },
     );
     const mittente = { nome: nomeOperatore, email: emailOperatore };
-    const wrapOpts = data.modalita === "modello" ? { tipo: tipoTemplate } : { senzaBande: true };
+    const wrapOpts = data.modalita === "modello"
+      ? { tipo: tipoTemplate, piedeRiservatezza: true }
+      : { senzaBande: true, piedeRiservatezza: true };
     const htmlInvio = wrapEmailHtml(base.corpo, sede, mittente, { ...wrapOpts, useCid: true });
     const htmlSalvato = wrapEmailHtml(base.corpo, sede, mittente, wrapOpts);
 
