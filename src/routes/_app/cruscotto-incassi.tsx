@@ -26,9 +26,7 @@ import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
 import { RegistraPromessaDialog } from "@/components/registra-promessa-dialog";
 import { isRiBa } from "@/lib/spese-insoluto";
 import { useAuth } from "@/hooks/use-auth";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 
 type StoreOpt = { id: string; nome: string };
 
@@ -1559,7 +1557,7 @@ function DettaglioIncassiCliente({
     queryFn: async () => {
       const { data, error } = await supabase.rpc(
         "get_incassi_periodo_dettaglio" as never,
-        { _dal: dal, _al: al, _cliente_id: clienteId, _metodi: metodi, _store_ids: storeIds } as never,
+        { _dal: dal, _al: al, _cliente_id: clienteId, _metodi: metodi, _store_ids: storeSel.length > 0 ? storeSel : null } as never,
       );
       if (error) throw error;
       return ((data as unknown) as RigaIncassoDettaglio[]) ?? [];
