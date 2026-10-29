@@ -26,7 +26,6 @@ export const Route = createFileRoute("/_app/articoli/")({
   component: ArticoliListPage,
 });
 
-const ANY = "__any";
 
 function ArticoliListPage() {
   const navigate = useNavigate();
