@@ -589,6 +589,13 @@
       "when": 1793284059262,
       "tag": "0083_fm52_scadenziario_filtri_multipli",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1793284451207,
+      "tag": "0084_fm52_coperture_filtri_multipli",
+      "breakpoints": true
     }
   ]
 }

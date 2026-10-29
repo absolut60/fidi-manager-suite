@@ -7804,7 +7804,7 @@ export type Database = {
         }[]
       }
       get_previsione_incassi_coperture: {
-        Args: { p_agente?: string; p_store_id?: string }
+        Args: { p_agenti?: string[]; p_store_ids?: string[] }
         Returns: {
           entro_30: number
           entro_60: number
