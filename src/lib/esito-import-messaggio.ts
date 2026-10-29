@@ -26,9 +26,43 @@ export type DatiEsitoImport = {
   scartate: Array<{ codice: string; motivo: string; righe: number }>;
   anomalie: Array<{ tipo: string; totale: number; righe: RigaAnomaliaImport[] }>;
   scadenzeTolteElenco: RigaAnomaliaImport[];
+  /** FM54 osservazione: 'scadenza_ricollegabile' (nulla è stato spostato). */
+  ricollegabili?: number;
+  ricollegabiliConCollegamenti?: number;
+  ricollegabiliElenco?: RigaAnomaliaImport[];
+  /** FM54 osservazione: 'scadenza_collegamenti_persi'. */
+  collegamentiPersi?: number;
+  collegamentiPersiElenco?: RigaAnomaliaImport[];
   createdAt: string | null;
   completataAt: string | null;
 };
+
+/** Conteggi della coda " | azioni N | piani N | ... | segno_promemoria si/no". */
+function conteggiOsservazione(v: string | null | undefined) {
+  const t = v ?? "";
+  const num = (k: string) => Number(new RegExp(`(?:^|\\| )${k} (\\d+)`).exec(t)?.[1] ?? 0);
+  return {
+    azioni: num("azioni"), piani: num("piani"), promemoria: num("promemoria"),
+    solleciti: num("solleciti"), reminder: num("reminder"),
+    segno: /segno_promemoria si/.test(t),
+  };
+}
+
+export function haCollegamentiOsservazione(v: string | null | undefined): boolean {
+  const c = conteggiOsservazione(v);
+  return c.segno || c.azioni + c.piani + c.promemoria + c.solleciti + c.reminder > 0;
+}
+
+function testoCollegamenti(v: string | null | undefined): string {
+  const c = conteggiOsservazione(v);
+  const p = (q: number, s: string, pl: string) => (q > 0 ? `${n(q)} ${q === 1 ? s : pl}` : null);
+  const parti = [
+    p(c.azioni, "azione", "azioni"), p(c.piani, "piano", "piani"),
+    p(c.promemoria, "promemoria", "promemoria"), p(c.solleciti, "sollecito", "solleciti"),
+    p(c.reminder, "reminder", "reminder"), c.segno ? "segno promemoria" : null,
+  ].filter(Boolean);
+  return parti.length ? parti.join(", ") : "nessuno";
+}
 
 const ETICHETTE_FONTE: Record<string, string> = {
   scadenziario: "Scadenziario",
