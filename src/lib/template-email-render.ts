@@ -2,6 +2,7 @@
 // NIENTE import di supabase: questo modulo deve poter girare sia nel browser
 // sia nel worker Inngest. Mantieni questo file privo di side-effect.
 import { calcolaSpeseInsoluto, buildTotaliRowsHtml } from "@/lib/spese-insoluto";
+import { buildPiedeRiservatezzaHtml } from "@/lib/email-piede-riservatezza";
 
 export type PlaceholderKey =
   | "ragione_sociale"
@@ -417,7 +418,14 @@ export function wrapEmailHtml(
   corpoRenderizzato: string,
   datiSede: DatiSede | null | undefined,
   datiMittente: DatiMittente,
-  opts?: { useCid?: boolean; tipo?: TipoTemplate | null; senzaBande?: boolean; sottotitolo?: string },
+  opts?: {
+    useCid?: boolean;
+    tipo?: TipoTemplate | null;
+    senzaBande?: boolean;
+    sottotitolo?: string;
+    /** true SOLO per email a destinatari esterni (v. email-piede-riservatezza.ts). */
+    piedeRiservatezza?: boolean;
+  },
 ): string {
   const sedeBlock = formatSedeBlock(datiSede);
 
@@ -504,6 +512,7 @@ export function wrapEmailHtml(
           </div>
         </td>
       </tr>
+      ${opts?.piedeRiservatezza ? `<tr><td style="padding:0;background:#ffffff;">${buildPiedeRiservatezzaHtml()}</td></tr>` : ""}
     </table>
   </td></tr>
 </table>

@@ -118,7 +118,7 @@ export function MailSinistroDialog({
         evidenziaSegnaposto(testoToHtml(risolviImporto(corpo, importoNum, false))),
         null,
         { nome: nomeMittente, email: emailMittente },
-        { senzaBande: true, sottotitolo: "Assicurazione crediti" },
+        { senzaBande: true, sottotitolo: "Assicurazione crediti", piedeRiservatezza: true },
       ),
     [corpo, importoNum, nomeMittente, emailMittente],
   );
@@ -159,7 +159,7 @@ export function MailSinistroDialog({
           testoToHtml(corpoInvio),
           null,
           { nome: nomeMittente, email: emailMittente },
-          { senzaBande: true, sottotitolo: "Assicurazione crediti", useCid: true },
+          { senzaBande: true, sottotitolo: "Assicurazione crediti", useCid: true, piedeRiservatezza: true },
         ),
         inlineLogo: true,
         fromName: fromName.trim() || undefined,

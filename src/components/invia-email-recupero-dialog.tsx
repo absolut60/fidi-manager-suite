@@ -366,10 +366,10 @@ export function InviaEmailRecuperoDialog({
         dati,
         { tipo: selectedTemplate.tipo, speseImportoUnitario: speseUnit },
       );
-      return { oggetto: base.oggetto, corpo: wrapEmailHtml(base.corpo, datiSede ?? null, mittente, { tipo: selectedTemplate.tipo }) };
+      return { oggetto: base.oggetto, corpo: wrapEmailHtml(base.corpo, datiSede ?? null, mittente, { tipo: selectedTemplate.tipo, piedeRiservatezza: true }) };
     }
     const base = renderTemplate({ oggetto, corpo: corpoLiberoHtml }, dati, { speseImportoUnitario: speseUnit });
-    return { oggetto: base.oggetto, corpo: wrapEmailHtml(base.corpo, datiSede ?? null, mittente, { senzaBande: true }) };
+    return { oggetto: base.oggetto, corpo: wrapEmailHtml(base.corpo, datiSede ?? null, mittente, { senzaBande: true, piedeRiservatezza: true }) };
   }, [cliente, scadute, scadenzeScelte, modalita, selectedTemplate, oggetto, corpoLiberoHtml, datiSede, nomeOperatore, user?.email, speseUnit]);
 
   // Indirizzi

@@ -429,7 +429,7 @@ export function InvioMassivoDialog({
     const corpo = wrapEmailHtml(base.corpo, sedeCorrente ?? null, {
       nome: nomeOperatore,
       email: user?.email ?? null,
-    }, { tipo: templateAnteprima.tipo });
+    }, { tipo: templateAnteprima.tipo, piedeRiservatezza: true });
     return { oggetto: base.oggetto, corpo };
   }, [templateAnteprima, clientePreview, sedeCorrente, nomeOperatore, user?.email, cfg.spese_insoluto_riba_eur]);
 

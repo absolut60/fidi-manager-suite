@@ -50,6 +50,7 @@ export function buildPromemoriaEmail(
   const html = wrapEmailHtml(rendered.corpo, input.sede, input.mittente, {
     useCid: input.useCid,
     tipo: "promemoria_scadenza",
+    piedeRiservatezza: true,
   });
   return { oggetto: rendered.oggetto, html };
 }
