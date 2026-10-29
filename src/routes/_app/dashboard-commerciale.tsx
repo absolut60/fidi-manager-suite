@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { STATI_OPPORTUNITA, STATO_LABEL, STATO_CLASS, fmtEuro, type StatoOpportunita } from "@/lib/opportunita";
@@ -85,7 +86,7 @@ function DashboardCommercialePage() {
   const isDirezionale = roles.some((r) => ["amministratore", "amministrazione", "direzione", "responsabile_agenti"].includes(r));
 
   const [periodo, setPeriodo] = useState<Periodo>("anno");
-  const [agenteF, setAgenteF] = useState<string>("tutti");
+  const [agenteF, setAgenteF] = useState<string[]>([]);
   const { da, a } = rangePeriodo(periodo);
 
   const { data: agenti = [] } = useQuery({
@@ -103,7 +104,7 @@ function DashboardCommercialePage() {
     queryKey: ["dash-commerciale", periodo, agenteF],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_dashboard_commerciale", {
-        _agente_codice: agenteF === "tutti" ? undefined : agenteF,
+        _agenti_codici: agenteF.length > 0 ? agenteF : undefined,
         _data_da: da ?? undefined,
         _data_a: a ?? undefined,
       });
@@ -159,15 +160,15 @@ function DashboardCommercialePage() {
             </SelectContent>
           </Select>
           {isDirezionale && (
-            <Select value={agenteF} onValueChange={setAgenteF}>
-              <SelectTrigger className="w-full sm:w-[220px]"><SelectValue placeholder="Tutti gli agenti" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutti">Tutti gli agenti</SelectItem>
-                {agenti.map((ag) => (
-                  <SelectItem key={ag.codice} value={ag.codice}>{ag.descrizione ?? ag.codice}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Agente"
+              testoTutti="Tutti gli agenti"
+              cercabile
+              className="w-full sm:w-[220px]"
+              opzioni={agenti.map((ag) => ({ valore: ag.codice, label: ag.descrizione ?? ag.codice }))}
+              selezionati={agenteF}
+              onChange={setAgenteF}
+            />
           )}
         </div>
       </div>

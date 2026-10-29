@@ -610,6 +610,20 @@
       "when": 1793287901835,
       "tag": "0086_fm52_cruscotto_incassi_sede_multipla",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1793288261639,
+      "tag": "0087_fm52_dashboard_iscritti_filtri_multipli",
+      "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1793288287475,
+      "tag": "0088_fm52_dashboard_iscritti_filtri_multipli_v2",
+      "breakpoints": true
     }
   ]
 }

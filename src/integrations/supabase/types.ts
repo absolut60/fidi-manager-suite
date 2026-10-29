@@ -7166,7 +7166,7 @@ export type Database = {
         Returns: boolean
       }
       export_iscritti_whatsapp: {
-        Args: { _origine?: string; _q?: string; _stato?: string }
+        Args: { _origini?: string[]; _q?: string; _stati?: string[] }
         Returns: {
           azienda: string
           cognome: string
@@ -7448,7 +7448,7 @@ export type Database = {
         }[]
       }
       get_dashboard_commerciale: {
-        Args: { _agente_codice?: string; _data_a?: string; _data_da?: string }
+        Args: { _agenti_codici?: string[]; _data_a?: string; _data_da?: string }
         Returns: {
           aperte_n: number
           aperte_val: number
