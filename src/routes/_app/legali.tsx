@@ -1,3 +1,4 @@
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -77,15 +78,20 @@ function PraticheLegaliPage() {
   // Filtri conservati (useFiltriPagina).
   const { user } = useAuth();
   const { filtri: FL, setCampo } = useFiltriPagina("legali", {
-    stato: "tutti", storeId: "all", tipoFilter: "tutti", origine: "tutte", q: "",
-  }, { userId: user?.id });
+    // Origine, tipo e store a scelta multipla (vuoto = tutti); stato resta a scelta singola.
+    stato: "tutti", storeId: [] as string[], tipoFilter: [] as string[], origine: [] as string[], q: "",
+  }, {
+    userId: user?.id,
+    // Formato vecchio (stringa) scartato: si riparte dal default.
+    valida: { storeId: (v) => Array.isArray(v) && v.every((x) => typeof x === "string"), tipoFilter: (v) => Array.isArray(v) && v.every((x) => typeof x === "string"), origine: (v) => Array.isArray(v) && v.every((x) => typeof x === "string") },
+  });
   const { stato, tipoFilter, origine, q } = FL;
   // Store manager: sempre il proprio negozio, qualunque valore sia salvato.
-  const storeId = isStoreManager && myStoreId ? myStoreId : FL.storeId;
+  const storeId: string[] = isStoreManager && myStoreId ? [myStoreId] : FL.storeId;
   const setStato = (v: string) => setCampo("stato", v);
-  const setStoreId = (v: string) => setCampo("storeId", v);
-  const setTipoFilter = (v: string) => setCampo("tipoFilter", v);
-  const setOrigine = (v: string) => setCampo("origine", v);
+  const setStoreId = (v: string[]) => setCampo("storeId", v);
+  const setTipoFilter = (v: string[]) => setCampo("tipoFilter", v);
+  const setOrigine = (v: string[]) => setCampo("origine", v);
   const setQ = (v: string) => setCampo("q", v);
 
   const { data: stores } = useQuery({
@@ -171,10 +177,9 @@ function PraticheLegaliPage() {
 
   const rows = useMemo(() => {
     return allRows.filter((r) => {
-      if (origine === "manuali" && r.origine !== "manuale") return false;
-      if (origine === "gestionali" && r.origine !== "gestionale") return false;
-      if (storeId !== "all" && r.store_id !== storeId) return false;
-      if (tipoFilter !== "tutti") {
+      if (origine.length > 0 && !origine.includes(r.origine === "manuale" ? "manuali" : "gestionali")) return false;
+      if (storeId.length > 0 && !storeId.includes(r.store_id ?? "")) return false;
+      if (tipoFilter.length > 0) {
         const c = (r.categoria ?? "").toLowerCase();
         if (tipoFilter === "decreto" && !c.includes("decreto")) return false;
         if (tipoFilter === "pignoramento" && !c.includes("pignoramento")) return false;
