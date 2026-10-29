@@ -217,7 +217,7 @@ function ArticoliListPage() {
             <FiltroMultiplo
               etichetta="Fornitore" testoTutti="Tutti i fornitori" cercabile
               className="text-sm"
-              opzioni={fornitori.map((f) => ({ valore: f.id, label: f.ragione_sociale }))}
+              opzioni={fornitori.map((f) => ({ valore: f.id, label: f.ragione_sociale ?? "" }))}
               selezionati={fornitoreId} onChange={setFornitoreId}
             />
           </div>
