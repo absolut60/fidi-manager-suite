@@ -34,6 +34,7 @@ import { useNomiUtentiQuery } from "@/hooks/use-nomi-utenti";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -43,13 +44,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { TooltipAzioneRecupero } from "@/components/tooltip-azione-recupero";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -160,7 +154,6 @@ type ClienteAgg = {
   stadio_giorni: number | null;
 };
 
-type StadioFilter = "all" | "0" | "1" | "2" | "3";
 
 
 /** "AAAA-MM-GG" → Date locale a mezzanotte (come quella del selettore); "" o non valida → undefined. */
@@ -183,42 +176,42 @@ function RecuperoCreditiPage() {
   // Set salvati come array di stringhe, date come "AAAA-MM-GG" ("" = nessuna).
   const arrayStringhe = (v: unknown) => Array.isArray(v) && v.every((x) => typeof x === "string");
   const { filtri: F, setCampo } = useFiltriPagina("recupero-crediti", {
-    storeId: "all" as string,
+    storeId: [] as string[],
     esitoFilter: [] as string[],
     tipoFilter: [] as string[],
-    operatoreId: "all" as string,
+    operatoreId: [] as string[],
     search: "",
     dataDa: "",
     dataA: "",
     tab: "aperti" as TabKey,
     soloRitardo: false,
-    stadioFilter: "all" as StadioFilter,
+    stadioFilter: [] as string[],
     sortKey: "priorita" as SortKey,
     sortDir: "asc" as "asc" | "desc",
     page: 1,
   }, {
     userId: user?.id,
-    valida: { esitoFilter: arrayStringhe, tipoFilter: arrayStringhe },
+    valida: { esitoFilter: arrayStringhe, tipoFilter: arrayStringhe, storeId: arrayStringhe, operatoreId: arrayStringhe, stadioFilter: arrayStringhe },
   });
   const { search, tab, soloRitardo, stadioFilter, sortKey, sortDir, page } = F;
   // Store manager: sempre il proprio negozio, qualunque valore sia salvato.
-  const storeId = isStoreManager && myStoreId ? myStoreId : F.storeId;
+  const storeId = isStoreManager && myStoreId ? [myStoreId] : F.storeId;
   // Agente/store manager: l'operatore salvato non viene mai applicato (come prima).
-  const operatoreId = isRistretto ? "all" : F.operatoreId;
+  const operatoreId = isRistretto ? [] : F.operatoreId;
   const esitoFilter = useMemo(() => new Set(F.esitoFilter as Esito[]), [F.esitoFilter]);
   const tipoFilter = useMemo(() => new Set(F.tipoFilter as Tipo[]), [F.tipoFilter]);
   const dataDa = useMemo(() => daIsoGiorno(F.dataDa), [F.dataDa]);
   const dataA = useMemo(() => daIsoGiorno(F.dataA), [F.dataA]);
-  const setStoreId = (v: string) => setCampo("storeId", v);
+  const setStoreId = (v: string[]) => setCampo("storeId", v);
   const setEsitoFilter = (v: Set<Esito>) => setCampo("esitoFilter", Array.from(v));
   const setTipoFilter = (v: Set<Tipo>) => setCampo("tipoFilter", Array.from(v));
-  const setOperatoreId = (v: string) => setCampo("operatoreId", v);
+  const setOperatoreId = (v: string[]) => setCampo("operatoreId", v);
   const setSearch = (v: string) => setCampo("search", v);
   const setDataDa = (d: Date | undefined) => setCampo("dataDa", d ? format(d, "yyyy-MM-dd") : "");
   const setDataA = (d: Date | undefined) => setCampo("dataA", d ? format(d, "yyyy-MM-dd") : "");
   const setTab = (v: TabKey) => setCampo("tab", v);
   const setSoloRitardo = (v: boolean | ((p: boolean) => boolean)) => setCampo("soloRitardo", v);
-  const setStadioFilter = (v: StadioFilter) => setCampo("stadioFilter", v);
+  const setStadioFilter = (v: string[]) => setCampo("stadioFilter", v);
   const setSortKey = (v: SortKey) => setCampo("sortKey", v);
   const setSortDir = (v: "asc" | "desc" | ((d: "asc" | "desc") => "asc" | "desc")) => setCampo("sortDir", v);
   const setPage = (v: number | ((p: number) => number)) => setCampo("page", v);
@@ -285,12 +278,12 @@ function RecuperoCreditiPage() {
       const dataAEnd = dataA ? new Date(dataA) : null;
       if (dataAEnd) dataAEnd.setHours(23, 59, 59, 999);
       const stadi =
-        stadioFilter === "all" ? null : [parseInt(stadioFilter, 10)];
+        stadioFilter.length === 0 ? null : stadioFilter.map((v) => parseInt(v, 10));
       const { data, error } = await supabase.rpc(
         "get_recupero_clienti_aggregato" as never,
         {
-          _store_id: storeId !== "all" ? storeId : null,
-          _operatore_id: operatoreId !== "all" && !isRistretto ? operatoreId : null,
+          _store_ids: storeId.length > 0 ? storeId : null,
+          _operatore_ids: operatoreId.length > 0 && !isRistretto ? operatoreId : null,
           _search: searchDebounced || null,
           _data_da: dataDa ? dataDa.toISOString() : null,
           _data_a: dataAEnd ? dataAEnd.toISOString() : null,
@@ -315,14 +308,14 @@ function RecuperoCreditiPage() {
         );
       if (esitoFilter.size > 0) q = q.in("esito", Array.from(esitoFilter));
       // Filtro tipo applicato sotto con tipoAzioneVisualizzato.
-      if (operatoreId !== "all" && !isRistretto) q = q.eq("operatore_id", operatoreId);
+      if (operatoreId.length > 0 && !isRistretto) q = q.in("operatore_id", operatoreId);
       if (dataDa) q = q.gte("data_azione", dataDa.toISOString());
       if (dataA) {
         const end = new Date(dataA);
         end.setHours(23, 59, 59, 999);
         q = q.lte("data_azione", end.toISOString());
       }
-      if (storeId !== "all") q = q.eq("cliente.store_id", storeId);
+      if (storeId.length > 0) q = q.in("cliente.store_id", storeId);
       if (searchDebounced) q = q.ilike("cliente.ragione_sociale", `%${searchDebounced}%`);
       const { data, error } = await q;
       if (error) throw error;
@@ -442,9 +435,9 @@ function RecuperoCreditiPage() {
     searchDebounced !== "",
     esitoFilter.size > 0,
     tipoFilter.size > 0,
-    !isRistretto && storeId !== "all",
-    !isRistretto && operatoreId !== "all",
-    stadioFilter !== "all",
+    !isRistretto && storeId.length > 0,
+    !isRistretto && operatoreId.length > 0,
+    stadioFilter.length > 0,
     !!dataDa,
     !!dataA,
   ].filter(Boolean).length;
@@ -555,45 +548,31 @@ function RecuperoCreditiPage() {
           />
 
           {!isRistretto && (
-            <Select value={storeId} onValueChange={setStoreId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Store" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tutti gli store</SelectItem>
-                {(stores ?? []).map((s) => (
-                  <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Store" testoTutti="Tutti gli store"
+              opzioni={(stores ?? []).map((s) => ({ valore: s.id, label: s.nome }))}
+              selezionati={storeId} onChange={setStoreId}
+            />
           )}
 
           {!isRistretto && (
-            <Select value={operatoreId} onValueChange={setOperatoreId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Operatore" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tutti gli operatori</SelectItem>
-                {(operatori ?? []).map((o) => (
-                  <SelectItem key={o.id} value={o.id}>{operatoreMap[o.id] ?? "—"}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Operatore" testoTutti="Tutti gli operatori" cercabile
+              opzioni={(operatori ?? []).map((o) => ({ valore: o.id, label: operatoreMap[o.id] ?? "—" }))}
+              selezionati={operatoreId} onChange={setOperatoreId}
+            />
           )}
 
-          <Select value={stadioFilter} onValueChange={(v) => setStadioFilter(v as StadioFilter)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Stadio sollecito" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tutti gli stadi</SelectItem>
-              <SelectItem value="0">Mai sollecitato</SelectItem>
-              <SelectItem value="1">1° sollecito</SelectItem>
-              <SelectItem value="2">2° sollecito</SelectItem>
-              <SelectItem value="3">Messa in mora</SelectItem>
-            </SelectContent>
-          </Select>
+          <FiltroMultiplo
+            etichetta="Stadio sollecito" testoTutti="Tutti gli stadi"
+            opzioni={[
+              { valore: "0", label: "Mai sollecitato" },
+              { valore: "1", label: "1° sollecito" },
+              { valore: "2", label: "2° sollecito" },
+              { valore: "3", label: "Messa in mora" },
+            ]}
+            selezionati={stadioFilter} onChange={setStadioFilter}
+          />
 
           <DateRangePicker label="Da" date={dataDa} onChange={setDataDa} />
           <DateRangePicker label="A" date={dataA} onChange={setDataA} />
