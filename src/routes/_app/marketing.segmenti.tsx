@@ -1,4 +1,5 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { filtroElenco } from "@/lib/filtro-elenco";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -113,16 +114,6 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
 
 
 /** Filtro a elenco su colonna testo; "__none__" = valore NULL, in OR con gli altri. */
-function filtroElencoSegmento<Q extends { in: (c: string, v: string[]) => Q; is: (c: string, v: null) => Q; or: (f: string) => Q }>(q: Q, colonna: string, valori: string[]): Q {
-  if (valori.length === 0) return q;
-  const conNull = valori.includes("__none__");
-  const altri = valori.filter((v) => v !== "__none__");
-  if (conNull && altri.length === 0) return q.is(colonna, null);
-  if (!conNull) return q.in(colonna, altri);
-  const lista = altri.map((v) => `"${v.replace(/"/g, '\\"')}"`).join(",");
-  return q.or(`${colonna}.is.null,${colonna}.in.(${lista})`);
-}
-
 const TIPO_SOGGETTO_DB: Record<string, string> = { fisica: "persona_fisica", giuridica: "azienda" };
 
 function MarketingSegmentiPage() {
@@ -350,7 +341,7 @@ function MarketingSegmentiPage() {
     // Solo clienti anagraficamente attivi (default coerente con clienti.tsx)
     q = q.eq("attivo", true);
     if (filtri.storeFiltro.length > 0) q = q.in("store_id", filtri.storeFiltro);
-    q = filtroElencoSegmento(q, "codice_agente", filtri.filtroAgente);
+    q = filtroElenco(q, "codice_agente", filtri.filtroAgente);
     if (filtri.macrocategoria.length > 0) q = q.in("codice_macrocategoria", filtri.macrocategoria);
     if (filtri.categoria.length > 0) q = q.in("codice_categoria", filtri.categoria);
     if (filtri.filtroBlocco === "bloccati") q = q.eq("bloccato", true);
