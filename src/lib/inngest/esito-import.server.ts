@@ -72,13 +72,33 @@ export const notificaEsitoImport = inngest.createFunction(
         for (let offset = 0; ; offset += 1000) {
           const { data, error } = await supabaseAdmin.from("anomalie_import")
             .select("tipo_anomalia").eq("importazione_id", id)
-            .neq("tipo_anomalia", "scadenza_non_nel_file")
+            .not("tipo_anomalia", "in", "(scadenza_non_nel_file,scadenza_ricollegabile,scadenza_collegamenti_persi)")
             .order("id").range(offset, offset + 999);
           if (error) { logger.error(`tipi anomalie ${id}: ${error.message}`); break; }
           for (const r of data ?? []) tipi.add(r.tipo_anomalia);
           if ((data?.length ?? 0) < 1000) break;
         }
         const colonneAnomalia = "codice_gestionale, ragione_sociale, valore_attuale, valore_nuovo";
+        // Osservazione FM54: righe con collegamenti per prime (coda con "segno_promemoria si" o conteggi > 0).
+        const leggiOsservazione = async (tipo: string) => {
+          const conColl = await supabaseAdmin.from("anomalie_import")
+            .select(colonneAnomalia, { count: "exact" }).eq("importazione_id", id).eq("tipo_anomalia", tipo)
+            .or("valore_nuovo.like.*segno_promemoria si*,valore_nuovo.match.(azioni|piani|promemoria|solleciti|reminder) [1-9]")
+            .order("id").limit(30);
+          const tutte = await supabaseAdmin.from("anomalie_import")
+            .select(colonneAnomalia, { count: "exact" }).eq("importazione_id", id).eq("tipo_anomalia", tipo)
+            .order("id").limit(30);
+          if (conColl.error) logger.error(`${tipo} con collegamenti ${id}: ${conColl.error.message}`);
+          if (tutte.error) logger.error(`${tipo} ${id}: ${tutte.error.message}`);
+          const prime = conColl.data ?? [];
+          const visti = new Set(prime.map((r) => JSON.stringify(r)));
+          const resto = (tutte.data ?? []).filter((r) => !visti.has(JSON.stringify(r)));
+          return { totale: tutte.count ?? 0, conCollegamenti: conColl.count ?? 0, righe: [...prime, ...resto].slice(0, 30) };
+        };
+        const [ricollegabili, persi] = await Promise.all([
+          leggiOsservazione("scadenza_ricollegabile"),
+          leggiOsservazione("scadenza_collegamenti_persi"),
+        ]);
         const [tolte, ...gruppi] = await Promise.all([
           supabaseAdmin
           .from("anomalie_import")
@@ -107,6 +127,11 @@ export const notificaEsitoImport = inngest.createFunction(
           problemi: riga.problemi ?? [],
           scadenzeTolte: tolte.count ?? 0,
           scadenzeTolteElenco: tolte.data ?? [],
+          ricollegabili: ricollegabili.totale,
+          ricollegabiliConCollegamenti: ricollegabili.conCollegamenti,
+          ricollegabiliElenco: ricollegabili.righe,
+          collegamentiPersi: persi.totale,
+          collegamentiPersiElenco: persi.righe,
           scartate: dettaglioScartateImport(riga.report_saltati, riga.codici_mancanti),
           anomalie: gruppi.filter((g) => g.totale > 0),
           createdAt: riga.created_at,
