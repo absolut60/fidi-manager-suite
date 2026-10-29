@@ -1507,7 +1507,7 @@ function ClientiPage() {
   if (search) activeChips.push({ key: "search", label: `Ricerca: "${search}"`, onRemove: () => { setSearchInput(""); setSearch(""); } });
   if (statoCliente !== "attivi") activeChips.push({ key: "statoCliente", label: statoCliente === "disattivati" ? "Solo disattivati" : "Attivi+disattivati", onRemove: () => setStatoCliente("attivi") });
   if (statoAttivita !== "attivi") activeChips.push({ key: "statoAttivita", label: statoAttivita === "non_attivi" ? "Solo non attivi" : "Tutti (attività)", onRemove: () => setStatoAttivita("attivi") });
-  if (!isStoreManager && storeFiltro.length > 0) {
+  if (storeFiltro.length > 0) {
     const etichetta = etichettaElenco(storeFiltro, (v) => v === "__none__" ? "Senza punto vendita" : ((stores ?? []).find((x) => x.id === v)?.nome ?? "—"));
     activeChips.push({ key: "store", label: `Punto vendita: ${etichetta}`, onRemove: () => setStoreFiltro([]) });
   }
