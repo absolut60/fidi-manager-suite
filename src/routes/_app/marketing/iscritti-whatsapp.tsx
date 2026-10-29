@@ -20,13 +20,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import {
   Dialog,
   DialogContent,
@@ -164,8 +158,8 @@ function useDebounced<T>(value: T, delay = 300): T {
 export default function IscrittiWhatsappPage() {
   const queryClient = useQueryClient();
   const [pagina, setPagina] = useState(0);
-  const [stato, setStato] = useState<string>("tutti");
-  const [origine, setOrigine] = useState<string>("tutti");
+  const [stato, setStato] = useState<string[]>([]);
+  const [origine, setOrigine] = useState<string[]>([]);
   const { q: qIniziale } = Route.useSearch();
   const [ricerca, setRicerca] = useState(qIniziale ?? "");
   const q = useDebounced(ricerca.trim().toLowerCase(), 300);
@@ -213,10 +207,14 @@ export default function IscrittiWhatsappPage() {
         .from("iscritti_whatsapp")
         .select("*", { count: "exact" })
         .order("created_at", { ascending: false });
-      if (stato === "nuovo") req = req.eq("stato", "nuovo");
-      else if (stato === "ignorato") req = req.eq("stato", "ignorato");
-      else if (stato === "collegato") req = req.like("stato", "collegato%");
-      if (origine !== "tutti") req = req.eq("origine", origine);
+      if (stato.length > 0) {
+        const cond: string[] = [];
+        if (stato.includes("nuovo")) cond.push("stato.eq.nuovo");
+        if (stato.includes("ignorato")) cond.push("stato.eq.ignorato");
+        if (stato.includes("collegato")) cond.push("stato.like.collegato%");
+        req = req.or(cond.join(","));
+      }
+      if (origine.length > 0) req = req.in("origine", origine);
       if (q) {
         const like = `%${q}%`;
         req = req.or(
@@ -410,8 +408,8 @@ export default function IscrittiWhatsappPage() {
   const esportaExcelMutation = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.rpc("export_iscritti_whatsapp", {
-        _stato: stato,
-        _origine: origine,
+        _stati: stato.length > 0 ? stato : undefined,
+        _origini: origine.length > 0 ? origine : undefined,
         _q: q || undefined,
       });
       if (error) throw error;
@@ -527,28 +525,30 @@ export default function IscrittiWhatsappPage() {
               onChange={(e) => setRicerca(e.target.value)}
             />
           </div>
-          <Select value={stato} onValueChange={setStato}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Stato" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="tutti">Tutti gli stati</SelectItem>
-              <SelectItem value="nuovo">Nuovo</SelectItem>
-              <SelectItem value="collegato">Collegato</SelectItem>
-              <SelectItem value="ignorato">Ignorato</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={origine} onValueChange={setOrigine}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Origine" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="tutti">Tutte le origini</SelectItem>
-              <SelectItem value="qr_pagina">QR pagina</SelectItem>
-              <SelectItem value="link">Link</SelectItem>
-              <SelectItem value="wa_chat">Chat WhatsApp</SelectItem>
-            </SelectContent>
-          </Select>
+          <FiltroMultiplo
+            etichetta="Stato"
+            testoTutti="Tutti gli stati"
+            className="w-full sm:w-[180px]"
+            opzioni={[
+              { valore: "nuovo", label: "Nuovo" },
+              { valore: "collegato", label: "Collegato" },
+              { valore: "ignorato", label: "Ignorato" },
+            ]}
+            selezionati={stato}
+            onChange={setStato}
+          />
+          <FiltroMultiplo
+            etichetta="Origine"
+            testoTutti="Tutte le origini"
+            className="w-full sm:w-[180px]"
+            opzioni={[
+              { valore: "qr_pagina", label: "QR pagina" },
+              { valore: "link", label: "Link" },
+              { valore: "wa_chat", label: "Chat WhatsApp" },
+            ]}
+            selezionati={origine}
+            onChange={setOrigine}
+          />
         </div>
 
         {/* Telefono: schede (sotto md). Da md la tabella resta invariata. */}
