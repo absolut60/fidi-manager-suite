@@ -49,7 +49,7 @@ export function ScadenziarioPerStore({ params, aperto, onToggle, storeSelezionat
   params: Record<string, unknown>;
   aperto: boolean;
   onToggle: () => void;
-  storeSelezionato: string;
+  storeSelezionato: string[];
   onSelezionaStore: (id: string) => void;
   cliccabile: boolean;
 }) {
@@ -100,7 +100,7 @@ export function ScadenziarioPerStore({ params, aperto, onToggle, storeSelezionat
   const val = (r: Pick<RigaStore, Chiave>, c: (typeof COLONNE)[number]) =>
     c.euro ? formatEuro(Number(r[c.k])) : String(r[c.k]);
   const nomeCella = (r: RigaStore) => {
-    const sel = !!r.store_id && r.store_id === storeSelezionato;
+    const sel = !!r.store_id && storeSelezionato.includes(r.store_id);
     return (
       <span className="flex items-center gap-1 min-w-0">
         <span className="break-words min-w-0">{r.store_nome}</span>
@@ -149,7 +149,7 @@ export function ScadenziarioPerStore({ params, aperto, onToggle, storeSelezionat
           <ul className="md:hidden divide-y">
             {ordinate.map((r) => {
               const onClick = clic(r);
-              const sel = !!r.store_id && r.store_id === storeSelezionato;
+              const sel = !!r.store_id && storeSelezionato.includes(r.store_id);
               return (
                 <li key={r.store_id ?? "senza"} className={sel ? "border-l-2 border-l-primary" : "border-l-2 border-l-transparent"}>
                   <div
@@ -196,7 +196,7 @@ export function ScadenziarioPerStore({ params, aperto, onToggle, storeSelezionat
               <tbody>
                 {ordinate.map((r) => {
                   const onClick = clic(r);
-                  const sel = !!r.store_id && r.store_id === storeSelezionato;
+                  const sel = !!r.store_id && storeSelezionato.includes(r.store_id);
                   return (
                     <tr
                       key={r.store_id ?? "senza"}
