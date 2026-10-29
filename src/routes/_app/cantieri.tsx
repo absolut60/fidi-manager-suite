@@ -230,7 +230,7 @@ function CantieriPage() {
               (senza coordinate o con geocodifica fallita): non compaiono sulla mappa.
             </span>
           </p>
-          <Button variant="outline" size="sm" className="ml-auto" onClick={() => setGeoF("fallita")}>
+          <Button variant="outline" size="sm" className="ml-auto" onClick={() => setGeoF(["fallita"])}>
             Mostra falliti
           </Button>
         </Card>
