@@ -10,10 +10,12 @@ import { sendEmailViaEdge } from "./send-email.server";
 import {
   emailEsitoImport,
   dettaglioScartateImport,
+  haCollegamentiOsservazione,
   livelloEsitoImport,
   messaggioEsitoImport,
   titoloEsitoImport,
   type DatiEsitoImport,
+  type RigaAnomaliaImport,
 } from "@/lib/esito-import-messaggio";
 
 type RigaImportazione = {
@@ -79,21 +81,23 @@ export const notificaEsitoImport = inngest.createFunction(
           if ((data?.length ?? 0) < 1000) break;
         }
         const colonneAnomalia = "codice_gestionale, ragione_sociale, valore_attuale, valore_nuovo";
-        // Osservazione FM54: righe con collegamenti per prime (coda con "segno_promemoria si" o conteggi > 0).
+        // Osservazione FM54: count exact sul tipo; le righe con almeno un
+        // collegamento (letto dalla coda dei conteggi) vengono mostrate per prime.
         const leggiOsservazione = async (tipo: string) => {
-          const conColl = await supabaseAdmin.from("anomalie_import")
-            .select(colonneAnomalia, { count: "exact" }).eq("importazione_id", id).eq("tipo_anomalia", tipo)
-            .or("valore_nuovo.like.*segno_promemoria si*,valore_nuovo.match.(azioni|piani|promemoria|solleciti|reminder) [1-9]")
-            .order("id").limit(30);
-          const tutte = await supabaseAdmin.from("anomalie_import")
-            .select(colonneAnomalia, { count: "exact" }).eq("importazione_id", id).eq("tipo_anomalia", tipo)
-            .order("id").limit(30);
-          if (conColl.error) logger.error(`${tipo} con collegamenti ${id}: ${conColl.error.message}`);
-          if (tutte.error) logger.error(`${tipo} ${id}: ${tutte.error.message}`);
-          const prime = conColl.data ?? [];
-          const visti = new Set(prime.map((r) => JSON.stringify(r)));
-          const resto = (tutte.data ?? []).filter((r) => !visti.has(JSON.stringify(r)));
-          return { totale: tutte.count ?? 0, conCollegamenti: conColl.count ?? 0, righe: [...prime, ...resto].slice(0, 30) };
+          const righe: RigaAnomaliaImport[] = [];
+          let totale = 0;
+          for (let offset = 0; ; offset += 1000) {
+            const { data, count, error } = await supabaseAdmin.from("anomalie_import")
+              .select(colonneAnomalia, { count: "exact" }).eq("importazione_id", id).eq("tipo_anomalia", tipo)
+              .order("id").range(offset, offset + 999);
+            if (error) { logger.error(`${tipo} ${id}: ${error.message}`); break; }
+            totale = count ?? totale;
+            righe.push(...(data ?? []));
+            if ((data?.length ?? 0) < 1000) break;
+          }
+          const conColl = righe.filter((r) => haCollegamentiOsservazione(r.valore_nuovo));
+          const senza = righe.filter((r) => !haCollegamentiOsservazione(r.valore_nuovo));
+          return { totale, conCollegamenti: conColl.length, righe: [...conColl, ...senza].slice(0, 30) };
         };
         const [ricollegabili, persi] = await Promise.all([
           leggiOsservazione("scadenza_ricollegabile"),
