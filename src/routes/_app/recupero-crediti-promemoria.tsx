@@ -1,4 +1,4 @@
-import { isAnticipo } from "@/lib/scadenze";
+import { isAnticipo, scadenzaChiusaAnticipata } from "@/lib/scadenze";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -862,7 +862,7 @@ function ScadenzeDettaglio({
       // Le R.B. Chiuse alla presentazione ma non incassate restano "a scadere" finché DPE è NULL.
       let q = supabase
         .from("scadenze")
-        .select("id, numero_documento, data_documento, data_scadenza, importo_scadenza, in_legale, tempi_scadenza")
+        .select("id, numero_documento, data_documento, data_scadenza, importo_scadenza, in_legale, tempi_scadenza, stato_contabile, tempi_scadenza_key, importo_pagato, data_pagamento_effettiva")
         .eq("cliente_id", clienteId)
         .is("data_pagamento_effettiva", null)
         .gte("data_scadenza", today.toISOString().slice(0, 10))
@@ -874,6 +874,8 @@ function ScadenzeDettaglio({
         if (!s.data_scadenza) return false;
         // Righe ANTICIPO mai nei promemoria (gemello di public.is_anticipo).
         if (isAnticipo(s)) return false;
+        // Rate chiuse in anticipo da Gamma: pagate, mai nei promemoria.
+        if (scadenzaChiusaAnticipata(s)) return false;
         const k = s.data_scadenza.slice(0, 7);
         return mesi.includes(k);
       });

@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { fmtEuro, fmtDate } from "@/lib/piani-rientro";
+import { scadenzaChiusaAnticipata } from "@/lib/scadenze";
 
 export type ScadenzaAperta = {
   id: string;
@@ -46,12 +47,13 @@ export function SelettoreScadenzeAperte({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("scadenze")
-        .select("id, numero_documento, data_scadenza, importo_scadenza, giorni_ritardo, stato_contabile, data_pagamento_effettiva")
+        .select("id, numero_documento, data_scadenza, importo_scadenza, giorni_ritardo, stato_contabile, data_pagamento_effettiva, tempi_scadenza_key, importo_pagato")
         .eq("cliente_id", clienteId)
         .is("data_pagamento_effettiva", null)
         .order("data_scadenza", { ascending: true, nullsFirst: false });
       if (error) throw error;
-      return (data ?? []).filter((s) => (s.importo_scadenza ?? 0) > 0) as ScadenzaAperta[];
+      // Le rate chiuse in anticipo da Gamma sono pagate: non sono scadenze aperte.
+      return (data ?? []).filter((s) => (s.importo_scadenza ?? 0) > 0 && !scadenzaChiusaAnticipata(s)) as ScadenzaAperta[];
     },
   });
 

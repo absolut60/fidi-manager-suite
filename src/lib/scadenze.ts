@@ -17,6 +17,25 @@
 // giorni_ritardo solo per le righe Aperte; le Chiuse senza dati si considerano
 // pagate.
 
+/**
+ * Rata chiusa in anticipo da Gamma (saldo anticipato con RiBa non presentate):
+ * Chiusa, senza data di pagamento, tempi "Pagate", importo pagato > 0.
+ * Va trattata come pagata. Gemello di `public.scadenza_chiusa_anticipata`.
+ */
+export function scadenzaChiusaAnticipata(s: {
+  stato_contabile?: string | null;
+  data_pagamento_effettiva?: string | null;
+  tempi_scadenza_key?: string | null;
+  importo_pagato?: number | string | null;
+}): boolean {
+  return (
+    s.stato_contabile === "Chiusa" &&
+    s.data_pagamento_effettiva == null &&
+    s.tempi_scadenza_key === "Pagate" &&
+    Number(s.importo_pagato ?? 0) > 0
+  );
+}
+
 export type CategoriaScadenza = "scaduto" | "a_scadere" | "pagato";
 
 export function classificaScadenza(s: {
@@ -26,6 +45,9 @@ export function classificaScadenza(s: {
   giorni_ritardo?: number | null;
   // legacy: ignorato, accettato solo per retro-compatibilita' di firma
   tempi_scadenza?: string | null;
+  // FM54: se presenti, riconoscono le rate chiuse in anticipo da Gamma.
+  tempi_scadenza_key?: string | null;
+  importo_pagato?: number | string | null;
 }): CategoriaScadenza {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -41,6 +63,7 @@ export function classificaScadenza(s: {
 
   // 2. Incassata davvero (anche in anticipo) e non scaduta-Aperta -> pagato.
   if (s.data_pagamento_effettiva) return "pagato";
+  if (scadenzaChiusaAnticipata(s)) return "pagato";
 
   // 3. Non incassata: futura -> a scadere (qualsiasi stato, anche "Chiusa" tipo R.B.).
   if (s.data_scadenza) {

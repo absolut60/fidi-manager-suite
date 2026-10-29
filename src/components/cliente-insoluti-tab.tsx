@@ -31,7 +31,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { classificaScadenza, isPagatoReale } from "@/lib/scadenze";
+import { classificaScadenza, isPagatoReale, scadenzaChiusaAnticipata } from "@/lib/scadenze";
 import { AllegatiSection, ALLEGATI_BUCKET } from "@/components/allegati-section";
 import { ClientePianiRientroTab } from "@/components/cliente-piani-rientro-tab";
 import { BottoneElimina } from "@/components/conferma-eliminazione";
@@ -154,6 +154,7 @@ type ScadenzaRow = {
   data_documento: string | null;
   data_scadenza: string | null;
   data_pagamento_effettiva: string | null;
+  tempi_scadenza_key: string | null;
   descrizione_pagamento: string | null;
   importo_scadenza: number | null;
   importo_pagato: number | null;
@@ -183,7 +184,7 @@ function ScadenziarioSection({ clienteId }: { clienteId: string; canEdit?: boole
     queryFn: async () => {
       const { data, error } = await supabase
         .from("scadenze")
-        .select("id, numero_documento, data_documento, data_scadenza, data_pagamento_effettiva, descrizione_pagamento, importo_scadenza, importo_pagato, giorni_ritardo, stato_contabile, tempi_scadenza")
+        .select("id, numero_documento, data_documento, data_scadenza, data_pagamento_effettiva, descrizione_pagamento, importo_scadenza, importo_pagato, giorni_ritardo, stato_contabile, tempi_scadenza, tempi_scadenza_key")
         .eq("cliente_id", clienteId)
         .order("data_scadenza", { ascending: true });
       if (error) throw error;
@@ -206,13 +207,19 @@ function ScadenziarioSection({ clienteId }: { clienteId: string; canEdit?: boole
     queryFn: async () => {
       let q = supabase
         .from("scadenze")
-        .select("id, numero_documento, data_documento, data_scadenza, data_pagamento_effettiva, descrizione_pagamento, importo_scadenza, importo_pagato, giorni_ritardo, stato_contabile, tempi_scadenza")
+        .select("id, numero_documento, data_documento, data_scadenza, data_pagamento_effettiva, descrizione_pagamento, importo_scadenza, importo_pagato, giorni_ritardo, stato_contabile, tempi_scadenza, tempi_scadenza_key")
         .eq("cliente_id", clienteId)
-        .not("data_pagamento_effettiva", "is", null)
         .gt("importo_pagato", 0)
         .order("data_pagamento_effettiva", { ascending: false })
         .limit(2000);
-      if (dataDal) q = q.gte("data_pagamento_effettiva", dataDal);
+      // Incassate (nella finestra) OPPURE chiuse in anticipo da Gamma
+      // (gemello di public.scadenza_chiusa_anticipata; senza data, sempre incluse).
+      const chiuseAnticipo = "and(stato_contabile.eq.Chiusa,tempi_scadenza_key.eq.Pagate,data_pagamento_effettiva.is.null)";
+      q = q.or(
+        dataDal
+          ? `data_pagamento_effettiva.gte.${dataDal},${chiuseAnticipo}`
+          : `data_pagamento_effettiva.not.is.null,${chiuseAnticipo}`,
+      );
       const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as ScadenzaRow[];
@@ -223,7 +230,7 @@ function ScadenziarioSection({ clienteId }: { clienteId: string; canEdit?: boole
   const rows = scadenze ?? [];
   const scadute = rows.filter((s) => classificaScadenza(s) === "scaduto");
   const aScadere = rows.filter((s) => classificaScadenza(s) === "a_scadere");
-  const pagateRows = (pagate ?? []).filter(isPagatoReale).filter((r) => Number(r.importo_scadenza ?? 0) !== 0);
+  const pagateRows = (pagate ?? []).filter((r) => isPagatoReale(r) || scadenzaChiusaAnticipata(r)).filter((r) => Number(r.importo_scadenza ?? 0) !== 0);
 
   return (
     <div className="space-y-6">
@@ -467,7 +474,7 @@ function PagatoBlock({
                     <TableRow key={s.id} className="bg-success/5">
                       <TableCell className="font-mono text-xs">{s.numero_documento ?? "—"}</TableCell>
                       <TableCell className="text-sm">{fmtDate(s.data_scadenza)}</TableCell>
-                      <TableCell className="text-sm">{fmtDate(s.data_pagamento_effettiva)}</TableCell>
+                      <TableCell className="text-sm">{s.data_pagamento_effettiva ? fmtDate(s.data_pagamento_effettiva) : "chiusa in Gamma"}</TableCell>
                       <TableCell className="text-xs">{s.descrizione_pagamento ?? "—"}</TableCell>
                       <TableCell className="text-right tabular-nums">{fmtEuro(impScad)}</TableCell>
                       <TableCell className="text-right tabular-nums font-medium">
