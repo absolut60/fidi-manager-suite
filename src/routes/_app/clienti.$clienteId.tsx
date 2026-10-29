@@ -1030,7 +1030,7 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
       const { data: scad, error } = await supabase
         .from("scadenze")
         .select(
-          "importo_scadenza, giorni_ritardo, stato_contabile, tempi_scadenza, data_scadenza, data_pagamento_effettiva, numero_documento",
+          "importo_scadenza, giorni_ritardo, stato_contabile, tempi_scadenza, data_scadenza, data_pagamento_effettiva, numero_documento, tempi_scadenza_key, importo_pagato",
         )
         .eq("cliente_id", clienteId);
       if (error) throw error;
@@ -1042,6 +1042,8 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
         data_scadenza: string | null;
         data_pagamento_effettiva: string | null;
         numero_documento: string | null;
+        tempi_scadenza_key: string | null;
+        importo_pagato: number | null;
       }>;
       const scadute = rows.filter((s) => classificaScadenza(s) === "scaduto");
       const aScadere = rows.filter((s) => classificaScadenza(s) === "a_scadere");
