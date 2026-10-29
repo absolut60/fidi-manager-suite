@@ -753,7 +753,14 @@ function LeadListaPage() {
         ) : (
           <>
           {/* Mobile: schede al posto della tabella */}
-          <ElencoSchede>
+          <ElencoSchede
+            selezioneTutti={canManage ? {
+              tutti: tuttaPaginaSel,
+              alcuni: qualcunoPaginaSel,
+              onChange: selezionaPagina,
+              etichetta: `Seleziona tutta la pagina (${rows.length.toLocaleString("it-IT")})`,
+            } : undefined}
+          >
             {rows.map((l) => (
               <SchedaLista
                 key={l.id}

@@ -472,6 +472,11 @@ function ScadenziarioPage() {
 
   const totalCount = Number(rows?.[0]?.total_count ?? totali?.n_clienti_totali ?? 0);
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  /** Stessa azione della casella in intestazione tabella. */
+  const toggleTuttiFiltrati = (v: boolean) => {
+    if (v) void selezionaTuttiFiltrati();
+    else setSelectedIds(new Set());
+  };
 
   const kpi = useMemo(() => {
     const t = totali;
@@ -978,7 +983,14 @@ function ScadenziarioPage() {
         ) : (
           <Card>
             <div className="md:hidden p-3">
-              <ElencoSchede>
+              <ElencoSchede
+                selezioneTutti={{
+                  tutti: selectedIds.size > 0 && selectedIds.size >= totalCount,
+                  alcuni: selectedIds.size > 0,
+                  onChange: toggleTuttiFiltrati,
+                  etichetta: `Seleziona tutti i filtrati (${totalCount.toLocaleString("it-IT")})`,
+                }}
+              >
                 {pageRows.map((r) => {
                   const totScad = Number(r.tot_scaduto ?? 0);
                   const totAScad = Number(r.tot_a_scadere ?? 0);
@@ -1039,13 +1051,7 @@ function ScadenziarioPage() {
                           ? "indeterminate"
                           : false
                       }
-                      onCheckedChange={(v) => {
-                        if (v) {
-                          void selezionaTuttiFiltrati();
-                        } else {
-                          setSelectedIds(new Set());
-                        }
-                      }}
+                      onCheckedChange={(v) => toggleTuttiFiltrati(v === true)}
                     />
                   </TableHead>
                   <TableHead className="w-8 text-center px-1">Az.</TableHead>

@@ -93,7 +93,37 @@ export function SchedaLista({
   );
 }
 
+export type SelezioneTutti = {
+  tutti: boolean;
+  alcuni?: boolean;
+  disabled?: boolean;
+  onChange: (v: boolean) => void;
+  /** Testo mostrato quando non tutte sono selezionate, es. "Seleziona tutte (12)". */
+  etichetta?: string;
+};
+
 /** Contenitore delle schede: visibile solo sotto `md`. La tabella va avvolta in `hidden md:block`. */
-export function ElencoSchede({ children }: { children: ReactNode }) {
-  return <div className="md:hidden space-y-2">{children}</div>;
+export function ElencoSchede({ children, selezioneTutti }: { children: ReactNode; selezioneTutti?: SelezioneTutti }) {
+  if (!selezioneTutti) return <div className="md:hidden space-y-2">{children}</div>;
+  const s = selezioneTutti;
+  const stato = s.tutti ? true : s.alcuni ? "indeterminate" : false;
+  return (
+    <div className="md:hidden space-y-2">
+      <label
+        className={cn(
+          "flex min-h-10 items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm",
+          s.disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer",
+        )}
+      >
+        <Checkbox
+          checked={stato}
+          disabled={s.disabled}
+          onCheckedChange={() => s.onChange(!s.tutti)}
+          className="h-5 w-5 shrink-0"
+        />
+        <span className="min-w-0 break-words">{s.tutti ? "Deseleziona tutte" : (s.etichetta ?? "Seleziona tutte")}</span>
+      </label>
+      {children}
+    </div>
+  );
 }
