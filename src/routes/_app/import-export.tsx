@@ -3368,15 +3368,18 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
                       : "outline";
             return (
               <div key={r.id} className="border-b last:border-0 pb-3 last:pb-0 space-y-1.5">
-                <div className="flex items-start justify-between gap-2 text-sm">
-                  <div className="min-w-0">
-                    <p className="font-medium truncate">{r.nome_file}</p>
-                    <p className="text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-start justify-between gap-2 text-sm sm:flex-nowrap">
+                  <div className="contents sm:flex sm:min-w-0 sm:flex-col">
+                    <p className="order-1 min-w-0 flex-1 truncate font-medium sm:flex-none">
+                      {r.nome_file}
+                    </p>
+                    <p className="order-3 basis-full break-words text-xs text-muted-foreground sm:basis-auto">
                       {r.fonte ? <span className="mr-2">[{r.fonte}]</span> : null}
                       {new Date(r.created_at).toLocaleString("it-IT")}
                     </p>
                   </div>
-                  <div className="text-right shrink-0">
+                  <div className="contents sm:flex sm:shrink-0 sm:flex-col sm:items-end sm:text-right">
+
                     <Badge
                       variant={variant as "default" | "destructive" | "secondary" | "outline"}
                       className="gap-1"
