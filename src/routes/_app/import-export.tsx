@@ -778,9 +778,8 @@ function AnagraficaImportCard() {
         </Button>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
-        Crea o aggiorna i clienti (upsert su <code>codice_gestionale</code> o{" "}
-        <code>partita_iva</code>). L'elaborazione gira in background: puoi chiudere la pagina senza
-        interrompere l'import.
+        Carica il file clienti di Gamma: crea i clienti nuovi e aggiorna quelli esistenti. Va fatto
+        per primo, prima degli altri import. Puoi chiudere la pagina: l'import prosegue da solo.
       </p>
       {inProgress && progress ? (
         <div className="space-y-2 mb-4 p-3 rounded-md border bg-muted/30 text-sm">
@@ -942,8 +941,8 @@ function RischioImportCard() {
         </Button>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
-        Aggiorna dati rischio dei clienti esistenti (match su <code>Codice</code>). Elaborazione in
-        background.
+        Carica il file dell'analisi rischio di Gamma: aggiorna i dati di rischio dei clienti già
+        presenti. Puoi chiudere la pagina: l'import prosegue da solo.
       </p>
       {bg.inProgress && bg.progress ? (
         <BgProgressBlock progress={bg.progress} fallbackTotal={0} />
@@ -2014,15 +2013,10 @@ function ScadenziarioImportCard() {
         </div>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
-        Carica il file Excel (tracciato MADE_VISTASCADENZE): viene letto il foglio{" "}
-        <code>SCADENZIARIO</code>. La riga delle intestazioni è individuata automaticamente
-        (compatibile con header in riga 1 o riga 2). Match cliente su <code>COD_CLI</code>. Chiave
-        univoca: COD_CLI + <code>_KEYDOCUMENTO</code> + Data Scadenza + <code>_KEYTIPOEFFETTO</code>{" "}
-        + Importo Scadenza. <code>Data Pagamento Effettiva</code> viene salvata in
-        <code> data_pagamento_effettiva</code>. Se nello stesso file è presente il foglio{" "}
-        <code>BLOCCO_FIDO_ASSICURAZIONE</code>, con lo stesso caricamento vengono aggiornati anche
-        blocco fido (<code>ind_blocco</code>) e assicurazione dei clienti; i due import restano
-        separati e visibili in “Ultime importazioni”.
+        Carica il file MADE_VISTASCADENZE di Gamma: aggiorna le scadenze dei clienti e toglie quelle
+        che in Gamma non ci sono più. Con lo stesso file si aggiornano anche blocco, fido,
+        assicurazione e note legali. Va fatto dopo l'anagrafica. Puoi chiudere la pagina: l'import
+        prosegue da solo.
       </p>
       {showProgress ? (
         <ScadenziarioProgressBlock
