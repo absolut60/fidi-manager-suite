@@ -3382,12 +3382,14 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
 
                     <Badge
                       variant={variant as "default" | "destructive" | "secondary" | "outline"}
-                      className="gap-1"
+                      className="order-2 shrink-0 gap-1"
+
                     >
                       {inCorso && !bloccato ? <Loader2 className="size-3 animate-spin" /> : null}
                       {bloccato ? "Bloccato" : r.stato}
                     </Badge>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="order-4 mt-1 mr-auto text-xs text-muted-foreground sm:mr-0">
+
                       {kind === "importazioni"
                         ? `${r.righe_create ?? 0} nuovi · ${r.righe_aggiornate ?? 0} agg. / ${r.righe_totali ?? 0}`
                         : `${r.righe_esportate ?? 0} righe`}
@@ -3407,7 +3409,8 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="h-6 mt-1 text-[11px] px-2"
+                        className="order-6 mt-1 h-6 shrink-0 px-2 text-[11px]"
+
                         onClick={async () => {
                           try {
                             const { data, error } = await (supabase as any)
