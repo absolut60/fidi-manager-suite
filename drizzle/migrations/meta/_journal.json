@@ -673,6 +673,20 @@
       "when": 1793312676889,
       "tag": "0095_fm54_inline_funzioni_scadenze_chiuse",
       "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1793394167046,
+      "tag": "0096_fm55_fido_teorico_v2_parallelo",
+      "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1793394223434,
+      "tag": "0097_fm55_ricalcolo_include_fido_v2",
+      "breakpoints": true
     }
   ]
 }
