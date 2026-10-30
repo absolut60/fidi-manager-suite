@@ -164,7 +164,7 @@ export function FidoTeoricoPrecalcoloCard() {
             ? `Fido teorico aggiornato alle ${formatData(ultimoRicalcolo)}${data?.origine ? ` (${data.origine})` : ""}.`
             : "Nessun ricalcolo eseguito finora."}
         </p>
-        {attesa && <p className="break-words">In attesa di: {attesa}</p>}
+        {daRicalcolare && attesa && <p className="break-words">In attesa di: {attesa}</p>}
         <p>
           Clienti nel precalcolo:{" "}
           <span className="font-medium text-foreground tabular-nums">
