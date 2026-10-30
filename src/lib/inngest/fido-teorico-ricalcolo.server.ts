@@ -18,7 +18,11 @@ export const ricalcolaFidoTeorico = inngest.createFunction(
     concurrency: { limit: 1 },
     triggers: [{ event: "fido-teorico/ricalcolo.requested" }],
   },
-  async ({ step }) => {
+  async ({ event, step }) => {
+    const origine =
+      (event.data as { origine?: string } | undefined)?.origine === "automatico"
+        ? "automatico"
+        : "manuale";
     await step.run("refresh-fatturato", async () => {
       const { error } = await supabaseAdmin.rpc("ricalcola_fido_teorico_avvia");
       if (error) throw new Error(error.message);
@@ -60,6 +64,21 @@ export const ricalcolaFidoTeorico = inngest.createFunction(
       return { ok: true };
     });
 
-    return { blocchi_elaborati: blocchi, ultimo_id: dopoId, finalizzato: true };
+    // Origine dell'ultimo ricalcolo (automatico | manuale), letta da card e avviso.
+    await step.run("registra-origine", async () => {
+      const { error } = await supabaseAdmin.from("configurazioni").upsert(
+        {
+          chiave: "fido_teorico_ultimo_ricalcolo_origine",
+          valore: origine,
+          descrizione: "Origine dell'ultimo ricalcolo del fido teorico (automatico | manuale)",
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "chiave" },
+      );
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    });
+
+    return { origine, blocchi_elaborati: blocchi, ultimo_id: dopoId, finalizzato: true };
   },
 );

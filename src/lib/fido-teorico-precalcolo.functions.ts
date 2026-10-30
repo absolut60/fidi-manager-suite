@@ -15,6 +15,6 @@ export const ricalcolaFidoTeorico = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     await assertPuoImportareGamma(context.supabase, context.userId, context.claims);
     const { sendInngestEvent } = await import("@/lib/inngest/client");
-    await sendInngestEvent("fido-teorico/ricalcolo.requested", {});
+    await sendInngestEvent("fido-teorico/ricalcolo.requested", { origine: "manuale" });
     return { avviato: true };
   });

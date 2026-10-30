@@ -22,6 +22,22 @@ export const Route = createFileRoute("/api/public/hooks/check-scadenze")({
           if (!expected || provided !== expected) {
             return new Response("Unauthorized", { status: 401 });
           }
+          // Interruttore reversibile degli avvisi di scadenza del fido (12 mesi).
+          // Acceso solo con valore 'true'; chiave assente o diversa = spento.
+          const { data: interruttore } = await supabaseAdmin
+            .from("configurazioni")
+            .select("valore")
+            .eq("chiave", "promemoria_scadenza_fido_attivo")
+            .maybeSingle();
+          if ((interruttore?.valore ?? "false").trim().toLowerCase() !== "true") {
+            return Response.json({
+              success: true,
+              disattivato: true,
+              notifiche_create: 0,
+              timestamp: new Date().toISOString(),
+            });
+          }
+
           // Leggi configurazioni
           const { data: cfgRows } = await supabaseAdmin
             .from("configurazioni")

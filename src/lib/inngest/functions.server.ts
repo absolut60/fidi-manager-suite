@@ -111,7 +111,12 @@ export async function chiudiImportazione(
   if (opzioni?.soloSeStato) q = q.eq("stato", opzioni.soloSeStato as never);
   await q;
   try {
-    await sendInngestEvents([{ name: "import/esito.notifica", data: { importazioneId } }]);
+    await sendInngestEvents([
+      { name: "import/esito.notifica", data: { importazioneId } },
+      // Verifica se ora sono arrivati tutti gli import del giro: in caso
+      // positivo parte da solo il ricalcolo del fido teorico.
+      { name: "fido-teorico/verifica-import-completi", data: { importazioneId } },
+    ]);
   } catch (e) {
     console.error(
       `[chiudiImportazione] emissione esito ${importazioneId} fallita: ${e instanceof Error ? e.message : String(e)}`,
