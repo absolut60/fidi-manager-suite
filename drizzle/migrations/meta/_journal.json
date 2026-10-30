@@ -687,6 +687,13 @@
       "when": 1793394223434,
       "tag": "0097_fm55_ricalcolo_include_fido_v2",
       "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1793395096339,
+      "tag": "0098_fm55_fido_v2_spiegazione_giorni_e_tendenza",
+      "breakpoints": true
     }
   ]
 }
