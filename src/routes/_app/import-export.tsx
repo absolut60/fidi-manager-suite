@@ -778,9 +778,8 @@ function AnagraficaImportCard() {
         </Button>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
-        Crea o aggiorna i clienti (upsert su <code>codice_gestionale</code> o{" "}
-        <code>partita_iva</code>). L'elaborazione gira in background: puoi chiudere la pagina senza
-        interrompere l'import.
+        Carica il file clienti di Gamma: crea i clienti nuovi e aggiorna quelli esistenti. Va fatto
+        per primo, prima degli altri import. Puoi chiudere la pagina: l'import prosegue da solo.
       </p>
       {inProgress && progress ? (
         <div className="space-y-2 mb-4 p-3 rounded-md border bg-muted/30 text-sm">
