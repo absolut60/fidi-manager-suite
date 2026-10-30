@@ -178,3 +178,85 @@ export async function fetchFidoTeoricoTutti(): Promise<Map<string, FidoTeoricoRo
   return map;
 }
 
+
+// ============================================================================
+// FM55 — Fido teorico nuovo (anteprima): lettura di fido_teorico_v2
+// ============================================================================
+
+export type FidoTeoricoNuovoRow = {
+  cliente_id: string;
+  acquisto_mensile: number | null;
+  ciclo_gg: number | null;
+  profilo: string | null;
+  coefficiente: number | null;
+  base: number | null;
+  esposizione: number | null;
+  ordini_aperti: number | null;
+  fabbisogno: number | null;
+  fido_proposto: number | null;
+  fido_attuale: number | null;
+  consumo_perc: number | null;
+  regola: string | null;
+  da_verificare: boolean | null;
+  spiegazione: string | null;
+  calcolato_at: string | null;
+};
+
+/** Etichette italiane dei profili di pagamento del fido nuovo (fonte unica). */
+export const PROFILO_FIDO_LABEL: Record<string, string> = {
+  puntuale: "Puntuale",
+  ritardo_occasionale: "Ritardo occasionale",
+  ritardo_abituale: "Ritardo abituale",
+  ritardo_abituale_grave: "Ritardo abituale grave",
+  insoluto_isolato: "Insoluto isolato",
+  patologico_scaduto_fermo: "Patologico: scaduto fermo",
+  patologico_insoluti_ripetuti: "Patologico: insoluti ripetuti",
+  patologico_insoluto_pesante: "Patologico: insoluto pesante",
+  dormiente: "Dormiente",
+};
+
+const numOrNull = (v: unknown) => (v === null || v === undefined ? null : Number(v));
+
+/** Riga di fido_teorico_v2 del cliente, o null se assente. */
+export async function fetchFidoTeoricoNuovo(clienteId: string): Promise<FidoTeoricoNuovoRow | null> {
+  const { data, error } = await (supabase as any)
+    .from("fido_teorico_v2")
+    .select("*")
+    .eq("cliente_id", clienteId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const r = data as any;
+  return {
+    cliente_id: r.cliente_id,
+    acquisto_mensile: numOrNull(r.acquisto_mensile),
+    ciclo_gg: numOrNull(r.ciclo_gg),
+    profilo: r.profilo ?? null,
+    coefficiente: numOrNull(r.coefficiente),
+    base: numOrNull(r.base),
+    esposizione: numOrNull(r.esposizione),
+    ordini_aperti: numOrNull(r.ordini_aperti),
+    fabbisogno: numOrNull(r.fabbisogno),
+    fido_proposto: numOrNull(r.fido_proposto),
+    fido_attuale: numOrNull(r.fido_attuale),
+    consumo_perc: numOrNull(r.consumo_perc),
+    regola: r.regola ?? null,
+    da_verificare: r.da_verificare ?? null,
+    spiegazione: r.spiegazione ?? null,
+    calcolato_at: r.calcolato_at ?? null,
+  };
+}
+
+/** Utenti abilitati all'anteprima: configurazioni.fido_v2_anteprima_utenti (id separati da virgola). */
+export async function fetchUtentiAnteprimaFidoNuovo(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("configurazioni")
+    .select("valore")
+    .eq("chiave", "fido_v2_anteprima_utenti")
+    .maybeSingle();
+  if (error) throw error;
+  return String(data?.valore ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}

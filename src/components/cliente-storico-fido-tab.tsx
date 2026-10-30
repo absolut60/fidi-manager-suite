@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CambioCondizionePagamento } from "@/components/cambio-condizione-pagamento";
 import { mapRichiestaFido } from "@/lib/richieste-fido-data";
 import { FidoTeoricoBlocco } from "@/components/fido-teorico-blocco";
+import { FidoTeoricoNuovoBlocco } from "@/components/fido-teorico-nuovo-blocco";
 import { RichiestaFormDialog, ModificaRichiestaFidoDialog } from "@/components/richiesta-fido-form-dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -95,6 +96,8 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
   return (
     <div className="space-y-6">
       <FidoGestionaleCard cliente={cliente ?? null} />
+
+      <FidoTeoricoNuovoBlocco clienteId={clienteId} />
 
       <FidoTeoricoBlocco clienteId={clienteId} variant="card" />
 
