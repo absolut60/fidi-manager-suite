@@ -941,8 +941,8 @@ function RischioImportCard() {
         </Button>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
-        Aggiorna dati rischio dei clienti esistenti (match su <code>Codice</code>). Elaborazione in
-        background.
+        Carica il file dell'analisi rischio di Gamma: aggiorna i dati di rischio dei clienti già
+        presenti. Puoi chiudere la pagina: l'import prosegue da solo.
       </p>
       {bg.inProgress && bg.progress ? (
         <BgProgressBlock progress={bg.progress} fallbackTotal={0} />
