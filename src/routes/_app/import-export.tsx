@@ -768,7 +768,8 @@ function AnagraficaImportCard() {
 
   return (
     <Card className="p-5">
-      <div className="flex items-center justify-between mb-1">
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+
         <h2 className="font-semibold flex items-center gap-2">
           <Upload className="size-4" /> A · Importa Anagrafica Clienti
         </h2>
@@ -931,7 +932,8 @@ function RischioImportCard() {
 
   return (
     <Card className="p-5">
-      <div className="flex items-center justify-between mb-1">
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+
         <h2 className="font-semibold flex items-center gap-2">
           <TrendingUp className="size-4" /> B · Importa Analisi Rischio
         </h2>
@@ -2000,7 +2002,7 @@ function ScadenziarioImportCard() {
 
   return (
     <Card className="p-5">
-      <div className="flex items-center justify-between mb-1">
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-semibold flex items-center gap-2">
           <CalendarClock className="size-4" /> C · Importa Scadenziario
         </h2>
@@ -3395,15 +3397,18 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
                         : `${r.righe_esportate ?? 0} righe`}
                     </p>
                     {inCorso ? (
-                      <AnnullaImportButton
-                        row={r}
-                        onDone={() =>
-                          queryClient.invalidateQueries({
-                            queryKey: ["storico-import-export", "importazioni"],
-                          })
-                        }
-                      />
+                      <span className="order-5 shrink-0">
+                        <AnnullaImportButton
+                          row={r}
+                          onDone={() =>
+                            queryClient.invalidateQueries({
+                              queryKey: ["storico-import-export", "importazioni"],
+                            })
+                          }
+                        />
+                      </span>
                     ) : null}
+
                     {kind === "importazioni" ? (
                       <Button
                         type="button"
