@@ -12,14 +12,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ricalcolaFidoTeorico } from "@/lib/fido-teorico-precalcolo.functions";
+import {
+  elencoMancantiTesto,
+  istanteDa,
+  leggiStatoImportCompleti,
+} from "@/lib/fido-teorico-import-completi";
 
 const POLL_MS = 5_000;
 const POLL_MAX_MS = 3 * 60_000;
 
 function formatData(iso: string | null): string | null {
   if (!iso) return null;
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return null;
+  const t = istanteDa(iso);
+  if (t === null) return null;
+  const d = new Date(t);
   return `${d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })} del ${d.toLocaleDateString("it-IT")}`;
 }
 
@@ -27,11 +33,12 @@ function useStatoPrecalcolo(pollingAttivo = false) {
   return useQuery({
     queryKey: ["fido-teorico-precalcolo-stato"],
     queryFn: async () => {
-      const [cfg, cnt, imp] = await Promise.all([
+      const [stato, orig, cnt, imp] = await Promise.all([
+        leggiStatoImportCompleti(supabase),
         supabase
           .from("configurazioni")
           .select("valore")
-          .eq("chiave", "fido_teorico_ultimo_ricalcolo")
+          .eq("chiave", "fido_teorico_ultimo_ricalcolo_origine")
           .maybeSingle(),
         supabase
           .from("fido_teorico_cliente" as never)
@@ -45,7 +52,9 @@ function useStatoPrecalcolo(pollingAttivo = false) {
           .maybeSingle(),
       ]);
       return {
-        ultimoRicalcolo: (cfg.data?.valore as string | undefined) ?? null,
+        ultimoRicalcolo: stato.ultimoRicalcolo,
+        origine: (orig.data?.valore as string | undefined) ?? null,
+        importCompleti: stato,
         righe: cnt.count ?? 0,
         ultimoImport: (imp.data?.created_at as string | undefined) ?? null,
       };
@@ -72,7 +81,7 @@ function useRicalcolo() {
     const nuovo =
       ultimoRicalcolo &&
       (!partenza.current ||
-        new Date(ultimoRicalcolo) > new Date(partenza.current));
+        (istanteDa(ultimoRicalcolo) ?? 0) > (istanteDa(partenza.current) ?? 0));
     if (nuovo) {
       setInCorso(false);
       toast.success("Fido teorico ricalcolato");
@@ -116,7 +125,10 @@ export function FidoTeoricoPrecalcoloCard() {
   const ultimoImport = data?.ultimoImport ?? null;
   const daRicalcolare =
     !ultimoRicalcolo ||
-    (!!ultimoImport && new Date(ultimoImport) > new Date(ultimoRicalcolo));
+    (!!ultimoImport && (istanteDa(ultimoImport) ?? 0) > (istanteDa(ultimoRicalcolo) ?? 0));
+  const attesa = data?.importCompleti && !data.importCompleti.pronto
+    ? elencoMancantiTesto(data.importCompleti)
+    : null;
 
   return (
     <Card className="p-4 sm:p-6 space-y-4">
@@ -134,9 +146,10 @@ export function FidoTeoricoPrecalcoloCard() {
       {daRicalcolare ? (
         <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning">
           <AlertTriangle className="size-4 mt-0.5 shrink-0" />
-          <span>
-            Sono stati importati dati più recenti dell'ultimo ricalcolo: conviene
-            ricalcolare il fido teorico.
+          <span className="min-w-0 break-words">
+            {attesa
+              ? `Sono arrivati dati più recenti dell'ultimo ricalcolo. Il fido teorico si aggiornerà da solo appena arrivano anche: ${attesa}.`
+              : "Sono stati importati dati più recenti dell'ultimo ricalcolo: il ricalcolo automatico partirà a breve, oppure puoi avviarlo ora."}
           </span>
         </div>
       ) : (
@@ -148,9 +161,10 @@ export function FidoTeoricoPrecalcoloCard() {
       <div className="text-sm text-muted-foreground space-y-1">
         <p>
           {ultimoRicalcolo
-            ? `Fido teorico aggiornato alle ${formatData(ultimoRicalcolo)}.`
+            ? `Fido teorico aggiornato alle ${formatData(ultimoRicalcolo)}${data?.origine ? ` (${data.origine})` : ""}.`
             : "Nessun ricalcolo eseguito finora."}
         </p>
+        {daRicalcolare && attesa && <p className="break-words">In attesa di: {attesa}</p>}
         <p>
           Clienti nel precalcolo:{" "}
           <span className="font-medium text-foreground tabular-nums">
@@ -186,12 +200,23 @@ export function FidoTeoricoPrecalcoloCard() {
 /** Avviso compatto mostrato al termine di un import che incide sul fido. */
 export function RicalcolaFidoTeoricoAvviso() {
   const ric = useRicalcolo();
+  const { data } = useStatoPrecalcolo();
+  const attesa = data?.importCompleti && !data.importCompleti.pronto
+    ? elencoMancantiTesto(data.importCompleti)
+    : null;
   return (
     <div className="rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-sm space-y-2">
-      <p>
-        Import completato. I dati che influenzano il fido sono cambiati: vuoi ricalcolare
-        il fido teorico ora?
+      <p className="break-words">
+        {attesa
+          ? `Import completato. Il fido teorico si aggiornerà da solo appena arrivano anche: ${attesa}. Se vuoi, puoi ricalcolarlo subito.`
+          : "Import completato. Sono arrivati tutti gli import: il fido teorico si aggiornerà da solo tra pochi minuti. Se vuoi, puoi ricalcolarlo subito."}
       </p>
+      {data?.ultimoRicalcolo && (
+        <p className="text-xs text-muted-foreground">
+          Fido teorico aggiornato alle {formatData(data.ultimoRicalcolo)}
+          {data.origine ? ` (${data.origine})` : ""}.
+        </p>
+      )}
       <div className="flex items-center gap-2 flex-wrap">
         <Button size="sm" disabled={ric.inCorso} onClick={ric.avvia}>
           {ric.inCorso && <Loader2 className="size-4 animate-spin" />}

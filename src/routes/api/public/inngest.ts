@@ -24,6 +24,7 @@ import { emailHealthCheck } from "@/lib/inngest/email-health.server";
 import { processEventiPartecipantiImport } from "@/lib/inngest/eventi-import.server";
 import { refreshFatturatoMensileCron } from "@/lib/inngest/fatturato-mensile.server";
 import { ricalcolaFidoTeorico } from "@/lib/inngest/fido-teorico-ricalcolo.server";
+import { verificaImportCompletiFidoTeorico } from "@/lib/inngest/fido-teorico-verifica-import.server";
 import { notificaVariazioniBlocco } from "@/lib/inngest/variazioni-blocco.server";
 import { avvisoLegaleDifferito } from "@/lib/inngest/legale-variazioni-differita.server";
 import { rilevaAgenziaRecupero } from "@/lib/inngest/agenzia-recupero.server";
@@ -58,6 +59,7 @@ const handler = serve({
     processEventiPartecipantiImport,
     refreshFatturatoMensileCron,
     ricalcolaFidoTeorico,
+    verificaImportCompletiFidoTeorico,
     notificaVariazioniBlocco,
     avvisoLegaleDifferito,
     rilevaAgenziaRecupero,
