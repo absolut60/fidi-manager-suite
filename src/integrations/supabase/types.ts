@@ -2805,6 +2805,87 @@ export type Database = {
           },
         ]
       }
+      fido_teorico_v2: {
+        Row: {
+          acquisto_mensile: number | null
+          acquisto_storico: number | null
+          acquisto_tendenza: number | null
+          base: number | null
+          calcolato_at: string
+          ciclo_gg: number | null
+          cliente_id: string
+          coefficiente: number | null
+          consumo_perc: number | null
+          da_verificare: boolean
+          esposizione: number | null
+          fabbisogno: number | null
+          fido_attuale: number | null
+          fido_proposto: number | null
+          mesi_stagionali: number | null
+          ordini_aperti: number | null
+          profilo: string | null
+          regola: string | null
+          spiegazione: string | null
+        }
+        Insert: {
+          acquisto_mensile?: number | null
+          acquisto_storico?: number | null
+          acquisto_tendenza?: number | null
+          base?: number | null
+          calcolato_at?: string
+          ciclo_gg?: number | null
+          cliente_id: string
+          coefficiente?: number | null
+          consumo_perc?: number | null
+          da_verificare?: boolean
+          esposizione?: number | null
+          fabbisogno?: number | null
+          fido_attuale?: number | null
+          fido_proposto?: number | null
+          mesi_stagionali?: number | null
+          ordini_aperti?: number | null
+          profilo?: string | null
+          regola?: string | null
+          spiegazione?: string | null
+        }
+        Update: {
+          acquisto_mensile?: number | null
+          acquisto_storico?: number | null
+          acquisto_tendenza?: number | null
+          base?: number | null
+          calcolato_at?: string
+          ciclo_gg?: number | null
+          cliente_id?: string
+          coefficiente?: number | null
+          consumo_perc?: number | null
+          da_verificare?: boolean
+          esposizione?: number | null
+          fabbisogno?: number | null
+          fido_attuale?: number | null
+          fido_proposto?: number | null
+          mesi_stagionali?: number | null
+          ordini_aperti?: number | null
+          profilo?: string | null
+          regola?: string | null
+          spiegazione?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fido_teorico_v2_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: true
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fido_teorico_v2_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: true
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+        ]
+      }
       fornitori: {
         Row: {
           categoria_fornitore: string
@@ -6442,6 +6523,7 @@ export type Database = {
         }
       }
       arrotonda_fido_proposto: { Args: { _fido_base: number }; Returns: number }
+      arrotonda_fido_v2: { Args: { _x: number }; Returns: number }
       auth_gestisce_contatti_clienti: { Args: never; Returns: boolean }
       auth_ha_accesso_preventivi: { Args: never; Returns: boolean }
       auth_ha_ruolo_globale_clienti: { Args: never; Returns: boolean }
@@ -7282,6 +7364,29 @@ export type Database = {
           ritmo_mensile: number
           scostamento: number
           sede_cinisello: boolean
+        }[]
+      }
+      get_fido_teorico_v2: {
+        Args: { _cliente_ids?: string[] }
+        Returns: {
+          acquisto_mensile: number
+          acquisto_storico: number
+          acquisto_tendenza: number
+          base: number
+          ciclo_gg: number
+          cliente_id: string
+          coefficiente: number
+          consumo_perc: number
+          da_verificare: boolean
+          esposizione: number
+          fabbisogno: number
+          fido_attuale: number
+          fido_proposto: number
+          mesi_stagionali: number
+          ordini_aperti: number
+          profilo: string
+          regola: string
+          spiegazione: string
         }[]
       }
       get_incassi_periodo: {
