@@ -22,6 +22,6 @@ test('workbook exports new calculation values without substituting the old base 
  expect(ws.AI2.v).toBe(55450.06);
  expect(ws.AM2.v).toBe(3);
  expect(ws.AO2.v).toBe(0.9241676667);
- expect(wb.Sheets.Riepilogo.B8.v).toBe(4000);
- expect(wb.Sheets.Riepilogo.B9.v).toBe(60000);
+ expect(wb.Sheets.Riepilogo.B7.v).toBe(4000);
+ expect(wb.Sheets.Riepilogo.B8.v).toBe(60000);
 });
