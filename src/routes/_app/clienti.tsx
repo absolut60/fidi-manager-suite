@@ -18,7 +18,9 @@ import {
   determinaTipoRichiesta, isRichiestaAttiva, TIPO_LABEL, STATO_LABEL, STATO_TONE, formatDate,
   importoRichiestaValido, etichettaTipoRichiesta, condizionePagamentoCambiata,
   type StatoRichiesta, type TipoRichiesta,
+  extraFidoTeorico, motivoExtraObbligatorio,
 } from "@/lib/fidi";
+import { CampoExtraTeorico } from "@/components/extra-fido-teorico";
 import {
   fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, isProponibile,
   REGOLA_LABEL, MOTIVO_NON_PROPONIBILE, type FidoTeoricoRow,
@@ -2742,7 +2744,7 @@ function ProposteFidoMassivoDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {teoricoLoading && (
+        {(teoricoLoading || teoricoRichLoading) && (
           <p className="text-sm text-muted-foreground">Calcolo del fido teorico in corso…</p>
         )}
         {teoricoError && (
@@ -2898,7 +2900,7 @@ function ProposteFidoMassivoDialog({
           <Table className="table-fixed w-full text-xs [&_th]:px-1 [&_td]:px-1 [&_th]:whitespace-normal [&_td]:whitespace-normal">
             <colgroup>
               <col className="w-8" /><col /><col className="w-16" /><col className="w-16" />
-              <col className="w-20" /><col className="w-20" /><col className="w-64" />
+              <col className="w-40" /><col className="w-20" /><col className="w-64" />
               <col className="w-36" /><col className="w-8" /><col className="w-8" />
             </colgroup>
             <TableHeader><TableRow>
