@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { gruppoRevisione, riepilogoRevisione, daRivedereRevisione, type InputGruppoRevisione } from "../src/lib/revisione-fidi";
+import { describe, it, expect } from "bun:test";
+import { gruppoRevisione, riepilogoRevisione, daRivedereRevisione, type InputGruppoRevisione } from "@/lib/revisione-fidi";
 
 const base: InputGruppoRevisione = {
   richiestaAttiva: false, alertConfermato: false, alertAperto: false, regola: "calcolo",
