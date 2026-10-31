@@ -171,8 +171,9 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
   // Dialog proposta: un cliente una volta sola; l'importo dell'alert (riduzione/extra) prevale.
   const [propostaOpen, setPropostaOpen] = useState(false);
   const [proposta, setProposta] = useState<{ righe: any[]; importi: Map<string, number>; sempre: string[] }>({ righe: [], importi: new Map(), sempre: [] });
-  // singolo = "Apri proposta" su una riga: quel cliente si vede sempre, anche se rinnovo.
-  function apriProposta(lista: AlertFidoRow[] = selVisibili, singolo = false) {
+  // Da Alert fidi i clienti scelti si vedono sempre nella finestra, anche se rinnovi
+  // (chi apre da un alert ha già scelto quei clienti; vale per singolo e selezione multipla).
+  function apriProposta(lista: AlertFidoRow[] = selVisibili) {
     const clienti = new Map<string, any>();
     const importi = new Map<string, number>();
     for (const a of lista) {
@@ -184,7 +185,7 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
       const imp = importoDaAlert(a);
       if (imp !== undefined) importi.set(a.cliente_id, imp);
     }
-    setProposta({ righe: [...clienti.values()], importi, sempre: singolo ? [...clienti.keys()] : [] });
+    setProposta({ righe: [...clienti.values()], importi, sempre: [...clienti.keys()] });
     setPropostaOpen(true);
   }
 
@@ -282,7 +283,7 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
   const renderAzioni = (a: AlertFidoRow) => (
     <div className="flex w-full flex-col gap-2">
       {alertSelezionabile(a) && (
-        <Button size="sm" className="h-auto min-h-10 w-full whitespace-normal" onClick={() => apriProposta([a], true)}>Apri proposta</Button>
+        <Button size="sm" className="h-auto min-h-10 w-full whitespace-normal" onClick={() => apriProposta([a])}>Apri proposta</Button>
       )}
       {alertLasciabileCosi(a) && (
         <Button size="sm" variant="outline" className="h-auto min-h-10 w-full whitespace-normal" disabled={conferma.isPending}

@@ -23,6 +23,18 @@ describe("proposta massiva pratica (31/10)", () => {
     expect(r.visibili).toBe(1);
     expect(r.daDecidere).toBe(0);
   });
+  it("selezione multipla di rinnovi da Alert fidi (mostraSempre): tutte visibili", () => {
+    const righe = [
+      riga("a", "rinnovo", { inAlertOAnomalia: true }),
+      riga("b", "rinnovo"),
+      riga("c", "rinnovo", { inAlertOAnomalia: true }),
+    ];
+    const scelti = new Set(["a", "b", "c"]);
+    expect(righeVisibiliProposta(righe, filtri, new Set(), scelti).map((r) => r.cliente_id)).toEqual(["a", "b", "c"]);
+    const r = riepilogoVisibilita(righe, filtri, new Set(), undefined, scelti);
+    expect(r.visibili).toBe(3);
+    expect(r.daDecidere).toBe(0);
+  });
   it("con Rinnovo riacceso i rinnovi si vedono", () => {
     const f = { ...filtri, tipi: [...filtri.tipi, "rinnovo"] };
     expect(righeVisibiliProposta([riga("a", "rinnovo", { inAlertOAnomalia: true })], f, new Set())).toHaveLength(1);
