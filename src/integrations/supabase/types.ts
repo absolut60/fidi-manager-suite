@@ -8423,6 +8423,16 @@ export type Database = {
       }
       storage_path_cliente_id: { Args: { _name: string }; Returns: string }
       store_id_effettivo: { Args: { _store_id: string }; Returns: string }
+      testo_impegni_fido: {
+        Args: {
+          _con_ordini: boolean
+          _ddt: number
+          _esp: number
+          _ord: number
+          _scaduto: number
+        }
+        Returns: string
+      }
       trasferisci_privacy_contatto: {
         Args: { _a: string; _da: string }
         Returns: undefined
