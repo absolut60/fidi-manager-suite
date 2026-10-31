@@ -16,7 +16,7 @@ import {
   type StatoRichiesta, type TipoRichiesta,
   extraFidoTeorico, motivoExtraObbligatorio,
 } from "@/lib/fidi";
-import { righeVisibiliProposta } from "@/lib/proposta-fido-visibilita";
+import { righeVisibiliProposta, riepilogoVisibilita } from "@/lib/proposta-fido-visibilita";
 import { CampoExtraTeorico } from "@/components/extra-fido-teorico";
 import {
   fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchExtraFidoProtetti, MOTIVAZIONE_PROFILO_FIDO, isProponibile,
@@ -362,6 +362,34 @@ export function ProposteFidoMassivoDialog({
     [righeConInCorso, filtroTipi, filtroPagImmediato, filtroFidoZero, filtroInCorso, toccate],
   );
 
+  const riepilogoVis = useMemo(
+    () => riepilogoVisibilita(righeConInCorso, {
+      tipi: filtroTipi, pagImmediato: filtroPagImmediato, fidoZero: filtroFidoZero, inCorso: filtroInCorso,
+    }, toccate, protettiMap),
+    [righeConInCorso, filtroTipi, filtroPagImmediato, filtroFidoZero, filtroInCorso, toccate, protettiMap],
+  );
+  const [filtriAperti, setFiltriAperti] = useState(false);
+  const fmtN = (n: number) => n.toLocaleString("it-IT");
+  const vociNascoste: string[] = (() => {
+    const n = riepilogoVis.nascosti;
+    const v: string[] = [];
+    if (n.rinnovo > 0) v.push(`${fmtN(n.rinnovo)} rinnov${n.rinnovo === 1 ? "o" : "i"} — il fido proposto è uguale a quello attuale, non cambia nulla`);
+    if (n.protetto > 0) v.push(`${fmtN(n.protetto)} con extra approvato ancora protetto — non si riduce prima della scadenza`);
+    const plur: Record<string, [string, string]> = { nuovo_fido: ["nuovo fido", "nuovi fidi"], aumento: ["aumento", "aumenti"], diminuzione: ["diminuzione", "diminuzioni"] };
+    const tipi = Object.entries(riepilogoVis.tipiSpenti).filter(([, c]) => c > 0)
+      .map(([t, c]) => `${fmtN(c)} ${(plur[t] ?? [TIPO_LABEL[t as TipoProposta] ?? t, TIPO_LABEL[t as TipoProposta] ?? t])[c === 1 ? 0 : 1]}`);
+    if (tipi.length) v.push(`${tipi.join(" / ")} — tipo spento nel filtro`);
+    if (n.in_corso > 0) v.push(`${fmtN(n.in_corso)} con richiesta già in corso — per non creare richieste doppie`);
+    if (n.non_in_corso > 0) v.push(`${fmtN(n.non_in_corso)} senza richiesta in corso — filtro su "solo in corso"`);
+    if (n.pag_immediato > 0) v.push(`${fmtN(n.pag_immediato)} a pagamento immediato`);
+    if (n.non_pag_immediato > 0) v.push(`${fmtN(n.non_pag_immediato)} non a pagamento immediato — filtro su "solo"`);
+    if (n.fido_zero > 0) v.push(`${fmtN(n.fido_zero)} con fido proposto a zero`);
+    if (n.fido_non_zero > 0) v.push(`${fmtN(n.fido_non_zero)} con fido proposto diverso da zero — filtro su "solo"`);
+    return v;
+  })();
+  const vociNonProponibili = Object.entries(riepilogoVis.nonProponibili).filter(([, c]) => c > 0)
+    .map(([reg, c]) => `${fmtN(c)} — ${MOTIVO_NON_PROPONIBILE[reg] ?? REGOLA_LABEL[reg] ?? reg}`);
+
   const righeVisibiliIncluse = righeVisibili.filter((r) => r.proponibile && r.incluso);
   const righeEscluse = righe.filter((r) => !r.proponibile);
   // Riepilogo del piede (fonte unica: src/lib/proposta-fido-riepilogo.ts).
@@ -636,14 +664,30 @@ export function ProposteFidoMassivoDialog({
             Impossibile calcolare il fido teorico: {(teoricoError as any)?.message ?? "errore"}
           </p>
         )}
-        {righeEscluse.length > 0 && (
-          <div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning">
-            {righeEscluse.length} client{righeEscluse.length === 1 ? "e" : "i"} non propon{righeEscluse.length === 1 ? "ibile" : "ibili"}:
-            saranno esclusi dalla creazione (motivo indicato sulla riga).
-          </div>
-        )}
+        <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground space-y-1 break-words">
+          <p className="text-foreground">
+            Stai vedendo <strong>{fmtN(riepilogoVis.visibili)}</strong> propost{riepilogoVis.visibili === 1 ? "a" : "e"} su <strong>{fmtN(riepilogoVis.totale)}</strong> clienti selezionati.
+          </p>
+          {vociNascoste.length > 0 && (
+            <div>
+              <span className="font-medium text-foreground">Nascosti dai filtri:</span>
+              <ul className="ml-4 list-disc">
+                {vociNascoste.map((t) => <li key={t}>{t}</li>)}
+              </ul>
+            </div>
+          )}
+          {riepilogoVis.nonProponibiliTotale > 0 && (
+            <p>
+              <span className="font-medium text-warning">Non proponibili (esclusi sempre): {fmtN(riepilogoVis.nonProponibiliTotale)}</span>
+              {" — "}{vociNonProponibili.join(" · ")}
+            </p>
+          )}
+          <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => setFiltriAperti(true)}>
+            Cambia filtri
+          </Button>
+        </div>
 
-        <FiltriCollassabili ancheDesktop
+        <FiltriCollassabili ancheDesktop aperto={filtriAperti} onApertoChange={setFiltriAperti}
           attivi={Number(filtroTipi.length !== TIPI_DEFAULT.length || !TIPI_DEFAULT.every((t) => filtroTipi.includes(t))) + Number(filtroPagImmediato !== FILTRI_DEFAULT.pagImm) + Number(filtroFidoZero !== FILTRI_DEFAULT.fidoZero) + Number(filtroInCorso !== FILTRI_DEFAULT.inCorso)}
           riepilogo={<span className="text-xs text-muted-foreground break-words">Mostrati {righeVisibili.length} di {righe.length} clienti · {righeVisibiliIncluse.length} inclusi nella creazione</span>}
           azioni={filtriModificati && <Button type="button" variant="link" size="sm" onClick={ripristinaFiltri}>Ripristina filtri</Button>}>

@@ -14,14 +14,25 @@ export function FiltriCollassabili({
   children,
   ancheDesktop = false,
   riepilogo,
+  aperto: apertoControllato,
+  onApertoChange,
 }: {
   attivi?: number;
   azioni?: ReactNode;
   children: ReactNode;
   ancheDesktop?: boolean;
   riepilogo?: ReactNode;
+  /** Opzionale: apertura controllata dal chiamante (es. link "Cambia filtri"). */
+  aperto?: boolean;
+  onApertoChange?: (v: boolean) => void;
 }) {
-  const [aperto, setAperto] = useState(false);
+  const [apertoInterno, setApertoInterno] = useState(false);
+  const aperto = apertoControllato ?? apertoInterno;
+  const setAperto = (fn: (v: boolean) => boolean) => {
+    const nv = fn(aperto);
+    if (apertoControllato === undefined) setApertoInterno(nv);
+    onApertoChange?.(nv);
+  };
 
   return (
     <div>
