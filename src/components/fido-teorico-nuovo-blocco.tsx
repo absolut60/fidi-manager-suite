@@ -44,14 +44,14 @@ export function FidoTeoricoNuovoBlocco({ clienteId }: { clienteId: string }) {
       {calcolo && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="rounded-md border p-3 min-w-0">
-            <div className="text-xs text-muted-foreground">Base</div>
+            <div className="text-xs text-muted-foreground">Fido giusto per i suoi acquisti</div>
             <div className="text-2xl sm:text-3xl font-semibold break-words">{formatEuro(r.base ?? 0)}</div>
-            <div className="text-xs text-muted-foreground">quanto serve di solito</div>
+            <div className="text-xs text-muted-foreground">quanto gli serve di solito</div>
           </div>
           <div className="rounded-md border p-3 min-w-0">
-            <div className="text-xs text-muted-foreground">Fabbisogno oggi</div>
+            <div className="text-xs text-muted-foreground">Ci deve + ordini aperti</div>
             <div className="text-2xl sm:text-3xl font-semibold break-words">{formatEuro(r.fabbisogno ?? 0)}</div>
-            <div className="text-xs text-muted-foreground">debito di oggi più ordini aperti</div>
+            <div className="text-xs text-muted-foreground break-words">{testoCiDeve({ fabbisogno: r.fabbisogno, ordini_aperti: r.ordini_aperti, profilo: r.profilo }).replace(/^c/, "C")}</div>
           </div>
           <div className="rounded-md border border-primary bg-primary/5 p-3 min-w-0">
             <div className="text-xs text-muted-foreground">Fido proposto</div>

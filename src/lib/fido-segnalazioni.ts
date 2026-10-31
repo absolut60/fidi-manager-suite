@@ -12,7 +12,20 @@ type RigaSegnalazione = Pick<
   FidoTeoricoRow,
   "fabbisogno" | "base" | "ordini_aperti" | "fido_attuale" | "scaduto_oltre" | "scaduto_oltre_giorni" | "pagato_12m"
 > &
-  Partial<Pick<FidoTeoricoRow, "ordini_fuori" | "tetto" | "valore_senza_tetto" | "acquisto_mensile">>;
+  Partial<Pick<FidoTeoricoRow, "ordini_fuori" | "tetto" | "valore_senza_tetto" | "acquisto_mensile" | "profilo">>;
+
+/** "Ci deve" = fabbisogno senza gli ordini aperti (per i profili patologici il fabbisogno non li include già). */
+export function ciDeve(r: Pick<RigaSegnalazione, "fabbisogno" | "ordini_aperti" | "profilo">): number {
+  const fab = Number(r.fabbisogno ?? 0);
+  if (r.profilo?.startsWith("patologico")) return fab;
+  return Math.max(fab - Number(r.ordini_aperti ?? 0), 0);
+}
+
+/** "ci deve X € e ha ordini clienti aperti per Y €" (ordini solo se contano e sono > 0). */
+export function testoCiDeve(r: Pick<RigaSegnalazione, "fabbisogno" | "ordini_aperti" | "profilo">): string {
+  const ord = r.profilo?.startsWith("patologico") ? 0 : Number(r.ordini_aperti ?? 0);
+  return `ci deve ${formatEuro(ciDeve(r))}${ord > 0 ? ` e ha ordini clienti aperti per ${formatEuro(ord)}` : ""}`;
+}
 
 export type DefinizioneSegnalazione = {
   etichetta: string;
@@ -46,19 +59,19 @@ export const SEGNALAZIONI_FIDO: Record<string, DefinizioneSegnalazione> = {
     etichetta: "Acquisti sopra il previsto",
     gravita: "arancione",
     testo: (r) =>
-      `Acquisti sopra il previsto: impegni ${formatEuro(r.fabbisogno ?? 0)} contro una base di ${formatEuro(r.base ?? 0)}`,
+      `Acquisti sopra il previsto: ${testoCiDeve(r)}, contro un fido giusto di ${formatEuro(r.base ?? 0)}`,
   },
   ordine_fuori_giro: {
     etichetta: "Ordini fuori dal giro normale",
     gravita: "arancione",
     testo: (r) =>
-      `Ordini fuori dal giro normale: ${formatEuro(r.ordini_fuori ?? 0)} oltre 1 mese di acquisti (ordini ${formatEuro(r.ordini_aperti ?? 0)}, acquisti medi ${formatEuro(r.acquisto_mensile ?? 0)}/mese) — da autorizzare`,
+      `Ordini fuori dal giro normale: ${formatEuro(r.ordini_fuori ?? 0)} oltre un mese di acquisti (ordini clienti aperti ${formatEuro(r.ordini_aperti ?? 0)}, acquisti medi ${formatEuro(r.acquisto_mensile ?? 0)}/mese) — da autorizzare`,
   },
   oltre_tetto: {
-    etichetta: "Impegni oltre il tetto",
+    etichetta: "Oltre il massimo automatico",
     gravita: "arancione",
     testo: (r) =>
-      `Impegni oltre il tetto: impegni ${formatEuro(r.fabbisogno ?? 0)}, tetto ${formatEuro(r.tetto ?? 0)} (1,5 × base) — da autorizzare`,
+      `Oltre il massimo automatico: ${testoCiDeve(r)}; il sistema da solo non propone più di ${formatEuro(r.tetto ?? 0)} (una volta e mezza il fido giusto) — da autorizzare`,
   },
   uso_pieno: {
     etichetta: "Fido in esaurimento",
@@ -103,9 +116,9 @@ export function raggruppaSegnalazioni(
   for (const s of segnalazioniRiga(r)) {
     if (!CODICI_ACQUISTI_SOPRA.includes(s.codice)) { out.push(s); continue; }
     if (parti.length === 0) out.push({ codice: "acquisti_sopra_previsto", etichetta: ETICHETTA_ACQUISTI_SOPRA, gravita: "arancione", testo: "" });
-    if (s.codice === "impegni_sopra_base") parti.push(`Impegni ${formatEuro(r.fabbisogno ?? 0)} contro una base di ${formatEuro(r.base ?? 0)}`);
+    if (s.codice === "impegni_sopra_base") parti.push(`${testoCiDeve(r)}, contro un fido giusto di ${formatEuro(r.base ?? 0)}`);
     else if (s.codice === "ordine_fuori_giro") parti.push(`ordini oltre un mese di acquisti: ${formatEuro(r.ordini_fuori ?? 0)}`);
-    else parti.push(`oltre il tetto di ${formatEuro(r.tetto ?? 0)}`);
+    else parti.push(`supera i ${formatEuro(r.tetto ?? 0)} che il sistema propone da solo`);
   }
   const g = out.find((s) => s.codice === "acquisti_sopra_previsto");
   if (g) {
