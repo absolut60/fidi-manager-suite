@@ -783,14 +783,34 @@ export function ProposteFidoMassivoDialog({
         </div>
 
         <div className="shrink-0 min-w-0 border-t bg-background px-3 py-2 sm:px-4 sm:py-2 grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+          <div className="min-w-0 space-y-0.5">
           <div className="text-sm font-medium break-words">
-            Totale fido proposto: <strong>{fmtEuro(totale)}</strong> · {righeVisibiliIncluse.length} richieste da creare
+            Fido attuale: <strong className="tabular-nums">{fmtEuro(riepilogo.totaleAttuale)}</strong>
+            {" → "}Nuovo fido: <strong className="tabular-nums">{fmtEuro(riepilogo.totaleProposto)}</strong>
+            {" · Differenza: "}
+            <strong className={`tabular-nums ${riepilogo.differenza > 0 ? "text-success" : riepilogo.differenza < 0 ? "text-warning" : ""}`}>
+              {riepilogo.differenza > 0 ? "+" : riepilogo.differenza < 0 ? "−" : "±"}{fmtEuro(Math.abs(riepilogo.differenza))}
+            </strong>
+            {" · "}{righeVisibiliIncluse.length} richieste da creare
             {righeConExtra.length > 0 && (
               <span className="text-warning"> · di cui extra fido teorico: <strong className="tabular-nums">{fmtEuro(totaleExtra)}</strong> su {righeConExtra.length} client{righeConExtra.length === 1 ? "e" : "i"}</span>
             )}
             {righeEscluse.length > 0 && (
               <span className="text-muted-foreground font-normal"> · {righeEscluse.length} esclusi</span>
             )}
+          </div>
+          {riepilogo.dettaglio.length > 0 && (
+            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">
+              {riepilogo.dettaglio.map((d, i) => (
+                <Fragment key={d.tipo}>
+                  {i > 0 && <span aria-hidden="true">|</span>}
+                  <span className="whitespace-nowrap tabular-nums">
+                    {d.tipo === "aumento" ? "Aumenti" : d.tipo === "diminuzione" ? "Diminuzioni" : "Nuovi fidi"}: {d.n} · {d.somma >= 0 ? "+" : "−"}{fmtEuro(Math.abs(d.somma))}
+                  </span>
+                </Fragment>
+              ))}
+            </div>
+          )}
           </div>
           <div className="text-xs text-info lg:col-start-1">
             {righeVisibiliIncluse.filter((r) => condizionePagamentoCambiata(r.cond_proposta, r.cond_attuale)).length > 0 &&
