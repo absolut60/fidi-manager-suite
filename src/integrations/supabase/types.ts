@@ -8042,6 +8042,7 @@ export type Database = {
         Args: { _destinatario: string; _richiesta_id: string; _testo: string }
         Returns: Json
       }
+      invia_notifiche_alert_fidi: { Args: never; Returns: number }
       is_anticipo: { Args: { _numero_documento: string }; Returns: boolean }
       is_canale_membro: {
         Args: { _canale_id: string; _user_id: string }
