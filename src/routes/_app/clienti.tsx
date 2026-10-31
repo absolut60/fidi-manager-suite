@@ -595,7 +595,7 @@ function ClientiPage() {
 
 
   // Reset pagina SOLO quando un filtro cambia davvero dopo il montaggio (firma precedente).
-  const firmaFiltri = JSON.stringify([search, statoCliente, statoAttivita, storeFiltro, F.statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso]);
+  const firmaFiltri = JSON.stringify([search, statoCliente, statoAttivita, storeFiltro, F.statoFido, semaforoFiltro, profiloFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso]);
   const firmaPrecedente = useRef(firmaFiltri);
   useEffect(() => {
     if (firmaPrecedente.current === firmaFiltri) return;
@@ -613,9 +613,10 @@ function ClientiPage() {
     // un solo embed interno su fido_teorico_cliente (chi non ha riga resta escluso).
     // FM47 4c-bis: ordinamento per Fido proposto / Scostamento via embed.
     const sortFidoTeorico = sortBy === "fido_proposto" || sortBy === "scostamento";
-    const embedFiltroAttivo = semaforoFiltro.length > 0 || scostamentoFiltro !== "tutti" || soloDaVerificare;
+    const embedFiltroAttivo = semaforoFiltro.length > 0 || scostamentoFiltro !== "tutti" || soloDaVerificare || profiloFiltro.length > 0;
     let ftcCols: string[] = [];
     if (semaforoFiltro.length > 0) ftcCols.push("semaforo_stadio");
+    if (profiloFiltro.length > 0) ftcCols.push("profilo");
     if (scostamentoFiltro !== "tutti" && !ftcCols.includes("scostamento")) ftcCols.push("scostamento");
     if (soloDaVerificare) ftcCols.push("richiede_verifica");
     if (sortFidoTeorico) {
@@ -633,6 +634,7 @@ function ClientiPage() {
       .select(selectFinale, count ? { count } : undefined);
 
     if (semaforoFiltro.length > 0) q = q.in("fido_teorico_cliente.semaforo_stadio", semaforoFiltro);
+    if (profiloFiltro.length > 0) q = q.in("fido_teorico_cliente.profilo", profiloFiltro);
     if (scostamentoFiltro === "positivo") q = q.gt("fido_teorico_cliente.scostamento", 0);
     else if (scostamentoFiltro === "negativo") q = q.lt("fido_teorico_cliente.scostamento", 0);
     // Come oggi: scostamento vuoto conta come 0.
