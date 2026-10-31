@@ -16,7 +16,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { formatEuro, formatDate } from "@/lib/fidi";
-import { fetchUtentiAnteprimaFidoNuovo } from "@/lib/fido-teorico";
+import { fetchFidoTeorico, fetchUtentiAnteprimaFidoNuovo } from "@/lib/fido-teorico";
+import { SegnalazioniFido } from "@/components/segnalazioni-fido";
 import {
   fetchAlertFidiAperti, confermaExtraAlertFido, etichettaAvviso, debitoOggi, alertSelezionabile,
   importoDaAlert, statoEffettivoAlert, etichettaRichiestaAlert, STATO_ALERT_LABEL, STATI_ALERT_DEFAULT, TIPO_ALERT_LABEL,
@@ -75,6 +76,14 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
   const { data: righe, isLoading, error } = useQuery({
     queryKey: ["alert-fidi-aperti"],
     queryFn: fetchAlertFidiAperti,
+  });
+  // FM55 3C: segnalazioni dalla stessa fonte di proposta massiva e scheda cliente.
+  const idsClienti = useMemo(() => [...new Set((righe ?? []).map((a) => a.cliente_id))].sort(), [righe]);
+  const { data: teoricoMap } = useQuery({
+    queryKey: ["fido-teorico-alert", idsClienti.join(",")],
+    enabled: idsClienti.length > 0,
+    staleTime: 5 * 60_000,
+    queryFn: () => fetchFidoTeorico(idsClienti),
   });
   const { data: agenti } = useQuery({
     queryKey: ["agenti", "all"],
@@ -174,6 +183,10 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
       {a.cliente?.ragione_sociale ?? "Cliente"}
     </Link>
   );
+  const segnalazioniCliente = (a: AlertFidoRow) => {
+    const t = teoricoMap?.get(a.cliente_id);
+    return t && t.segnalazioni.length > 0 ? <div className="mt-1 min-w-0"><SegnalazioniFido riga={t} /></div> : null;
+  };
   const renderStato = (a: AlertFidoRow) => {
     const r = a.richiesta_attiva;
     if (r) {
