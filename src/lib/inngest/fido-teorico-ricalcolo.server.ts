@@ -64,6 +64,13 @@ export const ricalcolaFidoTeorico = inngest.createFunction(
       return { ok: true };
     });
 
+    // FM55: alert fidi (consumo, riduzione, extra non usato) sui dati appena ricalcolati.
+    const alertFidi = await step.run("aggiorna-alert-fidi", async () => {
+      const { data, error } = await supabaseAdmin.rpc("aggiorna_alert_fidi" as never);
+      if (error) throw new Error(error.message);
+      return data as unknown;
+    });
+
     // Origine dell'ultimo ricalcolo (automatico | manuale), letta da card e avviso.
     await step.run("registra-origine", async () => {
       const { error } = await supabaseAdmin.from("configurazioni").upsert(
@@ -79,6 +86,6 @@ export const ricalcolaFidoTeorico = inngest.createFunction(
       return { ok: true };
     });
 
-    return { origine, blocchi_elaborati: blocchi, ultimo_id: dopoId, finalizzato: true };
+    return { origine, alert_fidi: alertFidi, blocchi_elaborati: blocchi, ultimo_id: dopoId, finalizzato: true };
   },
 );
