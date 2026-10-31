@@ -17,7 +17,8 @@ import {
   type StatoRichiesta, type TipoRichiesta,
   extraFidoTeorico, motivoExtraObbligatorio,
 } from "@/lib/fidi";
-import { righeVisibiliProposta, riepilogoVisibilita } from "@/lib/proposta-fido-visibilita";
+import { daValutareProposta, righeVisibiliProposta, riepilogoVisibilita } from "@/lib/proposta-fido-visibilita";
+import { segnalazioniAnomalia } from "@/lib/fido-segnalazioni";
 import { CampoExtraTeorico } from "@/components/extra-fido-teorico";
 import {
   fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchExtraFidoProtetti, fetchSogliaConsumoFido, fidoPerTornareSottoSoglia, notaExtraProtetto, protezioneAttiva, MOTIVAZIONE_PROFILO_FIDO, isProponibile,
@@ -715,6 +716,9 @@ export function ProposteFidoMassivoDialog({
           <p className="text-foreground">
             Stai vedendo <strong>{fmtN(riepilogoVis.visibili)}</strong> propost{riepilogoVis.visibili === 1 ? "a" : "e"} su <strong>{fmtN(riepilogoVis.totale)}</strong> clienti selezionati.
           </p>
+          {riepilogoVis.daValutare > 0 && (
+            <p>Tra queste, <strong>{fmtN(riepilogoVis.daValutare)}</strong> da valutare (alert o anomalie): rinnovi lasciati visibili e non spuntati, decidi tu se includerli.</p>
+          )}
           {vociNascoste.length > 0 && (
             <div>
               <span className="font-medium text-foreground">Nascosti dai filtri:</span>
