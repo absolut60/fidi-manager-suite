@@ -38,10 +38,6 @@ export const Route = createFileRoute("/_app/alert-fidi")({
 
 const NESSUNO = "__none__";
 
-function fmtPerc(v: number | null): string {
-  if (v == null) return "—";
-  return `${(Number(v) * 100).toLocaleString("it-IT", { maximumFractionDigits: 0 })}%`;
-}
 function fmtGiornoMese(d: string | null): string {
   if (!d) return "—";
   return new Date(d).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" });
