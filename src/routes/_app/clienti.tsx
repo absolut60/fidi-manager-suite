@@ -1259,6 +1259,15 @@ function ClientiPage() {
     />
   );
 
+  // FM55: profilo del fido teorico; etichette dalla fonte unica PROFILO_FIDO_LABEL.
+  const ProfiloFidoSelect = (
+    <FiltroMultiplo
+      etichetta="Profilo fido teorico" testoTutti="Tutti i profili" className="h-10"
+      opzioni={Object.entries(PROFILO_FIDO_LABEL).map(([valore, label]) => ({ valore, label }))}
+      selezionati={profiloFiltro} onChange={setProfiloFiltro}
+    />
+  );
+
   const StatoAttivitaSelect = (
     <Select value={statoAttivita} onValueChange={(v) => setStatoAttivita(v as typeof statoAttivita)}>
       <SelectTrigger className="w-full"><SelectValue placeholder="Stato attività" /></SelectTrigger>
@@ -1595,6 +1604,7 @@ function ClientiPage() {
             {StatoAttivitaSelect}
             {RichiestaFidoSelect}
             {ScostamentoSelect}
+            {ProfiloFidoSelect}
             {FidoTeoricoToggle}
           </div>
           {AdvFilterBtn}
