@@ -23,7 +23,7 @@ import {
 import { CampoExtraTeorico } from "@/components/extra-fido-teorico";
 import {
   fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, isProponibile,
-  REGOLA_LABEL, MOTIVO_NON_PROPONIBILE, type FidoTeoricoRow,
+  REGOLA_LABEL, MOTIVO_NON_PROPONIBILE, PROFILO_FIDO_LABEL, type FidoTeoricoRow,
 } from "@/lib/fido-teorico";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
