@@ -1,8 +1,8 @@
 /**
  * Fonte UNICA del "fido proposto" lato client.
  * Tutto ciò che mostra un fido teorico (scheda cliente, proposta massiva,
- * richiesta singola, lista clienti) deve passare da qui: la RPC canonica
- * public.get_fido_teorico. Nessun calcolo locale.
+ * richiesta singola, lista clienti) legge il precalcolo persistente
+ * public.fido_teorico_cliente, che da FM55 pubblica i valori v2. Nessun calcolo locale.
  */
 import { supabase } from "@/integrations/supabase/client";
 
@@ -29,28 +29,27 @@ export type FidoTeoricoRow = {
   fido_teorico_puro: number;
   pavimento_applicato: boolean;
   esposizione_corrente: number;
+  acquisto_storico: number | null;
+  acquisto_tendenza: number | null;
+  acquisto_mensile: number | null;
+  ciclo_gg: number | null;
+  mesi_stagionali: number | null;
+  profilo: string | null;
+  base: number | null;
+  ordini_aperti: number | null;
+  fabbisogno: number | null;
+  consumo_perc: number | null;
+  spiegazione: string | null;
 };
 
 /** Spiegazione in chiaro del coefficiente di comportamento. */
-export function motivoCoefficiente(r: {
-  coefficiente: number;
-  giorni_oltre_accordo: number;
-  profilo_pagamento: "sano" | "patologico";
-}): string {
-  const gg =
-    r.giorni_oltre_accordo <= 0
-      ? "pagamenti nei termini concordati"
-      : `${r.giorni_oltre_accordo} giorni oltre l'accordo`;
-  const profilo =
-    r.profilo_pagamento === "patologico"
-      ? "scaduto patologico (insoluti o ritardi oltre 60 giorni)"
-      : "scaduto fisiologico";
-  return `${gg} · ${profilo}`;
+export function motivoCoefficiente(r: { profilo: string | null }): string {
+  return r.profilo ? PROFILO_FIDO_LABEL[r.profilo] ?? r.profilo : "Profilo non disponibile";
 }
-
 
 /** Etichetta breve, per tabelle e badge. */
 export const REGOLA_LABEL: Record<string, string> = {
+  calcolo: "Calcolo standard",
   sede_esclusa: "Sede esclusa",
   esclusa_gruppo: "Società del gruppo",
   cliente_bloccato: "Cliente bloccato",
@@ -66,6 +65,7 @@ export const REGOLA_LABEL: Record<string, string> = {
 
 /** Descrizione estesa, per il blocco informativo nella scheda cliente. */
 export const REGOLA_DESCRIZIONE: Record<string, string> = {
+  calcolo: "Calcolo su acquisti, stagionalità, giorni di pagamento e puntualità",
   sede_esclusa: "Sede esclusa dal calcolo — fido attuale invariato",
   esclusa_gruppo: "Società del gruppo esclusa dal calcolo — fido attuale invariato",
   cliente_bloccato: "Cliente bloccato — nessuna proposta di fido",
@@ -97,7 +97,7 @@ export function isProponibile(regola: string | null | undefined): boolean {
   return !!regola && !REGOLE_NON_PROPONIBILI.has(regola);
 }
 
-function normalizza(r: any): FidoTeoricoRow {
+export function normalizza(r: any): FidoTeoricoRow {
   return {
     cliente_id: String(r.cliente_id),
     fatturato_rolling: Number(r.fatturato_rolling ?? 0),
@@ -123,6 +123,17 @@ function normalizza(r: any): FidoTeoricoRow {
     fido_teorico_puro: Number(r.fido_teorico_puro ?? r.fido_proposto ?? 0),
     pavimento_applicato: !!r.pavimento_applicato,
     esposizione_corrente: Number(r.esposizione_corrente ?? 0),
+    acquisto_storico: numOrNull(r.acquisto_storico),
+    acquisto_tendenza: numOrNull(r.acquisto_tendenza),
+    acquisto_mensile: numOrNull(r.acquisto_mensile),
+    ciclo_gg: numOrNull(r.ciclo_gg),
+    mesi_stagionali: numOrNull(r.mesi_stagionali),
+    base: numOrNull(r.base),
+    ordini_aperti: numOrNull(r.ordini_aperti),
+    fabbisogno: numOrNull(r.fabbisogno),
+    consumo_perc: numOrNull(r.consumo_perc),
+    profilo: r.profilo ?? null,
+    spiegazione: r.spiegazione ?? null,
   };
 
 }
@@ -180,7 +191,7 @@ export async function fetchFidoTeoricoTutti(): Promise<Map<string, FidoTeoricoRo
 
 
 // ============================================================================
-// FM55 — Fido teorico nuovo (anteprima): lettura di fido_teorico_v2
+// FM55 — Vista dettagliata del fido teorico pubblicato per tutti
 // ============================================================================
 
 export type FidoTeoricoNuovoRow = {
@@ -217,10 +228,10 @@ export const PROFILO_FIDO_LABEL: Record<string, string> = {
 
 const numOrNull = (v: unknown) => (v === null || v === undefined ? null : Number(v));
 
-/** Riga di fido_teorico_v2 del cliente, o null se assente. */
+/** Riga canonica del cliente, adattata al contratto del riquadro dettagliato. */
 export async function fetchFidoTeoricoNuovo(clienteId: string): Promise<FidoTeoricoNuovoRow | null> {
   const { data, error } = await (supabase as any)
-    .from("fido_teorico_v2")
+    .from("fido_teorico_cliente")
     .select("*")
     .eq("cliente_id", clienteId)
     .maybeSingle();
@@ -234,14 +245,14 @@ export async function fetchFidoTeoricoNuovo(clienteId: string): Promise<FidoTeor
     profilo: r.profilo ?? null,
     coefficiente: numOrNull(r.coefficiente),
     base: numOrNull(r.base),
-    esposizione: numOrNull(r.esposizione),
+    esposizione: numOrNull(r.esposizione_corrente),
     ordini_aperti: numOrNull(r.ordini_aperti),
     fabbisogno: numOrNull(r.fabbisogno),
     fido_proposto: numOrNull(r.fido_proposto),
     fido_attuale: numOrNull(r.fido_attuale),
     consumo_perc: numOrNull(r.consumo_perc),
-    regola: r.regola ?? null,
-    da_verificare: r.da_verificare ?? null,
+    regola: r.regola_applicata ?? null,
+    da_verificare: r.richiede_verifica ?? null,
     spiegazione: r.spiegazione ?? null,
     calcolato_at: r.calcolato_at ?? null,
   };
@@ -265,35 +276,13 @@ export async function fetchUtentiAnteprimaFidoNuovo(): Promise<string[]> {
 // FM55 — Fido teorico di riferimento per le RICHIESTE (fonte unica)
 // ============================================================================
 
-/**
- * Fido teorico da mostrare/salvare in una richiesta (proposta massiva e singola).
- * - Utenti in configurazioni.fido_v2_anteprima_utenti: fido_teorico_v2.fido_proposto.
- * - Tutti gli altri: fido_teorico_cliente.fido_proposto (comportamento di oggi).
- * Regole "non proponibile" invariate (isProponibile): in quel caso il valore è null.
- * NB: alla sostituzione finale del calcolo resterà una sola fonte.
- */
+/** Fido teorico per tutte le richieste: una sola fonte, regole non proponibili invariate. */
 export async function fetchFidoTeoricoPerRichiesta(
   clienteIds: string[],
-  userId: string | null | undefined,
+  _userId: string | null | undefined,
 ): Promise<Map<string, number | null>> {
   const out = new Map<string, number | null>();
-  const ids = Array.from(new Set(clienteIds.filter(Boolean)));
-  if (ids.length === 0) return out;
-  const anteprima = userId ? (await fetchUtentiAnteprimaFidoNuovo()).includes(userId) : false;
-  if (!anteprima) {
-    const m = await fetchFidoTeorico(ids);
-    for (const [id, r] of m) out.set(id, isProponibile(r.regola_applicata) ? r.fido_proposto : null);
-    return out;
-  }
-  for (let i = 0; i < ids.length; i += CHUNK) {
-    const { data, error } = await (supabase as any)
-      .from("fido_teorico_v2")
-      .select("cliente_id, fido_proposto, regola")
-      .in("cliente_id", ids.slice(i, i + CHUNK));
-    if (error) throw error;
-    for (const r of (data ?? []) as any[]) {
-      out.set(String(r.cliente_id), isProponibile(r.regola) && r.fido_proposto != null ? Number(r.fido_proposto) : null);
-    }
-  }
+  const m = await fetchFidoTeorico(clienteIds);
+  for (const [id, r] of m) out.set(id, isProponibile(r.regola_applicata) ? r.fido_proposto : null);
   return out;
 }
