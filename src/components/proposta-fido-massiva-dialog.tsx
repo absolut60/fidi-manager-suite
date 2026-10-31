@@ -19,7 +19,7 @@ import {
 import { righeVisibiliProposta } from "@/lib/proposta-fido-visibilita";
 import { CampoExtraTeorico } from "@/components/extra-fido-teorico";
 import {
-  fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, MOTIVAZIONE_PROFILO_FIDO, isProponibile,
+  fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchExtraFidoProtetti, MOTIVAZIONE_PROFILO_FIDO, isProponibile,
   REGOLA_LABEL, MOTIVO_NON_PROPONIBILE,
 } from "@/lib/fido-teorico";
 import { riepilogoProposte } from "@/lib/proposta-fido-riepilogo";
@@ -221,6 +221,13 @@ export function ProposteFidoMassivoDialog({
     enabled: open && ids.length > 0,
     staleTime: 5 * 60_000,
     queryFn: () => fetchFidoTeoricoPerRichiesta(ids, userId),
+  });
+  // FM55: extra approvato ancora protetto (stessa fonte di fetchFidoTeoricoPerRichiesta) → nota di riga.
+  const { data: protettiMap } = useQuery({
+    queryKey: ["extra-fido-protetti-massivo", [...ids].sort().join(",")],
+    enabled: open && ids.length > 0,
+    staleTime: 5 * 60_000,
+    queryFn: () => fetchExtraFidoProtetti(ids),
   });
   const { data: inCorsoMap } = useQuery({
     queryKey: ["richieste-in-corso-massivo", [...ids].sort().join(",")],
@@ -576,13 +583,19 @@ export function ProposteFidoMassivoDialog({
     const mot = r.proponibile && r.incluso
       ? motivazioneEffettiva(r, motivazioneGenerale.trim() === "" ? null : motivazioneGenerale)
       : null;
-    if (!r.nota_proposta && !cambio && !mot) return null;
+    const prot = protettiMap?.get(r.cliente_id);
+    if (!r.nota_proposta && !cambio && !mot && !prot) return null;
     return (
       <div className={`grid grid-cols-1 gap-2 text-xs ${cambio ? "xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]" : ""}`}>
         {r.nota_proposta && (
           <div className="min-w-0">
             <NotaPropostaDettaglio nota={r.nota_proposta} />
           </div>
+        )}
+        {prot && (
+          <p className="min-w-0 break-words text-[11px] text-success">
+            Extra approvato il {new Date(prot.approvata_il).toLocaleDateString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit", year: "numeric" })}: protetto fino al {prot.protetto_fino_al.split("-").reverse().join("/")}
+          </p>
         )}
         {mot && (
           <p className="min-w-0 break-words text-[11px] text-muted-foreground">
