@@ -2833,6 +2833,8 @@ export type Database = {
           regola_applicata: string | null
           richiede_verifica: boolean | null
           ritmo_mensile: number | null
+          scaduto_oltre: number
+          scaduto_oltre_giorni: number
           scostamento: number | null
           sede_cinisello: boolean | null
           semaforo_motivo: string | null
@@ -2872,6 +2874,8 @@ export type Database = {
           regola_applicata?: string | null
           richiede_verifica?: boolean | null
           ritmo_mensile?: number | null
+          scaduto_oltre?: number
+          scaduto_oltre_giorni?: number
           scostamento?: number | null
           sede_cinisello?: boolean | null
           semaforo_motivo?: string | null
@@ -2911,6 +2915,8 @@ export type Database = {
           regola_applicata?: string | null
           richiede_verifica?: boolean | null
           ritmo_mensile?: number | null
+          scaduto_oltre?: number
+          scaduto_oltre_giorni?: number
           scostamento?: number | null
           sede_cinisello?: boolean | null
           semaforo_motivo?: string | null
@@ -8397,6 +8403,14 @@ export type Database = {
           tot_a_lordo: number
           tot_s: number
           tot_s_lordo: number
+        }[]
+      }
+      scaduto_oltre_giorni: {
+        Args: { _cliente_ids?: string[] }
+        Returns: {
+          cliente_id: string
+          giorni_max: number
+          scaduto_oltre: number
         }[]
       }
       scarta_righe_import: {
