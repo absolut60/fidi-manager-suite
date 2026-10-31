@@ -115,7 +115,10 @@ function RevisioneContenuto({ userId }: { userId: string }) {
 
   const [propostaOpen, setPropostaOpen] = useState(false);
   const [propostaRighe, setPropostaRighe] = useState<any[]>([]);
-  const apriProposta = (righe: RigaRevisione[]) => {
+  const [propostaSempre, setPropostaSempre] = useState<string[]>([]);
+  // singolo = azione su un cliente: quel cliente si vede sempre nella finestra, anche se rinnovo.
+  const apriProposta = (righe: RigaRevisione[], singolo = false) => {
+    setPropostaSempre(singolo ? righe.map((r) => r.cliente.id) : []);
     setPropostaRighe(righe.map((r) => ({
       id: r.cliente.id, store_id: r.cliente.store_id, ragione_sociale: r.cliente.ragione_sociale,
       totale_rischio: r.cliente.totale_rischio, fido_gestionale: r.cliente.fido_gestionale,
@@ -149,13 +152,13 @@ function RevisioneContenuto({ userId }: { userId: string }) {
     ? <div className="mt-1 min-w-0"><SegnalazioniFido riga={r.teorico} /></div> : null;
 
   const azioni = (g: GruppoRevisione, r: RigaRevisione): ReactNode => {
-    if (g === "pronta") return <Button size="sm" variant="outline" className={BTN} onClick={() => apriProposta([r])}>Apri proposta</Button>;
+    if (g === "pronta") return <Button size="sm" variant="outline" className={BTN} onClick={() => apriProposta([r], true)}>Apri proposta</Button>;
     if (g === "da_decidere") return (
       <div className="flex w-full flex-col gap-2">
         {r.riferimento != null && r.riferimento !== r.fidoGamma && (
-          <Button size="sm" className={BTN} onClick={() => apriProposta([r])}>Accetta proposta</Button>
+          <Button size="sm" className={BTN} onClick={() => apriProposta([r], true)}>Accetta proposta</Button>
         )}
-        <Button size="sm" variant="outline" className={BTN} onClick={() => apriProposta([r])}>Dai un extra</Button>
+        <Button size="sm" variant="outline" className={BTN} onClick={() => apriProposta([r], true)}>Dai un extra</Button>
         <Button size="sm" variant="outline" className={BTN} disabled={conferma.isPending}
           onClick={() => conferma.mutate(r.cliente_id)}>
           {conferma.isPending && conferma.variables === r.cliente_id && <Loader2 className="size-4 animate-spin" />}
@@ -295,6 +298,7 @@ function RevisioneContenuto({ userId }: { userId: string }) {
         open={propostaOpen}
         onOpenChange={setPropostaOpen}
         selectedRows={propostaRighe}
+        mostraSempre={propostaSempre}
         userId={userId}
         onSuccess={() => { setPropostaOpen(false); invalida(); }}
         onRemove={(id) => setPropostaRighe((p) => p.filter((r) => r.id !== id))}
