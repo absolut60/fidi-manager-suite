@@ -16,6 +16,7 @@ import {
   type StatoRichiesta, type TipoRichiesta,
   extraFidoTeorico, motivoExtraObbligatorio,
 } from "@/lib/fidi";
+import { righeVisibiliProposta } from "@/lib/proposta-fido-visibilita";
 import { CampoExtraTeorico } from "@/components/extra-fido-teorico";
 import {
   fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, MOTIVAZIONE_PROFILO_FIDO, isProponibile,
@@ -205,6 +206,10 @@ export function ProposteFidoMassivoDialog({
   const [filtroFidoZero, setFiltroFidoZero] = useState<Tri>(FILTRI_DEFAULT.fidoZero);
   const [filtroInCorso, setFiltroInCorso] = useState<Tri>(FILTRI_DEFAULT.inCorso);
   const [submitting, setSubmitting] = useState(false);
+  // Righe modificate dall'utente: restano visibili finché non cambiano i filtri.
+  const [toccate, setToccate] = useState<Set<string>>(() => new Set());
+  const tocca = (id: string) => setToccate((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
+  useEffect(() => { setToccate(new Set()); }, [open, filtroTipi, filtroPagImmediato, filtroFidoZero, filtroInCorso]);
   const [avanzamentoCrea, setAvanzamentoCrea] = useState<{ fatte: number; totali: number } | null>(null);
 
   // Fido proposto = SEMPRE la RPC canonica get_fido_teorico (nessun calcolo locale)
@@ -306,6 +311,7 @@ export function ProposteFidoMassivoDialog({
 
 
   function aggiornaImporto(id: string, valore: number) {
+    tocca(id);
     setRighe((prev) => prev.map((r) => r.cliente_id === id ? {
       ...r,
       fido_proposto: valore,
@@ -313,15 +319,19 @@ export function ProposteFidoMassivoDialog({
     } : r));
   }
   function aggiornaMotivoExtra(id: string, valore: string) {
+    tocca(id);
     setRighe((prev) => prev.map((r) => r.cliente_id === id ? { ...r, motivo_extra: valore } : r));
   }
   function aggiornaTipo(id: string, tipo: RigaProposta["tipo"]) {
+    tocca(id);
     setRighe((prev) => prev.map((r) => r.cliente_id === id ? { ...r, tipo } : r));
   }
   function aggiornaMotivazioneRiga(id: string, valore: string | undefined) {
+    tocca(id);
     setRighe((prev) => prev.map((r) => r.cliente_id === id ? { ...r, motivazione: valore } : r));
   }
   function aggiornaCondizione(id: string, cod: string) {
+    tocca(id);
     setRighe((prev) => prev.map((r) => r.cliente_id === id ? { ...r, cond_proposta: cod, cond_init: true } : r));
   }
   function rimuoviRiga(id: string) {
@@ -343,25 +353,12 @@ export function ProposteFidoMassivoDialog({
     [righe, inCorsoMap],
   );
 
-  const righeVisibili = useMemo(() => {
-    return righeConInCorso.filter((r) => {
-      // Filtro tipo proposta (tipo effettivo della riga)
-      if (!filtroTipi.includes(r.tipo)) return false;
-      // Filtro richiesta gia' in corso
-      const inCorso = !!r.richiestaInCorso;
-      if (filtroInCorso === "escludi" && inCorso) return false;
-      if (filtroInCorso === "solo" && !inCorso) return false;
-      // Filtro pagamento immediato
-      const isPagImmediato = r.regola === "pagamento_immediato";
-      if (filtroPagImmediato === "escludi" && isPagImmediato) return false;
-      if (filtroPagImmediato === "solo" && !isPagImmediato) return false;
-      // Filtro fido zero
-      const isFidoZero = Number(r.fido_proposto) === 0;
-      if (filtroFidoZero === "escludi" && isFidoZero) return false;
-      if (filtroFidoZero === "solo" && !isFidoZero) return false;
-      return true;
-    });
-  }, [righeConInCorso, filtroTipi, filtroPagImmediato, filtroFidoZero, filtroInCorso]);
+  const righeVisibili = useMemo(
+    () => righeVisibiliProposta(righeConInCorso, {
+      tipi: filtroTipi, pagImmediato: filtroPagImmediato, fidoZero: filtroFidoZero, inCorso: filtroInCorso,
+    }, toccate),
+    [righeConInCorso, filtroTipi, filtroPagImmediato, filtroFidoZero, filtroInCorso, toccate],
+  );
 
   const righeVisibiliIncluse = righeVisibili.filter((r) => r.proponibile && r.incluso);
   const righeEscluse = righe.filter((r) => !r.proponibile);
