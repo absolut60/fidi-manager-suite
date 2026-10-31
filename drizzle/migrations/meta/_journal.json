@@ -834,6 +834,13 @@
       "when": 1793470443028,
       "tag": "0118_fm55_alert_fidi_lascia_cosi_consumo",
       "breakpoints": true
+    },
+    {
+      "idx": 119,
+      "version": "7",
+      "when": 1793477296394,
+      "tag": "0119_fm55_revisione_fidi_lasciati",
+      "breakpoints": true
     }
   ]
 }

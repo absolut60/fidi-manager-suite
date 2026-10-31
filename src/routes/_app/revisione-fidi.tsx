@@ -18,9 +18,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { formatEuro } from "@/lib/fidi";
 import { fetchUtentiAnteprimaFidoNuovo } from "@/lib/fido-teorico";
-import { confermaAlertFido, etichettaRichiestaAlert } from "@/lib/alert-fidi";
+import { etichettaRichiestaAlert } from "@/lib/alert-fidi";
 import {
-  fetchRevisioneFidi, riepilogoRevisione, ETICHETTE_GRUPPO_REVISIONE, type GruppoRevisione, type RigaRevisione,
+  fetchRevisioneFidi, riepilogoRevisione, lasciaCosiRevisione, ETICHETTE_GRUPPO_REVISIONE, type GruppoRevisione, type RigaRevisione,
 } from "@/lib/revisione-fidi";
 
 export const Route = createFileRoute("/_app/revisione-fidi")({
@@ -35,6 +35,7 @@ export const Route = createFileRoute("/_app/revisione-fidi")({
 });
 
 const NESSUNO = "__none__";
+const BTN = "h-auto min-h-10 w-full whitespace-normal";
 
 function RevisioneFidiPage() {
   const { user } = useAuth();
@@ -125,7 +126,7 @@ function RevisioneContenuto({ userId }: { userId: string }) {
     setPropostaOpen(true);
   };
   const conferma = useMutation({
-    mutationFn: confermaAlertFido,
+    mutationFn: lasciaCosiRevisione,
     onSuccess: () => { toast.success("Lasciato così per 30 giorni"); invalida(); },
     onError: (e: any) => toast.error("Impossibile confermare: " + (e?.message ?? "errore")),
   });
@@ -140,28 +141,33 @@ function RevisioneContenuto({ userId }: { userId: string }) {
     <Link to="/clienti/$clienteId" params={{ clienteId: r.cliente_id }} search={{ tab } as any}
       className="break-words line-clamp-2 font-medium text-primary hover:underline">{r.cliente.ragione_sociale}</Link>
   );
+  const cliente = (r: RigaRevisione) => (
+    <div className="min-w-0">
+      {linkCliente(r)}
+      {r.cliente.codice_gestionale && <div className="text-xs text-muted-foreground">{r.cliente.codice_gestionale}</div>}
+      <div className="break-words text-xs text-muted-foreground">{r.cliente.stores?.nome ?? "Senza negozio"} · {agente(r) === "—" ? "Senza agente" : agente(r)}</div>
+    </div>
+  );
   const segn = (r: RigaRevisione) => r.teorico && r.teorico.segnalazioni.length > 0
     ? <div className="mt-1 min-w-0"><SegnalazioniFido riga={r.teorico} /></div> : null;
 
   const azioni = (g: GruppoRevisione, r: RigaRevisione): ReactNode => {
-    if (g === "pronta") return <Button size="sm" variant="outline" className="h-10" onClick={() => apriProposta([r])}>Apri proposta</Button>;
+    if (g === "pronta") return <Button size="sm" variant="outline" className={BTN} onClick={() => apriProposta([r])}>Apri proposta</Button>;
     if (g === "da_decidere") return (
-      <div className="flex flex-wrap gap-2">
+      <div className="flex w-full flex-col gap-2">
         {r.riferimento != null && r.riferimento !== r.fidoGamma && (
-          <Button size="sm" className="h-10" onClick={() => apriProposta([r])}>Accetta proposta</Button>
+          <Button size="sm" className={BTN} onClick={() => apriProposta([r])}>Accetta proposta</Button>
         )}
-        <Button size="sm" variant="outline" className="h-10" onClick={() => apriProposta([r])}>Dai un extra</Button>
-        {r.alertLasciabile && (
-          <Button size="sm" variant="outline" className="h-10" disabled={conferma.isPending}
-            onClick={() => conferma.mutate(r.alertLasciabile!.id)}>
-            {conferma.isPending && conferma.variables === r.alertLasciabile.id && <Loader2 className="size-4 animate-spin" />}
-            Lascia così 30 giorni
-          </Button>
-        )}
+        <Button size="sm" variant="outline" className={BTN} onClick={() => apriProposta([r])}>Dai un extra</Button>
+        <Button size="sm" variant="outline" className={BTN} disabled={conferma.isPending}
+          onClick={() => conferma.mutate(r.cliente_id)}>
+          {conferma.isPending && conferma.variables === r.cliente_id && <Loader2 className="size-4 animate-spin" />}
+          Lascia così 30 giorni
+        </Button>
       </div>
     );
     if (g === "da_incassare") return (
-      <Button size="sm" variant="outline" className="h-10" asChild>
+      <Button size="sm" variant="outline" className={BTN} asChild>
         <Link to="/clienti/$clienteId" params={{ clienteId: r.cliente_id }} search={{ tab: "scadenziario" } as any}>Vai alle scadenze</Link>
       </Button>
     );
@@ -170,7 +176,10 @@ function RevisioneContenuto({ userId }: { userId: string }) {
         <Badge className="whitespace-normal break-words bg-info/15 text-left text-info hover:bg-info/25">{etichettaRichiestaAlert(r.richiesta)}</Badge>
       </Link>
     );
-    if (g === "lasciato_cosi") return <span className="text-xs text-muted-foreground">Lasciato così fino al {fmtGiornoMese(r.alertConfermato?.riproponi_dal)}</span>;
+    if (g === "lasciato_cosi") {
+      const fino = r.lasciato?.valido_fino ?? r.alertConfermato?.riproponi_dal;
+      return <span className="break-words text-xs text-muted-foreground">Lasciato così fino al {fmtGiornoMese(fino)}{r.lasciato?.deciso_da_nome ? ` da ${r.lasciato.deciso_da_nome}` : ""}</span>;
+    }
     return null;
   };
 
@@ -182,38 +191,31 @@ function RevisioneContenuto({ userId }: { userId: string }) {
         <ElencoSchede>
           {righe.map((r) => (
             <SchedaLista key={r.cliente_id}
-              titolo={<div className="min-w-0">{linkCliente(r)}{segn(r)}</div>}
+              titolo={<div className="min-w-0">{cliente(r)}{segn(r)}</div>}
               campi={[
-                { etichetta: "Negozio", valore: r.cliente.stores?.nome ?? "—" },
-                { etichetta: "Agente", valore: agente(r) },
                 { etichetta: "Fido in Gamma", valore: formatEuro(r.fidoGamma) },
                 { etichetta: "Proposta", valore: formatEuro(r.riferimento) },
                 { etichetta: "Differenza", valore: differenza(r) },
               ]}
-              footer={<div className="flex w-full flex-wrap gap-2">{azioni(g, r)}</div>}
+              footer={<div className="w-full">{azioni(g, r)}</div>}
             />
           ))}
         </ElencoSchede>
-        <div className="hidden overflow-x-auto md:block">
-          <Table>
+        <div className="hidden md:block">
+          <Table className="table-fixed">
             <TableHeader><TableRow>
-              <TableHead>Cliente</TableHead><TableHead>Negozio</TableHead><TableHead>Agente</TableHead>
-              <TableHead className="text-right">Fido in Gamma</TableHead><TableHead className="text-right">Proposta</TableHead>
-              <TableHead className="text-right">Differenza</TableHead><TableHead />
+              <TableHead>Cliente</TableHead>
+              <TableHead className="w-32 text-right">Fido in Gamma</TableHead><TableHead className="w-32 text-right">Proposta</TableHead>
+              <TableHead className="w-28 text-right">Differenza</TableHead><TableHead className="w-48">Azioni</TableHead>
             </TableRow></TableHeader>
             <TableBody>
               {righe.map((r) => (
                 <TableRow key={r.cliente_id}>
-                  <TableCell className="max-w-72 min-w-48">{linkCliente(r)}
-                    {r.cliente.codice_gestionale && <div className="text-xs text-muted-foreground">{r.cliente.codice_gestionale}</div>}
-                    {segn(r)}
-                  </TableCell>
-                  <TableCell className="break-words">{r.cliente.stores?.nome ?? "—"}</TableCell>
-                  <TableCell className="break-words">{agente(r)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatEuro(r.fidoGamma)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatEuro(r.riferimento)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{differenza(r)}</TableCell>
-                  <TableCell className="max-w-80">{azioni(g, r)}</TableCell>
+                  <TableCell className="align-top whitespace-normal">{cliente(r)}{segn(r)}</TableCell>
+                  <TableCell className="align-top text-right tabular-nums">{formatEuro(r.fidoGamma)}</TableCell>
+                  <TableCell className="align-top text-right tabular-nums">{formatEuro(r.riferimento)}</TableCell>
+                  <TableCell className="align-top text-right tabular-nums">{differenza(r)}</TableCell>
+                  <TableCell className="align-top whitespace-normal">{azioni(g, r)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

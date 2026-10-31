@@ -28,12 +28,69 @@ export const ETICHETTE_GRUPPO_REVISIONE: Record<GruppoRevisione, string> = {
 export interface InputGruppoRevisione {
   richiestaAttiva: boolean;
   alertConfermato: boolean;
+  /** Decisione "Lascia così" della revisione ancora valida (lasciatoCosiValido). */
+  lasciatoCosiValido?: boolean;
   alertAperto: boolean;
   regola: string | null | undefined;
   fidoGamma: number | null | undefined;
   riferimento: number | null | undefined;
   segnalazioni: readonly string[] | null | undefined;
   extraProtettoValido: boolean;
+}
+
+/** Ultima decisione "Lascia così" del cliente (public.revisione_fidi_lasciati). */
+export type LasciatoCosi = {
+  cliente_id: string;
+  fido_gamma: number;
+  deciso_da_nome: string | null;
+  deciso_il: string;
+  valido_fino: string; // aaaa-mm-gg
+};
+
+/** Data di oggi aaaa-mm-gg nel fuso Europe/Rome. */
+export function oggiIso(d: Date = new Date()): string {
+  return d.toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
+}
+
+/**
+ * "Lasciato così" vale finché: oggi ≤ valido_fino E fido in Gamma uguale a quello salvato
+ * E regola ≠ 'scaduto_non_incassato'. Se una condizione cade il cliente torna nel suo gruppo.
+ */
+export function lasciatoCosiValido(
+  l: Pick<LasciatoCosi, "fido_gamma" | "valido_fino"> | null | undefined,
+  stato: { fidoGamma: number | null | undefined; regola: string | null | undefined; oggi?: string },
+): boolean {
+  if (!l) return false;
+  const oggi = stato.oggi ?? oggiIso();
+  if (oggi > l.valido_fino) return false;
+  if (Number(stato.fidoGamma ?? 0) !== Number(l.fido_gamma ?? 0)) return false;
+  if (stato.regola === "scaduto_non_incassato") return false;
+  return true;
+}
+
+/** Ultima decisione per cliente, letta a blocchi. */
+export async function fetchUltimiLasciati(ids: string[]): Promise<Map<string, LasciatoCosi>> {
+  const map = new Map<string, LasciatoCosi>();
+  const uniq = Array.from(new Set(ids.filter(Boolean)));
+  for (let i = 0; i < uniq.length; i += 500) {
+    const { data, error } = await (supabase as any)
+      .from("revisione_fidi_lasciati")
+      .select("cliente_id, fido_gamma, deciso_da_nome, deciso_il, valido_fino")
+      .in("cliente_id", uniq.slice(i, i + 500))
+      .order("deciso_il", { ascending: false })
+      .limit(5000);
+    if (error) throw error;
+    for (const r of (data ?? []) as any[]) {
+      if (!map.has(r.cliente_id)) map.set(r.cliente_id, { ...r, fido_gamma: Number(r.fido_gamma ?? 0) });
+    }
+  }
+  return map;
+}
+
+/** "Lascia così 30 giorni" per qualunque cliente: public.lascia_cosi_revisione (conferma anche l'alert). */
+export async function lasciaCosiRevisione(clienteId: string): Promise<void> {
+  const { error } = await (supabase as any).rpc("lascia_cosi_revisione", { _cliente_id: clienteId });
+  if (error) throw error;
 }
 
 /** Gruppo della revisione, in ordine di priorità (regola di Andrea, FM55).
@@ -44,7 +101,7 @@ export function gruppoRevisione(i: InputGruppoRevisione): GruppoRevisione {
   const gamma = Number(i.fidoGamma ?? 0);
   const rif = i.riferimento == null ? null : Number(i.riferimento);
   if (i.richiestaAttiva) return "in_corso";
-  if (i.alertConfermato) return "lasciato_cosi";
+  if (i.alertConfermato || i.lasciatoCosiValido) return "lasciato_cosi";
   if (i.regola === "scaduto_non_incassato") return "da_incassare";
   if (gamma === 0 && rif != null && rif > 0) return "nuovo";
   // Extra protetto valido = decisione già presa: se il riferimento coincide col Gamma non c'è nulla da fare.
@@ -69,6 +126,8 @@ export type RigaRevisione = {
   richiesta: RichiestaClienteAlert | null;
   alertLasciabile: AlertFidoRow | null;
   alertConfermato: AlertFidoRow | null;
+  /** Ultima decisione "Lascia così" della revisione, se ancora valida. */
+  lasciato: LasciatoCosi | null;
 };
 
 export type RiepilogoGruppo = { clienti: number; fidoGamma: number; proposto: number };
@@ -117,12 +176,14 @@ export async function fetchRevisioneFidi(userId: string): Promise<RigaRevisione[
   const teorico = await fetchFidoTeorico(clienti.map((c) => c.id));
   const perimetro = clienti.filter((c) => Number(c.fido_gestionale ?? 0) > 0 || Number(teorico.get(c.id)?.fido_proposto ?? 0) > 0);
   const ids = perimetro.map((c) => c.id);
-  const [riferimenti, protetti, alert, richieste] = await Promise.all([
+  const [riferimenti, protetti, alert, richieste, lasciati] = await Promise.all([
     fetchFidoTeoricoPerRichiesta(ids, userId),
     fetchExtraFidoProtetti(ids),
     fetchAlertFidiAperti(),
     fetchRichiesteAttive(),
+    fetchUltimiLasciati(ids),
   ]);
+  const oggi = oggiIso();
   const alertPerCliente = new Map<string, AlertFidoRow[]>();
   for (const a of alert) alertPerCliente.set(a.cliente_id, [...(alertPerCliente.get(a.cliente_id) ?? []), a]);
 
@@ -134,9 +195,12 @@ export async function fetchRevisioneFidi(userId: string): Promise<RigaRevisione[
     const richiesta = richieste.get(c.id) ?? al.find((a) => a.richiesta_attiva)?.richiesta_attiva ?? null;
     const fidoGamma = Number(c.fido_gestionale ?? 0);
     const riferimento = riferimenti.get(c.id) ?? null;
+    const ultimo = lasciati.get(c.id) ?? null;
+    const lasciato = lasciatoCosiValido(ultimo, { fidoGamma, regola: t?.regola_applicata, oggi }) ? ultimo : null;
     const gruppo = gruppoRevisione({
       richiestaAttiva: !!richiesta,
       alertConfermato: !!confermato,
+      lasciatoCosiValido: !!lasciato,
       alertAperto: al.some((a) => statoEffettivoAlert(a) === "aperto"),
       regola: t?.regola_applicata,
       fidoGamma, riferimento,
@@ -144,6 +208,6 @@ export async function fetchRevisioneFidi(userId: string): Promise<RigaRevisione[
       extraProtettoValido: protezioneAttiva(protetti.get(c.id)),
     });
     return { cliente_id: c.id, cliente: c, teorico: t, fidoGamma, riferimento, gruppo, richiesta,
-      alertLasciabile: lasciabile, alertConfermato: confermato };
+      alertLasciabile: lasciabile, alertConfermato: confermato, lasciato };
   });
 }

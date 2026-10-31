@@ -18,10 +18,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatEuro, formatDate } from "@/lib/fidi";
 import { fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchSogliaConsumoFido, fidoPerTornareSottoSoglia, fetchUtentiAnteprimaFidoNuovo } from "@/lib/fido-teorico";
 import { SegnalazioniFido } from "@/components/segnalazioni-fido";
-import { fetchRevisioneFidi, riepilogoRevisione, daRivedereRevisione } from "@/lib/revisione-fidi";
+import { fetchRevisioneFidi, riepilogoRevisione, daRivedereRevisione, fetchUltimiLasciati, lasciaCosiRevisione } from "@/lib/revisione-fidi";
 import {
-  fetchAlertFidiAperti, confermaAlertFido, cosaFareAlert, alertLasciabileCosi, etichettaAvviso, debitoOggi, alertSelezionabile,
-  importoDaAlert, statoEffettivoAlert, etichettaRichiestaAlert, etichettaDecisioneAlert, STATO_ALERT_LABEL, STATI_ALERT_DEFAULT, TIPO_ALERT_LABEL,
+  fetchAlertFidiAperti, cosaFareAlert, alertLasciabileCosi, etichettaAvviso, debitoOggi, alertSelezionabile,
+  importoDaAlert, statoEffettivoAlert, etichettaRichiestaBreve, etichettaDecisioneAlert, percheAlert, SITUAZIONE_ALERT_LABEL, STATI_ALERT_DEFAULT, TIPO_ALERT_LABEL,
   type AlertFidoRow, type StatoAlertFido, type TipoAlertFido,
 } from "@/lib/alert-fidi";
 
@@ -38,10 +38,6 @@ export const Route = createFileRoute("/_app/alert-fidi")({
 
 const NESSUNO = "__none__";
 
-function fmtPerc(v: number | null): string {
-  if (v == null) return "—";
-  return `${(Number(v) * 100).toLocaleString("it-IT", { maximumFractionDigits: 0 })}%`;
-}
 function fmtGiornoMese(d: string | null): string {
   if (!d) return "—";
   return new Date(d).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" });
@@ -98,6 +94,11 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
     enabled: idsClienti.length > 0,
     staleTime: 5 * 60_000,
     queryFn: () => fetchFidoTeoricoPerRichiesta(idsClienti, userId),
+  });
+  const { data: lasciatiMap } = useQuery({
+    queryKey: ["revisione-fidi-lasciati-alert", idsClienti.join(",")],
+    enabled: idsClienti.length > 0,
+    queryFn: () => fetchUltimiLasciati(idsClienti),
   });
   const { data: sogliaConsumo } = useQuery({ queryKey: ["soglia-consumo-fido"], queryFn: fetchSogliaConsumoFido, staleTime: 5 * 60_000 });
   const { data: agenti } = useQuery({
@@ -184,8 +185,13 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
   }
 
   const conferma = useMutation({
-    mutationFn: confermaAlertFido,
-    onSuccess: () => { toast.success("Lasciato così per 30 giorni"); queryClient.invalidateQueries({ queryKey: ["alert-fidi-aperti"] }); },
+    mutationFn: lasciaCosiRevisione,
+    onSuccess: () => {
+      toast.success("Lasciato così per 30 giorni");
+      queryClient.invalidateQueries({ queryKey: ["alert-fidi-aperti"] });
+      queryClient.invalidateQueries({ queryKey: ["revisione-fidi"] });
+      queryClient.invalidateQueries({ queryKey: ["revisione-fidi-lasciati-alert"] });
+    },
     onError: (e: any) => toast.error("Impossibile confermare: " + (e?.message ?? "errore")),
   });
 
@@ -202,6 +208,22 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
     const t = teoricoMap?.get(a.cliente_id);
     return t && t.segnalazioni.length > 0 ? <div className="mt-1 min-w-0"><SegnalazioniFido riga={t} /></div> : null;
   };
+  const nomeAgenteAlert = (a: AlertFidoRow) => a.cliente?.codice_agente ? (nomeAgente.get(a.cliente.codice_agente) ?? a.cliente.codice_agente) : null;
+  const renderCliente = (a: AlertFidoRow) => (
+    <div className="min-w-0">
+      {linkCliente(a)}
+      {a.cliente?.codice_gestionale && <div className="text-xs text-muted-foreground">{a.cliente.codice_gestionale}</div>}
+      <div className="break-words text-xs text-muted-foreground">
+        {[a.cliente?.stores?.nome ?? "Senza negozio", nomeAgenteAlert(a) ?? "Senza agente"].join(" · ")}
+      </div>
+    </div>
+  );
+  const renderPerche = (a: AlertFidoRow) => (
+    <div className="min-w-0">
+      <div className="break-words text-sm">{percheAlert(a, teoricoMap?.get(a.cliente_id))}</div>
+      {segnalazioniCliente(a)}
+    </div>
+  );
   const fidoPropostoAlert = (a: AlertFidoRow): number | null => {
     const rif = riferimentoMap?.get(a.cliente_id);
     return rif != null ? rif : (a.fido_proposto != null ? Number(a.fido_proposto) : null);
@@ -223,7 +245,8 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
       </div>
     );
   };
-  const renderStato = (a: AlertFidoRow) => {
+  // Colonna "Richiesta": solo quando c'è qualcosa (richiesta, decisione, "lasciato così").
+  const renderRichiesta = (a: AlertFidoRow) => {
     if (a.decisione) {
       return (
         <div className="space-y-1">
@@ -238,25 +261,26 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
     if (r) {
       return (
         <Link to="/richieste/$richiestaId" params={{ richiestaId: r.id }}>
-          <Badge className="whitespace-normal break-words bg-info/15 text-left text-info hover:bg-info/25">{etichettaRichiestaAlert(r)}</Badge>
+          <Badge className="whitespace-normal break-words bg-info/15 text-left text-info hover:bg-info/25">{etichettaRichiestaBreve(r)}</Badge>
         </Link>
       );
     }
-    const st = statoEffettivoAlert(a);
-    if (st === "confermato") {
-      return <span className="text-xs text-muted-foreground">Lasciato così fino al {fmtGiornoMese(a.riproponi_dal)}</span>;
+    if (statoEffettivoAlert(a) === "confermato") {
+      const l = lasciatiMap?.get(a.cliente_id);
+      const fino = l?.valido_fino ?? a.riproponi_dal;
+      return <span className="break-words text-xs text-muted-foreground">Lasciato così fino al {fmtGiornoMese(fino)}{l?.deciso_da_nome ? ` (da ${l.deciso_da_nome})` : ""}</span>;
     }
-    return <Badge variant={st === "aperto" ? "default" : "secondary"}>{STATO_ALERT_LABEL[st]}</Badge>;
+    return null;
   };
   const renderAzioni = (a: AlertFidoRow) => (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex w-full flex-col gap-2">
       {alertSelezionabile(a) && (
-        <Button size="sm" className="h-10" onClick={() => apriProposta([a])}>Apri proposta</Button>
+        <Button size="sm" className="h-auto min-h-10 w-full whitespace-normal" onClick={() => apriProposta([a])}>Apri proposta</Button>
       )}
       {alertLasciabileCosi(a) && (
-        <Button size="sm" variant="outline" className="h-10" disabled={conferma.isPending}
-          onClick={() => conferma.mutate(a.id)}>
-          {conferma.isPending && conferma.variables === a.id ? <Loader2 className="size-4 animate-spin" /> : null}
+        <Button size="sm" variant="outline" className="h-auto min-h-10 w-full whitespace-normal" disabled={conferma.isPending}
+          onClick={() => conferma.mutate(a.cliente_id)}>
+          {conferma.isPending && conferma.variables === a.cliente_id ? <Loader2 className="size-4 animate-spin" /> : null}
           Lascia così 30 giorni
         </Button>
       )}
@@ -282,12 +306,12 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
       )}
 
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-        {[
-          ["Consumo 80%", contatori.c80], ["Consumo 90%", contatori.c90],
+        {([
+          ["Usano 80–89% del fido", contatori.c80], ["Usano il 90% o più", contatori.c90],
           ["Riduzioni", contatori.rid], ["Extra non usati", contatori.extra],
-        ].map(([l, v]) => (
-          <Card key={l as string} className="p-3">
-            <div className="text-xs text-muted-foreground">{l} · aperti</div>
+        ] as [string, number][]).filter(([l, v], i) => i < 2 || v > 0).map(([l, v]) => (
+          <Card key={l} className="p-3">
+            <div className="text-xs text-muted-foreground">{l} · da gestire</div>
             <div className="text-2xl font-semibold tabular-nums sm:text-3xl">{(v as number).toLocaleString("it-IT")}</div>
           </Card>
         ))}
@@ -297,8 +321,8 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
         <FiltriCollassabili attivi={filtriAttivi}
           azioni={filtriAttivi > 0 && <Button variant="ghost" size="sm" onClick={() => reset()}>Ripristina filtri</Button>}>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
-            <FiltroMultiplo etichetta="Stato" testoTutti="Tutti gli stati"
-              opzioni={(Object.keys(STATO_ALERT_LABEL) as StatoAlertFido[]).map((s) => ({ valore: s, label: STATO_ALERT_LABEL[s] }))}
+            <FiltroMultiplo etichetta="Situazione" testoTutti="Tutte le situazioni"
+              opzioni={(Object.keys(SITUAZIONE_ALERT_LABEL) as StatoAlertFido[]).map((s) => ({ valore: s, label: SITUAZIONE_ALERT_LABEL[s] }))}
               selezionati={stati} onChange={(v) => setCampo("stati", v)} />
             <FiltroMultiplo etichetta="Tipo" testoTutti="Tutti i tipi"
               opzioni={(Object.keys(TIPO_ALERT_LABEL) as TipoAlertFido[]).map((t) => ({ valore: t, label: TIPO_ALERT_LABEL[t] }))}
@@ -337,59 +361,52 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
             {visibili.map((a) => (
               <SchedaLista key={a.id}
                 selezione={alertSelezionabile(a) ? { checked: selezionati.has(a.id), onChange: () => toggle(a.id) } : undefined}
-                titolo={<div className="min-w-0">{linkCliente(a)}{segnalazioniCliente(a)}</div>}
+                titolo={renderCliente(a)}
                 badge={<Badge variant="outline" className="shrink-0">{etichettaAvviso(a)}</Badge>}
                 campi={[
-                  { etichetta: "Negozio", valore: a.cliente?.stores?.nome ?? "—" },
-                  { etichetta: "Agente", valore: a.cliente?.codice_agente ? (nomeAgente.get(a.cliente.codice_agente) ?? a.cliente.codice_agente) : "—" },
+                  { etichetta: "Perché", valore: renderPerche(a) },
                   { etichetta: "Fido in Gamma", valore: formatEuro(a.fido_gamma) },
-                  { etichetta: "Debito oggi", valore: formatEuro(debitoOggi(a)) },
-                  { etichetta: "Consumo", valore: fmtPerc(a.consumo) },
                   { etichetta: "Cosa fare", valore: renderCosaFare(a) },
-                  { etichetta: "Aperto dal", valore: formatDate(a.aperto_il) },
+                  ...(renderRichiesta(a) ? [{ etichetta: "Richiesta", valore: renderRichiesta(a) }] : []),
+                  { etichetta: "Alert dal", valore: formatDate(a.aperto_il) },
                 ]}
-                footer={<div className="flex w-full flex-wrap items-center justify-between gap-2">{renderStato(a)}{renderAzioni(a)}</div>}
+                footer={renderAzioni(a)}
               />
             ))}
           </ElencoSchede>
 
-          <Card className="hidden overflow-x-auto md:block">
-            <Table>
+          <Card className="hidden md:block">
+            <Table className="table-fixed">
               <TableHeader><TableRow>
-                <TableHead className="w-8">
+                <TableHead className="w-10">
                   <Checkbox checked={tuttiSel ? true : selVisibili.length > 0 ? "indeterminate" : false}
                     disabled={selezionabiliVisibili.length === 0} onCheckedChange={() => toggleTutti(!tuttiSel)}
                     aria-label="Seleziona tutti" />
                 </TableHead>
-                <TableHead>Cliente</TableHead><TableHead>Negozio</TableHead><TableHead>Agente</TableHead>
-                <TableHead>Avviso</TableHead><TableHead className="text-right">Fido in Gamma</TableHead>
-                <TableHead className="text-right">Debito oggi</TableHead><TableHead className="text-right">Consumo</TableHead>
-                <TableHead className="min-w-56">Cosa fare</TableHead><TableHead>Stato</TableHead>
-                <TableHead>Aperto dal</TableHead><TableHead />
+                <TableHead className="w-[19%]">Cliente</TableHead>
+                <TableHead className="w-[22%]">Perché</TableHead>
+                <TableHead className="w-28 text-right">Fido in Gamma</TableHead>
+                <TableHead>Cosa fare</TableHead>
+                <TableHead className="w-[12%]">Richiesta</TableHead>
+                <TableHead className="w-24">Alert dal</TableHead>
+                <TableHead className="w-40">Azioni</TableHead>
               </TableRow></TableHeader>
               <TableBody>
                 {visibili.map((a) => (
                   <TableRow key={a.id}>
-                    <TableCell>
+                    <TableCell className="align-top">
                       {alertSelezionabile(a) && (
                         <Checkbox checked={selezionati.has(a.id)} onCheckedChange={() => toggle(a.id)}
                           aria-label={`Seleziona ${a.cliente?.ragione_sociale ?? "cliente"}`} />
                       )}
                     </TableCell>
-                    <TableCell className="max-w-64 min-w-40">{linkCliente(a)}
-                      {a.cliente?.codice_gestionale && <div className="text-xs text-muted-foreground">{a.cliente.codice_gestionale}</div>}
-                      {segnalazioniCliente(a)}
-                    </TableCell>
-                    <TableCell className="break-words">{a.cliente?.stores?.nome ?? "—"}</TableCell>
-                    <TableCell className="break-words">{a.cliente?.codice_agente ? (nomeAgente.get(a.cliente.codice_agente) ?? a.cliente.codice_agente) : "—"}</TableCell>
-                    <TableCell className="whitespace-nowrap">{etichettaAvviso(a)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{formatEuro(a.fido_gamma)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{formatEuro(debitoOggi(a))}</TableCell>
-                    <TableCell className="text-right tabular-nums">{fmtPerc(a.consumo)}</TableCell>
-                    <TableCell className="max-w-72">{renderCosaFare(a)}</TableCell>
-                    <TableCell className="max-w-56">{renderStato(a)}</TableCell>
-                    <TableCell className="whitespace-nowrap">{formatDate(a.aperto_il)}</TableCell>
-                    <TableCell>{renderAzioni(a)}</TableCell>
+                    <TableCell className="align-top whitespace-normal">{renderCliente(a)}</TableCell>
+                    <TableCell className="align-top whitespace-normal">{renderPerche(a)}</TableCell>
+                    <TableCell className="align-top text-right tabular-nums">{formatEuro(a.fido_gamma)}</TableCell>
+                    <TableCell className="align-top whitespace-normal">{renderCosaFare(a)}</TableCell>
+                    <TableCell className="align-top whitespace-normal">{renderRichiesta(a)}</TableCell>
+                    <TableCell className="align-top">{formatDate(a.aperto_il)}</TableCell>
+                    <TableCell className="align-top whitespace-normal">{renderAzioni(a)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
