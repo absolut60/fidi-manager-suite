@@ -1,5 +1,10 @@
 # Roadmap
 
+## FM55 — Giro giornaliero del ricalcolo
+- [x] Regola condivisa: quattro fonti di oggi Europe/Rome, almeno una nuova, nessuna in elaborazione; testi card/avviso allineati
+- [x] 14 test superati (12 regola + 2 polling); dati reali 31/10 ore 11:05:40 UTC: pronto=true, nessuna fonte mancante o in elaborazione
+- [x] Compilazione automatica OK; controllo tipi dedicato non eseguito; nessun import/ricalcolo avviato né dati modificati; riepilogo file/commit
+
 ## FM55 — Doppioni Gamma su tutto il file
 - [x] Unico parser condiviso e selezione deterministica prima dei chunk (browser e chiamanti server diretti)
 - [x] Anomalie per ogni scarto e messaggio nel log; rete di sicurezza server invariata
