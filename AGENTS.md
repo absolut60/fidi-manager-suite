@@ -12,3 +12,4 @@
 - Payment-condition display in credit-request UI must use the shared helpers and text component next to useCodiciPagamento; this keeps catalog lookup, fallback and formatting consistent without changing stored or exported values.
 - FM55 publishes v2 values into fido_teorico_cliente after both block upserts; all screens and request reference amounts read this canonical table while semaforo fields and preview-only Alert access remain independent.
 - Import/Export refreshes precalculation state on completed imports observed in its existing history query; bounded automatic polling uses the shared readiness rule and never starts recalculation itself.
+- Automatic recalculation readiness and missing-source labels are evaluated only by fido-teorico-import-completi; its query retains the entire local calendar day plus all processing imports so earlier same-day sources remain available after a recalculation.
