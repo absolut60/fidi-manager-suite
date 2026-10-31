@@ -2242,6 +2242,10 @@ type RigaProposta = {
   fido_attuale: number;
   esposizione: number;
   fido_proposto: number;
+  /** FM55: fido teorico della riga (non modificabile, fetchFidoTeoricoPerRichiesta); null = non disponibile. */
+  fido_teorico: number | null;
+  /** FM55: motivo dell'extra rispetto al teorico (obbligatorio se motivoExtraObbligatorio). */
+  motivo_extra: string;
   scostamento: number;
   regola: string;
   richiede_verifica: boolean;
@@ -2357,6 +2361,13 @@ function ProposteFidoMassivoDialog({
     staleTime: 5 * 60_000,
     queryFn: () => fetchFidoTeorico(ids),
   });
+  // FM55: teorico di riferimento per le richieste (fonte unica: v2 per utenti in anteprima).
+  const { data: teoricoRichMap, isLoading: teoricoRichLoading } = useQuery({
+    queryKey: ["fido-teorico-per-richiesta", userId, [...ids].sort().join(",")],
+    enabled: open && ids.length > 0,
+    staleTime: 5 * 60_000,
+    queryFn: () => fetchFidoTeoricoPerRichiesta(ids, userId),
+  });
   const { data: inCorsoMap } = useQuery({
     queryKey: ["richieste-in-corso-massivo", [...ids].sort().join(",")],
     enabled: open && ids.length > 0,
@@ -2439,6 +2450,9 @@ function ProposteFidoMassivoDialog({
       tipo: tipoForzato === "auto" ? determinaTipoRichiesta(r.fido_attuale, valore) : r.tipo,
     } : r));
   }
+  function aggiornaMotivoExtra(id: string, valore: string) {
+    setRighe((prev) => prev.map((r) => r.cliente_id === id ? { ...r, motivo_extra: valore } : r));
+  }
   function aggiornaTipo(id: string, tipo: RigaProposta["tipo"]) {
     setRighe((prev) => prev.map((r) => r.cliente_id === id ? { ...r, tipo } : r));
   }
@@ -2490,6 +2504,8 @@ function ProposteFidoMassivoDialog({
   const righeVisibiliIncluse = righeVisibili.filter((r) => r.proponibile && r.incluso);
   const righeEscluse = righe.filter((r) => !r.proponibile);
   const totale = righeVisibiliIncluse.reduce((acc, r) => acc + (Number(r.fido_proposto) || 0), 0);
+  const righeConExtra = righeVisibiliIncluse.filter((r) => motivoExtraObbligatorio(r.fido_proposto, r.fido_teorico));
+  const totaleExtra = righeConExtra.reduce((acc, r) => acc + extraFidoTeorico(r.fido_proposto, r.fido_teorico), 0);
   const tipoCount = (t: TipoProposta) => righe.filter((r) => r.tipo === t).length;
   const inCorsoCount = righeConInCorso.filter((r) => !!r.richiestaInCorso).length;
   const filtriModificati =
@@ -2529,6 +2545,13 @@ function ProposteFidoMassivoDialog({
       toast.error(`Impossibile creare le richieste: importo 0 ammesso solo per diminuzione o rinnovo. Controlla: ${elencoNomi(nonValide)}`);
       return;
     }
+    // FM55: sopra il teorico serve il motivo dell'extra (la motivazione generale non vale).
+    const senzaMotivoExtra = righeVisibiliIncluse.filter((r) =>
+      motivoExtraObbligatorio(r.fido_proposto, r.fido_teorico) && r.motivo_extra.trim() === "");
+    if (senzaMotivoExtra.length > 0) {
+      toast.error(`Impossibile creare le richieste: manca il motivo dell'extra fido teorico. Controlla: ${elencoNomi(senzaMotivoExtra)}`);
+      return;
+    }
     setSubmitting(true);
     try {
       const stato = modalitaInvio === "bozza" ? "bozza" : "in_approvazione";
@@ -2549,6 +2572,8 @@ function ProposteFidoMassivoDialog({
           created_by: userId,
           motivazione: m,
           condizione_pagamento_cod: r.cond_proposta || null,
+          fido_teorico_riferimento: r.fido_teorico,
+          motivo_extra_teorico: motivoExtraObbligatorio(r.fido_proposto, r.fido_teorico) ? r.motivo_extra.trim() : null,
         };
       });
       // FM50: insert a blocchi da 25 (fonte unica richieste-fido-azioni-massive).
@@ -2567,6 +2592,8 @@ function ProposteFidoMassivoDialog({
       const msg = String(e?.message ?? "");
       if (msg.includes("richieste_fido_importo_richiesto_check")) {
         toast.error("Impossibile creare le richieste: importo 0 ammesso solo per diminuzione o rinnovo.");
+      } else if (msg.includes("richieste_fido_motivo_extra_teorico_check")) {
+        toast.error("Impossibile creare le richieste: manca il motivo dell'extra fido teorico.");
       } else {
         toast.error("Errore nella creazione delle richieste: " + (msg || "errore sconosciuto"));
       }
@@ -2595,13 +2622,19 @@ function ProposteFidoMassivoDialog({
     </>
   );
   const renderImporto = (r: RigaProposta, className: string) => (
-    <Input
-      type="number"
-      className={className}
-      value={r.fido_proposto}
-      disabled={!r.proponibile}
-      onChange={(e) => aggiornaImporto(r.cliente_id, Number(e.target.value) || 0)}
-    />
+    <div className="min-w-0 space-y-1">
+      <Input
+        type="number"
+        className={className}
+        value={r.fido_proposto}
+        disabled={!r.proponibile}
+        onChange={(e) => aggiornaImporto(r.cliente_id, Number(e.target.value) || 0)}
+      />
+      {r.proponibile && (
+        <CampoExtraTeorico compatto importo={r.fido_proposto} teorico={r.fido_teorico}
+          motivo={r.motivo_extra} onMotivo={(v) => aggiornaMotivoExtra(r.cliente_id, v)} />
+      )}
+    </div>
   );
   const renderRegola = (r: RigaProposta) =>
     r.proponibile ? (
@@ -2901,6 +2934,9 @@ function ProposteFidoMassivoDialog({
         <div className="shrink-0 min-w-0 border-t bg-background px-3 py-2 sm:px-4 sm:py-2 grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <div className="text-sm font-medium break-words">
             Totale fido proposto: <strong>{fmtEuro(totale)}</strong> · {righeVisibiliIncluse.length} richieste da creare
+            {righeConExtra.length > 0 && (
+              <span className="text-warning"> · di cui extra fido teorico: <strong className="tabular-nums">{fmtEuro(totaleExtra)}</strong> su {righeConExtra.length} client{righeConExtra.length === 1 ? "e" : "i"}</span>
+            )}
             {righeEscluse.length > 0 && (
               <span className="text-muted-foreground font-normal"> · {righeEscluse.length} esclusi</span>
             )}
