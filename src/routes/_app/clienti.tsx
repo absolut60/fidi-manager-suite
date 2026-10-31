@@ -207,6 +207,8 @@ function ClientiPage() {
     storeFiltro: [] as string[],
     statoFido: [] as string[],
     semaforoFiltro: [] as string[],
+    // FM55: profilo del fido teorico (fido_teorico_cliente.profilo), etichette da PROFILO_FIDO_LABEL.
+    profiloFiltro: [] as string[],
     filtroBlocco: "tutti" as "tutti" | "bloccati" | "non_bloccati",
     privacyFiltro: "tutti" as "tutti" | "ok" | "da_richiedere",
     filtroAssic: "tutti" as "tutti" | "assicurati" | "non_assicurati",
@@ -245,6 +247,7 @@ function ClientiPage() {
       // Formato vecchio (stringa) scartato: si riparte dal default.
       storeFiltro: (v) => Array.isArray(v) && v.every((x) => typeof x === "string"),
       semaforoFiltro: (v) => Array.isArray(v) && v.every((x) => typeof x === "string"),
+      profiloFiltro: (v) => Array.isArray(v) && v.every((x) => typeof x === "string"),
       filtroAgente: (v) => Array.isArray(v) && v.every((x) => typeof x === "string"),
       filtroMestiere: (v) => Array.isArray(v) && v.every((x) => typeof x === "string"),
       sliderCommitted: (v) => Array.isArray(v) && v.length === 2 && v.every((x) => typeof x === "number" && Number.isFinite(x)),
