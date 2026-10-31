@@ -736,6 +736,13 @@
       "when": 1793430286493,
       "tag": "0104_fm55_notifiche_alert_fidi_spente",
       "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "7",
+      "when": 1793432958311,
+      "tag": "0105_fm55_fido_v2_pubblicato_per_tutti",
+      "breakpoints": true
     }
   ]
 }
