@@ -1490,6 +1490,7 @@ function ClientiPage() {
     activeChips.push({ key: "statoFido", label: `Stato fido: ${Array.from(statoFido).join(", ")}`, onRemove: () => setStatoFido(new Set()) });
   }
   if (semaforoFiltro.length > 0) activeChips.push({ key: "semaforo", label: `Semaforo: ${etichettaElenco(semaforoFiltro, (v) => v)}`, onRemove: () => setSemaforoFiltro([]) });
+  if (profiloFiltro.length > 0) activeChips.push({ key: "profilo", label: `Profilo fido: ${etichettaElenco(profiloFiltro, (v) => PROFILO_FIDO_LABEL[v] ?? v)}`, onRemove: () => setProfiloFiltro([]) });
   if (scadenziarioFiltro !== "tutti") {
     const lbl = scadenziarioFiltro === "con_scaduto" ? "Con scaduto" : "Senza scaduto";
     activeChips.push({ key: "scaduto", label: lbl, onRemove: () => setScadenziarioFiltro("tutti") });
@@ -1641,9 +1642,10 @@ function ClientiPage() {
           {RichiestaFidoSelect}
           {AdvFilterBtn}
         </div>
-        {/* Livello 3 — fido teorico (colonne opzionali + filtro scostamento) */}
+        {/* Livello 3 — fido teorico (colonne opzionali + filtri scostamento/profilo) */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 opacity-90">
           {ScostamentoSelect}
+          {ProfiloFidoSelect}
           {FidoTeoricoToggle}
         </div>
         {/* Livello chip — filtri attivi */}
