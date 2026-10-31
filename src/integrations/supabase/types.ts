@@ -2827,6 +2827,7 @@ export type Database = {
           mesi_stagionali: number | null
           nota_proposta: string | null
           ordini_aperti: number | null
+          pagato_12m: number
           pavimento_applicato: boolean | null
           profilo: string | null
           profilo_pagamento: string | null
@@ -2869,6 +2870,7 @@ export type Database = {
           mesi_stagionali?: number | null
           nota_proposta?: string | null
           ordini_aperti?: number | null
+          pagato_12m?: number
           pavimento_applicato?: boolean | null
           profilo?: string | null
           profilo_pagamento?: string | null
@@ -2911,6 +2913,7 @@ export type Database = {
           mesi_stagionali?: number | null
           nota_proposta?: string | null
           ordini_aperti?: number | null
+          pagato_12m?: number
           pavimento_applicato?: boolean | null
           profilo?: string | null
           profilo_pagamento?: string | null
@@ -8413,6 +8416,7 @@ export type Database = {
         Returns: {
           cliente_id: string
           giorni_max: number
+          pagato_12m: number
           scaduto_oltre: number
         }[]
       }
@@ -8429,7 +8433,9 @@ export type Database = {
           _fabbisogno: number
           _fido_gamma: number
           _ordini: number
+          _pagato_12m: number
           _regola: string
+          _scaduto_oltre: number
         }
         Returns: string[]
       }

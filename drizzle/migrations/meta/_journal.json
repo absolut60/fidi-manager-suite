@@ -799,6 +799,13 @@
       "when": 1793461073533,
       "tag": "0113_fm55_segnalazioni_fido",
       "breakpoints": true
+    },
+    {
+      "idx": 114,
+      "version": "7",
+      "when": 1793461764780,
+      "tag": "0114_fm55_scaduto_quota_pagato",
+      "breakpoints": true
     }
   ]
 }
