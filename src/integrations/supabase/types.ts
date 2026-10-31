@@ -2827,6 +2827,7 @@ export type Database = {
           mesi_stagionali: number | null
           nota_proposta: string | null
           ordini_aperti: number | null
+          ordini_fuori: number | null
           pagato_12m: number
           pavimento_applicato: boolean | null
           profilo: string | null
@@ -2843,6 +2844,8 @@ export type Database = {
           semaforo_numero: number | null
           semaforo_stadio: string | null
           spiegazione: string | null
+          tetto: number | null
+          valore_senza_tetto: number | null
         }
         Insert: {
           acquisto_mensile?: number | null
@@ -2870,6 +2873,7 @@ export type Database = {
           mesi_stagionali?: number | null
           nota_proposta?: string | null
           ordini_aperti?: number | null
+          ordini_fuori?: number | null
           pagato_12m?: number
           pavimento_applicato?: boolean | null
           profilo?: string | null
@@ -2886,6 +2890,8 @@ export type Database = {
           semaforo_numero?: number | null
           semaforo_stadio?: string | null
           spiegazione?: string | null
+          tetto?: number | null
+          valore_senza_tetto?: number | null
         }
         Update: {
           acquisto_mensile?: number | null
@@ -2913,6 +2919,7 @@ export type Database = {
           mesi_stagionali?: number | null
           nota_proposta?: string | null
           ordini_aperti?: number | null
+          ordini_fuori?: number | null
           pagato_12m?: number
           pavimento_applicato?: boolean | null
           profilo?: string | null
@@ -2929,6 +2936,8 @@ export type Database = {
           semaforo_numero?: number | null
           semaforo_stadio?: string | null
           spiegazione?: string | null
+          tetto?: number | null
+          valore_senza_tetto?: number | null
         }
         Relationships: [
           {
@@ -7032,6 +7041,22 @@ export type Database = {
         Args: { c: Database["public"]["Tables"]["clienti"]["Row"] }
         Returns: number
       }
+      fido_v2_margine_tetto: {
+        Args: {
+          _acq: number
+          _base: number
+          _esp: number
+          _ord: number
+          _sc_oltre: number
+        }
+        Returns: {
+          fp: number
+          margine: boolean
+          ordini_fuori: number
+          tetto: number
+          valore: number
+        }[]
+      }
       fn_email_valida: { Args: { _raw: string }; Returns: boolean }
       fn_telefono_valido: { Args: { _raw: string }; Returns: boolean }
       genera_snapshot: { Args: { _data: string }; Returns: string }
@@ -8427,18 +8452,34 @@ export type Database = {
         }[]
       }
       segna_canale_letto: { Args: { _canale_id: string }; Returns: undefined }
-      segnalazioni_fido: {
-        Args: {
-          _base: number
-          _fabbisogno: number
-          _fido_gamma: number
-          _ordini: number
-          _pagato_12m: number
-          _regola: string
-          _scaduto_oltre: number
-        }
-        Returns: string[]
-      }
+      segnalazioni_fido:
+        | {
+            Args: {
+              _base: number
+              _fabbisogno: number
+              _fido_gamma: number
+              _ordini: number
+              _pagato_12m: number
+              _regola: string
+              _scaduto_oltre: number
+            }
+            Returns: string[]
+          }
+        | {
+            Args: {
+              _base: number
+              _fabbisogno: number
+              _fido_gamma: number
+              _ordini: number
+              _ordini_fuori: number
+              _pagato_12m: number
+              _regola: string
+              _scaduto_oltre: number
+              _tetto: number
+              _valore_senza_tetto: number
+            }
+            Returns: string[]
+          }
       sposta_lead_ambito: {
         Args: { _ambito: string; _lead_ids: string[] }
         Returns: number
