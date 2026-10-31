@@ -1,5 +1,10 @@
 # Roadmap
 
+## FM55 — Fetta 4c: notifiche Alert fidi spente
+- [ ] Funzione protetta e passo del ricalcolo senza modificare calcoli
+- [ ] Prova transazionale annullata, verifica interruttore spento e tipi
+- [ ] Registrazione catalogo notifiche: dati separati dalla migrazione
+
 ## Tooltip calendario commerciale e Task
 - [x] Riusare i testi già caricati e condividere il montaggio all'apertura con i tooltip recupero
 - [x] Compilazione automatica riuscita; nessuna query aggiunta, handler clic/tocco invariati
