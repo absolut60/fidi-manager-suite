@@ -34,7 +34,7 @@ describe("Già deciso – regola e frase", () => {
     expect(testoGiaDeciso(dec)).toBe("Già deciso il 31/10 da Andrea Giani: fido confermato a 60.000 € anche con lo scaduto. Si riguarda dal 30/11."));
   it("aumento senza scaduto", () =>
     expect(testoGiaDeciso({ ...dec, tipo: "aumento", importo_approvato: 75000, scaduto_al_momento: 0 }))
-      .toBe("Già deciso il 31/10 da Andrea Giani: portato a 75.000 € . Si riguarda dal 30/11.".replace(" € .", " €.")));
+      .toBe("Già deciso il 31/10 da Andrea Giani: portato a 75.000 €. Si riguarda dal 30/11."));
 });
 
 describe("Già deciso – Alert fidi", () => {
