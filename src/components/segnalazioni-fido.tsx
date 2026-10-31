@@ -1,7 +1,7 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { FidoTeoricoRow } from "@/lib/fido-teorico";
-import { segnalazioniRiga, type GravitaSegnalazione } from "@/lib/fido-segnalazioni";
+import { raggruppaSegnalazioni, type GravitaSegnalazione } from "@/lib/fido-segnalazioni";
 
 const CLASSE: Record<GravitaSegnalazione, string> = {
   rossa: "border-destructive/40 bg-destructive/10 text-destructive",
@@ -12,7 +12,7 @@ const CLASSE: Record<GravitaSegnalazione, string> = {
 /** FM55 — unico componente per mostrare le segnalazioni del fido (badge + testo completo). */
 export function SegnalazioniFido({ riga }: { riga: FidoTeoricoRow }) {
   const isMobile = useIsMobile();
-  const lista = segnalazioniRiga(riga);
+  const lista = raggruppaSegnalazioni(riga);
   if (lista.length === 0) return null;
 
   if (isMobile) {
