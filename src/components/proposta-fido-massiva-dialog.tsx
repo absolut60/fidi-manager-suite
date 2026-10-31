@@ -17,8 +17,11 @@ import {
   type StatoRichiesta, type TipoRichiesta,
   extraFidoTeorico, motivoExtraObbligatorio,
 } from "@/lib/fidi";
-import { daValutareProposta, righeVisibiliProposta, riepilogoVisibilita } from "@/lib/proposta-fido-visibilita";
-import { segnalazioniAnomalia } from "@/lib/fido-segnalazioni";
+import { daValutareProposta, righeVisibiliProposta, riepilogoVisibilita, inclusoInizialeProposta, livelloControlloProposta, type LivelloControllo } from "@/lib/proposta-fido-visibilita";
+import { segnalazioniAnomalia, anomaliaRossa } from "@/lib/fido-segnalazioni";
+import { Link } from "@tanstack/react-router";
+import { Switch } from "@/components/ui/switch";
+import { salvaFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { CampoExtraTeorico } from "@/components/extra-fido-teorico";
 import {
   fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchExtraFidoProtetti, fetchSogliaConsumoFido, fidoPerTornareSottoSoglia, notaExtraProtetto, protezioneAttiva, MOTIVAZIONE_PROFILO_FIDO, isProponibile,
@@ -103,6 +106,8 @@ type RigaProposta = {
   incluso: boolean;
   /** FM55 3C: alert aperto o segnalazione arancione/rossa (regola in proposta-fido-visibilita). */
   inAlertOAnomalia?: boolean;
+  /** Riga da controllare (segnalazioni arancioni/rosse). */
+  controllo?: LivelloControllo;
   tipo: "nuovo_fido" | "aumento" | "diminuzione" | "rinnovo";
   // Override motivazione per-riga. undefined = eredita la motivazione generale.
   motivazione?: string;
@@ -185,7 +190,7 @@ function TriSelect({ label, value, onChange, options }: {
 const MOTIVAZIONE_DEFAULT = "Revisione fido massiva";
 
 export function ProposteFidoMassivoDialog({
-  open, onOpenChange, selectedRows, userId, onSuccess, onRemove, importiDaAlert,
+  open, onOpenChange, selectedRows, userId, onSuccess, onRemove, importiDaAlert, mostraSempre,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -195,7 +200,11 @@ export function ProposteFidoMassivoDialog({
   onRemove: (id: string) => void;
   /** Alert fidi: per questi clienti teorico di riferimento e importo iniziale = questo valore. */
   importiDaAlert?: Map<string, number>;
+  /** Apertura da azione su un singolo cliente: questi clienti si vedono sempre, anche se rinnovi. */
+  mostraSempre?: string[];
 }) {
+  const mostraSempreSet = useMemo(() => new Set(mostraSempre ?? []), [mostraSempre]);
+  const [soloControllo, setSoloControllo] = useState(false);
   const [modalitaInvio, setModalitaInvio] = useState<"bozza" | "invia">("bozza");
   const [tipoForzato, setTipoForzato] = useState<"auto" | "nuovo_fido" | "aumento" | "diminuzione" | "rinnovo">("auto");
   const [motivazioneGenerale, setMotivazioneGenerale] = useState<string>(MOTIVAZIONE_DEFAULT);
@@ -311,8 +320,8 @@ export function ProposteFidoMassivoDialog({
         const attuale = t ? t.fido_attuale : getFidoAttuale(c);
         const tipo = determinaTipoRichiesta(attuale, proposto);
         const inAlertOAnomalia = alertAperti.has(c.id) || segnalazioniAnomalia(t?.segnalazioni).length > 0;
-        // Le righe "Da valutare" partono non spuntate: decide l'utente se includerle.
-        const daValutare = daValutareProposta({ cliente_id: c.id, tipo, regola, fido_proposto: proposto, inAlertOAnomalia });
+        const anom = segnalazioniAnomalia(t?.segnalazioni);
+        const controllo = livelloControlloProposta(anom.length, anomaliaRossa(t?.segnalazioni));
 
         return {
           cliente_id: c.id,
@@ -330,8 +339,9 @@ export function ProposteFidoMassivoDialog({
           nota_proposta: t?.nota_proposta ?? "",
           motivazione_auto: t?.profilo ? MOTIVAZIONE_PROFILO_FIDO[t.profilo] : undefined,
           proponibile,
-          incluso: proponibile && !daValutare,
+          incluso: inclusoInizialeProposta(proponibile),
           inAlertOAnomalia,
+          controllo,
           tipo,
           cond_attuale: "",
           cond_proposta: "",
@@ -390,18 +400,21 @@ export function ProposteFidoMassivoDialog({
     [righe, inCorsoMap],
   );
 
-  const righeVisibili = useMemo(
+  const righeVisibiliTutte = useMemo(
     () => righeVisibiliProposta(righeConInCorso, {
       tipi: filtroTipi, pagImmediato: filtroPagImmediato, fidoZero: filtroFidoZero, inCorso: filtroInCorso,
-    }, toccate),
-    [righeConInCorso, filtroTipi, filtroPagImmediato, filtroFidoZero, filtroInCorso, toccate],
+    }, toccate, mostraSempreSet),
+    [righeConInCorso, filtroTipi, filtroPagImmediato, filtroFidoZero, filtroInCorso, toccate, mostraSempreSet],
   );
+  const nDaControllare = righeVisibiliTutte.filter((r) => r.proponibile && r.controllo).length;
+  const righeVisibili = soloControllo ? righeVisibiliTutte.filter((r) => r.proponibile && r.controllo) : righeVisibiliTutte;
+  const negoziSelezione = [...new Set(righe.map((r) => r.store_id ?? "__none__"))];
 
   const riepilogoVis = useMemo(
     () => riepilogoVisibilita(righeConInCorso, {
       tipi: filtroTipi, pagImmediato: filtroPagImmediato, fidoZero: filtroFidoZero, inCorso: filtroInCorso,
-    }, toccate, protettiValidi),
-    [righeConInCorso, filtroTipi, filtroPagImmediato, filtroFidoZero, filtroInCorso, toccate, protettiValidi],
+    }, toccate, protettiValidi, mostraSempreSet),
+    [righeConInCorso, filtroTipi, filtroPagImmediato, filtroFidoZero, filtroInCorso, toccate, protettiValidi, mostraSempreSet],
   );
   const [filtriAperti, setFiltriAperti] = useState(false);
   const fmtN = (n: number) => n.toLocaleString("it-IT");
@@ -527,13 +540,24 @@ export function ProposteFidoMassivoDialog({
     }
   }
 
+  // Evidenza righe da controllare (rossa prevale), poi "Da verificare".
+  const sfondoRiga = (r: RigaProposta, conBordo: boolean) => {
+    if (!r.proponibile) return "";
+    if (r.controllo === "rossa") return `bg-destructive/10${conBordo ? " border-l-4 border-l-destructive" : ""}`;
+    if (r.controllo === "arancione") return `bg-warning/10${conBordo ? " border-l-4 border-l-warning" : ""}`;
+    if (r.richiede_verifica) return `bg-warning/10${conBordo ? " border-l-2 border-l-warning" : ""}`;
+    return "";
+  };
+  const bordoRiga = (r: RigaProposta) =>
+    !r.proponibile ? "" : r.controllo === "rossa" ? "border-l-4 border-l-destructive" : r.controllo === "arancione" ? "border-l-4 border-l-warning" : "";
+
   // Pezzi condivisi tra tabella desktop e schede mobile (stessi handler)
   const renderCliente = (r: RigaProposta) => (
     <>
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-1">
       <span className="min-w-0 break-words line-clamp-2" title={r.ragione_sociale}>{r.ragione_sociale}</span>
-      {r.proponibile && daValutareProposta(r) && (
-        <Badge className="shrink-0 whitespace-nowrap px-1 text-[10px] bg-warning/15 text-foreground hover:bg-warning/20" title="Cliente in alert o con anomalie: decidi tu se includerlo">Da valutare</Badge>
+      {r.proponibile && r.controllo && (
+        <Badge className={`shrink-0 whitespace-nowrap px-1 text-[10px] ${r.controllo === "rossa" ? "bg-destructive/15 text-destructive hover:bg-destructive/20" : "bg-warning/20 text-foreground hover:bg-warning/25"}`} title="Ci sono segnalazioni: controlla prima di creare la richiesta">Controlla</Badge>
       )}
       {r.richiede_verifica && (
         <Badge className="shrink-0 whitespace-nowrap px-1 text-[10px] bg-warning/15 text-warning hover:bg-warning/20">Da verificare</Badge>
@@ -716,8 +740,24 @@ export function ProposteFidoMassivoDialog({
           <p className="text-foreground">
             Stai vedendo <strong>{fmtN(riepilogoVis.visibili)}</strong> propost{riepilogoVis.visibili === 1 ? "a" : "e"} su <strong>{fmtN(riepilogoVis.totale)}</strong> clienti selezionati.
           </p>
-          {riepilogoVis.daValutare > 0 && (
-            <p>Tra queste, <strong>{fmtN(riepilogoVis.daValutare)}</strong> da valutare (alert o anomalie): rinnovi lasciati visibili e non spuntati, decidi tu se includerli.</p>
+          {nDaControllare > 0 && (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="font-medium text-warning"><strong>{fmtN(nDaControllare)}</strong> righe da controllare</span>
+              <label className="flex min-h-10 items-center gap-2 text-foreground">
+                <Switch checked={soloControllo} onCheckedChange={setSoloControllo} aria-label="Mostra solo da controllare" />
+                Mostra solo da controllare
+              </label>
+            </div>
+          )}
+          {riepilogoVis.daDecidere > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="min-w-0 flex-1">
+                <strong>{fmtN(riepilogoVis.daDecidere)}</strong> client{riepilogoVis.daDecidere === 1 ? "e" : "i"} con fido invariato ma da decidere (acquisti sopra il previsto o alert): si lavorano in Revisione fidi.
+              </p>
+              <Button asChild size="sm" variant="outline" className="h-10 shrink-0">
+                <Link to="/revisione-fidi" onClick={() => salvaFiltriPagina("revisione-fidi", userId, { negozi: negoziSelezione, agenti: [] })}>Apri Revisione fidi</Link>
+              </Button>
+            </div>
           )}
           {vociNascoste.length > 0 && (
             <div>
@@ -828,9 +868,7 @@ export function ProposteFidoMassivoDialog({
             return (
               <SchedaLista
                 key={r.cliente_id}
-                className={`${!r.proponibile ? "opacity-60" : ""} ${
-                  r.proponibile && r.richiede_verifica ? "bg-warning/10 border-l-2 border-l-warning" : ""
-                }`}
+                className={`${!r.proponibile ? "opacity-60" : ""} ${sfondoRiga(r, true)}`}
                 selezione={{ checked: r.incluso && r.proponibile, onChange: () => { if (r.proponibile) toggleIncluso(r.cliente_id); } }}
                 titolo={renderCliente(r)}
                 badge={
@@ -894,8 +932,8 @@ export function ProposteFidoMassivoDialog({
                 const dettagli = renderDettagli(r);
                 return (
                   <Fragment key={r.cliente_id}>
-                    <TableRow className={`${!r.proponibile ? "opacity-60" : ""} ${r.proponibile && r.richiede_verifica ? "bg-warning/10" : ""} ${dettagli ? "border-0" : "border-b-2 border-border"}`}>
-                      <TableCell><Checkbox checked={r.incluso && r.proponibile} disabled={!r.proponibile} onCheckedChange={() => toggleIncluso(r.cliente_id)} /></TableCell>
+                    <TableRow className={`${!r.proponibile ? "opacity-60" : ""} ${sfondoRiga(r, false)} ${dettagli ? "border-0" : "border-b-2 border-border"}`}>
+                      <TableCell className={bordoRiga(r)}><Checkbox checked={r.incluso && r.proponibile} disabled={!r.proponibile} onCheckedChange={() => toggleIncluso(r.cliente_id)} /></TableCell>
                       <TableCell className="min-w-0 font-medium">{renderCliente(r)}<div className="mt-0.5 text-[11px] font-normal">{renderRegola(r)}</div></TableCell>
                       <TableCell className="text-right break-words tabular-nums">{fmtEuro(r.fido_attuale)}</TableCell>
                       <TableCell className="text-right break-words tabular-nums">{fmtEuro(r.esposizione)}</TableCell>
@@ -906,7 +944,7 @@ export function ProposteFidoMassivoDialog({
                       <TableCell><div className="[&_button]:w-8 [&_button]:h-10">{renderMotivazione(r)}</div></TableCell>
                       <TableCell><div className="[&_button]:w-8 [&_button]:h-10">{renderRimuovi(r)}</div></TableCell>
                     </TableRow>
-                    {dettagli && <TableRow className={`${!r.proponibile ? "opacity-60" : ""} ${r.proponibile && r.richiede_verifica ? "bg-warning/10" : ""} border-b-2 border-border`}><TableCell colSpan={10} className="pt-0 pb-2">{dettagli}</TableCell></TableRow>}
+                    {dettagli && <TableRow className={`${!r.proponibile ? "opacity-60" : ""} ${sfondoRiga(r, false)} border-b-2 border-border`}><TableCell colSpan={10} className={`pt-0 pb-2 ${bordoRiga(r)}`}>{dettagli}</TableCell></TableRow>}
                   </Fragment>
                 );
               })}

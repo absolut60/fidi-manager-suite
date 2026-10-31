@@ -28,7 +28,7 @@ describe("riepilogo visibilità proposta massiva", () => {
     expect(r.visibili).toBe(1);
     expect(r.nascosti.rinnovo).toBe(0);
   });
-  it("FM55 3C: rinnovi in alert o con anomalie restano visibili come da valutare", () => {
+  it("31/10: rinnovi in alert o con anomalie nascosti e contati in daDecidere", () => {
     const righe = [
       riga("v1", "aumento"),
       riga("r1", "rinnovo"), riga("r2", "rinnovo"),
@@ -37,13 +37,13 @@ describe("riepilogo visibilità proposta massiva", () => {
       riga("n1", "aumento", { proponibile: false, regola: "cliente_bloccato" }),
     ];
     const r = riepilogoVisibilita(righe, filtri, new Set(), undefined);
-    expect(r.visibili).toBe(3);
-    expect(r.daValutare).toBe(2);
-    expect(r.nascosti.rinnovo).toBe(2);
-    expect(r.nascosti.in_corso).toBe(1);
+    expect(r.visibili).toBe(1);
+    expect(r.daDecidere).toBe(3);
+    expect(r.nascosti.rinnovo).toBe(5);
+    expect(r.nascosti.in_corso).toBe(0);
     const somma = r.visibili + Object.values(r.nascosti).reduce((a, b) => a + b, 0) + r.nonProponibiliTotale;
     expect(somma).toBe(7);
-    expect(passaFiltriProposta(riga("a", "rinnovo", { inAlertOAnomalia: true }), filtri)).toBe(true);
+    expect(passaFiltriProposta(riga("a", "rinnovo", { inAlertOAnomalia: true }), filtri)).toBe(false);
     expect(passaFiltriProposta(riga("b", "rinnovo"), filtri)).toBe(false);
   });
 });

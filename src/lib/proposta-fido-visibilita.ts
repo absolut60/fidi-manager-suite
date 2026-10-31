@@ -22,13 +22,17 @@ export interface RigaVisibilita<T extends string = string> {
   inAlertOAnomalia?: boolean;
 }
 
-/** Regola unica: un rinnovo di un cliente in alert o con anomalie non si nasconde dal filtro Tipo. */
+/**
+ * Regola unica: rinnovo di un cliente in alert o con anomalie. Dal 31/10 (decisione del
+ * proprietario) NON si mostra più nella massiva per eccezione: si decide in Revisione fidi,
+ * qui si conta solo (riepilogo.daDecidere).
+ */
 export function daValutareProposta<T extends string>(r: RigaVisibilita<T>): boolean {
   return r.tipo === "rinnovo" && !!r.inAlertOAnomalia;
 }
 
 export function passaFiltriProposta<T extends string>(r: RigaVisibilita<T>, f: FiltriProposta<T>): boolean {
-  if (!f.tipi.includes(r.tipo) && !daValutareProposta(r)) return false;
+  if (!f.tipi.includes(r.tipo)) return false;
   const inCorso = !!r.richiestaInCorso;
   if (f.inCorso === "escludi" && inCorso) return false;
   if (f.inCorso === "solo" && !inCorso) return false;
@@ -43,8 +47,21 @@ export function passaFiltriProposta<T extends string>(r: RigaVisibilita<T>, f: F
 
 export function righeVisibiliProposta<T extends string, R extends RigaVisibilita<T>>(
   righe: R[], filtri: FiltriProposta<T>, toccate: ReadonlySet<string>,
+  mostraSempre?: ReadonlySet<string>,
 ): R[] {
-  return righe.filter((r) => toccate.has(r.cliente_id) || passaFiltriProposta(r, filtri));
+  return righe.filter((r) => toccate.has(r.cliente_id) || !!mostraSempre?.has(r.cliente_id) || passaFiltriProposta(r, filtri));
+}
+
+/** Spunta iniziale: tutte le righe proponibili partono incluse, anche con anomalie. */
+export function inclusoInizialeProposta(proponibile: boolean): boolean {
+  return proponibile;
+}
+
+/** Evidenza "Controlla": riga con segnalazioni arancioni/rosse (fonti: segnalazioniAnomalia/anomaliaRossa). */
+export type LivelloControllo = "rossa" | "arancione" | null;
+export function livelloControlloProposta(nAnomalie: number, rossa: boolean): LivelloControllo {
+  if (rossa) return "rossa";
+  return nAnomalie > 0 ? "arancione" : null;
 }
 
 /** Motivo per cui una riga proponibile è nascosta: stessa sequenza di passaFiltriProposta. */
@@ -57,7 +74,7 @@ export type MotivoNascosto =
 export function motivoNascostoProposta<T extends string>(
   r: RigaVisibilita<T>, f: FiltriProposta<T>, protetto: boolean,
 ): MotivoNascosto | null {
-  if (!f.tipi.includes(r.tipo) && !daValutareProposta(r)) {
+  if (!f.tipi.includes(r.tipo)) {
     if (r.tipo === "rinnovo") return protetto ? "protetto" : "rinnovo";
     return "tipo_spento";
   }
@@ -76,8 +93,8 @@ export function motivoNascostoProposta<T extends string>(
 export interface RiepilogoVisibilita {
   totale: number;
   visibili: number;
-  /** Tra le visibili: rinnovi mostrati perché in alert o con anomalie. */
-  daValutare: number;
+  /** Rinnovi nascosti con alert o anomalie: si decidono in Revisione fidi. */
+  daDecidere: number;
   nascosti: Record<MotivoNascosto, number>;
   /** Tipi spenti nel filtro, per tipo (nuovo_fido, aumento, diminuzione…). */
   tipiSpenti: Record<string, number>;
@@ -88,6 +105,7 @@ export interface RiepilogoVisibilita {
 /** Conteggi per il riquadro "cosa stai vedendo": visibili + nascosti + non proponibili = totale. */
 export function riepilogoVisibilita<T extends string, R extends RigaVisibilita<T> & { proponibile: boolean }>(
   righe: R[], filtri: FiltriProposta<T>, toccate: ReadonlySet<string>, protetti: { has(id: string): boolean } | undefined,
+  mostraSempre?: ReadonlySet<string>,
 ): RiepilogoVisibilita {
   const nascosti: Record<MotivoNascosto, number> = {
     rinnovo: 0, protetto: 0, tipo_spento: 0, in_corso: 0, non_in_corso: 0,
@@ -95,17 +113,18 @@ export function riepilogoVisibilita<T extends string, R extends RigaVisibilita<T
   };
   const tipiSpenti: Record<string, number> = {};
   const nonProponibili: Record<string, number> = {};
-  let visibili = 0, daValutare = 0, nonProponibiliTotale = 0;
+  let visibili = 0, daDecidere = 0, nonProponibiliTotale = 0;
   for (const r of righe) {
     if (!r.proponibile) {
       nonProponibili[r.regola] = (nonProponibili[r.regola] ?? 0) + 1;
       nonProponibiliTotale++;
       continue;
     }
-    const m = toccate.has(r.cliente_id) ? null : motivoNascostoProposta(r, filtri, !!protetti?.has(r.cliente_id));
-    if (!m) { visibili++; if (daValutareProposta(r)) daValutare++; continue; }
+    const m = toccate.has(r.cliente_id) || mostraSempre?.has(r.cliente_id) ? null : motivoNascostoProposta(r, filtri, !!protetti?.has(r.cliente_id));
+    if (!m) { visibili++; continue; }
+    if (daValutareProposta(r)) daDecidere++;
     nascosti[m]++;
     if (m === "tipo_spento") tipiSpenti[r.tipo] = (tipiSpenti[r.tipo] ?? 0) + 1;
   }
-  return { totale: righe.length, visibili, daValutare, nascosti, tipiSpenti, nonProponibili, nonProponibiliTotale };
+  return { totale: righe.length, visibili, daDecidere, nascosti, tipiSpenti, nonProponibili, nonProponibiliTotale };
 }
