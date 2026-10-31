@@ -17,7 +17,7 @@ import {
   type StatoRichiesta, type TipoRichiesta,
   extraFidoTeorico, motivoExtraObbligatorio,
 } from "@/lib/fidi";
-import { righeVisibiliProposta, riepilogoVisibilita, inclusoInizialeProposta, livelloControlloProposta, type LivelloControllo } from "@/lib/proposta-fido-visibilita";
+import { daValutareProposta, righeVisibiliProposta, riepilogoVisibilita, inclusoInizialeProposta, livelloControlloProposta, type LivelloControllo } from "@/lib/proposta-fido-visibilita";
 import { segnalazioniAnomalia, anomaliaRossa } from "@/lib/fido-segnalazioni";
 import { Switch } from "@/components/ui/switch";
 import { CampoExtraTeorico } from "@/components/extra-fido-teorico";
