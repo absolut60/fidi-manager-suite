@@ -19,7 +19,7 @@ import { formatEuro, formatDate } from "@/lib/fidi";
 import { fetchUtentiAnteprimaFidoNuovo } from "@/lib/fido-teorico";
 import {
   fetchAlertFidiAperti, confermaExtraAlertFido, etichettaAvviso, debitoOggi, alertSelezionabile,
-  importoDaAlert, STATO_ALERT_LABEL, STATI_ALERT_DEFAULT, TIPO_ALERT_LABEL,
+  importoDaAlert, statoEffettivoAlert, etichettaRichiestaAlert, STATO_ALERT_LABEL, STATI_ALERT_DEFAULT, TIPO_ALERT_LABEL,
   type AlertFidoRow, type StatoAlertFido, type TipoAlertFido,
 } from "@/lib/alert-fidi";
 
@@ -88,9 +88,9 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
   const nomeAgente = useMemo(() => new Map((agenti ?? []).map((a) => [a.codice, a.descrizione])), [agenti]);
 
   const { filtri, setCampo, reset } = useFiltriPagina("alert-fidi", {
-    stati: STATI_ALERT_DEFAULT as string[], tipi: [] as string[], negozi: [] as string[], agenti: [] as string[],
-  }, { userId, valida: { stati: Array.isArray, tipi: Array.isArray, negozi: Array.isArray, agenti: Array.isArray } });
-  const { stati, tipi, negozi, agenti: agentiSel } = filtri;
+    stati: STATI_ALERT_DEFAULT as string[], tipi: [] as string[], negozi: [] as string[], agenti: [] as string[], richiesta: [] as string[],
+  }, { userId, valida: { stati: Array.isArray, tipi: Array.isArray, negozi: Array.isArray, agenti: Array.isArray, richiesta: Array.isArray } });
+  const { stati, tipi, negozi, agenti: agentiSel, richiesta: richiestaSel } = filtri;
 
   const tutte = righe ?? [];
   const opzioniNegozi = useMemo(() => {
@@ -114,15 +114,16 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
   }, [tutte, nomeAgente]);
 
   const visibili = useMemo(() => tutte.filter((a) => {
-    if (stati.length > 0 && !stati.includes(a.stato)) return false;
+    if (stati.length > 0 && !stati.includes(statoEffettivoAlert(a))) return false;
+    if (richiestaSel.length > 0 && !richiestaSel.includes(a.richiesta_attiva ? "inoltrata" : "senza")) return false;
     if (tipi.length > 0 && !tipi.includes(a.tipo)) return false;
     if (negozi.length > 0 && !negozi.includes(a.cliente?.store_id ?? NESSUNO)) return false;
     if (agentiSel.length > 0 && !agentiSel.includes(a.cliente?.codice_agente ?? NESSUNO)) return false;
     return true;
-  }), [tutte, stati, tipi, negozi, agentiSel]);
+  }), [tutte, stati, tipi, negozi, agentiSel, richiestaSel]);
 
   const contatori = useMemo(() => {
-    const aperti = tutte.filter((a) => a.stato === "aperto");
+    const aperti = tutte.filter((a) => statoEffettivoAlert(a) === "aperto");
     return {
       c80: aperti.filter((a) => a.tipo === "consumo" && Number(a.livello) < 0.9).length,
       c90: aperti.filter((a) => a.tipo === "consumo" && Number(a.livello) >= 0.9).length,
@@ -165,7 +166,7 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
   });
 
   const filtriAttivi = Number(stati.length !== STATI_ALERT_DEFAULT.length || !STATI_ALERT_DEFAULT.every((s) => stati.includes(s)))
-    + Number(tipi.length > 0) + Number(negozi.length > 0) + Number(agentiSel.length > 0);
+    + Number(tipi.length > 0) + Number(negozi.length > 0) + Number(agentiSel.length > 0) + Number(richiestaSel.length > 0);
 
   const linkCliente = (a: AlertFidoRow) => (
     <Link to="/clienti/$clienteId" params={{ clienteId: a.cliente_id }} search={{ tab: "storico" } as any}
@@ -174,20 +175,22 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
     </Link>
   );
   const renderStato = (a: AlertFidoRow) => {
-    if (a.stato === "richiesta_inserita") {
-      return a.richiesta_id ? (
-        <Link to="/richieste/$richiestaId" params={{ richiestaId: a.richiesta_id }}>
-          <Badge className="whitespace-normal bg-info/15 text-info hover:bg-info/25">Richiesta fido già inserita</Badge>
+    const r = a.richiesta_attiva;
+    if (r) {
+      return (
+        <Link to="/richieste/$richiestaId" params={{ richiestaId: r.id }}>
+          <Badge className="whitespace-normal break-words bg-info/15 text-left text-info hover:bg-info/25">{etichettaRichiestaAlert(r)}</Badge>
         </Link>
-      ) : <Badge className="whitespace-normal bg-info/15 text-info">Richiesta fido già inserita</Badge>;
+      );
     }
-    if (a.stato === "confermato") {
+    const st = statoEffettivoAlert(a);
+    if (st === "confermato") {
       return <span className="text-xs text-muted-foreground">Confermato: si ripresenta dal {fmtGiornoMese(a.riproponi_dal)}</span>;
     }
-    return <Badge variant={a.stato === "aperto" ? "default" : "secondary"}>{STATO_ALERT_LABEL[a.stato]}</Badge>;
+    return <Badge variant={st === "aperto" ? "default" : "secondary"}>{STATO_ALERT_LABEL[st]}</Badge>;
   };
   const renderAzioni = (a: AlertFidoRow) =>
-    a.tipo === "extra_non_usato" && a.stato === "aperto" ? (
+    a.tipo === "extra_non_usato" && statoEffettivoAlert(a) === "aperto" ? (
       <Button size="sm" variant="outline" className="h-10" disabled={conferma.isPending}
         onClick={() => conferma.mutate(a.id)}>
         {conferma.isPending && conferma.variables === a.id ? <Loader2 className="size-4 animate-spin" /> : null}
@@ -221,7 +224,7 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
       <Card className="p-3">
         <FiltriCollassabili attivi={filtriAttivi}
           azioni={filtriAttivi > 0 && <Button variant="ghost" size="sm" onClick={() => reset()}>Ripristina filtri</Button>}>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
             <FiltroMultiplo etichetta="Stato" testoTutti="Tutti gli stati"
               opzioni={(Object.keys(STATO_ALERT_LABEL) as StatoAlertFido[]).map((s) => ({ valore: s, label: STATO_ALERT_LABEL[s] }))}
               selezionati={stati} onChange={(v) => setCampo("stati", v)} />
@@ -232,6 +235,9 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
               opzioni={opzioniNegozi} selezionati={negozi} onChange={(v) => setCampo("negozi", v)} />
             <FiltroMultiplo etichetta="Agente" testoTutti="Tutti gli agenti" cercabile
               opzioni={opzioniAgenti} selezionati={agentiSel} onChange={(v) => setCampo("agenti", v)} />
+            <FiltroMultiplo etichetta="Richiesta" testoTutti="Tutte"
+              opzioni={[{ valore: "senza", label: "Senza richiesta" }, { valore: "inoltrata", label: "Proposta già inoltrata" }]}
+              selezionati={richiestaSel} onChange={(v) => setCampo("richiesta", v)} />
           </div>
         </FiltriCollassabili>
       </Card>
@@ -308,7 +314,7 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
                     <TableCell className="text-right tabular-nums">{formatEuro(debitoOggi(a))}</TableCell>
                     <TableCell className="text-right tabular-nums">{fmtPerc(a.consumo)}</TableCell>
                     <TableCell className="text-right tabular-nums">{formatEuro(a.fido_proposto)}</TableCell>
-                    <TableCell className="max-w-48">{renderStato(a)}</TableCell>
+                    <TableCell className="max-w-56">{renderStato(a)}</TableCell>
                     <TableCell className="whitespace-nowrap">{formatDate(a.aperto_il)}</TableCell>
                     <TableCell>{renderAzioni(a)}</TableCell>
                   </TableRow>
