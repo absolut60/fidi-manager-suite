@@ -260,7 +260,7 @@ function ClientiPage() {
       },
     },
   });
-  const { searchInput, statoCliente, statoAttivita, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, scadenziarioFiltro, totaleRischioFiltro, fatturatoFiltro, mostraFidoTeorico, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, aScadereFiltro, fasciaConcesso, fidoFascia, sliderCommitted, advApplied, page, pageSize, sortBy, sortDir } = F;
+  const { searchInput, statoCliente, statoAttivita, semaforoFiltro, profiloFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, scadenziarioFiltro, totaleRischioFiltro, fatturatoFiltro, mostraFidoTeorico, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, aScadereFiltro, fasciaConcesso, fidoFascia, sliderCommitted, advApplied, page, pageSize, sortBy, sortDir } = F;
   // Store manager: sempre il proprio negozio, qualunque valore sia salvato.
   const storeFiltro: string[] = isStoreManager && myStoreId ? [myStoreId] : F.storeFiltro;
   // Set ricostruito al confine (salvato come array di stringhe).
@@ -272,6 +272,7 @@ function ClientiPage() {
   const setStatoFido = (v: Set<string> | ((prev: Set<string>) => Set<string>)) =>
     setCampo("statoFido", (prev) => Array.from(typeof v === "function" ? v(new Set(prev)) : v));
   const setSemaforoFiltro = (v: string[]) => setCampo("semaforoFiltro", v);
+  const setProfiloFiltro = (v: string[]) => setCampo("profiloFiltro", v);
   const setFiltroBlocco = (v: typeof filtroBlocco) => setCampo("filtroBlocco", v);
   const setPrivacyFiltro = (v: typeof privacyFiltro) => setCampo("privacyFiltro", v);
   const setFiltroAssic = (v: typeof filtroAssic) => setCampo("filtroAssic", v);
