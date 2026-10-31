@@ -3,12 +3,14 @@ const reads: string[] = [];
 let rows: Record<string, unknown>[] = [];
 let sogliaConfigurata: string | null = null;
 let erroreConfigurazione: Error | null = null;
+let protetti: Record<string, unknown>[] = [];
 mock.module('@/integrations/supabase/client', () => ({ supabase: {
   from: (table: string) => {
     reads.push(table);
     if (table === 'configurazioni') return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: sogliaConfigurata === null ? null : { valore: sogliaConfigurata }, error: erroreConfigurazione }) }) }) };
     return { select: () => ({ in: async () => ({ data: rows, error: null }) }) };
   },
+  rpc: async () => ({ data: protetti, error: null }),
 } }));
 const { normalizza, motivoCoefficiente, fetchFidoTeoricoPerRichiesta, fidoPropostoPerRichiesta, arrotondaFidoV2 } = await import('../src/lib/fido-teorico');
 const { determinaTipoRichiesta, extraFidoTeorico, motivoExtraObbligatorio } = await import('../src/lib/fidi');
@@ -101,4 +103,13 @@ test("PROFILO_FIDO_LABEL: etichette dei profili inattivi (FM55)", async () => {
   expect(PROFILO_FIDO_LABEL.perso).toBe("Cliente perso");
   expect(PROFILO_FIDO_LABEL.mai_acquistato).toBe("Mai acquistato");
   expect(PROFILO_FIDO_LABEL.nuovo_in_attesa).toBe("Nuovo, in attesa del primo acquisto");
+});
+
+test('extra approvato protetto: riferimento non scende sotto l\'importo approvato (ANTARES)', async () => {
+  erroreConfigurazione = null; sogliaConfigurata = null;
+  rows = [{cliente_id:'a',regola_applicata:'calcolo',fido_proposto:1000,fido_attuale:10000,esposizione_corrente:0,ordini_aperti:0}];
+  protetti = [{cliente_id:'a',richiesta_id:'r',importo_approvato:10000,fido_teorico_riferimento:1000,approvata_il:'2026-10-31T10:00:00Z',protetto_fino_al:'2026-11-30'}];
+  expect((await fetchFidoTeoricoPerRichiesta(['a'],null)).get('a')).toBe(10000);
+  protetti = [];
+  expect((await fetchFidoTeoricoPerRichiesta(['a'],null)).get('a')).toBe(1000);
 });
