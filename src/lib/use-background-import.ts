@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { triggerImport } from "@/lib/import.functions";
+import type { DoppioneScadenziario } from "@/lib/scadenziario-parser";
 
 type Fonte =
   | "anagrafica"
@@ -37,6 +38,8 @@ type StartImportArgs = {
   scadenziarioStaging?: {
     rows: Array<Record<string, unknown>>;
     missing: number[];
+    doppioni: DoppioneScadenziario[];
+    rowErrors: Array<{ riga: number; errore: string }>;
     chunkSize?: number;
   };
 };
@@ -109,6 +112,7 @@ export function useBackgroundImport(opts: {
           new Set([
             ...args.scadenziarioStaging.rows.map((row) => Number(row.idx)),
             ...args.scadenziarioStaging.missing,
+            ...args.scadenziarioStaging.rowErrors.map((r) => r.riga),
           ]),
         )
           .filter((idx) => Number.isFinite(idx))
@@ -121,9 +125,10 @@ export function useBackgroundImport(opts: {
             Record<string, unknown>
           >;
           const validIndexes = new Set(chunkRows.map((row) => Number(row.idx)));
-          const chunkMissing = indexes.filter((idx) => !validIndexes.has(idx));
+          const chunkMissing = indexes.filter((idx) => !validIndexes.has(idx) && args.scadenziarioStaging?.missing.includes(idx));
+          const rowErrors = args.scadenziarioStaging.rowErrors.filter((r) => indexes.includes(r.riga));
           const chunkPath = `_staging/${imp.id}/chunk-${chunkIndex}.json`;
-          const payload = JSON.stringify({ rows: chunkRows, missing: chunkMissing });
+          const payload = JSON.stringify({ rows: chunkRows, missing: chunkMissing, rowErrors });
           const { error } = await supabase.storage
             .from("import-files")
             .upload(chunkPath, new Blob([payload], { type: "application/json" }), {
@@ -135,7 +140,7 @@ export function useBackgroundImport(opts: {
             chunkIndex,
             chunkPath,
             rowsCount: chunkRows.length,
-            missingCount: chunkMissing.length,
+            missingCount: chunkMissing.length + rowErrors.length,
           });
         }
 
@@ -144,6 +149,7 @@ export function useBackgroundImport(opts: {
           kind: "scadenziario-staging-v1",
           originalFilePath: filePath,
           totRead: args.rowsTotali,
+          doppioni: args.scadenziarioStaging.doppioni,
           chunkCount: chunks.length,
           chunks,
           createdAt: new Date().toISOString(),
