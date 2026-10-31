@@ -226,6 +226,9 @@ export const PROFILO_FIDO_LABEL: Record<string, string> = {
   patologico_insoluti_ripetuti: "Patologico: insoluti ripetuti",
   patologico_insoluto_pesante: "Patologico: insoluto pesante",
   dormiente: "Dormiente",
+  perso: "Cliente perso",
+  mai_acquistato: "Mai acquistato",
+  nuovo_in_attesa: "Nuovo, in attesa del primo acquisto",
 };
 
 const numOrNull = (v: unknown) => (v === null || v === undefined ? null : Number(v));
