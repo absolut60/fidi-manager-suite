@@ -156,8 +156,12 @@ export function FidoTeoricoPrecalcoloCard() {
           <AlertTriangle className="size-4 mt-0.5 shrink-0" />
           <span className="min-w-0 break-words">
             {attesa
-              ? `Sono arrivati dati più recenti dell'ultimo ricalcolo. Il fido teorico si aggiornerà da solo appena arrivano anche: ${attesa}.`
-              : "Sono stati importati dati più recenti dell'ultimo ricalcolo: il ricalcolo automatico partirà a breve, oppure puoi avviarlo ora."}
+              ? `Il giro di oggi è incompleto. Il fido teorico si aggiornerà da solo quando saranno completate anche queste importazioni di oggi: ${attesa}.`
+              : data?.importCompleti.inElaborazione.length
+                ? "Importazioni ancora in corso: il ricalcolo automatico attende che finiscano."
+                : data?.importCompleti.pronto
+                  ? "Le quattro fonti sono state importate oggi e ci sono dati nuovi: il ricalcolo automatico partirà a breve, oppure puoi avviarlo ora."
+                  : "Non ci sono nuove importazioni delle quattro fonti di oggi successive all'ultimo ricalcolo automatico. Puoi ricalcolare ora."}
           </span>
         </div>
       ) : (
@@ -216,8 +220,12 @@ export function RicalcolaFidoTeoricoAvviso() {
     <div className="rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-sm space-y-2">
       <p className="break-words">
         {attesa
-          ? `Import completato. Il fido teorico si aggiornerà da solo appena arrivano anche: ${attesa}. Se vuoi, puoi ricalcolarlo subito.`
-          : "Import completato. Sono arrivati tutti gli import: il fido teorico si aggiornerà da solo tra pochi minuti. Se vuoi, puoi ricalcolarlo subito."}
+          ? `Import completato. Il giro di oggi attende ancora: ${attesa}. Il fido teorico si aggiornerà da solo quando saranno completate tutte le quattro fonti di oggi. Se vuoi, puoi ricalcolarlo subito.`
+          : data?.importCompleti.inElaborazione.length
+            ? "Import completato. Altre importazioni sono ancora in corso: il ricalcolo automatico attende che finiscano."
+            : data?.importCompleti.pronto
+              ? "Import completato. Le quattro fonti sono state importate oggi e ci sono dati nuovi: il fido teorico si aggiornerà da solo tra pochi minuti. Se vuoi, puoi ricalcolarlo subito."
+              : "Import completato. Non ci sono nuove importazioni delle quattro fonti di oggi successive all'ultimo ricalcolo. Se vuoi, puoi ricalcolarlo subito."}
       </p>
       {data?.ultimoRicalcolo && (
         <p className="text-xs text-muted-foreground">
