@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ricalcolaFidoTeorico } from "@/lib/fido-teorico-precalcolo.functions";
+import { intervalloAttesaPrecalcolo } from "@/lib/precalcolo-polling";
 import {
   elencoMancantiTesto,
   istanteDa,
@@ -30,6 +31,7 @@ function formatData(iso: string | null): string | null {
 }
 
 function useStatoPrecalcolo(pollingAttivo = false) {
+  const attesaDa = useRef<number | null>(null);
   return useQuery({
     queryKey: ["fido-teorico-precalcolo-stato"],
     queryFn: async () => {
@@ -60,7 +62,13 @@ function useStatoPrecalcolo(pollingAttivo = false) {
       };
     },
     staleTime: pollingAttivo ? 0 : 30_000,
-    refetchInterval: pollingAttivo ? POLL_MS : false,
+    refetchInterval: (query) => {
+      if (pollingAttivo) return POLL_MS;
+      const pronto = query.state.data?.importCompleti.pronto === true;
+      if (!pronto) attesaDa.current = null;
+      else if (attesaDa.current === null) attesaDa.current = Date.now();
+      return intervalloAttesaPrecalcolo(pronto, attesaDa.current, Date.now());
+    },
   });
 }
 
