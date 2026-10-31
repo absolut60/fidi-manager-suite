@@ -20,7 +20,7 @@ import { righeVisibiliProposta, riepilogoVisibilita } from "@/lib/proposta-fido-
 import { CampoExtraTeorico } from "@/components/extra-fido-teorico";
 import {
   fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchExtraFidoProtetti, MOTIVAZIONE_PROFILO_FIDO, isProponibile,
-  REGOLA_LABEL, MOTIVO_NON_PROPONIBILE,
+  REGOLA_LABEL, MOTIVO_NON_PROPONIBILE, MOTIVO_NON_PROPONIBILE_BREVE,
 } from "@/lib/fido-teorico";
 import { riepilogoProposte } from "@/lib/proposta-fido-riepilogo";
 import { motivazioneEffettiva } from "@/lib/motivazione-proposta";
@@ -388,7 +388,7 @@ export function ProposteFidoMassivoDialog({
     return v;
   })();
   const vociNonProponibili = Object.entries(riepilogoVis.nonProponibili).filter(([, c]) => c > 0)
-    .map(([reg, c]) => `${fmtN(c)} — ${MOTIVO_NON_PROPONIBILE[reg] ?? REGOLA_LABEL[reg] ?? reg}`);
+    .map(([reg, c]) => `${fmtN(c)} ${MOTIVO_NON_PROPONIBILE_BREVE[reg] ?? MOTIVO_NON_PROPONIBILE[reg] ?? REGOLA_LABEL[reg] ?? reg}`);
 
   const righeVisibiliIncluse = righeVisibili.filter((r) => r.proponibile && r.incluso);
   const righeEscluse = righe.filter((r) => !r.proponibile);

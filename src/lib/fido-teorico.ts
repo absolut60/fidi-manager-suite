@@ -95,6 +95,13 @@ export const MOTIVO_NON_PROPONIBILE: Record<string, string> = {
   esclusa_gruppo: "Società del gruppo: esclusa volutamente dal calcolo",
 };
 
+/** Etichette brevi dei motivi di non proponibilità (riquadro della proposta massiva: "3 senza condizione di pagamento"). */
+export const MOTIVO_NON_PROPONIBILE_BREVE: Record<string, string> = {
+  condizione_mancante: "senza condizione di pagamento",
+  sede_esclusa: "di sede esclusa dal calcolo",
+  esclusa_gruppo: "società del gruppo",
+};
+
 export function isProponibile(regola: string | null | undefined): boolean {
   return !!regola && !REGOLE_NON_PROPONIBILI.has(regola);
 }
