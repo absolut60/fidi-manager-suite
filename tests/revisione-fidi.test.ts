@@ -20,6 +20,13 @@ describe("gruppoRevisione", () => {
   it("ok con segnalazione solo informativa", () => expect(g({ segnalazioni: ["uso_pieno"] })).toBe("ok"));
   it("ok se non proponibile", () => expect(g({ riferimento: null })).toBe("ok"));
 
+  it("alert aperto, proposta più alta del Gamma e nessuna anomalia → pronta", () =>
+    expect(g({ alertAperto: true, riferimento: 15000 })).toBe("pronta"));
+  it("alert aperto con proposta uguale al Gamma → da_decidere", () =>
+    expect(g({ alertAperto: true, riferimento: 10000 })).toBe("da_decidere"));
+  it("anomalia con proposta più alta del Gamma → da_decidere", () =>
+    expect(g({ alertAperto: true, segnalazioni: ["oltre_tetto"], riferimento: 15000 })).toBe("da_decidere"));
+
   it("richiesta attiva batte scaduto", () => expect(g({ richiestaAttiva: true, regola: "scaduto_non_incassato" })).toBe("in_corso"));
   it("extra protetto uguale al Gamma → ok anche con alert", () =>
     expect(g({ extraProtettoValido: true, alertAperto: true, segnalazioni: ["oltre_tetto"] })).toBe("ok"));

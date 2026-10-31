@@ -36,7 +36,10 @@ export interface InputGruppoRevisione {
   extraProtettoValido: boolean;
 }
 
-/** Gruppo della revisione, in ordine di priorità (regola di Andrea, FM55). */
+/** Gruppo della revisione, in ordine di priorità (regola di Andrea, FM55).
+ *  "Da decidere" = anomalie da autorizzare OPPURE alert aperto quando il sistema non propone
+ *  nulla di nuovo (riferimento = fido Gamma). Un alert di consumo con proposta più alta del
+ *  Gamma, senza anomalie, è una proposta pronta: il sistema alza il fido e l'alert si chiude da solo. */
 export function gruppoRevisione(i: InputGruppoRevisione): GruppoRevisione {
   const gamma = Number(i.fidoGamma ?? 0);
   const rif = i.riferimento == null ? null : Number(i.riferimento);
@@ -46,7 +49,8 @@ export function gruppoRevisione(i: InputGruppoRevisione): GruppoRevisione {
   if (gamma === 0 && rif != null && rif > 0) return "nuovo";
   // Extra protetto valido = decisione già presa: se il riferimento coincide col Gamma non c'è nulla da fare.
   if (i.extraProtettoValido && rif != null && rif === gamma) return "ok";
-  if (i.alertAperto || segnalazioniAnomalia(i.segnalazioni).length > 0) return "da_decidere";
+  const anomalia = segnalazioniAnomalia(i.segnalazioni).length > 0;
+  if (anomalia || (i.alertAperto && rif === gamma)) return "da_decidere";
   if (rif != null && rif !== gamma) return "pronta";
   return "ok";
 }
