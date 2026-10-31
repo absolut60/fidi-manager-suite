@@ -2837,6 +2837,7 @@ export type Database = {
           scaduto_oltre_giorni: number
           scostamento: number | null
           sede_cinisello: boolean | null
+          segnalazioni: string[]
           semaforo_motivo: string | null
           semaforo_numero: number | null
           semaforo_stadio: string | null
@@ -2878,6 +2879,7 @@ export type Database = {
           scaduto_oltre_giorni?: number
           scostamento?: number | null
           sede_cinisello?: boolean | null
+          segnalazioni?: string[]
           semaforo_motivo?: string | null
           semaforo_numero?: number | null
           semaforo_stadio?: string | null
@@ -2919,6 +2921,7 @@ export type Database = {
           scaduto_oltre_giorni?: number
           scostamento?: number | null
           sede_cinisello?: boolean | null
+          segnalazioni?: string[]
           semaforo_motivo?: string | null
           semaforo_numero?: number | null
           semaforo_stadio?: string | null
@@ -8420,6 +8423,16 @@ export type Database = {
         }[]
       }
       segna_canale_letto: { Args: { _canale_id: string }; Returns: undefined }
+      segnalazioni_fido: {
+        Args: {
+          _base: number
+          _fabbisogno: number
+          _fido_gamma: number
+          _ordini: number
+          _regola: string
+        }
+        Returns: string[]
+      }
       sposta_lead_ambito: {
         Args: { _ambito: string; _lead_ids: string[] }
         Returns: number
