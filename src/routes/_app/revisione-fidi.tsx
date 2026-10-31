@@ -147,7 +147,9 @@ function RevisioneContenuto({ userId }: { userId: string }) {
     if (g === "pronta") return <Button size="sm" variant="outline" className="h-10" onClick={() => apriProposta([r])}>Apri proposta</Button>;
     if (g === "da_decidere") return (
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" className="h-10" onClick={() => apriProposta([r])}>Accetta proposta</Button>
+        {r.riferimento != null && r.riferimento !== r.fidoGamma && (
+          <Button size="sm" className="h-10" onClick={() => apriProposta([r])}>Accetta proposta</Button>
+        )}
         <Button size="sm" variant="outline" className="h-10" onClick={() => apriProposta([r])}>Dai un extra</Button>
         {r.alertLasciabile && (
           <Button size="sm" variant="outline" className="h-10" disabled={conferma.isPending}
