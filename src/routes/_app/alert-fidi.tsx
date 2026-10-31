@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Bell, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { useFiltriPagina, salvaFiltriPagina } from "@/hooks/use-filtri-pagina";
+import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 import { ProposteFidoMassivoDialog } from "@/components/proposta-fido-massiva-dialog";
@@ -18,10 +18,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatEuro, formatDate } from "@/lib/fidi";
 import { fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchSogliaConsumoFido, fidoPerTornareSottoSoglia, fetchUtentiAnteprimaFidoNuovo } from "@/lib/fido-teorico";
 import { SegnalazioniFido } from "@/components/segnalazioni-fido";
-import { fetchRevisioneFidi, riepilogoRevisione, daRivedereRevisione, fetchUltimiLasciati, lasciaCosiRevisione } from "@/lib/revisione-fidi";
+import { fetchUltimiLasciati, lasciaCosiRevisione } from "@/lib/revisione-fidi";
 import {
   fetchAlertFidiAperti, cosaFareAlert, alertLasciabileCosi, etichettaAvviso, debitoOggi, alertSelezionabile,
-  importoDaAlert, statoEffettivoAlert, fetchDecisioniProtette, giaDeciso, testoGiaDeciso, etichettaRichiestaBreve, etichettaDecisioneAlert, percheAlert, filtraAlert, contatoriAlert, passaNegozioAgente, SITUAZIONE_ALERT_LABEL, STATI_ALERT_DEFAULT, TIPO_ALERT_LABEL,
+  importoDaAlert, statoEffettivoAlert, fetchDecisioniProtette, giaDeciso, testoGiaDeciso, etichettaRichiestaBreve, etichettaDecisioneAlert, percheAlert, filtraAlert, contatoriAlert, SITUAZIONE_ALERT_LABEL, STATI_ALERT_DEFAULT, TIPO_ALERT_LABEL,
   type AlertFidoRow, type StatoAlertFido, type TipoAlertFido,
 } from "@/lib/alert-fidi";
 
@@ -75,11 +75,6 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
     queryFn: fetchAlertFidiAperti,
   });
   const righe = righeBase;
-  const { data: revisione } = useQuery({
-    queryKey: ["revisione-fidi", userId],
-    queryFn: () => fetchRevisioneFidi(userId),
-    staleTime: 2 * 60_000,
-  });
   // FM55 3C: segnalazioni dalla stessa fonte di proposta massiva e scheda cliente.
   const idsClienti = useMemo(() => [...new Set((righe ?? []).map((a) => a.cliente_id))].sort(), [righe]);
   const { data: teoricoMap } = useQuery({
@@ -154,12 +149,6 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
   // Contatori: stessi filtri Negozio/Agente/Richiesta della lista, non Situazione e Tipo.
   const contatori = useMemo(() => contatoriAlert(filtraAlert(tutte, { negozi, agenti: agentiSel, richiesta: richiestaSel })),
     [tutte, negozi, agentiSel, richiestaSel]);
-  const filtroNegozioAgente = negozi.length > 0 || agentiSel.length > 0;
-  const daRivedere = useMemo(() => revisione
-    ? daRivedereRevisione(riepilogoRevisione(revisione.filter((r) =>
-      passaNegozioAgente(r.cliente.store_id, r.cliente.codice_agente, negozi, agentiSel))))
-    : 0, [revisione, negozi, agentiSel]);
-
   // Selezione per alert (solo selezionabili e visibili).
   const [selezionati, setSelezionati] = useState<Set<string>>(new Set());
   const selezionabiliVisibili = visibili.filter(alertSelezionabile);
@@ -194,7 +183,6 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
     onSuccess: () => {
       toast.success("Lasciato così per 30 giorni");
       queryClient.invalidateQueries({ queryKey: ["alert-fidi-aperti"] });
-      queryClient.invalidateQueries({ queryKey: ["revisione-fidi"] });
       queryClient.invalidateQueries({ queryKey: ["revisione-fidi-lasciati-alert"] });
     },
     onError: (e: any) => toast.error("Impossibile confermare: " + (e?.message ?? "errore")),
@@ -305,14 +293,6 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
           <p className="text-sm text-muted-foreground">Clienti con il fido da rivedere. Si aggiornano a ogni ricalcolo del fido teorico.</p>
         </div>
       </div>
-
-      {daRivedere > 0 && (
-        <Card className="flex flex-wrap items-center justify-between gap-2 border-primary/40 bg-primary/5 p-3">
-          <span className="min-w-0 font-medium">Hai {daRivedere.toLocaleString("it-IT")} clienti da rivedere{filtroNegozioAgente ? " nei negozi/agenti selezionati" : ""}</span>
-          <Button asChild className="h-10"><Link to="/revisione-fidi"
-            onClick={() => salvaFiltriPagina("revisione-fidi", userId, { negozi, agenti: agentiSel })}>Apri Revisione fidi</Link></Button>
-        </Card>
-      )}
 
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         {([

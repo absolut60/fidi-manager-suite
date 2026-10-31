@@ -113,7 +113,6 @@ const NAV: NavItem[] = [
   { to: "/richieste", label: "Richieste fido", icon: FileText, group: "fidi" },
   { to: "/fidi-processare", label: "Fidi da processare", icon: ClipboardCheck, roles: ["admin", "approvatore"], group: "fidi" },
   { to: "/alert-fidi", label: "Alert fidi", icon: BellRing, group: "fidi", anteprimaFidoV2: true },
-  { to: "/revisione-fidi", label: "Revisione fidi", icon: ClipboardList, group: "fidi", anteprimaFidoV2: true },
   { to: "/assicurazioni", label: "Assicurazioni", icon: ShieldCheck, roles: ["admin", "approvatore", "store_manager"], group: "fidi" },
   { to: "/clienti-variazioni-blocco", label: "Variazioni blocco e legale", icon: AlertTriangle, roles: ["admin", "store_manager", "agente"], group: "fidi" },
   // INCASSI

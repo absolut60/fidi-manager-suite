@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/lista-responsive";
+import { SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 import { inserisciRichiesteABlocchi } from "@/lib/richieste-fido-azioni-massive";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { CambioCondizionePagamento } from "@/components/cambio-condizione-pagamento";
@@ -17,11 +17,9 @@ import {
   type StatoRichiesta, type TipoRichiesta,
   extraFidoTeorico, motivoExtraObbligatorio,
 } from "@/lib/fidi";
-import { daValutareProposta, righeVisibiliProposta, riepilogoVisibilita, inclusoInizialeProposta, livelloControlloProposta, type LivelloControllo } from "@/lib/proposta-fido-visibilita";
+import { righeVisibiliProposta, riepilogoVisibilita, inclusoInizialeProposta, livelloControlloProposta, type LivelloControllo } from "@/lib/proposta-fido-visibilita";
 import { segnalazioniAnomalia, anomaliaRossa } from "@/lib/fido-segnalazioni";
-import { Link } from "@tanstack/react-router";
 import { Switch } from "@/components/ui/switch";
-import { salvaFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { CampoExtraTeorico } from "@/components/extra-fido-teorico";
 import {
   fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchExtraFidoProtetti, fetchSogliaConsumoFido, fidoPerTornareSottoSoglia, notaExtraProtetto, protezioneAttiva, MOTIVAZIONE_PROFILO_FIDO, isProponibile,
@@ -127,8 +125,6 @@ type RigaProposta = {
 type TipoProposta = RigaProposta["tipo"];
 const TIPI_PROPOSTA: TipoProposta[] = ["nuovo_fido", "aumento", "diminuzione", "rinnovo"];
 const TIPI_DEFAULT: TipoProposta[] = ["nuovo_fido", "aumento", "diminuzione"];
-type Tri = "escludi" | "includi" | "solo";
-const FILTRI_DEFAULT = { pagImm: "includi" as Tri, fidoZero: "includi" as Tri, inCorso: "escludi" as Tri };
 
 async function fetchRichiesteInCorso(ids: string[]): Promise<Map<string, NonNullable<RigaProposta["richiestaInCorso"]>>> {
   const map = new Map<string, NonNullable<RigaProposta["richiestaInCorso"]>>();
@@ -170,23 +166,6 @@ async function fetchCondizioniClienti(ids: string[]): Promise<Map<string, { cod:
   return map;
 }
 
-function TriSelect({ label, value, onChange, options }: {
-  label: string; value: Tri; onChange: (v: Tri) => void;
-  options: { value: Tri; label: string }[];
-}) {
-  return (
-    <div className="min-w-0 space-y-1">
-      <Label className="text-xs text-muted-foreground font-normal">{label}</Label>
-      <Select value={value} onValueChange={(v) => onChange(v as Tri)}>
-        <SelectTrigger className="h-9 w-full"><SelectValue /></SelectTrigger>
-        <SelectContent>
-          {options.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-        </SelectContent>
-      </Select>
-    </div>
-  );
-}
-
 const MOTIVAZIONE_DEFAULT = "Revisione fido massiva";
 
 export function ProposteFidoMassivoDialog({
@@ -210,14 +189,11 @@ export function ProposteFidoMassivoDialog({
   const [motivazioneGenerale, setMotivazioneGenerale] = useState<string>(MOTIVAZIONE_DEFAULT);
   const [righe, setRighe] = useState<RigaProposta[]>([]);
   const [filtroTipi, setFiltroTipi] = useState<TipoProposta[]>(TIPI_DEFAULT);
-  const [filtroPagImmediato, setFiltroPagImmediato] = useState<Tri>(FILTRI_DEFAULT.pagImm);
-  const [filtroFidoZero, setFiltroFidoZero] = useState<Tri>(FILTRI_DEFAULT.fidoZero);
-  const [filtroInCorso, setFiltroInCorso] = useState<Tri>(FILTRI_DEFAULT.inCorso);
   const [submitting, setSubmitting] = useState(false);
   // Righe modificate dall'utente: restano visibili finché non cambiano i filtri.
   const [toccate, setToccate] = useState<Set<string>>(() => new Set());
   const tocca = (id: string) => setToccate((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
-  useEffect(() => { setToccate(new Set()); }, [open, filtroTipi, filtroPagImmediato, filtroFidoZero, filtroInCorso]);
+  useEffect(() => { setToccate(new Set()); }, [open, filtroTipi]);
   const [avanzamentoCrea, setAvanzamentoCrea] = useState<{ fatte: number; totali: number } | null>(null);
 
   // Fido proposto = SEMPRE la RPC canonica get_fido_teorico (nessun calcolo locale)
@@ -242,11 +218,7 @@ export function ProposteFidoMassivoDialog({
     staleTime: 5 * 60_000,
     queryFn: () => fetchExtraFidoProtetti(ids),
   });
-  const protettiValidi = useMemo(
-    () => ({ has: (id: string) => protezioneAttiva(protettiMap?.get(id)) }),
-    [protettiMap],
-  );
-  // FM55 3C: clienti con alert aperto → i loro rinnovi restano visibili come "Da valutare".
+  // Alert aperti: contati tra i rinnovi nascosti da controllare.
   const { data: alertAperti } = useQuery({
     queryKey: ["alert-fidi-aperti-massivo", [...ids].sort().join(",")],
     enabled: open && ids.length > 0,
@@ -301,7 +273,7 @@ export function ProposteFidoMassivoDialog({
 
   // Inizializza/aggiorna righe quando cambia la selezione o arriva il calcolo
   useEffect(() => {
-    if (!open || !teoricoMap || !teoricoRichMap || !alertAperti) return;
+    if (!open || !teoricoMap || !teoricoRichMap || !alertAperti || !inCorsoMap) return;
     setRighe((prev) => {
       const prevMap = new Map(prev.map((r) => [r.cliente_id, r]));
       return selectedRows.map((c) => {
@@ -349,7 +321,7 @@ export function ProposteFidoMassivoDialog({
         };
       });
     });
-  }, [open, selectedRows, teoricoMap, teoricoRichMap, importiDaAlert, alertAperti]);
+  }, [open, selectedRows, teoricoMap, teoricoRichMap, importiDaAlert, alertAperti, inCorsoMap]);
 
   function toggleIncluso(id: string) {
     setRighe((prev) => prev.map((r) =>
@@ -402,37 +374,29 @@ export function ProposteFidoMassivoDialog({
 
   const righeVisibiliTutte = useMemo(
     () => righeVisibiliProposta(righeConInCorso, {
-      tipi: filtroTipi, pagImmediato: filtroPagImmediato, fidoZero: filtroFidoZero, inCorso: filtroInCorso,
+      tipi: filtroTipi,
     }, toccate, mostraSempreSet),
-    [righeConInCorso, filtroTipi, filtroPagImmediato, filtroFidoZero, filtroInCorso, toccate, mostraSempreSet],
+    [righeConInCorso, filtroTipi, toccate, mostraSempreSet],
   );
   const nDaControllare = righeVisibiliTutte.filter((r) => r.proponibile && r.controllo).length;
   const righeVisibili = soloControllo ? righeVisibiliTutte.filter((r) => r.proponibile && r.controllo) : righeVisibiliTutte;
-  const negoziSelezione = [...new Set(righe.map((r) => r.store_id ?? "__none__"))];
 
   const riepilogoVis = useMemo(
     () => riepilogoVisibilita(righeConInCorso, {
-      tipi: filtroTipi, pagImmediato: filtroPagImmediato, fidoZero: filtroFidoZero, inCorso: filtroInCorso,
-    }, toccate, protettiValidi, mostraSempreSet),
-    [righeConInCorso, filtroTipi, filtroPagImmediato, filtroFidoZero, filtroInCorso, toccate, protettiValidi, mostraSempreSet],
+      tipi: filtroTipi,
+    }, toccate, mostraSempreSet),
+    [righeConInCorso, filtroTipi, toccate, mostraSempreSet],
   );
-  const [filtriAperti, setFiltriAperti] = useState(false);
   const fmtN = (n: number) => n.toLocaleString("it-IT");
   const vociNascoste: string[] = (() => {
     const n = riepilogoVis.nascosti;
     const v: string[] = [];
-    if (n.rinnovo > 0) v.push(`${fmtN(n.rinnovo)} rinnov${n.rinnovo === 1 ? "o" : "i"} — il fido proposto è uguale a quello attuale, non cambia nulla`);
-    if (n.protetto > 0) v.push(`${fmtN(n.protetto)} con extra approvato ancora protetto — non si riduce prima della scadenza`);
-    const plur: Record<string, [string, string]> = { nuovo_fido: ["nuovo fido", "nuovi fidi"], aumento: ["aumento", "aumenti"], diminuzione: ["diminuzione", "diminuzioni"] };
-    const tipi = Object.entries(riepilogoVis.tipiSpenti).filter(([, c]) => c > 0)
-      .map(([t, c]) => `${fmtN(c)} ${(plur[t] ?? [TIPO_LABEL[t as TipoProposta] ?? t, TIPO_LABEL[t as TipoProposta] ?? t])[c === 1 ? 0 : 1]}`);
-    if (tipi.length) v.push(`${tipi.join(" / ")} — tipo spento nel filtro`);
-    if (n.in_corso > 0) v.push(`${fmtN(n.in_corso)} con richiesta già in corso — per non creare richieste doppie`);
-    if (n.non_in_corso > 0) v.push(`${fmtN(n.non_in_corso)} senza richiesta in corso — filtro su "solo in corso"`);
-    if (n.pag_immediato > 0) v.push(`${fmtN(n.pag_immediato)} a pagamento immediato`);
-    if (n.non_pag_immediato > 0) v.push(`${fmtN(n.non_pag_immediato)} non a pagamento immediato — filtro su "solo"`);
-    if (n.fido_zero > 0) v.push(`${fmtN(n.fido_zero)} con fido proposto a zero`);
-    if (n.fido_non_zero > 0) v.push(`${fmtN(n.fido_non_zero)} con fido proposto diverso da zero — filtro su "solo"`);
+    if (n.rinnovo > 0) v.push(`Non vedi ${fmtN(n.rinnovo)} clienti con fido invariato: non cambia niente, non serve mandarli.${riepilogoVis.daDecidere > 0 ? ` ${fmtN(riepilogoVis.daDecidere)} di questi hanno anomalie: spunta «Fido invariato» se vuoi lavorarli qui.` : ""}`);
+    if (n.in_corso > 0) v.push(`Non vedi ${fmtN(n.in_corso)} clienti che hanno già una richiesta in corso.`);
+    const nomi: Record<string, string> = { aumento: "aumenti", diminuzione: "riduzioni", nuovo_fido: "nuovi fidi" };
+    for (const [tipo, numero] of Object.entries(riepilogoVis.tipiSpenti)) {
+      if (numero > 0) v.push(`Non vedi ${fmtN(numero)} ${nomi[tipo] ?? tipo}: hai tolto la spunta in «Cosa vuoi mandare».`);
+    }
     return v;
   })();
   const vociNonProponibili = Object.entries(riepilogoVis.nonProponibili).filter(([, c]) => c > 0)
@@ -446,22 +410,9 @@ export function ProposteFidoMassivoDialog({
   const righeConExtra = righeVisibiliIncluse.filter((r) => motivoExtraObbligatorio(r.fido_proposto, r.fido_teorico));
   const totaleExtra = righeConExtra.reduce((acc, r) => acc + extraFidoTeorico(r.fido_proposto, r.fido_teorico), 0);
   const tipoCount = (t: TipoProposta) => righe.filter((r) => r.tipo === t).length;
-  const inCorsoCount = righeConInCorso.filter((r) => !!r.richiestaInCorso).length;
-  const filtriModificati =
-    filtroTipi.length !== TIPI_DEFAULT.length || !TIPI_DEFAULT.every((t) => filtroTipi.includes(t)) ||
-    filtroPagImmediato !== FILTRI_DEFAULT.pagImm || filtroFidoZero !== FILTRI_DEFAULT.fidoZero ||
-    filtroInCorso !== FILTRI_DEFAULT.inCorso;
-  function ripristinaFiltri() {
-    setFiltroTipi(TIPI_DEFAULT);
-    setFiltroPagImmediato(FILTRI_DEFAULT.pagImm);
-    setFiltroFidoZero(FILTRI_DEFAULT.fidoZero);
-    setFiltroInCorso(FILTRI_DEFAULT.inCorso);
-  }
   function toggleTipo(t: TipoProposta) {
     setFiltroTipi((prev) => prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]);
   }
-  const pagImmediatoCount = righe.filter((r) => r.regola === "pagamento_immediato").length;
-  const fidoZeroCount = righe.filter((r) => Number(r.fido_proposto) === 0).length;
 
   async function creaRichieste() {
     if (righeVisibiliIncluse.length === 0) { toast.error("Nessuna riga da creare"); return; }
@@ -736,10 +687,19 @@ export function ProposteFidoMassivoDialog({
             Impossibile calcolare il fido teorico: {(teoricoError as any)?.message ?? "errore"}
           </p>
         )}
+        <fieldset className="min-w-0 py-2">
+          <legend className="text-sm font-medium">Cosa vuoi mandare?</legend>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-x-3">
+            {([ ["aumento", "Aumenti"], ["diminuzione", "Riduzioni (anche a zero)"], ["nuovo_fido", "Nuovi fidi"], ["rinnovo", "Fido invariato (rinnovi)"] ] as [TipoProposta, string][]).map(([tipo, nome]) => (
+              <label key={tipo} className="flex min-h-10 min-w-0 items-center gap-2 text-xs">
+                <Checkbox checked={filtroTipi.includes(tipo)} onCheckedChange={() => toggleTipo(tipo)} aria-label={nome} />
+                <span className="break-words">{nome} ({tipoCount(tipo)})</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground space-y-1 break-words">
-          <p className="text-foreground">
-            Stai vedendo <strong>{fmtN(riepilogoVis.visibili)}</strong> propost{riepilogoVis.visibili === 1 ? "a" : "e"} su <strong>{fmtN(riepilogoVis.totale)}</strong> clienti selezionati.
-          </p>
+          <p className="text-foreground">Stai vedendo <strong>{fmtN(riepilogoVis.visibili)}</strong> proposte su <strong>{fmtN(riepilogoVis.totale)}</strong> clienti selezionati.</p>
           {nDaControllare > 0 && (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <span className="font-medium text-warning"><strong>{fmtN(nDaControllare)}</strong> righe da controllare</span>
@@ -749,94 +709,17 @@ export function ProposteFidoMassivoDialog({
               </label>
             </div>
           )}
-          {riepilogoVis.daDecidere > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="min-w-0 flex-1">
-                <strong>{fmtN(riepilogoVis.daDecidere)}</strong> client{riepilogoVis.daDecidere === 1 ? "e" : "i"} con fido invariato ma da decidere (acquisti sopra il previsto o alert): si lavorano in Revisione fidi.
-              </p>
-              <Button asChild size="sm" variant="outline" className="h-10 shrink-0">
-                <Link to="/revisione-fidi" onClick={() => salvaFiltriPagina("revisione-fidi", userId, { negozi: negoziSelezione, agenti: [] })}>Apri Revisione fidi</Link>
-              </Button>
-            </div>
-          )}
-          {vociNascoste.length > 0 && (
+          {(vociNascoste.length > 0 || riepilogoVis.nonProponibiliTotale > 0) && (
             <div>
-              <span className="font-medium text-foreground">Nascosti dai filtri:</span>
+              <span className="font-medium text-foreground">Cosa non vedi e perché</span>
               <ul className="ml-4 list-disc">
-                {vociNascoste.map((t) => <li key={t}>{t}</li>)}
+                {vociNascoste.map((testo) => <li key={testo}>{testo}</li>)}
+                {riepilogoVis.nonProponibiliTotale > 0 && <li>{fmtN(riepilogoVis.nonProponibiliTotale)} clienti non si possono proporre: {vociNonProponibili.join(" · ")}</li>}
               </ul>
             </div>
           )}
-          {riepilogoVis.nonProponibiliTotale > 0 && (
-            <p>
-              <span className="font-medium text-warning">Non proponibili (esclusi sempre): {fmtN(riepilogoVis.nonProponibiliTotale)}</span>
-              {" — "}{vociNonProponibili.join(" · ")}
-            </p>
-          )}
-          <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => setFiltriAperti(true)}>
-            Cambia filtri
-          </Button>
         </div>
 
-        <FiltriCollassabili ancheDesktop aperto={filtriAperti} onApertoChange={setFiltriAperti}
-          attivi={Number(filtroTipi.length !== TIPI_DEFAULT.length || !TIPI_DEFAULT.every((t) => filtroTipi.includes(t))) + Number(filtroPagImmediato !== FILTRI_DEFAULT.pagImm) + Number(filtroFidoZero !== FILTRI_DEFAULT.fidoZero) + Number(filtroInCorso !== FILTRI_DEFAULT.inCorso)}
-          riepilogo={<span className="text-xs text-muted-foreground break-words">Mostrati {righeVisibili.length} di {righe.length} clienti · {righeVisibiliIncluse.length} inclusi nella creazione</span>}
-          azioni={filtriModificati && <Button type="button" variant="link" size="sm" onClick={ripristinaFiltri}>Ripristina filtri</Button>}>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="min-w-0 space-y-1">
-              <Label className="text-xs text-muted-foreground font-normal">Tipo proposta</Label>
-              <div className="flex flex-wrap gap-1.5">
-                {TIPI_PROPOSTA.map((t) => {
-                  const attivo = filtroTipi.includes(t);
-                  return (
-                    <Button
-                      key={t}
-                      type="button"
-                      size="sm"
-                      variant={attivo ? "default" : "outline"}
-                      aria-pressed={attivo}
-                      className="h-9 px-2.5 text-xs"
-                      onClick={() => toggleTipo(t)}
-                    >
-                      {TIPO_LABEL[t]} ({tipoCount(t)})
-                    </Button>
-                  );
-                })}
-              </div>
-            </div>
-            <TriSelect
-              label="Pagamento immediato"
-              value={filtroPagImmediato}
-              onChange={setFiltroPagImmediato}
-              options={[
-                { value: "escludi", label: `Escludi (${pagImmediatoCount})` },
-                { value: "includi", label: "Includi" },
-                { value: "solo", label: `Solo (${pagImmediatoCount})` },
-              ]}
-            />
-            <TriSelect
-              label="Fido proposto a zero"
-              value={filtroFidoZero}
-              onChange={setFiltroFidoZero}
-              options={[
-                { value: "includi", label: "Includi" },
-                { value: "escludi", label: `Escludi (${fidoZeroCount})` },
-                { value: "solo", label: `Solo (${fidoZeroCount})` },
-              ]}
-            />
-            <TriSelect
-              label="Richiesta in corso"
-              value={filtroInCorso}
-              onChange={setFiltroInCorso}
-              options={[
-                { value: "escludi", label: `Escludi (${inCorsoCount})` },
-                { value: "includi", label: "Mostra" },
-                { value: "solo", label: `Solo (${inCorsoCount})` },
-              ]}
-            />
-          </div>
-        </FiltriCollassabili>
         <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-2">
           <div className="min-w-0">
             <Label className="text-xs">Tipo richiesta applicato a tutti</Label>

@@ -3,13 +3,8 @@
  * Le righe toccate dall'utente restano visibili (e nella stessa posizione) finché
  * non cambiano i filtri: così una riga non sparisce mentre la si modifica.
  */
-export type Tri = "tutti" | "escludi" | "solo" | string;
-
 export interface FiltriProposta<T extends string = string> {
   tipi: T[];
-  pagImmediato: Tri;
-  fidoZero: Tri;
-  inCorso: Tri;
 }
 
 export interface RigaVisibilita<T extends string = string> {
@@ -22,34 +17,20 @@ export interface RigaVisibilita<T extends string = string> {
   inAlertOAnomalia?: boolean;
 }
 
-/**
- * Regola unica: rinnovo di un cliente in alert o con anomalie. Dal 31/10 (decisione del
- * proprietario) NON si mostra più nella massiva per eccezione: si decide in Revisione fidi,
- * qui si conta solo (riepilogo.daDecidere).
- */
+/** Rinnovi nascosti con alert o anomalie, contati nel riepilogo. */
 export function daValutareProposta<T extends string>(r: RigaVisibilita<T>): boolean {
   return r.tipo === "rinnovo" && !!r.inAlertOAnomalia;
 }
 
 export function passaFiltriProposta<T extends string>(r: RigaVisibilita<T>, f: FiltriProposta<T>): boolean {
-  if (!f.tipi.includes(r.tipo)) return false;
-  const inCorso = !!r.richiestaInCorso;
-  if (f.inCorso === "escludi" && inCorso) return false;
-  if (f.inCorso === "solo" && !inCorso) return false;
-  const isPagImmediato = r.regola === "pagamento_immediato";
-  if (f.pagImmediato === "escludi" && isPagImmediato) return false;
-  if (f.pagImmediato === "solo" && !isPagImmediato) return false;
-  const isFidoZero = Number(r.fido_proposto) === 0;
-  if (f.fidoZero === "escludi" && isFidoZero) return false;
-  if (f.fidoZero === "solo" && !isFidoZero) return false;
-  return true;
+  return motivoNascostoProposta(r, f) === null;
 }
 
 export function righeVisibiliProposta<T extends string, R extends RigaVisibilita<T>>(
   righe: R[], filtri: FiltriProposta<T>, toccate: ReadonlySet<string>,
   mostraSempre?: ReadonlySet<string>,
 ): R[] {
-  return righe.filter((r) => toccate.has(r.cliente_id) || !!mostraSempre?.has(r.cliente_id) || passaFiltriProposta(r, filtri));
+  return righe.filter((r) => !r.richiestaInCorso && (toccate.has(r.cliente_id) || !!mostraSempre?.has(r.cliente_id) || passaFiltriProposta(r, filtri)));
 }
 
 /** Spunta iniziale: tutte le righe proponibili partono incluse, anche con anomalie. */
@@ -65,35 +46,20 @@ export function livelloControlloProposta(nAnomalie: number, rossa: boolean): Liv
 }
 
 /** Motivo per cui una riga proponibile è nascosta: stessa sequenza di passaFiltriProposta. */
-export type MotivoNascosto =
-  | "rinnovo" | "protetto" | "tipo_spento"
-  | "in_corso" | "non_in_corso"
-  | "pag_immediato" | "non_pag_immediato"
-  | "fido_zero" | "fido_non_zero";
+export type MotivoNascosto = "rinnovo" | "tipo_spento" | "in_corso";
 
 export function motivoNascostoProposta<T extends string>(
-  r: RigaVisibilita<T>, f: FiltriProposta<T>, protetto: boolean,
+  r: RigaVisibilita<T>, f: FiltriProposta<T>,
 ): MotivoNascosto | null {
-  if (!f.tipi.includes(r.tipo)) {
-    if (r.tipo === "rinnovo") return protetto ? "protetto" : "rinnovo";
-    return "tipo_spento";
-  }
-  const inCorso = !!r.richiestaInCorso;
-  if (f.inCorso === "escludi" && inCorso) return "in_corso";
-  if (f.inCorso === "solo" && !inCorso) return "non_in_corso";
-  const isPagImmediato = r.regola === "pagamento_immediato";
-  if (f.pagImmediato === "escludi" && isPagImmediato) return "pag_immediato";
-  if (f.pagImmediato === "solo" && !isPagImmediato) return "non_pag_immediato";
-  const isFidoZero = Number(r.fido_proposto) === 0;
-  if (f.fidoZero === "escludi" && isFidoZero) return "fido_zero";
-  if (f.fidoZero === "solo" && !isFidoZero) return "fido_non_zero";
+  if (r.richiestaInCorso) return "in_corso";
+  if (!f.tipi.includes(r.tipo)) return r.tipo === "rinnovo" ? "rinnovo" : "tipo_spento";
   return null;
 }
 
 export interface RiepilogoVisibilita {
   totale: number;
   visibili: number;
-  /** Rinnovi nascosti con alert o anomalie: si decidono in Revisione fidi. */
+  /** Rinnovi nascosti con alert o anomalie, senza richiesta in corso. */
   daDecidere: number;
   nascosti: Record<MotivoNascosto, number>;
   /** Tipi spenti nel filtro, per tipo (nuovo_fido, aumento, diminuzione…). */
@@ -104,13 +70,10 @@ export interface RiepilogoVisibilita {
 
 /** Conteggi per il riquadro "cosa stai vedendo": visibili + nascosti + non proponibili = totale. */
 export function riepilogoVisibilita<T extends string, R extends RigaVisibilita<T> & { proponibile: boolean }>(
-  righe: R[], filtri: FiltriProposta<T>, toccate: ReadonlySet<string>, protetti: { has(id: string): boolean } | undefined,
+  righe: R[], filtri: FiltriProposta<T>, toccate: ReadonlySet<string>,
   mostraSempre?: ReadonlySet<string>,
 ): RiepilogoVisibilita {
-  const nascosti: Record<MotivoNascosto, number> = {
-    rinnovo: 0, protetto: 0, tipo_spento: 0, in_corso: 0, non_in_corso: 0,
-    pag_immediato: 0, non_pag_immediato: 0, fido_zero: 0, fido_non_zero: 0,
-  };
+  const nascosti: Record<MotivoNascosto, number> = { rinnovo: 0, tipo_spento: 0, in_corso: 0 };
   const tipiSpenti: Record<string, number> = {};
   const nonProponibili: Record<string, number> = {};
   let visibili = 0, daDecidere = 0, nonProponibiliTotale = 0;
@@ -120,9 +83,9 @@ export function riepilogoVisibilita<T extends string, R extends RigaVisibilita<T
       nonProponibiliTotale++;
       continue;
     }
-    const m = toccate.has(r.cliente_id) || mostraSempre?.has(r.cliente_id) ? null : motivoNascostoProposta(r, filtri, !!protetti?.has(r.cliente_id));
+    const m = r.richiestaInCorso ? "in_corso" : toccate.has(r.cliente_id) || mostraSempre?.has(r.cliente_id) ? null : motivoNascostoProposta(r, filtri);
     if (!m) { visibili++; continue; }
-    if (daValutareProposta(r)) daDecidere++;
+    if (m === "rinnovo" && daValutareProposta(r)) daDecidere++;
     nascosti[m]++;
     if (m === "tipo_spento") tipiSpenti[r.tipo] = (tipiSpenti[r.tipo] ?? 0) + 1;
   }
