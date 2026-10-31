@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Bell, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
+import { useFiltriPagina, salvaFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 import { ProposteFidoMassivoDialog } from "@/components/proposta-fido-massiva-dialog";
@@ -21,7 +21,7 @@ import { SegnalazioniFido } from "@/components/segnalazioni-fido";
 import { fetchRevisioneFidi, riepilogoRevisione, daRivedereRevisione, fetchUltimiLasciati, lasciaCosiRevisione } from "@/lib/revisione-fidi";
 import {
   fetchAlertFidiAperti, cosaFareAlert, alertLasciabileCosi, etichettaAvviso, debitoOggi, alertSelezionabile,
-  importoDaAlert, statoEffettivoAlert, etichettaRichiestaBreve, etichettaDecisioneAlert, percheAlert, SITUAZIONE_ALERT_LABEL, STATI_ALERT_DEFAULT, TIPO_ALERT_LABEL,
+  importoDaAlert, statoEffettivoAlert, etichettaRichiestaBreve, etichettaDecisioneAlert, percheAlert, filtraAlert, contatoriAlert, passaNegozioAgente, SITUAZIONE_ALERT_LABEL, STATI_ALERT_DEFAULT, TIPO_ALERT_LABEL,
   type AlertFidoRow, type StatoAlertFido, type TipoAlertFido,
 } from "@/lib/alert-fidi";
 
@@ -79,7 +79,6 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
     queryFn: () => fetchRevisioneFidi(userId),
     staleTime: 2 * 60_000,
   });
-  const daRivedere = useMemo(() => revisione ? daRivedereRevisione(riepilogoRevisione(revisione)) : 0, [revisione]);
   // FM55 3C: segnalazioni dalla stessa fonte di proposta massiva e scheda cliente.
   const idsClienti = useMemo(() => [...new Set((righe ?? []).map((a) => a.cliente_id))].sort(), [righe]);
   const { data: teoricoMap } = useQuery({
@@ -138,24 +137,16 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
     return senza ? [...o, { valore: NESSUNO, label: "Senza agente" }] : o;
   }, [tutte, nomeAgente]);
 
-  const visibili = useMemo(() => tutte.filter((a) => {
-    if (stati.length > 0 && !stati.includes(statoEffettivoAlert(a))) return false;
-    if (richiestaSel.length > 0 && !richiestaSel.includes(a.richiesta_attiva ? "inoltrata" : "senza")) return false;
-    if (tipi.length > 0 && !tipi.includes(a.tipo)) return false;
-    if (negozi.length > 0 && !negozi.includes(a.cliente?.store_id ?? NESSUNO)) return false;
-    if (agentiSel.length > 0 && !agentiSel.includes(a.cliente?.codice_agente ?? NESSUNO)) return false;
-    return true;
-  }), [tutte, stati, tipi, negozi, agentiSel, richiestaSel]);
-
-  const contatori = useMemo(() => {
-    const aperti = tutte.filter((a) => statoEffettivoAlert(a) === "aperto");
-    return {
-      c80: aperti.filter((a) => a.tipo === "consumo" && Number(a.livello) < 0.9).length,
-      c90: aperti.filter((a) => a.tipo === "consumo" && Number(a.livello) >= 0.9).length,
-      rid: aperti.filter((a) => a.tipo === "riduzione").length,
-      extra: aperti.filter((a) => a.tipo === "extra_non_usato").length,
-    };
-  }, [tutte]);
+  const visibili = useMemo(() => filtraAlert(tutte, { stati, tipi, negozi, agenti: agentiSel, richiesta: richiestaSel }),
+    [tutte, stati, tipi, negozi, agentiSel, richiestaSel]);
+  // Contatori: stessi filtri Negozio/Agente/Richiesta della lista, non Situazione e Tipo.
+  const contatori = useMemo(() => contatoriAlert(filtraAlert(tutte, { negozi, agenti: agentiSel, richiesta: richiestaSel })),
+    [tutte, negozi, agentiSel, richiestaSel]);
+  const filtroNegozioAgente = negozi.length > 0 || agentiSel.length > 0;
+  const daRivedere = useMemo(() => revisione
+    ? daRivedereRevisione(riepilogoRevisione(revisione.filter((r) =>
+      passaNegozioAgente(r.cliente.store_id, r.cliente.codice_agente, negozi, agentiSel))))
+    : 0, [revisione, negozi, agentiSel]);
 
   // Selezione per alert (solo selezionabili e visibili).
   const [selezionati, setSelezionati] = useState<Set<string>>(new Set());
@@ -300,8 +291,9 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
 
       {daRivedere > 0 && (
         <Card className="flex flex-wrap items-center justify-between gap-2 border-primary/40 bg-primary/5 p-3">
-          <span className="min-w-0 font-medium">Hai {daRivedere.toLocaleString("it-IT")} clienti da rivedere</span>
-          <Button asChild className="h-10"><Link to="/revisione-fidi">Apri Revisione fidi</Link></Button>
+          <span className="min-w-0 font-medium">Hai {daRivedere.toLocaleString("it-IT")} clienti da rivedere{filtroNegozioAgente ? " nei negozi/agenti selezionati" : ""}</span>
+          <Button asChild className="h-10"><Link to="/revisione-fidi"
+            onClick={() => salvaFiltriPagina("revisione-fidi", userId, { negozi, agenti: agentiSel })}>Apri Revisione fidi</Link></Button>
         </Card>
       )}
 

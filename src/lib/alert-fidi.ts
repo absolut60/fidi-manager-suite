@@ -283,3 +283,39 @@ export function percheAlert(
   }
   return `Extra approvato non usato: usa ${formatEuro(debito)} su ${formatEuro(fido)}`;
 }
+
+const SENZA = "__none__";
+
+/** Filtro Negozio/Agente (FiltroMultiplo: vuoto = tutti, "__none__" = senza). Usato da Alert fidi e Revisione fidi. */
+export function passaNegozioAgente(
+  storeId: string | null | undefined, codiceAgente: string | null | undefined,
+  negozi: readonly string[], agenti: readonly string[],
+): boolean {
+  if (negozi.length > 0 && !negozi.includes(storeId ?? SENZA)) return false;
+  if (agenti.length > 0 && !agenti.includes(codiceAgente ?? SENZA)) return false;
+  return true;
+}
+
+export type FiltriAlert = { stati?: readonly string[]; tipi?: readonly string[]; negozi?: readonly string[]; agenti?: readonly string[]; richiesta?: readonly string[] };
+
+/** Filtro della lista Alert fidi (fonte unica per lista e contatori). */
+export function filtraAlert<T extends AlertFidoRow>(righe: readonly T[], f: FiltriAlert): T[] {
+  const stati = f.stati ?? [], tipi = f.tipi ?? [], richiesta = f.richiesta ?? [];
+  return righe.filter((a) => {
+    if (stati.length > 0 && !stati.includes(statoEffettivoAlert(a))) return false;
+    if (richiesta.length > 0 && !richiesta.includes(a.richiesta_attiva ? "inoltrata" : "senza")) return false;
+    if (tipi.length > 0 && !tipi.includes(a.tipo)) return false;
+    return passaNegozioAgente(a.cliente?.store_id, a.cliente?.codice_agente, f.negozi ?? [], f.agenti ?? []);
+  });
+}
+
+/** Contatori "da gestire" per tipo, su righe già filtrate per Negozio/Agente/Richiesta. */
+export function contatoriAlert(righe: readonly AlertFidoRow[]) {
+  const aperti = righe.filter((a) => statoEffettivoAlert(a) === "aperto");
+  return {
+    c80: aperti.filter((a) => a.tipo === "consumo" && Number(a.livello) < 0.9).length,
+    c90: aperti.filter((a) => a.tipo === "consumo" && Number(a.livello) >= 0.9).length,
+    rid: aperti.filter((a) => a.tipo === "riduzione").length,
+    extra: aperti.filter((a) => a.tipo === "extra_non_usato").length,
+  };
+}

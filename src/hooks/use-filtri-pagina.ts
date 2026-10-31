@@ -109,3 +109,13 @@ export function useFiltriPagina<T extends Record<string, unknown>>(
 
   return { filtri: corrente.valori, setCampo, setParziale, reset };
 }
+
+/** Imposta i filtri salvati di un'altra pagina (stessa chiave di useFiltriPagina), es. prima di navigarci. */
+export function salvaFiltriPagina(chiavePagina: string, userId: string | null | undefined, valori: Record<string, unknown>) {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(`filtri:${userId ?? "anon"}:${chiavePagina}`, JSON.stringify(valori));
+  } catch {
+    // storage bloccato
+  }
+}
