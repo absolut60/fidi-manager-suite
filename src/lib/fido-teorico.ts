@@ -310,6 +310,43 @@ export function fidoPropostoPerRichiesta(
   return Math.min(fidoAttuale, Math.max(teorico, arrotondaFidoV2(debito / soglia)));
 }
 
+export interface ExtraFidoProtetto {
+  richiesta_id: string;
+  importo_approvato: number;
+  fido_teorico_riferimento: number;
+  approvata_il: string;
+  protetto_fino_al: string;
+}
+
+/**
+ * FM55: extra fido teorico approvato e ancora protetto (alert_fidi_extra_giorni).
+ * Lettura della fonte unica SQL `extra_fido_protetti()`, usata anche da aggiorna_alert_fidi.
+ */
+export async function fetchExtraFidoProtetti(clienteIds: string[]): Promise<Map<string, ExtraFidoProtetto>> {
+  const out = new Map<string, ExtraFidoProtetto>();
+  const ids = clienteIds.filter(Boolean);
+  if (!ids.length) return out;
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data, error } = await supabase.rpc("extra_fido_protetti", { _cliente_ids: ids.slice(i, i + 200) });
+    if (error) throw error;
+    for (const r of data ?? []) {
+      out.set(r.cliente_id, {
+        richiesta_id: r.richiesta_id,
+        importo_approvato: Number(r.importo_approvato),
+        fido_teorico_riferimento: Number(r.fido_teorico_riferimento),
+        approvata_il: r.approvata_il,
+        protetto_fino_al: r.protetto_fino_al,
+      });
+    }
+  }
+  return out;
+}
+
+/** Riferimento protetto: durante la protezione dell'extra non si scende sotto l'importo approvato. */
+export function riferimentoConExtraProtetto(riferimento: number, protetto: ExtraFidoProtetto | undefined): number {
+  return protetto ? Math.max(riferimento, protetto.importo_approvato) : riferimento;
+}
+
 /** Riferimento per tutte le richieste; non modifica il teorico pubblicato o le esclusioni. */
 export async function fetchFidoTeoricoPerRichiesta(
   clienteIds: string[],
@@ -317,16 +354,20 @@ export async function fetchFidoTeoricoPerRichiesta(
 ): Promise<Map<string, number | null>> {
   const out = new Map<string, number | null>();
   if (!clienteIds.some(Boolean)) return out;
-  const [m, cfg] = await Promise.all([
+  const [m, cfg, protetti] = await Promise.all([
     fetchFidoTeorico(clienteIds),
     supabase.from("configurazioni").select("valore").eq("chiave", "alert_fidi_soglia_1").maybeSingle(),
+    fetchExtraFidoProtetti(clienteIds),
   ]);
   if (cfg.error) throw cfg.error;
   const valore = String(cfg.data?.valore ?? "").trim();
   const soglia = valore ? Number(valore) : 0.80;
   for (const [id, r] of m) {
     out.set(id, isProponibile(r.regola_applicata)
-      ? fidoPropostoPerRichiesta(r.fido_attuale, r.fido_proposto, r.esposizione_corrente + (r.ordini_aperti ?? 0), soglia)
+      ? riferimentoConExtraProtetto(
+          fidoPropostoPerRichiesta(r.fido_attuale, r.fido_proposto, r.esposizione_corrente + (r.ordini_aperti ?? 0), soglia),
+          protetti.get(id),
+        )
       : null);
   }
   return out;
