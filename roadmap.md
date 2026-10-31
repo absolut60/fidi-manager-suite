@@ -1,5 +1,11 @@
 # Roadmap
 
+## FM55 — Fetta 5a: nuovo calcolo per tutti
+- [ ] Baseline importi, regole e visibilità dello store manager
+- [ ] Colonne additive e pubblicazione v2 nel blocco di ricalcolo
+- [ ] Fonte unica nelle schermate e richieste; export coerente, senza pavimento
+- [ ] Ricalcolo completo e confronto DB, test e verifica delle viste disponibili
+
 ## FM55 — Fetta 4c: notifiche Alert fidi spente
 - [x] Funzione protetta e passo del ricalcolo senza modificare calcoli (0104)
 - [x] Prove SQL annullate: 356 avvisi / 17 gruppi / 15 utenti; livelli, doppioni e interruttore verificati
