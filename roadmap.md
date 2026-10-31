@@ -1,9 +1,11 @@
 # Roadmap
 
 ## FM55 — Proposte di riduzione protette
-- [ ] Regola unica TS gemella dell'arrotondamento e della protezione SQL degli alert; riferimento richieste da configurazione
-- [ ] Test aumenti/riduzioni/rinnovi, soglia e regole non proponibili
-- [ ] Conteggi e cinque esempi reali in sola lettura; verifica controlli e riepilogo file/commit
+- [x] Regola unica TS documentata rispetto alla protezione SQL degli alert; riferimento richieste da configurazione; SQL non estratto per lasciare alert invariati
+- [x] 13 test del modulo fido + 1 export + 14 regola giornaliera/polling: 28 superati
+- [x] Dati reali dopo ricalcolo 31/10 11:11:01 UTC: 6329 calcolo, 8 esclusi per richiesta attiva; 554 aumenti +1791500, 123 diminuzioni -767499.99, 2058 rinnovi, 3586 nuovi fidi; cinque esempi verificati con fetch reale su letture DB
+- [x] Compilazione automatica OK; controllo tipi dedicato non eseguito; nessuna migrazione o scrittura dati; commit db05d752
+- [ ] Prova autenticata creazione/salvataggio proposta: accesso --self non disponibile, nessun account corrisponde al richiedente; nessuna richiesta creata nelle prove
 
 ## FM55 — Giro giornaliero del ricalcolo
 - [x] Regola condivisa: quattro fonti di oggi Europe/Rome, almeno una nuova, nessuna in elaborazione; testi card/avviso allineati
