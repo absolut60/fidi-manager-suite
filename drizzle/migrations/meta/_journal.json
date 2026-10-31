@@ -750,6 +750,13 @@
       "when": 1793449812146,
       "tag": "0106_fm55_fido_v2_dormienti_persi_nuovi",
       "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "7",
+      "when": 1793450252003,
+      "tag": "0107_fm55_fido_v2_nuovi_dopo_carico_iniziale",
+      "breakpoints": true
     }
   ]
 }
