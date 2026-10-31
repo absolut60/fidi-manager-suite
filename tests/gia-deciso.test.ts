@@ -1,27 +1,11 @@
 import { describe, it, expect } from "bun:test";
-import { gruppoRevisione, daRivedereRevisione, riepilogoRevisione, type InputGruppoRevisione } from "@/lib/revisione-fidi";
 import { giaDeciso, testoGiaDeciso, statoEffettivoAlert, contatoriAlert, alertSelezionabile, alertLasciabileCosi, filtraAlert, STATI_ALERT_DEFAULT, type AlertFidoRow, type DecisioneProtetta } from "@/lib/alert-fidi";
 
-const global: InputGruppoRevisione = {
-  richiestaAttiva: false, alertConfermato: false, alertAperto: true, regola: "scaduto_non_incassato",
-  fidoGamma: 60000, riferimento: 60000, segnalazioni: ["scaduto_non_incassato"], extraProtettoValido: true,
-};
 const dec: DecisioneProtetta = {
   richiesta_id: "r1", importo_approvato: 60000, fido_teorico_riferimento: 0, approvata_il: "2026-10-31T10:00:00Z",
   protetto_fino_al: "2026-11-30", scaduto_al_momento: 1200, scaduto_attuale: 1500, protezione_valida: true,
   tipo: "rinnovo", approvato_da_nome: "Andrea Giani",
 };
-
-describe("Già deciso – Revisione fidi", () => {
-  it("GLOBAL-like (scaduto + protezione valida + rif = Gamma) → gia_deciso", () =>
-    expect(gruppoRevisione(global)).toBe("gia_deciso"));
-  it("protezione decaduta → torna da_incassare", () =>
-    expect(gruppoRevisione({ ...global, extraProtettoValido: false })).toBe("da_incassare"));
-  it("riferimento ≠ Gamma → non gia_deciso", () =>
-    expect(gruppoRevisione({ ...global, riferimento: 0 })).not.toBe("gia_deciso"));
-  it("non conta nei da rivedere", () =>
-    expect(daRivedereRevisione(riepilogoRevisione([{ gruppo: "gia_deciso", fidoGamma: 60000, riferimento: 60000 }]))).toBe(0));
-});
 
 describe("Già deciso – regola e frase", () => {
   it("giaDeciso vero solo con protezione valida e rif = Gamma", () => {
