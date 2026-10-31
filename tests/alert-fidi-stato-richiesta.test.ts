@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { esitoRichiestaAlert, statoEffettivoAlert, alertSelezionabile, type RichiestaClienteAlert } from "@/lib/alert-fidi";
+import { esitoRichiestaAlert, statoEffettivoAlert, alertSelezionabile, etichettaDecisioneAlert, type RichiestaClienteAlert } from "@/lib/alert-fidi";
+import { formatEuro } from "@/lib/fidi";
 
 const alert = { tipo: "consumo" as const, aperto_il: "2026-10-20T08:00:00Z", richiesta_id: null };
 const ric = (x: Partial<RichiestaClienteAlert>): RichiestaClienteAlert => ({
@@ -18,9 +19,18 @@ describe("stato richiesta degli Alert fidi", () => {
   test("approvata non processata → resta visibile come attiva", () => {
     expect(esitoRichiestaAlert(alert, [ric({ stato: "approvata", stato_export: "esportata" })]).tipo).toBe("attiva");
   });
-  test("processata dopo l'apertura → riga nascosta", () => {
-    const e = esitoRichiestaAlert(alert, [ric({ stato: "approvata", stato_export: "processata", data_processata: "2026-10-31T10:00:00Z" })]);
-    expect(e.tipo).toBe("processata");
+  const proc = ric({ stato: "approvata", stato_export: "processata", tipo: "rinnovo", importo_richiesto: 3000, data_processata: "2026-10-31T10:00:00Z" });
+  test("processata dopo l'apertura e fido Gamma cambiato → riga nascosta", () => {
+    expect(esitoRichiestaAlert({ ...alert, fido_gamma_apertura: 3000 }, [proc], 5000).tipo).toBe("processata");
+  });
+  test("processata ma fido Gamma uguale (rinnovo) → resta visibile con la decisione", () => {
+    const e = esitoRichiestaAlert({ ...alert, fido_gamma_apertura: 3000 }, [proc], 3000);
+    expect(e.tipo).toBe("decisa");
+    if (e.tipo === "decisa") expect(etichettaDecisioneAlert(e.richiesta)).toBe(`Decisione presa il 31/10: rinnovo a ${formatEuro(3000)}`);
+  });
+  test("decisione con extra protetto → non selezionabile", () => {
+    expect(alertSelezionabile({ stato: "aperto", richiesta_attiva: null, decisione_protetta: true })).toBe(false);
+    expect(alertSelezionabile({ stato: "aperto", richiesta_attiva: null, decisione_protetta: false })).toBe(true);
   });
   test("rifiutata → nessuna richiesta, l'alert torna aperto e selezionabile", () => {
     const e = esitoRichiestaAlert(alert, [ric({ stato: "rifiutata" })]);

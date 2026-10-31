@@ -16,11 +16,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { formatEuro, formatDate } from "@/lib/fidi";
-import { fetchFidoTeorico, fetchUtentiAnteprimaFidoNuovo } from "@/lib/fido-teorico";
+import { fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchSogliaConsumoFido, fidoPerTornareSottoSoglia, fetchUtentiAnteprimaFidoNuovo } from "@/lib/fido-teorico";
 import { SegnalazioniFido } from "@/components/segnalazioni-fido";
 import {
   fetchAlertFidiAperti, confermaExtraAlertFido, etichettaAvviso, debitoOggi, alertSelezionabile,
-  importoDaAlert, statoEffettivoAlert, etichettaRichiestaAlert, STATO_ALERT_LABEL, STATI_ALERT_DEFAULT, TIPO_ALERT_LABEL,
+  importoDaAlert, statoEffettivoAlert, etichettaRichiestaAlert, etichettaDecisioneAlert, STATO_ALERT_LABEL, STATI_ALERT_DEFAULT, TIPO_ALERT_LABEL,
   type AlertFidoRow, type StatoAlertFido, type TipoAlertFido,
 } from "@/lib/alert-fidi";
 
@@ -85,6 +85,14 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
     staleTime: 5 * 60_000,
     queryFn: () => fetchFidoTeorico(idsClienti),
   });
+  // Fido proposto = riferimento della richiesta (stessa fonte di proposta massiva e richiesta singola).
+  const { data: riferimentoMap } = useQuery({
+    queryKey: ["fido-teorico-per-richiesta-alert", userId, idsClienti.join(",")],
+    enabled: idsClienti.length > 0,
+    staleTime: 5 * 60_000,
+    queryFn: () => fetchFidoTeoricoPerRichiesta(idsClienti, userId),
+  });
+  const { data: sogliaConsumo } = useQuery({ queryKey: ["soglia-consumo-fido"], queryFn: fetchSogliaConsumoFido, staleTime: 5 * 60_000 });
   const { data: agenti } = useQuery({
     queryKey: ["agenti", "all"],
     queryFn: async () => {
@@ -187,7 +195,36 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
     const t = teoricoMap?.get(a.cliente_id);
     return t && t.segnalazioni.length > 0 ? <div className="mt-1 min-w-0"><SegnalazioniFido riga={t} /></div> : null;
   };
+  const fidoPropostoAlert = (a: AlertFidoRow): number | null => {
+    const rif = riferimentoMap?.get(a.cliente_id);
+    return rif != null ? rif : (a.fido_proposto != null ? Number(a.fido_proposto) : null);
+  };
+  const renderFidoProposto = (a: AlertFidoRow, destra: boolean) => {
+    const prop = fidoPropostoAlert(a);
+    const t = teoricoMap?.get(a.cliente_id);
+    const teorico = t?.fido_proposto != null ? Number(t.fido_proposto) : null;
+    const sottoSoglia = a.tipo === "consumo" && t && sogliaConsumo
+      && t.segnalazioni.some((c) => c === "uso_pieno" || c === "impegni_sopra_base")
+      ? fidoPerTornareSottoSoglia(debitoOggi(a), sogliaConsumo) : null;
+    return (
+      <div className={destra ? "text-right" : undefined}>
+        <div className="tabular-nums">{formatEuro(prop)}</div>
+        {teorico != null && teorico !== prop && <div className="text-xs text-muted-foreground tabular-nums">Teorico {formatEuro(teorico)}</div>}
+        {sottoSoglia != null && <div className="text-xs text-muted-foreground tabular-nums">Per tornare sotto l'{Math.round(sogliaConsumo! * 100)}%: {formatEuro(sottoSoglia)}</div>}
+      </div>
+    );
+  };
   const renderStato = (a: AlertFidoRow) => {
+    if (a.decisione) {
+      return (
+        <div className="space-y-1">
+          <Link to="/richieste/$richiestaId" params={{ richiestaId: a.decisione.id }}>
+            <Badge variant="secondary" className="whitespace-normal break-words text-left">{etichettaDecisioneAlert(a.decisione)}</Badge>
+          </Link>
+          {a.decisione_protetta && <div className="text-xs text-muted-foreground">Extra protetto: non selezionabile per 30 giorni</div>}
+        </div>
+      );
+    }
     const r = a.richiesta_attiva;
     if (r) {
       return (
@@ -286,7 +323,7 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
                   { etichetta: "Fido in Gamma", valore: formatEuro(a.fido_gamma) },
                   { etichetta: "Debito oggi", valore: formatEuro(debitoOggi(a)) },
                   { etichetta: "Consumo", valore: fmtPerc(a.consumo) },
-                  { etichetta: "Fido proposto", valore: formatEuro(a.fido_proposto) },
+                  { etichetta: "Fido proposto", valore: renderFidoProposto(a, false) },
                   { etichetta: "Aperto dal", valore: formatDate(a.aperto_il) },
                 ]}
                 footer={<div className="flex w-full flex-wrap items-center justify-between gap-2">{renderStato(a)}{renderAzioni(a)}</div>}
@@ -327,7 +364,7 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
                     <TableCell className="text-right tabular-nums">{formatEuro(a.fido_gamma)}</TableCell>
                     <TableCell className="text-right tabular-nums">{formatEuro(debitoOggi(a))}</TableCell>
                     <TableCell className="text-right tabular-nums">{fmtPerc(a.consumo)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{formatEuro(a.fido_proposto)}</TableCell>
+                    <TableCell className="text-right">{renderFidoProposto(a, true)}</TableCell>
                     <TableCell className="max-w-56">{renderStato(a)}</TableCell>
                     <TableCell className="whitespace-nowrap">{formatDate(a.aperto_il)}</TableCell>
                     <TableCell>{renderAzioni(a)}</TableCell>

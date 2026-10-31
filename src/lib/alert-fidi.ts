@@ -3,6 +3,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { leggiTutteLeRighe } from "@/lib/leggi-tutte-le-righe";
 import { FIDO_CLIENTE_SELECT } from "@/lib/fido-cliente";
+import { fetchExtraFidoProtetti, protezioneAttiva } from "@/lib/fido-teorico";
 import { isRichiestaAttiva, STATO_LABEL, formatEuro, type StatoRichiesta } from "@/lib/fidi";
 
 export type TipoAlertFido = "consumo" | "riduzione" | "extra_non_usato";
@@ -20,6 +21,7 @@ export type AlertFidoRow = {
   ordini_aperti: number | null;
   consumo: number | null;
   fido_proposto: number | null;
+  fido_gamma_apertura?: number | null;
   richiesta_id: string | null;
   riproponi_dal: string | null;
   cliente: {
@@ -35,6 +37,10 @@ export type AlertFidoRow = {
   richiesta: { id: string; fido_teorico_riferimento: number | null } | null;
   /** Ultima richiesta attiva del cliente, letta dal vivo (null se nessuna). */
   richiesta_attiva?: RichiestaClienteAlert | null;
+  /** Richiesta processata dopo l'apertura senza cambio del fido in Gamma (es. rinnovo): alert resta visibile. */
+  decisione?: RichiestaClienteAlert | null;
+  /** Decisione con extra ancora protetto (extra_fido_protetti): non selezionabile. */
+  decisione_protetta?: boolean;
 };
 
 export type RichiestaClienteAlert = {
@@ -51,31 +57,48 @@ export type RichiestaClienteAlert = {
 export type EsitoRichiestaAlert =
   | { tipo: "attiva"; richiesta: RichiestaClienteAlert }
   | { tipo: "processata" }
+  | { tipo: "decisa"; richiesta: RichiestaClienteAlert }
   | { tipo: "nessuna" };
 
 /**
  * Stato della richiesta di un alert, dal vivo (regola di Andrea, FM55):
  * - richiesta attiva del cliente (isRichiestaAttiva), qualunque data → "attiva" (ultima per data);
- * - altrimenti, richiesta processata dopo l'apertura dell'alert → "processata" (riga nascosta);
+ * - altrimenti, richiesta processata dopo l'apertura dell'alert: se il fido in Gamma attuale è diverso
+ *   da fido_gamma_apertura → "processata" (riga nascosta); se è rimasto uguale (es. rinnovo) → "decisa"
+ *   (riga visibile con la decisione presa);
  * - altrimenti (nessuna, rifiutata, annullata) → "nessuna": l'alert torna aperto.
  * Per gli extra non usati la richiesta approvata che ha generato l'alert non conta.
  */
 export function esitoRichiestaAlert(
-  a: Pick<AlertFidoRow, "tipo" | "aperto_il" | "richiesta_id">, richieste: RichiestaClienteAlert[],
+  a: Pick<AlertFidoRow, "tipo" | "aperto_il" | "richiesta_id"> & { fido_gamma_apertura?: number | null },
+  richieste: RichiestaClienteAlert[],
+  fidoGammaAttuale?: number | null,
 ): EsitoRichiestaAlert {
   const proprie = richieste.filter((r) => !(a.tipo === "extra_non_usato" && r.id === a.richiesta_id));
   const attive = proprie.filter((r) => isRichiestaAttiva(r)).sort((x, y) => y.created_at.localeCompare(x.created_at));
   if (attive.length > 0) return { tipo: "attiva", richiesta: attive[0] };
   const apertura = new Date(a.aperto_il).getTime();
-  const processata = proprie.some((r) => r.stato === "approvata" && r.stato_export === "processata"
-    && new Date(r.data_processata ?? r.created_at).getTime() > apertura);
-  return processata ? { tipo: "processata" } : { tipo: "nessuna" };
+  const processate = proprie.filter((r) => r.stato === "approvata" && r.stato_export === "processata"
+    && new Date(r.data_processata ?? r.created_at).getTime() > apertura)
+    .sort((x, y) => (y.data_processata ?? y.created_at).localeCompare(x.data_processata ?? x.created_at));
+  if (processate.length === 0) return { tipo: "nessuna" };
+  const fidoUguale = a.fido_gamma_apertura != null && fidoGammaAttuale != null
+    && Number(a.fido_gamma_apertura) === Number(fidoGammaAttuale);
+  return fidoUguale ? { tipo: "decisa", richiesta: processate[0] } : { tipo: "processata" };
 }
 
 /** Stato mostrato: con richiesta attiva "richiesta_inserita"; senza, un richiesta_inserita torna "aperto". */
 export function statoEffettivoAlert(a: Pick<AlertFidoRow, "stato" | "richiesta_attiva">): StatoAlertFido {
   if (a.richiesta_attiva) return "richiesta_inserita";
   return a.stato === "richiesta_inserita" ? "aperto" : a.stato;
+}
+
+/** Badge della decisione già processata senza cambio di fido, es. "Decisione presa il 31/10: rinnovo a 3.000 €". */
+export function etichettaDecisioneAlert(r: RichiestaClienteAlert): string {
+  const giorno = new Date(r.data_processata ?? r.created_at).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" });
+  const tipo = r.tipo === "rinnovo" ? "rinnovo" : r.tipo === "diminuzione" ? "diminuzione" : r.tipo === "aumento" ? "aumento" : r.tipo === "nuovo_fido" ? "nuovo fido" : (r.tipo ?? "decisione");
+  const imp = r.importo_richiesto != null ? ` a ${formatEuro(Number(r.importo_richiesto))}` : "";
+  return `Decisione presa il ${giorno}: ${tipo}${imp}`;
 }
 
 /** Testo del badge, es. "Proposta inoltrata · In approvazione · 20.000 € · del 31/10". */
@@ -117,8 +140,8 @@ export function debitoOggi(a: Pick<AlertFidoRow, "esposizione" | "ordini_aperti"
 }
 
 /** Gli alert in osservazione non si possono usare per creare una proposta. */
-export function alertSelezionabile(a: Pick<AlertFidoRow, "stato" | "richiesta_attiva">): boolean {
-  return statoEffettivoAlert(a) !== "in_osservazione" && !a.richiesta_attiva;
+export function alertSelezionabile(a: Pick<AlertFidoRow, "stato" | "richiesta_attiva" | "decisione_protetta">): boolean {
+  return statoEffettivoAlert(a) !== "in_osservazione" && !a.richiesta_attiva && !a.decisione_protetta;
 }
 
 /**
@@ -134,7 +157,7 @@ export function importoDaAlert(a: AlertFidoRow): number | undefined {
 }
 
 export async function fetchAlertFidiAperti(): Promise<AlertFidoRow[]> {
-  const select = `id, cliente_id, tipo, livello, stato, aperto_il, fido_gamma, esposizione, ordini_aperti, consumo, fido_proposto, richiesta_id, riproponi_dal,
+  const select = `id, cliente_id, tipo, livello, stato, aperto_il, fido_gamma, esposizione, ordini_aperti, consumo, fido_proposto, fido_gamma_apertura, richiesta_id, riproponi_dal,
     cliente:clienti!alert_fidi_cliente_id_fkey(id, codice_gestionale, ragione_sociale, store_id, codice_agente, totale_rischio, ${FIDO_CLIENTE_SELECT}, stores(nome)),
     richiesta:richieste_fido!alert_fidi_richiesta_id_fkey(id, fido_teorico_riferimento)`;
   const alert = await leggiTutteLeRighe<AlertFidoRow>((da, a) =>
@@ -149,9 +172,16 @@ export async function fetchAlertFidiAperti(): Promise<AlertFidoRow[]> {
   const perCliente = await fetchRichiesteClientiAlert(alert.map((a) => a.cliente_id));
   const out: AlertFidoRow[] = [];
   for (const a of alert) {
-    const esito = esitoRichiestaAlert(a, perCliente.get(a.cliente_id) ?? []);
+    const fidoAttuale = a.cliente?.fido_gestionale != null ? Number(a.cliente.fido_gestionale) : null;
+    const esito = esitoRichiestaAlert(a, perCliente.get(a.cliente_id) ?? [], fidoAttuale);
     if (esito.tipo === "processata") continue;
-    out.push({ ...a, richiesta_attiva: esito.tipo === "attiva" ? esito.richiesta : null });
+    out.push({ ...a, richiesta_attiva: esito.tipo === "attiva" ? esito.richiesta : null,
+      decisione: esito.tipo === "decisa" ? esito.richiesta : null });
+  }
+  const conDecisione = out.filter((a) => a.decisione).map((a) => a.cliente_id);
+  if (conDecisione.length > 0) {
+    const protetti = await fetchExtraFidoProtetti([...new Set(conDecisione)]);
+    for (const a of out) if (a.decisione) a.decisione_protetta = protezioneAttiva(protetti.get(a.cliente_id));
   }
   return out;
 }
