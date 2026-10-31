@@ -1,5 +1,10 @@
 # Roadmap
 
+## FM55 — Proposte di riduzione protette
+- [ ] Regola unica TS gemella dell'arrotondamento e della protezione SQL degli alert; riferimento richieste da configurazione
+- [ ] Test aumenti/riduzioni/rinnovi, soglia e regole non proponibili
+- [ ] Conteggi e cinque esempi reali in sola lettura; verifica controlli e riepilogo file/commit
+
 ## FM55 — Giro giornaliero del ricalcolo
 - [x] Regola condivisa: quattro fonti di oggi Europe/Rome, almeno una nuova, nessuna in elaborazione; testi card/avviso allineati
 - [x] 14 test superati (12 regola + 2 polling); dati reali 31/10 ore 11:05:40 UTC: pronto=true, nessuna fonte mancante o in elaborazione
