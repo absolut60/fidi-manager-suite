@@ -41,7 +41,9 @@ test('ogni scarto fa riferimento alla vincitrice definitiva anche con tre versio
     riga(3, null, 0), riga(4, '2022-05-14', 100), riga(5, '2022-05-25', -6211.50),
   ]);
   expect(risultato.doppioni.map((d) => [d.riga_scartata, d.riga_tenuta])).toEqual([[3, 5], [4, 5]]);
-  const anomalia = anomaliaDoppioneGamma(risultato.doppioni[0]);
+  const doppione = risultato.doppioni[0];
+  if (!doppione) throw new Error('Scarto non registrato');
+  const anomalia = anomaliaDoppioneGamma(doppione);
   expect(anomalia.tipo_anomalia).toBe('riga_doppia_gamma');
   expect(JSON.parse(anomalia.valore_attuale)).toEqual({ numero_documento: '382/RA',
     data_scadenza: '2022-05-14', importo_scadenza: -6211.50,
