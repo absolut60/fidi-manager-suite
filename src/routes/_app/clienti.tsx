@@ -3516,6 +3516,7 @@ function FiltriAvanzatiDialog({
 
   const isPresetActive = (id: string): boolean => {
     switch (id) {
+      case "sanatoria": return !!sanatoriaAttiva;
       case "fido80": return draft.percConsumato === 80;
       case "esaurito": return draft.fidoOp === "lte" && draft.fidoVal === 0;
       case "lt500": return draft.fidoOp === "lt" && draft.fidoVal === 500;
@@ -3546,6 +3547,7 @@ function FiltriAvanzatiDialog({
                     key={p.id}
                     type="button"
                     onClick={() => {
+                      if (p.id === "sanatoria") { onPresetSanatoria?.(); return; }
                       setDraft((d) => p.apply(d));
                       if (p.main) onSetMainFiltro(p.main);
                     }}
