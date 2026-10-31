@@ -126,6 +126,14 @@ const clienteSearchSchema = z.object({
 });
 
 export const Route = createFileRoute("/_app/clienti/$clienteId")({
+  head: () => ({ meta: [
+    { title: "Scheda cliente e fido | FidiManager MADE" },
+    { name: "description", content: "Anagrafica, fido teorico, richieste e storico del cliente MADE." },
+    { property: "og:title", content: "Scheda cliente e fido | FidiManager MADE" },
+    { property: "og:description", content: "Anagrafica, fido teorico, richieste e storico del cliente MADE." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   validateSearch: zodValidator(clienteSearchSchema),
   component: ClienteDetail,
 });
