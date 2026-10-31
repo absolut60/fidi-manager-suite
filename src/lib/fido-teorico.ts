@@ -7,6 +7,7 @@
  * il fido teorico pubblicato e la scheda cliente restano invariati.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { formatEuro } from "@/lib/fidi";
 
 export type FidoTeoricoRow = {
   cliente_id: string;
@@ -424,10 +425,12 @@ export function notaExtraProtetto(p: ExtraFidoProtetto): { testo: string; decadu
       testo: `Approvato il ${app}, ma lo scaduto è salito da ${eur(p.scaduto_al_momento ?? 0)} a ${eur(p.scaduto_attuale ?? 0)}: protezione decaduta`,
     };
   }
-  if ((p.scaduto_al_momento ?? 0) > 0) {
+  // Richiesta precedente a FM55 3B (null): lo scaduto attuale è considerato già noto.
+  const noto = p.scaduto_al_momento ?? p.scaduto_attuale ?? 0;
+  if (noto > 0) {
     return {
       decaduta: false,
-      testo: `Approvato il ${app}: ${eur(p.importo_approvato)} con scaduto già noto di ${eur(p.scaduto_al_momento ?? 0)} (teorico ${eur(p.fido_teorico_riferimento)}) — protetto fino al ${fino}`,
+      testo: `Approvato il ${app}: ${eur(p.importo_approvato)} con scaduto già noto di ${eur(noto)} (teorico ${eur(p.fido_teorico_riferimento)}) — protetto fino al ${fino}`,
     };
   }
   return {
