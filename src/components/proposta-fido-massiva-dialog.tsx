@@ -1,3 +1,4 @@
+import { SegnalazioniFido } from "@/components/segnalazioni-fido";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { MessageSquare, X } from "lucide-react";
@@ -612,7 +613,9 @@ export function ProposteFidoMassivoDialog({
       ? motivazioneEffettiva(r, motivazioneGenerale.trim() === "" ? null : motivazioneGenerale)
       : null;
     const prot = protettiMap?.get(r.cliente_id);
-    if (!r.nota_proposta && !cambio && !mot && !prot) return null;
+    const teo = teoricoMap?.get(r.cliente_id);
+    const segn = teo && teo.segnalazioni.length > 0;
+    if (!r.nota_proposta && !cambio && !mot && !prot && !segn) return null;
     return (
       <div className={`grid grid-cols-1 gap-2 text-xs ${cambio ? "xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]" : ""}`}>
         {r.nota_proposta && (
@@ -625,6 +628,7 @@ export function ProposteFidoMassivoDialog({
             Extra approvato il {new Date(prot.approvata_il).toLocaleDateString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit", year: "numeric" })}: protetto fino al {prot.protetto_fino_al.split("-").reverse().join("/")}
           </p>
         )}
+        {segn && teo && <SegnalazioniFido riga={teo} />}
         {mot && (
           <p className="min-w-0 break-words text-[11px] text-muted-foreground">
             <span className="font-medium">Motivazione:</span> {mot}

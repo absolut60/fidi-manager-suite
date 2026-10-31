@@ -42,6 +42,10 @@ export type FidoTeoricoRow = {
   fabbisogno: number | null;
   consumo_perc: number | null;
   spiegazione: string | null;
+  scaduto_oltre: number;
+  scaduto_oltre_giorni: number;
+  /** Codici di segnalazione pubblicati da public.segnalazioni_fido (v. fido-segnalazioni.ts). */
+  segnalazioni: string[];
 };
 
 /** Spiegazione in chiaro del coefficiente di comportamento. */
@@ -145,6 +149,9 @@ export function normalizza(r: any): FidoTeoricoRow {
     consumo_perc: numOrNull(r.consumo_perc),
     profilo: r.profilo ?? null,
     spiegazione: r.spiegazione ?? null,
+    scaduto_oltre: Number(r.scaduto_oltre ?? 0),
+    scaduto_oltre_giorni: Number(r.scaduto_oltre_giorni ?? 0),
+    segnalazioni: Array.isArray(r.segnalazioni) ? r.segnalazioni.map(String) : [],
   };
 
 }
@@ -207,6 +214,8 @@ export async function fetchFidoTeoricoTutti(): Promise<Map<string, FidoTeoricoRo
 
 export type FidoTeoricoNuovoRow = {
   cliente_id: string;
+  /** Riga canonica completa (per le segnalazioni). */
+  riga: FidoTeoricoRow;
   acquisto_mensile: number | null;
   ciclo_gg: number | null;
   profilo: string | null;
@@ -261,6 +270,7 @@ export async function fetchFidoTeoricoNuovo(clienteId: string): Promise<FidoTeor
   const r = data as any;
   return {
     cliente_id: r.cliente_id,
+    riga: normalizza(r),
     acquisto_mensile: numOrNull(r.acquisto_mensile),
     ciclo_gg: numOrNull(r.ciclo_gg),
     profilo: r.profilo ?? null,
