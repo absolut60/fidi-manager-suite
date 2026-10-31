@@ -18,7 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { formatEuro } from "@/lib/fidi";
 import { fetchUtentiAnteprimaFidoNuovo } from "@/lib/fido-teorico";
-import { etichettaRichiestaAlert } from "@/lib/alert-fidi";
+import { etichettaRichiestaAlert, passaNegozioAgente } from "@/lib/alert-fidi";
 import {
   fetchRevisioneFidi, riepilogoRevisione, lasciaCosiRevisione, ETICHETTE_GRUPPO_REVISIONE, type GruppoRevisione, type RigaRevisione,
 } from "@/lib/revisione-fidi";
@@ -97,11 +97,8 @@ function RevisioneContenuto({ userId }: { userId: string }) {
     return senza ? [...o, { valore: NESSUNO, label: "Senza agente" }] : o;
   }, [tutte, nomeAgente]);
 
-  const visibili = useMemo(() => tutte.filter((r) => {
-    if (negozi.length > 0 && !negozi.includes(r.cliente.store_id ?? NESSUNO)) return false;
-    if (agentiSel.length > 0 && !agentiSel.includes(r.cliente.codice_agente ?? NESSUNO)) return false;
-    return true;
-  }), [tutte, negozi, agentiSel]);
+  const visibili = useMemo(() => tutte.filter((r) =>
+    passaNegozioAgente(r.cliente.store_id, r.cliente.codice_agente, negozi, agentiSel)), [tutte, negozi, agentiSel]);
   const perGruppo = useMemo(() => {
     const m = new Map<GruppoRevisione, RigaRevisione[]>();
     for (const r of visibili) m.set(r.gruppo, [...(m.get(r.gruppo) ?? []), r]);
