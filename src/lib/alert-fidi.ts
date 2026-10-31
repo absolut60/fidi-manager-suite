@@ -3,11 +3,11 @@
 import { supabase } from "@/integrations/supabase/client";
 import { leggiTutteLeRighe } from "@/lib/leggi-tutte-le-righe";
 import { FIDO_CLIENTE_SELECT } from "@/lib/fido-cliente";
-import { fetchExtraFidoProtetti, protezioneAttiva } from "@/lib/fido-teorico";
+import { fetchExtraFidoProtetti, protezioneAttiva, type ExtraFidoProtetto } from "@/lib/fido-teorico";
 import { isRichiestaAttiva, STATO_LABEL, formatEuro, type StatoRichiesta } from "@/lib/fidi";
 
 export type TipoAlertFido = "consumo" | "riduzione" | "extra_non_usato";
-export type StatoAlertFido = "in_osservazione" | "aperto" | "richiesta_inserita" | "confermato";
+export type StatoAlertFido = "in_osservazione" | "aperto" | "richiesta_inserita" | "confermato" | "gia_deciso";
 
 export type AlertFidoRow = {
   id: string;
@@ -41,7 +41,72 @@ export type AlertFidoRow = {
   decisione?: RichiestaClienteAlert | null;
   /** Decisione con extra ancora protetto (extra_fido_protetti): non selezionabile. */
   decisione_protetta?: boolean;
+  /** Decisione approvata ancora protetta con riferimento = fido Gamma (giaDeciso): fuori dalla lista di lavoro. */
+  gia_deciso?: DecisioneProtetta | null;
 };
+
+/** Decisione approvata protetta (public.extra_fido_protetti) con tipo e nome di chi ha approvato. */
+export type DecisioneProtetta = ExtraFidoProtetto & { tipo: string | null; approvato_da_nome: string | null };
+
+/**
+ * Fonte unica "Già deciso" (FM55): decisione approvata ancora protetta (protezioneAttiva)
+ * e riferimento della richiesta uguale al fido in Gamma. Usata da Alert fidi e Revisione fidi.
+ */
+export function giaDeciso(
+  protetto: ExtraFidoProtetto | null | undefined,
+  riferimento: number | null | undefined,
+  fidoGamma: number | null | undefined,
+): boolean {
+  return giaDecisoDa(protezioneAttiva(protetto ?? undefined), riferimento, fidoGamma);
+}
+
+/** Stessa regola di giaDeciso, partendo dall'esito di protezioneAttiva. */
+export function giaDecisoDa(protezioneValida: boolean, riferimento: number | null | undefined, fidoGamma: number | null | undefined): boolean {
+  return protezioneValida && riferimento != null && Number(riferimento) === Number(fidoGamma ?? 0);
+}
+
+function giornoMeseIso(d: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d);
+  if (m && d.length === 10) return `${m[3]}/${m[2]}`;
+  return new Date(d).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", timeZone: "Europe/Rome" });
+}
+
+/** Frase per lo store manager, es. "Già deciso il 31/10 da Mario Rossi: fido confermato a 60.000 € anche con lo scaduto. Si riguarda dal 30/11." */
+export function testoGiaDeciso(
+  d: Pick<DecisioneProtetta, "approvata_il" | "protetto_fino_al" | "importo_approvato" | "tipo" | "approvato_da_nome" | "scaduto_al_momento" | "scaduto_attuale">,
+): string {
+  const da = d.approvato_da_nome ? ` da ${d.approvato_da_nome}` : "";
+  const imp = `${Math.round(Number(d.importo_approvato)).toLocaleString("it-IT")} €`;
+  const azione = d.tipo === "rinnovo" ? `fido confermato a ${imp}` : `portato a ${imp}`;
+  const scaduto = d.scaduto_al_momento != null ? Number(d.scaduto_al_momento) : Number(d.scaduto_attuale ?? 0);
+  const conScaduto = scaduto > 0 ? " anche con lo scaduto" : "";
+  return `Già deciso il ${giornoMeseIso(d.approvata_il)}${da}: ${azione}${conScaduto}. Si riguarda dal ${giornoMeseIso(d.protetto_fino_al)}.`;
+}
+
+/** Decisioni protette per cliente (anche decadute: la condizione la applica giaDeciso). */
+export async function fetchDecisioniProtette(clienteIds: string[]): Promise<Map<string, DecisioneProtetta>> {
+  const protetti = await fetchExtraFidoProtetti(clienteIds);
+  const out = new Map<string, DecisioneProtetta>();
+  if (protetti.size === 0) return out;
+  const ids = [...new Set([...protetti.values()].map((p) => p.richiesta_id))];
+  const info = new Map<string, { tipo: string | null; approvato_da: string | null }>();
+  for (let i = 0; i < ids.length; i += 500) {
+    const { data, error } = await supabase.from("richieste_fido").select("id, tipo, approvato_da").in("id", ids.slice(i, i + 500));
+    if (error) throw error;
+    for (const r of (data ?? []) as any[]) info.set(r.id, { tipo: r.tipo, approvato_da: r.approvato_da });
+  }
+  const nomi = new Map<string, string>();
+  const { data: profs } = await supabase.rpc("get_nomi_utenti" as never);
+  for (const p of ((profs ?? []) as any[])) {
+    const n = `${p.nome ?? ""} ${p.cognome ?? ""}`.trim();
+    if (n) nomi.set(p.id, n);
+  }
+  for (const [cid, p] of protetti) {
+    const r = info.get(p.richiesta_id);
+    out.set(cid, { ...p, tipo: r?.tipo ?? null, approvato_da_nome: r?.approvato_da ? nomi.get(r.approvato_da) ?? null : null });
+  }
+  return out;
+}
 
 export type RichiestaClienteAlert = {
   id: string;
@@ -88,8 +153,9 @@ export function esitoRichiestaAlert(
 }
 
 /** Stato mostrato: con richiesta attiva "richiesta_inserita"; senza, un richiesta_inserita torna "aperto". */
-export function statoEffettivoAlert(a: Pick<AlertFidoRow, "stato" | "richiesta_attiva">): StatoAlertFido {
+export function statoEffettivoAlert(a: Pick<AlertFidoRow, "stato" | "richiesta_attiva"> & { gia_deciso?: unknown }): StatoAlertFido {
   if (a.richiesta_attiva) return "richiesta_inserita";
+  if (a.gia_deciso) return "gia_deciso";
   return a.stato === "richiesta_inserita" ? "aperto" : a.stato;
 }
 
@@ -121,6 +187,7 @@ export const STATO_ALERT_LABEL: Record<StatoAlertFido, string> = {
   richiesta_inserita: "Richiesta inserita",
   in_osservazione: "In osservazione",
   confermato: "Lasciato così",
+  gia_deciso: "Già decisi",
 };
 
 export const STATI_ALERT_DEFAULT: StatoAlertFido[] = ["aperto", "richiesta_inserita"];
@@ -140,8 +207,9 @@ export function debitoOggi(a: Pick<AlertFidoRow, "esposizione" | "ordini_aperti"
 }
 
 /** Gli alert in osservazione non si possono usare per creare una proposta. */
-export function alertSelezionabile(a: Pick<AlertFidoRow, "stato" | "richiesta_attiva" | "decisione_protetta">): boolean {
-  return statoEffettivoAlert(a) !== "in_osservazione" && !a.richiesta_attiva && !a.decisione_protetta;
+export function alertSelezionabile(a: Pick<AlertFidoRow, "stato" | "richiesta_attiva" | "decisione_protetta" | "gia_deciso">): boolean {
+  const st = statoEffettivoAlert(a);
+  return st !== "in_osservazione" && st !== "gia_deciso" && !a.richiesta_attiva && !a.decisione_protetta;
 }
 
 /**
@@ -217,7 +285,7 @@ export async function confermaAlertFido(alertId: string): Promise<void> {
 }
 
 /** Tipi di alert che si possono "lasciare così" (gemello di public.conferma_alert_fido). */
-export function alertLasciabileCosi(a: Pick<AlertFidoRow, "tipo" | "stato" | "richiesta_attiva">): boolean {
+export function alertLasciabileCosi(a: Pick<AlertFidoRow, "tipo" | "stato" | "richiesta_attiva" | "gia_deciso">): boolean {
   return (a.tipo === "consumo" || a.tipo === "extra_non_usato") && statoEffettivoAlert(a) === "aperto";
 }
 
@@ -248,6 +316,7 @@ export const SITUAZIONE_ALERT_LABEL: Record<StatoAlertFido, string> = {
   richiesta_inserita: "Proposta inviata",
   confermato: "Lasciati così",
   in_osservazione: "In osservazione",
+  gia_deciso: "Già decisi",
 };
 
 /** Testo breve della colonna "Richiesta" per una richiesta attiva. */
