@@ -120,7 +120,7 @@ export const STATO_ALERT_LABEL: Record<StatoAlertFido, string> = {
   aperto: "Aperto",
   richiesta_inserita: "Richiesta inserita",
   in_osservazione: "In osservazione",
-  confermato: "Confermato",
+  confermato: "Lasciato così",
 };
 
 export const STATI_ALERT_DEFAULT: StatoAlertFido[] = ["aperto", "richiesta_inserita"];
