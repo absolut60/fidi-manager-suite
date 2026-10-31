@@ -95,3 +95,12 @@ test('soglia non positiva o non numerica rifiutata', () => {
   expect(() => fidoPropostoPerRichiesta(60000,20000,30000,0)).toThrow();
   expect(() => fidoPropostoPerRichiesta(60000,20000,30000,NaN)).toThrow();
 });
+
+describe("PROFILO_FIDO_LABEL profili inattivi (FM55)", () => {
+  it("etichette dei nuovi profili", async () => {
+    const { PROFILO_FIDO_LABEL } = await import("@/lib/fido-teorico");
+    expect(PROFILO_FIDO_LABEL.perso).toBe("Cliente perso");
+    expect(PROFILO_FIDO_LABEL.mai_acquistato).toBe("Mai acquistato");
+    expect(PROFILO_FIDO_LABEL.nuovo_in_attesa).toBe("Nuovo, in attesa del primo acquisto");
+  });
+});
