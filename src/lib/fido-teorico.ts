@@ -231,6 +231,13 @@ export const PROFILO_FIDO_LABEL: Record<string, string> = {
   nuovo_in_attesa: "Nuovo, in attesa del primo acquisto",
 };
 
+/** Motivazione automatica della proposta fido per profilo senza acquisti (fonte unica). */
+export const MOTIVAZIONE_PROFILO_FIDO: Record<string, string> = {
+  perso: "Cliente perso: nessun acquisto da oltre 18 mesi",
+  mai_acquistato: "Cliente mai acquistato: fido non utilizzato",
+  dormiente: "Cliente dormiente: fido ridotto al minimo di 500 €",
+};
+
 const numOrNull = (v: unknown) => (v === null || v === undefined ? null : Number(v));
 
 /** Riga canonica del cliente, adattata al contratto del riquadro dettagliato. */
