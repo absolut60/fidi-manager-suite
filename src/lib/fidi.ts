@@ -38,6 +38,33 @@ export function importoRichiestaValido(tipo: string, importo: number | null | un
   return importo === 0 && (tipo === "diminuzione" || tipo === "rinnovo");
 }
 
+/**
+ * FM55 — Extra rispetto al fido teorico mostrato alla richiesta (fonte unica).
+ * max(importo − teorico, 0); 0 se il teorico non è disponibile.
+ * Gemello SQL: CHECK richieste_fido_motivo_extra_teorico_check.
+ */
+export function extraFidoTeorico(
+  importo: number | string | null | undefined,
+  teorico: number | string | null | undefined,
+): number {
+  if (teorico === null || teorico === undefined || teorico === "") return 0;
+  const i = Number(importo);
+  const t = Number(teorico);
+  if (!Number.isFinite(i) || !Number.isFinite(t)) return 0;
+  return Math.max(i - t, 0);
+}
+
+/** Il motivo dell'extra è obbligatorio quando l'importo supera il teorico. */
+export function motivoExtraObbligatorio(
+  importo: number | string | null | undefined,
+  teorico: number | string | null | undefined,
+): boolean {
+  return extraFidoTeorico(importo, teorico) > 0;
+}
+
+/** Scelte rapide per il motivo dell'extra (riempiono il testo, che resta modificabile). */
+export const MOTIVI_EXTRA_RAPIDI = ["Cantiere nuovo", "Ordine particolare", "Potenzialità del mese"] as const;
+
 /** Etichetta del tipo richiesta che distingue i casi a importo 0. */
 export function etichettaTipoRichiesta(tipo: string, importo: number | null | undefined): string {
   if (importo === 0 && tipo === "diminuzione") return "Azzeramento fido";
