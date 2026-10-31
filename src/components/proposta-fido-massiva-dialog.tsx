@@ -23,6 +23,7 @@ import {
   REGOLA_LABEL, MOTIVO_NON_PROPONIBILE,
 } from "@/lib/fido-teorico";
 import { riepilogoProposte } from "@/lib/proposta-fido-riepilogo";
+import { motivazioneEffettiva } from "@/lib/motivazione-proposta";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -524,6 +525,10 @@ export function ProposteFidoMassivoDialog({
   );
   const renderMotivazione = (r: RigaProposta) => {
     const hasOverride = r.motivazione !== undefined;
+    // FM55: la motivazione automatica dal profilo vale solo con l'importo iniziale;
+    // con importo modificato l'effettiva è la personalizzata se c'è, altrimenti la generale.
+    const usaAuto = !!r.motivazione_auto && Number(r.fido_proposto) === Number(r.fido_iniziale);
+    const effettiva = motivazioneEffettiva(r, motivazioneGenerale.trim() === "" ? null : motivazioneGenerale);
     return (
       <Popover>
         <PopoverTrigger asChild>
@@ -531,7 +536,7 @@ export function ProposteFidoMassivoDialog({
             variant="ghost"
             size="icon"
             className={hasOverride ? "text-primary" : ""}
-            title={hasOverride ? "Motivazione personalizzata" : r.motivazione_auto ? "Motivazione automatica dal profilo" : "Eredita motivazione generale"}
+            title={hasOverride ? "Motivazione personalizzata" : usaAuto ? "Motivazione automatica dal profilo" : "Eredita motivazione generale"}
           >
             <MessageSquare className="size-4" />
           </Button>
@@ -540,14 +545,14 @@ export function ProposteFidoMassivoDialog({
           <div className="space-y-2">
             <Label className="text-xs">Motivazione per questo cliente</Label>
             <Textarea
-              value={hasOverride ? r.motivazione ?? "" : (r.motivazione_auto ?? motivazioneGenerale)}
+              value={hasOverride ? r.motivazione ?? "" : (effettiva ?? "")}
               onChange={(e) => aggiornaMotivazioneRiga(r.cliente_id, e.target.value)}
               placeholder="Lascia vuoto per ereditare quella generale"
               className="min-h-20"
             />
             <div className="flex justify-between items-center">
               <span className="text-xs text-muted-foreground">
-                {hasOverride ? "Personalizzata" : r.motivazione_auto ? "Automatica dal profilo" : "Eredita generale"}
+                {hasOverride ? "Personalizzata" : usaAuto ? "Automatica dal profilo" : "Eredita generale"}
               </span>
               {hasOverride && (
                 <Button variant="ghost" size="sm" onClick={() => aggiornaMotivazioneRiga(r.cliente_id, undefined)}>
