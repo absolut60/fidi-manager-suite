@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { esitoRichiestaAlert, statoEffettivoAlert, alertSelezionabile, etichettaDecisioneAlert, type RichiestaClienteAlert } from "@/lib/alert-fidi";
+import { formatEuro } from "@/lib/fidi";
 
 const alert = { tipo: "consumo" as const, aperto_il: "2026-10-20T08:00:00Z", richiesta_id: null };
 const ric = (x: Partial<RichiestaClienteAlert>): RichiestaClienteAlert => ({
@@ -25,7 +26,7 @@ describe("stato richiesta degli Alert fidi", () => {
   test("processata ma fido Gamma uguale (rinnovo) → resta visibile con la decisione", () => {
     const e = esitoRichiestaAlert({ ...alert, fido_gamma_apertura: 3000 }, [proc], 3000);
     expect(e.tipo).toBe("decisa");
-    if (e.tipo === "decisa") expect(etichettaDecisioneAlert(e.richiesta)).toBe("Decisione presa il 31/10: rinnovo a 3000 €".replace("3000", "3.000"));
+    if (e.tipo === "decisa") expect(etichettaDecisioneAlert(e.richiesta)).toBe(`Decisione presa il 31/10: rinnovo a ${formatEuro(3000)}`);
   });
   test("decisione con extra protetto → non selezionabile", () => {
     expect(alertSelezionabile({ stato: "aperto", richiesta_attiva: null, decisione_protetta: true })).toBe(false);
