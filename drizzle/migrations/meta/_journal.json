@@ -771,6 +771,13 @@
       "when": 1793457446642,
       "tag": "0109_fm55_extra_fido_protetti_e_nuovi_solo_nuovo_fido",
       "breakpoints": true
+    },
+    {
+      "idx": 110,
+      "version": "7",
+      "when": 1793458195712,
+      "tag": "0110_fm55_alert_fidi_stato_richiesta_dinamico",
+      "breakpoints": true
     }
   ]
 }
