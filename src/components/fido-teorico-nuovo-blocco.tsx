@@ -1,12 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatEuro } from "@/lib/fidi";
 import {
   PROFILO_FIDO_LABEL,
   fetchFidoTeoricoNuovo,
-  fetchUtentiAnteprimaFidoNuovo,
 } from "@/lib/fido-teorico";
 
 function formatDataOra(iso: string | null): string {
@@ -16,22 +14,15 @@ function formatDataOra(iso: string | null): string {
   });
 }
 
-/** FM55 — riquadro "Fido teorico nuovo", visibile solo agli utenti in anteprima. */
+/** FM55 — riquadro canonico del fido teorico, visibile a tutti i clienti autorizzati. */
 export function FidoTeoricoNuovoBlocco({ clienteId }: { clienteId: string }) {
-  const { user } = useAuth();
-  const { data: abilitati } = useQuery({
-    queryKey: ["fido-v2-anteprima-utenti"],
-    queryFn: fetchUtentiAnteprimaFidoNuovo,
-    staleTime: 5 * 60_000,
-  });
-  const abilitato = !!user && (abilitati ?? []).includes(user.id);
   const { data: r } = useQuery({
-    queryKey: ["fido-teorico-nuovo", clienteId],
+    queryKey: ["fido-teorico-dettaglio", clienteId],
     queryFn: () => fetchFidoTeoricoNuovo(clienteId),
-    enabled: abilitato && !!clienteId,
+    enabled: !!clienteId,
   });
 
-  if (!abilitato || !r) return null;
+  if (!r) return null;
 
   const calcolo = r.regola === "calcolo";
   const profilo = r.profilo ? PROFILO_FIDO_LABEL[r.profilo] ?? r.profilo : null;
@@ -46,8 +37,7 @@ export function FidoTeoricoNuovoBlocco({ clienteId }: { clienteId: string }) {
   return (
     <Card className="p-4 sm:p-5 space-y-4 min-w-0">
       <div className="flex flex-wrap items-center gap-2">
-        <h3 className="text-base font-semibold">Fido teorico nuovo</h3>
-        <Badge variant="outline">Anteprima</Badge>
+        <h3 className="text-base font-semibold">Fido teorico</h3>
       </div>
 
       {calcolo && (

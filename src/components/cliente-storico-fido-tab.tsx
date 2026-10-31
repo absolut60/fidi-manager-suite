@@ -5,7 +5,6 @@ import { Plus, FileText, Pencil, Ban, Send, History, Wallet } from "lucide-react
 import { supabase } from "@/integrations/supabase/client";
 import { CambioCondizionePagamento } from "@/components/cambio-condizione-pagamento";
 import { mapRichiestaFido } from "@/lib/richieste-fido-data";
-import { FidoTeoricoBlocco } from "@/components/fido-teorico-blocco";
 import { FidoTeoricoNuovoBlocco } from "@/components/fido-teorico-nuovo-blocco";
 import { RichiestaFormDialog, ModificaRichiestaFidoDialog } from "@/components/richiesta-fido-form-dialog";
 import { Button } from "@/components/ui/button";
@@ -99,7 +98,6 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
 
       <FidoTeoricoNuovoBlocco clienteId={clienteId} />
 
-      <FidoTeoricoBlocco clienteId={clienteId} variant="card" />
 
 
 

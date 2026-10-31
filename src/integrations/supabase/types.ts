@@ -2802,11 +2802,18 @@ export type Database = {
       }
       fido_teorico_cliente: {
         Row: {
+          acquisto_mensile: number | null
+          acquisto_storico: number | null
+          acquisto_tendenza: number | null
+          base: number | null
           calcolato_at: string
+          ciclo_gg: number | null
           cliente_id: string
           coefficiente: number | null
+          consumo_perc: number | null
           ddt_da_fatturare: number | null
           esposizione_corrente: number | null
+          fabbisogno: number | null
           fatturato_rolling: number | null
           fido_attuale: number | null
           fido_base: number | null
@@ -2817,8 +2824,11 @@ export type Database = {
           giorni: number | null
           giorni_mancanti: boolean | null
           giorni_oltre_accordo: number | null
+          mesi_stagionali: number | null
           nota_proposta: string | null
+          ordini_aperti: number | null
           pavimento_applicato: boolean | null
+          profilo: string | null
           profilo_pagamento: string | null
           regola_applicata: string | null
           richiede_verifica: boolean | null
@@ -2828,13 +2838,21 @@ export type Database = {
           semaforo_motivo: string | null
           semaforo_numero: number | null
           semaforo_stadio: string | null
+          spiegazione: string | null
         }
         Insert: {
+          acquisto_mensile?: number | null
+          acquisto_storico?: number | null
+          acquisto_tendenza?: number | null
+          base?: number | null
           calcolato_at?: string
+          ciclo_gg?: number | null
           cliente_id: string
           coefficiente?: number | null
+          consumo_perc?: number | null
           ddt_da_fatturare?: number | null
           esposizione_corrente?: number | null
+          fabbisogno?: number | null
           fatturato_rolling?: number | null
           fido_attuale?: number | null
           fido_base?: number | null
@@ -2845,8 +2863,11 @@ export type Database = {
           giorni?: number | null
           giorni_mancanti?: boolean | null
           giorni_oltre_accordo?: number | null
+          mesi_stagionali?: number | null
           nota_proposta?: string | null
+          ordini_aperti?: number | null
           pavimento_applicato?: boolean | null
+          profilo?: string | null
           profilo_pagamento?: string | null
           regola_applicata?: string | null
           richiede_verifica?: boolean | null
@@ -2856,13 +2877,21 @@ export type Database = {
           semaforo_motivo?: string | null
           semaforo_numero?: number | null
           semaforo_stadio?: string | null
+          spiegazione?: string | null
         }
         Update: {
+          acquisto_mensile?: number | null
+          acquisto_storico?: number | null
+          acquisto_tendenza?: number | null
+          base?: number | null
           calcolato_at?: string
+          ciclo_gg?: number | null
           cliente_id?: string
           coefficiente?: number | null
+          consumo_perc?: number | null
           ddt_da_fatturare?: number | null
           esposizione_corrente?: number | null
+          fabbisogno?: number | null
           fatturato_rolling?: number | null
           fido_attuale?: number | null
           fido_base?: number | null
@@ -2873,8 +2902,11 @@ export type Database = {
           giorni?: number | null
           giorni_mancanti?: boolean | null
           giorni_oltre_accordo?: number | null
+          mesi_stagionali?: number | null
           nota_proposta?: string | null
+          ordini_aperti?: number | null
           pavimento_applicato?: boolean | null
+          profilo?: string | null
           profilo_pagamento?: string | null
           regola_applicata?: string | null
           richiede_verifica?: boolean | null
@@ -2884,6 +2916,7 @@ export type Database = {
           semaforo_motivo?: string | null
           semaforo_numero?: number | null
           semaforo_stadio?: string | null
+          spiegazione?: string | null
         }
         Relationships: [
           {

@@ -1,5 +1,13 @@
 # Roadmap
 
+## FM55 — Fetta 5a: nuovo calcolo per tutti
+- [x] Baseline importi, regole e visibilità: 12900 righe, stesso MD5 dopo il cambio
+- [x] Colonne additive e pubblicazione v2 nel blocco di ricalcolo (0105)
+- [x] Fonte unica nelle schermate e richieste; export coerente, senza pavimento
+- [x] Ricalcolo completo diretto DB (13,042 s); mapping integrale e visibilità verificati, test SQL e 5 test applicativi
+- [ ] Verifica autenticata e visuale 320–1920: sessione del richiedente non ottenibile; accesso esplicito non autorizzabile in questo contesto
+- [ ] Controllo tipi dedicato: non eseguito manualmente; compilazione automatica OK
+
 ## FM55 — Fetta 4c: notifiche Alert fidi spente
 - [x] Funzione protetta e passo del ricalcolo senza modificare calcoli (0104)
 - [x] Prove SQL annullate: 356 avvisi / 17 gruppi / 15 utenti; livelli, doppioni e interruttore verificati
