@@ -1,5 +1,10 @@
 # Roadmap
 
+## FM55 — Doppioni Gamma su tutto il file
+- [ ] Unico parser condiviso e selezione deterministica prima dei chunk
+- [ ] Anomalie per ogni scarto e messaggio nel log; rete di sicurezza server invariata
+- [ ] Rianalisi sola lettura Excel 31/10 11:13 e test; nessun import o modifica dati
+
 ## FM55 — Import/Export: diagnosi doppioni e schermata
 - [x] Diagnosi sola lettura: staging già eliminato; originali confrontati, 6 coppie comuni, una tra chunk diversi (cliente 5333)
 - [x] File e avvio nascosti dopo la partenza degli import A/B/C; nuovo caricamento torna all'area iniziale
