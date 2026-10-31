@@ -22,7 +22,7 @@ import { segnalazioniAnomalia, anomaliaRossa } from "@/lib/fido-segnalazioni";
 import { Switch } from "@/components/ui/switch";
 import { CampoExtraTeorico } from "@/components/extra-fido-teorico";
 import {
-  fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchExtraFidoProtetti, fetchSogliaConsumoFido, fidoPerTornareSottoSoglia, notaExtraProtetto, protezioneAttiva, MOTIVAZIONE_PROFILO_FIDO, isProponibile,
+  fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchExtraFidoProtetti, fetchSogliaConsumoFido, fidoPerTornareSottoSoglia, notaExtraProtetto, MOTIVAZIONE_PROFILO_FIDO, isProponibile,
   REGOLA_LABEL, MOTIVO_NON_PROPONIBILE, MOTIVO_NON_PROPONIBILE_BREVE,
 } from "@/lib/fido-teorico";
 import { riepilogoProposte } from "@/lib/proposta-fido-riepilogo";
@@ -179,7 +179,7 @@ export function ProposteFidoMassivoDialog({
   onRemove: (id: string) => void;
   /** Alert fidi: per questi clienti teorico di riferimento e importo iniziale = questo valore. */
   importiDaAlert?: Map<string, number>;
-  /** Apertura da azione su un singolo cliente: questi clienti si vedono sempre, anche se rinnovi. */
+  /** Clienti scelti da Alert fidi: sempre visibili anche se rinnovi, salvo richiesta già in corso. */
   mostraSempre?: string[];
 }) {
   const mostraSempreSet = useMemo(() => new Set(mostraSempre ?? []), [mostraSempre]);

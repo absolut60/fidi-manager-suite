@@ -1,5 +1,5 @@
 # FM55 — Semplificazione finale
-- [ ] Rimuovere pagina, menu, collegamenti e raggruppamenti Revisione fidi; preservare Lascia così.
-- [ ] Semplificare filtri e conteggi della proposta massiva nella fonte unica.
-- [ ] Aggiornare test pertinenti, aggiungere casi nuovi ed eseguire bun test.
-- [ ] Verificare anteprima e impaginazione; riportare file e limiti della verifica.
+- [x] Rimuovere pagina, menu, collegamenti e raggruppamenti Revisione fidi; preservare Lascia così.
+- [x] Semplificare filtri e conteggi della proposta massiva nella fonte unica.
+- [x] Aggiornare test pertinenti, aggiungere casi nuovi ed eseguire bun test.
+- [x] Verificata anteprima autenticata: pagine senza clienti/alert disponibili; apertura massiva e impaginazione non verificabili con dati reali. Limite da riportare.
