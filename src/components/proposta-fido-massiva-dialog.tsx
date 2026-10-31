@@ -230,6 +230,10 @@ export function ProposteFidoMassivoDialog({
     staleTime: 5 * 60_000,
     queryFn: () => fetchExtraFidoProtetti(ids),
   });
+  const protettiValidi = useMemo(
+    () => ({ has: (id: string) => protezioneAttiva(protettiMap?.get(id)) }),
+    [protettiMap],
+  );
   const { data: inCorsoMap } = useQuery({
     queryKey: ["richieste-in-corso-massivo", [...ids].sort().join(",")],
     enabled: open && ids.length > 0,
