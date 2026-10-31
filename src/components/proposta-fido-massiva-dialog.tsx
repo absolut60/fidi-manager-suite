@@ -695,7 +695,7 @@ export function ProposteFidoMassivoDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[96vw] max-w-7xl h-[90dvh] max-h-[90dvh] overflow-hidden flex flex-col gap-0 p-0">
+      <DialogContent className="w-[96vw] max-w-[1600px] sm:max-w-[1600px] h-[90dvh] max-h-[90dvh] overflow-hidden flex flex-col gap-0 p-0">
         <div className="shrink-0 min-w-0 border-b px-3 py-2 sm:px-4 sm:py-2">
         <DialogHeader className="pr-8 text-left">
           <DialogTitle className="break-words">Proposta fido massiva — {righeVisibiliIncluse.length} clienti</DialogTitle>
@@ -841,9 +841,9 @@ export function ProposteFidoMassivoDialog({
                 }
                 campi={[
                   { etichetta: "Fido attuale", valore: fmtEuro(r.fido_attuale) },
-                  { etichetta: "Esposizione", valore: fmtEuro(r.esposizione) },
+                  { etichetta: "Ci deve", valore: fmtEuro(r.esposizione) },
                   {
-                    etichetta: "Scostamento",
+                    etichetta: "Differenza",
                     valore: (
                       <span className={`tabular-nums ${scost > 0 ? "text-success" : scost < 0 ? "text-warning" : "text-muted-foreground"}`}>
                         {r.proponibile ? `${scost > 0 ? "+" : ""}${fmtEuro(scost)}` : "—"}
@@ -876,17 +876,17 @@ export function ProposteFidoMassivoDialog({
         </div>
 
         <div className="hidden xl:block min-w-0 [&>div]:overflow-x-visible">
-          <Table className="table-fixed w-full text-xs [&_th]:px-1 [&_td]:px-1 [&_th]:whitespace-normal [&_td]:whitespace-normal">
+          <Table className="table-fixed w-full text-xs [&_th]:px-1 [&_td]:px-1 [&_th]:whitespace-nowrap [&_td]:whitespace-normal">
             <colgroup>
-              <col className="w-8" /><col /><col className="w-16" /><col className="w-16" />
-              <col className="w-64" /><col className="w-20" /><col className="w-52" />
-              <col className="w-36" /><col className="w-8" /><col className="w-8" />
+              <col className="w-8" /><col /><col className="w-24" /><col className="w-24" />
+              <col className="w-56" /><col className="w-24" /><col className="w-44" />
+              <col className="w-32" /><col className="w-14" /><col className="w-10" />
             </colgroup>
             <TableHeader><TableRow>
               <TableHead /><TableHead>Cliente</TableHead><TableHead className="text-right">Fido attuale</TableHead>
-              <TableHead className="text-right">Esposizione</TableHead><TableHead className="text-right">Fido proposto</TableHead>
-              <TableHead className="text-right">Scostamento</TableHead><TableHead>Condizione di pagamento</TableHead>
-              <TableHead>Tipo</TableHead><TableHead>Mot.</TableHead><TableHead />
+              <TableHead className="text-right">Ci deve</TableHead><TableHead className="text-right">Fido proposto</TableHead>
+              <TableHead className="text-right">Differenza</TableHead><TableHead>Condizione di pagamento</TableHead>
+              <TableHead>Tipo</TableHead><TableHead>Motivo</TableHead><TableHead />
             </TableRow></TableHeader>
             <TableBody>
               {righeVisibili.map((r) => {

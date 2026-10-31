@@ -36,12 +36,12 @@ describe("segnalazioni fido", () => {
   it("raggruppa con 2 codici", () => {
     const l = raggruppaSegnalazioni({ ...an, segnalazioni: ["oltre_tetto", "impegni_sopra_base"] });
     expect(l).toHaveLength(1);
-    expect(l[0].testo).toBe(`Impegni ${formatEuro(452888)} contro una base di ${formatEuro(260000)}; oltre il tetto di ${formatEuro(390000)} — da autorizzare`);
+    expect(l[0].testo).toBe(`Ci deve ${formatEuro(452888 - 35428.7)} e ha ordini clienti aperti per ${formatEuro(35428.7)}, contro un fido giusto di ${formatEuro(260000)}; supera i ${formatEuro(390000)} che il sistema propone da solo — da autorizzare`);
   });
   it("raggruppa con 3 codici (A.N. COSTRUZIONI) e lascia gli altri separati", () => {
     const l = raggruppaSegnalazioni({ ...an, segnalazioni: ["scaduto_da_incassare", "impegni_sopra_base", "ordine_fuori_giro", "oltre_tetto"] });
     expect(l.map((s) => s.etichetta)).toEqual(["Scaduto da incassare", "Acquisti sopra il previsto"]);
-    expect(l[1].testo).toBe(`Impegni ${formatEuro(452888)} contro una base di ${formatEuro(260000)}; ordini oltre un mese di acquisti: ${formatEuro(94690)}; oltre il tetto di ${formatEuro(390000)} — da autorizzare`);
+    expect(l[1].testo).toBe(`Ci deve ${formatEuro(452888 - 35428.7)} e ha ordini clienti aperti per ${formatEuro(35428.7)}, contro un fido giusto di ${formatEuro(260000)}; ordini oltre un mese di acquisti: ${formatEuro(94690)}; supera i ${formatEuro(390000)} che il sistema propone da solo — da autorizzare`);
     expect(etichetteSegnalazioni(["oltre_tetto", "scaduto_da_incassare", "impegni_sopra_base"])).toEqual(["Scaduto da incassare", "Acquisti sopra il previsto"]);
   });
 });

@@ -841,6 +841,13 @@
       "when": 1793477296394,
       "tag": "0119_fm55_revisione_fidi_lasciati",
       "breakpoints": true
+    },
+    {
+      "idx": 120,
+      "version": "7",
+      "when": 1793478746038,
+      "tag": "0120_fm55_spiegazione_linguaggio_semplice",
+      "breakpoints": true
     }
   ]
 }
