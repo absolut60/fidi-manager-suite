@@ -67,6 +67,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { salvaWorkbook } from "@/lib/salva-workbook";
 import { salvaFile } from "@/lib/salva-file";
+import { parseOfficialScadenziarioSheet } from "@/lib/scadenziario-parser";
 
 export const Route = createFileRoute("/_app/import-export")({
   head: () => ({ meta: [
@@ -1212,55 +1213,6 @@ const SCAD_HEADERS: Record<string, string> = {
   "in legale": "in_legale",
 };
 
-type ScadRow = {
-  idx: number;
-  codice_gestionale: string;
-  ragione_sociale: string;
-  payload: Record<string, unknown>;
-};
-
-const SCAD_OFFICIAL_MAP: Record<string, string> = {
-  "cod cli": "codice_gestionale",
-  cod_cli: "codice_gestionale",
-  codcli: "codice_gestionale",
-  "ragione sociale": "__ragsoc",
-  // Nuovo tracciato MADE_VISTASCADENZE
-  keydocumento: "key_documento",
-  keytipoeffetto: "key_tipo_effetto",
-  "data pagamento effettiva": "data_pagamento_effettiva",
-  "importo pagato": "importo_pagato",
-  "importo residuo": "importo_residuo",
-  "importo effetto originario": "importo_effetto_orig",
-  "importo effetto orig": "importo_effetto_orig",
-  "codice pagamento scad": "codice_pagamento",
-  "descrizione pagamento": "descrizione_pagamento",
-  "numero documento origine": "numero_documento",
-  "data documento": "data_documento",
-  "anno partita": "anno_partita",
-  "tipologia scadenza": "tipologia_scadenza",
-  "data scadenza": "data_scadenza",
-  "stato contabile": "stato_contabile",
-  "importo scadenza": "importo_scadenza",
-  "importo documento": "importo_documento",
-  "giorni ritardo": "giorni_ritardo",
-  "dilazione effettiva": "dilazione_effettiva",
-  "importo ritardo": "importo_ritardo",
-  "data pagamento": "data_pagamento",
-  "importo originario effetto": "importo_originario",
-  "importo scadenza netto prev": "importo_netto_prev",
-  "tempi scadenza": "tempi_scadenza",
-  "__tempi scadenza": "tempi_scadenza_key",
-};
-
-
-// Distingue "Tempi Scadenza" da "_Tempi Scadenza" (entrambi collassano dopo normalize()).
-function normalizeOfficialHeader(raw: unknown): string {
-  const s = String(raw ?? "");
-  const n = normalize(s);
-  if (n === "tempi scadenza" && s.trim().startsWith("_")) return "__tempi scadenza";
-  return n;
-}
-
 function excelDateToISO(v: unknown): string | null {
   if (v == null || v === "") return null;
   if (typeof v === "number") {
@@ -1288,94 +1240,6 @@ function excelDateToISO(v: unknown): string | null {
   const d = new Date(s);
   if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
   return null;
-}
-
-function parseOfficialScadenziarioSheet(sheet: XLSX.WorkSheet): {
-  rows: ScadRow[];
-  missing: number[];
-  totRead: number;
-} {
-  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
-    header: 1,
-    defval: "",
-    blankrows: true,
-  });
-  if (matrix.length < 2) return { rows: [], missing: [], totRead: 0 };
-  // Ricerca dinamica della riga header: scorri le prime ~15 righe e trova quella
-  // che contiene la colonna COD_CLI (normalizzata in "codice_gestionale").
-  const HEADER_SCAN_LIMIT = Math.min(15, matrix.length);
-  let headerRow = -1;
-  let headers: string[] = [];
-  for (let r = 0; r < HEADER_SCAN_LIMIT; r++) {
-    const candidate = (matrix[r] ?? []).map((c) => normalizeOfficialHeader(c));
-    if (candidate.some((h) => SCAD_OFFICIAL_MAP[h] === "codice_gestionale")) {
-      headerRow = r;
-      headers = candidate;
-      break;
-    }
-  }
-  if (headerRow < 0) {
-    throw new Error(
-      "Intestazione COD_CLI non trovata: verifica che il foglio SCADENZIARIO abbia le intestazioni",
-    );
-  }
-  const numFields = new Set([
-    "importo_scadenza",
-    "importo_documento",
-    "importo_originario",
-    "importo_netto_prev",
-    "importo_ritardo",
-    "importo_pagato",
-    "importo_residuo",
-    "importo_effetto_orig",
-  ]);
-  const intFields = new Set([
-    "giorni_ritardo",
-    "dilazione_effettiva",
-    "anno_partita",
-    "key_tipo_effetto",
-  ]);
-  const dateFields = new Set([
-    "data_documento",
-    "data_scadenza",
-    "data_pagamento",
-    "data_pagamento_effettiva",
-  ]);
-
-  const rows: ScadRow[] = [];
-  const missing: number[] = [];
-  let totRead = 0;
-  for (let i = headerRow + 1; i < matrix.length; i++) {
-    const row = matrix[i] ?? [];
-    if (!row.some((c) => String(c ?? "").trim() !== "")) continue;
-    totRead++;
-    const mapped: Record<string, unknown> = {};
-    let ragSoc = "";
-    headers.forEach((h, j) => {
-      const field = SCAD_OFFICIAL_MAP[h];
-      if (!field) return;
-      if (field === "__ragsoc") {
-        ragSoc = String(row[j] ?? "").trim();
-        return;
-      }
-      mapped[field] = row[j];
-    });
-    const codice = toStr(mapped.codice_gestionale)?.replace(/\.0$/, "");
-    if (!codice) {
-      missing.push(i + 1);
-      continue;
-    }
-    const payload: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(mapped)) {
-      if (k === "codice_gestionale") continue;
-      if (numFields.has(k)) payload[k] = toNum(v);
-      else if (intFields.has(k)) payload[k] = toInt(v);
-      else if (dateFields.has(k)) payload[k] = excelDateToISO(v);
-      else payload[k] = toStr(v);
-    }
-    rows.push({ idx: i + 1, codice_gestionale: codice, ragione_sociale: ragSoc, payload });
-  }
-  return { rows, missing, totRead };
 }
 
 type ScadPhase = "reading" | "ready" | "uploading" | "processing" | "done" | "done-warn" | "error";
@@ -1752,11 +1616,7 @@ function ScadenziarioImportCard() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [parsed, setParsed] = useState<{
-    rows: ScadRow[];
-    missing: number[];
-    totRead: number;
-  } | null>(null);
+  const [parsed, setParsed] = useState<ReturnType<typeof parseOfficialScadenziarioSheet> | null>(null);
   const [parsing, setParsing] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   // Il file MADE_VISTASCADENZE contiene anche il foglio BLOCCO_FIDO_ASSICURAZIONE
@@ -1842,6 +1702,8 @@ function ScadenziarioImportCard() {
       scadenziarioStaging: {
         rows: parsed.rows as unknown as Array<Record<string, unknown>>,
         missing: parsed.missing,
+        doppioni: parsed.doppioni,
+        rowErrors: parsed.rowErrors,
         chunkSize: 1000,
       },
     });
