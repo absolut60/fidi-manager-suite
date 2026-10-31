@@ -29,7 +29,7 @@ import { PannelloRischioCliente } from "@/components/pannello-rischio-cliente";
 import { ModificaRichiestaFidoDialog, useAnnullaRichiestaFido } from "@/components/richiesta-fido-form-dialog";
 import { semaforoUI, semaforoDaCliente } from "@/lib/semaforo-ui";
 import { fetchFidoTeorico } from "@/lib/fido-teorico";
-import { SEGNALAZIONI_FIDO, daAutorizzareRichiesta } from "@/lib/fido-segnalazioni";
+import { etichetteSegnalazioni, daAutorizzareRichiesta } from "@/lib/fido-segnalazioni";
 import { SegnalazioniFido } from "@/components/segnalazioni-fido";
 
 export const Route = createFileRoute("/_app/richieste/$richiestaId")({
@@ -268,7 +268,7 @@ function RichiestaDetail() {
           <p className="font-semibold">Da autorizzare</p>
           <p>
             Richiesta sopra il fido teorico di {formatEuro(vistaR?.teoricoRiferimento ?? 0)} con anomalie:{" "}
-            {daAutorizzare.anomalie.map((c) => SEGNALAZIONI_FIDO[c]?.etichetta ?? c).join(", ")}.
+            {etichetteSegnalazioni(daAutorizzare.anomalie).join(", ")}.
             {" "}Motivo dell'extra: {vistaR?.motivoExtra?.trim() || "non indicato"}
           </p>
         </div>

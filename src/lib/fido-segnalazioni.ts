@@ -61,12 +61,12 @@ export const SEGNALAZIONI_FIDO: Record<string, DefinizioneSegnalazione> = {
       `Impegni oltre il tetto: impegni ${formatEuro(r.fabbisogno ?? 0)}, tetto ${formatEuro(r.tetto ?? 0)} (1,5 × base) — da autorizzare`,
   },
   uso_pieno: {
-    etichetta: "Uso pieno del fido",
+    etichetta: "Fido in esaurimento",
     gravita: "info",
     testo: (r) => {
       const g = r.fido_attuale ?? 0;
       const perc = g > 0 ? Math.round(((r.fabbisogno ?? 0) / g) * 100) : 0;
-      return `Uso pieno del fido: ${perc.toLocaleString("it-IT")}% del fido Gamma`;
+      return `Usa il ${perc.toLocaleString("it-IT")}% del fido`;
     },
   },
 };
@@ -81,6 +81,44 @@ export function segnalazioniRiga(
     const d = SEGNALAZIONI_FIDO[c];
     return { codice: c, etichetta: d.etichetta, gravita: d.gravita, testo: d.testo(r) };
   });
+}
+
+/** Codici mostrati insieme come un'unica etichetta "Acquisti sopra il previsto" (solo presentazione). */
+export const CODICI_ACQUISTI_SOPRA: readonly string[] = ["impegni_sopra_base", "ordine_fuori_giro", "oltre_tetto"];
+const ETICHETTA_ACQUISTI_SOPRA = "Acquisti sopra il previsto";
+
+function etichettaGruppo(codice: string): string {
+  return CODICI_ACQUISTI_SOPRA.includes(codice) ? ETICHETTA_ACQUISTI_SOPRA : (SEGNALAZIONI_FIDO[codice]?.etichetta ?? codice);
+}
+
+/**
+ * Segnalazioni da mostrare: impegni_sopra_base / ordine_fuori_giro / oltre_tetto diventano
+ * UNA voce "Acquisti sopra il previsto" con le sole parti presenti. Fonte unica per ogni pagina.
+ */
+export function raggruppaSegnalazioni(
+  r: RigaSegnalazione & { segnalazioni: string[] },
+): { codice: string; etichetta: string; gravita: GravitaSegnalazione; testo: string }[] {
+  const out: { codice: string; etichetta: string; gravita: GravitaSegnalazione; testo: string }[] = [];
+  const parti: string[] = [];
+  for (const s of segnalazioniRiga(r)) {
+    if (!CODICI_ACQUISTI_SOPRA.includes(s.codice)) { out.push(s); continue; }
+    if (parti.length === 0) out.push({ codice: "acquisti_sopra_previsto", etichetta: ETICHETTA_ACQUISTI_SOPRA, gravita: "arancione", testo: "" });
+    if (s.codice === "impegni_sopra_base") parti.push(`Impegni ${formatEuro(r.fabbisogno ?? 0)} contro una base di ${formatEuro(r.base ?? 0)}`);
+    else if (s.codice === "ordine_fuori_giro") parti.push(`ordini oltre un mese di acquisti: ${formatEuro(r.ordini_fuori ?? 0)}`);
+    else parti.push(`oltre il tetto di ${formatEuro(r.tetto ?? 0)}`);
+  }
+  const g = out.find((s) => s.codice === "acquisti_sopra_previsto");
+  if (g) {
+    const t = parti.join("; ");
+    g.testo = `${t.charAt(0).toUpperCase()}${t.slice(1)} — da autorizzare`;
+  }
+  return out;
+}
+
+/** Etichette delle anomalie senza duplicati (es. riquadro "Da autorizzare"). */
+export function etichetteSegnalazioni(codici: readonly string[]): string[] {
+  const ord = ORDINE.filter((c) => codici.includes(c));
+  return [...new Set(ord.map(etichettaGruppo))];
 }
 
 /** FM55 3C: segnalazioni arancioni/rosse = anomalie da autorizzare sopra il teorico. */
