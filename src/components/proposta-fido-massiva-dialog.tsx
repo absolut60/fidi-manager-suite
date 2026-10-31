@@ -21,6 +21,7 @@ import {
   fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, isProponibile,
   REGOLA_LABEL, MOTIVO_NON_PROPONIBILE,
 } from "@/lib/fido-teorico";
+import { riepilogoProposte } from "@/lib/proposta-fido-riepilogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -351,7 +352,9 @@ export function ProposteFidoMassivoDialog({
 
   const righeVisibiliIncluse = righeVisibili.filter((r) => r.proponibile && r.incluso);
   const righeEscluse = righe.filter((r) => !r.proponibile);
-  const totale = righeVisibiliIncluse.reduce((acc, r) => acc + (Number(r.fido_proposto) || 0), 0);
+  // Riepilogo del piede (fonte unica: src/lib/proposta-fido-riepilogo.ts).
+  const riepilogo = riepilogoProposte(righeVisibiliIncluse);
+  const totale = riepilogo.totaleProposto;
   const righeConExtra = righeVisibiliIncluse.filter((r) => motivoExtraObbligatorio(r.fido_proposto, r.fido_teorico));
   const totaleExtra = righeConExtra.reduce((acc, r) => acc + extraFidoTeorico(r.fido_proposto, r.fido_teorico), 0);
   const tipoCount = (t: TipoProposta) => righe.filter((r) => r.tipo === t).length;
