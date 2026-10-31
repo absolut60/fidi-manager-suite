@@ -56,6 +56,7 @@ export const REGOLA_LABEL: Record<string, string> = {
   esclusa_gruppo: "Società del gruppo",
   cliente_bloccato: "Cliente bloccato",
   gestione_legale: "In gestione legale",
+  scaduto_non_incassato: "Scaduto non incassato",
   condizione_mancante: "Condizione di pagamento mancante",
   nessun_fatturato: "Nessun fatturato",
   minimo_500: "Minimo 500",
@@ -72,6 +73,7 @@ export const REGOLA_DESCRIZIONE: Record<string, string> = {
   esclusa_gruppo: "Società del gruppo esclusa dal calcolo — fido attuale invariato",
   cliente_bloccato: "Cliente bloccato — nessuna proposta di fido",
   gestione_legale: "Cliente in gestione legale — nessuna proposta di fido",
+  scaduto_non_incassato: "Scaduto non incassato oltre soglia — fido a zero finché lo scaduto non rientra",
   condizione_mancante: "Condizione di pagamento mancante in anagrafica — impossibile calcolare",
   nessun_fatturato: "Nessun fatturato nella finestra di calcolo",
   minimo_500: "Fatturato solo nell'anno precedente — minimo 500 €",
@@ -354,6 +356,24 @@ export function riferimentoConExtraProtetto(riferimento: number, protetto: Extra
   return protetto ? Math.max(riferimento, protetto.importo_approvato) : riferimento;
 }
 
+/**
+ * Riferimento della richiesta per una riga del teorico pubblicato.
+ * Con regola 'scaduto_non_incassato' il riferimento è il teorico (0): non si applicano
+ * né la protezione debito/soglia né quella dell'extra approvato (lo scaduto prevale).
+ */
+export function riferimentoRichiesta(
+  r: { regola_applicata: string | null; fido_attuale: number; fido_proposto: number; esposizione_corrente: number; ordini_aperti?: number | null },
+  soglia: number,
+  protetto: ExtraFidoProtetto | undefined,
+): number | null {
+  if (!isProponibile(r.regola_applicata)) return null;
+  if (r.regola_applicata === "scaduto_non_incassato") return r.fido_proposto;
+  return riferimentoConExtraProtetto(
+    fidoPropostoPerRichiesta(r.fido_attuale, r.fido_proposto, r.esposizione_corrente + (r.ordini_aperti ?? 0), soglia),
+    protetto,
+  );
+}
+
 /** Riferimento per tutte le richieste; non modifica il teorico pubblicato o le esclusioni. */
 export async function fetchFidoTeoricoPerRichiesta(
   clienteIds: string[],
@@ -370,12 +390,7 @@ export async function fetchFidoTeoricoPerRichiesta(
   const valore = String(cfg.data?.valore ?? "").trim();
   const soglia = valore ? Number(valore) : 0.80;
   for (const [id, r] of m) {
-    out.set(id, isProponibile(r.regola_applicata)
-      ? riferimentoConExtraProtetto(
-          fidoPropostoPerRichiesta(r.fido_attuale, r.fido_proposto, r.esposizione_corrente + (r.ordini_aperti ?? 0), soglia),
-          protetti.get(id),
-        )
-      : null);
+    out.set(id, riferimentoRichiesta(r, soglia, protetti.get(id)));
   }
   return out;
 }
