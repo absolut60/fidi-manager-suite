@@ -757,6 +757,13 @@
       "when": 1793450252003,
       "tag": "0107_fm55_fido_v2_nuovi_dopo_carico_iniziale",
       "breakpoints": true
+    },
+    {
+      "idx": 108,
+      "version": "7",
+      "when": 1793450297266,
+      "tag": "0108_fm55_fido_v2_nuovi_formato_importo",
+      "breakpoints": true
     }
   ]
 }
