@@ -50,6 +50,7 @@ import { Route as AppRecuperoCreditiCalendarioRouteImport } from './routes/_app/
 import { Route as AppRecuperoCreditiCampagneRouteImport } from './routes/_app/recupero-crediti-campagne'
 import { Route as AppRecuperoCreditiPromemoriaRouteImport } from './routes/_app/recupero-crediti-promemoria'
 import { Route as AppRecuperoCreditiPromesseRouteImport } from './routes/_app/recupero-crediti-promesse'
+import { Route as AppRevisioneFidiRouteImport } from './routes/_app/revisione-fidi'
 import { Route as AppRichiesteRouteImport } from './routes/_app/richieste'
 import { Route as AppScadenziarioRouteImport } from './routes/_app/scadenziario'
 import { Route as AppTaskRouteImport } from './routes/_app/task'
@@ -311,6 +312,11 @@ const AppRecuperoCreditiPromesseRoute =
     path: '/recupero-crediti-promesse',
     getParentRoute: () => AppRoute,
   } as any)
+const AppRevisioneFidiRoute = AppRevisioneFidiRouteImport.update({
+  id: '/revisione-fidi',
+  path: '/revisione-fidi',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppRichiesteRoute = AppRichiesteRouteImport.update({
   id: '/richieste',
   path: '/richieste',
@@ -610,6 +616,7 @@ export interface FileRoutesByFullPath {
   '/recupero-crediti-campagne': typeof AppRecuperoCreditiCampagneRoute
   '/recupero-crediti-promemoria': typeof AppRecuperoCreditiPromemoriaRoute
   '/recupero-crediti-promesse': typeof AppRecuperoCreditiPromesseRoute
+  '/revisione-fidi': typeof AppRevisioneFidiRoute
   '/richieste': typeof AppRichiesteRouteWithChildren
   '/scadenziario': typeof AppScadenziarioRoute
   '/task': typeof AppTaskRouteWithChildren
@@ -699,6 +706,7 @@ export interface FileRoutesByTo {
   '/recupero-crediti-campagne': typeof AppRecuperoCreditiCampagneRoute
   '/recupero-crediti-promemoria': typeof AppRecuperoCreditiPromemoriaRoute
   '/recupero-crediti-promesse': typeof AppRecuperoCreditiPromesseRoute
+  '/revisione-fidi': typeof AppRevisioneFidiRoute
   '/richieste': typeof AppRichiesteRouteWithChildren
   '/scadenziario': typeof AppScadenziarioRoute
   '/template-email': typeof AppTemplateEmailRoute
@@ -791,6 +799,7 @@ export interface FileRoutesById {
   '/_app/recupero-crediti-campagne': typeof AppRecuperoCreditiCampagneRoute
   '/_app/recupero-crediti-promemoria': typeof AppRecuperoCreditiPromemoriaRoute
   '/_app/recupero-crediti-promesse': typeof AppRecuperoCreditiPromesseRoute
+  '/_app/revisione-fidi': typeof AppRevisioneFidiRoute
   '/_app/richieste': typeof AppRichiesteRouteWithChildren
   '/_app/scadenziario': typeof AppScadenziarioRoute
   '/_app/task': typeof AppTaskRouteWithChildren
@@ -884,6 +893,7 @@ export interface FileRouteTypes {
     | '/recupero-crediti-campagne'
     | '/recupero-crediti-promemoria'
     | '/recupero-crediti-promesse'
+    | '/revisione-fidi'
     | '/richieste'
     | '/scadenziario'
     | '/task'
@@ -973,6 +983,7 @@ export interface FileRouteTypes {
     | '/recupero-crediti-campagne'
     | '/recupero-crediti-promemoria'
     | '/recupero-crediti-promesse'
+    | '/revisione-fidi'
     | '/richieste'
     | '/scadenziario'
     | '/template-email'
@@ -1064,6 +1075,7 @@ export interface FileRouteTypes {
     | '/_app/recupero-crediti-campagne'
     | '/_app/recupero-crediti-promemoria'
     | '/_app/recupero-crediti-promesse'
+    | '/_app/revisione-fidi'
     | '/_app/richieste'
     | '/_app/scadenziario'
     | '/_app/task'
@@ -1421,6 +1433,13 @@ declare module '@tanstack/react-router' {
       path: '/recupero-crediti-promesse'
       fullPath: '/recupero-crediti-promesse'
       preLoaderRoute: typeof AppRecuperoCreditiPromesseRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/revisione-fidi': {
+      id: '/_app/revisione-fidi'
+      path: '/revisione-fidi'
+      fullPath: '/revisione-fidi'
+      preLoaderRoute: typeof AppRevisioneFidiRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/richieste': {
@@ -1870,6 +1889,7 @@ interface AppRouteChildren {
   AppRecuperoCreditiCampagneRoute: typeof AppRecuperoCreditiCampagneRoute
   AppRecuperoCreditiPromemoriaRoute: typeof AppRecuperoCreditiPromemoriaRoute
   AppRecuperoCreditiPromesseRoute: typeof AppRecuperoCreditiPromesseRoute
+  AppRevisioneFidiRoute: typeof AppRevisioneFidiRoute
   AppRichiesteRoute: typeof AppRichiesteRouteWithChildren
   AppScadenziarioRoute: typeof AppScadenziarioRoute
   AppTaskRoute: typeof AppTaskRouteWithChildren
@@ -1939,6 +1959,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppRecuperoCreditiCampagneRoute: AppRecuperoCreditiCampagneRoute,
   AppRecuperoCreditiPromemoriaRoute: AppRecuperoCreditiPromemoriaRoute,
   AppRecuperoCreditiPromesseRoute: AppRecuperoCreditiPromesseRoute,
+  AppRevisioneFidiRoute: AppRevisioneFidiRoute,
   AppRichiesteRoute: AppRichiesteRouteWithChildren,
   AppScadenziarioRoute: AppScadenziarioRoute,
   AppTaskRoute: AppTaskRouteWithChildren,
