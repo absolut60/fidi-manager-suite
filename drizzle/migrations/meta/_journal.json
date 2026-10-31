@@ -715,6 +715,13 @@
       "when": 1793428139395,
       "tag": "0101_fm55_alert_fidi_correzione_funzione",
       "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "7",
+      "when": 1793428439376,
+      "tag": "0102_fm55_alert_fidi_riduzione_sopra_soglia",
+      "breakpoints": true
     }
   ]
 }
