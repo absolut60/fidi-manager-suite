@@ -20,7 +20,7 @@ import {
 import { righeVisibiliProposta, riepilogoVisibilita } from "@/lib/proposta-fido-visibilita";
 import { CampoExtraTeorico } from "@/components/extra-fido-teorico";
 import {
-  fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchExtraFidoProtetti, notaExtraProtetto, protezioneAttiva, MOTIVAZIONE_PROFILO_FIDO, isProponibile,
+  fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchExtraFidoProtetti, fetchSogliaConsumoFido, fidoPerTornareSottoSoglia, notaExtraProtetto, protezioneAttiva, MOTIVAZIONE_PROFILO_FIDO, isProponibile,
   REGOLA_LABEL, MOTIVO_NON_PROPONIBILE, MOTIVO_NON_PROPONIBILE_BREVE,
 } from "@/lib/fido-teorico";
 import { riepilogoProposte } from "@/lib/proposta-fido-riepilogo";
@@ -100,6 +100,8 @@ type RigaProposta = {
   /** false = regola che non consente una proposta (esclusa dalla creazione) */
   proponibile: boolean;
   incluso: boolean;
+  /** FM55 3C: alert aperto o segnalazione arancione/rossa (regola in proposta-fido-visibilita). */
+  inAlertOAnomalia?: boolean;
   tipo: "nuovo_fido" | "aumento" | "diminuzione" | "rinnovo";
   // Override motivazione per-riga. undefined = eredita la motivazione generale.
   motivazione?: string;
@@ -234,6 +236,28 @@ export function ProposteFidoMassivoDialog({
     () => ({ has: (id: string) => protezioneAttiva(protettiMap?.get(id)) }),
     [protettiMap],
   );
+  // FM55 3C: clienti con alert aperto → i loro rinnovi restano visibili come "Da valutare".
+  const { data: alertAperti } = useQuery({
+    queryKey: ["alert-fidi-aperti-massivo", [...ids].sort().join(",")],
+    enabled: open && ids.length > 0,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const out = new Set<string>();
+      for (let i = 0; i < ids.length; i += 200) {
+        const { data, error } = await supabase.from("alert_fidi").select("cliente_id")
+          .eq("stato", "aperto").in("cliente_id", ids.slice(i, i + 200));
+        if (error) throw error;
+        for (const a of data ?? []) out.add(a.cliente_id);
+      }
+      return out;
+    },
+  });
+  const { data: sogliaConsumo } = useQuery({
+    queryKey: ["soglia-consumo-fido"],
+    enabled: open,
+    staleTime: 10 * 60_000,
+    queryFn: fetchSogliaConsumoFido,
+  });
   const { data: inCorsoMap } = useQuery({
     queryKey: ["richieste-in-corso-massivo", [...ids].sort().join(",")],
     enabled: open && ids.length > 0,
@@ -267,7 +291,7 @@ export function ProposteFidoMassivoDialog({
 
   // Inizializza/aggiorna righe quando cambia la selezione o arriva il calcolo
   useEffect(() => {
-    if (!open || !teoricoMap || !teoricoRichMap) return;
+    if (!open || !teoricoMap || !teoricoRichMap || !alertAperti) return;
     setRighe((prev) => {
       const prevMap = new Map(prev.map((r) => [r.cliente_id, r]));
       return selectedRows.map((c) => {
@@ -284,6 +308,10 @@ export function ProposteFidoMassivoDialog({
         // Fido di riferimento = getFidoAttuale (src/lib/fido-cliente.ts), lo stesso
         // usato dalla RPC, cosi' lista, scheda cliente e proposta massiva coincidono.
         const attuale = t ? t.fido_attuale : getFidoAttuale(c);
+        const tipo = determinaTipoRichiesta(attuale, proposto);
+        const inAlertOAnomalia = alertAperti.has(c.id) || segnalazioniAnomalia(t?.segnalazioni).length > 0;
+        // Le righe "Da valutare" partono non spuntate: decide l'utente se includerle.
+        const daValutare = daValutareProposta({ cliente_id: c.id, tipo, regola, fido_proposto: proposto, inAlertOAnomalia });
 
         return {
           cliente_id: c.id,
@@ -301,15 +329,16 @@ export function ProposteFidoMassivoDialog({
           nota_proposta: t?.nota_proposta ?? "",
           motivazione_auto: t?.profilo ? MOTIVAZIONE_PROFILO_FIDO[t.profilo] : undefined,
           proponibile,
-          incluso: proponibile,
-          tipo: determinaTipoRichiesta(attuale, proposto),
+          incluso: proponibile && !daValutare,
+          inAlertOAnomalia,
+          tipo,
           cond_attuale: "",
           cond_proposta: "",
           cond_init: false,
         };
       });
     });
-  }, [open, selectedRows, teoricoMap, teoricoRichMap, importiDaAlert]);
+  }, [open, selectedRows, teoricoMap, teoricoRichMap, importiDaAlert, alertAperti]);
 
   function toggleIncluso(id: string) {
     setRighe((prev) => prev.map((r) =>
@@ -502,6 +531,9 @@ export function ProposteFidoMassivoDialog({
     <>
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-1">
       <span className="min-w-0 break-words line-clamp-2" title={r.ragione_sociale}>{r.ragione_sociale}</span>
+      {r.proponibile && daValutareProposta(r) && (
+        <Badge className="shrink-0 whitespace-nowrap px-1 text-[10px] bg-warning/15 text-foreground hover:bg-warning/20" title="Cliente in alert o con anomalie: decidi tu se includerlo">Da valutare</Badge>
+      )}
       {r.richiede_verifica && (
         <Badge className="shrink-0 whitespace-nowrap px-1 text-[10px] bg-warning/15 text-warning hover:bg-warning/20">Da verificare</Badge>
       )}
@@ -633,6 +665,13 @@ export function ProposteFidoMassivoDialog({
           </p>
         )}
         {segn && teo && <SegnalazioniFido riga={teo} />}
+        {teo && sogliaConsumo && daValutareProposta(r)
+          && (teo.segnalazioni.includes("impegni_sopra_base") || teo.segnalazioni.includes("uso_pieno")) && (
+          <p className="min-w-0 break-words text-[11px] text-muted-foreground">
+            Per tornare sotto il {Math.round(sogliaConsumo * 100).toLocaleString("it-IT")}% servirebbero{" "}
+            <span className="font-medium tabular-nums text-foreground">{fmtEuro(fidoPerTornareSottoSoglia(teo.esposizione_corrente + (teo.ordini_aperti ?? 0), sogliaConsumo))}</span>
+          </p>
+        )}
         {mot && (
           <p className="min-w-0 break-words text-[11px] text-muted-foreground">
             <span className="font-medium">Motivazione:</span> {mot}
