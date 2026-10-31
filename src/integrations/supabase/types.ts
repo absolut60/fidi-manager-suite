@@ -35,6 +35,97 @@ export type Database = {
         }
         Relationships: []
       }
+      alert_fidi: {
+        Row: {
+          aggiornato_il: string
+          aperto_il: string
+          chiuso_il: string | null
+          cliente_id: string
+          consumo: number | null
+          esposizione: number | null
+          fido_gamma: number | null
+          fido_gamma_apertura: number | null
+          fido_proposto: number | null
+          id: string
+          livello: number | null
+          motivo_chiusura: string | null
+          notificato_il: string | null
+          notificato_livello: number | null
+          ordini_aperti: number | null
+          richiesta_id: string | null
+          riproponi_dal: string | null
+          stato: string
+          tipo: string
+          utilizzo_massimo: number | null
+        }
+        Insert: {
+          aggiornato_il?: string
+          aperto_il?: string
+          chiuso_il?: string | null
+          cliente_id: string
+          consumo?: number | null
+          esposizione?: number | null
+          fido_gamma?: number | null
+          fido_gamma_apertura?: number | null
+          fido_proposto?: number | null
+          id?: string
+          livello?: number | null
+          motivo_chiusura?: string | null
+          notificato_il?: string | null
+          notificato_livello?: number | null
+          ordini_aperti?: number | null
+          richiesta_id?: string | null
+          riproponi_dal?: string | null
+          stato: string
+          tipo: string
+          utilizzo_massimo?: number | null
+        }
+        Update: {
+          aggiornato_il?: string
+          aperto_il?: string
+          chiuso_il?: string | null
+          cliente_id?: string
+          consumo?: number | null
+          esposizione?: number | null
+          fido_gamma?: number | null
+          fido_gamma_apertura?: number | null
+          fido_proposto?: number | null
+          id?: string
+          livello?: number | null
+          motivo_chiusura?: string | null
+          notificato_il?: string | null
+          notificato_livello?: number | null
+          ordini_aperti?: number | null
+          richiesta_id?: string | null
+          riproponi_dal?: string | null
+          stato?: string
+          tipo?: string
+          utilizzo_massimo?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alert_fidi_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alert_fidi_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "alert_fidi_richiesta_id_fkey"
+            columns: ["richiesta_id"]
+            isOneToOne: false
+            referencedRelation: "richieste_fido"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       allegati: {
         Row: {
           caricato_da: string | null
@@ -6478,6 +6569,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      aggiorna_alert_fidi: { Args: never; Returns: Json }
       aggiorna_stato_messaggio_whatsapp: {
         Args: {
           _errore?: string
@@ -8141,6 +8233,10 @@ export type Database = {
       ricalcola_in_gestione_legale: {
         Args: { _cliente_id: string }
         Returns: undefined
+      }
+      richiesta_fido_attiva: {
+        Args: { _stato: string; _stato_export: string }
+        Returns: boolean
       }
       riconcilia_iscritto_whatsapp: {
         Args: { _cliente_id?: string; _id: string; _lead_id?: string }

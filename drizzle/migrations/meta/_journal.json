@@ -701,6 +701,13 @@
       "when": 1793427041389,
       "tag": "0099_fm55_richieste_extra_fido_teorico",
       "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "7",
+      "when": 1793427797709,
+      "tag": "0100_fm55_alert_fidi",
+      "breakpoints": true
     }
   ]
 }
