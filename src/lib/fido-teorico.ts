@@ -44,6 +44,8 @@ export type FidoTeoricoRow = {
   spiegazione: string | null;
   scaduto_oltre: number;
   scaduto_oltre_giorni: number;
+  /** Incassato reale ultimi 12 mesi (public.scaduto_oltre_giorni). */
+  pagato_12m: number;
   /** Codici di segnalazione pubblicati da public.segnalazioni_fido (v. fido-segnalazioni.ts). */
   segnalazioni: string[];
 };
@@ -151,6 +153,7 @@ export function normalizza(r: any): FidoTeoricoRow {
     spiegazione: r.spiegazione ?? null,
     scaduto_oltre: Number(r.scaduto_oltre ?? 0),
     scaduto_oltre_giorni: Number(r.scaduto_oltre_giorni ?? 0),
+    pagato_12m: Number(r.pagato_12m ?? 0),
     segnalazioni: Array.isArray(r.segnalazioni) ? r.segnalazioni.map(String) : [],
   };
 

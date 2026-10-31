@@ -10,7 +10,7 @@ export type GravitaSegnalazione = "rossa" | "arancione" | "info";
 
 type RigaSegnalazione = Pick<
   FidoTeoricoRow,
-  "fabbisogno" | "base" | "ordini_aperti" | "fido_attuale" | "scaduto_oltre" | "scaduto_oltre_giorni"
+  "fabbisogno" | "base" | "ordini_aperti" | "fido_attuale" | "scaduto_oltre" | "scaduto_oltre_giorni" | "pagato_12m"
 >;
 
 export type DefinizioneSegnalazione = {
@@ -31,6 +31,15 @@ export const SEGNALAZIONI_FIDO: Record<string, DefinizioneSegnalazione> = {
     gravita: "rossa",
     testo: (r) =>
       `Scaduto non incassato: ${formatEuro(r.scaduto_oltre ?? 0)} oltre soglia (fino a ${r.scaduto_oltre_giorni ?? 0} giorni)`,
+  },
+  scaduto_da_incassare: {
+    etichetta: "Scaduto da incassare",
+    gravita: "arancione",
+    testo: (r) => {
+      const pag = r.pagato_12m ?? 0;
+      const perc = pag > 0 ? Math.round(((r.scaduto_oltre ?? 0) / pag) * 100) : 0;
+      return `Scaduto da incassare: ${formatEuro(r.scaduto_oltre ?? 0)} oltre soglia (fino a ${r.scaduto_oltre_giorni ?? 0} giorni), pari al ${perc.toLocaleString("it-IT")}% di quanto pagato in 12 mesi`;
+    },
   },
   impegni_sopra_base: {
     etichetta: "Acquisti sopra il previsto",
