@@ -41,12 +41,6 @@ function fmtEuro(v: unknown): string {
   return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
 }
 
-/** Motivazione che verrà salvata: personalizzata, altrimenti automatica dal profilo, altrimenti generale. */
-function motivazioneEffettiva(r: { motivazione?: string; motivazione_auto?: string }, generale: string | null): string | null {
-  return r.motivazione === undefined
-    ? (r.motivazione_auto ?? generale)
-    : (r.motivazione.trim() === "" ? null : r.motivazione);
-}
 
 function NotaPropostaDettaglio({ nota }: { nota: string }) {
   const [troncato, setTroncato] = useState(false);
