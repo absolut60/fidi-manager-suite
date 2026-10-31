@@ -171,8 +171,9 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
   // Dialog proposta: un cliente una volta sola; l'importo dell'alert (riduzione/extra) prevale.
   const [propostaOpen, setPropostaOpen] = useState(false);
   const [proposta, setProposta] = useState<{ righe: any[]; importi: Map<string, number>; sempre: string[] }>({ righe: [], importi: new Map(), sempre: [] });
-  // singolo = "Apri proposta" su una riga: quel cliente si vede sempre, anche se rinnovo.
-  function apriProposta(lista: AlertFidoRow[] = selVisibili, singolo = false) {
+  // Da Alert fidi i clienti scelti si vedono sempre nella finestra, anche se rinnovi
+  // (chi apre da un alert ha già scelto quei clienti; vale per singolo e selezione multipla).
+  function apriProposta(lista: AlertFidoRow[] = selVisibili) {
     const clienti = new Map<string, any>();
     const importi = new Map<string, number>();
     for (const a of lista) {
