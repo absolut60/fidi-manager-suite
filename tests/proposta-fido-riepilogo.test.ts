@@ -1,31 +1,46 @@
-import { describe, expect, it } from "vitest";
-import { riepilogoVisibilita } from "@/lib/proposta-fido-visibilita";
+import { describe, expect, test } from "bun:test";
+import { riepilogoProposte } from "@/lib/proposta-fido-riepilogo";
 
-const filtri = { tipi: ["nuovo_fido", "aumento", "diminuzione"], pagImmediato: "includi", fidoZero: "includi", inCorso: "escludi" };
-const riga = (id: string, tipo: string, extra: Record<string, unknown> = {}) =>
-  ({ cliente_id: id, tipo, regola: "calcolo", fido_proposto: 1000, proponibile: true, ...extra });
-
-describe("riepilogo visibilità proposta massiva", () => {
-  it("3 visibili + 4 rinnovi + 1 protetta + 1 in corso + 1 non proponibile = 10", () => {
-    const righe = [
-      riga("v1", "aumento"), riga("v2", "diminuzione"), riga("v3", "nuovo_fido"),
-      riga("r1", "rinnovo"), riga("r2", "rinnovo"), riga("r3", "rinnovo"), riga("r4", "rinnovo"),
-      riga("p1", "rinnovo"),
-      riga("c1", "aumento", { richiestaInCorso: { id: "x" } }),
-      riga("n1", "aumento", { proponibile: false, regola: "condizione_mancante" }),
-    ];
-    const r = riepilogoVisibilita(righe, filtri, new Set(), new Set(["p1"]));
-    expect(r.visibili).toBe(3);
-    expect(r.nascosti.rinnovo).toBe(4);
-    expect(r.nascosti.protetto).toBe(1);
-    expect(r.nascosti.in_corso).toBe(1);
-    expect(r.nonProponibili.condizione_mancante).toBe(1);
-    const somma = r.visibili + Object.values(r.nascosti).reduce((a, b) => a + b, 0) + r.nonProponibiliTotale;
-    expect(somma).toBe(10);
+describe("riepilogoProposte (piede proposta massiva)", () => {
+  test("totali e differenza sulle righe incluse", () => {
+    const r = riepilogoProposte([
+      { fido_attuale: 10000, fido_proposto: 15000, tipo: "aumento" },
+      { fido_attuale: 20000, fido_proposto: 12000, tipo: "diminuzione" },
+      { fido_attuale: 0, fido_proposto: 5000, tipo: "nuovo_fido" },
+      { fido_attuale: 8000, fido_proposto: 8000, tipo: "rinnovo" },
+    ]);
+    expect(r.totaleAttuale).toBe(38000);
+    expect(r.totaleProposto).toBe(40000);
+    expect(r.differenza).toBe(2000);
   });
-  it("una riga toccata resta visibile e non conta tra le nascoste", () => {
-    const r = riepilogoVisibilita([riga("a", "rinnovo")], filtri, new Set(["a"]), undefined);
-    expect(r.visibili).toBe(1);
-    expect(r.nascosti.rinnovo).toBe(0);
+
+  test("dettaglio solo per i tipi presenti, con segno corretto", () => {
+    const r = riepilogoProposte([
+      { fido_attuale: 10000, fido_proposto: 15000, tipo: "aumento" },
+      { fido_attuale: 20000, fido_proposto: 25000, tipo: "aumento" },
+      { fido_attuale: 20000, fido_proposto: 12000, tipo: "diminuzione" },
+      { fido_attuale: 8000, fido_proposto: 8000, tipo: "rinnovo" },
+    ]);
+    expect(r.dettaglio).toEqual([
+      { tipo: "aumento", n: 2, somma: 10000 },
+      { tipo: "diminuzione", n: 1, somma: -8000 },
+    ]);
+  });
+
+  test("differenza negativa quando prevalgono le diminuzioni", () => {
+    const r = riepilogoProposte([
+      { fido_attuale: 50000, fido_proposto: 30000, tipo: "diminuzione" },
+      { fido_attuale: 10000, fido_proposto: 12000, tipo: "aumento" },
+    ]);
+    expect(r.differenza).toBe(-18000);
+    expect(r.dettaglio.find((d) => d.tipo === "diminuzione")?.somma).toBe(-20000);
+  });
+
+  test("elenco vuoto: tutto a zero, nessun dettaglio", () => {
+    const r = riepilogoProposte([]);
+    expect(r.totaleAttuale).toBe(0);
+    expect(r.totaleProposto).toBe(0);
+    expect(r.differenza).toBe(0);
+    expect(r.dettaglio).toEqual([]);
   });
 });
