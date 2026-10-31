@@ -23,7 +23,7 @@ import {
 import { CampoExtraTeorico } from "@/components/extra-fido-teorico";
 import {
   fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, isProponibile,
-  REGOLA_LABEL, MOTIVO_NON_PROPONIBILE, type FidoTeoricoRow,
+  REGOLA_LABEL, MOTIVO_NON_PROPONIBILE, PROFILO_FIDO_LABEL, type FidoTeoricoRow,
 } from "@/lib/fido-teorico";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -164,6 +164,9 @@ const OPZIONI_SEMAFORO = [
   { valore: "spento", label: "⚪ Spento" },
 ];
 
+/** FM55: profili "senza acquisti" del preset Sanatoria (valori di fido_teorico_cliente.profilo). */
+const PROFILI_SANATORIA = ["perso", "mai_acquistato", "dormiente"];
+
 /** Testo del chip: un valore → la sua etichetta; piu' valori → "N selezionati". */
 function etichettaElenco(valori: string[], label: (v: string) => string): string {
   return valori.length === 1 ? label(valori[0]) : `${valori.length} selezionati`;
@@ -207,6 +210,8 @@ function ClientiPage() {
     storeFiltro: [] as string[],
     statoFido: [] as string[],
     semaforoFiltro: [] as string[],
+    // FM55: profilo del fido teorico (fido_teorico_cliente.profilo), etichette da PROFILO_FIDO_LABEL.
+    profiloFiltro: [] as string[],
     filtroBlocco: "tutti" as "tutti" | "bloccati" | "non_bloccati",
     privacyFiltro: "tutti" as "tutti" | "ok" | "da_richiedere",
     filtroAssic: "tutti" as "tutti" | "assicurati" | "non_assicurati",
@@ -245,6 +250,7 @@ function ClientiPage() {
       // Formato vecchio (stringa) scartato: si riparte dal default.
       storeFiltro: (v) => Array.isArray(v) && v.every((x) => typeof x === "string"),
       semaforoFiltro: (v) => Array.isArray(v) && v.every((x) => typeof x === "string"),
+      profiloFiltro: (v) => Array.isArray(v) && v.every((x) => typeof x === "string"),
       filtroAgente: (v) => Array.isArray(v) && v.every((x) => typeof x === "string"),
       filtroMestiere: (v) => Array.isArray(v) && v.every((x) => typeof x === "string"),
       sliderCommitted: (v) => Array.isArray(v) && v.length === 2 && v.every((x) => typeof x === "number" && Number.isFinite(x)),
@@ -257,7 +263,7 @@ function ClientiPage() {
       },
     },
   });
-  const { searchInput, statoCliente, statoAttivita, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, scadenziarioFiltro, totaleRischioFiltro, fatturatoFiltro, mostraFidoTeorico, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, aScadereFiltro, fasciaConcesso, fidoFascia, sliderCommitted, advApplied, page, pageSize, sortBy, sortDir } = F;
+  const { searchInput, statoCliente, statoAttivita, semaforoFiltro, profiloFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, scadenziarioFiltro, totaleRischioFiltro, fatturatoFiltro, mostraFidoTeorico, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, aScadereFiltro, fasciaConcesso, fidoFascia, sliderCommitted, advApplied, page, pageSize, sortBy, sortDir } = F;
   // Store manager: sempre il proprio negozio, qualunque valore sia salvato.
   const storeFiltro: string[] = isStoreManager && myStoreId ? [myStoreId] : F.storeFiltro;
   // Set ricostruito al confine (salvato come array di stringhe).
@@ -269,6 +275,7 @@ function ClientiPage() {
   const setStatoFido = (v: Set<string> | ((prev: Set<string>) => Set<string>)) =>
     setCampo("statoFido", (prev) => Array.from(typeof v === "function" ? v(new Set(prev)) : v));
   const setSemaforoFiltro = (v: string[]) => setCampo("semaforoFiltro", v);
+  const setProfiloFiltro = (v: string[]) => setCampo("profiloFiltro", v);
   const setFiltroBlocco = (v: typeof filtroBlocco) => setCampo("filtroBlocco", v);
   const setPrivacyFiltro = (v: typeof privacyFiltro) => setCampo("privacyFiltro", v);
   const setFiltroAssic = (v: typeof filtroAssic) => setCampo("filtroAssic", v);
@@ -591,7 +598,7 @@ function ClientiPage() {
 
 
   // Reset pagina SOLO quando un filtro cambia davvero dopo il montaggio (firma precedente).
-  const firmaFiltri = JSON.stringify([search, statoCliente, statoAttivita, storeFiltro, F.statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso]);
+  const firmaFiltri = JSON.stringify([search, statoCliente, statoAttivita, storeFiltro, F.statoFido, semaforoFiltro, profiloFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso]);
   const firmaPrecedente = useRef(firmaFiltri);
   useEffect(() => {
     if (firmaPrecedente.current === firmaFiltri) return;
@@ -609,9 +616,10 @@ function ClientiPage() {
     // un solo embed interno su fido_teorico_cliente (chi non ha riga resta escluso).
     // FM47 4c-bis: ordinamento per Fido proposto / Scostamento via embed.
     const sortFidoTeorico = sortBy === "fido_proposto" || sortBy === "scostamento";
-    const embedFiltroAttivo = semaforoFiltro.length > 0 || scostamentoFiltro !== "tutti" || soloDaVerificare;
+    const embedFiltroAttivo = semaforoFiltro.length > 0 || scostamentoFiltro !== "tutti" || soloDaVerificare || profiloFiltro.length > 0;
     let ftcCols: string[] = [];
     if (semaforoFiltro.length > 0) ftcCols.push("semaforo_stadio");
+    if (profiloFiltro.length > 0) ftcCols.push("profilo");
     if (scostamentoFiltro !== "tutti" && !ftcCols.includes("scostamento")) ftcCols.push("scostamento");
     if (soloDaVerificare) ftcCols.push("richiede_verifica");
     if (sortFidoTeorico) {
@@ -629,6 +637,7 @@ function ClientiPage() {
       .select(selectFinale, count ? { count } : undefined);
 
     if (semaforoFiltro.length > 0) q = q.in("fido_teorico_cliente.semaforo_stadio", semaforoFiltro);
+    if (profiloFiltro.length > 0) q = q.in("fido_teorico_cliente.profilo", profiloFiltro);
     if (scostamentoFiltro === "positivo") q = q.gt("fido_teorico_cliente.scostamento", 0);
     else if (scostamentoFiltro === "negativo") q = q.lt("fido_teorico_cliente.scostamento", 0);
     // Come oggi: scostamento vuoto conta come 0.
@@ -795,7 +804,7 @@ function ClientiPage() {
 
   const privacyFilterReady = privacyFiltro === "tutti" || (scadReady && isConfigReady && virtualSortReady && fermiReady && richiesteReady);
   const { data: privacyFilterMap } = useQuery({
-    queryKey: ["clienti-privacy-filter", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, richiesteN: richiesteAttiveIds?.length ?? null, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
+    queryKey: ["clienti-privacy-filter", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, richiesteN: richiesteAttiveIds?.length ?? null, scadenziarioFiltro, semaforoFiltro, profiloFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
     enabled: isListRoute && privacyFiltro !== "tutti" && privacyFilterReady,
     staleTime: 5 * 60_000,
     queryFn: async () => {
@@ -846,7 +855,7 @@ function ClientiPage() {
   }, [statoFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, fermiIds, privacyIdsFilter, filtroRichiesta, richiesteAttiveIds]);
 
   const { data: clientiResp, isLoading, isError: clientiError, refetch: refetchClienti } = useQuery({
-    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, richiesteN: richiesteAttiveIds?.length ?? null, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
+    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, richiesteN: richiesteAttiveIds?.length ?? null, scadenziarioFiltro, semaforoFiltro, profiloFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
     queryFn: async () => {
       // Ramo ordinamento virtuale (Scaduto / A scadere): PostgREST non puo'
       // ordinare su un valore che non e' nella query. Prendiamo tutti gli id
@@ -1096,6 +1105,7 @@ function ClientiPage() {
     (storeFiltro.length > 0 ? 1 : 0) +
     (statoFido.size > 0 ? 1 : 0) +
     (semaforoFiltro.length > 0 ? 1 : 0) +
+    (profiloFiltro.length > 0 ? 1 : 0) +
     (filtroBlocco !== "tutti" ? 1 : 0) +
     (privacyFiltro !== "tutti" ? 1 : 0) +
     (filtroAssic !== "tutti" ? 1 : 0) +
@@ -1140,6 +1150,23 @@ function ClientiPage() {
       mostraFidoTeorico, soloDaVerificare, soloOltreFido, soloConFidoAttivo,
     });
   }
+
+  // FM55: preset "Sanatoria" — azzera TUTTI i filtri (niente eredita' dai filtri
+  // salvati: la lista parte da "Solo attivi"/"Solo imprese" e nasconderebbe
+  // proprio questi clienti), poi imposta profilo senza acquisti + fido > 0.
+  function applicaPresetSanatoria() {
+    setSearch("");
+    setSliderDisplay([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
+    resetFiltriSalvati({
+      sortBy, sortDir, page: 1, pageSize,
+      statoCliente: "tutti", statoAttivita: "tutti", filtroTipoSoggetto: "tutti",
+      soloConFidoAttivo: true, profiloFiltro: PROFILI_SANATORIA,
+    });
+  }
+  const sanatoriaAttiva =
+    soloConFidoAttivo &&
+    profiloFiltro.length === PROFILI_SANATORIA.length &&
+    PROFILI_SANATORIA.every((p) => profiloFiltro.includes(p));
 
   function toggleSort(colonna: string) {
     if (sortBy !== colonna) {
@@ -1249,6 +1276,15 @@ function ClientiPage() {
       etichetta="Semaforo" testoTutti="Tutti i semafori" className="h-10"
       opzioni={OPZIONI_SEMAFORO}
       selezionati={semaforoFiltro} onChange={setSemaforoFiltro}
+    />
+  );
+
+  // FM55: profilo del fido teorico; etichette dalla fonte unica PROFILO_FIDO_LABEL.
+  const ProfiloFidoSelect = (
+    <FiltroMultiplo
+      etichetta="Profilo fido teorico" testoTutti="Tutti i profili" className="h-10"
+      opzioni={Object.entries(PROFILO_FIDO_LABEL).map(([valore, label]) => ({ valore, label }))}
+      selezionati={profiloFiltro} onChange={setProfiloFiltro}
     />
   );
 
@@ -1474,6 +1510,7 @@ function ClientiPage() {
     activeChips.push({ key: "statoFido", label: `Stato fido: ${Array.from(statoFido).join(", ")}`, onRemove: () => setStatoFido(new Set()) });
   }
   if (semaforoFiltro.length > 0) activeChips.push({ key: "semaforo", label: `Semaforo: ${etichettaElenco(semaforoFiltro, (v) => v)}`, onRemove: () => setSemaforoFiltro([]) });
+  if (profiloFiltro.length > 0) activeChips.push({ key: "profilo", label: `Profilo fido: ${etichettaElenco(profiloFiltro, (v) => PROFILO_FIDO_LABEL[v] ?? v)}`, onRemove: () => setProfiloFiltro([]) });
   if (scadenziarioFiltro !== "tutti") {
     const lbl = scadenziarioFiltro === "con_scaduto" ? "Con scaduto" : "Senza scaduto";
     activeChips.push({ key: "scaduto", label: lbl, onRemove: () => setScadenziarioFiltro("tutti") });
@@ -1588,6 +1625,7 @@ function ClientiPage() {
             {StatoAttivitaSelect}
             {RichiestaFidoSelect}
             {ScostamentoSelect}
+            {ProfiloFidoSelect}
             {FidoTeoricoToggle}
           </div>
           {AdvFilterBtn}
@@ -1624,9 +1662,10 @@ function ClientiPage() {
           {RichiestaFidoSelect}
           {AdvFilterBtn}
         </div>
-        {/* Livello 3 — fido teorico (colonne opzionali + filtro scostamento) */}
+        {/* Livello 3 — fido teorico (colonne opzionali + filtri scostamento/profilo) */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 opacity-90">
           {ScostamentoSelect}
+          {ProfiloFidoSelect}
           {FidoTeoricoToggle}
         </div>
         {/* Livello chip — filtri attivi */}
@@ -1722,6 +1761,8 @@ function ClientiPage() {
           if (patch.soloConFidoAttivo !== undefined) setSoloConFidoAttivo(patch.soloConFidoAttivo);
         }}
         currentMain={{ filtroBlocco, filtroAssic, scadenziarioFiltro, soloConFidoAttivo }}
+        onPresetSanatoria={applicaPresetSanatoria}
+        sanatoriaAttiva={sanatoriaAttiva}
         movedFilters={
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div><Label className="text-xs">Bloccati</Label>{BloccoSelect}</div>
@@ -3445,7 +3486,7 @@ type AdvAppliedT = {
 };
 
 function FiltriAvanzatiDialog({
-  open, onOpenChange, applied, onApply, onReset, onSetMainFiltro, currentMain, movedFilters, fidoSlider,
+  open, onOpenChange, applied, onApply, onReset, onSetMainFiltro, currentMain, movedFilters, fidoSlider, onPresetSanatoria, sanatoriaAttiva,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -3456,11 +3497,16 @@ function FiltriAvanzatiDialog({
   currentMain: { filtroBlocco: "tutti" | "bloccati" | "non_bloccati"; filtroAssic: "tutti" | "assicurati" | "non_assicurati"; scadenziarioFiltro: string; soloConFidoAttivo: boolean };
   movedFilters?: React.ReactNode;
   fidoSlider?: React.ReactNode;
+  /** FM55: preset Sanatoria — azzera tutti i filtri e imposta profilo/fido (lo gestisce la pagina). */
+  onPresetSanatoria?: () => void;
+  sanatoriaAttiva?: boolean;
 }) {
   const [draft, setDraft] = useState<AdvAppliedT>(applied);
   useEffect(() => { if (open) setDraft(applied); }, [open, applied]);
 
   const PRESETS = [
+    // Sanatoria: non tocca la bozza avanzata; la pagina azzera tutto e imposta i filtri.
+    { id: "sanatoria", label: "Sanatoria: clienti senza acquisti con fido", apply: (d: AdvAppliedT) => d },
     { id: "fido80", label: "Fido 80% consumato", apply: (d: AdvAppliedT) => ({ ...d, percConsumato: 80 }) },
     { id: "esaurito", label: "Fido esaurito", apply: (d: AdvAppliedT) => ({ ...d, fidoOp: "lte" as AdvOp, fidoVal: 0 }) },
     { id: "lt500", label: "Fido residuo < 500 €", apply: (d: AdvAppliedT) => ({ ...d, fidoOp: "lt" as AdvOp, fidoVal: 500 }) },
@@ -3472,6 +3518,7 @@ function FiltriAvanzatiDialog({
 
   const isPresetActive = (id: string): boolean => {
     switch (id) {
+      case "sanatoria": return !!sanatoriaAttiva;
       case "fido80": return draft.percConsumato === 80;
       case "esaurito": return draft.fidoOp === "lte" && draft.fidoVal === 0;
       case "lt500": return draft.fidoOp === "lt" && draft.fidoVal === 500;
@@ -3502,6 +3549,7 @@ function FiltriAvanzatiDialog({
                     key={p.id}
                     type="button"
                     onClick={() => {
+                      if (p.id === "sanatoria") { onPresetSanatoria?.(); return; }
                       setDraft((d) => p.apply(d));
                       if (p.main) onSetMainFiltro(p.main);
                     }}
