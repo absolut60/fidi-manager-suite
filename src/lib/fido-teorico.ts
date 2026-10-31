@@ -2,7 +2,9 @@
  * Fonte UNICA del "fido proposto" lato client.
  * Tutto ciò che mostra un fido teorico (scheda cliente, proposta massiva,
  * richiesta singola, lista clienti) legge il precalcolo persistente
- * public.fido_teorico_cliente, che da FM55 pubblica i valori v2. Nessun calcolo locale.
+ * public.fido_teorico_cliente, che da FM55 pubblica i valori v2.
+ * Solo il riferimento delle richieste applica la protezione delle riduzioni qui sotto;
+ * il fido teorico pubblicato e la scheda cliente restano invariati.
  */
 import { supabase } from "@/integrations/supabase/client";
 
@@ -276,13 +278,46 @@ export async function fetchUtentiAnteprimaFidoNuovo(): Promise<string[]> {
 // FM55 — Fido teorico di riferimento per le RICHIESTE (fonte unica)
 // ============================================================================
 
-/** Fido teorico per tutte le richieste: una sola fonte, regole non proponibili invariate. */
+/** Gemello TS di public.arrotonda_fido_v2(numeric): oltre 5.000 sempre gradini di 5.000. */
+export function arrotondaFidoV2(importo: number): number {
+  if (importo <= 0) return 0;
+  const passo = importo <= 1_000 ? 500 : importo <= 5_000 ? 1_000 : 5_000;
+  return Math.ceil(importo / passo) * passo;
+}
+
+/** fido_riduzione_proposta — gemello della protezione SQL in aggiorna_alert_fidi.
+ * Stesso debito/soglia e arrotonda_fido_v2; nelle richieste si conserva il teorico
+ * negli aumenti e si limita la riduzione al fido attuale (al limite è un rinnovo).
+ */
+export function fidoPropostoPerRichiesta(
+  fidoAttuale: number,
+  teorico: number,
+  debito: number,
+  soglia = 0.80,
+): number {
+  if (!Number.isFinite(soglia) || soglia <= 0) throw new Error("Soglia di consumo del fido non valida");
+  if (teorico >= fidoAttuale) return teorico;
+  return Math.min(fidoAttuale, Math.max(teorico, arrotondaFidoV2(debito / soglia)));
+}
+
+/** Riferimento per tutte le richieste; non modifica il teorico pubblicato o le esclusioni. */
 export async function fetchFidoTeoricoPerRichiesta(
   clienteIds: string[],
   _userId: string | null | undefined,
 ): Promise<Map<string, number | null>> {
   const out = new Map<string, number | null>();
-  const m = await fetchFidoTeorico(clienteIds);
-  for (const [id, r] of m) out.set(id, isProponibile(r.regola_applicata) ? r.fido_proposto : null);
+  if (!clienteIds.some(Boolean)) return out;
+  const [m, cfg] = await Promise.all([
+    fetchFidoTeorico(clienteIds),
+    supabase.from("configurazioni").select("valore").eq("chiave", "alert_fidi_soglia_1").maybeSingle(),
+  ]);
+  if (cfg.error) throw cfg.error;
+  const valore = String(cfg.data?.valore ?? "").trim();
+  const soglia = valore ? Number(valore) : 0.80;
+  for (const [id, r] of m) {
+    out.set(id, isProponibile(r.regola_applicata)
+      ? fidoPropostoPerRichiesta(r.fido_attuale, r.fido_proposto, r.esposizione_corrente + (r.ordini_aperti ?? 0), soglia)
+      : null);
+  }
   return out;
 }
