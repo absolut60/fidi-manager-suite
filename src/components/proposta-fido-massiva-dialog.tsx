@@ -18,7 +18,7 @@ import {
 } from "@/lib/fidi";
 import { CampoExtraTeorico } from "@/components/extra-fido-teorico";
 import {
-  fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, isProponibile,
+  fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, MOTIVAZIONE_PROFILO_FIDO, isProponibile,
   REGOLA_LABEL, MOTIVO_NON_PROPONIBILE,
 } from "@/lib/fido-teorico";
 import { riepilogoProposte } from "@/lib/proposta-fido-riepilogo";
@@ -97,6 +97,8 @@ type RigaProposta = {
   tipo: "nuovo_fido" | "aumento" | "diminuzione" | "rinnovo";
   // Override motivazione per-riga. undefined = eredita la motivazione generale.
   motivazione?: string;
+  /** Motivazione automatica dal profilo del fido teorico (MOTIVAZIONE_PROFILO_FIDO), se prevista. */
+  motivazione_auto?: string;
   /** Richiesta fido attiva piu' recente (isRichiestaAttiva), se esiste. */
   richiestaInCorso?: { stato: string; tipo: string; importo: number; created_at: string };
   /** Condizione di pagamento ATTUALE del cliente (gestionale), può essere vuota. */
@@ -112,7 +114,7 @@ type TipoProposta = RigaProposta["tipo"];
 const TIPI_PROPOSTA: TipoProposta[] = ["nuovo_fido", "aumento", "diminuzione", "rinnovo"];
 const TIPI_DEFAULT: TipoProposta[] = ["nuovo_fido", "aumento", "diminuzione"];
 type Tri = "escludi" | "includi" | "solo";
-const FILTRI_DEFAULT = { pagImm: "escludi" as Tri, fidoZero: "includi" as Tri, inCorso: "escludi" as Tri };
+const FILTRI_DEFAULT = { pagImm: "includi" as Tri, fidoZero: "includi" as Tri, inCorso: "escludi" as Tri };
 
 async function fetchRichiesteInCorso(ids: string[]): Promise<Map<string, NonNullable<RigaProposta["richiestaInCorso"]>>> {
   const map = new Map<string, NonNullable<RigaProposta["richiestaInCorso"]>>();
@@ -275,6 +277,7 @@ export function ProposteFidoMassivoDialog({
           regola,
           richiede_verifica: !!t?.richiede_verifica,
           nota_proposta: t?.nota_proposta ?? "",
+          motivazione_auto: t?.profilo ? MOTIVAZIONE_PROFILO_FIDO[t.profilo] : undefined,
           proponibile,
           incluso: proponibile,
           tipo: determinaTipoRichiesta(attuale, proposto),
@@ -411,7 +414,7 @@ export function ProposteFidoMassivoDialog({
       const payload = righeVisibiliIncluse.map((r) => {
 
         const m = r.motivazione === undefined
-          ? motivazioneGeneraleNorm
+          ? (r.motivazione_auto ?? motivazioneGeneraleNorm)
           : (r.motivazione.trim() === "" ? null : r.motivazione);
         return {
           cliente_id: r.cliente_id,
@@ -518,7 +521,7 @@ export function ProposteFidoMassivoDialog({
             variant="ghost"
             size="icon"
             className={hasOverride ? "text-primary" : ""}
-            title={hasOverride ? "Motivazione personalizzata" : "Eredita motivazione generale"}
+            title={hasOverride ? "Motivazione personalizzata" : r.motivazione_auto ? "Motivazione automatica dal profilo" : "Eredita motivazione generale"}
           >
             <MessageSquare className="size-4" />
           </Button>
@@ -527,14 +530,14 @@ export function ProposteFidoMassivoDialog({
           <div className="space-y-2">
             <Label className="text-xs">Motivazione per questo cliente</Label>
             <Textarea
-              value={hasOverride ? r.motivazione ?? "" : motivazioneGenerale}
+              value={hasOverride ? r.motivazione ?? "" : (r.motivazione_auto ?? motivazioneGenerale)}
               onChange={(e) => aggiornaMotivazioneRiga(r.cliente_id, e.target.value)}
               placeholder="Lascia vuoto per ereditare quella generale"
               className="min-h-20"
             />
             <div className="flex justify-between items-center">
               <span className="text-xs text-muted-foreground">
-                {hasOverride ? "Personalizzata" : "Eredita generale"}
+                {hasOverride ? "Personalizzata" : r.motivazione_auto ? "Automatica dal profilo" : "Eredita generale"}
               </span>
               {hasOverride && (
                 <Button variant="ghost" size="sm" onClick={() => aggiornaMotivazioneRiga(r.cliente_id, undefined)}>

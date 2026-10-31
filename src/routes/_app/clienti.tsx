@@ -164,8 +164,6 @@ const OPZIONI_SEMAFORO = [
   { valore: "spento", label: "⚪ Spento" },
 ];
 
-/** FM55: profili "senza acquisti" del preset Sanatoria (valori di fido_teorico_cliente.profilo). */
-const PROFILI_SANATORIA = ["perso", "mai_acquistato", "dormiente"];
 
 /** Testo del chip: un valore → la sua etichetta; piu' valori → "N selezionati". */
 function etichettaElenco(valori: string[], label: (v: string) => string): string {
@@ -1151,22 +1149,22 @@ function ClientiPage() {
     });
   }
 
-  // FM55: preset "Sanatoria" — azzera TUTTI i filtri (niente eredita' dai filtri
-  // salvati: la lista parte da "Solo attivi"/"Solo imprese" e nasconderebbe
-  // proprio questi clienti), poi imposta profilo senza acquisti + fido > 0.
+  // FM55: preset "Revisione fidi" — azzera TUTTI i filtri (niente eredita' dai
+  // filtri salvati), poi imposta clienti attivi con fido gestionale > 0, senza
+  // filtro su attivita', tipo soggetto o profilo. Stessi stati della query lista
+  // e di fetchAllFilteredRows, quindi contatore e "Seleziona tutti" coincidono.
   function applicaPresetSanatoria() {
     setSearch("");
     setSliderDisplay([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
     resetFiltriSalvati({
       sortBy, sortDir, page: 1, pageSize,
-      statoCliente: "tutti", statoAttivita: "tutti", filtroTipoSoggetto: "tutti",
-      soloConFidoAttivo: true, profiloFiltro: PROFILI_SANATORIA,
+      statoCliente: "attivi", statoAttivita: "tutti", filtroTipoSoggetto: "tutti",
+      soloConFidoAttivo: true, profiloFiltro: [],
     });
   }
   const sanatoriaAttiva =
-    soloConFidoAttivo &&
-    profiloFiltro.length === PROFILI_SANATORIA.length &&
-    PROFILI_SANATORIA.every((p) => profiloFiltro.includes(p));
+    soloConFidoAttivo && statoCliente === "attivi" && statoAttivita === "tutti" &&
+    filtroTipoSoggetto === "tutti" && profiloFiltro.length === 0;
 
   function toggleSort(colonna: string) {
     if (sortBy !== colonna) {
@@ -3497,7 +3495,7 @@ function FiltriAvanzatiDialog({
   currentMain: { filtroBlocco: "tutti" | "bloccati" | "non_bloccati"; filtroAssic: "tutti" | "assicurati" | "non_assicurati"; scadenziarioFiltro: string; soloConFidoAttivo: boolean };
   movedFilters?: React.ReactNode;
   fidoSlider?: React.ReactNode;
-  /** FM55: preset Sanatoria — azzera tutti i filtri e imposta profilo/fido (lo gestisce la pagina). */
+  /** FM55: preset Revisione fidi — azzera tutti i filtri e imposta attivi con fido (lo gestisce la pagina). */
   onPresetSanatoria?: () => void;
   sanatoriaAttiva?: boolean;
 }) {
@@ -3506,7 +3504,7 @@ function FiltriAvanzatiDialog({
 
   const PRESETS = [
     // Sanatoria: non tocca la bozza avanzata; la pagina azzera tutto e imposta i filtri.
-    { id: "sanatoria", label: "Sanatoria: clienti senza acquisti con fido", apply: (d: AdvAppliedT) => d },
+    { id: "sanatoria", label: "Revisione fidi", apply: (d: AdvAppliedT) => d },
     { id: "fido80", label: "Fido 80% consumato", apply: (d: AdvAppliedT) => ({ ...d, percConsumato: 80 }) },
     { id: "esaurito", label: "Fido esaurito", apply: (d: AdvAppliedT) => ({ ...d, fidoOp: "lte" as AdvOp, fidoVal: 0 }) },
     { id: "lt500", label: "Fido residuo < 500 €", apply: (d: AdvAppliedT) => ({ ...d, fidoOp: "lt" as AdvOp, fidoVal: 500 }) },
