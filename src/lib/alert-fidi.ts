@@ -241,3 +241,45 @@ export function cosaFareAlert(
   if (riferimento != null && Number(riferimento) > Number(a.fido_gamma ?? 0)) return `Aumento proposto a ${formatEuro(Number(riferimento))}`;
   return "Nessuna variazione proposta: valuta tu";
 }
+
+/** Etichette del filtro "Situazione" (stessi valori di stato, testi per lo store manager). */
+export const SITUAZIONE_ALERT_LABEL: Record<StatoAlertFido, string> = {
+  aperto: "Da gestire",
+  richiesta_inserita: "Proposta inviata",
+  confermato: "Lasciati così",
+  in_osservazione: "In osservazione",
+};
+
+/** Testo breve della colonna "Richiesta" per una richiesta attiva. */
+export function etichettaRichiestaBreve(r: Pick<RichiestaClienteAlert, "stato">): string {
+  return r.stato === "approvata" ? "Approvata – da inserire in Gamma" : "Proposta inviata – in approvazione";
+}
+
+/**
+ * Frase "Perché" dell'alert, solo dai valori già calcolati (nessun calcolo nuovo):
+ * scaduto oltre soglia prevale; altrimenti secondo il tipo dell'alert.
+ */
+export function perchéAlert(
+  a: Pick<AlertFidoRow, "tipo" | "fido_gamma" | "esposizione" | "ordini_aperti" | "consumo" | "fido_proposto">,
+  teorico?: { segnalazioni: readonly string[]; scaduto_oltre?: number | null; scaduto_oltre_giorni?: number | null } | null,
+): string {
+  const cod = teorico?.segnalazioni ?? [];
+  const scaduto = Number(teorico?.scaduto_oltre ?? 0);
+  if ((cod.includes("scaduto_non_incassato") || cod.includes("scaduto_da_incassare")) && scaduto > 0) {
+    const gg = Number(teorico?.scaduto_oltre_giorni ?? 0);
+    return gg > 0 ? `Scaduto non pagato da oltre ${gg} giorni: ${formatEuro(scaduto)}` : `Scaduto non pagato: ${formatEuro(scaduto)}`;
+  }
+  const debito = debitoOggi(a);
+  const fido = Number(a.fido_gamma ?? 0);
+  if (a.tipo === "consumo") {
+    const p = a.consumo != null ? Math.round(Number(a.consumo) * 100) : (fido > 0 ? Math.round((debito / fido) * 100) : null);
+    return p != null
+      ? `Ha usato il ${p}% del fido: ${formatEuro(debito)} su ${formatEuro(fido)}`.replace(/^Ha usato il (8|11)/, "Ha usato l'$1")
+      : `Ha usato ${formatEuro(debito)} su ${formatEuro(fido)}`;
+  }
+  if (a.tipo === "riduzione") {
+    const prop = a.fido_proposto != null ? ` (ne basterebbero ${formatEuro(Number(a.fido_proposto))})` : "";
+    return `Usa poco il fido: ${formatEuro(debito)} su ${formatEuro(fido)}${prop}`;
+  }
+  return `Extra approvato non usato: usa ${formatEuro(debito)} su ${formatEuro(fido)}`;
+}
