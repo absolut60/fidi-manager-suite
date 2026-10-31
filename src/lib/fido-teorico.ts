@@ -439,6 +439,20 @@ export function notaExtraProtetto(p: ExtraFidoProtetto): { testo: string; decadu
   };
 }
 
+/** Soglia di consumo del fido (configurazioni.alert_fidi_soglia_1, default 0,80). */
+export async function fetchSogliaConsumoFido(): Promise<number> {
+  const { data, error } = await supabase.from("configurazioni").select("valore").eq("chiave", "alert_fidi_soglia_1").maybeSingle();
+  if (error) throw error;
+  const valore = String(data?.valore ?? "").trim().replace(",", ".");
+  return valore ? Number(valore) : 0.80;
+}
+
+/** FM55 3C: fido che riporterebbe gli impegni sotto la soglia (solo informativo). */
+export function fidoPerTornareSottoSoglia(impegni: number, soglia: number): number {
+  if (!Number.isFinite(soglia) || soglia <= 0) throw new Error("Soglia di consumo del fido non valida");
+  return arrotondaFidoV2(impegni / soglia);
+}
+
 /** Riferimento per tutte le richieste; non modifica il teorico pubblicato o le esclusioni. */
 export async function fetchFidoTeoricoPerRichiesta(
   clienteIds: string[],
@@ -448,12 +462,10 @@ export async function fetchFidoTeoricoPerRichiesta(
   if (!clienteIds.some(Boolean)) return out;
   const [m, cfg, protetti] = await Promise.all([
     fetchFidoTeorico(clienteIds),
-    supabase.from("configurazioni").select("valore").eq("chiave", "alert_fidi_soglia_1").maybeSingle(),
+    fetchSogliaConsumoFido(),
     fetchExtraFidoProtetti(clienteIds),
   ]);
-  if (cfg.error) throw cfg.error;
-  const valore = String(cfg.data?.valore ?? "").trim();
-  const soglia = valore ? Number(valore) : 0.80;
+  const soglia = cfg;
   for (const [id, r] of m) {
     out.set(id, riferimentoRichiesta(r, soglia, protetti.get(id)));
   }

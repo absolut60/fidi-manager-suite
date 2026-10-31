@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { riepilogoVisibilita } from "@/lib/proposta-fido-visibilita";
+import { passaFiltriProposta, riepilogoVisibilita } from "@/lib/proposta-fido-visibilita";
 
 const filtri = { tipi: ["nuovo_fido", "aumento", "diminuzione"], pagImmediato: "includi", fidoZero: "includi", inCorso: "escludi" };
 const riga = (id: string, tipo: string, extra: Record<string, unknown> = {}) =>
@@ -27,5 +27,23 @@ describe("riepilogo visibilità proposta massiva", () => {
     const r = riepilogoVisibilita([riga("a", "rinnovo")], filtri, new Set(["a"]), undefined);
     expect(r.visibili).toBe(1);
     expect(r.nascosti.rinnovo).toBe(0);
+  });
+  it("FM55 3C: rinnovi in alert o con anomalie restano visibili come da valutare", () => {
+    const righe = [
+      riga("v1", "aumento"),
+      riga("r1", "rinnovo"), riga("r2", "rinnovo"),
+      riga("a1", "rinnovo", { inAlertOAnomalia: true }), riga("a2", "rinnovo", { inAlertOAnomalia: true }),
+      riga("c1", "rinnovo", { inAlertOAnomalia: true, richiestaInCorso: { id: "x" } }),
+      riga("n1", "aumento", { proponibile: false, regola: "cliente_bloccato" }),
+    ];
+    const r = riepilogoVisibilita(righe, filtri, new Set(), undefined);
+    expect(r.visibili).toBe(3);
+    expect(r.daValutare).toBe(2);
+    expect(r.nascosti.rinnovo).toBe(2);
+    expect(r.nascosti.in_corso).toBe(1);
+    const somma = r.visibili + Object.values(r.nascosti).reduce((a, b) => a + b, 0) + r.nonProponibiliTotale;
+    expect(somma).toBe(7);
+    expect(passaFiltriProposta(riga("a", "rinnovo", { inAlertOAnomalia: true }), filtri)).toBe(true);
+    expect(passaFiltriProposta(riga("b", "rinnovo"), filtri)).toBe(false);
   });
 });
