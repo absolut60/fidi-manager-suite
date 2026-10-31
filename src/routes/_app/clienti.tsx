@@ -1761,6 +1761,8 @@ function ClientiPage() {
           if (patch.soloConFidoAttivo !== undefined) setSoloConFidoAttivo(patch.soloConFidoAttivo);
         }}
         currentMain={{ filtroBlocco, filtroAssic, scadenziarioFiltro, soloConFidoAttivo }}
+        onPresetSanatoria={applicaPresetSanatoria}
+        sanatoriaAttiva={sanatoriaAttiva}
         movedFilters={
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div><Label className="text-xs">Bloccati</Label>{BloccoSelect}</div>
