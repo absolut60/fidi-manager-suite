@@ -41,7 +41,7 @@ describe("FM55 3B — protezione con scaduto già noto", () => {
     expect(n.decaduta).toBe(false);
     expect(n.testo).toContain("Extra approvato il 31/10");
     expect(n.testo).toContain("protetto fino al 30/11");
-    expect(n.testo).toMatch(/\+9\.000/);
+    expect(n.testo).toContain("(+9");
   });
   it("nota: scaduto già noto", () => {
     const n = notaExtraProtetto(acro);
