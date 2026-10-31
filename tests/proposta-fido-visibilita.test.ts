@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { righeVisibiliProposta } from "@/lib/proposta-fido-visibilita";
 
-const filtri = { tipi: ["nuovo_fido", "aumento", "diminuzione"], pagImmediato: "tutti", fidoZero: "tutti", inCorso: "tutti" };
+const filtri = { tipi: ["nuovo_fido", "aumento", "diminuzione"] };
 
 describe("visibilità proposta massiva", () => {
   it("riga diminuzione portata a rinnovo resta visibile se toccata", () => {

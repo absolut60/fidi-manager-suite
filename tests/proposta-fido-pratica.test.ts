@@ -4,7 +4,7 @@ import {
 } from "@/lib/proposta-fido-visibilita";
 import { segnalazioniAnomalia, anomaliaRossa } from "@/lib/fido-segnalazioni";
 
-const filtri = { tipi: ["nuovo_fido", "aumento", "diminuzione"], pagImmediato: "includi", fidoZero: "includi", inCorso: "escludi" };
+const filtri = { tipi: ["nuovo_fido", "aumento", "diminuzione"] };
 const riga = (id: string, tipo: string, extra: Record<string, unknown> = {}) =>
   ({ cliente_id: id, tipo, regola: "calcolo", fido_proposto: 1000, proponibile: true, ...extra });
 
@@ -12,14 +12,14 @@ describe("proposta massiva pratica (31/10)", () => {
   it("rinnovo con anomalia nascosto e contato in daDecidere", () => {
     const righe = [riga("a", "rinnovo", { inAlertOAnomalia: true }), riga("b", "aumento")];
     expect(righeVisibiliProposta(righe, filtri, new Set()).map((r) => r.cliente_id)).toEqual(["b"]);
-    const r = riepilogoVisibilita(righe, filtri, new Set(), undefined);
+    const r = riepilogoVisibilita(righe, filtri, new Set());
     expect(r.daDecidere).toBe(1);
     expect(r.visibili).toBe(1);
   });
   it("rinnovo in mostraSempre visibile e non contato in daDecidere", () => {
     const righe = [riga("a", "rinnovo", { inAlertOAnomalia: true })];
     expect(righeVisibiliProposta(righe, filtri, new Set(), new Set(["a"]))).toHaveLength(1);
-    const r = riepilogoVisibilita(righe, filtri, new Set(), undefined, new Set(["a"]));
+    const r = riepilogoVisibilita(righe, filtri, new Set(), new Set(["a"]));
     expect(r.visibili).toBe(1);
     expect(r.daDecidere).toBe(0);
   });
@@ -31,7 +31,7 @@ describe("proposta massiva pratica (31/10)", () => {
     ];
     const scelti = new Set(["a", "b", "c"]);
     expect(righeVisibiliProposta(righe, filtri, new Set(), scelti).map((r) => r.cliente_id)).toEqual(["a", "b", "c"]);
-    const r = riepilogoVisibilita(righe, filtri, new Set(), undefined, scelti);
+    const r = riepilogoVisibilita(righe, filtri, new Set(), scelti);
     expect(r.visibili).toBe(3);
     expect(r.daDecidere).toBe(0);
   });

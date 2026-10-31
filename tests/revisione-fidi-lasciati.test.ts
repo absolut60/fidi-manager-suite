@@ -1,27 +1,19 @@
 import { describe, it, expect } from "bun:test";
-import { gruppoRevisione, lasciatoCosiValido, type InputGruppoRevisione } from "@/lib/revisione-fidi";
+import { lasciatoCosiValido } from "@/lib/revisione-fidi";
 import { percheAlert } from "@/lib/alert-fidi";
 import { formatEuro } from "@/lib/fidi";
 
 const lasciato = { fido_gamma: 10000, valido_fino: "2026-11-30" };
-const base: InputGruppoRevisione = {
-  richiestaAttiva: false, alertConfermato: false, alertAperto: true, regola: "calcolo",
-  fidoGamma: 10000, riferimento: 10000, segnalazioni: [], extraProtettoValido: false,
-};
-const gruppo = (stato: { fidoGamma: number; regola: string; oggi: string }) =>
-  gruppoRevisione({ ...base, fidoGamma: stato.fidoGamma, regola: stato.regola,
-    lasciatoCosiValido: lasciatoCosiValido(lasciato, stato) });
-
 describe("lasciatoCosiValido", () => {
-  it("valido entro la data → lasciato_cosi", () =>
-    expect(gruppo({ fidoGamma: 10000, regola: "calcolo", oggi: "2026-11-30" })).toBe("lasciato_cosi"));
-  it("oltre la data → torna da decidere", () =>
-    expect(gruppo({ fidoGamma: 10000, regola: "calcolo", oggi: "2026-12-01" })).toBe("da_decidere"));
-  it("fido Gamma cambiato → torna nel suo gruppo", () =>
-    expect(gruppo({ fidoGamma: 12000, regola: "calcolo", oggi: "2026-11-15" })).toBe("pronta"));
-  it("scaduto non incassato → da_incassare", () =>
-    expect(gruppo({ fidoGamma: 10000, regola: "scaduto_non_incassato", oggi: "2026-11-15" })).toBe("da_incassare"));
-  it("nessuna decisione → non valido", () =>
+  it("valido fino al 30/11 incluso", () =>
+    expect(lasciatoCosiValido(lasciato, { fidoGamma: 10000, regola: "calcolo", oggi: "2026-11-30" })).toBe(true));
+  it("scaduto dal 01/12", () =>
+    expect(lasciatoCosiValido(lasciato, { fidoGamma: 10000, regola: "calcolo", oggi: "2026-12-01" })).toBe(false));
+  it("fido Gamma cambiato", () =>
+    expect(lasciatoCosiValido(lasciato, { fidoGamma: 12000, regola: "calcolo", oggi: "2026-11-15" })).toBe(false));
+  it("scaduto non incassato", () =>
+    expect(lasciatoCosiValido(lasciato, { fidoGamma: 10000, regola: "scaduto_non_incassato", oggi: "2026-11-15" })).toBe(false));
+  it("nessuna decisione", () =>
     expect(lasciatoCosiValido(null, { fidoGamma: 10000, regola: "calcolo", oggi: "2026-11-15" })).toBe(false));
 });
 
