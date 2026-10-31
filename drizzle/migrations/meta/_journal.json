@@ -778,6 +778,13 @@
       "when": 1793458195712,
       "tag": "0110_fm55_alert_fidi_stato_richiesta_dinamico",
       "breakpoints": true
+    },
+    {
+      "idx": 111,
+      "version": "7",
+      "when": 1793458523608,
+      "tag": "0111_fm55_spiegazione_impegni_aperti",
+      "breakpoints": true
     }
   ]
 }
