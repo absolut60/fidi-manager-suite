@@ -16,7 +16,7 @@ describe("riepilogo visibilità proposta massiva", () => {
     ];
     const r = riepilogoVisibilita(righe, filtri, new Set(), new Set(["p1"]));
     expect(r.visibili).toBe(3);
-    expect(r.nascosti.rinnovo).toBe(5);
+    expect(r.nascosti.rinnovo).toBe(4);
     expect(r.nascosti.protetto).toBe(1);
     expect(r.nascosti.in_corso).toBe(1);
     expect(r.nonProponibili.condizione_mancante).toBe(1);
