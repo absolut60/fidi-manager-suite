@@ -1,10 +1,11 @@
 # Roadmap
 
 ## FM55 — Import/Export: diagnosi doppioni e schermata
-- [ ] Diagnosi in sola lettura dei file del 31/10 11:13 e 30/10 17:57
-- [ ] Nascondere file e avvio dopo la partenza degli import A/B/C
-- [ ] Rileggere il precalcolo alla fine degli import; attesa automatica ogni 15 secondi, massimo 10 minuti
-- [ ] Test mirati, controlli automatici e verifica schermata dove l'accesso lo consente
+- [x] Diagnosi sola lettura: staging già eliminato; originali confrontati, 6 coppie comuni, una tra chunk diversi (cliente 5333)
+- [x] File e avvio nascosti dopo la partenza degli import A/B/C; nuovo caricamento torna all'area iniziale
+- [x] Precalcolo riletto alla fine degli import osservati nello storico; attesa automatica ogni 15 secondi, massimo 10 minuti
+- [x] 7 test superati; controllo tipi automatico e compilazione OK; componente reale isolato provato a 320/390/768/1280/1920
+- [ ] Verifica autenticata pagina e ricalcolo automatico reale: account del richiedente non disponibile; nessun import avviato durante le prove
 
 ## FM55 — Fetta 5a: nuovo calcolo per tutti
 - [x] Baseline importi, regole e visibilità: 12900 righe, stesso MD5 dopo il cambio
