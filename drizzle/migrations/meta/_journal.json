@@ -743,6 +743,13 @@
       "when": 1793432958311,
       "tag": "0105_fm55_fido_v2_pubblicato_per_tutti",
       "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1793449812146,
+      "tag": "0106_fm55_fido_v2_dormienti_persi_nuovi",
+      "breakpoints": true
     }
   ]
 }
