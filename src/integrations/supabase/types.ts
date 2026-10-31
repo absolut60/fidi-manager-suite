@@ -4794,12 +4794,14 @@ export type Database = {
           esito_condizione_pagamento: string | null
           esito_fido: string | null
           esportata_da: string | null
+          fido_teorico_riferimento: number | null
           id: string
           importo_approvato: number | null
           importo_richiesto: number
           livello_corrente: number
           livello_richiesto: number
           motivazione: string | null
+          motivo_extra_teorico: string | null
           note: string | null
           note_export: string | null
           processata_da: string | null
@@ -4828,12 +4830,14 @@ export type Database = {
           esito_condizione_pagamento?: string | null
           esito_fido?: string | null
           esportata_da?: string | null
+          fido_teorico_riferimento?: number | null
           id?: string
           importo_approvato?: number | null
           importo_richiesto: number
           livello_corrente?: number
           livello_richiesto?: number
           motivazione?: string | null
+          motivo_extra_teorico?: string | null
           note?: string | null
           note_export?: string | null
           processata_da?: string | null
@@ -4862,12 +4866,14 @@ export type Database = {
           esito_condizione_pagamento?: string | null
           esito_fido?: string | null
           esportata_da?: string | null
+          fido_teorico_riferimento?: number | null
           id?: string
           importo_approvato?: number | null
           importo_richiesto?: number
           livello_corrente?: number
           livello_richiesto?: number
           motivazione?: string | null
+          motivo_extra_teorico?: string | null
           note?: string | null
           note_export?: string | null
           processata_da?: string | null
@@ -7961,12 +7967,14 @@ export type Database = {
           esito_condizione_pagamento: string | null
           esito_fido: string | null
           esportata_da: string | null
+          fido_teorico_riferimento: number | null
           id: string
           importo_approvato: number | null
           importo_richiesto: number
           livello_corrente: number
           livello_richiesto: number
           motivazione: string | null
+          motivo_extra_teorico: string | null
           note: string | null
           note_export: string | null
           processata_da: string | null

@@ -694,6 +694,13 @@
       "when": 1793395096339,
       "tag": "0098_fm55_fido_v2_spiegazione_giorni_e_tendenza",
       "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1793427041389,
+      "tag": "0099_fm55_richieste_extra_fido_teorico",
+      "breakpoints": true
     }
   ]
 }

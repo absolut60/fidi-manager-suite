@@ -260,3 +260,40 @@ export async function fetchUtentiAnteprimaFidoNuovo(): Promise<string[]> {
     .map((s) => s.trim())
     .filter(Boolean);
 }
+
+// ============================================================================
+// FM55 — Fido teorico di riferimento per le RICHIESTE (fonte unica)
+// ============================================================================
+
+/**
+ * Fido teorico da mostrare/salvare in una richiesta (proposta massiva e singola).
+ * - Utenti in configurazioni.fido_v2_anteprima_utenti: fido_teorico_v2.fido_proposto.
+ * - Tutti gli altri: fido_teorico_cliente.fido_proposto (comportamento di oggi).
+ * Regole "non proponibile" invariate (isProponibile): in quel caso il valore è null.
+ * NB: alla sostituzione finale del calcolo resterà una sola fonte.
+ */
+export async function fetchFidoTeoricoPerRichiesta(
+  clienteIds: string[],
+  userId: string | null | undefined,
+): Promise<Map<string, number | null>> {
+  const out = new Map<string, number | null>();
+  const ids = Array.from(new Set(clienteIds.filter(Boolean)));
+  if (ids.length === 0) return out;
+  const anteprima = userId ? (await fetchUtentiAnteprimaFidoNuovo()).includes(userId) : false;
+  if (!anteprima) {
+    const m = await fetchFidoTeorico(ids);
+    for (const [id, r] of m) out.set(id, isProponibile(r.regola_applicata) ? r.fido_proposto : null);
+    return out;
+  }
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const { data, error } = await (supabase as any)
+      .from("fido_teorico_v2")
+      .select("cliente_id, fido_proposto, regola")
+      .in("cliente_id", ids.slice(i, i + CHUNK));
+    if (error) throw error;
+    for (const r of (data ?? []) as any[]) {
+      out.set(String(r.cliente_id), isProponibile(r.regola) && r.fido_proposto != null ? Number(r.fido_proposto) : null);
+    }
+  }
+  return out;
+}
