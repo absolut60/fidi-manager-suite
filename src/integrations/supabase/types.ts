@@ -7005,6 +7005,17 @@ export type Database = {
           user_agent: string
         }[]
       }
+      extra_fido_protetti: {
+        Args: { _cliente_ids?: string[] }
+        Returns: {
+          approvata_il: string
+          cliente_id: string
+          fido_teorico_riferimento: number
+          importo_approvato: number
+          protetto_fino_al: string
+          richiesta_id: string
+        }[]
+      }
       fido_consumato_perc: {
         Args: { c: Database["public"]["Tables"]["clienti"]["Row"] }
         Returns: number
