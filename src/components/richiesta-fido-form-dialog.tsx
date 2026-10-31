@@ -21,9 +21,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { STATO_LABEL, calcolaLivello, formatEuro, isRichiestaAttiva, determinaTipoRichiesta, importoRichiestaValido, condizionePagamentoCambiata, etichettaTipoRichiesta } from "@/lib/fidi";
+import { STATO_LABEL, calcolaLivello, formatEuro, isRichiestaAttiva, determinaTipoRichiesta, importoRichiestaValido, condizionePagamentoCambiata, etichettaTipoRichiesta, motivoExtraObbligatorio } from "@/lib/fidi";
+import { CampoExtraTeorico } from "@/components/extra-fido-teorico";
 import { getFidoAttuale } from "@/lib/fido-cliente";
-import { fetchFidoTeorico, isProponibile, MOTIVO_NON_PROPONIBILE } from "@/lib/fido-teorico";
+import { fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, isProponibile, MOTIVO_NON_PROPONIBILE } from "@/lib/fido-teorico";
 import { CondizionePagamentoRichiestaSelect, CondizionePagamentoTesto, useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
 import { CambioCondizionePagamento } from "@/components/cambio-condizione-pagamento";
 import { PannelloRischioCliente } from "@/components/pannello-rischio-cliente";
@@ -73,6 +74,7 @@ export function RichiestaFormDialog({
 }) {
   const qc = useQueryClient();
   const config = useConfig();
+  const { user: utente } = useAuth();
   const seed = richiesta ?? cloneFrom;
   const [form, setForm] = useState<FormVals>({
     cliente_id: seed?.cliente_id ?? clienteIdFisso ?? "",
@@ -85,6 +87,8 @@ export function RichiestaFormDialog({
   });
   // Toccata solo se il seed porta già una condizione: altrimenti parte da quella del cliente.
   const [condPagTouched, setCondPagTouched] = useState<boolean>(!!seed?.condizione_pagamento_cod);
+  // FM55: motivo dell'extra rispetto al fido teorico (obbligatorio se si supera).
+  const [motivoExtra, setMotivoExtra] = useState<string>(seed?.motivo_extra_teorico ?? "");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -156,7 +160,18 @@ export function RichiestaFormDialog({
     queryFn: async () => (await fetchFidoTeorico([form.cliente_id])).get(form.cliente_id) ?? null,
   });
   const proponibile = isProponibile(teorico?.regola_applicata);
-  const fidoProposto = isNuova && teorico && proponibile ? teorico.fido_proposto : 0;
+  // FM55: teorico di riferimento della richiesta (fonte unica fetchFidoTeoricoPerRichiesta).
+  const { data: teoricoRich } = useQuery({
+    queryKey: ["fido-teorico-per-richiesta", utente?.id ?? null, form.cliente_id],
+    enabled: isNuova && !!form.cliente_id,
+    staleTime: 5 * 60_000,
+    queryFn: async () => (await fetchFidoTeoricoPerRichiesta([form.cliente_id], utente?.id)).get(form.cliente_id) ?? null,
+  });
+  const fidoProposto = isNuova && teorico && proponibile ? (teoricoRich ?? 0) : 0;
+  // Nuova: teorico mostrato ora (null se non proponibile). Modifica/ri-invio: quello salvato.
+  const teoricoRiferimento: number | null = isNuova
+    ? (teorico && proponibile && teoricoRich != null ? teoricoRich : null)
+    : (seed?.fido_teorico_riferimento == null ? null : Number(seed.fido_teorico_riferimento));
   const importoToccato = useRef(false);
   const importoAuto = useRef(false);
   // Precompila (o aggiorna al cambio cliente) finché l'utente non tocca l'importo.
@@ -269,6 +284,8 @@ export function RichiestaFormDialog({
         condizione_pagamento_cod: parsed.condizione_pagamento_cod
           ? parsed.condizione_pagamento_cod
           : null,
+        fido_teorico_riferimento: teoricoRiferimento,
+        motivo_extra_teorico: motivoExtraObbligatorio(parsed.importo_richiesto, teoricoRiferimento) ? motivoExtra.trim() : null,
       } as any;
       let richiestaId: string | null = null;
       if (richiesta?.id) {
@@ -316,7 +333,11 @@ export function RichiestaFormDialog({
       onSaved();
       onClose();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(
+      e.message.includes("richieste_fido_motivo_extra_teorico_check")
+        ? "Manca il motivo dell'extra fido teorico"
+        : e.message,
+    ),
   });
 
   function submit(invia: boolean) {
@@ -325,6 +346,11 @@ export function RichiestaFormDialog({
       const errs: Record<string, string> = {};
       res.error.issues.forEach((i) => { errs[i.path[0] as string] = i.message; });
       setErrors(errs);
+      return;
+    }
+    if (motivoExtraObbligatorio(res.data.importo_richiesto, teoricoRiferimento) && motivoExtra.trim() === "") {
+      setErrors({ motivo_extra: "Indica il motivo dell'extra fido teorico" });
+      toast.error("Manca il motivo dell'extra fido teorico");
       return;
     }
     setErrors({});
@@ -470,6 +496,8 @@ export function RichiestaFormDialog({
             <Input type="number" step="0.01" min="0" value={form.importo_richiesto}
               onChange={(e) => { importoToccato.current = true; setForm({ ...form, importo_richiesto: e.target.value === "" ? "" : Number(e.target.value) }); }} />
             {errors.importo_richiesto && <p className="text-xs text-destructive">{errors.importo_richiesto}</p>}
+            <CampoExtraTeorico importo={form.importo_richiesto} teorico={teoricoRiferimento}
+              motivo={motivoExtra} onMotivo={setMotivoExtra} />
           </div>
           <div className="space-y-1.5">
             <Label>Fido attuale</Label>
