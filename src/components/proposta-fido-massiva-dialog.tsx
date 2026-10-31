@@ -487,10 +487,17 @@ export function ProposteFidoMassivoDialog({
       )}
       <Input
         type="number"
-        className={className}
+        className={`${className} text-right tabular-nums`}
         value={r.fido_proposto}
         disabled={!r.proponibile}
-        onChange={(e) => aggiornaImporto(r.cliente_id, Number(e.target.value) || 0)}
+        aria-label={`Fido proposto per ${r.ragione_sociale}`}
+        onFocus={(e) => e.currentTarget.select()}
+        onChange={(e) => {
+          const valore = Number(e.currentTarget.value) || 0;
+          // Normalizza anche il testo nativo: React può non riscriverlo se il numero non cambia.
+          if (/^0\d/.test(e.currentTarget.value)) e.currentTarget.value = String(valore);
+          aggiornaImporto(r.cliente_id, valore);
+        }}
       />
       {r.proponibile && (
         <CampoExtraTeorico compatto importo={r.fido_proposto} teorico={r.fido_teorico}
@@ -765,7 +772,7 @@ export function ProposteFidoMassivoDialog({
           <Table className="table-fixed w-full text-xs [&_th]:px-1 [&_td]:px-1 [&_th]:whitespace-normal [&_td]:whitespace-normal">
             <colgroup>
               <col className="w-8" /><col /><col className="w-16" /><col className="w-16" />
-              <col className="w-40" /><col className="w-20" /><col className="w-64" />
+              <col className="w-64" /><col className="w-20" /><col className="w-52" />
               <col className="w-36" /><col className="w-8" /><col className="w-8" />
             </colgroup>
             <TableHeader><TableRow>
