@@ -28,6 +28,9 @@ import { getFidoAttuale } from "@/lib/fido-cliente";
 import { PannelloRischioCliente } from "@/components/pannello-rischio-cliente";
 import { ModificaRichiestaFidoDialog, useAnnullaRichiestaFido } from "@/components/richiesta-fido-form-dialog";
 import { semaforoUI, semaforoDaCliente } from "@/lib/semaforo-ui";
+import { fetchFidoTeorico } from "@/lib/fido-teorico";
+import { SEGNALAZIONI_FIDO, daAutorizzareRichiesta } from "@/lib/fido-segnalazioni";
+import { SegnalazioniFido } from "@/components/segnalazioni-fido";
 
 export const Route = createFileRoute("/_app/richieste/$richiestaId")({
   head: () => ({ meta: [
@@ -63,6 +66,17 @@ function RichiestaDetail() {
   // Condizione di pagamento proposta (descrizione dal hook unico dei codici).
   const condPagCod = (r as any)?.condizione_pagamento_cod as string | null | undefined;
   const vistaR = r ? mapRichiestaFido(r) : null;
+  // FM55 3C: segnalazioni dalla stessa fonte di proposta massiva e scheda cliente.
+  const clienteIdSegn = (r as any)?.cliente_id as string | undefined;
+  const { data: teoricoCliente } = useQuery({
+    queryKey: ["fido-teorico", clienteIdSegn],
+    enabled: !!clienteIdSegn,
+    staleTime: 5 * 60_000,
+    queryFn: async () => (await fetchFidoTeorico([clienteIdSegn!])).get(clienteIdSegn!) ?? null,
+  });
+  const daAutorizzare = vistaR
+    ? daAutorizzareRichiesta(Number((r as any).importo_richiesto), vistaR.teoricoRiferimento, teoricoCliente?.segnalazioni)
+    : null;
 
   const { data: approvazioni } = useQuery({
     queryKey: ["approvazioni", richiestaId],
@@ -248,6 +262,20 @@ function RichiestaDetail() {
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:hidden">{badgeTipo}{badgeStato}</div>
       </div>
+
+      {daAutorizzare && (
+        <div role="alert" className={`min-w-0 break-words rounded-md border p-2.5 text-sm ${daAutorizzare.rossa ? "border-destructive/50 bg-destructive/10 text-destructive" : "border-warning/50 bg-warning/15 text-foreground"}`}>
+          <p className="font-semibold">Da autorizzare</p>
+          <p>
+            Richiesta sopra il fido teorico di {formatEuro(vistaR?.teoricoRiferimento ?? 0)} con anomalie:{" "}
+            {daAutorizzare.anomalie.map((c) => SEGNALAZIONI_FIDO[c]?.etichetta ?? c).join(", ")}.
+            {" "}Motivo dell'extra: {vistaR?.motivoExtra?.trim() || "non indicato"}
+          </p>
+        </div>
+      )}
+      {teoricoCliente && teoricoCliente.segnalazioni.length > 0 && (
+        <div className="min-w-0"><SegnalazioniFido riga={teoricoCliente} /></div>
+      )}
 
       {/* 2) DATI DELLA RICHIESTA — una fascia, senza ripetizioni */}
       <Card className="grid grid-cols-1 md:grid-cols-3 xl:flex xl:flex-wrap gap-x-3 gap-y-1 p-2.5 [&>div]:min-w-0 [&>div]:xl:grow [&>div]:xl:border-r [&>div]:xl:pr-3 [&>div:last-child]:border-r-0">
