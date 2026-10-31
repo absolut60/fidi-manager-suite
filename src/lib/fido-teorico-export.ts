@@ -1,7 +1,7 @@
 /**
  * Esportazione Excel del fido teorico per TUTTI i clienti visibili all'utente.
  *
- * Sola lettura: usa la RPC canonica `public.get_fido_teorico()` (senza filtro id)
+ * Sola lettura: legge il precalcolo canonico `public.fido_teorico_cliente`
  * e l'anagrafica clienti. Nessuna scrittura sul DB, nessun calcolo alternativo
  * del fido: i valori del motore vengono riportati tali e quali.
  */
@@ -9,7 +9,7 @@ import * as XLSX from "xlsx";
 import { unzipSync, zipSync } from "fflate";
 
 import { supabase } from "@/integrations/supabase/client";
-import { REGOLA_DESCRIZIONE } from "@/lib/fido-teorico";
+import { REGOLA_DESCRIZIONE, PROFILO_FIDO_LABEL } from "@/lib/fido-teorico";
 import { salvaFile } from "@/lib/salva-file";
 
 const PAGE = 1000;
@@ -83,7 +83,13 @@ export type RigaExport = {
   sede_cinisello: boolean;
   ddt_incluso: number;
   fido_teorico_puro: number;
-  pavimento_applicato: boolean;
+  fabbisogno: number;
+  acquisto_storico: number;
+  acquisto_tendenza: number;
+  ciclo_gg: number | null;
+  mesi_stagionali: number | null;
+  ordini_aperti: number;
+  consumo_perc: number | null;
 };
 
 
@@ -245,9 +251,9 @@ export async function raccogliDatiFidoTeorico(
       agente: c.agente ?? "",
       categoria: c.categoria ?? "",
       condizione_pagamento: condizione,
-      giorni: t.giorni_mancanti ? null : num(t.giorni),
+      giorni: t.ciclo_gg == null ? null : num(t.giorni),
       fatturato_rolling: num(t.fatturato_rolling),
-      fido_base: num(t.fido_base),
+      fido_base: num(t.base),
       fido_proposto: num(t.fido_proposto),
       fido_attuale: num(t.fido_attuale),
       scostamento: num(t.scostamento),
@@ -265,17 +271,23 @@ export async function raccogliDatiFidoTeorico(
       fatturato_anno_corrente: cur,
       fatturato_anno_precedente: prev,
       dinamica: calcolaDinamica(cur, prev),
-      ritmo_mensile: num(t.ritmo_mensile),
+      ritmo_mensile: num(t.acquisto_mensile),
       giorni_oltre_accordo: num(t.giorni_oltre_accordo),
-      profilo_pagamento: t.profilo_pagamento === "patologico" ? "Patologico" : "Sano",
+      profilo_pagamento: PROFILO_FIDO_LABEL[t.profilo] ?? t.profilo ?? "",
       coefficiente: Number(t.coefficiente ?? 1),
       fido_proposto_senza_coefficiente: num(t.fido_proposto_senza_coefficiente ?? t.fido_proposto),
       richiede_verifica: !!t.richiede_verifica,
-      nota_proposta: String(t.nota_proposta ?? ""),
+      nota_proposta: String(t.spiegazione ?? ""),
       sede_cinisello: !!t.sede_cinisello,
       ddt_incluso: num(t.ddt_da_fatturare),
       fido_teorico_puro: num(t.fido_teorico_puro ?? t.fido_proposto),
-      pavimento_applicato: !!t.pavimento_applicato,
+      fabbisogno: num(t.fabbisogno),
+      acquisto_storico: num(t.acquisto_storico),
+      acquisto_tendenza: num(t.acquisto_tendenza),
+      ciclo_gg: t.ciclo_gg == null ? null : num(t.ciclo_gg),
+      mesi_stagionali: t.mesi_stagionali == null ? null : num(t.mesi_stagionali),
+      ordini_aperti: num(t.ordini_aperti),
+      consumo_perc: t.consumo_perc == null ? null : num(t.consumo_perc),
     });
   }
 
@@ -293,7 +305,7 @@ const INTESTAZIONI = [
   "Condizione di pagamento",
   "Giorni di pagamento",
   "Fatturato nella finestra (lordo)",
-  "Fido base",
+  "Base",
   "Fido proposto",
   "Fido attuale (gestionale)",
   "Scostamento",
@@ -311,23 +323,26 @@ const INTESTAZIONI = [
   "Fatturato anno corrente",
   "Fatturato anno precedente",
   "Dinamica",
-  "Ritmo mensile",
-  "Giorni oltre l'accordo",
-  "Profilo di pagamento",
+  "Acquisto mensile",
+  "Profilo",
   "Coefficiente",
   "Fido proposto senza coefficiente",
   "Da verificare",
-  "Nota sulla proposta",
+  "Spiegazione",
   "Sede Cinisello Balsamo",
-  "DDT inclusi nel fido",
-  "Fido teorico puro (prima del pavimento)",
-  "Pavimento su esposizione",
+  "Fabbisogno",
+  "Acquisto storico",
+  "Acquisto tendenza",
+  "Ciclo di pagamento (giorni)",
+  "Mesi stagionali",
+  "Ordini aperti",
+  "Consumo del fido",
 ];
 
 /** Indici (0-based) delle colonne da trattare come TESTO (zeri iniziali). */
 const COL_TESTO = new Set([0, 2]);
 /** Indici delle colonne monetarie (due decimali). */
-const COL_EURO = new Set([8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 24, 25, 27, 31, 34, 36]);
+const COL_EURO = new Set([8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 24, 25, 27, 30, 34, 35, 36, 39]);
 
 
 function marcaTipi(ws: XLSX.WorkSheet, nRighe: number, nCol: number, offsetRiga = 1) {
@@ -340,6 +355,8 @@ function marcaTipi(ws: XLSX.WorkSheet, nRighe: number, nCol: number, offsetRiga 
         cell.t = "s";
         cell.v = String(cell.v ?? "");
         cell.z = "@";
+      } else if (c === 40 && typeof cell.v === "number") {
+        cell.z = "0.0%";
       } else if (COL_EURO.has(c) && typeof cell.v === "number") {
         cell.t = "n";
         cell.z = "#,##0.00";
@@ -387,23 +404,26 @@ export function costruisciWorkbook(
       r.fatturato_anno_precedente,
       DINAMICA_LABEL[r.dinamica],
       r.ritmo_mensile,
-      r.giorni_oltre_accordo,
       r.profilo_pagamento,
       r.coefficiente,
       r.fido_proposto_senza_coefficiente,
       r.richiede_verifica ? "Sì" : "No",
       r.nota_proposta,
       r.sede_cinisello ? "Sì" : "No",
-      r.ddt_incluso,
-      r.fido_teorico_puro,
-      r.pavimento_applicato ? "Sì" : "No",
+      r.fabbisogno,
+      r.acquisto_storico,
+      r.acquisto_tendenza,
+      r.ciclo_gg,
+      r.mesi_stagionali,
+      r.ordini_aperti,
+      r.consumo_perc,
     ]),
   ];
   const ws = XLSX.utils.aoa_to_sheet(aoa, { cellDates: false });
   marcaTipi(ws, righe.length, INTESTAZIONI.length);
 
   ws["!cols"] = INTESTAZIONI.map((h, i) => ({
-    wch: i === 1 ? 38 : i === 13 ? 46 : i === 33 ? 70 : Math.max(12, Math.min(26, h.length + 2)),
+    wch: i === 1 ? 38 : i === 13 ? 46 : i === 32 ? 70 : Math.max(12, Math.min(26, h.length + 2)),
   }));
   ws["!autofilter"] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: righe.length, c: INTESTAZIONI.length - 1 } }) };
   (ws as any)["!freeze"] = { xSplit: "0", ySplit: "1", topLeftCell: "A2", activePane: "bottomLeft", state: "frozen" };
@@ -430,7 +450,7 @@ export function costruisciWorkbook(
   for (const r of righe) {
     const k = r.regola || "—";
     if (!perRegola.has(k)) perRegola.set(k, []);
-    perRegola.get(k)!.push(r);
+    perRegola.get(k)?.push(r);
   }
   for (const [k, rows] of [...perRegola.entries()].sort((a, b) => b[1].length - a[1].length)) {
     rip.push([k, rows.length, somma((r) => r.fido_proposto, rows)]);
@@ -457,7 +477,7 @@ export function costruisciWorkbook(
 
   const rigaProfilo = rip.length;
   rip.push(["Per profilo di pagamento", "Clienti", "Fido proposto", "Senza coefficiente"]);
-  for (const p of ["Sano", "Patologico"]) {
+  for (const p of [...new Set(righe.map((r) => r.profilo_pagamento))].sort((a, b) => a.localeCompare(b, "it"))) {
     const rows = righe.filter((r) => r.profilo_pagamento === p);
     rip.push([p, rows.length, somma((r) => r.fido_proposto, rows), somma((r) => r.fido_proposto_senza_coefficiente, rows)]);
   }
