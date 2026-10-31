@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatEuro, formatDate } from "@/lib/fidi";
 import { fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchSogliaConsumoFido, fidoPerTornareSottoSoglia, fetchUtentiAnteprimaFidoNuovo } from "@/lib/fido-teorico";
 import { SegnalazioniFido } from "@/components/segnalazioni-fido";
+import { fetchRevisioneFidi, riepilogoRevisione, daRivedereRevisione } from "@/lib/revisione-fidi";
 import {
   fetchAlertFidiAperti, confermaAlertFido, cosaFareAlert, alertLasciabileCosi, etichettaAvviso, debitoOggi, alertSelezionabile,
   importoDaAlert, statoEffettivoAlert, etichettaRichiestaAlert, etichettaDecisioneAlert, STATO_ALERT_LABEL, STATI_ALERT_DEFAULT, TIPO_ALERT_LABEL,
@@ -77,6 +78,12 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
     queryKey: ["alert-fidi-aperti"],
     queryFn: fetchAlertFidiAperti,
   });
+  const { data: revisione } = useQuery({
+    queryKey: ["revisione-fidi", userId],
+    queryFn: () => fetchRevisioneFidi(userId),
+    staleTime: 2 * 60_000,
+  });
+  const daRivedere = useMemo(() => revisione ? daRivedereRevisione(riepilogoRevisione(revisione)) : 0, [revisione]);
   // FM55 3C: segnalazioni dalla stessa fonte di proposta massiva e scheda cliente.
   const idsClienti = useMemo(() => [...new Set((righe ?? []).map((a) => a.cliente_id))].sort(), [righe]);
   const { data: teoricoMap } = useQuery({
@@ -266,6 +273,13 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
           <p className="text-sm text-muted-foreground">Clienti con il fido da rivedere. Si aggiornano a ogni ricalcolo del fido teorico.</p>
         </div>
       </div>
+
+      {daRivedere > 0 && (
+        <Card className="flex flex-wrap items-center justify-between gap-2 border-primary/40 bg-primary/5 p-3">
+          <span className="min-w-0 font-medium">Hai {daRivedere.toLocaleString("it-IT")} clienti da rivedere</span>
+          <Button asChild className="h-10"><Link to="/revisione-fidi">Apri Revisione fidi</Link></Button>
+        </Card>
+      )}
 
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         {[
