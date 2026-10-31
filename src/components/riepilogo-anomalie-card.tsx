@@ -22,6 +22,7 @@ type Riepilogo = {
   emailMultipleSplittate: number;
   pecMultipleSplittate: number;
   cambiBlocco: number;
+  righeDoppieGamma: number;
   altre: number;
 };
 
@@ -45,6 +46,7 @@ async function fetchRiepilogo(): Promise<Riepilogo> {
       emailMultipleSplittate: 0,
       pecMultipleSplittate: 0,
       cambiBlocco: 0,
+      righeDoppieGamma: 0,
       altre: 0,
     };
   }
@@ -64,6 +66,7 @@ async function fetchRiepilogo(): Promise<Riepilogo> {
     emailMult = 0,
     pecMult = 0,
     blocco = 0,
+    righeDoppieGamma = 0,
     altre = 0;
   for (const r of rows) {
     if (r.campo === "email" && r.valore_nuovo === "azzerato") emailAzz++;
@@ -71,6 +74,7 @@ async function fetchRiepilogo(): Promise<Riepilogo> {
     else if (r.campo === "email" && r.tipo_anomalia === "multipla") emailMult++;
     else if (r.campo === "pec" && r.tipo_anomalia === "multipla") pecMult++;
     else if (r.tipo_anomalia === "cambio_blocco") blocco++;
+    else if (r.tipo_anomalia === "riga_doppia_gamma") righeDoppieGamma++;
     else altre++;
   }
 
@@ -84,6 +88,7 @@ async function fetchRiepilogo(): Promise<Riepilogo> {
     emailMultipleSplittate: emailMult,
     pecMultipleSplittate: pecMult,
     cambiBlocco: blocco,
+    righeDoppieGamma,
     altre,
   };
 }
@@ -129,12 +134,13 @@ export function RiepilogoAnomalieCard() {
             : <span className="font-medium text-foreground">{r.totale.toLocaleString("it-IT")} anomalie</span>{" "}
             registrate.
           </p>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-sm">
             <Stat label="Email azzerate" value={r.emailAzzerate} />
             <Stat label="PEC azzerate" value={r.pecAzzerate} />
             <Stat label="Email multiple → split PEC" value={r.emailMultipleSplittate} />
             <Stat label="PEC multiple → split" value={r.pecMultipleSplittate} />
             <Stat label="Cambi blocco" value={r.cambiBlocco} />
+            <Stat label="Righe doppie nel file Gamma" value={r.righeDoppieGamma} />
             <Stat label="Altre" value={r.altre} />
           </div>
           <div className="mt-4 flex items-start gap-2 text-xs text-muted-foreground">
