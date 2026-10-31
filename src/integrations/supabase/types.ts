@@ -4925,6 +4925,51 @@ export type Database = {
           },
         ]
       }
+      revisione_fidi_lasciati: {
+        Row: {
+          cliente_id: string
+          deciso_da: string
+          deciso_da_nome: string | null
+          deciso_il: string
+          fido_gamma: number
+          id: string
+          valido_fino: string
+        }
+        Insert: {
+          cliente_id: string
+          deciso_da?: string
+          deciso_da_nome?: string | null
+          deciso_il?: string
+          fido_gamma: number
+          id?: string
+          valido_fino: string
+        }
+        Update: {
+          cliente_id?: string
+          deciso_da?: string
+          deciso_da_nome?: string | null
+          deciso_il?: string
+          fido_gamma?: number
+          id?: string
+          valido_fino?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "revisione_fidi_lasciati_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "revisione_fidi_lasciati_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+        ]
+      }
       richieste_fido: {
         Row: {
           approvato_da: string | null
@@ -8175,6 +8220,24 @@ export type Database = {
       is_promessa_pagamento: {
         Args: { _esito: string; _tipo: string }
         Returns: boolean
+      }
+      lascia_cosi_revisione: {
+        Args: { _cliente_id: string }
+        Returns: {
+          cliente_id: string
+          deciso_da: string
+          deciso_da_nome: string | null
+          deciso_il: string
+          fido_gamma: number
+          id: string
+          valido_fino: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "revisione_fidi_lasciati"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       lead_evento_provvisorio: { Args: { _lead_id: string }; Returns: boolean }
       livello_approvatore: { Args: { _user_id: string }; Returns: number }
