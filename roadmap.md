@@ -1,5 +1,11 @@
 # Roadmap
 
+## FM55 — Import/Export: diagnosi doppioni e schermata
+- [ ] Diagnosi in sola lettura dei file del 31/10 11:13 e 30/10 17:57
+- [ ] Nascondere file e avvio dopo la partenza degli import A/B/C
+- [ ] Rileggere il precalcolo alla fine degli import; attesa automatica ogni 15 secondi, massimo 10 minuti
+- [ ] Test mirati, controlli automatici e verifica schermata dove l'accesso lo consente
+
 ## FM55 — Fetta 5a: nuovo calcolo per tutti
 - [x] Baseline importi, regole e visibilità: 12900 righe, stesso MD5 dopo il cambio
 - [x] Colonne additive e pubblicazione v2 nel blocco di ricalcolo (0105)
