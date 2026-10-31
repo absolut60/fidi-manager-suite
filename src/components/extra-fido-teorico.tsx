@@ -10,6 +10,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { extraFidoTeorico, formatEuro, MOTIVI_EXTRA_RAPIDI } from "@/lib/fidi";
 
+/** Importo in euro per la riga verde: senza decimali se intero, altrimenti 2 decimali. */
+function formatoEuroSemplice(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(n)) return "—";
+  return new Intl.NumberFormat("it-IT", {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: Number.isInteger(n) ? 0 : 2,
+  }).format(n);
+}
+
 /** "Teorico: X €" + (se c'è extra) evidenza dell'extra e campo motivo obbligatorio. */
 export function CampoExtraTeorico({
   importo, teorico, motivo, onMotivo, compatto = false,
@@ -29,14 +39,17 @@ export function CampoExtraTeorico({
   if (extra > 0 && chiuso) {
     return (
       <div className="w-full min-w-0 space-y-1">
-        <p className="text-[11px] text-muted-foreground break-words tabular-nums">Teorico: {formatEuro(teorico)}</p>
         <div className="flex w-full min-w-0 items-start gap-1 rounded-md border border-success/40 bg-success/10 px-2 py-1 text-xs">
           <Check className="size-3.5 shrink-0 text-success" aria-hidden />
           <span className="min-w-0 flex-1 break-words">
-            <span className="font-semibold tabular-nums text-success">Extra +{formatEuro(extra)}</span>
-            {" · "}{motivo.trim()}
+            <span className="font-semibold tabular-nums text-success">
+              Teorico {formatoEuroSemplice(teorico)} + Extra {formatoEuroSemplice(extra)} = {formatoEuroSemplice(Number(importo))}
+            </span>
           </span>
-          <Button type="button" variant="link" className="ml-auto h-auto shrink-0 p-0 text-xs"
+        </div>
+        <div className="flex w-full min-w-0 items-start justify-between gap-2">
+          <p className="min-w-0 break-words text-[11px] text-muted-foreground">Motivo: {motivo.trim()}</p>
+          <Button type="button" variant="link" className="h-auto shrink-0 p-0 text-xs"
             onClick={() => setAperto(true)}>
             Modifica
           </Button>
