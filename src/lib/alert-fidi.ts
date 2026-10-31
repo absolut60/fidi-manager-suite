@@ -57,7 +57,12 @@ export function giaDeciso(
   riferimento: number | null | undefined,
   fidoGamma: number | null | undefined,
 ): boolean {
-  return protezioneAttiva(protetto ?? undefined) && riferimento != null && Number(riferimento) === Number(fidoGamma ?? 0);
+  return giaDecisoDa(protezioneAttiva(protetto ?? undefined), riferimento, fidoGamma);
+}
+
+/** Stessa regola di giaDeciso, partendo dall'esito di protezioneAttiva. */
+export function giaDecisoDa(protezioneValida: boolean, riferimento: number | null | undefined, fidoGamma: number | null | undefined): boolean {
+  return protezioneValida && riferimento != null && Number(riferimento) === Number(fidoGamma ?? 0);
 }
 
 function giornoMeseIso(d: string): string {

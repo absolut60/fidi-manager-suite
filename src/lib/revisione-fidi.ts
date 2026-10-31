@@ -9,7 +9,7 @@ import {
 } from "@/lib/fido-teorico";
 import { segnalazioniAnomalia } from "@/lib/fido-segnalazioni";
 import {
-  fetchAlertFidiAperti, statoEffettivoAlert, alertLasciabileCosi, fetchDecisioniProtette, giaDeciso,
+  fetchAlertFidiAperti, statoEffettivoAlert, alertLasciabileCosi, fetchDecisioniProtette, giaDecisoDa,
   type DecisioneProtetta,
   type AlertFidoRow, type RichiestaClienteAlert,
 } from "@/lib/alert-fidi";
@@ -105,7 +105,7 @@ export function gruppoRevisione(i: InputGruppoRevisione): GruppoRevisione {
   if (i.richiestaAttiva) return "in_corso";
   if (i.alertConfermato || i.lasciatoCosiValido) return "lasciato_cosi";
   // Decisione approvata ancora protetta e riferimento = Gamma: già deciso (lo scaduto lo segue il Recupero crediti).
-  if (giaDeciso(i.extraProtettoValido ? { protezione_valida: true } as any : undefined, rif, gamma)) return "gia_deciso";
+  if (giaDecisoDa(i.extraProtettoValido, rif, gamma)) return "gia_deciso";
   if (i.regola === "scaduto_non_incassato") return "da_incassare";
   if (gamma === 0 && rif != null && rif > 0) return "nuovo";
   const anomalia = segnalazioniAnomalia(i.segnalazioni).length > 0;

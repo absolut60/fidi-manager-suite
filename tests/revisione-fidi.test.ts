@@ -28,8 +28,8 @@ describe("gruppoRevisione", () => {
     expect(g({ alertAperto: true, segnalazioni: ["oltre_tetto"], riferimento: 15000 })).toBe("da_decidere"));
 
   it("richiesta attiva batte scaduto", () => expect(g({ richiestaAttiva: true, regola: "scaduto_non_incassato" })).toBe("in_corso"));
-  it("extra protetto uguale al Gamma → ok anche con alert", () =>
-    expect(g({ extraProtettoValido: true, alertAperto: true, segnalazioni: ["oltre_tetto"] })).toBe("ok"));
+  it("extra protetto uguale al Gamma → gia_deciso anche con alert", () =>
+    expect(g({ extraProtettoValido: true, alertAperto: true, segnalazioni: ["oltre_tetto"] })).toBe("gia_deciso"));
   it("scaduto con alert aperto → da_incassare", () =>
     expect(g({ regola: "scaduto_non_incassato", alertAperto: true, riferimento: 0 })).toBe("da_incassare"));
 });
