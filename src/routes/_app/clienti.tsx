@@ -3484,7 +3484,7 @@ type AdvAppliedT = {
 };
 
 function FiltriAvanzatiDialog({
-  open, onOpenChange, applied, onApply, onReset, onSetMainFiltro, currentMain, movedFilters, fidoSlider,
+  open, onOpenChange, applied, onApply, onReset, onSetMainFiltro, currentMain, movedFilters, fidoSlider, onPresetSanatoria, sanatoriaAttiva,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -3495,11 +3495,16 @@ function FiltriAvanzatiDialog({
   currentMain: { filtroBlocco: "tutti" | "bloccati" | "non_bloccati"; filtroAssic: "tutti" | "assicurati" | "non_assicurati"; scadenziarioFiltro: string; soloConFidoAttivo: boolean };
   movedFilters?: React.ReactNode;
   fidoSlider?: React.ReactNode;
+  /** FM55: preset Sanatoria — azzera tutti i filtri e imposta profilo/fido (lo gestisce la pagina). */
+  onPresetSanatoria?: () => void;
+  sanatoriaAttiva?: boolean;
 }) {
   const [draft, setDraft] = useState<AdvAppliedT>(applied);
   useEffect(() => { if (open) setDraft(applied); }, [open, applied]);
 
   const PRESETS = [
+    // Sanatoria: non tocca la bozza avanzata; la pagina azzera tutto e imposta i filtri.
+    { id: "sanatoria", label: "Sanatoria: clienti senza acquisti con fido", apply: (d: AdvAppliedT) => d },
     { id: "fido80", label: "Fido 80% consumato", apply: (d: AdvAppliedT) => ({ ...d, percConsumato: 80 }) },
     { id: "esaurito", label: "Fido esaurito", apply: (d: AdvAppliedT) => ({ ...d, fidoOp: "lte" as AdvOp, fidoVal: 0 }) },
     { id: "lt500", label: "Fido residuo < 500 €", apply: (d: AdvAppliedT) => ({ ...d, fidoOp: "lt" as AdvOp, fidoVal: 500 }) },
