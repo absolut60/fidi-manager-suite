@@ -14,6 +14,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as IscrizioneWhatsappRouteImport } from './routes/iscrizione-whatsapp'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as VerificaCodiceRouteImport } from './routes/verifica-codice'
+import { Route as AppAlertFidiRouteImport } from './routes/_app/alert-fidi'
 import { Route as AppApprovazioniRouteImport } from './routes/_app/approvazioni'
 import { Route as AppAreeRouteImport } from './routes/_app/aree'
 import { Route as AppAssicurazioniRouteImport } from './routes/_app/assicurazioni'
@@ -122,6 +123,11 @@ const VerificaCodiceRoute = VerificaCodiceRouteImport.update({
   id: '/verifica-codice',
   path: '/verifica-codice',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppAlertFidiRoute = AppAlertFidiRouteImport.update({
+  id: '/alert-fidi',
+  path: '/alert-fidi',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppApprovazioniRoute = AppApprovazioniRouteImport.update({
   id: '/approvazioni',
@@ -568,6 +574,7 @@ export interface FileRoutesByFullPath {
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
   '/verifica-codice': typeof VerificaCodiceRoute
+  '/alert-fidi': typeof AppAlertFidiRoute
   '/approvazioni': typeof AppApprovazioniRoute
   '/aree': typeof AppAreeRoute
   '/assicurazioni': typeof AppAssicurazioniRoute
@@ -658,6 +665,7 @@ export interface FileRoutesByTo {
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
   '/verifica-codice': typeof VerificaCodiceRoute
+  '/alert-fidi': typeof AppAlertFidiRoute
   '/approvazioni': typeof AppApprovazioniRoute
   '/aree': typeof AppAreeRoute
   '/assicurazioni': typeof AppAssicurazioniRoute
@@ -747,6 +755,7 @@ export interface FileRoutesById {
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
   '/verifica-codice': typeof VerificaCodiceRoute
+  '/_app/alert-fidi': typeof AppAlertFidiRoute
   '/_app/approvazioni': typeof AppApprovazioniRoute
   '/_app/aree': typeof AppAreeRoute
   '/_app/assicurazioni': typeof AppAssicurazioniRoute
@@ -839,6 +848,7 @@ export interface FileRouteTypes {
     | '/iscrizione-whatsapp'
     | '/login'
     | '/verifica-codice'
+    | '/alert-fidi'
     | '/approvazioni'
     | '/aree'
     | '/assicurazioni'
@@ -929,6 +939,7 @@ export interface FileRouteTypes {
     | '/iscrizione-whatsapp'
     | '/login'
     | '/verifica-codice'
+    | '/alert-fidi'
     | '/approvazioni'
     | '/aree'
     | '/assicurazioni'
@@ -1017,6 +1028,7 @@ export interface FileRouteTypes {
     | '/iscrizione-whatsapp'
     | '/login'
     | '/verifica-codice'
+    | '/_app/alert-fidi'
     | '/_app/approvazioni'
     | '/_app/aree'
     | '/_app/assicurazioni'
@@ -1158,6 +1170,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/verifica-codice'
       preLoaderRoute: typeof VerificaCodiceRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/alert-fidi': {
+      id: '/_app/alert-fidi'
+      path: '/alert-fidi'
+      fullPath: '/alert-fidi'
+      preLoaderRoute: typeof AppAlertFidiRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/approvazioni': {
       id: '/_app/approvazioni'
@@ -1815,6 +1834,7 @@ const AppTaskRouteWithChildren =
   AppTaskRoute._addFileChildren(AppTaskRouteChildren)
 
 interface AppRouteChildren {
+  AppAlertFidiRoute: typeof AppAlertFidiRoute
   AppApprovazioniRoute: typeof AppApprovazioniRoute
   AppAreeRoute: typeof AppAreeRoute
   AppAssicurazioniRoute: typeof AppAssicurazioniRoute
@@ -1883,6 +1903,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAlertFidiRoute: AppAlertFidiRoute,
   AppApprovazioniRoute: AppApprovazioniRoute,
   AppAreeRoute: AppAreeRoute,
   AppAssicurazioniRoute: AppAssicurazioniRoute,
