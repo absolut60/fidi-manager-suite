@@ -20,7 +20,7 @@ import {
 import { righeVisibiliProposta, riepilogoVisibilita } from "@/lib/proposta-fido-visibilita";
 import { CampoExtraTeorico } from "@/components/extra-fido-teorico";
 import {
-  fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchExtraFidoProtetti, MOTIVAZIONE_PROFILO_FIDO, isProponibile,
+  fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchExtraFidoProtetti, notaExtraProtetto, protezioneAttiva, MOTIVAZIONE_PROFILO_FIDO, isProponibile,
   REGOLA_LABEL, MOTIVO_NON_PROPONIBILE, MOTIVO_NON_PROPONIBILE_BREVE,
 } from "@/lib/fido-teorico";
 import { riepilogoProposte } from "@/lib/proposta-fido-riepilogo";
@@ -230,6 +230,10 @@ export function ProposteFidoMassivoDialog({
     staleTime: 5 * 60_000,
     queryFn: () => fetchExtraFidoProtetti(ids),
   });
+  const protettiValidi = useMemo(
+    () => ({ has: (id: string) => protezioneAttiva(protettiMap?.get(id)) }),
+    [protettiMap],
+  );
   const { data: inCorsoMap } = useQuery({
     queryKey: ["richieste-in-corso-massivo", [...ids].sort().join(",")],
     enabled: open && ids.length > 0,
@@ -366,8 +370,8 @@ export function ProposteFidoMassivoDialog({
   const riepilogoVis = useMemo(
     () => riepilogoVisibilita(righeConInCorso, {
       tipi: filtroTipi, pagImmediato: filtroPagImmediato, fidoZero: filtroFidoZero, inCorso: filtroInCorso,
-    }, toccate, protettiMap),
-    [righeConInCorso, filtroTipi, filtroPagImmediato, filtroFidoZero, filtroInCorso, toccate, protettiMap],
+    }, toccate, protettiValidi),
+    [righeConInCorso, filtroTipi, filtroPagImmediato, filtroFidoZero, filtroInCorso, toccate, protettiValidi],
   );
   const [filtriAperti, setFiltriAperti] = useState(false);
   const fmtN = (n: number) => n.toLocaleString("it-IT");
@@ -624,8 +628,8 @@ export function ProposteFidoMassivoDialog({
           </div>
         )}
         {prot && (
-          <p className="min-w-0 break-words text-[11px] text-success">
-            Extra approvato il {new Date(prot.approvata_il).toLocaleDateString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit", year: "numeric" })}: protetto fino al {prot.protetto_fino_al.split("-").reverse().join("/")}
+          <p className={`min-w-0 break-words text-[11px] ${notaExtraProtetto(prot).decaduta ? "font-medium text-destructive" : "text-success"}`}>
+            {notaExtraProtetto(prot).testo}
           </p>
         )}
         {segn && teo && <SegnalazioniFido riga={teo} />}

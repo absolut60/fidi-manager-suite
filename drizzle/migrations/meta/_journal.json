@@ -820,6 +820,13 @@
       "when": 1793466329012,
       "tag": "0116_fm55_margine_tetto_ordini_fuori_giro",
       "breakpoints": true
+    },
+    {
+      "idx": 117,
+      "version": "7",
+      "when": 1793466955812,
+      "tag": "0117_fm55_oltre_tetto_impegni_e_protezione_scaduto_noto",
+      "breakpoints": true
     }
   ]
 }

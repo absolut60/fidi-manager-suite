@@ -4956,6 +4956,7 @@ export type Database = {
           note: string | null
           note_export: string | null
           processata_da: string | null
+          scaduto_al_momento: number | null
           stato: Database["public"]["Enums"]["stato_richiesta"]
           stato_export: string | null
           store_id: string | null
@@ -4992,6 +4993,7 @@ export type Database = {
           note?: string | null
           note_export?: string | null
           processata_da?: string | null
+          scaduto_al_momento?: number | null
           stato?: Database["public"]["Enums"]["stato_richiesta"]
           stato_export?: string | null
           store_id?: string | null
@@ -5028,6 +5030,7 @@ export type Database = {
           note?: string | null
           note_export?: string | null
           processata_da?: string | null
+          scaduto_al_momento?: number | null
           stato?: Database["public"]["Enums"]["stato_richiesta"]
           stato_export?: string | null
           store_id?: string | null
@@ -7034,7 +7037,10 @@ export type Database = {
           fido_teorico_riferimento: number
           importo_approvato: number
           protetto_fino_al: string
+          protezione_valida: boolean
           richiesta_id: string
+          scaduto_al_momento: number
+          scaduto_attuale: number
         }[]
       }
       fido_consumato_perc: {
@@ -8191,6 +8197,7 @@ export type Database = {
           note: string | null
           note_export: string | null
           processata_da: string | null
+          scaduto_al_momento: number | null
           stato: Database["public"]["Enums"]["stato_richiesta"]
           stato_export: string | null
           store_id: string | null

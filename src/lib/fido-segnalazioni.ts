@@ -58,7 +58,7 @@ export const SEGNALAZIONI_FIDO: Record<string, DefinizioneSegnalazione> = {
     etichetta: "Impegni oltre il tetto",
     gravita: "arancione",
     testo: (r) =>
-      `Impegni oltre il tetto: servirebbero ${formatEuro(r.valore_senza_tetto ?? 0)}, tetto ${formatEuro(r.tetto ?? 0)} (1,5 × base) — da autorizzare`,
+      `Impegni oltre il tetto: impegni ${formatEuro(r.fabbisogno ?? 0)}, tetto ${formatEuro(r.tetto ?? 0)} (1,5 × base) — da autorizzare`,
   },
   uso_pieno: {
     etichetta: "Uso pieno del fido",

@@ -7,6 +7,7 @@
  * il fido teorico pubblicato e la scheda cliente restano invariati.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { formatEuro } from "@/lib/fidi";
 
 export type FidoTeoricoRow = {
   cliente_id: string;
@@ -345,11 +346,17 @@ export interface ExtraFidoProtetto {
   fido_teorico_riferimento: number;
   approvata_il: string;
   protetto_fino_al: string;
+  /** Scaduto oltre soglia alla creazione della richiesta (null = richiesta precedente a FM55 3B). */
+  scaduto_al_momento?: number | null;
+  scaduto_attuale?: number;
+  /** Calcolata solo da public.extra_fido_protetti (regola dello scaduto già noto). Assente = valida. */
+  protezione_valida?: boolean;
 }
 
 /**
- * FM55: extra fido teorico approvato e ancora protetto (alert_fidi_extra_giorni).
- * Lettura della fonte unica SQL `extra_fido_protetti()`, usata anche da aggiorna_alert_fidi.
+ * FM55: extra fido teorico approvato negli ultimi alert_fidi_extra_giorni.
+ * Lettura della fonte unica SQL `extra_fido_protetti()`, usata anche da aggiorna_alert_fidi;
+ * restituisce anche le protezioni decadute (protezione_valida = false) per mostrarne la nota.
  */
 export async function fetchExtraFidoProtetti(clienteIds: string[]): Promise<Map<string, ExtraFidoProtetto>> {
   const out = new Map<string, ExtraFidoProtetto>();
@@ -365,21 +372,29 @@ export async function fetchExtraFidoProtetti(clienteIds: string[]): Promise<Map<
         fido_teorico_riferimento: Number(r.fido_teorico_riferimento),
         approvata_il: r.approvata_il,
         protetto_fino_al: r.protetto_fino_al,
+        scaduto_al_momento: r.scaduto_al_momento == null ? null : Number(r.scaduto_al_momento),
+        scaduto_attuale: Number(r.scaduto_attuale ?? 0),
+        protezione_valida: r.protezione_valida !== false,
       });
     }
   }
   return out;
 }
 
+/** Protezione in vigore: esiste e la regola SQL non l'ha fatta decadere. */
+export function protezioneAttiva(protetto: ExtraFidoProtetto | undefined): protetto is ExtraFidoProtetto {
+  return !!protetto && protetto.protezione_valida !== false;
+}
+
 /** Riferimento protetto: durante la protezione dell'extra non si scende sotto l'importo approvato. */
 export function riferimentoConExtraProtetto(riferimento: number, protetto: ExtraFidoProtetto | undefined): number {
-  return protetto ? Math.max(riferimento, protetto.importo_approvato) : riferimento;
+  return protezioneAttiva(protetto) ? Math.max(riferimento, protetto.importo_approvato) : riferimento;
 }
 
 /**
  * Riferimento della richiesta per una riga del teorico pubblicato.
- * Con regola 'scaduto_non_incassato' il riferimento è il teorico (0): non si applicano
- * né la protezione debito/soglia né quella dell'extra approvato (lo scaduto prevale).
+ * Con regola 'scaduto_non_incassato' non si applica la protezione debito/soglia; l'extra approvato
+ * resta protetto solo se lo scaduto era già noto alla decisione (protezione_valida da extra_fido_protetti).
  */
 export function riferimentoRichiesta(
   r: { regola_applicata: string | null; fido_attuale: number; fido_proposto: number; esposizione_corrente: number; ordini_aperti?: number | null },
@@ -387,11 +402,41 @@ export function riferimentoRichiesta(
   protetto: ExtraFidoProtetto | undefined,
 ): number | null {
   if (!isProponibile(r.regola_applicata)) return null;
-  if (r.regola_applicata === "scaduto_non_incassato") return r.fido_proposto;
+  if (r.regola_applicata === "scaduto_non_incassato") return riferimentoConExtraProtetto(r.fido_proposto, protetto);
   return riferimentoConExtraProtetto(
     fidoPropostoPerRichiesta(r.fido_attuale, r.fido_proposto, r.esposizione_corrente + (r.ordini_aperti ?? 0), soglia),
     protetto,
   );
+}
+
+const fmtGgMm = (iso: string) => {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso.slice(8, 10) + "/" + iso.slice(5, 7);
+  return new Date(iso).toLocaleDateString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit" });
+};
+
+/** Testo unico della nota dell'extra approvato (protetto, con scaduto noto, decaduto). */
+export function notaExtraProtetto(p: ExtraFidoProtetto): { testo: string; decaduta: boolean } {
+  const app = fmtGgMm(p.approvata_il);
+  const fino = fmtGgMm(p.protetto_fino_al);
+  const eur = (n: number) => formatEuro(n);
+  if (p.protezione_valida === false) {
+    return {
+      decaduta: true,
+      testo: `Approvato il ${app}, ma lo scaduto è salito da ${eur(p.scaduto_al_momento ?? 0)} a ${eur(p.scaduto_attuale ?? 0)}: protezione decaduta`,
+    };
+  }
+  // Richiesta precedente a FM55 3B (null): lo scaduto attuale è considerato già noto.
+  const noto = p.scaduto_al_momento ?? p.scaduto_attuale ?? 0;
+  if (noto > 0) {
+    return {
+      decaduta: false,
+      testo: `Approvato il ${app}: ${eur(p.importo_approvato)} con scaduto già noto di ${eur(noto)} (teorico ${eur(p.fido_teorico_riferimento)}) — protetto fino al ${fino}`,
+    };
+  }
+  return {
+    decaduta: false,
+    testo: `Extra approvato il ${app}: ${eur(p.importo_approvato)} su teorico ${eur(p.fido_teorico_riferimento)} (+${eur(p.importo_approvato - p.fido_teorico_riferimento)}) — protetto fino al ${fino}`,
+  };
 }
 
 /** Riferimento per tutte le richieste; non modifica il teorico pubblicato o le esclusioni. */
