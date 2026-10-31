@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SegnalazioniFido } from "@/components/segnalazioni-fido";
 import { formatEuro } from "@/lib/fidi";
+import { testoCiDeve } from "@/lib/fido-segnalazioni";
 import {
   PROFILO_FIDO_LABEL,
   fetchFidoTeoricoNuovo,
