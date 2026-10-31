@@ -40,6 +40,13 @@ function fmtEuro(v: unknown): string {
   return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
 }
 
+/** Motivazione che verrà salvata: personalizzata, altrimenti automatica dal profilo, altrimenti generale. */
+function motivazioneEffettiva(r: { motivazione?: string; motivazione_auto?: string }, generale: string | null): string | null {
+  return r.motivazione === undefined
+    ? (r.motivazione_auto ?? generale)
+    : (r.motivazione.trim() === "" ? null : r.motivazione);
+}
+
 function NotaPropostaDettaglio({ nota }: { nota: string }) {
   const [troncato, setTroncato] = useState(false);
   const testoRef = useRef<HTMLSpanElement | null>(null);
@@ -87,6 +94,8 @@ type RigaProposta = {
   fido_teorico: number | null;
   /** FM55: motivo dell'extra rispetto al teorico (obbligatorio se motivoExtraObbligatorio). */
   motivo_extra: string;
+  /** Importo iniziale proposto dal sistema (per il badge "Modificato"). */
+  fido_iniziale: number;
   scostamento: number;
   regola: string;
   richiede_verifica: boolean;
@@ -273,6 +282,7 @@ export function ProposteFidoMassivoDialog({
           fido_proposto: proposto,
           fido_teorico: teoricoRiga,
           motivo_extra: "",
+          fido_iniziale: proposto,
           scostamento: t?.scostamento ?? 0,
           regola,
           richiede_verifica: !!t?.richiede_verifica,
@@ -357,6 +367,7 @@ export function ProposteFidoMassivoDialog({
   const righeEscluse = righe.filter((r) => !r.proponibile);
   // Riepilogo del piede (fonte unica: src/lib/proposta-fido-riepilogo.ts).
   const riepilogo = riepilogoProposte(righeVisibiliIncluse);
+  const nModificate = righeVisibiliIncluse.filter((r) => Number(r.fido_proposto) !== Number(r.fido_iniziale)).length;
   const righeConExtra = righeVisibiliIncluse.filter((r) => motivoExtraObbligatorio(r.fido_proposto, r.fido_teorico));
   const totaleExtra = righeConExtra.reduce((acc, r) => acc + extraFidoTeorico(r.fido_proposto, r.fido_teorico), 0);
   const tipoCount = (t: TipoProposta) => righe.filter((r) => r.tipo === t).length;
@@ -413,9 +424,7 @@ export function ProposteFidoMassivoDialog({
       const motivazioneGeneraleNorm = motivazioneGenerale.trim() === "" ? null : motivazioneGenerale;
       const payload = righeVisibiliIncluse.map((r) => {
 
-        const m = r.motivazione === undefined
-          ? (r.motivazione_auto ?? motivazioneGeneraleNorm)
-          : (r.motivazione.trim() === "" ? null : r.motivazione);
+        const m = motivazioneEffettiva(r, motivazioneGeneraleNorm);
         return {
           cliente_id: r.cliente_id,
           store_id: r.store_id,
@@ -476,6 +485,9 @@ export function ProposteFidoMassivoDialog({
   );
   const renderImporto = (r: RigaProposta, className: string) => (
     <div className="min-w-0 space-y-1">
+      {r.proponibile && Number(r.fido_proposto) !== Number(r.fido_iniziale) && (
+        <Badge variant="outline" className="whitespace-nowrap border-info/40 bg-info/10 px-1.5 text-[10px] text-info">Modificato</Badge>
+      )}
       <Input
         type="number"
         className={className}
@@ -558,13 +570,21 @@ export function ProposteFidoMassivoDialog({
   );
   const renderDettagli = (r: RigaProposta) => {
     const cambio = condizionePagamentoCambiata(r.cond_proposta, r.cond_attuale);
-    if (!r.nota_proposta && !cambio) return null;
+    const mot = r.proponibile && r.incluso
+      ? motivazioneEffettiva(r, motivazioneGenerale.trim() === "" ? null : motivazioneGenerale)
+      : null;
+    if (!r.nota_proposta && !cambio && !mot) return null;
     return (
       <div className={`grid grid-cols-1 gap-2 text-xs ${cambio ? "xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]" : ""}`}>
         {r.nota_proposta && (
           <div className="min-w-0">
             <NotaPropostaDettaglio nota={r.nota_proposta} />
           </div>
+        )}
+        {mot && (
+          <p className="min-w-0 break-words text-[11px] text-muted-foreground">
+            <span className="font-medium">Motivazione:</span> {mot}
+          </p>
         )}
         {cambio && (
           <div className="min-w-0 break-words text-info xl:text-right">
@@ -794,6 +814,7 @@ export function ProposteFidoMassivoDialog({
               {riepilogo.differenza > 0 ? "+" : riepilogo.differenza < 0 ? "−" : "±"}{fmtEuro(Math.abs(riepilogo.differenza))}
             </strong>
             {" · "}{righeVisibiliIncluse.length} richieste da creare
+            {nModificate > 0 && <> · {nModificate} modificat{nModificate === 1 ? "a" : "e"} a mano</>}
             {righeConExtra.length > 0 && (
               <span className="text-warning"> · di cui extra fido teorico: <strong className="tabular-nums">{fmtEuro(totaleExtra)}</strong> su {righeConExtra.length} client{righeConExtra.length === 1 ? "e" : "i"}</span>
             )}
