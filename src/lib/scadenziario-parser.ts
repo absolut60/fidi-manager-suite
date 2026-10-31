@@ -61,8 +61,8 @@ export type ScadRow = {
 };
 
 /* ----------------------------------------------------------------------------
- * Parser STRETTO foglio ufficiale "SCADENZIARIO"
- * Riga 1 ignorata (totali). Riga 2 intestazioni. Dati da riga 3.
+ * Parser condiviso foglio ufficiale "SCADENZIARIO".
+ * Intestazione COD_CLI cercata nelle prime 15 righe; dati dalla successiva.
  * -------------------------------------------------------------------------- */
 
 const SCAD_OFFICIAL_MAP: Record<string, string> = {

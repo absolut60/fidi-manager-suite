@@ -1800,9 +1800,10 @@ export const processScadenziarioImport = inngest.createFunction(
       const doppioni = manifest.doppioni ?? [];
       await step.run("registra-doppioni-gamma", async () => {
         if (!doppioni.length) return;
-        // Idempotent on retry: replace only this import's new duplicate records.
+        // Idempotent on retry: replace only this import's still-open duplicate records.
         const { error: delError } = await supabaseAdmin.from("anomalie_import")
-          .delete().eq("importazione_id", importazioneId).eq("tipo_anomalia", "riga_doppia_gamma");
+          .delete().eq("importazione_id", importazioneId).eq("tipo_anomalia", "riga_doppia_gamma")
+          .eq("stato", "in_attesa");
         if (delError) throw delError;
         for (let i = 0; i < doppioni.length; i += 250) {
           const { error } = await supabaseAdmin.from("anomalie_import").insert(
