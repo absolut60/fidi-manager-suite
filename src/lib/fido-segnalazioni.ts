@@ -11,7 +11,8 @@ export type GravitaSegnalazione = "rossa" | "arancione" | "info";
 type RigaSegnalazione = Pick<
   FidoTeoricoRow,
   "fabbisogno" | "base" | "ordini_aperti" | "fido_attuale" | "scaduto_oltre" | "scaduto_oltre_giorni" | "pagato_12m"
->;
+> &
+  Partial<Pick<FidoTeoricoRow, "ordini_fuori" | "tetto" | "valore_senza_tetto" | "acquisto_mensile">>;
 
 export type DefinizioneSegnalazione = {
   etichetta: string;
@@ -47,11 +48,17 @@ export const SEGNALAZIONI_FIDO: Record<string, DefinizioneSegnalazione> = {
     testo: (r) =>
       `Acquisti sopra il previsto: impegni ${formatEuro(r.fabbisogno ?? 0)} contro una base di ${formatEuro(r.base ?? 0)}`,
   },
-  ordini_prevalenti: {
-    etichetta: "Ordine grosso da evadere",
+  ordine_fuori_giro: {
+    etichetta: "Ordini fuori dal giro normale",
     gravita: "arancione",
     testo: (r) =>
-      `Ordine grosso da evadere: ordini ${formatEuro(r.ordini_aperti ?? 0)} su impegni ${formatEuro(r.fabbisogno ?? 0)}`,
+      `Ordini fuori dal giro normale: ${formatEuro(r.ordini_fuori ?? 0)} oltre 1 mese di acquisti (ordini ${formatEuro(r.ordini_aperti ?? 0)}, acquisti medi ${formatEuro(r.acquisto_mensile ?? 0)}/mese) — da autorizzare`,
+  },
+  oltre_tetto: {
+    etichetta: "Impegni oltre il tetto",
+    gravita: "arancione",
+    testo: (r) =>
+      `Impegni oltre il tetto: servirebbero ${formatEuro(r.valore_senza_tetto ?? 0)}, tetto ${formatEuro(r.tetto ?? 0)} (1,5 × base) — da autorizzare`,
   },
   uso_pieno: {
     etichetta: "Uso pieno del fido",

@@ -813,6 +813,13 @@
       "when": 1793461868570,
       "tag": "0115_fm55_scaduto_da_incassare_solo_regola_normale",
       "breakpoints": true
+    },
+    {
+      "idx": 116,
+      "version": "7",
+      "when": 1793466329012,
+      "tag": "0116_fm55_margine_tetto_ordini_fuori_giro",
+      "breakpoints": true
     }
   ]
 }

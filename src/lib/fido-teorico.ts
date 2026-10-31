@@ -46,6 +46,10 @@ export type FidoTeoricoRow = {
   scaduto_oltre_giorni: number;
   /** Incassato reale ultimi 12 mesi (public.scaduto_oltre_giorni). */
   pagato_12m: number;
+  /** FM55 fetta 3A: ordini oltre N mesi di acquisti, tetto (base × fido_v2_tetto_base) e valore prima del tetto. */
+  ordini_fuori: number;
+  tetto: number | null;
+  valore_senza_tetto: number | null;
   /** Codici di segnalazione pubblicati da public.segnalazioni_fido (v. fido-segnalazioni.ts). */
   segnalazioni: string[];
 };
@@ -154,6 +158,9 @@ export function normalizza(r: any): FidoTeoricoRow {
     scaduto_oltre: Number(r.scaduto_oltre ?? 0),
     scaduto_oltre_giorni: Number(r.scaduto_oltre_giorni ?? 0),
     pagato_12m: Number(r.pagato_12m ?? 0),
+    ordini_fuori: Number(r.ordini_fuori ?? 0),
+    tetto: numOrNull(r.tetto),
+    valore_senza_tetto: numOrNull(r.valore_senza_tetto),
     segnalazioni: Array.isArray(r.segnalazioni) ? r.segnalazioni.map(String) : [],
   };
 
