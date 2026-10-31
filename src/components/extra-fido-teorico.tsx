@@ -20,11 +20,11 @@ export function CampoExtraTeorico({
   onMotivo: (v: string) => void;
   compatto?: boolean;
 }) {
+  const [aperto, setAperto] = useState(motivo.trim() === "");
   if (teorico === null || teorico === undefined) return null;
   const extra = extraFidoTeorico(importo, teorico);
   const manca = extra > 0 && motivo.trim() === "";
   // Solo in modalità compatta (proposta massiva): con motivo valorizzato il riquadro si chiude in una riga.
-  const [aperto, setAperto] = useState(motivo.trim() === "");
   const chiuso = compatto && !aperto && !manca;
   if (extra > 0 && chiuso) {
     return (
