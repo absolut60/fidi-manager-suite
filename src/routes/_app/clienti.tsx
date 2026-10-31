@@ -164,6 +164,9 @@ const OPZIONI_SEMAFORO = [
   { valore: "spento", label: "⚪ Spento" },
 ];
 
+/** FM55: profili "senza acquisti" del preset Sanatoria (valori di fido_teorico_cliente.profilo). */
+const PROFILI_SANATORIA = ["perso", "mai_acquistato", "dormiente"];
+
 /** Testo del chip: un valore → la sua etichetta; piu' valori → "N selezionati". */
 function etichettaElenco(valori: string[], label: (v: string) => string): string {
   return valori.length === 1 ? label(valori[0]) : `${valori.length} selezionati`;
@@ -1147,6 +1150,23 @@ function ClientiPage() {
       mostraFidoTeorico, soloDaVerificare, soloOltreFido, soloConFidoAttivo,
     });
   }
+
+  // FM55: preset "Sanatoria" — azzera TUTTI i filtri (niente eredita' dai filtri
+  // salvati: la lista parte da "Solo attivi"/"Solo imprese" e nasconderebbe
+  // proprio questi clienti), poi imposta profilo senza acquisti + fido > 0.
+  function applicaPresetSanatoria() {
+    setSearch("");
+    setSliderDisplay([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
+    resetFiltriSalvati({
+      sortBy, sortDir, page: 1, pageSize,
+      statoCliente: "tutti", statoAttivita: "tutti", filtroTipoSoggetto: "tutti",
+      soloConFidoAttivo: true, profiloFiltro: PROFILI_SANATORIA,
+    });
+  }
+  const sanatoriaAttiva =
+    soloConFidoAttivo &&
+    profiloFiltro.length === PROFILI_SANATORIA.length &&
+    PROFILI_SANATORIA.every((p) => profiloFiltro.includes(p));
 
   function toggleSort(colonna: string) {
     if (sortBy !== colonna) {
