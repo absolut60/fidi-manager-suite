@@ -259,7 +259,7 @@ export function etichettaRichiestaBreve(r: Pick<RichiestaClienteAlert, "stato">)
  * Frase "Perché" dell'alert, solo dai valori già calcolati (nessun calcolo nuovo):
  * scaduto oltre soglia prevale; altrimenti secondo il tipo dell'alert.
  */
-export function perchéAlert(
+export function percheAlert(
   a: Pick<AlertFidoRow, "tipo" | "fido_gamma" | "esposizione" | "ordini_aperti" | "consumo" | "fido_proposto">,
   teorico?: { segnalazioni: readonly string[]; scaduto_oltre?: number | null; scaduto_oltre_giorni?: number | null } | null,
 ): string {
