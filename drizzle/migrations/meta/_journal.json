@@ -827,6 +827,13 @@
       "when": 1793466955812,
       "tag": "0117_fm55_oltre_tetto_impegni_e_protezione_scaduto_noto",
       "breakpoints": true
+    },
+    {
+      "idx": 118,
+      "version": "7",
+      "when": 1793470443028,
+      "tag": "0118_fm55_alert_fidi_lascia_cosi_consumo",
+      "breakpoints": true
     }
   ]
 }

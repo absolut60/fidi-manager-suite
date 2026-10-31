@@ -120,7 +120,7 @@ export const STATO_ALERT_LABEL: Record<StatoAlertFido, string> = {
   aperto: "Aperto",
   richiesta_inserita: "Richiesta inserita",
   in_osservazione: "In osservazione",
-  confermato: "Confermato",
+  confermato: "Lasciato così",
 };
 
 export const STATI_ALERT_DEFAULT: StatoAlertFido[] = ["aperto", "richiesta_inserita"];
@@ -208,4 +208,36 @@ async function fetchRichiesteClientiAlert(ids: string[]): Promise<Map<string, Ri
 export async function confermaExtraAlertFido(alertId: string): Promise<void> {
   const { error } = await (supabase as any).rpc("conferma_extra_alert_fido", { _alert_id: alertId });
   if (error) throw error;
+}
+
+/** "Lascia così" per 30 giorni (consumo ed extra non usato aperti): public.conferma_alert_fido. */
+export async function confermaAlertFido(alertId: string): Promise<void> {
+  const { error } = await (supabase as any).rpc("conferma_alert_fido", { _alert_id: alertId });
+  if (error) throw error;
+}
+
+/** Tipi di alert che si possono "lasciare così" (gemello di public.conferma_alert_fido). */
+export function alertLasciabileCosi(a: Pick<AlertFidoRow, "tipo" | "stato" | "richiesta_attiva">): boolean {
+  return (a.tipo === "consumo" || a.tipo === "extra_non_usato") && statoEffettivoAlert(a) === "aperto";
+}
+
+const CODICI_COMPRA_OLTRE = ["impegni_sopra_base", "ordine_fuori_giro", "oltre_tetto"];
+
+/**
+ * Frase "Cosa fare" della pagina Alert fidi. Nessun calcolo: legge solo le segnalazioni
+ * (fido_teorico_cliente.segnalazioni), lo scaduto oltre soglia e il riferimento della richiesta
+ * (fetchFidoTeoricoPerRichiesta). Ordine di priorità fissato da Andrea (FM55).
+ */
+export function cosaFareAlert(
+  a: Pick<AlertFidoRow, "fido_gamma">,
+  riferimento: number | null | undefined,
+  teorico: { segnalazioni: string[]; scaduto_oltre?: number | null } | null | undefined,
+): string {
+  const cod = teorico?.segnalazioni ?? [];
+  if (cod.includes("scaduto_non_incassato") || cod.includes("scaduto_da_incassare"))
+    return `Prima incassare: ${formatEuro(Number(teorico?.scaduto_oltre ?? 0))} scaduti`;
+  if (cod.includes("bloccato")) return "Cliente bloccato: nessun aumento";
+  if (cod.some((c) => CODICI_COMPRA_OLTRE.includes(c))) return "Compra oltre il normale: il sistema non aumenta, decidi tu";
+  if (riferimento != null && Number(riferimento) > Number(a.fido_gamma ?? 0)) return `Aumento proposto a ${formatEuro(Number(riferimento))}`;
+  return "Nessuna variazione proposta: valuta tu";
 }

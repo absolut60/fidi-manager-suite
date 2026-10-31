@@ -19,7 +19,7 @@ import { formatEuro, formatDate } from "@/lib/fidi";
 import { fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchSogliaConsumoFido, fidoPerTornareSottoSoglia, fetchUtentiAnteprimaFidoNuovo } from "@/lib/fido-teorico";
 import { SegnalazioniFido } from "@/components/segnalazioni-fido";
 import {
-  fetchAlertFidiAperti, confermaExtraAlertFido, etichettaAvviso, debitoOggi, alertSelezionabile,
+  fetchAlertFidiAperti, confermaAlertFido, cosaFareAlert, alertLasciabileCosi, etichettaAvviso, debitoOggi, alertSelezionabile,
   importoDaAlert, statoEffettivoAlert, etichettaRichiestaAlert, etichettaDecisioneAlert, STATO_ALERT_LABEL, STATI_ALERT_DEFAULT, TIPO_ALERT_LABEL,
   type AlertFidoRow, type StatoAlertFido, type TipoAlertFido,
 } from "@/lib/alert-fidi";
@@ -160,10 +160,10 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
   // Dialog proposta: un cliente una volta sola; l'importo dell'alert (riduzione/extra) prevale.
   const [propostaOpen, setPropostaOpen] = useState(false);
   const [proposta, setProposta] = useState<{ righe: any[]; importi: Map<string, number> }>({ righe: [], importi: new Map() });
-  function apriProposta() {
+  function apriProposta(lista: AlertFidoRow[] = selVisibili) {
     const clienti = new Map<string, any>();
     const importi = new Map<string, number>();
-    for (const a of selVisibili) {
+    for (const a of lista) {
       if (!a.cliente) continue;
       clienti.set(a.cliente_id, {
         id: a.cliente.id, store_id: a.cliente.store_id, ragione_sociale: a.cliente.ragione_sociale,
@@ -177,8 +177,8 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
   }
 
   const conferma = useMutation({
-    mutationFn: confermaExtraAlertFido,
-    onSuccess: () => { toast.success("Extra confermato"); queryClient.invalidateQueries({ queryKey: ["alert-fidi-aperti"] }); },
+    mutationFn: confermaAlertFido,
+    onSuccess: () => { toast.success("Lasciato così per 30 giorni"); queryClient.invalidateQueries({ queryKey: ["alert-fidi-aperti"] }); },
     onError: (e: any) => toast.error("Impossibile confermare: " + (e?.message ?? "errore")),
   });
 
@@ -199,7 +199,8 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
     const rif = riferimentoMap?.get(a.cliente_id);
     return rif != null ? rif : (a.fido_proposto != null ? Number(a.fido_proposto) : null);
   };
-  const renderFidoProposto = (a: AlertFidoRow, destra: boolean) => {
+  // "Cosa fare": frase da cosaFareAlert (solo segnalazioni + riferimento richiesta), sotto i valori informativi.
+  const renderCosaFare = (a: AlertFidoRow) => {
     const prop = fidoPropostoAlert(a);
     const t = teoricoMap?.get(a.cliente_id);
     const teorico = t?.fido_proposto != null ? Number(t.fido_proposto) : null;
@@ -207,10 +208,11 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
       && t.segnalazioni.some((c) => c === "uso_pieno" || c === "impegni_sopra_base")
       ? fidoPerTornareSottoSoglia(debitoOggi(a), sogliaConsumo) : null;
     return (
-      <div className={destra ? "text-right" : undefined}>
-        <div className="tabular-nums">{formatEuro(prop)}</div>
+      <div className="min-w-0 space-y-0.5">
+        <div className="break-words text-sm font-medium">{cosaFareAlert(a, prop, t)}</div>
+        <div className="text-xs text-muted-foreground tabular-nums">Proposta: {formatEuro(prop)}</div>
         {teorico != null && teorico !== prop && <div className="text-xs text-muted-foreground tabular-nums">Teorico {formatEuro(teorico)}</div>}
-        {sottoSoglia != null && <div className="text-xs text-muted-foreground tabular-nums">Per tornare sotto l'{Math.round(sogliaConsumo! * 100)}%: {formatEuro(sottoSoglia)}</div>}
+        {sottoSoglia != null && <div className="text-xs text-muted-foreground tabular-nums">Per tornare sotto l'{Math.round(sogliaConsumo! * 100)}% servirebbero {formatEuro(sottoSoglia)}</div>}
       </div>
     );
   };
@@ -235,18 +237,24 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
     }
     const st = statoEffettivoAlert(a);
     if (st === "confermato") {
-      return <span className="text-xs text-muted-foreground">Confermato: si ripresenta dal {fmtGiornoMese(a.riproponi_dal)}</span>;
+      return <span className="text-xs text-muted-foreground">Lasciato così fino al {fmtGiornoMese(a.riproponi_dal)}</span>;
     }
     return <Badge variant={st === "aperto" ? "default" : "secondary"}>{STATO_ALERT_LABEL[st]}</Badge>;
   };
-  const renderAzioni = (a: AlertFidoRow) =>
-    a.tipo === "extra_non_usato" && statoEffettivoAlert(a) === "aperto" ? (
-      <Button size="sm" variant="outline" className="h-10" disabled={conferma.isPending}
-        onClick={() => conferma.mutate(a.id)}>
-        {conferma.isPending && conferma.variables === a.id ? <Loader2 className="size-4 animate-spin" /> : null}
-        Conferma extra
-      </Button>
-    ) : null;
+  const renderAzioni = (a: AlertFidoRow) => (
+    <div className="flex flex-wrap gap-2">
+      {alertSelezionabile(a) && (
+        <Button size="sm" className="h-10" onClick={() => apriProposta([a])}>Apri proposta</Button>
+      )}
+      {alertLasciabileCosi(a) && (
+        <Button size="sm" variant="outline" className="h-10" disabled={conferma.isPending}
+          onClick={() => conferma.mutate(a.id)}>
+          {conferma.isPending && conferma.variables === a.id ? <Loader2 className="size-4 animate-spin" /> : null}
+          Lascia così 30 giorni
+        </Button>
+      )}
+    </div>
+  );
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-4 p-3 sm:p-4">
@@ -295,7 +303,7 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
       {selVisibili.length > 0 && (
         <div className="sticky top-2 z-10 flex flex-wrap items-center gap-2 rounded-lg border bg-background p-2 shadow-sm">
           <span className="text-sm">{selVisibili.length} avvisi selezionati</span>
-          <Button size="sm" className="h-10" onClick={apriProposta}>Crea proposta</Button>
+          <Button size="sm" className="h-10" onClick={() => apriProposta()}>Apri proposta</Button>
           <Button size="sm" variant="ghost" className="h-10" onClick={() => setSelezionati(new Set())}>Deseleziona</Button>
         </div>
       )}
@@ -323,7 +331,7 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
                   { etichetta: "Fido in Gamma", valore: formatEuro(a.fido_gamma) },
                   { etichetta: "Debito oggi", valore: formatEuro(debitoOggi(a)) },
                   { etichetta: "Consumo", valore: fmtPerc(a.consumo) },
-                  { etichetta: "Fido proposto", valore: renderFidoProposto(a, false) },
+                  { etichetta: "Cosa fare", valore: renderCosaFare(a) },
                   { etichetta: "Aperto dal", valore: formatDate(a.aperto_il) },
                 ]}
                 footer={<div className="flex w-full flex-wrap items-center justify-between gap-2">{renderStato(a)}{renderAzioni(a)}</div>}
@@ -342,7 +350,7 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
                 <TableHead>Cliente</TableHead><TableHead>Negozio</TableHead><TableHead>Agente</TableHead>
                 <TableHead>Avviso</TableHead><TableHead className="text-right">Fido in Gamma</TableHead>
                 <TableHead className="text-right">Debito oggi</TableHead><TableHead className="text-right">Consumo</TableHead>
-                <TableHead className="text-right">Fido proposto</TableHead><TableHead>Stato</TableHead>
+                <TableHead className="min-w-56">Cosa fare</TableHead><TableHead>Stato</TableHead>
                 <TableHead>Aperto dal</TableHead><TableHead />
               </TableRow></TableHeader>
               <TableBody>
@@ -364,7 +372,7 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
                     <TableCell className="text-right tabular-nums">{formatEuro(a.fido_gamma)}</TableCell>
                     <TableCell className="text-right tabular-nums">{formatEuro(debitoOggi(a))}</TableCell>
                     <TableCell className="text-right tabular-nums">{fmtPerc(a.consumo)}</TableCell>
-                    <TableCell className="text-right">{renderFidoProposto(a, true)}</TableCell>
+                    <TableCell className="max-w-72">{renderCosaFare(a)}</TableCell>
                     <TableCell className="max-w-56">{renderStato(a)}</TableCell>
                     <TableCell className="whitespace-nowrap">{formatDate(a.aperto_il)}</TableCell>
                     <TableCell>{renderAzioni(a)}</TableCell>
