@@ -806,6 +806,13 @@
       "when": 1793461764780,
       "tag": "0114_fm55_scaduto_quota_pagato",
       "breakpoints": true
+    },
+    {
+      "idx": 115,
+      "version": "7",
+      "when": 1793461868570,
+      "tag": "0115_fm55_scaduto_da_incassare_solo_regola_normale",
+      "breakpoints": true
     }
   ]
 }
