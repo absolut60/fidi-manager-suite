@@ -185,7 +185,7 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
       const imp = importoDaAlert(a);
       if (imp !== undefined) importi.set(a.cliente_id, imp);
     }
-    setProposta({ righe: [...clienti.values()], importi, sempre: singolo ? [...clienti.keys()] : [] });
+    setProposta({ righe: [...clienti.values()], importi, sempre: [...clienti.keys()] });
     setPropostaOpen(true);
   }
 
@@ -283,7 +283,7 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
   const renderAzioni = (a: AlertFidoRow) => (
     <div className="flex w-full flex-col gap-2">
       {alertSelezionabile(a) && (
-        <Button size="sm" className="h-auto min-h-10 w-full whitespace-normal" onClick={() => apriProposta([a], true)}>Apri proposta</Button>
+        <Button size="sm" className="h-auto min-h-10 w-full whitespace-normal" onClick={() => apriProposta([a])}>Apri proposta</Button>
       )}
       {alertLasciabileCosi(a) && (
         <Button size="sm" variant="outline" className="h-auto min-h-10 w-full whitespace-normal" disabled={conferma.isPending}
