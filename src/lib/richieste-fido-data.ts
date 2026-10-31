@@ -35,10 +35,13 @@
  *  - condPagRichiestaOrig = richieste_fido.condizione_pagamento_richiesta_cod
  *                       (proposta originaria del richiedente; significativa solo se condPagModificata;
  *                        NULL = la richiesta non proponeva alcun cambio)
+ *  - teoricoRiferimento = richieste_fido.fido_teorico_riferimento (FM55; NULL = non disponibile/storica)
+ *  - extraTeorico       = extraFidoTeorico(importo, teoricoRiferimento) (src/lib/fidi.ts)
+ *  - motivoExtra        = richieste_fido.motivo_extra_teorico
  */
 
 import { getFidoAttuale, FIDO_CLIENTE_SELECT } from "@/lib/fido-cliente";
-import { condizionePagamentoCambiata } from "@/lib/fidi";
+import { condizionePagamentoCambiata, extraFidoTeorico } from "@/lib/fidi";
 import { semaforoDaCliente, type SemaforoStadio } from "@/lib/semaforo-ui";
 
 /** Frammento di SELECT PostgREST condiviso (join cliente + store + profili). */
@@ -125,6 +128,9 @@ export interface RichiestaFidoView {
   soloCondizione: boolean;
   condPagModificata: boolean;
   condPagRichiestaOrig: string | null;
+  teoricoRiferimento: number | null;
+  extraTeorico: number;
+  motivoExtra: string | null;
 }
 
 /**
@@ -180,6 +186,9 @@ export function mapRichiestaFido(r: AnyRecord): RichiestaFidoView {
     soloCondizione: stato === "approvata" && esitoFido === "rifiutata" && esitoCondPag === "approvata",
     condPagModificata: r?.condizione_pagamento_modificata === true,
     condPagRichiestaOrig: r?.condizione_pagamento_richiesta_cod ?? null,
+    teoricoRiferimento: r?.fido_teorico_riferimento == null ? null : Number(r.fido_teorico_riferimento),
+    extraTeorico: extraFidoTeorico(r?.importo_richiesto, r?.fido_teorico_riferimento),
+    motivoExtra: r?.motivo_extra_teorico ?? null,
   };
 }
 

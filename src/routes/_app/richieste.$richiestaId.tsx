@@ -314,6 +314,12 @@ function RichiestaDetail() {
             <p className="text-sm font-semibold break-words">{`${userNameDet((r as any).approvatore)}${(r as any).data_approvazione ? ` · ${formatDate((r as any).data_approvazione)}` : r.data_chiusura ? ` · ${formatDate(r.data_chiusura)}` : ""}`}</p>
           </div>
         )}
+        {vistaR?.teoricoRiferimento != null && (
+          <div className="xl:basis-56">
+            <p className="text-[10px] uppercase text-muted-foreground">Fido teorico alla richiesta</p>
+            <p className="text-sm font-semibold tabular-nums break-words">{formatEuro(vistaR.teoricoRiferimento)}</p>
+          </div>
+        )}
         {r.data_chiusura && <div className="xl:basis-24"><p className="text-[10px] uppercase text-muted-foreground">Chiusa il</p><p className="text-sm font-semibold tabular-nums">{formatDate(r.data_chiusura)}</p></div>}
       </Card>
 
@@ -321,6 +327,13 @@ function RichiestaDetail() {
 
       <ModificaRichiestaFidoDialog richiesta={r} open={modificaAperta} onOpenChange={setModificaAperta} onSaved={aggiornaDopoAzione} />
       <ModificaRichiestaFidoDialog richiesta={r} riinvia open={riinvioAperto} onOpenChange={setRiinvioAperto} onSaved={aggiornaDopoAzione} />
+
+      {vistaR && vistaR.extraTeorico > 0 && (
+        <div className="min-w-0 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
+          <p className="font-semibold text-warning break-words tabular-nums">Extra fido teorico: +{formatEuro(vistaR.extraTeorico)}</p>
+          <p className="whitespace-pre-wrap break-words"><span className="font-medium text-muted-foreground">Motivo dell'extra: </span>{vistaR.motivoExtra || "—"}</p>
+        </div>
+      )}
 
       {/* Motivazione — riga compatta */}
       {r.motivazione && <MotivazioneRiga testo={r.motivazione} />}
