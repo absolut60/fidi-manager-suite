@@ -126,6 +126,8 @@ export type RigaRevisione = {
   richiesta: RichiestaClienteAlert | null;
   alertLasciabile: AlertFidoRow | null;
   alertConfermato: AlertFidoRow | null;
+  /** Ultima decisione "Lascia così" della revisione, se ancora valida. */
+  lasciato: LasciatoCosi | null;
 };
 
 export type RiepilogoGruppo = { clienti: number; fidoGamma: number; proposto: number };
@@ -174,12 +176,14 @@ export async function fetchRevisioneFidi(userId: string): Promise<RigaRevisione[
   const teorico = await fetchFidoTeorico(clienti.map((c) => c.id));
   const perimetro = clienti.filter((c) => Number(c.fido_gestionale ?? 0) > 0 || Number(teorico.get(c.id)?.fido_proposto ?? 0) > 0);
   const ids = perimetro.map((c) => c.id);
-  const [riferimenti, protetti, alert, richieste] = await Promise.all([
+  const [riferimenti, protetti, alert, richieste, lasciati] = await Promise.all([
     fetchFidoTeoricoPerRichiesta(ids, userId),
     fetchExtraFidoProtetti(ids),
     fetchAlertFidiAperti(),
     fetchRichiesteAttive(),
+    fetchUltimiLasciati(ids),
   ]);
+  const oggi = oggiIso();
   const alertPerCliente = new Map<string, AlertFidoRow[]>();
   for (const a of alert) alertPerCliente.set(a.cliente_id, [...(alertPerCliente.get(a.cliente_id) ?? []), a]);
 
@@ -191,9 +195,12 @@ export async function fetchRevisioneFidi(userId: string): Promise<RigaRevisione[
     const richiesta = richieste.get(c.id) ?? al.find((a) => a.richiesta_attiva)?.richiesta_attiva ?? null;
     const fidoGamma = Number(c.fido_gestionale ?? 0);
     const riferimento = riferimenti.get(c.id) ?? null;
+    const ultimo = lasciati.get(c.id) ?? null;
+    const lasciato = lasciatoCosiValido(ultimo, { fidoGamma, regola: t?.regola_applicata, oggi }) ? ultimo : null;
     const gruppo = gruppoRevisione({
       richiestaAttiva: !!richiesta,
       alertConfermato: !!confermato,
+      lasciatoCosiValido: !!lasciato,
       alertAperto: al.some((a) => statoEffettivoAlert(a) === "aperto"),
       regola: t?.regola_applicata,
       fidoGamma, riferimento,
@@ -201,6 +208,6 @@ export async function fetchRevisioneFidi(userId: string): Promise<RigaRevisione[
       extraProtettoValido: protezioneAttiva(protetti.get(c.id)),
     });
     return { cliente_id: c.id, cliente: c, teorico: t, fidoGamma, riferimento, gruppo, richiesta,
-      alertLasciabile: lasciabile, alertConfermato: confermato };
+      alertLasciabile: lasciabile, alertConfermato: confermato, lasciato };
   });
 }
