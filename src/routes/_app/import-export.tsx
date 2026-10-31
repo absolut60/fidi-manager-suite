@@ -3340,7 +3340,7 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
     let concluso = false;
     for (const imp of data) {
       const prima = statiPrecedenti.current.get(imp.id);
-      const stato = imp.stato;
+      const stato = "stato" in imp ? imp.stato : null;
       if (prima !== stato && ["completata", "completata_con_errori", "fallita"].includes(stato ?? "")) concluso = true;
       statiPrecedenti.current.set(imp.id, stato ?? null);
     }
