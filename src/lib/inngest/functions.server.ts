@@ -7,7 +7,6 @@ import {
   parseRischioSheet,
   parseScadenziarioBlockSheet,
   parseAssicurazioneSheet,
-  scanScadenziarioMeta,
   parseScadenziarioRangeLean,
   toStr,
   normalize,
@@ -21,6 +20,8 @@ import {
   isTelefonoValido,
   classificaTelefono,
 } from "@/lib/email-validazione";
+import { parseOfficialScadenziarioSheet, anomaliaDoppioneGamma, messaggioDoppioniGamma,
+  type DoppioneScadenziario } from "@/lib/scadenziario-parser";
 import { calcolaEmailPecImport } from "@/lib/import-email-pec";
 import {
   pulisciFileTemporaneiImport,
@@ -221,6 +222,7 @@ type StagedScadenziarioManifest = {
   kind: "scadenziario-staging-v1";
   originalFilePath: string;
   totRead: number;
+  doppioni?: DoppioneScadenziario[];
   chunkCount: number;
   chunks: Array<{ chunkIndex: number; chunkPath: string; rowsCount: number; missingCount: number }>;
 };
@@ -1759,14 +1761,58 @@ export const processScadenziarioImport = inngest.createFunction(
       await step.run("reset-anomalie-aperte-fonte", () =>
         resetAnomalieAperteFonte("scadenziario", importazioneId),
       );
-      if (filePath.startsWith("_staging/") && filePath.endsWith("/manifest.json")) {
-        const manifest = await step.run("load-staged-manifest", async () => {
-          return downloadJsonConRetry<StagedScadenziarioManifest>(
-            filePath,
-            `manifest download-json ${filePath}`,
-            (m) => logger.warn(m),
-          );
-        });
+      // Browser uploads already-deduplicated rows; direct-file callers use the very same
+      // whole-file parser here before staging. Never parse independently inside new chunks.
+      const manifest = await step.run("load-staged-manifest", async (): Promise<StagedScadenziarioManifest> => {
+        if (filePath.startsWith("_staging/") && filePath.endsWith("/manifest.json")) {
+          return downloadJsonConRetry<StagedScadenziarioManifest>(filePath,
+            `manifest download-json ${filePath}`, (m) => logger.warn(m));
+        }
+        const wb = await downloadWorkbookLean(filePath, "SCADENZIARIO");
+        const sheet = findSheetByName(wb, "SCADENZIARIO");
+        if (!sheet) throw new Error("Foglio SCADENZIARIO non trovato nel file");
+        const parsed = parseOfficialScadenziarioSheet(sheet);
+        const byRow = new Map(parsed.rows.map((r) => [r.idx, r]));
+        const indexes = [...parsed.rows.map((r) => r.idx), ...parsed.missing,
+          ...parsed.rowErrors.map((r) => r.riga)].sort((a, b) => a - b);
+        const chunks: StagedScadenziarioManifest["chunks"] = [];
+        for (let i = 0; i < indexes.length; i += SCAD_CHUNK_SIZE) {
+          const chunkIndex = Math.floor(i / SCAD_CHUNK_SIZE);
+          const selection = new Set(indexes.slice(i, i + SCAD_CHUNK_SIZE));
+          const rows = [...selection].flatMap((idx) => {
+            const row = byRow.get(idx);
+            return row ? [row] : [];
+          });
+          const missing = parsed.missing.filter((idx) => selection.has(idx));
+          const rowErrors = parsed.rowErrors.filter((r) => selection.has(r.riga));
+          const chunkPath = `_staging/${importazioneId}/chunk-${chunkIndex}.json`;
+          const { error } = await supabaseAdmin.storage.from("import-files").upload(chunkPath,
+            new Blob([JSON.stringify({ rows, missing, rowErrors })], { type: "application/json" }),
+            { contentType: "application/json", upsert: true });
+          if (error) throw error;
+          chunks.push({ chunkIndex, chunkPath, rowsCount: rows.length,
+            missingCount: missing.length + rowErrors.length });
+        }
+        return { kind: "scadenziario-staging-v1", originalFilePath: filePath,
+          totRead: parsed.totRead, doppioni: parsed.doppioni,
+          chunkCount: chunks.length, chunks };
+      });
+      const doppioni = manifest.doppioni ?? [];
+      await step.run("registra-doppioni-gamma", async () => {
+        if (!doppioni.length) return;
+        // Idempotent on retry: replace only this import's new duplicate records.
+        const { error: delError } = await supabaseAdmin.from("anomalie_import")
+          .delete().eq("importazione_id", importazioneId).eq("tipo_anomalia", "riga_doppia_gamma");
+        if (delError) throw delError;
+        for (let i = 0; i < doppioni.length; i += 250) {
+          const { error } = await supabaseAdmin.from("anomalie_import").insert(
+            doppioni.slice(i, i + 250).map((d) => ({
+              ...anomaliaDoppioneGamma(d), importazione_id: importazioneId,
+            })));
+          if (error) throw error;
+        }
+        logger.info(messaggioDoppioniGamma(doppioni.length));
+      });
         const timestampInizio = await step.run("init-timestamp", async () =>
           new Date().toISOString(),
         );
@@ -1777,7 +1823,7 @@ export const processScadenziarioImport = inngest.createFunction(
             .from("importazioni")
             .update({
               righe_totali: manifest.totRead,
-              righe_elaborate: 0,
+              righe_elaborate: doppioni.length,
               righe_create: 0,
               righe_aggiornate: 0,
               righe_errore: 0,
@@ -1785,6 +1831,7 @@ export const processScadenziarioImport = inngest.createFunction(
               chunks_completati: 0,
               stato: "in_elaborazione",
               log_errori: [
+                ...(doppioni.length ? [{ riga: 0, errore: messaggioDoppioniGamma(doppioni.length) }] : []),
                 {
                   riga: 0,
                   errore: `Init staging: ${manifest.totRead} righe totali, ${chunkCount} chunk da storage`,
@@ -1820,79 +1867,6 @@ export const processScadenziarioImport = inngest.createFunction(
 
         logger.info(`Scadenziario staging init: rows=${manifest.totRead}, chunks=${chunkCount}`);
         return { totRows: manifest.totRead, chunkCount, staged: true };
-      }
-
-      // STEP 1: download leggero + scan metadati (no parse completo)
-      const meta = await step.run("scan-meta", async () => {
-        const wb = await downloadWorkbookLean(filePath, "SCADENZIARIO");
-        const sheet = findSheetByName(wb, "SCADENZIARIO");
-        if (!sheet) throw new Error("Foglio SCADENZIARIO non trovato nel file");
-        const m = scanScadenziarioMeta(sheet);
-        return m;
-      });
-
-      const totRows = Math.max(0, meta.lastRow - meta.firstDataRow + 1);
-      const chunkCount = Math.max(1, Math.ceil(totRows / SCAD_CHUNK_SIZE));
-      const timestampInizio = await step.run("init-timestamp", async () =>
-        new Date().toISOString(),
-      );
-
-      logger.info(
-        `Scadenziario init: lastRow=${meta.lastRow}, totRows~${totRows}, chunks=${chunkCount}`,
-      );
-
-      await step.run("init-importazione", async () => {
-        await supabaseAdmin
-          .from("importazioni")
-          .update({
-            righe_totali: totRows,
-            righe_elaborate: 0,
-            righe_create: 0,
-            righe_aggiornate: 0,
-            righe_errore: 0,
-            chunks_totali: chunkCount,
-            chunks_completati: 0,
-            stato: "in_elaborazione",
-            log_errori: [
-              {
-                riga: 0,
-                errore: `Init: ${totRows} righe totali, ${chunkCount} chunk da ${SCAD_CHUNK_SIZE}`,
-              },
-            ],
-          } as never)
-          .eq("id", importazioneId);
-      });
-
-      // STEP 2: fan-out di un evento per chunk
-      const events = [];
-      for (let i = 0; i < chunkCount; i++) {
-        const startRow0 = meta.firstDataRow + i * SCAD_CHUNK_SIZE;
-        const endRow0 = Math.min(startRow0 + SCAD_CHUNK_SIZE - 1, meta.lastRow);
-        events.push({
-          name: "import/scadenziario.chunk" as const,
-          data: {
-            importazioneId,
-            filePath,
-            userId,
-            chunkIndex: i,
-            totalChunks: chunkCount,
-            startRow0,
-            endRow0,
-            headers: meta.headers,
-            timestampInizio,
-          },
-        });
-      }
-      // Invio in batch da 50 per non gonfiare il payload
-      const SEND_BATCH = 500;
-      for (let i = 0; i < events.length; i += SEND_BATCH) {
-        const slice = events.slice(i, i + SEND_BATCH);
-        await step.run(`send-chunks-${i}`, async () => {
-          await sendInngestEvents(slice);
-        });
-      }
-
-      return { totRows, chunkCount };
     } catch (err) {
       await setImportazioneError(importazioneId, err instanceof Error ? err.message : String(err));
       throw err;
