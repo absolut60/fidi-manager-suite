@@ -69,6 +69,14 @@ import { salvaWorkbook } from "@/lib/salva-workbook";
 import { salvaFile } from "@/lib/salva-file";
 
 export const Route = createFileRoute("/_app/import-export")({
+  head: () => ({ meta: [
+    { title: "Import / Export | FidiManager" },
+    { name: "description", content: "Importazioni Gamma, esiti e aggiornamento del fido teorico in FidiManager." },
+    { property: "og:title", content: "Import / Export | FidiManager" },
+    { property: "og:description", content: "Importazioni Gamma, esiti e aggiornamento del fido teorico in FidiManager." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: ImportExportPage,
 });
 
@@ -796,6 +804,7 @@ function AnagraficaImportCard() {
       ) : null}
       <ImportZone
         fileName={fileName}
+        avviato={importMut.isPending || !!importazioneId}
         parsing={parsing}
         dragOver={dragOver}
         setDragOver={setDragOver}
@@ -949,6 +958,7 @@ function RischioImportCard() {
       ) : null}
       <ImportZone
         fileName={fileName}
+        avviato={bg.isPending || !!bg.importazioneId}
         parsing={false}
         dragOver={dragOver}
         setDragOver={setDragOver}
@@ -979,6 +989,7 @@ function RischioImportCard() {
 
 function ImportZone(props: {
   fileName: string | null;
+  avviato?: boolean;
   parsing: boolean;
   dragOver: boolean;
   setDragOver: (v: boolean) => void;
@@ -998,6 +1009,7 @@ function ImportZone(props: {
 }) {
   const {
     fileName,
+    avviato = false,
     parsing,
     dragOver,
     setDragOver,
@@ -1010,7 +1022,7 @@ function ImportZone(props: {
     result,
     action,
   } = props;
-  if (!fileName) {
+  if (!fileName && !avviato) {
     return (
       <div
         onDragOver={(e) => {
@@ -1048,6 +1060,7 @@ function ImportZone(props: {
   }
   return (
     <div className="space-y-3">
+      {!avviato && <>
       <div className="flex items-center justify-between p-3 rounded-md bg-muted">
         <div className="flex items-center gap-2 min-w-0">
           <FileSpreadsheet className="size-4 shrink-0" />
@@ -1123,6 +1136,7 @@ function ImportZone(props: {
           </div>
         </div>
       )}
+      </>}
       {result && (
         <div className="rounded-md border p-3 bg-muted/30 space-y-2">
           <p className="text-xs font-medium">Esito ultimo import</p>
@@ -1142,7 +1156,12 @@ function ImportZone(props: {
           )}
         </div>
       )}
-      {action}
+      {!avviato && action}
+      {avviato && result && (
+        <Button variant="outline" onClick={onReset} className="gap-1.5">
+          <Upload className="size-4" /> Carica un nuovo file
+        </Button>
+      )}
     </div>
   );
 }
@@ -2051,6 +2070,7 @@ function ScadenziarioImportCard() {
       ) : null}
       <ImportZone
         fileName={fileName}
+        avviato={bg.isPending || !!bg.importazioneId}
         parsing={parsing}
         dragOver={dragOver}
         setDragOver={setDragOver}
@@ -3297,6 +3317,7 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
     righe_esportate?: number | null;
   };
   const queryClient = useQueryClient();
+  const statiPrecedenti = useRef(new Map<string, string | null>());
   const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["storico-import-export", kind],
     queryFn: async () => {
@@ -3313,6 +3334,18 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
       return rows.some((r) => r.stato === "in_elaborazione") ? 3000 : false;
     },
   });
+
+  useEffect(() => {
+    if (kind !== "importazioni" || !data) return;
+    let concluso = false;
+    for (const imp of data) {
+      const prima = statiPrecedenti.current.get(imp.id);
+      const stato = imp.stato;
+      if (prima !== stato && ["completata", "completata_con_errori", "fallita"].includes(stato ?? "")) concluso = true;
+      statiPrecedenti.current.set(imp.id, stato ?? null);
+    }
+    if (concluso) void queryClient.invalidateQueries({ queryKey: ["fido-teorico-precalcolo-stato"] });
+  }, [data, kind, queryClient]);
 
   const isBloccato = (imp: HistoryRow): boolean => {
     if (imp.stato !== "in_elaborazione") return false;
