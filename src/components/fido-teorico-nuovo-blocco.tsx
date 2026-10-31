@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { SegnalazioniFido } from "@/components/segnalazioni-fido";
 import { formatEuro } from "@/lib/fidi";
 import {
   PROFILO_FIDO_LABEL,
@@ -74,6 +75,8 @@ export function FidoTeoricoNuovoBlocco({ clienteId }: { clienteId: string }) {
         {profilo && <Badge variant="secondary">{profilo}{coef ? ` · ${coef}` : ""}</Badge>}
         {r.da_verificare && <Badge variant="outline" className="border-warning text-warning">Da verificare</Badge>}
       </div>
+
+      <SegnalazioniFido riga={r.riga} />
 
       {r.spiegazione && (
         <div className="rounded-md bg-muted/50 p-3 text-sm break-words">{r.spiegazione}</div>
