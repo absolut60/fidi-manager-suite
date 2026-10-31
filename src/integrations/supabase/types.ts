@@ -41,6 +41,8 @@ export type Database = {
           aperto_il: string
           chiuso_il: string | null
           cliente_id: string
+          confermato_da: string | null
+          confermato_il: string | null
           consumo: number | null
           esposizione: number | null
           fido_gamma: number | null
@@ -63,6 +65,8 @@ export type Database = {
           aperto_il?: string
           chiuso_il?: string | null
           cliente_id: string
+          confermato_da?: string | null
+          confermato_il?: string | null
           consumo?: number | null
           esposizione?: number | null
           fido_gamma?: number | null
@@ -85,6 +89,8 @@ export type Database = {
           aperto_il?: string
           chiuso_il?: string | null
           cliente_id?: string
+          confermato_da?: string | null
+          confermato_il?: string | null
           consumo?: number | null
           esposizione?: number | null
           fido_gamma?: number | null
@@ -6777,6 +6783,39 @@ export type Database = {
       condizione_pagamento_cambiata: {
         Args: { _attuale: string; _proposta: string }
         Returns: boolean
+      }
+      conferma_extra_alert_fido: {
+        Args: { _alert_id: string }
+        Returns: {
+          aggiornato_il: string
+          aperto_il: string
+          chiuso_il: string | null
+          cliente_id: string
+          confermato_da: string | null
+          confermato_il: string | null
+          consumo: number | null
+          esposizione: number | null
+          fido_gamma: number | null
+          fido_gamma_apertura: number | null
+          fido_proposto: number | null
+          id: string
+          livello: number | null
+          motivo_chiusura: string | null
+          notificato_il: string | null
+          notificato_livello: number | null
+          ordini_aperti: number | null
+          richiesta_id: string | null
+          riproponi_dal: string | null
+          stato: string
+          tipo: string
+          utilizzo_massimo: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "alert_fidi"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       conta_contattabili_canale: {
         Args: { _canale: string; _filtri: Json }
