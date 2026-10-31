@@ -24,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { STATO_LABEL, calcolaLivello, formatEuro, isRichiestaAttiva, determinaTipoRichiesta, importoRichiestaValido, condizionePagamentoCambiata, etichettaTipoRichiesta, motivoExtraObbligatorio } from "@/lib/fidi";
 import { CampoExtraTeorico } from "@/components/extra-fido-teorico";
 import { getFidoAttuale } from "@/lib/fido-cliente";
+import { SegnalazioniFido } from "@/components/segnalazioni-fido";
 import { fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, isProponibile, MOTIVO_NON_PROPONIBILE } from "@/lib/fido-teorico";
 import { CondizionePagamentoRichiestaSelect, CondizionePagamentoTesto, useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
 import { CambioCondizionePagamento } from "@/components/cambio-condizione-pagamento";
@@ -160,6 +161,13 @@ export function RichiestaFormDialog({
     queryFn: async () => (await fetchFidoTeorico([form.cliente_id])).get(form.cliente_id) ?? null,
   });
   const proponibile = isProponibile(teorico?.regola_applicata);
+  // FM55 3C: segnalazioni anche in modifica (stessa fonte, stessa chiave di cache).
+  const { data: segnTeorico } = useQuery({
+    queryKey: ["fido-teorico", form.cliente_id],
+    enabled: !!form.cliente_id,
+    staleTime: 5 * 60_000,
+    queryFn: async () => (await fetchFidoTeorico([form.cliente_id])).get(form.cliente_id) ?? null,
+  });
   // FM55: teorico di riferimento della richiesta (fonte unica fetchFidoTeoricoPerRichiesta).
   const { data: teoricoRich } = useQuery({
     queryKey: ["fido-teorico-per-richiesta", utente?.id ?? null, form.cliente_id],
@@ -479,6 +487,12 @@ export function RichiestaFormDialog({
           </div>
         </div>
 
+        {segnTeorico && segnTeorico.segnalazioni.length > 0 && (
+          <div className="min-w-0 space-y-1">
+            <p className="text-xs font-medium text-muted-foreground">Segnalazioni del fido</p>
+            <SegnalazioniFido riga={segnTeorico} />
+          </div>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">

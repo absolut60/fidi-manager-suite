@@ -82,3 +82,31 @@ export function segnalazioniRiga(
     return { codice: c, etichetta: d.etichetta, gravita: d.gravita, testo: d.testo(r) };
   });
 }
+
+/** FM55 3C: segnalazioni arancioni/rosse = anomalie da autorizzare sopra il teorico. */
+export function segnalazioniAnomalia(codici: readonly string[] | null | undefined): string[] {
+  return (codici ?? []).filter((c) => {
+    const g = SEGNALAZIONI_FIDO[c]?.gravita;
+    return g === "rossa" || g === "arancione";
+  });
+}
+
+/** Rosso se c'è almeno una segnalazione di gravità rossa. */
+export function anomaliaRossa(codici: readonly string[] | null | undefined): boolean {
+  return (codici ?? []).some((c) => SEGNALAZIONI_FIDO[c]?.gravita === "rossa");
+}
+
+/**
+ * FM55 3C: richiesta sopra il fido teorico di riferimento con anomalie → "Da autorizzare".
+ * Solo informativo per chi approva: nessun passaggio di approvazione in più.
+ */
+export function daAutorizzareRichiesta(
+  importo: number | null | undefined,
+  riferimento: number | null | undefined,
+  codici: readonly string[] | null | undefined,
+): { anomalie: string[]; rossa: boolean } | null {
+  if (importo == null || riferimento == null || !(Number(importo) > Number(riferimento))) return null;
+  const anomalie = segnalazioniAnomalia(codici);
+  if (anomalie.length === 0) return null;
+  return { anomalie, rossa: anomaliaRossa(anomalie) };
+}
