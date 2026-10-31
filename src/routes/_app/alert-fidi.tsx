@@ -278,7 +278,7 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
             {visibili.map((a) => (
               <SchedaLista key={a.id}
                 selezione={alertSelezionabile(a) ? { checked: selezionati.has(a.id), onChange: () => toggle(a.id) } : undefined}
-                titolo={linkCliente(a)}
+                titolo={<div className="min-w-0">{linkCliente(a)}{segnalazioniCliente(a)}</div>}
                 badge={<Badge variant="outline" className="shrink-0">{etichettaAvviso(a)}</Badge>}
                 campi={[
                   { etichetta: "Negozio", valore: a.cliente?.stores?.nome ?? "—" },
@@ -319,6 +319,7 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
                     </TableCell>
                     <TableCell className="max-w-64 min-w-40">{linkCliente(a)}
                       {a.cliente?.codice_gestionale && <div className="text-xs text-muted-foreground">{a.cliente.codice_gestionale}</div>}
+                      {segnalazioniCliente(a)}
                     </TableCell>
                     <TableCell className="break-words">{a.cliente?.stores?.nome ?? "—"}</TableCell>
                     <TableCell className="break-words">{a.cliente?.codice_agente ? (nomeAgente.get(a.cliente.codice_agente) ?? a.cliente.codice_agente) : "—"}</TableCell>
