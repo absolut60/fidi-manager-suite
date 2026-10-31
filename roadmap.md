@@ -1,5 +1,12 @@
 # Roadmap
 
+## FM55 — Fetta 4c: notifiche Alert fidi spente
+- [x] Funzione protetta e passo del ricalcolo senza modificare calcoli (0104)
+- [x] Prove SQL annullate: 356 avvisi / 17 gruppi / 15 utenti; livelli, doppioni e interruttore verificati
+- [x] Notifiche ripristinate integralmente: 2885 righe, 0 alert notificati; compilazione automatica OK
+- [ ] Registrazione catalogo notifiche: inserimento dati a carico del proprietario; funzione bloccata da accesa senza catalogo corretto
+- [ ] Controllo tipi dedicato: esecuzione manuale non disponibile, verifica affidata ai controlli automatici della piattaforma
+
 ## Tooltip calendario commerciale e Task
 - [x] Riusare i testi già caricati e condividere il montaggio all'apertura con i tooltip recupero
 - [x] Compilazione automatica riuscita; nessuna query aggiunta, handler clic/tocco invariati

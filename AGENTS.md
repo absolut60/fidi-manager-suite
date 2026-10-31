@@ -1,5 +1,7 @@
 # Architecture rules
 
+- Alert-fidi notifications are produced only by public.invia_notifiche_alert_fidi after alert refresh; it locks eligible alerts, uses the existing grouping/push triggers and marks logical deliveries rather than INSERT RETURNING rows, because grouping may cancel inserts.
+
 - TooltipDettaglio owns delayed tooltip mounting for recovery actions, commercial calendar events and task rows, so content and any detail queries mount only while open without changing click or touch handlers.
 
 - FiltriCollassabili supports opt-in desktop collapse and a persistent summary; existing callers retain always-visible desktop filters to avoid regressions.

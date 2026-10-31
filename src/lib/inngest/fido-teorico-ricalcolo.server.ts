@@ -71,6 +71,13 @@ export const ricalcolaFidoTeorico = inngest.createFunction(
       return data as unknown;
     });
 
+    // FM55: nessuna scrittura se l'interruttore DB non è esattamente 'true'.
+    const notificheAlertFidi = await step.run("invia-notifiche-alert-fidi", async () => {
+      const { data, error } = await supabaseAdmin.rpc("invia_notifiche_alert_fidi" as never);
+      if (error) throw new Error(error.message);
+      return data as unknown;
+    });
+
     // Origine dell'ultimo ricalcolo (automatico | manuale), letta da card e avviso.
     await step.run("registra-origine", async () => {
       const { error } = await supabaseAdmin.from("configurazioni").upsert(
@@ -86,6 +93,6 @@ export const ricalcolaFidoTeorico = inngest.createFunction(
       return { ok: true };
     });
 
-    return { origine, alert_fidi: alertFidi, blocchi_elaborati: blocchi, ultimo_id: dopoId, finalizzato: true };
+    return { origine, alert_fidi: alertFidi, notifiche_alert_fidi: notificheAlertFidi, blocchi_elaborati: blocchi, ultimo_id: dopoId, finalizzato: true };
   },
 );
