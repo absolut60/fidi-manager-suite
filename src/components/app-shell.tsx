@@ -45,6 +45,7 @@ import {
   ListChecks,
   UserX,
   QrCode,
+  BellRing,
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -53,6 +54,7 @@ import { useAuth, RUOLI_LABEL } from "@/hooks/use-auth";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { fetchUtentiAnteprimaFidoNuovo } from "@/lib/fido-teorico";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { contaNonLette, notificheNonLetteQueryKey } from "@/lib/notifiche";
 import { useBadgeNotifiche } from "@/hooks/use-badge-notifiche";
@@ -81,6 +83,8 @@ type NavItem = {
   group: NavGroupKey;
   richiesteScope?: RichiesteScope;
   exact?: boolean;
+  /** FM55: visibile solo agli utenti in configurazioni.fido_v2_anteprima_utenti. */
+  anteprimaFidoV2?: boolean;
 };
 
 const NAV: NavItem[] = [
@@ -108,6 +112,7 @@ const NAV: NavItem[] = [
   { to: "/fidi-dashboard", label: "Dashboard fidi", icon: LayoutDashboard, group: "fidi" },
   { to: "/richieste", label: "Richieste fido", icon: FileText, group: "fidi" },
   { to: "/fidi-processare", label: "Fidi da processare", icon: ClipboardCheck, roles: ["admin", "approvatore"], group: "fidi" },
+  { to: "/alert-fidi", label: "Alert fidi", icon: BellRing, group: "fidi", anteprimaFidoV2: true },
   { to: "/assicurazioni", label: "Assicurazioni", icon: ShieldCheck, roles: ["admin", "approvatore", "store_manager"], group: "fidi" },
   { to: "/clienti-variazioni-blocco", label: "Variazioni blocco e legale", icon: AlertTriangle, roles: ["admin", "store_manager", "agente"], group: "fidi" },
   // INCASSI
@@ -192,6 +197,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // Stessa query (chiave condivisa) della campanella: nessun conteggio duplicato.
   const queryClient = useQueryClient();
+  const { data: utentiAnteprimaFidoV2 } = useQuery({
+    queryKey: ["fido-v2-anteprima-utenti"],
+    queryFn: fetchUtentiAnteprimaFidoNuovo,
+    enabled: !!user,
+    staleTime: 5 * 60_000,
+  });
   const { data: notificheNonLette = 0 } = useQuery({
     queryKey: notificheNonLetteQueryKey(user?.id),
     enabled: Boolean(user?.id),
@@ -323,6 +334,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const canGestioneRich = isAdmin || isGestoreRich || isEsecutoreRich || isAmministrazione;
 
   const visibleNavRaw = NAV.filter((item) => {
+    if (item.anteprimaFidoV2) return !!user && (utentiAnteprimaFidoV2 ?? []).includes(user.id);
     if (item.group === "richieste_interne") {
       if (!canSeeRichiesteInterne) return false;
       if (item.richiesteScope === "approve") return canApproveRich;
