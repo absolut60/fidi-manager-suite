@@ -5,15 +5,16 @@ import { leggiTutteLeRighe } from "@/lib/leggi-tutte-le-righe";
 import { FIDO_CLIENTE_SELECT } from "@/lib/fido-cliente";
 import { isRichiestaAttiva, STATI_RICHIESTA_NON_TERMINALI } from "@/lib/fidi";
 import {
-  fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchExtraFidoProtetti, protezioneAttiva, type FidoTeoricoRow,
+  fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, protezioneAttiva, type FidoTeoricoRow,
 } from "@/lib/fido-teorico";
 import { segnalazioniAnomalia } from "@/lib/fido-segnalazioni";
 import {
-  fetchAlertFidiAperti, statoEffettivoAlert, alertLasciabileCosi,
+  fetchAlertFidiAperti, statoEffettivoAlert, alertLasciabileCosi, fetchDecisioniProtette, giaDeciso,
+  type DecisioneProtetta,
   type AlertFidoRow, type RichiestaClienteAlert,
 } from "@/lib/alert-fidi";
 
-export type GruppoRevisione = "in_corso" | "lasciato_cosi" | "da_incassare" | "nuovo" | "da_decidere" | "pronta" | "ok";
+export type GruppoRevisione = "in_corso" | "lasciato_cosi" | "da_incassare" | "nuovo" | "da_decidere" | "pronta" | "gia_deciso" | "ok";
 
 export const ETICHETTE_GRUPPO_REVISIONE: Record<GruppoRevisione, string> = {
   in_corso: "Già inviate",
@@ -22,6 +23,7 @@ export const ETICHETTE_GRUPPO_REVISIONE: Record<GruppoRevisione, string> = {
   nuovo: "Nuovi fidi – decide la direzione",
   da_decidere: "Da decidere",
   pronta: "Proposte pronte",
+  gia_deciso: "Già decisi",
   ok: "A posto",
 };
 
@@ -102,10 +104,10 @@ export function gruppoRevisione(i: InputGruppoRevisione): GruppoRevisione {
   const rif = i.riferimento == null ? null : Number(i.riferimento);
   if (i.richiestaAttiva) return "in_corso";
   if (i.alertConfermato || i.lasciatoCosiValido) return "lasciato_cosi";
+  // Decisione approvata ancora protetta e riferimento = Gamma: già deciso (lo scaduto lo segue il Recupero crediti).
+  if (giaDeciso(i.extraProtettoValido ? { protezione_valida: true } as any : undefined, rif, gamma)) return "gia_deciso";
   if (i.regola === "scaduto_non_incassato") return "da_incassare";
   if (gamma === 0 && rif != null && rif > 0) return "nuovo";
-  // Extra protetto valido = decisione già presa: se il riferimento coincide col Gamma non c'è nulla da fare.
-  if (i.extraProtettoValido && rif != null && rif === gamma) return "ok";
   const anomalia = segnalazioniAnomalia(i.segnalazioni).length > 0;
   if (anomalia || (i.alertAperto && rif === gamma)) return "da_decidere";
   if (rif != null && rif !== gamma) return "pronta";
@@ -128,6 +130,8 @@ export type RigaRevisione = {
   alertConfermato: AlertFidoRow | null;
   /** Ultima decisione "Lascia così" della revisione, se ancora valida. */
   lasciato: LasciatoCosi | null;
+  /** Decisione protetta del cliente (per la frase "Già deciso"). */
+  decisione: DecisioneProtetta | null;
 };
 
 export type RiepilogoGruppo = { clienti: number; fidoGamma: number; proposto: number };
@@ -178,7 +182,7 @@ export async function fetchRevisioneFidi(userId: string): Promise<RigaRevisione[
   const ids = perimetro.map((c) => c.id);
   const [riferimenti, protetti, alert, richieste, lasciati] = await Promise.all([
     fetchFidoTeoricoPerRichiesta(ids, userId),
-    fetchExtraFidoProtetti(ids),
+    fetchDecisioniProtette(ids),
     fetchAlertFidiAperti(),
     fetchRichiesteAttive(),
     fetchUltimiLasciati(ids),
@@ -208,6 +212,6 @@ export async function fetchRevisioneFidi(userId: string): Promise<RigaRevisione[
       extraProtettoValido: protezioneAttiva(protetti.get(c.id)),
     });
     return { cliente_id: c.id, cliente: c, teorico: t, fidoGamma, riferimento, gruppo, richiesta,
-      alertLasciabile: lasciabile, alertConfermato: confermato, lasciato };
+      alertLasciabile: lasciabile, alertConfermato: confermato, lasciato, decisione: protetti.get(c.id) ?? null };
   });
 }

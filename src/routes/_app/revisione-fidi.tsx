@@ -18,7 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { formatEuro } from "@/lib/fidi";
 import { fetchUtentiAnteprimaFidoNuovo } from "@/lib/fido-teorico";
-import { etichettaRichiestaAlert, passaNegozioAgente } from "@/lib/alert-fidi";
+import { etichettaRichiestaAlert, passaNegozioAgente, testoGiaDeciso } from "@/lib/alert-fidi";
 import {
   fetchRevisioneFidi, riepilogoRevisione, lasciaCosiRevisione, ETICHETTE_GRUPPO_REVISIONE, type GruppoRevisione, type RigaRevisione,
 } from "@/lib/revisione-fidi";
@@ -177,6 +177,9 @@ function RevisioneContenuto({ userId }: { userId: string }) {
       const fino = r.lasciato?.valido_fino ?? r.alertConfermato?.riproponi_dal;
       return <span className="break-words text-xs text-muted-foreground">Lasciato così fino al {fmtGiornoMese(fino)}{r.lasciato?.deciso_da_nome ? ` da ${r.lasciato.deciso_da_nome}` : ""}</span>;
     }
+    if (g === "gia_deciso" && r.decisione) {
+      return <span className="break-words text-xs text-muted-foreground">{testoGiaDeciso(r.decisione)}</span>;
+    }
     return null;
   };
 
@@ -274,7 +277,7 @@ function RevisioneContenuto({ userId }: { userId: string }) {
             </Card>
           ))}
 
-          {(["nuovo", "in_corso", "lasciato_cosi"] as GruppoRevisione[]).map((g) => (
+          {(["nuovo", "in_corso", "lasciato_cosi", "gia_deciso"] as GruppoRevisione[]).map((g) => (
             <Collapsible key={g}>
               <Card className="overflow-hidden">
                 <CollapsibleTrigger className="group flex min-h-12 w-full items-center justify-between gap-2 p-3 text-left font-medium">

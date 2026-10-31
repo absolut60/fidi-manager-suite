@@ -21,7 +21,7 @@ import { SegnalazioniFido } from "@/components/segnalazioni-fido";
 import { fetchRevisioneFidi, riepilogoRevisione, daRivedereRevisione, fetchUltimiLasciati, lasciaCosiRevisione } from "@/lib/revisione-fidi";
 import {
   fetchAlertFidiAperti, cosaFareAlert, alertLasciabileCosi, etichettaAvviso, debitoOggi, alertSelezionabile,
-  importoDaAlert, statoEffettivoAlert, etichettaRichiestaBreve, etichettaDecisioneAlert, percheAlert, filtraAlert, contatoriAlert, passaNegozioAgente, SITUAZIONE_ALERT_LABEL, STATI_ALERT_DEFAULT, TIPO_ALERT_LABEL,
+  importoDaAlert, statoEffettivoAlert, fetchDecisioniProtette, giaDeciso, testoGiaDeciso, etichettaRichiestaBreve, etichettaDecisioneAlert, percheAlert, filtraAlert, contatoriAlert, passaNegozioAgente, SITUAZIONE_ALERT_LABEL, STATI_ALERT_DEFAULT, TIPO_ALERT_LABEL,
   type AlertFidoRow, type StatoAlertFido, type TipoAlertFido,
 } from "@/lib/alert-fidi";
 
@@ -70,10 +70,11 @@ function AlertFidiPage() {
 
 function AlertFidiContenuto({ userId }: { userId: string }) {
   const queryClient = useQueryClient();
-  const { data: righe, isLoading, error } = useQuery({
+  const { data: righeBase, isLoading, error } = useQuery({
     queryKey: ["alert-fidi-aperti"],
     queryFn: fetchAlertFidiAperti,
   });
+  const righe = righeBase;
   const { data: revisione } = useQuery({
     queryKey: ["revisione-fidi", userId],
     queryFn: () => fetchRevisioneFidi(userId),
@@ -93,6 +94,12 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
     enabled: idsClienti.length > 0,
     staleTime: 5 * 60_000,
     queryFn: () => fetchFidoTeoricoPerRichiesta(idsClienti, userId),
+  });
+  const { data: decisioniMap } = useQuery({
+    queryKey: ["decisioni-protette-alert", idsClienti.join(",")],
+    enabled: idsClienti.length > 0,
+    staleTime: 5 * 60_000,
+    queryFn: () => fetchDecisioniProtette(idsClienti),
   });
   const { data: lasciatiMap } = useQuery({
     queryKey: ["revisione-fidi-lasciati-alert", idsClienti.join(",")],
@@ -116,7 +123,12 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
   }, { userId, valida: { stati: Array.isArray, tipi: Array.isArray, negozi: Array.isArray, agenti: Array.isArray, richiesta: Array.isArray } });
   const { stati, tipi, negozi, agenti: agentiSel, richiesta: richiestaSel } = filtri;
 
-  const tutte = righe ?? [];
+  // "Già deciso" (fonte unica giaDeciso): decisione protetta e riferimento = fido Gamma.
+  const tutte = useMemo(() => (righe ?? []).map((a) => {
+    const d = decisioniMap?.get(a.cliente_id);
+    const gd = giaDeciso(d, riferimentoMap?.get(a.cliente_id), a.cliente?.fido_gestionale ?? a.fido_gamma);
+    return gd && d ? { ...a, gia_deciso: d } : a;
+  }), [righe, decisioniMap, riferimentoMap]);
   const opzioniNegozi = useMemo(() => {
     const m = new Map<string, string>();
     let senza = false;
@@ -238,6 +250,9 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
   };
   // Colonna "Richiesta": solo quando c'è qualcosa (richiesta, decisione, "lasciato così").
   const renderRichiesta = (a: AlertFidoRow) => {
+    if (statoEffettivoAlert(a) === "gia_deciso" && a.gia_deciso) {
+      return <span className="break-words text-xs text-muted-foreground">{testoGiaDeciso(a.gia_deciso)}</span>;
+    }
     if (a.decisione) {
       return (
         <div className="space-y-1">
