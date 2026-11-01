@@ -7019,6 +7019,10 @@ export type Database = {
             } & "the function public.cliente_privato_fido with parameter or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache"
           }
         | { Args: { partita_iva: string }; Returns: boolean }
+      cliente_sede_centrale_fido: {
+        Args: { _store_id: string }
+        Returns: boolean
+      }
       clienti_ambito_utente_ids: { Args: never; Returns: string[] }
       clienti_scaduto_oltre_60: {
         Args: never
@@ -7419,6 +7423,12 @@ export type Database = {
           cliente_id: string
         }[]
       }
+      get_clienti_giro_fidi_ids: {
+        Args: { _tipo: string }
+        Returns: {
+          cliente_id: string
+        }[]
+      }
       get_clienti_lite_by_ids: {
         Args: { _ids: string[] }
         Returns: {
@@ -7643,6 +7653,17 @@ export type Database = {
           n_clienti_con_fido: number
           ordine: number
           tipo: string
+        }[]
+      }
+      get_dashboard_fidi_giro: {
+        Args: never
+        Returns: {
+          pos_con_fido_n: number
+          pos_concesso_eur: number
+          privati_con_fido_n: number
+          privati_concesso_eur: number
+          privati_esposizione_eur: number
+          privati_proposto_eur: number
         }[]
       }
       get_destinatari_copia_recupero: {
