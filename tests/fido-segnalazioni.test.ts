@@ -37,7 +37,7 @@ describe("segnalazioni fido", () => {
       testo: `Ha ordini clienti aperti per ${formatEuro(50000)}: se consegnati, ci dovrebbe ${formatEuro(130000)}, più del fido proposto` });
   });
   it("nuovi segnali separati, rossi prima degli arancioni; sconosciuti ignorati", () => {
-    const l = raggruppaSegnalazioni({ ...base, segnalazioni: ["ordini_oltre_fido", "ignoto", "oltre_normale", "uso_pieno", "oltre_normale"] });
+    const l = raggruppaSegnalazioni({ ...base, fido_proposto: 50000, segnalazioni: ["ordini_oltre_fido", "ignoto", "oltre_normale", "uso_pieno", "oltre_normale"] });
     expect(l.map(s => s.codice)).toEqual(["oltre_normale", "ordini_oltre_fido", "uso_pieno"]);
   });
   it("legacy riconosciuti separatamente, senza gruppo acquisti sintetico né voci vuote", () => {

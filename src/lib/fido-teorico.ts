@@ -8,10 +8,15 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import { formatEuro } from "@/lib/fidi";
+import { segnalazioniCorrenti } from "@/lib/fido-segnalazioni";
 
-/** Perimetro del giro fidi, NON del calcolo. Gemello SQL: cliente_privato_fido(text). */
-export function isPrivatoFido(cliente: { partita_iva?: string | null }): boolean {
-  return !cliente.partita_iva?.trim();
+export function isSedeCentraleFido(cliente: { store_id?: string | null }): boolean {
+  return cliente.store_id === "b07c4c61-12e4-4a87-8e79-bbb9c181ffe9";
+}
+
+/** Fuori dal giro fidi: privati e Sede Centrale. Gemello SQL: cliente_privato_fido(clienti). */
+export function isPrivatoFido(cliente: { partita_iva?: string | null; store_id?: string | null }): boolean {
+  return !cliente.partita_iva?.trim() || isSedeCentraleFido(cliente);
 }
 
 /** Opzione del preset Revisione fidi; nella lista normale rimane false. */
@@ -47,6 +52,7 @@ export type FidoTeoricoRow = {
   fido_teorico_puro: number;
   pavimento_applicato: boolean;
   esposizione_corrente: number;
+  esposizione_picco_30gg?: number | null;
   acquisto_storico: number | null;
   acquisto_tendenza: number | null;
   acquisto_mensile: number | null;
@@ -162,6 +168,7 @@ export function normalizza(r: any): FidoTeoricoRow {
     fido_teorico_puro: Number(r.fido_teorico_puro ?? r.fido_proposto ?? 0),
     pavimento_applicato: !!r.pavimento_applicato,
     esposizione_corrente: Number(r.esposizione_corrente ?? 0),
+    esposizione_picco_30gg: numOrNull(r.esposizione_picco_30gg),
     acquisto_storico: numOrNull(r.acquisto_storico),
     acquisto_tendenza: numOrNull(r.acquisto_tendenza),
     acquisto_mensile: numOrNull(r.acquisto_mensile),
@@ -179,7 +186,7 @@ export function normalizza(r: any): FidoTeoricoRow {
     ordini_fuori: Number(r.ordini_fuori ?? 0),
     tetto: numOrNull(r.tetto),
     valore_senza_tetto: numOrNull(r.valore_senza_tetto),
-    segnalazioni: Array.isArray(r.segnalazioni) ? r.segnalazioni.map(String) : [],
+    segnalazioni: segnalazioniCorrenti(r),
     semaforo_stadio: r.semaforo_stadio ?? null,
     semaforo_motivo: r.semaforo_motivo ?? null,
   };
@@ -252,6 +259,7 @@ export type FidoTeoricoNuovoRow = {
   coefficiente: number | null;
   base: number | null;
   esposizione: number | null;
+  esposizione_picco_30gg?: number | null;
   ordini_aperti: number | null;
   fabbisogno: number | null;
   fido_proposto: number | null;
@@ -307,6 +315,7 @@ export async function fetchFidoTeoricoNuovo(clienteId: string): Promise<FidoTeor
     coefficiente: numOrNull(r.coefficiente),
     base: numOrNull(r.base),
     esposizione: numOrNull(r.esposizione_corrente),
+    esposizione_picco_30gg: numOrNull(r.esposizione_picco_30gg),
     ordini_aperti: numOrNull(r.ordini_aperti),
     fabbisogno: numOrNull(r.fabbisogno),
     fido_proposto: numOrNull(r.fido_proposto),

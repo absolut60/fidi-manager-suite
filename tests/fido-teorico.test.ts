@@ -26,6 +26,10 @@ test('detailed payment profile is the coefficient reason', () => {
   expect(motivoCoefficiente({ profilo:'ritardo_abituale' })).toBe('Ritardo abituale');
   expect(motivoCoefficiente({ profilo:'patologico_insoluti_ripetuti' })).toBe('Patologico: insoluti ripetuti');
 });
+test('picco pubblicato 30 giorni conservato, assenza resta null fino al prossimo import', () => {
+  expect(normalizza({ cliente_id: 'gmp', esposizione_corrente: 37306.85, esposizione_picco_30gg: 52473.45 }).esposizione_picco_30gg).toBe(52473.45);
+  expect(normalizza({ cliente_id: 'gmp' }).esposizione_picco_30gg).toBeNull();
+});
 test('all request users read canonical fido only, including prior preview users', async () => {
   rows = [{cliente_id:'a',regola_applicata:'calcolo',fido_proposto:45000}]; reads.length=0;
   for (const user of [null, 'preview-user', 'other-user']) {

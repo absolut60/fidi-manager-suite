@@ -9,7 +9,7 @@ SELECT 'ordini non aumentano il fido',
 FROM public.fido_v2_margine_tetto(5000,0,999999,100,0)
 UNION ALL
 SELECT 'oltre normale usa proposta arrotondata',
-  'oltre_normale' = ANY(public.segnalazioni_fido('calcolo',1000,2000,0,5000,0,0,0,3000,1500))
+  'oltre_normale' = ANY(public.segnalazioni_fido('calcolo',1000,2000,0,2000,0,0,0,3000,1500))
 UNION ALL
 SELECT 'uguaglianza al normale non segnala',
   NOT ('oltre_normale' = ANY(public.segnalazioni_fido('calcolo',1000,1000,0,5000,0,0,0,2000,1500)))
