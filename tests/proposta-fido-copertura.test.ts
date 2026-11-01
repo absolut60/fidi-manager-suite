@@ -57,7 +57,7 @@ describe("FM55 copertura informativa e motivo unico", () => {
       .toBe("Usa meno fido del solito: ne bastano 25.000 €. Nessun acquisto recente.");
   });
   test("acquisto nullo o zero: nessun acquisto recente", () => {
-    expect(riga("calcolo", [], { acquisto_mensile: null }).frase?.endsWith(" Nessun acquisto recente.")).toBe(true);
-    expect(riga("calcolo", [], { acquisto_mensile: 0 }).frase?.endsWith(" Nessun acquisto recente.")).toBe(true);
+    expect(riga("calcolo", [], { acquisto_mensile: null }).frase).toBe("Nessun acquisto recente.");
+    expect(riga("calcolo", [], { acquisto_mensile: 0 }).frase).toBe("Nessun acquisto recente.");
   });
 });
