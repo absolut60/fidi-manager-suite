@@ -54,7 +54,7 @@ import { useAuth, RUOLI_LABEL } from "@/hooks/use-auth";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { puoVedereAlertFidi } from "@/lib/permessi-fidi";
+import { puoVedereAreaFidi } from "@/lib/permessi-fidi";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { contaNonLette, notificheNonLetteQueryKey } from "@/lib/notifiche";
 import { useBadgeNotifiche } from "@/hooks/use-badge-notifiche";
@@ -83,8 +83,8 @@ type NavItem = {
   group: NavGroupKey;
   richiesteScope?: RichiesteScope;
   exact?: boolean;
-  /** FM55: visibilità decisa da puoVedereAlertFidi (src/lib/permessi-fidi.ts). */
-  permessoAlertFidi?: boolean;
+  /** FM55: visibilità decisa da puoVedereAreaFidi (src/lib/permessi-fidi.ts). */
+  permessoAreaFidi?: boolean;
 };
 
 const NAV: NavItem[] = [
@@ -109,10 +109,10 @@ const NAV: NavItem[] = [
   { to: "/kit", label: "Kit / Lavorazioni", icon: Wrench, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
   { id: "cantieri-preventivi", to: "/cantieri", label: "Cantieri", icon: Building2, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
   // FIDI
-  { to: "/fidi-dashboard", label: "Dashboard fidi", icon: LayoutDashboard, group: "fidi" },
-  { to: "/richieste", label: "Richieste fido", icon: FileText, group: "fidi" },
+  { to: "/fidi-dashboard", label: "Dashboard fidi", icon: LayoutDashboard, group: "fidi", permessoAreaFidi: true },
+  { to: "/richieste", label: "Richieste fido", icon: FileText, group: "fidi", permessoAreaFidi: true },
   { to: "/fidi-processare", label: "Fidi da processare", icon: ClipboardCheck, roles: ["admin", "approvatore"], group: "fidi" },
-  { to: "/alert-fidi", label: "Alert fidi", icon: BellRing, group: "fidi", permessoAlertFidi: true },
+  { to: "/alert-fidi", label: "Alert fidi", icon: BellRing, group: "fidi", permessoAreaFidi: true },
   { to: "/assicurazioni", label: "Assicurazioni", icon: ShieldCheck, roles: ["admin", "approvatore", "store_manager"], group: "fidi" },
   { to: "/clienti-variazioni-blocco", label: "Variazioni blocco e legale", icon: AlertTriangle, roles: ["admin", "store_manager", "agente"], group: "fidi" },
   // INCASSI
@@ -329,7 +329,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const canGestioneRich = isAdmin || isGestoreRich || isEsecutoreRich || isAmministrazione;
 
   const visibleNavRaw = NAV.filter((item) => {
-    if (item.permessoAlertFidi) return puoVedereAlertFidi(userRoles);
+    if (item.permessoAreaFidi) return puoVedereAreaFidi(userRoles);
     if (item.group === "richieste_interne") {
       if (!canSeeRichiesteInterne) return false;
       if (item.richiesteScope === "approve") return canApproveRich;
