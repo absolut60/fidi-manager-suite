@@ -23,6 +23,7 @@ import {
 import { CampoExtraTeorico } from "@/components/extra-fido-teorico";
 import {
   fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, isProponibile,
+  applicaPerimetroFido, PRESET_REVISIONE_FIDI_PERIMETRO,
   REGOLA_LABEL, MOTIVO_NON_PROPONIBILE, PROFILO_FIDO_LABEL, type FidoTeoricoRow,
 } from "@/lib/fido-teorico";
 import { Button } from "@/components/ui/button";
@@ -228,6 +229,7 @@ function ClientiPage() {
     soloDaVerificare: false,
     soloOltreFido: false,
     soloConFidoAttivo: false,
+    soloPartitaIvaFido: false,
     soloInsoluti: false,
     soloFermi: false,
     aScadereFiltro: "tutti" as string,
@@ -244,6 +246,7 @@ function ClientiPage() {
     userId: _userEarly?.id,
     partiDaiDefault: _linkConFiltri,
     valida: {
+      soloPartitaIvaFido: (v) => typeof v === "boolean",
       statoFido: (v) => Array.isArray(v) && v.every((x) => typeof x === "string"),
       // Formato vecchio (stringa) scartato: si riparte dal default.
       storeFiltro: (v) => Array.isArray(v) && v.every((x) => typeof x === "string"),
@@ -264,6 +267,7 @@ function ClientiPage() {
   const { searchInput, statoCliente, statoAttivita, semaforoFiltro, profiloFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, scadenziarioFiltro, totaleRischioFiltro, fatturatoFiltro, mostraFidoTeorico, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, aScadereFiltro, fasciaConcesso, fidoFascia, sliderCommitted, advApplied, page, pageSize, sortBy, sortDir } = F;
   // Store manager: sempre il proprio negozio, qualunque valore sia salvato.
   const storeFiltro: string[] = isStoreManager && myStoreId ? [myStoreId] : F.storeFiltro;
+  const { soloPartitaIvaFido } = F;
   // Set ricostruito al confine (salvato come array di stringhe).
   const statoFido = useMemo(() => new Set(F.statoFido), [F.statoFido]);
   const setSearchInput = (v: string) => setCampo("searchInput", v);
@@ -633,6 +637,7 @@ function ClientiPage() {
     let q = supabase
       .from("clienti")
       .select(selectFinale, count ? { count } : undefined);
+    q = applicaPerimetroFido(q, { soloPartitaIvaFido });
 
     if (semaforoFiltro.length > 0) q = q.in("fido_teorico_cliente.semaforo_stadio", semaforoFiltro);
     if (profiloFiltro.length > 0) q = q.in("fido_teorico_cliente.profilo", profiloFiltro);
@@ -1097,6 +1102,7 @@ function ClientiPage() {
   }
 
   const attiviCount =
+    (soloPartitaIvaFido ? 1 : 0) +
     (search ? 1 : 0) +
     (statoCliente !== "attivi" ? 1 : 0) +
     (statoAttivita !== "attivi" ? 1 : 0) +
@@ -1154,16 +1160,18 @@ function ClientiPage() {
   // filtro su attivita', tipo soggetto o profilo. Stessi stati della query lista
   // e di fetchAllFilteredRows, quindi contatore e "Seleziona tutti" coincidono.
   function applicaPresetSanatoria() {
+    clearSelection();
     setSearch("");
     setSliderDisplay([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
     resetFiltriSalvati({
       sortBy, sortDir, page: 1, pageSize,
       statoCliente: "attivi", statoAttivita: "tutti", filtroTipoSoggetto: "tutti",
       soloConFidoAttivo: true, profiloFiltro: [],
+      ...PRESET_REVISIONE_FIDI_PERIMETRO,
     });
   }
   const sanatoriaAttiva =
-    soloConFidoAttivo && statoCliente === "attivi" && statoAttivita === "tutti" &&
+    soloPartitaIvaFido && soloConFidoAttivo && statoCliente === "attivi" && statoAttivita === "tutti" &&
     filtroTipoSoggetto === "tutti" && profiloFiltro.length === 0;
 
   function toggleSort(colonna: string) {

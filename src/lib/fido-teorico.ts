@@ -9,6 +9,21 @@
 import { supabase } from "@/integrations/supabase/client";
 import { formatEuro } from "@/lib/fidi";
 
+/** Perimetro del giro fidi, NON del calcolo. Gemello SQL: cliente_privato_fido(text). */
+export function isPrivatoFido(cliente: { partita_iva?: string | null }): boolean {
+  return !cliente.partita_iva?.trim();
+}
+
+/** Opzione del preset Revisione fidi; nella lista normale rimane false. */
+export const PRESET_REVISIONE_FIDI_PERIMETRO = { soloPartitaIvaFido: true } as const;
+
+/** Campo calcolato SQL gemello: filtro prima di conteggio, paginazione e selezione. */
+export function applicaPerimetroFido<Q extends { eq: (colonna: string, valore: boolean) => Q }>(
+  query: Q, opzioni: { soloPartitaIvaFido?: boolean },
+): Q {
+  return opzioni.soloPartitaIvaFido ? query.eq("cliente_privato_fido", false) : query;
+}
+
 export type FidoTeoricoRow = {
   cliente_id: string;
   fatturato_rolling: number;
