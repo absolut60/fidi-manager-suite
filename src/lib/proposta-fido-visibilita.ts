@@ -66,7 +66,7 @@ export function inclusoInizialeProposta({ proponibile, rossa, regola, fidoAttual
 
 /**
  * Motivo principale della riga (fonte unica: colore, etichetta e spunta iniziale).
- * Priorità se più motivi: scaduto > bloccato/legale > da autorizzare > ordini.
+ * Priorità se più motivi: bloccato/legale > scaduto > da autorizzare > ordini.
  * Il motivo vincente decide colore ed etichetta; gli altri restano solo nei dettagli.
  */
 export type MotivoRigaProposta = "scaduto" | "bloccato" | "legale" | "da_autorizzare" | "ordini_oltre_fido" | null;
@@ -76,9 +76,9 @@ export function motivoRigaProposta({ regola, segnalazioni }: {
   segnalazioni?: readonly string[] | null;
 }): MotivoRigaProposta {
   const s = segnalazioni ?? [];
-  if (regola === "scaduto_non_incassato" || s.includes("scaduto_non_incassato")) return "scaduto";
   if (regola === "cliente_bloccato" || s.includes("bloccato")) return "bloccato";
   if (regola === "gestione_legale") return "legale";
+  if (regola === "scaduto_non_incassato" || s.includes("scaduto_non_incassato")) return "scaduto";
   if (s.includes("oltre_normale")) return "da_autorizzare";
   if (s.includes("ordini_oltre_fido")) return "ordini_oltre_fido";
   return null;
