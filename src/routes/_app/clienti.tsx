@@ -600,7 +600,7 @@ function ClientiPage() {
 
 
   // Reset pagina SOLO quando un filtro cambia davvero dopo il montaggio (firma precedente).
-  const firmaFiltri = JSON.stringify([search, statoCliente, statoAttivita, storeFiltro, F.statoFido, semaforoFiltro, profiloFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso]);
+  const firmaFiltri = JSON.stringify([search, statoCliente, statoAttivita, storeFiltro, F.statoFido, semaforoFiltro, profiloFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloPartitaIvaFido, soloInsoluti, soloFermi, fasciaConcesso]);
   const firmaPrecedente = useRef(firmaFiltri);
   useEffect(() => {
     if (firmaPrecedente.current === firmaFiltri) return;
@@ -807,7 +807,7 @@ function ClientiPage() {
 
   const privacyFilterReady = privacyFiltro === "tutti" || (scadReady && isConfigReady && virtualSortReady && fermiReady && richiesteReady);
   const { data: privacyFilterMap } = useQuery({
-    queryKey: ["clienti-privacy-filter", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, richiesteN: richiesteAttiveIds?.length ?? null, scadenziarioFiltro, semaforoFiltro, profiloFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
+    queryKey: ["clienti-privacy-filter", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, richiesteN: richiesteAttiveIds?.length ?? null, scadenziarioFiltro, semaforoFiltro, profiloFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloPartitaIvaFido, soloInsoluti, soloFermi, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
     enabled: isListRoute && privacyFiltro !== "tutti" && privacyFilterReady,
     staleTime: 5 * 60_000,
     queryFn: async () => {
@@ -858,7 +858,7 @@ function ClientiPage() {
   }, [statoFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, fermiIds, privacyIdsFilter, filtroRichiesta, richiesteAttiveIds]);
 
   const { data: clientiResp, isLoading, isError: clientiError, refetch: refetchClienti } = useQuery({
-    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, richiesteN: richiesteAttiveIds?.length ?? null, scadenziarioFiltro, semaforoFiltro, profiloFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
+    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, richiesteN: richiesteAttiveIds?.length ?? null, scadenziarioFiltro, semaforoFiltro, profiloFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloPartitaIvaFido, soloInsoluti, soloFermi, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
     queryFn: async () => {
       // Ramo ordinamento virtuale (Scaduto / A scadere): PostgREST non puo'
       // ordinare su un valore che non e' nella query. Prendiamo tutti gli id
@@ -1156,7 +1156,7 @@ function ClientiPage() {
   }
 
   // FM55: preset "Revisione fidi" — azzera TUTTI i filtri (niente eredita' dai
-  // filtri salvati), poi imposta clienti attivi con fido gestionale > 0, senza
+  // filtri salvati), poi imposta clienti attivi con partita IVA e fido gestionale > 0, senza
   // filtro su attivita', tipo soggetto o profilo. Stessi stati della query lista
   // e di fetchAllFilteredRows, quindi contatore e "Seleziona tutti" coincidono.
   function applicaPresetSanatoria() {
