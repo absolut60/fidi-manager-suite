@@ -795,6 +795,15 @@ export function ProposteFidoMassivoDialog({
         </Collapsible>
         </div>
         <div data-proposte-elenco className="min-w-0 px-3 py-2 sm:min-h-0 sm:flex-1 sm:overflow-y-auto sm:overflow-x-hidden sm:px-4 sm:py-2">
+        {/* Legenda: colore della riga = motivo principale (fonte unica: motivoRigaProposta). */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pb-2 text-[11px] text-muted-foreground" data-legenda-motivi>
+          {LEGENDA_MOTIVI.map(({ motivo, nome }) => (
+            <span key={motivo} className="flex items-center gap-1.5">
+              <span aria-hidden className={`inline-block size-3 rounded-sm ${CLASSI_MOTIVO_RIGA[motivo].pallino}`} />
+              {nome}
+            </span>
+          ))}
+        </div>
         {/* Schede anche su tablet: la tabella estesa richiede spazio desktop. */}
         <div className="[&>div]:block xl:hidden [&>div>div>div:first-child]:grid [&>div>div>div:first-child]:grid-cols-1 [&>div>div>div:first-child>div:last-child]:justify-end">
         <ElencoSchede>
@@ -842,7 +851,7 @@ export function ProposteFidoMassivoDialog({
             </TableRow></TableHeader>
             <TableBody>
               {righeVisibili.map((r) => (
-                    <TableRow key={r.cliente_id} className={`${!r.proponibile ? "opacity-60" : ""} border-b-2 border-border`}>
+                    <TableRow key={r.cliente_id} className={`${!r.proponibile ? "opacity-60" : ""} border-b-2 border-border ${classiRiga(r)}`}>
                       <TableCell className={classiRiga(r)}><Checkbox checked={r.incluso && r.proponibile} disabled={!r.proponibile} onCheckedChange={() => toggleIncluso(r.cliente_id)} aria-label={`Includi ${r.ragione_sociale}`} /></TableCell>
                       <TableCell className="min-w-0">
                         <div className="font-medium">{renderCliente(r)}</div>
