@@ -92,6 +92,7 @@ const SCAD_OFFICIAL_MAP: Record<string, string> = {
   "importo scadenza": "importo_scadenza",
   "importo documento": "importo_documento",
   "giorni ritardo": "giorni_ritardo",
+  "dilazione teorica": "dilazione_teorica",
   "dilazione effettiva": "dilazione_effettiva",
   "importo ritardo": "importo_ritardo",
   "data pagamento": "data_pagamento",
@@ -126,6 +127,7 @@ const SCAD_OFFICIAL_NUM = new Set([
 ]);
 const SCAD_OFFICIAL_INT = new Set([
   "giorni_ritardo",
+  "dilazione_teorica",
   "dilazione_effettiva",
   "anno_partita",
   "key_tipo_effetto",
