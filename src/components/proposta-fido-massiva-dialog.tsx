@@ -1,4 +1,4 @@
-import { SegnalazioniFido } from "@/components/segnalazioni-fido";
+import { BadgeMotiviRiga, DettagliRiga } from "@/components/badge-motivi-riga";
 import { SemaforoPallino } from "@/components/semaforo-pallino";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -27,7 +27,7 @@ import {
   fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchExtraFidoProtetti, fetchSogliaConsumoFido, fidoPerTornareSottoSoglia, notaExtraProtetto, MOTIVAZIONE_PROFILO_FIDO, isProponibile,
   REGOLA_LABEL, MOTIVO_NON_PROPONIBILE, MOTIVO_NON_PROPONIBILE_BREVE, isSedeCentraleFido,
 } from "@/lib/fido-teorico";
-import { CLASSI_MOTIVO_RIGA, LEGENDA_MOTIVI, etichettaRigaProposta } from "@/lib/proposta-fido-riga";
+import { CLASSI_MOTIVO_RIGA, LEGENDA_MOTIVI } from "@/lib/proposta-fido-riga";
 import { riepilogoProposte } from "@/lib/proposta-fido-riepilogo";
 import { motivazioneEffettiva } from "@/lib/motivazione-proposta";
 import { Button } from "@/components/ui/button";
@@ -487,7 +487,6 @@ export function ProposteFidoMassivoDialog({
 
   // Pezzi condivisi tra tabella desktop e schede mobile (stessi handler)
   const renderCliente = (r: RigaProposta) => {
-    const etichetta = r.proponibile ? etichettaRigaProposta({ regola: r.regola, segnalazioni: r.segnalazioni }) : null;
     return (
     <>
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-1">
@@ -497,11 +496,11 @@ export function ProposteFidoMassivoDialog({
           {r.ragione_sociale}{r.negozio && <span className="font-normal text-muted-foreground"> · {r.negozio}</span>}
         </span>
       </span>
-      {etichetta && (() => {
-        const { motivo } = motivoRigaProposta({ regola: r.regola, segnalazioni: r.segnalazioni });
-        const badgeClass = motivo ? CLASSI_MOTIVO_RIGA[motivo].badge : "";
-        return <Badge className={`shrink-0 whitespace-nowrap px-1.5 text-[10px] ${badgeClass}`}>{etichetta.testo}</Badge>;
-      })()}
+      {r.proponibile && (
+        <span className="flex max-w-[45%] flex-wrap justify-end gap-1">
+          <BadgeMotiviRiga regola={r.regola} segnalazioni={r.segnalazioni} />
+        </span>
+      )}
       </div>
       {r.richiestaInCorso && (
         <div className={`mt-1 inline-block max-w-full md:max-w-[380px] whitespace-normal break-words rounded px-2 py-0.5 text-xs font-medium ${STATO_TONE[r.richiestaInCorso.stato as StatoRichiesta] ?? "bg-muted text-muted-foreground"}`}>
@@ -566,15 +565,7 @@ export function ProposteFidoMassivoDialog({
             motivo={r.motivo_extra} onMotivo={(v) => aggiornaMotivoExtra(r.cliente_id, v)} />
         )}
         {!r.proponibile && <p className="break-words">{renderRegola(r)}</p>}
-        {(frase || dettagli) && (
-          <details className="group min-w-0">
-            <summary className="grid min-h-8 cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
-              <span className="line-clamp-1 min-w-0 text-muted-foreground" title={frase ?? undefined}>{frase}</span>
-              {dettagli && <span className="whitespace-nowrap text-primary"><span aria-hidden className="inline-block transition-transform group-open:rotate-90">▸</span> dettagli</span>}
-            </summary>
-            {dettagli && <div className="pt-1">{dettagli}</div>}
-          </details>
-        )}
+        <DettagliRiga frase={frase}>{dettagli}</DettagliRiga>
       </div>
     );
   };
@@ -656,10 +647,9 @@ export function ProposteFidoMassivoDialog({
       : null;
     const prot = protettiMap?.get(r.cliente_id);
     const teo = teoricoMap?.get(r.cliente_id);
-    const segn = teo && teo.segnalazioni.length > 0;
     const ordini = Number(teo?.ordini_aperti ?? 0);
     const spieg = teo?.spiegazione || r.nota_proposta;
-    if (!spieg && !cambio && !mot && !prot && !segn && ordini <= 0 && Number(teo?.scaduto_oltre ?? 0) <= 0) return null;
+    if (!spieg && !cambio && !mot && !prot && ordini <= 0 && Number(teo?.scaduto_oltre ?? 0) <= 0) return null;
     return (
       <div className={`grid grid-cols-1 gap-2 text-xs ${cambio ? "xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]" : ""}`}>
         {r.proponibile && <p className="min-w-0 break-words text-muted-foreground">Regola: {renderRegola(r)}</p>}
@@ -669,7 +659,6 @@ export function ProposteFidoMassivoDialog({
             {notaExtraProtetto(prot).testo}
           </p>
         )}
-        {segn && teo && <SegnalazioniFido riga={teo} />}
         {Number(teo?.scaduto_oltre ?? 0) > 0 && (
           <p className="min-w-0 break-words text-muted-foreground">
             Scaduto non pagato: {fmtEuro(Number(teo?.scaduto_oltre))}{teo?.scaduto_oltre_giorni != null ? ` da ${Math.round(Number(teo.scaduto_oltre_giorni)).toLocaleString("it-IT")} giorni` : ""}
