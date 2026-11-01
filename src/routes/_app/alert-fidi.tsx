@@ -18,6 +18,11 @@ import { formatEuro, formatDate } from "@/lib/fidi";
 import { fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchUtentiAnteprimaFidoNuovo, isProponibile } from "@/lib/fido-teorico";
 import { SemaforoPallino } from "@/components/semaforo-pallino";
 import { fetchUltimiLasciati } from "@/lib/revisione-fidi";
+// FM55: colore/etichetta delle righe Alert fidi = stessa fonte della proposta massiva
+// (motivoRigaProposta per il motivo, CLASSI_MOTIVO_RIGA/LEGENDA_MOTIVI per i colori del tema).
+import { motivoRigaProposta, type MotivoRigaProposta } from "@/lib/proposta-fido-visibilita";
+import { CLASSI_MOTIVO_RIGA, LEGENDA_MOTIVI, etichettaRigaProposta } from "@/lib/proposta-fido-riga";
+
 import {
   fetchAlertFidiAperti, etichettaAvviso, testoOrdiniAlert, teoricoPropostaIniziale, debitoOggi, alertSelezionabile,
   importoDaAlert, statoEffettivoAlert, fetchDecisioniProtette, giaDeciso, testoGiaDeciso, etichettaRichiestaBreve, etichettaDecisioneAlert, percheAlert, filtraAlert, contatoriAlert, SITUAZIONE_ALERT_LABEL, STATI_ALERT_DEFAULT, TIPO_ALERT_LABEL,
@@ -199,6 +204,25 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
     </div>
   );
   const fidoGammaAlert = (a: AlertFidoRow) => Number(a.cliente?.fido_gestionale ?? a.fido_gamma ?? 0);
+  // FM55: motivo della riga (fonte unica: motivoRigaProposta, con regola e segnalazioni del
+  // fido teorico del cliente). Stessi token del tema e stesse CLASSI_MOTIVO_RIGA della massiva.
+  const motivoAlert = (a: AlertFidoRow): MotivoRigaProposta => {
+    const t = teoricoMap?.get(a.cliente_id);
+    return motivoRigaProposta({ regola: t?.regola_applicata ?? "", segnalazioni: t?.segnalazioni }).motivo;
+  };
+  const classiRigaAlert = (a: AlertFidoRow) => {
+    const m = motivoAlert(a);
+    return m ? `${CLASSI_MOTIVO_RIGA[m].bordo} ${CLASSI_MOTIVO_RIGA[m].sfondo}` : "";
+  };
+  const renderEtichettaMotivo = (a: AlertFidoRow) => {
+    const m = motivoAlert(a);
+    if (!m) return null;
+    const t = teoricoMap?.get(a.cliente_id);
+    const etichetta = etichettaRigaProposta({ regola: t?.regola_applicata ?? "", segnalazioni: t?.segnalazioni });
+    if (!etichetta) return null;
+    return <Badge className={`shrink-0 whitespace-normal break-words px-1.5 text-[10px] ${CLASSI_MOTIVO_RIGA[m].badge}`}>{etichetta.testo}</Badge>;
+  };
+
   // Stesso valore che "Apri proposta" precompila (teoricoPropostaIniziale).
   const fidoTeoricoAlert = (a: AlertFidoRow): number | null =>
     teoricoPropostaIniziale(isProponibile(teoricoMap?.get(a.cliente_id)?.regola_applicata ?? ""), importoDaAlert(a), riferimentoMap?.get(a.cliente_id));
@@ -327,15 +351,30 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
         <Card className="p-6 text-center text-sm text-muted-foreground">Nessun alert con questi filtri.</Card>
       ) : (
         <>
-          <ElencoSchede selezioneTutti={{
+        {/* Legenda: colore della riga = motivo principale (stessa fonte della proposta massiva). */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-[11px] text-muted-foreground" data-legenda-motivi>
+          {LEGENDA_MOTIVI.map(({ motivo, nome }) => (
+            <span key={motivo} className="flex items-center gap-1.5">
+              <span aria-hidden className={`inline-block size-3 rounded-sm ${CLASSI_MOTIVO_RIGA[motivo].pallino}`} />
+              {nome}
+            </span>
+          ))}
+        </div>
+        <ElencoSchede selezioneTutti={{
             tutti: tuttiSel, alcuni: selVisibili.length > 0, disabled: selezionabiliVisibili.length === 0,
             onChange: toggleTutti, etichetta: `Seleziona tutti (${selezionabiliVisibili.length})`,
           }}>
             {visibili.map((a) => (
               <SchedaLista key={a.id}
+                className={classiRigaAlert(a)}
                 selezione={alertSelezionabile(a) ? { checked: selezionati.has(a.id), onChange: () => toggle(a.id) } : undefined}
                 titolo={renderCliente(a)}
-                badge={<Badge variant="outline" className="shrink-0">{etichettaAvviso(a)}</Badge>}
+                badge={
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <Badge variant="outline" className="whitespace-normal break-words text-right">{etichettaAvviso(a)}</Badge>
+                    {renderEtichettaMotivo(a)}
+                  </div>
+                }
                 campi={[
                   { etichetta: "Fido", valore: renderNumeri(a) },
                   { etichetta: "Perché", valore: renderPerche(a) },
@@ -366,8 +405,8 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
               </TableRow></TableHeader>
               <TableBody>
                 {visibili.map((a) => (
-                  <TableRow key={a.id}>
-                    <TableCell className="align-top">
+                  <TableRow key={a.id} className={classiRigaAlert(a)}>
+                    <TableCell className={`align-top ${classiRigaAlert(a)}`}>
                       {alertSelezionabile(a) && (
                         <Checkbox checked={selezionati.has(a.id)} onCheckedChange={() => toggle(a.id)}
                           aria-label={`Seleziona ${a.cliente?.ragione_sociale ?? "cliente"}`} />
@@ -375,7 +414,10 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
                     </TableCell>
                     <TableCell className="align-top whitespace-normal">{renderCliente(a)}</TableCell>
                     <TableCell className="align-top whitespace-normal">
-                      <Badge variant="outline" className="mb-1 whitespace-normal">{etichettaAvviso(a)}</Badge>
+                      <div className="mb-1 flex flex-wrap items-center gap-1">
+                        <Badge variant="outline" className="whitespace-normal">{etichettaAvviso(a)}</Badge>
+                        {renderEtichettaMotivo(a)}
+                      </div>
                       {renderPerche(a)}
                     </TableCell>
                     <TableCell className="align-top text-right tabular-nums">{formatEuro(fidoGammaAlert(a))}</TableCell>
