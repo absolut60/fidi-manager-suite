@@ -745,8 +745,10 @@ export function ProposteFidoMassivoDialog({
             </div>
           )}
           {(riepilogoVis.nascosti.rinnovo > 0 || vociNascoste.length > 0 || riepilogoVis.nonProponibiliTotale > 0) && (
-            <div>
-              <span className="font-medium text-foreground">Cosa non vedi e perché</span>
+            <details className="group">
+              <summary className="flex min-h-10 cursor-pointer list-none items-center gap-1 font-medium text-foreground">
+                <span aria-hidden className="transition-transform group-open:rotate-90">▸</span> Cosa non vedi e perché
+              </summary>
               <ul className="ml-4 list-disc">
                 {riepilogoVis.nascosti.rinnovo > 0 && (
                   <li>
