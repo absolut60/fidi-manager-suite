@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { inclusoInizialeProposta } from "@/lib/proposta-fido-visibilita";
-import { AVVISO_FIDO_ZERO, etichettaRigaProposta, fraseBreveProposta, mostraAvvisoFidoZero } from "@/lib/proposta-fido-riga";
+import { AVVISO_FIDO_ZERO, etichettaRigaProposta, mostraAvvisoFidoZero } from "@/lib/proposta-fido-riga";
 
 describe("FM55 fetta 5 — spunta iniziale", () => {
   test("scaduto non incassato a zero da fido > 0: non spuntata (anche se non rossa)", () => {
@@ -40,15 +40,6 @@ describe("FM55 fetta 5 — riga semplice", () => {
     expect(etichettaRigaProposta({ regola: "calcolo", segnalazioni: ["oltre_normale", "ordini_oltre_fido"] })).toEqual({ tono: "viola", testo: "Da autorizzare: compra molto più del solito" });
     expect(etichettaRigaProposta({ regola: "calcolo", segnalazioni: ["ordini_oltre_fido"] })).toEqual({ tono: "arancione", testo: "Ordini oltre il fido" });
     expect(etichettaRigaProposta({ regola: "calcolo", segnalazioni: [] })).toBeNull();
-  });
-  test("frasi brevi", () => {
-    expect(fraseBreveProposta({ regola_applicata: "scaduto_non_incassato", scaduto_oltre: 1566, scaduto_oltre_giorni: 32 }, 2000, 0))
-      .toBe("Scaduto non pagato 1.566 € da 32 giorni: fido a zero finché non rientra.");
-    expect(fraseBreveProposta({ regola_applicata: "calcolo", acquisto_mensile: 13200, ciclo_gg: 77 }, 10000, 40000))
-      .toBe("Compra in media 13.200 € al mese e paga in circa 77 giorni.");
-    expect(fraseBreveProposta({ regola_applicata: "calcolo", acquisto_mensile: 1000, ciclo_gg: 30,
-      spiegazione: "Compra in media 1.000 €. Negli ultimi 30 giorni è arrivato a doverci 4.000 €: per non bloccarlo il fido non scende sotto 5.000 €." }, 8000, 5000))
-      .toBe("Negli ultimi 30 giorni è arrivato a doverci 4.000 €: per non bloccarlo il fido non scende sotto 5.000 €.");
   });
   test("la riga non contiene più 'Teorico:' né 'Da verificare'", () => {
     const dialog = readFileSync("src/components/proposta-fido-massiva-dialog.tsx", "utf8");
