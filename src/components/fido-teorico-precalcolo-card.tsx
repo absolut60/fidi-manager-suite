@@ -23,6 +23,13 @@ import {
   istanteDa,
   leggiStatoImportCompleti,
 } from "@/lib/fido-teorico-import-completi";
+import {
+  LOCK_CHIAVE,
+  ricalcoloAttivo,
+  testoAvanzamentoLock,
+  testoRicalcoloInCorso,
+  type RigaLock,
+} from "@/lib/fido-teorico-ricalcolo-lock";
 
 const POLL_MS = 5_000;
 
@@ -39,7 +46,7 @@ function useStatoPrecalcolo(pollingAttivo = false) {
   return useQuery({
     queryKey: ["fido-teorico-precalcolo-stato"],
     queryFn: async () => {
-      const [stato, orig, cnt, imp] = await Promise.all([
+      const [stato, orig, cnt, imp, lock] = await Promise.all([
         leggiStatoImportCompleti(supabase),
         supabase
           .from("configurazioni")
@@ -56,6 +63,11 @@ function useStatoPrecalcolo(pollingAttivo = false) {
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle(),
+        supabase
+          .from("configurazioni")
+          .select("valore, updated_at")
+          .eq("chiave", LOCK_CHIAVE)
+          .maybeSingle(),
       ]);
       return {
         ultimoRicalcolo: stato.ultimoRicalcolo,
@@ -63,11 +75,14 @@ function useStatoPrecalcolo(pollingAttivo = false) {
         importCompleti: stato,
         righe: cnt.count ?? 0,
         ultimoImport: (imp.data?.created_at as string | undefined) ?? null,
+        lock: (lock.data as RigaLock | null) ?? null,
       };
     },
     staleTime: pollingAttivo ? 0 : 30_000,
     refetchInterval: (query) => {
       if (pollingAttivo) return POLL_MS;
+      // Ricalcolo in corso (automatico o di un altro utente): avanzamento letto dal DB.
+      if (ricalcoloAttivo(query.state.data?.lock ?? null, Date.now())) return POLL_MS;
       const pronto = query.state.data?.importCompleti.pronto === true;
       if (!pronto) attesaDa.current = null;
       else if (attesaDa.current === null) attesaDa.current = Date.now();
@@ -93,6 +108,7 @@ function useRicalcolo() {
   const [completato, setCompletato] = useState(false);
   const [ripresa, setRipresa] = useState<RipresaRicalcolo | null>(null);
   const attivo = useRef(false);
+  const token = useRef<string | null>(null);
 
   const esegui = async (da: RipresaRicalcolo | null) => {
     if (attivo.current) return;
@@ -101,13 +117,24 @@ function useRicalcolo() {
     try {
       const esito = await eseguiSequenzaRicalcolo({
         ripresa: da,
-        avvia: () => avvia(),
-        blocco: async (dopoId) => (await blocco({ data: { dopoId } })).ultimoId,
-        chiudi: async (passo) => { await chiudi({ data: { passo } }); },
+        avvia: async () => {
+          const r = await avvia({ data: { token: token.current } });
+          token.current = r.token;
+          return r;
+        },
+        blocco: async (dopoId, numero, previsti) => {
+          if (!token.current) throw new Error("Ricalcolo non avviato: ricomincia da capo");
+          return (await blocco({ data: { token: token.current, dopoId, numero, previsti } })).ultimoId;
+        },
+        chiudi: async (passo) => {
+          if (!token.current) throw new Error("Ricalcolo non avviato: ricomincia da capo");
+          await chiudi({ data: { token: token.current, passo } });
+        },
         onAvanzamento: setAvanzamento,
       });
       if (esito.ok) {
         setRipresa(null);
+        token.current = null;
         setCompletato(true);
         toast.success("Fido teorico ricalcolato");
       } else {
@@ -128,13 +155,24 @@ function useRicalcolo() {
     ripresa,
     etichettaRipresa: ripresa ? etichettaRipresa(ripresa) : null,
     inCorso, avanzamento, errore, completato,
+    token: () => token.current,
   };
 }
 
+/** Ricalcolo di un altro (job automatico o altro utente) attivo secondo il lock nel DB. */
+function useRicalcoloAltrui(
+  lock: RigaLock | null | undefined,
+  ric: ReturnType<typeof useRicalcolo>,
+) {
+  const s = ricalcoloAttivo(lock ?? null, Date.now());
+  if (!s || ric.inCorso || s.token === ric.token()) return null;
+  return { testo: testoRicalcoloInCorso(s), avanzamento: testoAvanzamentoLock(s) };
+}
 
 export function FidoTeoricoPrecalcoloCard() {
   const { data } = useStatoPrecalcolo();
   const ric = useRicalcolo();
+  const altrui = useRicalcoloAltrui(data?.lock, ric);
 
   const ultimoRicalcolo = data?.ultimoRicalcolo ?? null;
   const ultimoImport = data?.ultimoImport ?? null;
@@ -195,13 +233,13 @@ export function FidoTeoricoPrecalcoloCard() {
       <div className="flex items-center gap-3 flex-wrap">
         <Button
           variant={daRicalcolare ? "default" : "secondary"}
-          disabled={ric.inCorso}
+          disabled={ric.inCorso || !!altrui}
           onClick={ric.avvia}
         >
           {ric.inCorso && <Loader2 className="size-4 animate-spin" />}
           {ric.etichettaRipresa ?? "Ricalcola fido teorico ora"}
         </Button>
-        {ric.ripresa && !ric.inCorso && (
+        {ric.ripresa && !ric.inCorso && !altrui && (
           <Button variant="ghost" size="sm" onClick={ric.ricomincia}>
             Ricomincia da capo
           </Button>
@@ -217,6 +255,11 @@ export function FidoTeoricoPrecalcoloCard() {
           </span>
         )}
       </div>
+      {altrui && (
+        <p className="break-words rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning" aria-live="polite">
+          {altrui.testo}. Avanzamento: {altrui.avanzamento}.
+        </p>
+      )}
       {ric.errore && (
         <p className="break-words rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           Ricalcolo non riuscito: {ric.errore}
@@ -230,6 +273,7 @@ export function FidoTeoricoPrecalcoloCard() {
 export function RicalcolaFidoTeoricoAvviso() {
   const ric = useRicalcolo();
   const { data } = useStatoPrecalcolo();
+  const altrui = useRicalcoloAltrui(data?.lock, ric);
   const attesa = data?.importCompleti && !data.importCompleti.pronto
     ? elencoMancantiTesto(data.importCompleti)
     : null;
@@ -251,12 +295,15 @@ export function RicalcolaFidoTeoricoAvviso() {
         </p>
       )}
       <div className="flex items-center gap-2 flex-wrap">
-        <Button size="sm" disabled={ric.inCorso} onClick={ric.avvia}>
+        <Button size="sm" disabled={ric.inCorso || !!altrui} onClick={ric.avvia}>
           {ric.inCorso && <Loader2 className="size-4 animate-spin" />}
           {ric.etichettaRipresa ?? "Ricalcola fido teorico"}
         </Button>
         {ric.inCorso && (
           <span className="text-xs text-muted-foreground" aria-live="polite">Ricalcolo in corso: {ric.avanzamento ?? "avvio…"}</span>
+        )}
+        {altrui && (
+          <span className="break-words text-xs text-warning" aria-live="polite">{altrui.testo}. Avanzamento: {altrui.avanzamento}.</span>
         )}
         {ric.errore && (
           <span className="break-words text-xs text-destructive">Ricalcolo non riuscito: {ric.errore}</span>
