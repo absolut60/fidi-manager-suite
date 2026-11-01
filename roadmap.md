@@ -25,4 +25,6 @@
 - [x] Rimuovere pagina, menu, collegamenti e raggruppamenti Revisione fidi; preservare Lascia così.
 - [x] Semplificare filtri e conteggi della proposta massiva nella fonte unica.
 - [x] Aggiornare test pertinenti, aggiungere casi nuovi ed eseguire bun test.
-- [x] Verificata anteprima autenticata: pagine senza clienti/alert disponibili; apertura massiva e impaginazione non verificabili con dati reali. Limite da riportare.
+- [x] Verificata anteprima autenticata: pagine senza clienti/alert disponibili; apertura massiva e impaginazione non verificabili con dati reali. Limite da riportare.- [x] FM55 fetta 4: migrazione 0124 (paracadute ordini sulle riduzioni, consumo solo sul debito); valori attesi verificati in sola lettura.
+- [x] Scheda Alert fidi semplificata (tre numeri, perché, ordini, ultima decisione, solo "Apri proposta"); "Lascia così" tolto dalla pagina Alert.
+- [x] Pulsante ricalcolo: passi uno alla volta con avanzamento ed errore; blocchi da 500 anche per il job automatico. Prova reale del pulsante: la fa Andrea.

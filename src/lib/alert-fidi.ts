@@ -165,12 +165,12 @@ export function alertConsumoAperto(a: Pick<AlertFidoRow, "tipo" | "stato" | "ric
   return a.tipo === "consumo" && statoEffettivoAlert(a) === "aperto";
 }
 
-/** Badge della decisione già processata senza cambio di fido, es. "Decisione presa il 31/10: rinnovo a 3.000 €". */
+/** Riga grigia della decisione già processata senza cambio di fido, es. "Ultima decisione: 01/11, confermato 50.000 €". */
 export function etichettaDecisioneAlert(r: RichiestaClienteAlert): string {
-  const giorno = new Date(r.data_processata ?? r.created_at).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" });
-  const tipo = r.tipo === "rinnovo" ? "rinnovo" : r.tipo === "diminuzione" ? "diminuzione" : r.tipo === "aumento" ? "aumento" : r.tipo === "nuovo_fido" ? "nuovo fido" : (r.tipo ?? "decisione");
-  const imp = r.importo_richiesto != null ? ` a ${formatEuro(Number(r.importo_richiesto))}` : "";
-  return `Decisione presa il ${giorno}: ${tipo}${imp}`;
+  const giorno = new Date(r.data_processata ?? r.created_at).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", timeZone: "Europe/Rome" });
+  const tipo = r.tipo === "rinnovo" ? "confermato" : r.tipo === "diminuzione" ? "ridotto a" : r.tipo === "aumento" ? "aumentato a" : r.tipo === "nuovo_fido" ? "nuovo fido" : (r.tipo ?? "decisione");
+  const imp = r.importo_richiesto != null ? ` ${formatEuro(Number(r.importo_richiesto))}` : "";
+  return `Ultima decisione: ${giorno}, ${tipo}${imp}`;
 }
 
 /** Testo del badge, es. "Proposta inoltrata · In approvazione · 20.000 € · del 31/10". */
@@ -198,18 +198,21 @@ export const STATO_ALERT_LABEL: Record<StatoAlertFido, string> = {
 
 export const STATI_ALERT_DEFAULT: StatoAlertFido[] = ["aperto", "richiesta_inserita"];
 
-/** Testo dell'avviso, es. "Consumo 90%". */
-export function etichettaAvviso(a: Pick<AlertFidoRow, "tipo" | "livello">): string {
+/** Testo del badge, es. "Vicino al limite 94%" (debito / fido Gamma, ordini esclusi). */
+export function etichettaAvviso(a: Pick<AlertFidoRow, "tipo" | "fido_gamma" | "esposizione">): string {
   if (a.tipo === "consumo") {
-    const p = a.livello != null ? Math.round(Number(a.livello) * 100) : null;
-    return p != null ? `Consumo ${p}%` : "Consumo";
+    const p = percentualeFido(debitoOggi(a), a.fido_gamma);
+    return p != null ? `Vicino al limite ${p}%` : "Vicino al limite";
   }
   return TIPO_ALERT_LABEL[a.tipo];
 }
 
-/** Debito di oggi = esposizione + ordini aperti. */
-export function debitoOggi(a: Pick<AlertFidoRow, "esposizione" | "ordini_aperti">): number {
-  return Number(a.esposizione ?? 0) + Number(a.ordini_aperti ?? 0);
+/**
+ * Debito di oggi = esposizione (totale rischio Gamma). Gli ordini aperti NON entrano
+ * (FM55 fetta 4): gemello di consumo in public.aggiorna_alert_fidi / get_fido_teorico_v2.
+ */
+export function debitoOggi(a: Pick<AlertFidoRow, "esposizione">): number {
+  return Number(a.esposizione ?? 0);
 }
 
 /** Gli alert in osservazione non si possono usare per creare una proposta. */
@@ -285,38 +288,6 @@ export async function confermaExtraAlertFido(alertId: string): Promise<void> {
   if (error) throw error;
 }
 
-/** "Lascia così" per 30 giorni (consumo ed extra non usato aperti): public.conferma_alert_fido. */
-export async function confermaAlertFido(alertId: string): Promise<void> {
-  const { error } = await (supabase as any).rpc("conferma_alert_fido", { _alert_id: alertId });
-  if (error) throw error;
-}
-
-/** Tipi di alert che si possono "lasciare così" (gemello di public.conferma_alert_fido). */
-export function alertLasciabileCosi(a: Pick<AlertFidoRow, "tipo" | "stato" | "richiesta_attiva" | "gia_deciso">): boolean {
-  return (a.tipo === "consumo" || a.tipo === "extra_non_usato") && statoEffettivoAlert(a) === "aperto";
-}
-
-const CODICI_COMPRA_OLTRE = ["impegni_sopra_base", "ordine_fuori_giro", "oltre_tetto"];
-
-/**
- * Frase "Cosa fare" della pagina Alert fidi. Nessun calcolo: legge solo le segnalazioni
- * (fido_teorico_cliente.segnalazioni), lo scaduto oltre soglia e il riferimento della richiesta
- * (fetchFidoTeoricoPerRichiesta). Ordine di priorità fissato da Andrea (FM55).
- */
-export function cosaFareAlert(
-  a: Pick<AlertFidoRow, "fido_gamma">,
-  riferimento: number | null | undefined,
-  teorico: { segnalazioni: string[]; scaduto_oltre?: number | null } | null | undefined,
-): string {
-  const cod = teorico?.segnalazioni ?? [];
-  if (cod.includes("scaduto_non_incassato") || cod.includes("scaduto_da_incassare"))
-    return `Prima incassare: ${formatEuro(Number(teorico?.scaduto_oltre ?? 0))} scaduti`;
-  if (cod.includes("bloccato")) return "Cliente bloccato: nessun aumento";
-  if (cod.some((c) => CODICI_COMPRA_OLTRE.includes(c))) return "Compra oltre il normale: il sistema non aumenta, decidi tu";
-  if (riferimento != null && Number(riferimento) > Number(a.fido_gamma ?? 0)) return `Aumento proposto a ${formatEuro(Number(riferimento))}`;
-  return "Nessuna variazione proposta: valuta tu";
-}
-
 /** Etichette del filtro "Situazione" (stessi valori di stato, testi per lo store manager). */
 export const SITUAZIONE_ALERT_LABEL: Record<StatoAlertFido, string> = {
   aperto: "Da gestire",
@@ -336,28 +307,45 @@ export function etichettaRichiestaBreve(r: Pick<RichiestaClienteAlert, "stato">)
  * scaduto oltre soglia prevale; altrimenti secondo il tipo dell'alert.
  */
 export function percheAlert(
-  a: Pick<AlertFidoRow, "tipo" | "fido_gamma" | "esposizione" | "ordini_aperti" | "consumo" | "fido_proposto">,
+  a: Pick<AlertFidoRow, "tipo" | "fido_gamma" | "esposizione">,
   teorico?: { segnalazioni: readonly string[]; scaduto_oltre?: number | null; scaduto_oltre_giorni?: number | null } | null,
 ): string {
   const cod = teorico?.segnalazioni ?? [];
   const scaduto = Number(teorico?.scaduto_oltre ?? 0);
   if ((cod.includes("scaduto_non_incassato") || cod.includes("scaduto_da_incassare")) && scaduto > 0) {
     const gg = Number(teorico?.scaduto_oltre_giorni ?? 0);
-    return gg > 0 ? `Scaduto non pagato da oltre ${gg} giorni: ${formatEuro(scaduto)}` : `Scaduto non pagato: ${formatEuro(scaduto)}`;
+    return gg > 0 ? `Scaduto non pagato da oltre ${gg} giorni: ${formatEuro(scaduto)}.` : `Scaduto non pagato: ${formatEuro(scaduto)}.`;
   }
-  const debito = debitoOggi(a);
-  const fido = Number(a.fido_gamma ?? 0);
+  const oltre = cod.includes("oltre_normale") ? " e sta comprando molto più del solito" : "";
   if (a.tipo === "consumo") {
-    const p = a.consumo != null ? Math.round(Number(a.consumo) * 100) : (fido > 0 ? Math.round((debito / fido) * 100) : null);
-    return p != null
-      ? `Ha usato il ${p}% del fido: ${formatEuro(debito)} su ${formatEuro(fido)}`.replace(/^Ha usato il (8|11)/, "Ha usato l'$1")
-      : `Ha usato ${formatEuro(debito)} su ${formatEuro(fido)}`;
+    const p = percentualeFido(debitoOggi(a), a.fido_gamma);
+    const base = p != null ? `Ci deve il ${p}% del fido`.replace(/^Ci deve il (8|11)/, "Ci deve l'$1") : `Ci deve ${formatEuro(debitoOggi(a))}`;
+    return `${base}${oltre}.`;
   }
-  if (a.tipo === "riduzione") {
-    const prop = a.fido_proposto != null ? ` (ne basterebbero ${formatEuro(Number(a.fido_proposto))})` : "";
-    return `Usa poco il fido: ${formatEuro(debito)} su ${formatEuro(fido)}${prop}`;
-  }
-  return `Extra approvato non usato: usa ${formatEuro(debito)} su ${formatEuro(fido)}`;
+  if (a.tipo === "riduzione") return "Usa poco il fido: ne basta meno.";
+  return "Extra approvato e non usato.";
+}
+
+function percentualeFido(importo: number, fido: number | null | undefined): number | null {
+  const f = Number(fido ?? 0);
+  return f > 0 ? Math.round((importo / f) * 100) : null;
+}
+
+/** Riga arancione sugli ordini (solo informativa), es. "Ordini in arrivo 15.929 €: consegnati arriva al 91% del fido". */
+export function testoOrdiniAlert(a: Pick<AlertFidoRow, "fido_gamma" | "esposizione" | "ordini_aperti">): string | null {
+  const ord = Number(a.ordini_aperti ?? 0);
+  if (ord <= 0) return null;
+  const p = percentualeFido(debitoOggi(a) + ord, a.fido_gamma);
+  return `Ordini in arrivo ${formatEuro(ord)}` + (p != null ? `: consegnati arriva al ${p}% del fido` : "");
+}
+
+/**
+ * "Fido teorico" della scheda Alert: lo stesso valore che la proposta massiva precompila
+ * (importo dell'alert se presente, altrimenti riferimento della richiesta; nulla se non proponibile).
+ */
+export function teoricoPropostaIniziale(proponibile: boolean, daAlert: number | undefined, riferimento: number | null | undefined): number | null {
+  if (!proponibile) return null;
+  return daAlert !== undefined ? daAlert : (riferimento ?? null);
 }
 
 const SENZA = "__none__";

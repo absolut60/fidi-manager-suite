@@ -19,11 +19,11 @@ describe("lasciatoCosiValido", () => {
 
 describe("percheAlert", () => {
   const a = { tipo: "consumo" as const, fido_gamma: 25000, esposizione: 20000, ordini_aperti: 2210.97, consumo: 0.8884388, fido_proposto: null };
-  it("consumo: percentuale e importi", () =>
-    expect(percheAlert(a)).toBe(`Ha usato l'89% del fido: ${formatEuro(22210.97)} su ${formatEuro(25000)}`));
+  it("consumo: percentuale sul solo debito (ordini esclusi)", () =>
+    expect(percheAlert(a)).toBe("Ci deve l'80% del fido."));
   it("consumo al 92%", () =>
-    expect(percheAlert({ ...a, consumo: 0.92 })).toBe(`Ha usato il 92% del fido: ${formatEuro(22210.97)} su ${formatEuro(25000)}`));
+    expect(percheAlert({ ...a, esposizione: 23000 })).toBe("Ci deve il 92% del fido."));
   it("scaduto prevale", () =>
     expect(percheAlert(a, { segnalazioni: ["scaduto_da_incassare"], scaduto_oltre: 1500, scaduto_oltre_giorni: 15 }))
-      .toBe(`Scaduto non pagato da oltre 15 giorni: ${formatEuro(1500)}`));
+      .toBe(`Scaduto non pagato da oltre 15 giorni: ${formatEuro(1500)}.`));
 });
