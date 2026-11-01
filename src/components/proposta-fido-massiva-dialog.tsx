@@ -921,7 +921,7 @@ export function ProposteFidoMassivoDialog({
             {righeVisibiliIncluse.filter((r) => condizionePagamentoCambiata(r.cond_proposta, r.cond_attuale)).length > 0 &&
               <>{righeVisibiliIncluse.filter((r) => condizionePagamentoCambiata(r.cond_proposta, r.cond_attuale)).length} con cambio di condizione di pagamento</>}
           </div>
-          <DialogFooter className="grid grid-cols-1 gap-1 sm:gap-2 sm:flex sm:items-center lg:col-start-2 lg:row-start-1 lg:row-span-2">
+          <DialogFooter className="grid grid-cols-2 gap-1 sm:gap-2 sm:flex sm:items-center lg:col-start-2 lg:row-start-1 lg:row-span-2">
             <div className="col-span-2 min-w-0">
               <Label className="sr-only sm:not-sr-only sm:text-xs">Modalità invio</Label>
               <div className="grid grid-cols-2 gap-0.5 rounded-md border p-0.5" role="group" aria-label="Modalità invio">
@@ -930,7 +930,7 @@ export function ProposteFidoMassivoDialog({
               </div>
             </div>
             <Button variant="outline" className="hidden sm:inline-flex sm:w-auto" onClick={() => onOpenChange(false)} disabled={submitting}>Annulla</Button>
-            <Button className="h-10 w-full sm:w-auto" onClick={creaRichieste} disabled={submitting || righeVisibiliIncluse.length === 0}>
+            <Button className="col-span-2 h-10 w-full sm:w-auto" onClick={creaRichieste} disabled={submitting || righeVisibiliIncluse.length === 0}>
               {submitting ? (avanzamentoCrea ? `Creazione: ${avanzamentoCrea.fatte.toLocaleString("it-IT")} di ${avanzamentoCrea.totali.toLocaleString("it-IT")}…` : "Creazione…") : `Crea ${righeVisibiliIncluse.length} richieste`}
             </Button>
           </DialogFooter>
