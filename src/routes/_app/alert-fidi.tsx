@@ -361,7 +361,6 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
           ))}
         </div>
         <ElencoSchede selezioneTutti={{
-
             tutti: tuttiSel, alcuni: selVisibili.length > 0, disabled: selezionabiliVisibili.length === 0,
             onChange: toggleTutti, etichetta: `Seleziona tutti (${selezionabiliVisibili.length})`,
           }}>
@@ -408,7 +407,6 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
                 {visibili.map((a) => (
                   <TableRow key={a.id} className={classiRigaAlert(a)}>
                     <TableCell className={`align-top ${classiRigaAlert(a)}`}>
-
                       {alertSelezionabile(a) && (
                         <Checkbox checked={selezionati.has(a.id)} onCheckedChange={() => toggle(a.id)}
                           aria-label={`Seleziona ${a.cliente?.ragione_sociale ?? "cliente"}`} />
