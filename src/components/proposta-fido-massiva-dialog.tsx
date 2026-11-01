@@ -27,7 +27,7 @@ import {
   fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchExtraFidoProtetti, fetchSogliaConsumoFido, fidoPerTornareSottoSoglia, notaExtraProtetto, MOTIVAZIONE_PROFILO_FIDO, isProponibile,
   REGOLA_LABEL, MOTIVO_NON_PROPONIBILE, MOTIVO_NON_PROPONIBILE_BREVE, isSedeCentraleFido,
 } from "@/lib/fido-teorico";
-import { AVVISO_FIDO_ZERO, etichettaRigaProposta, fraseBreveProposta, mostraAvvisoFidoZero } from "@/lib/proposta-fido-riga";
+import { AVVISO_FIDO_ZERO, CLASSI_MOTIVO_RIGA, LEGENDA_MOTIVI, etichettaRigaProposta, fraseBreveProposta, mostraAvvisoFidoZero } from "@/lib/proposta-fido-riga";
 import { riepilogoProposte } from "@/lib/proposta-fido-riepilogo";
 import { motivazioneEffettiva } from "@/lib/motivazione-proposta";
 import { Button } from "@/components/ui/button";
@@ -471,13 +471,18 @@ export function ProposteFidoMassivoDialog({
     }
   }
 
-  // Bordo delle righe da controllare (rossa prevale).
-  const bordoRiga = (r: RigaProposta) =>
-    !r.proponibile ? "" : r.controllo === "rossa" ? "border-l-4 border-l-destructive" : r.controllo === "arancione" ? "border-l-4 border-l-warning" : "";
+  // Colore della riga in base al motivo vincente (fonte unica: motivoRigaProposta).
+  const classiRiga = (r: RigaProposta) => {
+    if (!r.proponibile) return "";
+    const motivo = motivoRigaProposta({ regola: r.regola, segnalazioni: r.segnalazioni });
+    if (!motivo) return "";
+    const c = CLASSI_MOTIVO_RIGA[motivo];
+    return `${c.bordo} ${c.sfondo}`;
+  };
 
   // Pezzi condivisi tra tabella desktop e schede mobile (stessi handler)
   const renderCliente = (r: RigaProposta) => {
-    const etichetta = r.proponibile ? etichettaRigaProposta(r.segnalazioni) : null;
+    const etichetta = r.proponibile ? etichettaRigaProposta({ regola: r.regola, segnalazioni: r.segnalazioni }) : null;
     return (
     <>
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-1">
@@ -487,9 +492,11 @@ export function ProposteFidoMassivoDialog({
           {r.ragione_sociale}{r.negozio && <span className="font-normal text-muted-foreground"> · {r.negozio}</span>}
         </span>
       </span>
-      {etichetta && (
-        <Badge className={`shrink-0 whitespace-nowrap px-1.5 text-[10px] ${etichetta.tono === "rossa" ? "bg-destructive/15 text-destructive hover:bg-destructive/20" : "bg-warning/20 text-foreground hover:bg-warning/25"}`}>{etichetta.testo}</Badge>
-      )}
+      {etichetta && (() => {
+        const motivo = motivoRigaProposta({ regola: r.regola, segnalazioni: r.segnalazioni });
+        const badgeClass = motivo ? CLASSI_MOTIVO_RIGA[motivo].badge : "";
+        return <Badge className={`shrink-0 whitespace-nowrap px-1.5 text-[10px] ${badgeClass}`}>{etichetta.testo}</Badge>;
+      })()}
       </div>
       {r.richiestaInCorso && (
         <div className={`mt-1 inline-block max-w-full md:max-w-[380px] whitespace-normal break-words rounded px-2 py-0.5 text-xs font-medium ${STATO_TONE[r.richiestaInCorso.stato as StatoRichiesta] ?? "bg-muted text-muted-foreground"}`}>
