@@ -1,4 +1,5 @@
 # FM55 — Privati fuori dal giro fidi
+- [ ] Bloccati/legali: riferimento senza protezioni, rinnovi zero esclusi dai da guardare; verificare perimetro SQL e test nuovi.
 - [ ] Fonte unica TS/SQL per partita IVA assente e preset solo partita IVA, senza cambiare lista predefinita.
 - [ ] Migrazione perimetro Alert, confronto contenuto applicato e un aggiornamento con conteggi prima/dopo.
 - [ ] Test bun e verifica invarianti: fidi e notifiche invariati.
