@@ -2814,6 +2814,7 @@ export type Database = {
           consumo_perc: number | null
           ddt_da_fatturare: number | null
           esposizione_corrente: number | null
+          esposizione_picco_30gg: number | null
           fabbisogno: number | null
           fatturato_rolling: number | null
           fido_attuale: number | null
@@ -2860,6 +2861,7 @@ export type Database = {
           consumo_perc?: number | null
           ddt_da_fatturare?: number | null
           esposizione_corrente?: number | null
+          esposizione_picco_30gg?: number | null
           fabbisogno?: number | null
           fatturato_rolling?: number | null
           fido_attuale?: number | null
@@ -2906,6 +2908,7 @@ export type Database = {
           consumo_perc?: number | null
           ddt_da_fatturare?: number | null
           esposizione_corrente?: number | null
+          esposizione_picco_30gg?: number | null
           fabbisogno?: number | null
           fatturato_rolling?: number | null
           fido_attuale?: number | null
@@ -7090,6 +7093,15 @@ export type Database = {
       esposizione_oltre_fido: {
         Args: { c: Database["public"]["Tables"]["clienti"]["Row"] }
         Returns: boolean
+      }
+      esposizione_picco_cliente: {
+        Args: { _giorni?: number; _ids: string[] }
+        Returns: {
+          aperto_oggi: number
+          aperto_picco: number
+          cliente_id: string
+          giorno_picco: string
+        }[]
       }
       evento_iscrizioni_aperte: {
         Args: { _aperte: boolean; _data_evento: string }

@@ -862,6 +862,13 @@
       "when": 1793531335952,
       "tag": "0122_fm55_fido_esposizione_ciclo_e_acquisti_chiusi",
       "breakpoints": true
+    },
+    {
+      "idx": 123,
+      "version": "7",
+      "when": 1793536394728,
+      "tag": "0123_fm55_picco_30gg_freno_riduzioni",
+      "breakpoints": true
     }
   ]
 }
