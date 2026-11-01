@@ -1,8 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { Bell, Loader2 } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Bell } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { FiltroMultiplo } from "@/components/filtro-multiplo";
@@ -16,12 +15,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { formatEuro, formatDate } from "@/lib/fidi";
-import { fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchSogliaConsumoFido, fidoPerTornareSottoSoglia, fetchUtentiAnteprimaFidoNuovo } from "@/lib/fido-teorico";
-import { SegnalazioniFido } from "@/components/segnalazioni-fido";
+import { fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchUtentiAnteprimaFidoNuovo, isProponibile } from "@/lib/fido-teorico";
 import { SemaforoPallino } from "@/components/semaforo-pallino";
-import { fetchUltimiLasciati, lasciaCosiRevisione } from "@/lib/revisione-fidi";
+import { fetchUltimiLasciati } from "@/lib/revisione-fidi";
 import {
-  fetchAlertFidiAperti, cosaFareAlert, alertLasciabileCosi, etichettaAvviso, debitoOggi, alertSelezionabile,
+  fetchAlertFidiAperti, etichettaAvviso, testoOrdiniAlert, teoricoPropostaIniziale, debitoOggi, alertSelezionabile,
   importoDaAlert, statoEffettivoAlert, fetchDecisioniProtette, giaDeciso, testoGiaDeciso, etichettaRichiestaBreve, etichettaDecisioneAlert, percheAlert, filtraAlert, contatoriAlert, SITUAZIONE_ALERT_LABEL, STATI_ALERT_DEFAULT, TIPO_ALERT_LABEL,
   type AlertFidoRow, type StatoAlertFido, type TipoAlertFido,
 } from "@/lib/alert-fidi";
@@ -102,7 +100,6 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
     enabled: idsClienti.length > 0,
     queryFn: () => fetchUltimiLasciati(idsClienti),
   });
-  const { data: sogliaConsumo } = useQuery({ queryKey: ["soglia-consumo-fido"], queryFn: fetchSogliaConsumoFido, staleTime: 5 * 60_000 });
   const { data: agenti } = useQuery({
     queryKey: ["agenti", "all"],
     queryFn: async () => {
