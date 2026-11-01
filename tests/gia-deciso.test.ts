@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { giaDeciso, testoGiaDeciso, statoEffettivoAlert, contatoriAlert, alertSelezionabile, alertLasciabileCosi, filtraAlert, STATI_ALERT_DEFAULT, type AlertFidoRow, type DecisioneProtetta } from "@/lib/alert-fidi";
+import { giaDeciso, testoGiaDeciso, statoEffettivoAlert, contatoriAlert, alertSelezionabile, filtraAlert, STATI_ALERT_DEFAULT, type AlertFidoRow, type DecisioneProtetta } from "@/lib/alert-fidi";
 
 const dec: DecisioneProtetta = {
   richiesta_id: "r1", importo_approvato: 60000, fido_teorico_riferimento: 0, approvata_il: "2026-10-31T10:00:00Z",
@@ -30,6 +30,5 @@ describe("Già deciso – Alert fidi", () => {
     expect(filtraAlert([a], { stati: ["gia_deciso"] })).toHaveLength(1);
     expect(contatoriAlert([a]).c90).toBe(0);
     expect(alertSelezionabile(a)).toBe(false);
-    expect(alertLasciabileCosi(a)).toBe(false);
   });
 });

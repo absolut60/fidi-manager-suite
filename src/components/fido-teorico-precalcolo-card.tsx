@@ -216,8 +216,6 @@ export function FidoTeoricoPrecalcoloCard() {
           Ricalcolo non riuscito: {ric.errore}
         </p>
       )}
-      <div className="hidden">
-      </div>
     </Card>
   );
 }

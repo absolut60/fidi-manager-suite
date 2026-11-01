@@ -26,7 +26,7 @@ describe("stato richiesta degli Alert fidi", () => {
   test("processata ma fido Gamma uguale (rinnovo) → resta visibile con la decisione", () => {
     const e = esitoRichiestaAlert({ ...alert, fido_gamma_apertura: 3000 }, [proc], 3000);
     expect(e.tipo).toBe("decisa");
-    if (e.tipo === "decisa") expect(etichettaDecisioneAlert(e.richiesta)).toBe(`Decisione presa il 31/10: rinnovo a ${formatEuro(3000)}`);
+    if (e.tipo === "decisa") expect(etichettaDecisioneAlert(e.richiesta)).toBe(`Ultima decisione: 31/10, confermato ${formatEuro(3000)}`);
   });
   test("decisione con extra protetto → non selezionabile", () => {
     expect(alertSelezionabile({ stato: "aperto", richiesta_attiva: null, decisione_protetta: true })).toBe(false);
