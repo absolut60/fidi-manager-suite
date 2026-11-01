@@ -12,7 +12,7 @@ describe("FM55 — Alert fidi: righe colorate col motivo della massiva", () => {
     expect(pagina).toContain('from "@/lib/proposta-fido-visibilita"');
     expect(pagina).toContain('from "@/lib/proposta-fido-riga"');
     expect(pagina).toContain("motivoRigaProposta(");
-    expect(pagina).toContain("etichettaRigaProposta(");
+    expect(pagina).toContain("<BadgeMotiviRiga");
     expect(pagina).toContain("CLASSI_MOTIVO_RIGA[");
     expect(pagina).toContain("LEGENDA_MOTIVI");
     // Il motivo arriva da regola e segnalazioni del fido teorico del cliente (teoricoMap).
