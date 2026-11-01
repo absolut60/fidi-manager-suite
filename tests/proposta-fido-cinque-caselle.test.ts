@@ -40,12 +40,16 @@ describe("Proposta massiva: cinque categorie (01/11)", () => {
       expect(conto.nascosti.in_corso).toBe(1);
     }
   });
-  it("bloccati e scaduto non incassato partono senza spunta", () => {
-    for (const codice of ["bloccato", "scaduto_non_incassato"]) expect(inclusoInizialeProposta(true, anomaliaRossa([codice]))).toBe(false);
+  it("segnalazioni rosse senza azzeramento bloccato/legale partono senza spunta", () => {
+    for (const codice of ["bloccato", "scaduto_non_incassato"]) expect(inclusoInizialeProposta({
+      proponibile: true, rossa: anomaliaRossa([codice]), regola: "calcolo", fidoAttuale: 60000, fidoProposto: 60000,
+    })).toBe(false);
   });
   it("arancioni e righe senza segnalazioni partono spuntate se proponibili", () => {
-    for (const segn of [["oltre_tetto"], ["scaduto_da_incassare"], []]) expect(inclusoInizialeProposta(true, anomaliaRossa(segn))).toBe(true);
-    expect(inclusoInizialeProposta(false, false)).toBe(false);
+    for (const segn of [["oltre_tetto"], ["scaduto_da_incassare"], []]) expect(inclusoInizialeProposta({
+      proponibile: true, rossa: anomaliaRossa(segn), regola: "calcolo", fidoAttuale: 60000, fidoProposto: 60000,
+    })).toBe(true);
+    expect(inclusoInizialeProposta({ proponibile: false, rossa: false, regola: "calcolo", fidoAttuale: 60000, fidoProposto: 60000 })).toBe(false);
   });
   it("mostraSempre e righe toccate restano visibili ma non scavalcano richieste in corso", () => {
     const righe = [riga("a"), { ...riga("b"), richiestaInCorso: {} }];

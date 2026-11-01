@@ -45,9 +45,17 @@ export function righeVisibiliProposta<T extends string, R extends RigaVisibilita
   return righe.filter((r) => !r.richiestaInCorso && (toccate.has(r.cliente_id) || !!mostraSempre?.has(r.cliente_id) || passaFiltriProposta(r, filtri)));
 }
 
-/** Le segnalazioni rosse richiedono una selezione esplicita dell'utente. */
-export function inclusoInizialeProposta(proponibile: boolean, rossa = false): boolean {
-  return proponibile && !rossa;
+/** Rosse non spuntate, salvo riduzioni a zero di bloccati/legali; nessuna modifica agli importi. */
+export function inclusoInizialeProposta({ proponibile, rossa, regola, fidoAttuale, fidoProposto }: {
+  proponibile: boolean;
+  rossa: boolean;
+  regola: string;
+  fidoAttuale: number;
+  fidoProposto: number;
+}): boolean {
+  const azzeramentoBloccatoLegale = (regola === "cliente_bloccato" || regola === "gestione_legale")
+    && fidoAttuale > 0 && fidoProposto === 0;
+  return proponibile && (!rossa || azzeramentoBloccatoLegale);
 }
 
 /** Evidenza "Controlla": riga con segnalazioni arancioni/rosse (fonti: segnalazioniAnomalia/anomaliaRossa). */
