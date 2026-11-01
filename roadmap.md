@@ -1,4 +1,5 @@
 # FM55 — Privati fuori dal giro fidi
+- [ ] Massiva: escludere i già decisi dai rinnovi da guardare con giaDeciso, riepilogo per scadenza e test; nessuna migrazione o ricalcolo.
 - [x] Alert fidi: righe colorate per motivo con la stessa fonte della massiva (motivoRigaProposta + CLASSI_MOTIVO_RIGA + LEGENDA_MOTIVI), etichetta accanto a "Vicino al limite", legenda in cima; solo TS/UI, nessuna migrazione o ricalcolo. bun test 226 verdi, build OK.
 - [ ] Verifica Alert fidi con clienti reali: la sessione di prova non si può creare (molti utenti auth, nessuna corrispondenza con l'email richiedente); colori e impaginazione controllati solo su replica del markup con il CSS reale dell'app a 1280 e 390px.
 - [x] Fetta 5 seconda aggiunta: copertura informativa all'80% con gemello arrotondamento esistente, motivi brevi in motivoRigaProposta; 205 test verdi. Finestra con dati temporanei verificata a 320/390/768/1280/1920 senza overflow/errori; nessuna richiesta, migrazione o ricalcolo.
