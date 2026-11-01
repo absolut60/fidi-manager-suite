@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatEuro, formatDate } from "@/lib/fidi";
 import { fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchSogliaConsumoFido, fidoPerTornareSottoSoglia, fetchUtentiAnteprimaFidoNuovo } from "@/lib/fido-teorico";
 import { SegnalazioniFido } from "@/components/segnalazioni-fido";
+import { SemaforoPallino } from "@/components/semaforo-pallino";
 import { fetchUltimiLasciati, lasciaCosiRevisione } from "@/lib/revisione-fidi";
 import {
   fetchAlertFidiAperti, cosaFareAlert, alertLasciabileCosi, etichettaAvviso, debitoOggi, alertSelezionabile,
@@ -204,7 +205,10 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
   const nomeAgenteAlert = (a: AlertFidoRow) => a.cliente?.codice_agente ? (nomeAgente.get(a.cliente.codice_agente) ?? a.cliente.codice_agente) : null;
   const renderCliente = (a: AlertFidoRow) => (
     <div className="min-w-0">
-      {linkCliente(a)}
+      <div className="flex min-w-0 items-start gap-2">
+        <SemaforoPallino cliente={{ fido_teorico_cliente: teoricoMap?.get(a.cliente_id) }} className="mt-1.5" />
+        <div className="min-w-0">{linkCliente(a)}</div>
+      </div>
       {a.cliente?.codice_gestionale && <div className="text-xs text-muted-foreground">{a.cliente.codice_gestionale}</div>}
       <div className="break-words text-xs text-muted-foreground">
         {[a.cliente?.stores?.nome ?? "Senza negozio", nomeAgenteAlert(a) ?? "Senza agente"].join(" · ")}

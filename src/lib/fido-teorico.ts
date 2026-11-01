@@ -53,6 +53,8 @@ export type FidoTeoricoRow = {
   valore_senza_tetto: number | null;
   /** Codici di segnalazione pubblicati da public.segnalazioni_fido (v. fido-segnalazioni.ts). */
   segnalazioni: string[];
+  semaforo_stadio?: string | null;
+  semaforo_motivo?: string | null;
 };
 
 /** Spiegazione in chiaro del coefficiente di comportamento. */
@@ -163,6 +165,8 @@ export function normalizza(r: any): FidoTeoricoRow {
     tetto: numOrNull(r.tetto),
     valore_senza_tetto: numOrNull(r.valore_senza_tetto),
     segnalazioni: Array.isArray(r.segnalazioni) ? r.segnalazioni.map(String) : [],
+    semaforo_stadio: r.semaforo_stadio ?? null,
+    semaforo_motivo: r.semaforo_motivo ?? null,
   };
 
 }
