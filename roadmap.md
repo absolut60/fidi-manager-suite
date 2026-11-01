@@ -1,4 +1,5 @@
 # FM55 — Privati fuori dal giro fidi
+- [ ] Limitare rinnovi da guardare ad alert consumo effettivamente aperti o segnalazioni rosse con fido positivo; allineare motivi, test e verifica.
 - [x] Bloccati/legali: riferimento senza protezioni, rinnovi zero esclusi dai da guardare; già fuori dal perimetro SQL Alert, nessuna ulteriore migrazione.
 - [x] Fonte unica TS/SQL per partita IVA assente e preset solo partita IVA, senza cambiare lista predefinita; query e RPC verificate nell'anteprima autenticata, che restituisce zero clienti (verifica dati reali UI non disponibile).
 - [x] Migrazione 0121 applicata e definizione confrontata con la precedente: solo perimetro. Un refresh: 6 privati chiusi; consumo non chiusi 170→164, extra 22→22, riduzioni 0→0; richieste attive riallineate dal meccanismo esistente.

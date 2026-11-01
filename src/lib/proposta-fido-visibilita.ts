@@ -1,4 +1,4 @@
-import { etichetteSegnalazioni, segnalazioniAnomalia } from "@/lib/fido-segnalazioni";
+import { anomaliaRossa, etichetteSegnalazioni } from "@/lib/fido-segnalazioni";
 
 /**
  * Visibilità delle righe nella proposta fido massiva.
@@ -19,16 +19,15 @@ export interface RigaVisibilita<T extends string = string> {
   fido_proposto: number;
   fido_attuale?: number;
   richiestaInCorso?: unknown;
-  /** FM55 3C: cliente con alert aperto o segnalazione arancione/rossa (vedi daValutareProposta). */
-  inAlertOAnomalia?: boolean;
   segnalazioni?: string[];
+  /** Solo alert di consumo con statoEffettivoAlert = aperto. */
   alertAperto?: boolean;
 }
 
-/** Rinnovi con alert o anomalie; zero su zero non è mai da guardare. Non cambia il tipo richiesta. */
+/** Solo consumo effettivamente aperto o rosso con fido Gamma positivo; zero su zero mai da guardare. */
 export function daValutareProposta<T extends string>(r: RigaVisibilita<T>): boolean {
   if (r.fido_proposto === 0 && r.fido_attuale === 0) return false;
-  return r.tipo === "rinnovo" && !!r.inAlertOAnomalia;
+  return r.tipo === "rinnovo" && (!!r.alertAperto || (anomaliaRossa(r.segnalazioni) && Number(r.fido_attuale ?? 0) > 0));
 }
 
 export function categoriaProposta<T extends string>(r: RigaVisibilita<T>): T | "rinnovo_da_guardare" {
@@ -103,7 +102,7 @@ export function riepilogoVisibilita<T extends string, R extends RigaVisibilita<T
     }
     if (!r.richiestaInCorso && daValutareProposta(r)) {
       daDecidere++;
-      const motivi = etichetteSegnalazioni(segnalazioniAnomalia(r.segnalazioni));
+      const motivi = etichetteSegnalazioni((r.segnalazioni ?? []).filter((c) => anomaliaRossa([c])));
       if (r.alertAperto) motivi.push("alert_aperto");
       for (const motivo of motivi) daDeciderePerMotivo[motivo] = (daDeciderePerMotivo[motivo] ?? 0) + 1;
     }

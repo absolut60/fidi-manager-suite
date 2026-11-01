@@ -159,6 +159,11 @@ export function statoEffettivoAlert(a: Pick<AlertFidoRow, "stato" | "richiesta_a
   return a.stato === "richiesta_inserita" ? "aperto" : a.stato;
 }
 
+/** Per la categoria rinnovi da guardare: conta soltanto il consumo effettivamente aperto. */
+export function alertConsumoAperto(a: Pick<AlertFidoRow, "tipo" | "stato" | "richiesta_attiva"> & { gia_deciso?: unknown }): boolean {
+  return a.tipo === "consumo" && statoEffettivoAlert(a) === "aperto";
+}
+
 /** Badge della decisione già processata senza cambio di fido, es. "Decisione presa il 31/10: rinnovo a 3.000 €". */
 export function etichettaDecisioneAlert(r: RichiestaClienteAlert): string {
   const giorno = new Date(r.data_processata ?? r.created_at).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" });
