@@ -12,7 +12,10 @@ import {
   PauseCircle,
   CircleAlert,
   Clock,
+  Users,
+  Banknote,
 } from "lucide-react";
+import { percentualeSuTotale } from "@/lib/dashboard-fidi-giro";
 import type { LucideIcon } from "lucide-react";
 
 type DashboardFidi = {
@@ -98,6 +101,25 @@ export function DashboardFidi() {
       const { data, error } = await supabase.rpc("count_fidi_quasi_saturi");
       if (error) throw error;
       return Number(data ?? 0);
+    },
+  });
+
+  const { data: giro } = useQuery({
+    queryKey: ["dashboard-fidi-giro"],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_dashboard_fidi_giro");
+      if (error) throw error;
+      const r = (Array.isArray(data) ? data[0] : data) ?? null;
+      const num = (x: unknown) => Number(x ?? 0);
+      return {
+        privatiN: num(r?.privati_con_fido_n),
+        privatiConcesso: num(r?.privati_concesso_eur),
+        privatiProposto: num(r?.privati_proposto_eur),
+        privatiEsposizione: num(r?.privati_esposizione_eur),
+        posN: num(r?.pos_con_fido_n),
+        posConcesso: num(r?.pos_concesso_eur),
+      };
     },
   });
 
@@ -208,6 +230,30 @@ export function DashboardFidi() {
           cardLink={{ to: "/clienti", search: { preset: "quasi_saturo" } }}
           nota="Azioni sui clienti quasi saturi"
         />
+        <Riquadro
+          compatto
+          titolo="Privati (senza partita IVA)"
+          valore={giro ? euro(giro.privatiConcesso) : "…"}
+          sottotitolo={giro ? `${numero(giro.privatiN)} clienti con fido · ${percentualeSuTotale(giro.privatiConcesso, data.fido_concesso_eur)} del fido concesso totale` : undefined}
+          righe={giro ? [
+            `Proposto ${euro(giro.privatiProposto)} · ci devono ${euro(giro.privatiEsposizione)}`,
+            "Fuori dal giro fidi: controllo a parte.",
+          ] : undefined}
+          icona={Users}
+          tono="info"
+          notaLink={{ to: "/clienti", search: { preset: "privati_con_fido" } }}
+          nota="Vedi la lista"
+        />
+        <Riquadro
+          compatto
+          titolo="POS / contanti con fido"
+          valore={giro ? numero(giro.posN) : "…"}
+          sottotitolo={giro ? (giro.posN > 0 ? `Fido concesso ${euro(giro.posConcesso)} · da azzerare` : "Nessuno ✓") : undefined}
+          icona={Banknote}
+          tono={giro && giro.posN > 0 ? "danger" : "success"}
+          notaLink={{ to: "/clienti", search: { preset: "pos_con_fido" } }}
+          nota="Vedi la lista"
+        />
       </div>
     </div>
   );
@@ -224,6 +270,7 @@ function Riquadro({
   notaExtra,
   cardLink,
   compatto,
+  righe,
 }: {
   titolo: string;
   valore: string;
@@ -235,6 +282,7 @@ function Riquadro({
   notaExtra?: string;
   cardLink?: { to: string; search?: Record<string, string> };
   compatto?: boolean;
+  righe?: string[];
 }) {
   const toneClass = {
     primary: "bg-primary/10 text-primary",
@@ -250,6 +298,7 @@ function Riquadro({
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{titolo}</p>
         <p className={`font-bold text-foreground ${compatto ? "text-xl" : "text-2xl"}`}>{valore}</p>
         {sottotitolo && <p className="text-xs text-muted-foreground">{sottotitolo}</p>}
+        {righe?.map((r) => <p key={r} className="text-xs text-muted-foreground">{r}</p>)}
         {nota && (
           cardLink ? (
             <p className="text-xs text-muted-foreground">{nota}</p>
