@@ -515,6 +515,7 @@ export function ProposteFidoMassivoDialog({
   const renderCasella = (r: RigaProposta, className: string) => (
       <Input
         type="number"
+        inputMode="numeric"
         className={`${className} tabular-nums`}
         value={r.fido_proposto}
         disabled={!r.proponibile}
@@ -655,7 +656,7 @@ export function ProposteFidoMassivoDialog({
         {r.proponibile && <p className="min-w-0 break-words text-muted-foreground">Regola: {renderRegola(r)}</p>}
         {spieg && <p className="min-w-0 break-words text-muted-foreground">{spieg}</p>}
         {prot && (
-          <p className={`min-w-0 break-words text-[11px] ${notaExtraProtetto(prot).decaduta ? "font-medium text-destructive" : "text-success"}`}>
+          <p className={`min-w-0 break-words text-xs sm:text-[11px] ${notaExtraProtetto(prot).decaduta ? "font-medium text-destructive" : "text-success"}`}>
             {notaExtraProtetto(prot).testo}
           </p>
         )}
@@ -671,13 +672,13 @@ export function ProposteFidoMassivoDialog({
         )}
         {teo && sogliaConsumo && daValutareProposta(r)
           && (teo.segnalazioni.includes("oltre_normale") || teo.segnalazioni.includes("impegni_sopra_base") || teo.segnalazioni.includes("uso_pieno")) && (
-          <p className="min-w-0 break-words text-[11px] text-muted-foreground">
+          <p className="min-w-0 break-words text-xs sm:text-[11px] text-muted-foreground">
             Per tornare sotto il {Math.round(sogliaConsumo * 100).toLocaleString("it-IT")}% servirebbero{" "}
             <span className="font-medium tabular-nums text-foreground">{fmtEuro(fidoPerTornareSottoSoglia(teo.esposizione_corrente, sogliaConsumo))}</span>
           </p>
         )}
         {mot && (
-          <p className="min-w-0 break-words text-[11px] text-muted-foreground">
+          <p className="min-w-0 break-words text-xs sm:text-[11px] text-muted-foreground">
             <span className="font-medium">Motivazione:</span> {mot}
           </p>
         )}
@@ -696,9 +697,82 @@ export function ProposteFidoMassivoDialog({
     </Button>
   );
 
+  /** Scheda verticale per il telefono: stessi pezzi e handler della tabella. */
+  const renderSchedaTelefono = (r: RigaProposta) => {
+    const scost = r.proponibile ? r.fido_proposto - r.fido_attuale : 0;
+    const teo = teoricoMap?.get(r.cliente_id);
+    const esposizione = teo?.esposizione_corrente ?? r.esposizione;
+    const ordini = Number(teo?.ordini_aperti ?? 0);
+    const { frase, perCoprire } = motivoRigaProposta({ regola: r.regola, segnalazioni: r.segnalazioni,
+      dati: r.proponibile && teo ? { ...teo, fidoAttuale: r.fido_attuale, consigliato: r.fido_iniziale } : undefined });
+    const valore = (etichetta: string, v: ReactNode, attenuato = false) => (
+      <div className="min-w-0">
+        <div className="text-xs text-muted-foreground">{etichetta}</div>
+        <div className={`break-words text-sm font-medium tabular-nums ${attenuato ? "text-muted-foreground" : ""}`}>{v}</div>
+      </div>
+    );
+    return (
+      <div key={r.cliente_id} data-scheda-telefono
+        className={`min-w-0 space-y-3 rounded-md border border-l-4 bg-card p-3 text-xs ${!r.proponibile ? "opacity-60" : ""} ${classiRiga(r)}`}>
+        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-2">
+          <div className="grid size-10 place-items-center">
+            <Checkbox checked={r.incluso && r.proponibile} disabled={!r.proponibile}
+              onCheckedChange={() => { if (r.proponibile) toggleIncluso(r.cliente_id); }} aria-label={`Includi ${r.ragione_sociale}`} />
+          </div>
+          <div className="min-w-0 pt-1">
+            <div className="flex min-w-0 items-start gap-2">
+              <SemaforoPallino cliente={{ fido_teorico_cliente: teo }} className="mt-1 shrink-0" />
+              <span className="min-w-0 break-words text-sm font-medium">{r.ragione_sociale}</span>
+            </div>
+            {r.negozio && <div className="break-words text-xs text-muted-foreground">{r.negozio}</div>}
+          </div>
+          <div className="flex shrink-0 items-center">{renderMotivazione(r)}{renderRimuovi(r)}</div>
+        </div>
+        {r.proponibile && (
+          <div className="flex min-w-0 flex-wrap gap-1"><BadgeMotiviRiga regola={r.regola} segnalazioni={r.segnalazioni} /></div>
+        )}
+        {r.richiestaInCorso && (
+          <div className={`break-words rounded px-2 py-0.5 text-xs font-medium ${STATO_TONE[r.richiestaInCorso.stato as StatoRichiesta] ?? "bg-muted text-muted-foreground"}`}>
+            Richiesta già in corso: {STATO_LABEL[r.richiestaInCorso.stato as StatoRichiesta] ?? r.richiestaInCorso.stato}
+            {" · "}{TIPO_LABEL[r.richiestaInCorso.tipo as TipoRichiesta] ?? r.richiestaInCorso.tipo} {fmtEuro(r.richiestaInCorso.importo)}
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+          {valore("Fido attuale", fmtEuro(r.fido_attuale))}
+          {valore("Ci deve", <>{fmtEuro(esposizione)}{ordini > 0 && <span className="block text-xs font-normal text-motivo-ordini">+ ordini {fmtEuro(ordini)}</span>}</>)}
+          {valore("Per coprire", perCoprire == null ? "—" : fmtEuro(perCoprire), perCoprire === r.fido_teorico)}
+          {valore("Consigliato", r.proponibile && r.fido_teorico != null ? fmtEuro(r.fido_teorico) : "—")}
+        </div>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+          {renderCasella(r, "h-11 w-full text-right text-base")}
+          <span className={`whitespace-nowrap text-sm tabular-nums ${scost > 0 ? "text-success" : scost < 0 ? "text-warning" : "text-muted-foreground"}`}>
+            {r.proponibile ? `${scost > 0 ? "+" : scost < 0 ? "−" : ""}${fmtEuro(Math.abs(scost))}` : "—"}
+          </span>
+        </div>
+        {r.proponibile && Number(r.fido_proposto) !== Number(r.fido_iniziale) && (
+          <Badge variant="outline" className="border-info/40 bg-info/10 text-xs text-info">Modificato</Badge>
+        )}
+        {r.proponibile && (
+          <CampoExtraTeorico compatto importo={r.fido_proposto} teorico={r.fido_teorico}
+            motivo={r.motivo_extra} onMotivo={(v) => aggiornaMotivoExtra(r.cliente_id, v)} />
+        )}
+        {!r.proponibile && <p className="break-words">{renderRegola(r)}</p>}
+        <div className="min-w-0 space-y-1">
+          <Label className="text-xs font-normal text-muted-foreground">Condizione di pagamento</Label>
+          {renderCondizione(r)}
+        </div>
+        <div className="min-w-0 space-y-1">
+          <Label className="text-xs font-normal text-muted-foreground">Tipo</Label>
+          {renderTipo(r, "h-11 w-full")}
+        </div>
+        <DettagliRiga frase={frase}>{renderDettagli(r)}</DettagliRiga>
+      </div>
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[96vw] max-w-[1600px] sm:max-w-[1600px] h-[96dvh] max-h-[96dvh] sm:h-[90dvh] sm:max-h-[90dvh] overflow-hidden flex flex-col gap-0 p-0 [&>button:last-child]:top-1 [&>button:last-child]:right-1 [&>button:last-child]:size-10 [&>button:last-child]:grid [&>button:last-child]:place-items-center sm:[&>button:last-child]:top-2 sm:[&>button:last-child]:right-2">
+      <DialogContent className="inset-0 left-0 top-0 translate-x-0 translate-y-0 w-screen max-w-none rounded-none border-0 h-dvh max-h-dvh sm:inset-auto sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:w-[96vw] sm:border sm:rounded-lg max-w-[1600px] sm:max-w-[1600px] sm:h-[90dvh] sm:max-h-[90dvh] overflow-hidden flex flex-col gap-0 p-0 [&>button:last-child]:top-1 [&>button:last-child]:right-1 [&>button:last-child]:size-10 [&>button:last-child]:grid [&>button:last-child]:place-items-center sm:[&>button:last-child]:top-2 sm:[&>button:last-child]:right-2">
         <div className="shrink-0 min-w-0 border-b px-3 py-2 sm:px-4 sm:py-2">
         <DialogHeader className="pr-8 text-left">
           <DialogTitle className="break-words text-sm leading-5 sm:text-lg">Proposta fido massiva — {righeVisibiliIncluse.length} clienti</DialogTitle>
@@ -717,6 +791,13 @@ export function ProposteFidoMassivoDialog({
             Impossibile calcolare il fido teorico: {(teoricoError as any)?.message ?? "errore"}
           </p>
         )}
+        <Collapsible open={dettagliAperti} onOpenChange={setDettagliAperti}>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" className="h-10 w-full justify-between px-0 text-xs sm:hidden">
+              <span><span aria-hidden className={`inline-block transition-transform ${dettagliAperti ? "rotate-90" : ""}`}>▸</span> Impostazioni e riepilogo</span>
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-2">
         <fieldset className="min-w-0 py-2">
           <legend className="text-sm font-medium">Cosa vuoi mandare?</legend>
           <div className="grid grid-cols-2 xl:grid-cols-5 gap-x-2 sm:gap-x-3">
@@ -727,7 +808,7 @@ export function ProposteFidoMassivoDialog({
                 <span className="break-words">{nome} ({tipoCount(tipo)})</span>
               </label>
               {tipo === "rinnovo_da_guardare" && riepilogoVis.daDecidere > 0 && (
-                <p className="pl-6 text-[11px] leading-4 text-muted-foreground break-words">
+                <p className="pl-6 text-xs sm:text-[11px] leading-4 text-muted-foreground break-words">
                   {Object.entries(riepilogoVis.daDeciderePerMotivo).filter(([, n]) => n > 0)
                     .map(([motivo, n]) => `${fmtN(n)} ${testoMotivoDaGuardare(motivo, n)}`).join(" · ")}
                 </p>
@@ -736,14 +817,6 @@ export function ProposteFidoMassivoDialog({
             ))}
           </div>
         </fieldset>
-        <Collapsible open={dettagliAperti} onOpenChange={setDettagliAperti}>
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" className="h-10 w-full justify-between px-0 text-xs sm:hidden">
-              Dettagli e impostazioni
-              <ChevronDown className={`size-4 shrink-0 transition-transform ${dettagliAperti ? "rotate-180" : ""}`} />
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="space-y-2">
         <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground space-y-1 break-words">
           <p className="text-foreground">Stai vedendo <strong>{fmtN(riepilogoVis.visibili)}</strong> proposte su <strong>{fmtN(riepilogoVis.totale)}</strong> clienti selezionati.</p>
           {nDaControllare > 0 && (
@@ -799,7 +872,7 @@ export function ProposteFidoMassivoDialog({
         </div>
         <div data-proposte-elenco className="min-w-0 px-3 py-2 sm:min-h-0 sm:flex-1 sm:overflow-y-auto sm:overflow-x-hidden sm:px-4 sm:py-2">
         {/* Legenda: colore della riga = motivo principale (fonte unica: motivoRigaProposta). */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pb-2 text-[11px] text-muted-foreground" data-legenda-motivi>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pb-2 text-xs sm:text-[11px] text-muted-foreground" data-legenda-motivi>
           {LEGENDA_MOTIVI.map(({ motivo, nome }) => (
             <span key={motivo} className="flex items-center gap-1.5">
               <span aria-hidden className={`inline-block size-3 rounded-sm ${CLASSI_MOTIVO_RIGA[motivo].pallino}`} />
@@ -808,7 +881,7 @@ export function ProposteFidoMassivoDialog({
           ))}
         </div>
         {/* Schede anche su tablet: la tabella estesa richiede spazio desktop. */}
-        <div className="[&>div]:block xl:hidden [&>div>div>div:first-child]:grid [&>div>div>div:first-child]:grid-cols-1 [&>div>div>div:first-child>div:last-child]:justify-end">
+        <div className="hidden sm:block xl:hidden [&>div]:block [&>div>div>div:first-child]:grid [&>div>div>div:first-child]:grid-cols-1 [&>div>div>div:first-child>div:last-child]:justify-end">
         <ElencoSchede>
           {righeVisibili.map((r) => (
               <SchedaLista
@@ -839,6 +912,11 @@ export function ProposteFidoMassivoDialog({
               />
           ))}
         </ElencoSchede>
+        </div>
+
+        {/* Telefono (sotto 640px): scheda verticale. */}
+        <div className="space-y-2 sm:hidden" data-schede-telefono>
+          {righeVisibili.map((r) => renderSchedaTelefono(r))}
         </div>
 
         <div className="hidden xl:block min-w-0 [&>div]:overflow-x-visible">
@@ -873,7 +951,7 @@ export function ProposteFidoMassivoDialog({
 
         </div>
         <div className="shrink-0 min-w-0 border-t bg-background px-3 py-2 sm:px-4 sm:py-2 grid grid-cols-1 gap-1 sm:gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-          <p className="text-xs font-medium tabular-nums break-words sm:hidden">
+          <p className="truncate text-xs font-medium tabular-nums sm:hidden">
             Nuovo fido {fmtEuro(riepilogo.totaleProposto)} ({riepilogo.differenza > 0 ? "+" : riepilogo.differenza < 0 ? "−" : "±"}{fmtEuro(Math.abs(riepilogo.differenza))}) · {righeVisibiliIncluse.length} richieste
           </p>
           <div className="hidden sm:block min-w-0 space-y-0.5">
