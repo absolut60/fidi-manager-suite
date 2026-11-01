@@ -1,5 +1,7 @@
 # Architecture rules
 
+- The credit-review perimeter uses isPrivatoFido in fido-teorico.ts and its SQL twin cliente_privato_fido(text); the clienti-row overload delegates to the twin for query-side filtering before pagination/count/selection. Only the review preset enables it, while Alert refresh filters its shared input dataset so existing closure logic applies; theoretical calculations remain independent.
+
 - Official Gamma scadenziario parsing lives only in the browser-safe scadenziario-parser module; both browser staging and direct-file server entrypoints parse and resolve duplicates once before chunking, while chunk dedup remains a safety net and expected-row counters retain their existing valid-client rule.
 
 - Alert-fidi notifications are produced only by public.invia_notifiche_alert_fidi after alert refresh; it locks eligible alerts, uses the existing grouping/push triggers and marks logical deliveries rather than INSERT RETURNING rows, because grouping may cancel inserts.
