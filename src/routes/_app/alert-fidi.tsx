@@ -367,9 +367,15 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
           }}>
             {visibili.map((a) => (
               <SchedaLista key={a.id}
+                className={classiRigaAlert(a)}
                 selezione={alertSelezionabile(a) ? { checked: selezionati.has(a.id), onChange: () => toggle(a.id) } : undefined}
                 titolo={renderCliente(a)}
-                badge={<Badge variant="outline" className="shrink-0">{etichettaAvviso(a)}</Badge>}
+                badge={
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <Badge variant="outline" className="whitespace-normal break-words text-right">{etichettaAvviso(a)}</Badge>
+                    {renderEtichettaMotivo(a)}
+                  </div>
+                }
                 campi={[
                   { etichetta: "Fido", valore: renderNumeri(a) },
                   { etichetta: "Perché", valore: renderPerche(a) },
