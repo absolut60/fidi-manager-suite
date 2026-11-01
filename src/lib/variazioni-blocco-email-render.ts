@@ -1,6 +1,7 @@
 // Render PURO della mail "Variazioni blocco clienti" (nessun import di supabase).
 // Cornice e helper riusati da template-email-render.ts (fonte unica).
 import { escapeHtml, wrapEmailHtml, SEDE_FALLBACK } from "@/lib/template-email-render";
+import { euroAvviso, etichettaTipoAlert, type AlertEmail } from "@/lib/alert-fidi-email";
 
 export type ClienteVariazione = { codice: string | null; ragione_sociale: string | null };
 
@@ -39,6 +40,37 @@ function tabella(list: ClienteVariazione[]): string {
   </table>`;
 }
 
+function tabellaAlert(list: AlertEmail[]): string {
+  const cell = "padding:6px 10px;border:1px solid #e2e8f0;";
+  const dx = `${cell}text-align:right;white-space:nowrap;`;
+  const rows = [...list]
+    .sort((a, b) => (a.ragione_sociale ?? "").localeCompare(b.ragione_sociale ?? "", "it", { sensitivity: "base" }))
+    .map((a) => {
+      const ordini = Math.round(Number(a.ordini_aperti ?? 0)) > 0 ? `<br><span style="font-size:12px;color:#0369a1;">Ordini in arrivo ${euroAvviso(a.ordini_aperti)}</span>` : "";
+      const motivo = a.motivi.length ? a.motivi.join(", ") : etichettaTipoAlert(a.tipo);
+      return `<tr>
+        <td style="${cell}">${escapeHtml(a.ragione_sociale ?? "—")}${a.codice ? `<br><span style="font-size:12px;color:#64748b;">${escapeHtml(a.codice)}</span>` : ""}</td>
+        <td style="${dx}">${Math.round(Number(a.consumo ?? 0) * 100)}%</td>
+        <td style="${dx}">${euroAvviso(a.esposizione)}${ordini}</td>
+        <td style="${dx}">${euroAvviso(a.fido_gamma)}</td>
+        <td style="${dx}">${euroAvviso(a.fido_proposto)}</td>
+        <td style="${cell}">${escapeHtml(motivo)}</td>
+      </tr>`;
+    })
+    .join("");
+  return `<table style="border-collapse:collapse;border:1px solid #e2e8f0;font-family:Arial,sans-serif;font-size:13px;margin:8px 0;">
+    <thead><tr style="background:#f1f5f9;">
+      <th style="${cell}text-align:left;">Cliente</th>
+      <th style="${cell}">% usata</th>
+      <th style="${cell}">Ci deve</th>
+      <th style="${cell}">Fido Gamma</th>
+      <th style="${cell}">Fido teorico</th>
+      <th style="${cell}text-align:left;">Motivo</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
 export function buildVariazioniBloccoEmail({
   negozioNome,
   bloccati,
@@ -48,6 +80,7 @@ export function buildVariazioniBloccoEmail({
   appUrl,
   dataRilevazione,
   testInfo,
+  alertFidi = [],
 }: {
   negozioNome: string;
   bloccati: ClienteVariazione[];
@@ -57,9 +90,15 @@ export function buildVariazioniBloccoEmail({
   appUrl: string;
   dataRilevazione: Date | string;
   testInfo?: { emailReali: string[] } | null;
+  /** Nuovi alert fidi da gestire del negozio (sezione 3); vuota = sezione assente. */
+  alertFidi?: AlertEmail[];
 }): { oggetto: string; html: string } {
   const isTest = !!testInfo;
-  const oggetto = `${isTest ? "[TEST] " : ""}Variazioni blocco e legale clienti — ${negozioNome} — ${formatDataRoma(dataRilevazione)}`;
+  const haVariazioni = bloccati.length + sbloccati.length + inLegale.length + uscitiLegale.length > 0;
+  const titolo = haVariazioni && alertFidi.length
+    ? "Variazioni clienti e alert fidi"
+    : alertFidi.length ? "Alert fidi" : "Variazioni blocco e legale clienti";
+  const oggetto = `${isTest ? "[TEST] " : ""}${titolo} — ${negozioNome} — ${formatDataRoma(dataRilevazione)}`;
 
   const parti: string[] = [];
   if (isTest) {
@@ -71,8 +110,14 @@ export function buildVariazioniBloccoEmail({
     );
   }
   parti.push(
-    `<p style="margin:0 0 12px;">Dopo l'ultimo aggiornamento dal gestionale, per i clienti della ${escapeHtml(negozioNome)} risultano queste variazioni dello stato di blocco o di gestione legale:</p>`,
+    `<p style="margin:0 0 12px;">Dopo l'ultimo aggiornamento dal gestionale, per i clienti della ${escapeHtml(negozioNome)} ci sono queste novità:</p>`,
   );
+  const base = appUrl.replace(/\/+$/, "");
+  const bottone = (href: string, testo: string) =>
+    `<p style="margin:10px 0 0;"><a href="${escapeHtml(href)}" style="display:inline-block;background:#1e3a5f;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:6px;font-weight:bold;">${escapeHtml(testo)}</a></p>`;
+  if (bloccati.length || sbloccati.length) {
+    parti.push(`<h2 style="margin:18px 0 4px;font-size:16px;color:#1e3a5f;">Clienti bloccati / sbloccati</h2>`);
+  }
   if (bloccati.length) {
     parti.push(
       `<h3 style="margin:16px 0 4px;font-size:15px;color:#b91c1c;">Nuovi clienti bloccati (${bloccati.length})</h3>`,
@@ -84,6 +129,9 @@ export function buildVariazioniBloccoEmail({
       `<h3 style="margin:16px 0 4px;font-size:15px;color:#15803d;">Clienti sbloccati (${sbloccati.length})</h3>`,
       tabella(sbloccati),
     );
+  }
+  if (inLegale.length || uscitiLegale.length) {
+    parti.push(`<h2 style="margin:18px 0 4px;font-size:16px;color:#1e3a5f;">Entrati / usciti dal legale</h2>`);
   }
   if (inLegale.length) {
     parti.push(
@@ -97,10 +145,15 @@ export function buildVariazioniBloccoEmail({
       tabella(uscitiLegale),
     );
   }
-  const link = `${appUrl.replace(/\/+$/, "")}/clienti-variazioni-blocco`;
-  parti.push(
-    `<p style="margin:18px 0 0;"><a href="${escapeHtml(link)}" style="display:inline-block;background:#1e3a5f;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:6px;font-weight:bold;">Apri l'elenco in FidiManager</a></p>`,
-  );
+  if (haVariazioni) parti.push(bottone(`${base}/clienti-variazioni-blocco`, "Apri l'elenco in FidiManager"));
+  if (alertFidi.length) {
+    parti.push(
+      `<h2 style="margin:22px 0 4px;font-size:16px;color:#1e3a5f;">Alert fidi (${alertFidi.length})</h2>`,
+      `<p style="margin:0 0 6px;font-size:13px;">Nuovi alert da gestire:</p>`,
+      tabellaAlert(alertFidi),
+      bottone(`${base}/alert-fidi`, "Apri Alert fidi"),
+    );
+  }
 
   const html = wrapEmailHtml(
     parti.join("\n"),
