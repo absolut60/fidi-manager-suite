@@ -1,5 +1,5 @@
 # FM55 — Privati fuori dal giro fidi
-- [ ] Correggere solo la mappatura ufficiale Dilazione Teorica; test XLSX con 62 e 90, nessun backfill o ricalcolo.
+- [x] Dilazione Teorica: aggiunti mappatura ufficiale e conversione intera nel parser condiviso browser/server; difetto riprodotto (62/90 assenti) e corretto con round-trip XLSX. bun test: 167 pass, zero fail; build OK. Colonna DB integer DEFAULT 0 e upsert payload verificati; nessuna migrazione, backfill o ricalcolo, dati reali al prossimo import del proprietario.
 - [x] Selezione iniziale: riduzioni zero bloccati/legali già spuntate con firma a oggetto e chiamante allineato; rosso Controlla invariato, scaduto non incassato non spuntato, zero→zero nascosto e mai da guardare. bun test: 165 pass, zero fail; build OK. Finestra con clienti reali non verificata: accesso personale non disponibile.
 - [x] Rinnovi da guardare solo con alert consumo effettivamente aperti o rossi con Gamma positivo; lettura condivisa stato richieste e protezione già deciso, motivi solo consumo/rossi. bun test: 159 pass, zero fail; build OK. Anteprima senza errori alla pagina login, accesso personale non disponibile: finestra con dati reali non verificata.
 - [x] Bloccati/legali: riferimento senza protezioni, rinnovi zero esclusi dai da guardare; già fuori dal perimetro SQL Alert, nessuna ulteriore migrazione.
