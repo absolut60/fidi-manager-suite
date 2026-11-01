@@ -788,12 +788,10 @@ export function ProposteFidoMassivoDialog({
         {/* Schede anche su tablet: la tabella estesa richiede spazio desktop. */}
         <div className="[&>div]:block xl:hidden [&>div>div>div:first-child]:grid [&>div>div>div:first-child]:grid-cols-1 [&>div>div>div:first-child>div:last-child]:justify-end">
         <ElencoSchede>
-          {righeVisibili.map((r) => {
-            const scost = r.proponibile ? r.fido_proposto - r.fido_attuale : 0;
-            return (
+          {righeVisibili.map((r) => (
               <SchedaLista
                 key={r.cliente_id}
-                className={`${!r.proponibile ? "opacity-60" : ""} ${sfondoRiga(r, true)}`}
+                className={`${!r.proponibile ? "opacity-60" : ""} ${bordoRiga(r)}`}
                 selezione={{ checked: r.incluso && r.proponibile, onChange: () => { if (r.proponibile) toggleIncluso(r.cliente_id); } }}
                 titolo={renderCliente(r)}
                 badge={
@@ -802,77 +800,50 @@ export function ProposteFidoMassivoDialog({
                     {renderRimuovi(r)}
                   </div>
                 }
-                campi={[
-                  { etichetta: "Fido attuale", valore: fmtEuro(r.fido_attuale) },
-                  { etichetta: "Ci deve", valore: fmtEuro(r.esposizione) },
-                  {
-                    etichetta: "Differenza",
-                    valore: (
-                      <span className={`tabular-nums ${scost > 0 ? "text-success" : scost < 0 ? "text-warning" : "text-muted-foreground"}`}>
-                        {r.proponibile ? `${scost > 0 ? "+" : ""}${fmtEuro(scost)}` : "—"}
-                      </span>
-                    ),
-                  },
-                  { etichetta: "Regola", valore: <span className="text-xs">{renderRegola(r)}</span> },
-                ]}
+                campi={[]}
                 footer={
-                  <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2">
-                    <div className="min-w-0 space-y-1">
-                      <Label className="text-xs text-muted-foreground font-normal">Fido proposto</Label>
-                      {renderImporto(r, "h-10 w-full text-right")}
-                    </div>
+                  <div className="grid w-full min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="min-w-0 sm:col-span-2">{renderCorpo(r, "h-10 w-32 text-right")}</div>
                     <div className="min-w-0 space-y-1">
                       <Label className="text-xs text-muted-foreground font-normal">Tipo</Label>
                       {renderTipo(r, "h-10 w-full")}
                     </div>
-                    <div className="min-w-0 space-y-1 sm:col-span-2">
+                    <div className="min-w-0 space-y-1">
                       <Label className="text-xs text-muted-foreground font-normal">Cond. pagamento</Label>
                       {renderCondizione(r)}
                     </div>
-                    {renderDettagli(r) ? <div className="min-w-0 sm:col-span-2">{renderDettagli(r)}</div> : null}
                   </div>
                 }
               />
-            );
-          })}
+          ))}
         </ElencoSchede>
         </div>
 
         <div className="hidden xl:block min-w-0 [&>div]:overflow-x-visible">
-          <Table className="table-fixed w-full text-xs [&_th]:px-1 [&_td]:px-1 [&_th]:whitespace-nowrap [&_td]:whitespace-normal">
+          <Table className="table-fixed w-full text-xs [&_th]:px-1 [&_td]:px-1 [&_th]:whitespace-nowrap [&_td]:whitespace-normal [&_td]:align-top">
             <colgroup>
-              <col className="w-8" /><col /><col className="w-24" /><col className="w-24" />
-              <col className="w-56" /><col className="w-24" /><col className="w-44" />
-              <col className="w-32" /><col className="w-14" /><col className="w-10" />
+              <col className="w-8" /><col />
+              <col className="w-44" /><col className="w-32" /><col className="w-14" /><col className="w-10" />
             </colgroup>
             <TableHeader><TableRow>
-              <TableHead /><TableHead>Cliente</TableHead><TableHead className="text-right">Fido attuale</TableHead>
-              <TableHead className="text-right">Ci deve</TableHead><TableHead className="text-right">Fido proposto</TableHead>
-              <TableHead className="text-right">Differenza</TableHead><TableHead>Condizione di pagamento</TableHead>
+              <TableHead /><TableHead>Cliente e proposta</TableHead>
+              <TableHead>Condizione di pagamento</TableHead>
               <TableHead>Tipo</TableHead><TableHead>Motivo</TableHead><TableHead />
             </TableRow></TableHeader>
             <TableBody>
-              {righeVisibili.map((r) => {
-                const scost = r.proponibile ? r.fido_proposto - r.fido_attuale : 0;
-                const dettagli = renderDettagli(r);
-                return (
-                  <Fragment key={r.cliente_id}>
-                    <TableRow className={`${!r.proponibile ? "opacity-60" : ""} ${sfondoRiga(r, false)} ${dettagli ? "border-0" : "border-b-2 border-border"}`}>
-                      <TableCell className={bordoRiga(r)}><Checkbox checked={r.incluso && r.proponibile} disabled={!r.proponibile} onCheckedChange={() => toggleIncluso(r.cliente_id)} /></TableCell>
-                      <TableCell className="min-w-0 font-medium">{renderCliente(r)}<div className="mt-0.5 text-[11px] font-normal">{renderRegola(r)}</div></TableCell>
-                      <TableCell className="text-right break-words tabular-nums">{fmtEuro(r.fido_attuale)}</TableCell>
-                      <TableCell className="text-right break-words tabular-nums">{fmtEuro(r.esposizione)}</TableCell>
-                      <TableCell>{renderImporto(r, "h-10 w-full min-w-0 px-1 text-xs text-right")}</TableCell>
-                      <TableCell className={`text-right break-words tabular-nums ${scost > 0 ? "text-success" : scost < 0 ? "text-warning" : "text-muted-foreground"}`}>{r.proponibile ? `${scost > 0 ? "+" : ""}${fmtEuro(scost)}` : "—"}</TableCell>
+              {righeVisibili.map((r) => (
+                    <TableRow key={r.cliente_id} className={`${!r.proponibile ? "opacity-60" : ""} border-b-2 border-border`}>
+                      <TableCell className={bordoRiga(r)}><Checkbox checked={r.incluso && r.proponibile} disabled={!r.proponibile} onCheckedChange={() => toggleIncluso(r.cliente_id)} aria-label={`Includi ${r.ragione_sociale}`} /></TableCell>
+                      <TableCell className="min-w-0">
+                        <div className="font-medium">{renderCliente(r)}</div>
+                        <div className="mt-1">{renderCorpo(r, "h-10 w-32 px-1 text-xs text-right")}</div>
+                      </TableCell>
                       <TableCell>{renderCondizione(r)}</TableCell>
                       <TableCell>{renderTipo(r, "h-10 w-full min-w-0 px-1 text-xs")}</TableCell>
                       <TableCell><div className="[&_button]:w-8 [&_button]:h-10">{renderMotivazione(r)}</div></TableCell>
                       <TableCell><div className="[&_button]:w-8 [&_button]:h-10">{renderRimuovi(r)}</div></TableCell>
                     </TableRow>
-                    {dettagli && <TableRow className={`${!r.proponibile ? "opacity-60" : ""} ${sfondoRiga(r, false)} border-b-2 border-border`}><TableCell colSpan={10} className={`pt-0 pb-2 ${bordoRiga(r)}`}>{dettagli}</TableCell></TableRow>}
-                  </Fragment>
-                );
-              })}
+              ))}
             </TableBody>
           </Table>
         </div>
