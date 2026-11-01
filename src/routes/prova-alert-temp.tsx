@@ -15,6 +15,8 @@ function P() {
   const qc = useQueryClient();
   useState(() => {
     const k = "a,b,c";
+    qc.setQueryDefaults(["alert-fidi-aperti"], { staleTime: Infinity });
+    qc.setQueryDefaults(["revisione-fidi-lasciati-alert"], { staleTime: Infinity });
     qc.setQueryData(["alert-fidi-aperti"], [al("1", A, 0.9, 0), al("2", B, 0.86, 4120), al("3", C, 0.87, 0)]);
     qc.setQueryData(["fido-teorico-alert", k], new Map<string, any>([
       ["a", t({ regola_applicata: "calcolo", fido_attuale: 5000, fido_proposto: 8000, esposizione_corrente: 4500 })],
