@@ -27,6 +27,7 @@ import {
   fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchExtraFidoProtetti, fetchSogliaConsumoFido, fidoPerTornareSottoSoglia, notaExtraProtetto, MOTIVAZIONE_PROFILO_FIDO, isProponibile,
   REGOLA_LABEL, MOTIVO_NON_PROPONIBILE, MOTIVO_NON_PROPONIBILE_BREVE, isSedeCentraleFido,
 } from "@/lib/fido-teorico";
+import { AVVISO_FIDO_ZERO, etichettaRigaProposta, fraseBreveProposta, mostraAvvisoFidoZero } from "@/lib/proposta-fido-riga";
 import { riepilogoProposte } from "@/lib/proposta-fido-riepilogo";
 import { motivazioneEffettiva } from "@/lib/motivazione-proposta";
 import { Button } from "@/components/ui/button";
@@ -49,38 +50,6 @@ function fmtEuro(v: unknown): string {
 }
 
 
-function NotaPropostaDettaglio({ nota }: { nota: string }) {
-  const [troncato, setTroncato] = useState(false);
-  const testoRef = useRef<HTMLSpanElement | null>(null);
-  useEffect(() => {
-    const el = testoRef.current;
-    if (!el) return;
-    const verifica = () => setTroncato(el.scrollWidth > el.clientWidth + 1);
-    verifica();
-    const ro = new ResizeObserver(verifica);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [nota]);
-  return (
-    <details className="min-w-0 group" data-nota-troncata={troncato || undefined}>
-      <summary
-        className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 list-none"
-        style={{ cursor: troncato ? "pointer" : "default" }}
-        onClick={(e) => { if (!troncato) e.preventDefault(); }}
-      >
-        <span ref={testoRef} className="truncate text-muted-foreground" title={nota}>{nota}</span>
-        {troncato && (
-          <>
-            <span className="text-primary whitespace-nowrap group-open:hidden">Mostra tutto</span>
-            <span className="text-primary whitespace-nowrap hidden group-open:block">Mostra meno</span>
-          </>
-        )}
-      </summary>
-      {troncato && <p className="pt-1 break-words text-muted-foreground">{nota}</p>}
-    </details>
-  );
-}
-
 // ============================================================================
 // Dialog "Proposta fido massiva"
 // ============================================================================
@@ -89,6 +58,8 @@ type RigaProposta = {
   cliente_id: string;
   store_id: string | null;
   ragione_sociale: string;
+  /** Nome del punto vendita (se caricato con la lista). */
+  negozio?: string | null;
   fido_attuale: number;
   esposizione: number;
   fido_proposto: number;
@@ -305,6 +276,7 @@ export function ProposteFidoMassivoDialog({
           cliente_id: c.id,
           store_id: c.store_id ?? null,
           ragione_sociale: c.ragione_sociale,
+          negozio: c.stores?.nome ?? null,
           fido_attuale: attuale,
           esposizione: Number(c.totale_rischio ?? 0),
           fido_proposto: proposto,
@@ -318,7 +290,7 @@ export function ProposteFidoMassivoDialog({
           motivazione_auto: t?.profilo ? MOTIVAZIONE_PROFILO_FIDO[t.profilo] : undefined,
           proponibile,
           incluso: inclusoInizialeProposta({ proponibile, rossa: anomaliaRossa(t?.segnalazioni), regola,
-            fidoAttuale: attuale, fidoProposto: proposto }),
+            fidoAttuale: attuale, fidoProposto: proposto, segnalazioni: t?.segnalazioni }),
           segnalazioni: t?.segnalazioni ?? [],
           alertAperto: alertAperti.has(c.id),
           controllo,
