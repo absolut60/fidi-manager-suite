@@ -18,7 +18,7 @@ import {
   type StatoRichiesta, type TipoRichiesta,
   extraFidoTeorico, motivoExtraObbligatorio,
 } from "@/lib/fidi";
-import { daValutareProposta, categoriaProposta, CATEGORIE_PROPOSTA_DEFAULT, testoMotivoDaGuardare, righeVisibiliProposta, riepilogoVisibilita, inclusoInizialeProposta, livelloControlloProposta, type CategoriaProposta, type LivelloControllo } from "@/lib/proposta-fido-visibilita";
+import { daValutareProposta, categoriaProposta, CATEGORIE_PROPOSTA_DEFAULT, testoMotivoDaGuardare, righeVisibiliProposta, riepilogoVisibilita, inclusoInizialeProposta, livelloControlloProposta, motivoRigaProposta, type CategoriaProposta, type LivelloControllo } from "@/lib/proposta-fido-visibilita";
 import { segnalazioniAnomalia, anomaliaRossa } from "@/lib/fido-segnalazioni";
 import { alertConsumoAperto, fetchAlertFidiAperti, giaDeciso, teoricoPropostaIniziale } from "@/lib/alert-fidi";
 import { Switch } from "@/components/ui/switch";
@@ -27,7 +27,7 @@ import {
   fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchExtraFidoProtetti, fetchSogliaConsumoFido, fidoPerTornareSottoSoglia, notaExtraProtetto, MOTIVAZIONE_PROFILO_FIDO, isProponibile,
   REGOLA_LABEL, MOTIVO_NON_PROPONIBILE, MOTIVO_NON_PROPONIBILE_BREVE, isSedeCentraleFido,
 } from "@/lib/fido-teorico";
-import { AVVISO_FIDO_ZERO, etichettaRigaProposta, fraseBreveProposta, mostraAvvisoFidoZero } from "@/lib/proposta-fido-riga";
+import { AVVISO_FIDO_ZERO, CLASSI_MOTIVO_RIGA, LEGENDA_MOTIVI, etichettaRigaProposta, fraseBreveProposta, mostraAvvisoFidoZero } from "@/lib/proposta-fido-riga";
 import { riepilogoProposte } from "@/lib/proposta-fido-riepilogo";
 import { motivazioneEffettiva } from "@/lib/motivazione-proposta";
 import { Button } from "@/components/ui/button";
@@ -471,13 +471,18 @@ export function ProposteFidoMassivoDialog({
     }
   }
 
-  // Bordo delle righe da controllare (rossa prevale).
-  const bordoRiga = (r: RigaProposta) =>
-    !r.proponibile ? "" : r.controllo === "rossa" ? "border-l-4 border-l-destructive" : r.controllo === "arancione" ? "border-l-4 border-l-warning" : "";
+  // Colore della riga in base al motivo vincente (fonte unica: motivoRigaProposta).
+  const classiRiga = (r: RigaProposta) => {
+    if (!r.proponibile) return "";
+    const motivo = motivoRigaProposta({ regola: r.regola, segnalazioni: r.segnalazioni });
+    if (!motivo) return "";
+    const c = CLASSI_MOTIVO_RIGA[motivo];
+    return `${c.bordo} ${c.sfondo}`;
+  };
 
   // Pezzi condivisi tra tabella desktop e schede mobile (stessi handler)
   const renderCliente = (r: RigaProposta) => {
-    const etichetta = r.proponibile ? etichettaRigaProposta(r.segnalazioni) : null;
+    const etichetta = r.proponibile ? etichettaRigaProposta({ regola: r.regola, segnalazioni: r.segnalazioni }) : null;
     return (
     <>
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-1">
@@ -487,9 +492,11 @@ export function ProposteFidoMassivoDialog({
           {r.ragione_sociale}{r.negozio && <span className="font-normal text-muted-foreground"> · {r.negozio}</span>}
         </span>
       </span>
-      {etichetta && (
-        <Badge className={`shrink-0 whitespace-nowrap px-1.5 text-[10px] ${etichetta.tono === "rossa" ? "bg-destructive/15 text-destructive hover:bg-destructive/20" : "bg-warning/20 text-foreground hover:bg-warning/25"}`}>{etichetta.testo}</Badge>
-      )}
+      {etichetta && (() => {
+        const motivo = motivoRigaProposta({ regola: r.regola, segnalazioni: r.segnalazioni });
+        const badgeClass = motivo ? CLASSI_MOTIVO_RIGA[motivo].badge : "";
+        return <Badge className={`shrink-0 whitespace-nowrap px-1.5 text-[10px] ${badgeClass}`}>{etichetta.testo}</Badge>;
+      })()}
       </div>
       {r.richiestaInCorso && (
         <div className={`mt-1 inline-block max-w-full md:max-w-[380px] whitespace-normal break-words rounded px-2 py-0.5 text-xs font-medium ${STATO_TONE[r.richiestaInCorso.stato as StatoRichiesta] ?? "bg-muted text-muted-foreground"}`}>
@@ -788,13 +795,22 @@ export function ProposteFidoMassivoDialog({
         </Collapsible>
         </div>
         <div data-proposte-elenco className="min-w-0 px-3 py-2 sm:min-h-0 sm:flex-1 sm:overflow-y-auto sm:overflow-x-hidden sm:px-4 sm:py-2">
+        {/* Legenda: colore della riga = motivo principale (fonte unica: motivoRigaProposta). */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pb-2 text-[11px] text-muted-foreground" data-legenda-motivi>
+          {LEGENDA_MOTIVI.map(({ motivo, nome }) => (
+            <span key={motivo} className="flex items-center gap-1.5">
+              <span aria-hidden className={`inline-block size-3 rounded-sm ${CLASSI_MOTIVO_RIGA[motivo].pallino}`} />
+              {nome}
+            </span>
+          ))}
+        </div>
         {/* Schede anche su tablet: la tabella estesa richiede spazio desktop. */}
         <div className="[&>div]:block xl:hidden [&>div>div>div:first-child]:grid [&>div>div>div:first-child]:grid-cols-1 [&>div>div>div:first-child>div:last-child]:justify-end">
         <ElencoSchede>
           {righeVisibili.map((r) => (
               <SchedaLista
                 key={r.cliente_id}
-                className={`${!r.proponibile ? "opacity-60" : ""} ${bordoRiga(r)}`}
+                className={`${!r.proponibile ? "opacity-60" : ""} ${classiRiga(r)}`}
                 selezione={{ checked: r.incluso && r.proponibile, onChange: () => { if (r.proponibile) toggleIncluso(r.cliente_id); } }}
                 titolo={renderCliente(r)}
                 badge={
@@ -835,8 +851,8 @@ export function ProposteFidoMassivoDialog({
             </TableRow></TableHeader>
             <TableBody>
               {righeVisibili.map((r) => (
-                    <TableRow key={r.cliente_id} className={`${!r.proponibile ? "opacity-60" : ""} border-b-2 border-border`}>
-                      <TableCell className={bordoRiga(r)}><Checkbox checked={r.incluso && r.proponibile} disabled={!r.proponibile} onCheckedChange={() => toggleIncluso(r.cliente_id)} aria-label={`Includi ${r.ragione_sociale}`} /></TableCell>
+                    <TableRow key={r.cliente_id} className={`${!r.proponibile ? "opacity-60" : ""} border-b-2 border-border ${classiRiga(r)}`}>
+                      <TableCell className={classiRiga(r)}><Checkbox checked={r.incluso && r.proponibile} disabled={!r.proponibile} onCheckedChange={() => toggleIncluso(r.cliente_id)} aria-label={`Includi ${r.ragione_sociale}`} /></TableCell>
                       <TableCell className="min-w-0">
                         <div className="font-medium">{renderCliente(r)}</div>
                         <div className="mt-1">{renderCorpo(r, "h-10 w-32 px-1 text-xs text-right")}</div>

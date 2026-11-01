@@ -1,4 +1,5 @@
 // FM55 fetta 5: testi brevi della riga della proposta fido massiva (fonte unica, solo presentazione).
+import { motivoRigaProposta, type MotivoRigaProposta } from "@/lib/proposta-fido-visibilita";
 
 const euro = (n: number) => `${new Intl.NumberFormat("it-IT", { maximumFractionDigits: 0, useGrouping: "always" } as unknown as Intl.NumberFormatOptions).format(Math.round(n))} €`;
 
@@ -12,15 +13,63 @@ export function mostraAvvisoFidoZero({ valore, fidoAttuale, regola }: {
   return Number(valore) === 0 && Number(fidoAttuale) > 0;
 }
 
-export type EtichettaRiga = { tono: "rossa" | "arancione"; testo: string } | null;
+export type EtichettaRiga = { tono: "rossa" | "viola" | "arancione" | "grigio"; testo: string } | null;
 
-/** Al massimo una etichetta: rossa "Da autorizzare" vince su arancione "Ordini oltre il fido". */
-export function etichettaRigaProposta(segnalazioni: readonly string[] | null | undefined): EtichettaRiga {
-  const s = segnalazioni ?? [];
-  if (s.includes("oltre_normale")) return { tono: "rossa", testo: "Da autorizzare" };
-  if (s.includes("ordini_oltre_fido")) return { tono: "arancione", testo: "Ordini oltre il fido" };
+/** Al massimo una etichetta, decisa dal motivo vincente (fonte unica: motivoRigaProposta). */
+export function etichettaRigaProposta({ regola, segnalazioni }: {
+  regola: string;
+  segnalazioni?: readonly string[] | null;
+}): EtichettaRiga {
+  const motivo = motivoRigaProposta({ regola, segnalazioni });
+  if (motivo === "scaduto") return { tono: "rossa", testo: "Scaduto non pagato" };
+  if (motivo === "bloccato") return { tono: "grigio", testo: "Bloccato" };
+  if (motivo === "legale") return { tono: "grigio", testo: "In legale" };
+  if (motivo === "da_autorizzare") return { tono: "viola", testo: "Da autorizzare: compra molto più del solito" };
+  if (motivo === "ordini_oltre_fido") return { tono: "arancione", testo: "Ordini oltre il fido" };
   return null;
 }
+
+/** Classi colore della riga e del badge per motivo (token del tema, niente colori fissi). */
+export const CLASSI_MOTIVO_RIGA: Record<Exclude<MotivoRigaProposta, null>, { bordo: string; sfondo: string; badge: string; pallino: string }> = {
+  scaduto: {
+    bordo: "border-l-4 border-l-motivo-scaduto",
+    sfondo: "bg-motivo-scaduto-bg",
+    badge: "bg-motivo-scaduto-bg text-motivo-scaduto hover:bg-motivo-scaduto-bg",
+    pallino: "bg-motivo-scaduto",
+  },
+  bloccato: {
+    bordo: "border-l-4 border-l-motivo-bloccato",
+    sfondo: "bg-motivo-bloccato-bg",
+    badge: "bg-motivo-bloccato-bg text-motivo-bloccato hover:bg-motivo-bloccato-bg",
+    pallino: "bg-motivo-bloccato",
+  },
+  legale: {
+    bordo: "border-l-4 border-l-motivo-bloccato",
+    sfondo: "bg-motivo-bloccato-bg",
+    badge: "bg-motivo-bloccato-bg text-motivo-bloccato hover:bg-motivo-bloccato-bg",
+    pallino: "bg-motivo-bloccato",
+  },
+  da_autorizzare: {
+    bordo: "border-l-4 border-l-motivo-autorizzare",
+    sfondo: "bg-motivo-autorizzare-bg",
+    badge: "bg-motivo-autorizzare-bg text-motivo-autorizzare hover:bg-motivo-autorizzare-bg",
+    pallino: "bg-motivo-autorizzare",
+  },
+  ordini_oltre_fido: {
+    bordo: "border-l-4 border-l-motivo-ordini",
+    sfondo: "bg-motivo-ordini-bg",
+    badge: "bg-motivo-ordini-bg text-motivo-ordini hover:bg-motivo-ordini-bg",
+    pallino: "bg-motivo-ordini",
+  },
+};
+
+/** Legenda dei quattro motivi colorati, in cima all'elenco. */
+export const LEGENDA_MOTIVI: { motivo: Exclude<MotivoRigaProposta, null>; nome: string }[] = [
+  { motivo: "scaduto", nome: "Scaduto non pagato" },
+  { motivo: "bloccato", nome: "Bloccato o in legale" },
+  { motivo: "da_autorizzare", nome: "Da autorizzare" },
+  { motivo: "ordini_oltre_fido", nome: "Ordini oltre il fido" },
+];
 
 /** Una sola frase del perché; la spiegazione completa resta nei dettagli. */
 export function fraseBreveProposta(t: {

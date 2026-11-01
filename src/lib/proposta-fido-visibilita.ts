@@ -55,12 +55,33 @@ export function inclusoInizialeProposta({ proponibile, rossa, regola, fidoAttual
   fidoProposto: number;
   segnalazioni?: readonly string[] | null;
 }): boolean {
-  const azzeramentoBloccatoLegale = (regola === "cliente_bloccato" || regola === "gestione_legale")
+  // La spunta non segue la priorità del colore: bloccato/legale resta spuntato
+  // anche se vince lo scaduto; lo scaduto toglie la spunta solo agli altri clienti.
+  const azzeramentoBloccatoLegale = (regola === "cliente_bloccato" || regola === "gestione_legale" || !!segnalazioni?.includes("bloccato"))
     && fidoAttuale > 0 && fidoProposto === 0;
-  const azzeramentoScaduto = (regola === "scaduto_non_incassato" || !!segnalazioni?.includes("scaduto_non_incassato"))
-    && fidoAttuale > 0 && fidoProposto === 0;
+  const azzeramentoScaduto = motivoRigaProposta({ regola, segnalazioni }) === "scaduto" && fidoAttuale > 0 && fidoProposto === 0;
   if (azzeramentoScaduto && !azzeramentoBloccatoLegale) return false;
   return proponibile && (!rossa || azzeramentoBloccatoLegale);
+}
+
+/**
+ * Motivo principale della riga (fonte unica: colore, etichetta e spunta iniziale).
+ * Priorità se più motivi: scaduto > bloccato/legale > da autorizzare > ordini.
+ * Il motivo vincente decide colore ed etichetta; gli altri restano solo nei dettagli.
+ */
+export type MotivoRigaProposta = "scaduto" | "bloccato" | "legale" | "da_autorizzare" | "ordini_oltre_fido" | null;
+
+export function motivoRigaProposta({ regola, segnalazioni }: {
+  regola: string;
+  segnalazioni?: readonly string[] | null;
+}): MotivoRigaProposta {
+  const s = segnalazioni ?? [];
+  if (regola === "scaduto_non_incassato" || s.includes("scaduto_non_incassato")) return "scaduto";
+  if (regola === "cliente_bloccato" || s.includes("bloccato")) return "bloccato";
+  if (regola === "gestione_legale") return "legale";
+  if (s.includes("oltre_normale")) return "da_autorizzare";
+  if (s.includes("ordini_oltre_fido")) return "ordini_oltre_fido";
+  return null;
 }
 
 /** Evidenza "Controlla": riga con segnalazioni arancioni/rosse (fonti: segnalazioniAnomalia/anomaliaRossa). */

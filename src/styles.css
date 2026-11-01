@@ -39,6 +39,15 @@
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
+  /* Motivi riga proposta fido massiva (fonte: motivoRigaProposta) */
+  --color-motivo-scaduto: var(--motivo-scaduto);
+  --color-motivo-scaduto-bg: var(--motivo-scaduto-bg);
+  --color-motivo-autorizzare: var(--motivo-autorizzare);
+  --color-motivo-autorizzare-bg: var(--motivo-autorizzare-bg);
+  --color-motivo-ordini: var(--motivo-ordini);
+  --color-motivo-ordini-bg: var(--motivo-ordini-bg);
+  --color-motivo-bloccato: var(--motivo-bloccato);
+  --color-motivo-bloccato-bg: var(--motivo-bloccato-bg);
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
 }
 
@@ -90,6 +99,16 @@
   --sidebar-accent: oklch(0.3 0.05 257);
   --sidebar-accent-foreground: oklch(0.98 0 0);
   --sidebar-border: oklch(0.32 0.04 257);
+
+  /* Motivi riga proposta fido massiva: bordo + sfondo chiarissimo, contrasto leggibile */
+  --motivo-scaduto: oklch(0.58 0.22 27);
+  --motivo-scaduto-bg: oklch(0.97 0.015 27);
+  --motivo-autorizzare: oklch(0.5 0.18 295);
+  --motivo-autorizzare-bg: oklch(0.96 0.02 295);
+  --motivo-ordini: oklch(0.68 0.15 55);
+  --motivo-ordini-bg: oklch(0.96 0.02 70);
+  --motivo-bloccato: oklch(0.55 0.01 257);
+  --motivo-bloccato-bg: oklch(0.96 0.005 247);
 }
 
 @layer base {

@@ -36,10 +36,10 @@ describe("FM55 fetta 5 — avviso fido a zero", () => {
 });
 
 describe("FM55 fetta 5 — riga semplice", () => {
-  test("una sola etichetta, la rossa vince", () => {
-    expect(etichettaRigaProposta(["oltre_normale", "ordini_oltre_fido"])).toEqual({ tono: "rossa", testo: "Da autorizzare" });
-    expect(etichettaRigaProposta(["ordini_oltre_fido"])).toEqual({ tono: "arancione", testo: "Ordini oltre il fido" });
-    expect(etichettaRigaProposta([])).toBeNull();
+  test("una sola etichetta, decisa dal motivo vincente", () => {
+    expect(etichettaRigaProposta({ regola: "calcolo", segnalazioni: ["oltre_normale", "ordini_oltre_fido"] })).toEqual({ tono: "viola", testo: "Da autorizzare: compra molto più del solito" });
+    expect(etichettaRigaProposta({ regola: "calcolo", segnalazioni: ["ordini_oltre_fido"] })).toEqual({ tono: "arancione", testo: "Ordini oltre il fido" });
+    expect(etichettaRigaProposta({ regola: "calcolo", segnalazioni: [] })).toBeNull();
   });
   test("frasi brevi", () => {
     expect(fraseBreveProposta({ regola_applicata: "scaduto_non_incassato", scaduto_oltre: 1566, scaduto_oltre_giorni: 32 }, 2000, 0))
