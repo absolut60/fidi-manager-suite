@@ -340,10 +340,9 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
                 titolo={renderCliente(a)}
                 badge={<Badge variant="outline" className="shrink-0">{etichettaAvviso(a)}</Badge>}
                 campi={[
+                  { etichetta: "Fido", valore: renderNumeri(a) },
                   { etichetta: "Perché", valore: renderPerche(a) },
-                  { etichetta: "Fido in Gamma", valore: formatEuro(a.fido_gamma) },
-                  { etichetta: "Cosa fare", valore: renderCosaFare(a) },
-                  ...(renderRichiesta(a) ? [{ etichetta: "Richiesta", valore: renderRichiesta(a) }] : []),
+                  ...(renderDecisione(a) ? [{ etichetta: "Ultima decisione", valore: renderDecisione(a) }] : []),
                   { etichetta: "Alert dal", valore: formatDate(a.aperto_il) },
                 ]}
                 footer={renderAzioni(a)}
@@ -359,13 +358,14 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
                     disabled={selezionabiliVisibili.length === 0} onCheckedChange={() => toggleTutti(!tuttiSel)}
                     aria-label="Seleziona tutti" />
                 </TableHead>
-                <TableHead className="w-[19%]">Cliente</TableHead>
-                <TableHead className="w-[22%]">Perché</TableHead>
-                <TableHead className="w-28 text-right">Fido in Gamma</TableHead>
-                <TableHead>Cosa fare</TableHead>
-                <TableHead className="w-[12%]">Richiesta</TableHead>
+                <TableHead className="w-[17%]">Cliente</TableHead>
+                <TableHead>Perché</TableHead>
+                <TableHead className="w-24 text-right">Fido Gamma</TableHead>
+                <TableHead className="w-24 text-right">Ci deve</TableHead>
+                <TableHead className="w-28 text-right">Fido teorico</TableHead>
+                <TableHead className="w-[13%]">Ultima decisione</TableHead>
                 <TableHead className="w-24">Alert dal</TableHead>
-                <TableHead className="w-40">Azioni</TableHead>
+                <TableHead className="w-28">Azioni</TableHead>
               </TableRow></TableHeader>
               <TableBody>
                 {visibili.map((a) => (
@@ -377,10 +377,14 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
                       )}
                     </TableCell>
                     <TableCell className="align-top whitespace-normal">{renderCliente(a)}</TableCell>
-                    <TableCell className="align-top whitespace-normal">{renderPerche(a)}</TableCell>
-                    <TableCell className="align-top text-right tabular-nums">{formatEuro(a.fido_gamma)}</TableCell>
-                    <TableCell className="align-top whitespace-normal">{renderCosaFare(a)}</TableCell>
-                    <TableCell className="align-top whitespace-normal">{renderRichiesta(a)}</TableCell>
+                    <TableCell className="align-top whitespace-normal">
+                      <Badge variant="outline" className="mb-1 whitespace-normal">{etichettaAvviso(a)}</Badge>
+                      {renderPerche(a)}
+                    </TableCell>
+                    <TableCell className="align-top text-right tabular-nums">{formatEuro(fidoGammaAlert(a))}</TableCell>
+                    <TableCell className="align-top text-right tabular-nums">{formatEuro(debitoOggi(a))}</TableCell>
+                    <TableCell className="align-top whitespace-normal text-right">{renderTeorico(a)}</TableCell>
+                    <TableCell className="align-top whitespace-normal">{renderDecisione(a)}</TableCell>
                     <TableCell className="align-top">{formatDate(a.aperto_il)}</TableCell>
                     <TableCell className="align-top whitespace-normal">{renderAzioni(a)}</TableCell>
                   </TableRow>
