@@ -29,5 +29,5 @@ function P() {
     qc.setQueryData(["condizioni-clienti-massivo", k], new Map());
     return true;
   });
-  return ok ? <ProposteFidoMassivoDialog open onOpenChange={() => {}} selectedRows={C as any} userId="u" onSuccess={() => {}} onRemove={() => {}} mostraSempre={new Set(["a", "b", "c"]) as any} /> : null;
+  return ok ? <ProposteFidoMassivoDialog open onOpenChange={() => {}} selectedRows={C as any} userId="u" onSuccess={() => {}} onRemove={() => {}} mostraSempre={["a", "b", "c"]} /> : null;
 }
