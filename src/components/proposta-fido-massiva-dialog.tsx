@@ -758,7 +758,7 @@ export function ProposteFidoMassivoDialog({
                 {vociNascoste.map((testo) => <li key={testo}>{testo}</li>)}
                 {riepilogoVis.nonProponibiliTotale > 0 && <li>{fmtN(riepilogoVis.nonProponibiliTotale)} clienti non si possono proporre: {vociNonProponibili.join(" · ")}</li>}
               </ul>
-            </div>
+            </details>
           )}
         </div>
 
