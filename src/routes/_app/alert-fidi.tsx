@@ -18,7 +18,7 @@ import { formatEuro, formatDate } from "@/lib/fidi";
 import { fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, isProponibile, notaExtraProtetto } from "@/lib/fido-teorico";
 import { SemaforoPallino } from "@/components/semaforo-pallino";
 import { fetchUltimiLasciati } from "@/lib/revisione-fidi";
-import { puoVedereAlertFidi, puoProporreDaAlertFidi } from "@/lib/permessi-fidi";
+import { puoVedereAreaFidi, puoProporreDaAlertFidi } from "@/lib/permessi-fidi";
 // FM55: colore/etichetta delle righe Alert fidi = stessa fonte della proposta massiva
 // (motivoRigaProposta per il motivo, CLASSI_MOTIVO_RIGA/LEGENDA_MOTIVI per i colori del tema).
 import { motivoRigaProposta, type MotivoRigaProposta } from "@/lib/proposta-fido-visibilita";
@@ -55,7 +55,7 @@ function AlertFidiPage() {
     return <div className="mx-auto w-full max-w-7xl p-4"><Skeleton className="h-40 w-full" /></div>;
   }
   // Regola unica di visibilità e azioni: src/lib/permessi-fidi.ts.
-  if (!puoVedereAlertFidi(roles as string[])) {
+  if (!puoVedereAreaFidi(roles as string[])) {
     return (
       <div className="mx-auto w-full max-w-3xl p-4">
         <Card className="p-6 text-center">
