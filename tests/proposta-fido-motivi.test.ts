@@ -15,7 +15,8 @@ describe("Rinnovi da guardare per motivo", () => {
       inAlertOAnomalia: i < 37,
     }));
     const conto = riepilogoVisibilita(righe, filtri, new Set());
-    expect(conto.nascosti.rinnovo).toBe(586);
+    expect(conto.nascosti.rinnovo).toBe(549);
+    expect(conto.tipiSpenti.rinnovo_da_guardare).toBe(37);
     expect(conto.daDecidere).toBe(37);
     expect(conto.daDeciderePerMotivo).toEqual({
       [etichetteSegnalazioni(["impegni_sopra_base"])[0]]: 30,
@@ -28,13 +29,13 @@ describe("Rinnovi da guardare per motivo", () => {
     expect(conto.daDecidere).toBe(1);
     expect(Object.values(conto.daDeciderePerMotivo)).toEqual([1, 1]);
   });
-  it("non conta rinnovi visibili, richieste in corso o non proponibili", () => {
+  it("conta anche rinnovi visibili, ma non richieste in corso o non proponibili", () => {
     const righe = [riga("visibile", ["oltre_tetto"]),
       { ...riga("in-corso", ["oltre_tetto"]), richiestaInCorso: {} },
       { ...riga("escluso", ["scaduto_non_incassato"]), proponibile: false }];
     const conto = riepilogoVisibilita(righe, filtri, new Set(), new Set(["visibile"]));
-    expect(conto.daDecidere).toBe(0);
-    expect(conto.daDeciderePerMotivo).toEqual({});
+    expect(conto.daDecidere).toBe(1);
+    expect(conto.daDeciderePerMotivo).toEqual({ [etichetteSegnalazioni(["oltre_tetto"])[0]]: 1 });
   });
   it("nessun motivo a zero e codici sconosciuti ignorati", () => {
     const conto = riepilogoVisibilita([riga("s", ["scaduto_non_incassato", "sconosciuto"])], filtri, new Set());

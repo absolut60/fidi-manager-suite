@@ -16,12 +16,12 @@ describe("proposta massiva pratica (31/10)", () => {
     expect(r.daDecidere).toBe(1);
     expect(r.visibili).toBe(1);
   });
-  it("rinnovo in mostraSempre visibile e non contato in daDecidere", () => {
+  it("rinnovo in mostraSempre visibile e contato nella categoria da guardare", () => {
     const righe = [riga("a", "rinnovo", { inAlertOAnomalia: true })];
     expect(righeVisibiliProposta(righe, filtri, new Set(), new Set(["a"]))).toHaveLength(1);
     const r = riepilogoVisibilita(righe, filtri, new Set(), new Set(["a"]));
     expect(r.visibili).toBe(1);
-    expect(r.daDecidere).toBe(0);
+    expect(r.daDecidere).toBe(1);
   });
   it("selezione multipla di rinnovi da Alert fidi (mostraSempre): tutte visibili", () => {
     const righe = [
@@ -33,10 +33,10 @@ describe("proposta massiva pratica (31/10)", () => {
     expect(righeVisibiliProposta(righe, filtri, new Set(), scelti).map((r) => r.cliente_id)).toEqual(["a", "b", "c"]);
     const r = riepilogoVisibilita(righe, filtri, new Set(), scelti);
     expect(r.visibili).toBe(3);
-    expect(r.daDecidere).toBe(0);
+    expect(r.daDecidere).toBe(2);
   });
   it("con Rinnovo riacceso i rinnovi si vedono", () => {
-    const f = { ...filtri, tipi: [...filtri.tipi, "rinnovo"] };
+    const f = { ...filtri, tipi: [...filtri.tipi, "rinnovo_da_guardare"] };
     expect(righeVisibiliProposta([riga("a", "rinnovo", { inAlertOAnomalia: true })], f, new Set())).toHaveLength(1);
   });
   it("tutte le righe proponibili spuntate all'apertura, anche con anomalie", () => {

@@ -1,4 +1,5 @@
 import { SegnalazioniFido } from "@/components/segnalazioni-fido";
+import { SemaforoPallino } from "@/components/semaforo-pallino";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, MessageSquare, X } from "lucide-react";
@@ -17,7 +18,7 @@ import {
   type StatoRichiesta, type TipoRichiesta,
   extraFidoTeorico, motivoExtraObbligatorio,
 } from "@/lib/fidi";
-import { daValutareProposta, righeVisibiliProposta, riepilogoVisibilita, inclusoInizialeProposta, livelloControlloProposta, type LivelloControllo } from "@/lib/proposta-fido-visibilita";
+import { daValutareProposta, categoriaProposta, CATEGORIE_PROPOSTA_DEFAULT, testoMotivoDaGuardare, righeVisibiliProposta, riepilogoVisibilita, inclusoInizialeProposta, livelloControlloProposta, type CategoriaProposta, type LivelloControllo } from "@/lib/proposta-fido-visibilita";
 import { segnalazioniAnomalia, anomaliaRossa } from "@/lib/fido-segnalazioni";
 import { Switch } from "@/components/ui/switch";
 import { CampoExtraTeorico } from "@/components/extra-fido-teorico";
@@ -36,7 +37,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { etichetteSegnalazioni } from "@/lib/fido-segnalazioni";
 
 // Dialog "Proposta fido massiva" (spostato da src/routes/_app/clienti.tsx senza cambiare comportamento).
 // selectedRows: righe clienti con almeno id, store_id, ragione_sociale, totale_rischio e FIDO_CLIENTE_SELECT.
@@ -128,7 +128,6 @@ type RigaProposta = {
 
 type TipoProposta = RigaProposta["tipo"];
 const TIPI_PROPOSTA: TipoProposta[] = ["nuovo_fido", "aumento", "diminuzione", "rinnovo"];
-const TIPI_DEFAULT: TipoProposta[] = ["nuovo_fido", "aumento", "diminuzione"];
 
 async function fetchRichiesteInCorso(ids: string[]): Promise<Map<string, NonNullable<RigaProposta["richiestaInCorso"]>>> {
   const map = new Map<string, NonNullable<RigaProposta["richiestaInCorso"]>>();
@@ -201,7 +200,7 @@ export function ProposteFidoMassivoDialog({
   const [tipoForzato, setTipoForzato] = useState<"auto" | "nuovo_fido" | "aumento" | "diminuzione" | "rinnovo">("auto");
   const [motivazioneGenerale, setMotivazioneGenerale] = useState<string>(MOTIVAZIONE_DEFAULT);
   const [righe, setRighe] = useState<RigaProposta[]>([]);
-  const [filtroTipi, setFiltroTipi] = useState<TipoProposta[]>(TIPI_DEFAULT);
+  const [filtroTipi, setFiltroTipi] = useState<CategoriaProposta[]>(CATEGORIE_PROPOSTA_DEFAULT);
   const [submitting, setSubmitting] = useState(false);
   // Righe modificate dall'utente: restano visibili finché non cambiano i filtri.
   const [toccate, setToccate] = useState<Set<string>>(() => new Set());
@@ -324,7 +323,7 @@ export function ProposteFidoMassivoDialog({
           nota_proposta: t?.nota_proposta ?? "",
           motivazione_auto: t?.profilo ? MOTIVAZIONE_PROFILO_FIDO[t.profilo] : undefined,
           proponibile,
-          incluso: inclusoInizialeProposta(proponibile),
+          incluso: inclusoInizialeProposta(proponibile, anomaliaRossa(t?.segnalazioni)),
           inAlertOAnomalia,
           segnalazioni: t?.segnalazioni ?? [],
           alertAperto: alertAperti.has(c.id),
@@ -407,7 +406,7 @@ export function ProposteFidoMassivoDialog({
     const n = riepilogoVis.nascosti;
     const v: string[] = [];
     if (n.in_corso > 0) v.push(`Non vedi ${fmtN(n.in_corso)} clienti che hanno già una richiesta in corso.`);
-    const nomi: Record<string, string> = { aumento: "aumenti", diminuzione: "riduzioni", nuovo_fido: "nuovi fidi" };
+    const nomi: Record<string, string> = { aumento: "aumenti", diminuzione: "riduzioni", nuovo_fido: "nuovi fidi", rinnovo_da_guardare: "fidi invariati da guardare" };
     for (const [tipo, numero] of Object.entries(riepilogoVis.tipiSpenti)) {
       if (numero > 0) v.push(`Non vedi ${fmtN(numero)} ${nomi[tipo] ?? tipo}: hai tolto la spunta in «Cosa vuoi mandare».`);
     }
@@ -423,8 +422,9 @@ export function ProposteFidoMassivoDialog({
   const nModificate = righeVisibiliIncluse.filter((r) => Number(r.fido_proposto) !== Number(r.fido_iniziale)).length;
   const righeConExtra = righeVisibiliIncluse.filter((r) => motivoExtraObbligatorio(r.fido_proposto, r.fido_teorico));
   const totaleExtra = righeConExtra.reduce((acc, r) => acc + extraFidoTeorico(r.fido_proposto, r.fido_teorico), 0);
-  const tipoCount = (t: TipoProposta) => righe.filter((r) => r.tipo === t).length;
-  function toggleTipo(t: TipoProposta) {
+  const tipoCount = (t: CategoriaProposta) => t === "rinnovo_da_guardare" ? riepilogoVis.daDecidere
+    : t === "rinnovo" ? riepilogoVis.altriRinnovi : righeConInCorso.filter((r) => r.proponibile && !r.richiestaInCorso && categoriaProposta(r) === t).length;
+  function toggleTipo(t: CategoriaProposta) {
     setFiltroTipi((prev) => prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]);
   }
 
@@ -520,7 +520,10 @@ export function ProposteFidoMassivoDialog({
   const renderCliente = (r: RigaProposta) => (
     <>
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-1">
-      <span className="min-w-0 break-words line-clamp-2" title={r.ragione_sociale}>{r.ragione_sociale}</span>
+      <span className="flex min-w-0 items-start gap-2">
+        <SemaforoPallino cliente={{ fido_teorico_cliente: teoricoMap?.get(r.cliente_id) }} className="mt-1" />
+        <span className="min-w-0 break-words line-clamp-2" title={r.ragione_sociale}>{r.ragione_sociale}</span>
+      </span>
       {r.proponibile && r.controllo && (
         <Badge className={`shrink-0 whitespace-nowrap px-1 text-[10px] ${r.controllo === "rossa" ? "bg-destructive/15 text-destructive hover:bg-destructive/20" : "bg-warning/20 text-foreground hover:bg-warning/25"}`} title="Ci sono segnalazioni: controlla prima di creare la richiesta">Controlla</Badge>
       )}
@@ -705,12 +708,20 @@ export function ProposteFidoMassivoDialog({
         )}
         <fieldset className="min-w-0 py-2">
           <legend className="text-sm font-medium">Cosa vuoi mandare?</legend>
-          <div className="grid grid-cols-2 xl:grid-cols-4 gap-x-2 sm:gap-x-3">
-            {([ ["aumento", "Aumenti"], ["diminuzione", "Riduzioni (anche a zero)"], ["nuovo_fido", "Nuovi fidi"], ["rinnovo", "Fido invariato (rinnovi)"] ] as [TipoProposta, string][]).map(([tipo, nome]) => (
-              <label key={tipo} className="flex min-h-10 min-w-0 items-center gap-2 text-xs">
+          <div className="grid grid-cols-2 xl:grid-cols-5 gap-x-2 sm:gap-x-3">
+            {([ ["aumento", "Aumenti"], ["diminuzione", "Riduzioni (anche a zero)"], ["nuovo_fido", "Nuovi fidi"], ["rinnovo_da_guardare", "Fido invariato da guardare"], ["rinnovo", "Altri fidi invariati"] ] as [CategoriaProposta, string][]).map(([tipo, nome]) => (
+              <div key={tipo} className={`min-w-0 ${tipo === "rinnovo_da_guardare" ? "col-span-2 xl:col-span-1" : ""}`}>
+              <label className="flex min-h-10 min-w-0 items-center gap-2 text-xs">
                 <Checkbox checked={filtroTipi.includes(tipo)} onCheckedChange={() => toggleTipo(tipo)} aria-label={nome} />
                 <span className="break-words">{nome} ({tipoCount(tipo)})</span>
               </label>
+              {tipo === "rinnovo_da_guardare" && riepilogoVis.daDecidere > 0 && (
+                <p className="pl-6 text-[11px] leading-4 text-muted-foreground break-words">
+                  {Object.entries(riepilogoVis.daDeciderePerMotivo).filter(([, n]) => n > 0)
+                    .map(([motivo, n]) => `${fmtN(n)} ${testoMotivoDaGuardare(motivo, n)}`).join(" · ")}
+                </p>
+              )}
+              </div>
             ))}
           </div>
         </fieldset>
@@ -739,22 +750,7 @@ export function ProposteFidoMassivoDialog({
               <ul className="ml-4 list-disc">
                 {riepilogoVis.nascosti.rinnovo > 0 && (
                   <li>
-                    Non vedi {fmtN(riepilogoVis.nascosti.rinnovo)} clienti con fido invariato: non cambia niente, non serve mandarli.
-                    {riepilogoVis.daDecidere > 0 && <>
-                      <p className="mt-1">Tra questi, {fmtN(riepilogoVis.daDecidere)} da guardare, perché il sistema non aumenta da solo e decidi tu:</p>
-                      <ul className="ml-4 list-disc">
-                        {Object.entries(riepilogoVis.daDeciderePerMotivo).filter(([, numero]) => numero > 0).map(([motivo, numero]) => {
-                          const acquisti = etichetteSegnalazioni(["impegni_sopra_base"])[0];
-                          const scaduti = etichetteSegnalazioni(["scaduto_non_incassato", "scaduto_da_incassare"]);
-                          const testo = motivo === "alert_aperto" ? "hanno quasi finito il fido (alert aperto)"
-                            : motivo === acquisti ? `comprano più del solito (${motivo})`
-                            : scaduti.includes(motivo) ? `ha${numero === 1 ? "" : "nno"} scaduto non pagato (${motivo})`
-                            : motivo;
-                          return <li key={motivo}>{fmtN(numero)} {testo}</li>;
-                        })}
-                      </ul>
-                      <p className="mt-1">Spunta «Fido invariato» per vederli qui e, se vuoi, dare un extra.</p>
-                    </>}
+                    Non vedi {fmtN(riepilogoVis.nascosti.rinnovo)} altri clienti con fido invariato e niente da guardare: non serve mandarli.
                   </li>
                 )}
                 {vociNascoste.map((testo) => <li key={testo}>{testo}</li>)}

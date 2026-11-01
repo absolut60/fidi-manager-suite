@@ -6,8 +6,11 @@ import { etichetteSegnalazioni, segnalazioniAnomalia } from "@/lib/fido-segnalaz
  * non cambiano i filtri: così una riga non sparisce mentre la si modifica.
  */
 export interface FiltriProposta<T extends string = string> {
-  tipi: T[];
+  tipi: (T | "rinnovo_da_guardare")[];
 }
+
+export type CategoriaProposta = "nuovo_fido" | "aumento" | "diminuzione" | "rinnovo_da_guardare" | "rinnovo";
+export const CATEGORIE_PROPOSTA_DEFAULT: CategoriaProposta[] = ["aumento", "diminuzione", "nuovo_fido", "rinnovo_da_guardare"];
 
 export interface RigaVisibilita<T extends string = string> {
   cliente_id: string;
@@ -21,9 +24,13 @@ export interface RigaVisibilita<T extends string = string> {
   alertAperto?: boolean;
 }
 
-/** Rinnovi nascosti con alert o anomalie, contati nel riepilogo. */
+/** Rinnovi con alert o anomalie: categoria di visibilità, mai un nuovo tipo richiesta. */
 export function daValutareProposta<T extends string>(r: RigaVisibilita<T>): boolean {
   return r.tipo === "rinnovo" && !!r.inAlertOAnomalia;
+}
+
+export function categoriaProposta<T extends string>(r: RigaVisibilita<T>): T | "rinnovo_da_guardare" {
+  return daValutareProposta(r) ? "rinnovo_da_guardare" : r.tipo;
 }
 
 export function passaFiltriProposta<T extends string>(r: RigaVisibilita<T>, f: FiltriProposta<T>): boolean {
@@ -37,9 +44,9 @@ export function righeVisibiliProposta<T extends string, R extends RigaVisibilita
   return righe.filter((r) => !r.richiestaInCorso && (toccate.has(r.cliente_id) || !!mostraSempre?.has(r.cliente_id) || passaFiltriProposta(r, filtri)));
 }
 
-/** Spunta iniziale: tutte le righe proponibili partono incluse, anche con anomalie. */
-export function inclusoInizialeProposta(proponibile: boolean): boolean {
-  return proponibile;
+/** Le segnalazioni rosse richiedono una selezione esplicita dell'utente. */
+export function inclusoInizialeProposta(proponibile: boolean, rossa = false): boolean {
+  return proponibile && !rossa;
 }
 
 /** Evidenza "Controlla": riga con segnalazioni arancioni/rosse (fonti: segnalazioniAnomalia/anomaliaRossa). */
@@ -56,15 +63,17 @@ export function motivoNascostoProposta<T extends string>(
   r: RigaVisibilita<T>, f: FiltriProposta<T>,
 ): MotivoNascosto | null {
   if (r.richiestaInCorso) return "in_corso";
-  if (!f.tipi.includes(r.tipo)) return r.tipo === "rinnovo" ? "rinnovo" : "tipo_spento";
+  const categoria = categoriaProposta(r);
+  if (!f.tipi.includes(categoria)) return categoria === "rinnovo" ? "rinnovo" : "tipo_spento";
   return null;
 }
 
 export interface RiepilogoVisibilita {
   totale: number;
   visibili: number;
-  /** Rinnovi nascosti con alert o anomalie, senza richiesta in corso. */
+  /** Rinnovi da guardare proponibili, senza richiesta in corso, anche quando visibili. */
   daDecidere: number;
+  altriRinnovi: number;
   /** Gruppi canonici senza duplicati per cliente; alert aperti contati separatamente. */
   daDeciderePerMotivo: Record<string, number>;
   nascosti: Record<MotivoNascosto, number>;
@@ -83,23 +92,37 @@ export function riepilogoVisibilita<T extends string, R extends RigaVisibilita<T
   const tipiSpenti: Record<string, number> = {};
   const nonProponibili: Record<string, number> = {};
   const daDeciderePerMotivo: Record<string, number> = {};
-  let visibili = 0, daDecidere = 0, nonProponibiliTotale = 0;
+  let visibili = 0, daDecidere = 0, altriRinnovi = 0, nonProponibiliTotale = 0;
   for (const r of righe) {
     if (!r.proponibile) {
       nonProponibili[r.regola] = (nonProponibili[r.regola] ?? 0) + 1;
       nonProponibiliTotale++;
       continue;
     }
-    const m = r.richiestaInCorso ? "in_corso" : toccate.has(r.cliente_id) || mostraSempre?.has(r.cliente_id) ? null : motivoNascostoProposta(r, filtri);
-    if (!m) { visibili++; continue; }
-    if (m === "rinnovo" && daValutareProposta(r)) {
+    if (!r.richiestaInCorso && daValutareProposta(r)) {
       daDecidere++;
       const motivi = etichetteSegnalazioni(segnalazioniAnomalia(r.segnalazioni));
       if (r.alertAperto) motivi.push("alert_aperto");
       for (const motivo of motivi) daDeciderePerMotivo[motivo] = (daDeciderePerMotivo[motivo] ?? 0) + 1;
     }
+    if (!r.richiestaInCorso && categoriaProposta(r) === "rinnovo") altriRinnovi++;
+    const m = r.richiestaInCorso ? "in_corso" : toccate.has(r.cliente_id) || mostraSempre?.has(r.cliente_id) ? null : motivoNascostoProposta(r, filtri);
+    if (!m) { visibili++; continue; }
     nascosti[m]++;
-    if (m === "tipo_spento") tipiSpenti[r.tipo] = (tipiSpenti[r.tipo] ?? 0) + 1;
+    if (m === "tipo_spento") {
+      const categoria = categoriaProposta(r);
+      tipiSpenti[categoria] = (tipiSpenti[categoria] ?? 0) + 1;
+    }
   }
-  return { totale: righe.length, visibili, daDecidere, daDeciderePerMotivo, nascosti, tipiSpenti, nonProponibili, nonProponibiliTotale };
+  return { totale: righe.length, visibili, daDecidere, altriRinnovi, daDeciderePerMotivo, nascosti, tipiSpenti, nonProponibili, nonProponibiliTotale };
+}
+
+/** Frasi brevi per i gruppi canonici, senza copiare la classificazione delle segnalazioni. */
+export function testoMotivoDaGuardare(motivo: string, numero: number): string {
+  const singolare = numero === 1;
+  if (motivo === "alert_aperto") return singolare ? "ha quasi finito il fido (alert aperto)" : "hanno quasi finito il fido (alert aperto)";
+  if (etichetteSegnalazioni(["impegni_sopra_base"]).includes(motivo)) return `${singolare ? "compra" : "comprano"} più del solito (${motivo})`;
+  if (etichetteSegnalazioni(["scaduto_non_incassato", "scaduto_da_incassare"]).includes(motivo)) return `${singolare ? "ha" : "hanno"} scaduto non pagato`;
+  if (etichetteSegnalazioni(["bloccato"]).includes(motivo)) return singolare ? "è bloccato" : "sono bloccati";
+  return motivo;
 }

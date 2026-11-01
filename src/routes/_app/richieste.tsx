@@ -57,6 +57,7 @@ import { RICHIESTA_FIDO_SELECT, mapRichiestaFido, importoPerEtichettaTipo } from
 import { CambioCondizionePagamento } from "@/components/cambio-condizione-pagamento";
 import { PannelloRischioCliente } from "@/components/pannello-rischio-cliente";
 import { semaforoUI, semaforoDaCliente } from "@/lib/semaforo-ui";
+import { SemaforoPallino } from "@/components/semaforo-pallino";
 import { SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 import { BadgeExtraTeorico } from "@/components/extra-fido-teorico";
 import { RichiestaFormDialog } from "@/components/richiesta-fido-form-dialog";
@@ -67,6 +68,13 @@ import { inviaBozzeInApprovazione, decidiRichiesteInBlocco, type EsitoDecisione 
 const TAB_RICHIESTE = ["bozze", "in_approvazione", "approvate", "rifiutate", "tutto"] as const;
 
 export const Route = createFileRoute("/_app/richieste")({
+  head: () => ({ meta: [
+    { title: "Richieste fido | FidiManager" },
+    { name: "description", content: "Richieste di fido, bozze, approvazioni e storico MADE." },
+    { property: "og:title", content: "Richieste fido | FidiManager" },
+    { property: "og:description", content: "Richieste di fido, bozze, approvazioni e storico MADE." },
+    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
+  ] }),
   validateSearch: (s: Record<string, unknown>): { tab?: (typeof TAB_RICHIESTE)[number] } => {
     const t = s.tab;
     return typeof t === "string" && (TAB_RICHIESTE as readonly string[]).includes(t)
@@ -87,24 +95,6 @@ function attesaTone(g: number): string {
   if (g < 7) return "bg-success/15 text-success";
   if (g <= 14) return "bg-warning/15 text-warning";
   return "bg-destructive/15 text-destructive";
-}
-
-/** Pallino rischio (semaforo affidabilita') con tooltip label + motivo. */
-function SemaforoPallino({ cliente, className = "" }: { cliente: any; className?: string }) {
-  const sem = semaforoCli(cliente);
-  return (
-    <span
-      className={`inline-block size-2.5 shrink-0 rounded-full ${sem.dotClass} ${className}`}
-      title={`Rischio: ${sem.label} — ${sem.motivo}`}
-      aria-label={`Rischio: ${sem.label}`}
-    />
-  );
-}
-
-/** Semaforo dal valore materializzato in fido_teorico_cliente (fonte unica). */
-function semaforoCli(c: any) {
-  const { stadio, motivo } = semaforoDaCliente(c);
-  return semaforoUI(stadio, motivo);
 }
 
 /** Stato unico dei filtri della pagina Richieste fido. */

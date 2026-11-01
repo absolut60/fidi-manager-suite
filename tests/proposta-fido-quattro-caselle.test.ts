@@ -22,7 +22,7 @@ describe("Cosa vuoi mandare: quattro caselle", () => {
   it("fido invariato: spento di default, visibile se spuntato", () => {
     const r = riga("r", "rinnovo", { inAlertOAnomalia: true });
     expect(passaFiltriProposta(r, filtri)).toBe(false);
-    expect(passaFiltriProposta(r, { tipi: [...filtri.tipi, "rinnovo"] })).toBe(true);
+    expect(passaFiltriProposta(r, { tipi: [...filtri.tipi, "rinnovo_da_guardare"] })).toBe(true);
   });
   it("pagamento immediato e riduzioni a zero seguono solo il tipo", () => {
     const r = riga("zero", "diminuzione", { regola: "pagamento_immediato", fido_proposto: 0 });
@@ -47,9 +47,9 @@ describe("Cosa vuoi mandare: quattro caselle", () => {
       riga("blocco", "aumento", { proponibile: false, regola: "cliente_bloccato" }),
     ];
     const conto = riepilogoVisibilita(righe, { tipi: [] }, new Set());
-    expect(conto.nascosti).toEqual({ rinnovo: 2, in_corso: 1, tipo_spento: 3 });
+    expect(conto.nascosti).toEqual({ rinnovo: 1, in_corso: 1, tipo_spento: 4 });
     expect(conto.daDecidere).toBe(1);
-    expect(conto.tipiSpenti).toEqual({ aumento: 1, diminuzione: 1, nuovo_fido: 1 });
+    expect(conto.tipiSpenti).toEqual({ rinnovo_da_guardare: 1, aumento: 1, diminuzione: 1, nuovo_fido: 1 });
     expect(conto.nonProponibili).toEqual({ cliente_bloccato: 1 });
     expect(conto.nonProponibiliTotale).toBe(1);
     expect(conto.totale).toBe(7);
@@ -61,6 +61,6 @@ describe("Cosa vuoi mandare: quattro caselle", () => {
     const conto = riepilogoVisibilita(righe, filtri, new Set(), scelti);
     expect(conto.visibili).toBe(2);
     expect(conto.nascosti.rinnovo).toBe(0);
-    expect(conto.daDecidere).toBe(0);
+    expect(conto.daDecidere).toBe(1);
   });
 });

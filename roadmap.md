@@ -1,4 +1,7 @@
-# FM55 — Proposta massiva chiara e scorrevole
+# FM55 — Quinta casella e semafori
+- [x] Categoria rinnovi da guardare predefinita, conteggi indipendenti dai filtri e spunta iniziale senza rossi; tipo inviato sempre rinnovo.
+- [x] Cinque caselle, motivi grammaticali e SemaforoPallino condiviso in richieste, massiva e Alert; dati canonici conservati dal normalizzatore.
+- [x] bun test: 133 superati, zero falliti; compilazione OK. Chromium 320/390/768/1280/1920 con 603 righe: ultima modificabile, rossa non spuntata e selezionabile a mano, nessun overflow o errore. Anteprima autenticata senza clienti/alert: invio reale e Safari iOS non verificati.
 - [x] Dettagliare i rinnovi da guardare per motivi usando le segnalazioni canoniche, con quattro nuovi test.
 - [x] Unico scorrimento mobile, dettagli pieghevoli e footer compatto; PC invariato.
 - [x] bun test: 125 superati; verifica Chromium a 320, 390, 768, 1280 e 1920px con 603 clienti di prova, ultima riga raggiungibile. Sessione reale senza clienti; Safari iOS non disponibile nel sandbox.
