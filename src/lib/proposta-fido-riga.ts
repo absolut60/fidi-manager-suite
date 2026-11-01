@@ -1,5 +1,5 @@
 // FM55 fetta 5: testi brevi della riga della proposta fido massiva (fonte unica, solo presentazione).
-import { motivoRigaProposta, type MotivoRigaProposta } from "@/lib/proposta-fido-visibilita";
+import { motivoRigaProposta, motiviRigaProposta, type MotivoRigaProposta } from "@/lib/proposta-fido-visibilita";
 
 export type EtichettaRiga = { tono: "rossa" | "arancione" | "viola" | "azzurra"; testo: string } | null;
 
@@ -9,12 +9,23 @@ export function etichettaRigaProposta({ regola, segnalazioni }: {
   segnalazioni?: readonly string[] | null;
 }): EtichettaRiga {
   const { motivo } = motivoRigaProposta({ regola, segnalazioni });
+  return motivo ? etichettaMotivo(motivo) : null;
+}
+
+/** Un'etichetta per ogni motivo presente, in ordine di priorità (il primo = colore della riga). */
+export function etichetteRigaProposta({ regola, segnalazioni }: {
+  regola: string;
+  segnalazioni?: readonly string[] | null;
+}): { motivo: Exclude<MotivoRigaProposta, null>; tono: NonNullable<EtichettaRiga>["tono"]; testo: string }[] {
+  return motiviRigaProposta({ regola, segnalazioni }).map((m) => ({ motivo: m, ...etichettaMotivo(m) }));
+}
+
+function etichettaMotivo(motivo: Exclude<MotivoRigaProposta, null>): NonNullable<EtichettaRiga> {
   if (motivo === "bloccato") return { tono: "rossa", testo: "Bloccato" };
   if (motivo === "legale") return { tono: "rossa", testo: "In legale" };
   if (motivo === "scaduto") return { tono: "arancione", testo: "Cliente con scaduto" };
   if (motivo === "da_autorizzare") return { tono: "viola", testo: "Da autorizzare: compra molto più del solito" };
-  if (motivo === "ordini_oltre_fido") return { tono: "azzurra", testo: "Ordini oltre il fido" };
-  return null;
+  return { tono: "azzurra", testo: "Ordini oltre il fido" };
 }
 
 /** Classi colore della riga e del badge per motivo (token del tema, niente colori fissi). */

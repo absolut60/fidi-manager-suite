@@ -15,13 +15,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { formatEuro, formatDate } from "@/lib/fidi";
-import { fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchUtentiAnteprimaFidoNuovo, isProponibile } from "@/lib/fido-teorico";
+import { fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchUtentiAnteprimaFidoNuovo, isProponibile, notaExtraProtetto } from "@/lib/fido-teorico";
 import { SemaforoPallino } from "@/components/semaforo-pallino";
 import { fetchUltimiLasciati } from "@/lib/revisione-fidi";
 // FM55: colore/etichetta delle righe Alert fidi = stessa fonte della proposta massiva
 // (motivoRigaProposta per il motivo, CLASSI_MOTIVO_RIGA/LEGENDA_MOTIVI per i colori del tema).
 import { motivoRigaProposta, type MotivoRigaProposta } from "@/lib/proposta-fido-visibilita";
-import { CLASSI_MOTIVO_RIGA, LEGENDA_MOTIVI, etichettaRigaProposta } from "@/lib/proposta-fido-riga";
+import { CLASSI_MOTIVO_RIGA, LEGENDA_MOTIVI } from "@/lib/proposta-fido-riga";
+import { BadgeMotiviRiga, DettagliRiga } from "@/components/badge-motivi-riga";
 
 import {
   fetchAlertFidiAperti, etichettaAvviso, testoOrdiniAlert, teoricoPropostaIniziale, debitoOggi, alertSelezionabile,
@@ -214,13 +215,10 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
     const m = motivoAlert(a);
     return m ? `${CLASSI_MOTIVO_RIGA[m].bordo} ${CLASSI_MOTIVO_RIGA[m].sfondo}` : "";
   };
+  // Un badge per ogni motivo (fonte unica: motiviRigaProposta), il primo = colore della riga.
   const renderEtichettaMotivo = (a: AlertFidoRow) => {
-    const m = motivoAlert(a);
-    if (!m) return null;
     const t = teoricoMap?.get(a.cliente_id);
-    const etichetta = etichettaRigaProposta({ regola: t?.regola_applicata ?? "", segnalazioni: t?.segnalazioni });
-    if (!etichetta) return null;
-    return <Badge className={`shrink-0 whitespace-normal break-words px-1.5 text-[10px] ${CLASSI_MOTIVO_RIGA[m].badge}`}>{etichetta.testo}</Badge>;
+    return <BadgeMotiviRiga regola={t?.regola_applicata ?? ""} segnalazioni={t?.segnalazioni} />;
   };
 
   // Stesso valore che "Apri proposta" precompila (teoricoPropostaIniziale).
@@ -250,12 +248,31 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
   );
   const renderOrdini = (a: AlertFidoRow) => {
     const t = testoOrdiniAlert(a);
-    return t ? <div className="break-words text-xs text-warning">{t}</div> : null;
+    return t ? <div className="break-words text-xs font-medium text-motivo-ordini">{t}</div> : null;
+  };
+  // "▸ dettagli" come nella massiva: spiegazione lunga del fido teorico e protezioni.
+  const renderDettagliAlert = (a: AlertFidoRow) => {
+    const t = teoricoMap?.get(a.cliente_id);
+    const prot = decisioniMap?.get(a.cliente_id);
+    if (!t?.spiegazione && !prot) return null;
+    return (
+      <DettagliRiga>
+        <div className="grid grid-cols-1 gap-1 text-xs">
+          {t?.spiegazione && <p className="min-w-0 break-words text-muted-foreground">{t.spiegazione}</p>}
+          {prot && (
+            <p className={`min-w-0 break-words text-[11px] ${notaExtraProtetto(prot).decaduta ? "font-medium text-destructive" : "text-success"}`}>
+              {notaExtraProtetto(prot).testo}
+            </p>
+          )}
+        </div>
+      </DettagliRiga>
+    );
   };
   const renderPerche = (a: AlertFidoRow, conOrdini = true) => (
     <div className="min-w-0 space-y-0.5">
       <div className="break-words text-sm">{percheAlert(a, teoricoMap?.get(a.cliente_id))}</div>
       {conOrdini && renderOrdini(a)}
+      {renderDettagliAlert(a)}
     </div>
   );
   // "Ultima decisione": solo quando c'è (decisione, già deciso, lasciato così); il badge della richiesta attiva resta.
