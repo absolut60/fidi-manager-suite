@@ -1,7 +1,7 @@
 import { SegnalazioniFido } from "@/components/segnalazioni-fido";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MessageSquare, X } from "lucide-react";
+import { ChevronDown, MessageSquare, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -35,6 +35,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { etichetteSegnalazioni } from "@/lib/fido-segnalazioni";
 
 // Dialog "Proposta fido massiva" (spostato da src/routes/_app/clienti.tsx senza cambiare comportamento).
 // selectedRows: righe clienti con almeno id, store_id, ragione_sociale, totale_rischio e FIDO_CLIENTE_SELECT.
@@ -104,6 +106,8 @@ type RigaProposta = {
   incluso: boolean;
   /** FM55 3C: alert aperto o segnalazione arancione/rossa (regola in proposta-fido-visibilita). */
   inAlertOAnomalia?: boolean;
+  segnalazioni?: string[];
+  alertAperto?: boolean;
   /** Riga da controllare (segnalazioni arancioni/rosse). */
   controllo?: LivelloControllo;
   tipo: "nuovo_fido" | "aumento" | "diminuzione" | "rinnovo";
@@ -184,6 +188,15 @@ export function ProposteFidoMassivoDialog({
 }) {
   const mostraSempreSet = useMemo(() => new Set(mostraSempre ?? []), [mostraSempre]);
   const [soloControllo, setSoloControllo] = useState(false);
+  const [dettagliAperti, setDettagliAperti] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const media = window.matchMedia("(min-width: 640px)");
+    const aggiorna = () => setDettagliAperti(media.matches);
+    aggiorna();
+    media.addEventListener("change", aggiorna);
+    return () => media.removeEventListener("change", aggiorna);
+  }, [open]);
   const [modalitaInvio, setModalitaInvio] = useState<"bozza" | "invia">("bozza");
   const [tipoForzato, setTipoForzato] = useState<"auto" | "nuovo_fido" | "aumento" | "diminuzione" | "rinnovo">("auto");
   const [motivazioneGenerale, setMotivazioneGenerale] = useState<string>(MOTIVAZIONE_DEFAULT);
@@ -313,6 +326,8 @@ export function ProposteFidoMassivoDialog({
           proponibile,
           incluso: inclusoInizialeProposta(proponibile),
           inAlertOAnomalia,
+          segnalazioni: t?.segnalazioni ?? [],
+          alertAperto: alertAperti.has(c.id),
           controllo,
           tipo,
           cond_attuale: "",
@@ -391,7 +406,6 @@ export function ProposteFidoMassivoDialog({
   const vociNascoste: string[] = (() => {
     const n = riepilogoVis.nascosti;
     const v: string[] = [];
-    if (n.rinnovo > 0) v.push(`Non vedi ${fmtN(n.rinnovo)} clienti con fido invariato: non cambia niente, non serve mandarli.${riepilogoVis.daDecidere > 0 ? ` ${fmtN(riepilogoVis.daDecidere)} di questi hanno anomalie: spunta «Fido invariato» se vuoi lavorarli qui.` : ""}`);
     if (n.in_corso > 0) v.push(`Non vedi ${fmtN(n.in_corso)} clienti che hanno già una richiesta in corso.`);
     const nomi: Record<string, string> = { aumento: "aumenti", diminuzione: "riduzioni", nuovo_fido: "nuovi fidi" };
     for (const [tipo, numero] of Object.entries(riepilogoVis.tipiSpenti)) {
@@ -670,15 +684,17 @@ export function ProposteFidoMassivoDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[96vw] max-w-[1600px] sm:max-w-[1600px] h-[90dvh] max-h-[90dvh] overflow-hidden flex flex-col gap-0 p-0">
+      <DialogContent className="w-[96vw] max-w-[1600px] sm:max-w-[1600px] h-[96dvh] max-h-[96dvh] sm:h-[90dvh] sm:max-h-[90dvh] overflow-hidden flex flex-col gap-0 p-0 [&>button:last-child]:top-1 [&>button:last-child]:right-1 [&>button:last-child]:size-10 [&>button:last-child]:grid [&>button:last-child]:place-items-center sm:[&>button:last-child]:top-2 sm:[&>button:last-child]:right-2">
         <div className="shrink-0 min-w-0 border-b px-3 py-2 sm:px-4 sm:py-2">
         <DialogHeader className="pr-8 text-left">
-          <DialogTitle className="break-words">Proposta fido massiva — {righeVisibiliIncluse.length} clienti</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="break-words text-sm leading-5 sm:text-lg">Proposta fido massiva — {righeVisibiliIncluse.length} clienti</DialogTitle>
+          <DialogDescription className="sr-only sm:not-sr-only">
             L'importo proposto è il fido teorico calcolato dal sistema (fatturato + condizione di pagamento).
           </DialogDescription>
         </DialogHeader>
-
+        </div>
+        <div data-proposte-scroll className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain touch-pan-y sm:contents">
+        <div className="shrink-0 min-w-0 border-b px-3 py-2 sm:px-4">
         {(teoricoLoading || teoricoRichLoading) && (
           <p className="text-sm text-muted-foreground">Calcolo del fido teorico in corso…</p>
         )}
@@ -689,7 +705,7 @@ export function ProposteFidoMassivoDialog({
         )}
         <fieldset className="min-w-0 py-2">
           <legend className="text-sm font-medium">Cosa vuoi mandare?</legend>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-x-3">
+          <div className="grid grid-cols-2 xl:grid-cols-4 gap-x-2 sm:gap-x-3">
             {([ ["aumento", "Aumenti"], ["diminuzione", "Riduzioni (anche a zero)"], ["nuovo_fido", "Nuovi fidi"], ["rinnovo", "Fido invariato (rinnovi)"] ] as [TipoProposta, string][]).map(([tipo, nome]) => (
               <label key={tipo} className="flex min-h-10 min-w-0 items-center gap-2 text-xs">
                 <Checkbox checked={filtroTipi.includes(tipo)} onCheckedChange={() => toggleTipo(tipo)} aria-label={nome} />
@@ -698,6 +714,14 @@ export function ProposteFidoMassivoDialog({
             ))}
           </div>
         </fieldset>
+        <Collapsible open={dettagliAperti} onOpenChange={setDettagliAperti}>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" className="h-10 w-full justify-between px-0 text-xs sm:hidden">
+              Dettagli e impostazioni
+              <ChevronDown className={`size-4 shrink-0 transition-transform ${dettagliAperti ? "rotate-180" : ""}`} />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-2">
         <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground space-y-1 break-words">
           <p className="text-foreground">Stai vedendo <strong>{fmtN(riepilogoVis.visibili)}</strong> proposte su <strong>{fmtN(riepilogoVis.totale)}</strong> clienti selezionati.</p>
           {nDaControllare > 0 && (
@@ -709,10 +733,30 @@ export function ProposteFidoMassivoDialog({
               </label>
             </div>
           )}
-          {(vociNascoste.length > 0 || riepilogoVis.nonProponibiliTotale > 0) && (
+          {(riepilogoVis.nascosti.rinnovo > 0 || vociNascoste.length > 0 || riepilogoVis.nonProponibiliTotale > 0) && (
             <div>
               <span className="font-medium text-foreground">Cosa non vedi e perché</span>
               <ul className="ml-4 list-disc">
+                {riepilogoVis.nascosti.rinnovo > 0 && (
+                  <li>
+                    Non vedi {fmtN(riepilogoVis.nascosti.rinnovo)} clienti con fido invariato: non cambia niente, non serve mandarli.
+                    {riepilogoVis.daDecidere > 0 && <>
+                      <p className="mt-1">Tra questi, {fmtN(riepilogoVis.daDecidere)} da guardare, perché il sistema non aumenta da solo e decidi tu:</p>
+                      <ul className="ml-4 list-disc">
+                        {Object.entries(riepilogoVis.daDeciderePerMotivo).filter(([, numero]) => numero > 0).map(([motivo, numero]) => {
+                          const acquisti = etichetteSegnalazioni(["impegni_sopra_base"])[0];
+                          const scaduti = etichetteSegnalazioni(["scaduto_non_incassato", "scaduto_da_incassare"]);
+                          const testo = motivo === "alert_aperto" ? "hanno quasi finito il fido (alert aperto)"
+                            : motivo === acquisti ? `comprano più del solito (${motivo})`
+                            : scaduti.includes(motivo) ? `ha${numero === 1 ? "" : "nno"} scaduto non pagato (${motivo})`
+                            : motivo;
+                          return <li key={motivo}>{fmtN(numero)} {testo}</li>;
+                        })}
+                      </ul>
+                      <p className="mt-1">Spunta «Fido invariato» per vederli qui e, se vuoi, dare un extra.</p>
+                    </>}
+                  </li>
+                )}
                 {vociNascoste.map((testo) => <li key={testo}>{testo}</li>)}
                 {riepilogoVis.nonProponibiliTotale > 0 && <li>{fmtN(riepilogoVis.nonProponibiliTotale)} clienti non si possono proporre: {vociNonProponibili.join(" · ")}</li>}
               </ul>
@@ -741,8 +785,10 @@ export function ProposteFidoMassivoDialog({
           />
         </div>
         </div>
+          </CollapsibleContent>
+        </Collapsible>
         </div>
-        <div data-proposte-elenco className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-2 sm:px-4 sm:py-2">
+        <div data-proposte-elenco className="min-w-0 px-3 py-2 sm:min-h-0 sm:flex-1 sm:overflow-y-auto sm:overflow-x-hidden sm:px-4 sm:py-2">
         {/* Schede anche su tablet: la tabella estesa richiede spazio desktop. */}
         <div className="[&>div]:block xl:hidden [&>div>div>div:first-child]:grid [&>div>div>div:first-child]:grid-cols-1 [&>div>div>div:first-child>div:last-child]:justify-end">
         <ElencoSchede>
@@ -836,8 +882,12 @@ export function ProposteFidoMassivoDialog({
         </div>
         </div>
 
-        <div className="shrink-0 min-w-0 border-t bg-background px-3 py-2 sm:px-4 sm:py-2 grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-          <div className="min-w-0 space-y-0.5">
+        </div>
+        <div className="shrink-0 min-w-0 border-t bg-background px-3 py-2 sm:px-4 sm:py-2 grid grid-cols-1 gap-1 sm:gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+          <p className="text-xs font-medium tabular-nums break-words sm:hidden">
+            Nuovo fido {fmtEuro(riepilogo.totaleProposto)} ({riepilogo.differenza > 0 ? "+" : riepilogo.differenza < 0 ? "−" : "±"}{fmtEuro(Math.abs(riepilogo.differenza))}) · {righeVisibiliIncluse.length} richieste
+          </p>
+          <div className="hidden sm:block min-w-0 space-y-0.5">
           <div className="text-sm font-medium break-words">
             Fido attuale: <strong className="tabular-nums">{fmtEuro(riepilogo.totaleAttuale)}</strong>
             {" → "}Nuovo fido: <strong className="tabular-nums">{fmtEuro(riepilogo.totaleProposto)}</strong>
@@ -867,20 +917,20 @@ export function ProposteFidoMassivoDialog({
             </div>
           )}
           </div>
-          <div className="text-xs text-info lg:col-start-1">
+          <div className="hidden sm:block text-xs text-info lg:col-start-1">
             {righeVisibiliIncluse.filter((r) => condizionePagamentoCambiata(r.cond_proposta, r.cond_attuale)).length > 0 &&
               <>{righeVisibiliIncluse.filter((r) => condizionePagamentoCambiata(r.cond_proposta, r.cond_attuale)).length} con cambio di condizione di pagamento</>}
           </div>
-          <DialogFooter className="grid grid-cols-2 gap-2 sm:flex sm:items-center lg:col-start-2 lg:row-start-1 lg:row-span-2">
+          <DialogFooter className="grid grid-cols-2 gap-1 sm:gap-2 sm:flex sm:items-center lg:col-start-2 lg:row-start-1 lg:row-span-2">
             <div className="col-span-2 min-w-0">
-              <Label className="text-xs">Modalità invio</Label>
+              <Label className="sr-only sm:not-sr-only sm:text-xs">Modalità invio</Label>
               <div className="grid grid-cols-2 gap-0.5 rounded-md border p-0.5" role="group" aria-label="Modalità invio">
                 <Button type="button" size="sm" variant={modalitaInvio === "bozza" ? "secondary" : "ghost"} aria-pressed={modalitaInvio === "bozza"} className="h-10 px-2 text-xs" onClick={() => setModalitaInvio("bozza")}>Salva come bozza</Button>
                 <Button type="button" size="sm" variant={modalitaInvio === "invia" ? "secondary" : "ghost"} aria-pressed={modalitaInvio === "invia"} className="h-10 px-2 text-xs" onClick={() => setModalitaInvio("invia")}>Invia subito<span className="sr-only"> all'approvazione</span></Button>
               </div>
             </div>
-            <Button variant="outline" className="w-full sm:w-auto" onClick={() => onOpenChange(false)} disabled={submitting}>Annulla</Button>
-            <Button className="w-full sm:w-auto" onClick={creaRichieste} disabled={submitting || righeVisibiliIncluse.length === 0}>
+            <Button variant="outline" className="hidden sm:inline-flex sm:w-auto" onClick={() => onOpenChange(false)} disabled={submitting}>Annulla</Button>
+            <Button className="col-span-2 h-10 w-full sm:w-auto" onClick={creaRichieste} disabled={submitting || righeVisibiliIncluse.length === 0}>
               {submitting ? (avanzamentoCrea ? `Creazione: ${avanzamentoCrea.fatte.toLocaleString("it-IT")} di ${avanzamentoCrea.totali.toLocaleString("it-IT")}…` : "Creazione…") : `Crea ${righeVisibiliIncluse.length} richieste`}
             </Button>
           </DialogFooter>
