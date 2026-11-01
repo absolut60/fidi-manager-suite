@@ -187,7 +187,7 @@ export function ProposteFidoMassivoDialog({
     staleTime: 5 * 60_000,
     queryFn: () => fetchFidoTeorico(ids),
   });
-  // FM55: teorico di riferimento per le richieste (fonte unica: v2 per utenti in anteprima).
+  // FM55: teorico di riferimento per le richieste (fonte unica fetchFidoTeoricoPerRichiesta).
   const { data: teoricoRichMap, isLoading: teoricoRichLoading } = useQuery({
     queryKey: ["fido-teorico-per-richiesta", userId, [...ids].sort().join(",")],
     enabled: open && ids.length > 0,
