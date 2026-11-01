@@ -92,3 +92,9 @@ Le azioni multiple su `richieste_fido` passano dall'helper a blocchi `src/lib/ri
 - `get_fido_teorico_v2`, dopo il freno: regola `calcolo`, profilo diverso da `nuovo_in_attesa`, ordini aperti = 0 e non attivo → fido proposto 0, spiegazione "Cliente non attivo: nessuna fattura dal 01/01/{cutoff}, fido teorico zero.". Altre regole invariate.
 - Massiva: frase "Cliente non attivo: proposta a zero.", riga bianca e spuntata.
 - ATTENZIONE: il cutoff è un anno fisso. Se a gennaio 2027 viene portato a 2027, il giorno stesso tutti i clienti diventano non attivi e il fido teorico va a zero per tutti. Non cambiarlo senza decisione di Andrea.
+
+### Alert fidi: "già deciso" negli avvisi (FM55, decisione 01/11/2026, opzione 2)
+- Fonte SQL unica: `public.alert_fido_gia_deciso(cliente_id)` — protezione attiva in `extra_fido_protetti` (`protezione_valida`, entro `protetto_fino_al`) **e** `clienti.fido_gestionale` = `importo_approvato`. Gemello TS: `giaDecisoAvviso` (`src/lib/alert-fidi.ts`), test in `tests/alert-fidi-avvisi.test.ts`.
+- La usa solo `invia_notifiche_alert_fidi`: i già decisi non vengono notificati né marcati, quindi ripartono quando la protezione scade o decade.
+- La pagina continua a usare `giaDeciso` (riferimento della richiesta = Gamma). Le due possono differire solo se il riferimento supera l'importo approvato (nessun caso reale al 01/11/2026).
+- Email unica per negozio: gli alert appena marcati da `notificato_il` entrano nel job `variazioni-blocco` (sezione "Alert fidi", solo store manager); il testo del consumo ha il gemello TS `messaggioConsumoAlert` (`src/lib/alert-fidi-email.ts`).
