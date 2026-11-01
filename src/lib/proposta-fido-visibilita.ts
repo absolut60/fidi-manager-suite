@@ -99,13 +99,13 @@ export function motivoRigaProposta({ regola, segnalazioni, dati }: {
   // Confronto informativo fisso all'80%, mai usato per importi o spunte.
   const perCoprire = fidoPerTornareSottoSoglia(dati.esposizione_corrente + ordini, 0.80);
   let frase: string | null = null;
-  if (motivo === "bloccato") frase = "Cliente bloccato: fido a zero.";
-  else if (motivo === "legale") frase = "Cliente in legale: fido a zero.";
+  if (motivo === "bloccato") frase = "Cliente bloccato: proposta a zero.";
+  else if (motivo === "legale") frase = "Cliente in legale: proposta a zero.";
   else if (motivo === "scaduto") {
-    const scaduto = Number(dati.scaduto_oltre ?? 0);
-    frase = scaduto > 0
-      ? `Scaduto non pagato ${euro(scaduto)} da ${Math.round(Number(dati.scaduto_oltre_giorni ?? 0)).toLocaleString("it-IT")} giorni: fido a zero finché non paga.`
-      : "Scaduto non pagato: fido a zero finché non paga.";
+    // Importo e giorni dello scaduto restano solo nei dettagli.
+    frase = Number(dati.consigliato) === 0
+      ? "Cliente con scaduto: proposta a zero."
+      : `Cliente con scaduto: fido già confermato a ${euro(dati.consigliato)}.`;
   } else if (motivo === "da_autorizzare") frase = `Compra molto più del solito: per coprirlo servono ${euro(perCoprire)}.`;
   else if (motivo === "ordini_oltre_fido") frase = `Ordini in arrivo ${euro(ordini)}: con la consegna supera il fido.`;
   else if (dati.consigliato < dati.fidoAttuale) {
@@ -118,8 +118,12 @@ export function motivoRigaProposta({ regola, segnalazioni, dati }: {
       ? `Ne basterebbero ${euro(prima)}, ma ${frenoOrdini ? "con gli ordini in arrivo" : "per quanto ci doveva negli ultimi 30 giorni"} servono ${euro(dati.consigliato)}.`
       : `Usa meno fido del solito: ne bastano ${euro(dati.consigliato)}.`;
   } else if (Number(dati.acquisto_mensile ?? 0) > 0 && dati.ciclo_gg != null) {
-    frase = `Compra ${euro(Number(dati.acquisto_mensile))} al mese e paga in ${Math.round(dati.ciclo_gg).toLocaleString("it-IT")} giorni.`;
+    frase = `Paga in ${Math.round(dati.ciclo_gg).toLocaleString("it-IT")} giorni.`;
   }
+  // Coda su tutte le righe: acquisto medio arrotondato alle centinaia.
+  const acquisto = Number(dati.acquisto_mensile ?? 0);
+  const coda = acquisto > 0 ? `Compra in media ${euro(Math.max(100, Math.round(acquisto / 100) * 100))} al mese.` : "Nessun acquisto recente.";
+  frase = frase ? `${frase} ${coda}` : coda;
   return { motivo, frase, perCoprire };
 }
 
