@@ -20,6 +20,7 @@ import {
 } from "@/lib/fidi";
 import { daValutareProposta, categoriaProposta, CATEGORIE_PROPOSTA_DEFAULT, testoMotivoDaGuardare, righeVisibiliProposta, riepilogoVisibilita, inclusoInizialeProposta, livelloControlloProposta, type CategoriaProposta, type LivelloControllo } from "@/lib/proposta-fido-visibilita";
 import { segnalazioniAnomalia, anomaliaRossa } from "@/lib/fido-segnalazioni";
+import { alertConsumoAperto, fetchAlertFidiAperti, giaDeciso } from "@/lib/alert-fidi";
 import { Switch } from "@/components/ui/switch";
 import { CampoExtraTeorico } from "@/components/extra-fido-teorico";
 import {
@@ -104,8 +105,6 @@ type RigaProposta = {
   /** false = regola che non consente una proposta (esclusa dalla creazione) */
   proponibile: boolean;
   incluso: boolean;
-  /** FM55 3C: alert aperto o segnalazione arancione/rossa (regola in proposta-fido-visibilita). */
-  inAlertOAnomalia?: boolean;
   segnalazioni?: string[];
   alertAperto?: boolean;
   /** Riga da controllare (segnalazioni arancioni/rosse). */
@@ -230,22 +229,20 @@ export function ProposteFidoMassivoDialog({
     staleTime: 5 * 60_000,
     queryFn: () => fetchExtraFidoProtetti(ids),
   });
-  // Alert aperti: contati tra i rinnovi nascosti da controllare.
-  const { data: alertAperti } = useQuery({
+  // Lettura condivisa: include lo stato delle richieste aggiornato dal vivo.
+  const { data: alertMassiva } = useQuery({
     queryKey: ["alert-fidi-aperti-massivo", [...ids].sort().join(",")],
     enabled: open && ids.length > 0,
     staleTime: 60_000,
-    queryFn: async () => {
-      const out = new Set<string>();
-      for (let i = 0; i < ids.length; i += 200) {
-        const { data, error } = await supabase.from("alert_fidi").select("cliente_id")
-          .eq("stato", "aperto").in("cliente_id", ids.slice(i, i + 200));
-        if (error) throw error;
-        for (const a of data ?? []) out.add(a.cliente_id);
-      }
-      return out;
-    },
+    queryFn: fetchAlertFidiAperti,
   });
+  const alertAperti = useMemo(() => {
+    if (!alertMassiva || !teoricoMap || !teoricoRichMap || !protettiMap) return undefined;
+    return new Set(alertMassiva.filter((a) => alertConsumoAperto({ ...a,
+      gia_deciso: giaDeciso(protettiMap.get(a.cliente_id), teoricoRichMap.get(a.cliente_id),
+        teoricoMap.get(a.cliente_id)?.fido_attuale ?? a.cliente?.fido_gestionale ?? a.fido_gamma),
+    })).map((a) => a.cliente_id));
+  }, [alertMassiva, teoricoMap, teoricoRichMap, protettiMap]);
   const { data: sogliaConsumo } = useQuery({
     queryKey: ["soglia-consumo-fido"],
     enabled: open,
@@ -303,7 +300,6 @@ export function ProposteFidoMassivoDialog({
         // usato dalla RPC, cosi' lista, scheda cliente e proposta massiva coincidono.
         const attuale = t ? t.fido_attuale : getFidoAttuale(c);
         const tipo = determinaTipoRichiesta(attuale, proposto);
-        const inAlertOAnomalia = alertAperti.has(c.id) || segnalazioniAnomalia(t?.segnalazioni).length > 0;
         const anom = segnalazioniAnomalia(t?.segnalazioni);
         const controllo = livelloControlloProposta(anom.length, anomaliaRossa(t?.segnalazioni));
 
@@ -324,7 +320,6 @@ export function ProposteFidoMassivoDialog({
           motivazione_auto: t?.profilo ? MOTIVAZIONE_PROFILO_FIDO[t.profilo] : undefined,
           proponibile,
           incluso: inclusoInizialeProposta(proponibile, anomaliaRossa(t?.segnalazioni)),
-          inAlertOAnomalia,
           segnalazioni: t?.segnalazioni ?? [],
           alertAperto: alertAperti.has(c.id),
           controllo,

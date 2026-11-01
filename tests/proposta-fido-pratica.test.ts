@@ -10,14 +10,14 @@ const riga = (id: string, tipo: string, extra: Record<string, unknown> = {}) =>
 
 describe("proposta massiva pratica (31/10)", () => {
   it("rinnovo con anomalia nascosto e contato in daDecidere", () => {
-    const righe = [riga("a", "rinnovo", { inAlertOAnomalia: true }), riga("b", "aumento")];
+    const righe = [riga("a", "rinnovo", { alertAperto: true }), riga("b", "aumento")];
     expect(righeVisibiliProposta(righe, filtri, new Set()).map((r) => r.cliente_id)).toEqual(["b"]);
     const r = riepilogoVisibilita(righe, filtri, new Set());
     expect(r.daDecidere).toBe(1);
     expect(r.visibili).toBe(1);
   });
   it("rinnovo in mostraSempre visibile e contato nella categoria da guardare", () => {
-    const righe = [riga("a", "rinnovo", { inAlertOAnomalia: true })];
+    const righe = [riga("a", "rinnovo", { alertAperto: true })];
     expect(righeVisibiliProposta(righe, filtri, new Set(), new Set(["a"]))).toHaveLength(1);
     const r = riepilogoVisibilita(righe, filtri, new Set(), new Set(["a"]));
     expect(r.visibili).toBe(1);
@@ -25,9 +25,9 @@ describe("proposta massiva pratica (31/10)", () => {
   });
   it("selezione multipla di rinnovi da Alert fidi (mostraSempre): tutte visibili", () => {
     const righe = [
-      riga("a", "rinnovo", { inAlertOAnomalia: true }),
+      riga("a", "rinnovo", { alertAperto: true }),
       riga("b", "rinnovo"),
-      riga("c", "rinnovo", { inAlertOAnomalia: true }),
+      riga("c", "rinnovo", { alertAperto: true }),
     ];
     const scelti = new Set(["a", "b", "c"]);
     expect(righeVisibiliProposta(righe, filtri, new Set(), scelti).map((r) => r.cliente_id)).toEqual(["a", "b", "c"]);
@@ -37,7 +37,7 @@ describe("proposta massiva pratica (31/10)", () => {
   });
   it("con Rinnovo riacceso i rinnovi si vedono", () => {
     const f = { ...filtri, tipi: [...filtri.tipi, "rinnovo_da_guardare"] };
-    expect(righeVisibiliProposta([riga("a", "rinnovo", { inAlertOAnomalia: true })], f, new Set())).toHaveLength(1);
+    expect(righeVisibiliProposta([riga("a", "rinnovo", { alertAperto: true })], f, new Set())).toHaveLength(1);
   });
   it("tutte le righe proponibili spuntate all'apertura, anche con anomalie", () => {
     expect(inclusoInizialeProposta(true)).toBe(true);

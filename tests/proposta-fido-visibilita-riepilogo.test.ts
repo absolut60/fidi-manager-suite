@@ -31,8 +31,8 @@ describe("riepilogo visibilità proposta massiva", () => {
     const righe = [
       riga("v1", "aumento"),
       riga("r1", "rinnovo"), riga("r2", "rinnovo"),
-      riga("a1", "rinnovo", { inAlertOAnomalia: true }), riga("a2", "rinnovo", { inAlertOAnomalia: true }),
-      riga("c1", "rinnovo", { inAlertOAnomalia: true, richiestaInCorso: { id: "x" } }),
+      riga("a1", "rinnovo", { alertAperto: true }), riga("a2", "rinnovo", { alertAperto: true }),
+      riga("c1", "rinnovo", { alertAperto: true, richiestaInCorso: { id: "x" } }),
       riga("n1", "aumento", { proponibile: false, regola: "cliente_bloccato" }),
     ];
     const r = riepilogoVisibilita(righe, filtri, new Set());
@@ -43,7 +43,7 @@ describe("riepilogo visibilità proposta massiva", () => {
     expect(r.nascosti.in_corso).toBe(1);
     const somma = r.visibili + Object.values(r.nascosti).reduce((a, b) => a + b, 0) + r.nonProponibiliTotale;
     expect(somma).toBe(7);
-    expect(passaFiltriProposta(riga("a", "rinnovo", { inAlertOAnomalia: true }), filtri)).toBe(false);
+    expect(passaFiltriProposta(riga("a", "rinnovo", { alertAperto: true }), filtri)).toBe(false);
     expect(passaFiltriProposta(riga("b", "rinnovo"), filtri)).toBe(false);
   });
 });
