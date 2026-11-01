@@ -37,5 +37,6 @@
 - [x] FM55 fetta 4b: blocchi da 200, riprova automatica sui timeout (stesso blocco, 3 tentativi) anche per finalizza/alert, "Riprendi da blocco N"; job automatico uno step per blocco. Prova reale del pulsante: la fa Andrea dopo il publish.
 - [x] FM55 fetta 4c: migrazione 0125 (service_role statement_timeout 60s per i job server; utenti authenticated a 8s), documentata in docs/regole/fonti-uniche.md e AGENTS.md. Blocchi da 200 e riprova automatica restano invariati.
 - [x] Verifica ruoli database in sola lettura: service_role 60s, authenticated 8s, authenticator 8s (lock_timeout 8s), anon 3s; nuova verifica tests/sql/service-role-timeout.sql.
-- [ ] Alert fidi per tutti: in attesa di Andrea (elenco ruoli vista/azioni, voce menu per agenti).
+- [x] Alert fidi per tutti: regola unica permessi-fidi, menu e pagina, agenti in sola lettura.
+- [ ] Dashboard fidi e Richieste fido con la stessa regola: fermo, perderebbero accesso marketing, marketing_eventi e Pierpaolo Maino (richiedente+preventivi).
 - [ ] Notifiche Alert fidi + email unica per negozio: dopo la fetta precedente; serve decisione sul gemello SQL di "già deciso" (riferimento canonico è calcolato solo in TS). Interruttore resta OFF.
