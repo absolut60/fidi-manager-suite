@@ -26,11 +26,6 @@ import {
 
 const POLL_MS = 5_000;
 
-/** Testo dell'avanzamento, es. "Blocco 3 di 6". */
-export function testoAvanzamentoBlocco(n: number, previsti: number): string {
-  return n <= previsti ? `Blocco ${n} di ${previsti}` : "Ultimi controlli dei blocchi…";
-}
-
 function formatData(iso: string | null): string | null {
   if (!iso) return null;
   const t = istanteDa(iso);
