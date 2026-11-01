@@ -13,7 +13,7 @@ export function mostraAvvisoFidoZero({ valore, fidoAttuale, regola }: {
   return Number(valore) === 0 && Number(fidoAttuale) > 0;
 }
 
-export type EtichettaRiga = { tono: "rossa" | "viola" | "arancione" | "grigio"; testo: string } | null;
+export type EtichettaRiga = { tono: "rosso_scuro" | "rossa" | "viola" | "arancione"; testo: string } | null;
 
 /** Al massimo una etichetta, decisa dal motivo vincente (fonte unica: motivoRigaProposta). */
 export function etichettaRigaProposta({ regola, segnalazioni }: {
@@ -21,9 +21,9 @@ export function etichettaRigaProposta({ regola, segnalazioni }: {
   segnalazioni?: readonly string[] | null;
 }): EtichettaRiga {
   const motivo = motivoRigaProposta({ regola, segnalazioni });
+  if (motivo === "bloccato") return { tono: "rosso_scuro", testo: "Bloccato" };
+  if (motivo === "legale") return { tono: "rosso_scuro", testo: "In legale" };
   if (motivo === "scaduto") return { tono: "rossa", testo: "Scaduto non pagato" };
-  if (motivo === "bloccato") return { tono: "grigio", testo: "Bloccato" };
-  if (motivo === "legale") return { tono: "grigio", testo: "In legale" };
   if (motivo === "da_autorizzare") return { tono: "viola", testo: "Da autorizzare: compra molto più del solito" };
   if (motivo === "ordini_oltre_fido") return { tono: "arancione", testo: "Ordini oltre il fido" };
   return null;
@@ -38,15 +38,15 @@ export const CLASSI_MOTIVO_RIGA: Record<Exclude<MotivoRigaProposta, null>, { bor
     pallino: "bg-motivo-scaduto",
   },
   bloccato: {
-    bordo: "border-l-4 border-l-motivo-bloccato",
+    bordo: "border-l-8 border-l-motivo-bloccato",
     sfondo: "bg-motivo-bloccato-bg",
-    badge: "bg-motivo-bloccato-bg text-motivo-bloccato hover:bg-motivo-bloccato-bg",
+    badge: "bg-motivo-bloccato text-motivo-bloccato-fg hover:bg-motivo-bloccato",
     pallino: "bg-motivo-bloccato",
   },
   legale: {
-    bordo: "border-l-4 border-l-motivo-bloccato",
+    bordo: "border-l-8 border-l-motivo-bloccato",
     sfondo: "bg-motivo-bloccato-bg",
-    badge: "bg-motivo-bloccato-bg text-motivo-bloccato hover:bg-motivo-bloccato-bg",
+    badge: "bg-motivo-bloccato text-motivo-bloccato-fg hover:bg-motivo-bloccato",
     pallino: "bg-motivo-bloccato",
   },
   da_autorizzare: {
@@ -65,8 +65,8 @@ export const CLASSI_MOTIVO_RIGA: Record<Exclude<MotivoRigaProposta, null>, { bor
 
 /** Legenda dei quattro motivi colorati, in cima all'elenco. */
 export const LEGENDA_MOTIVI: { motivo: Exclude<MotivoRigaProposta, null>; nome: string }[] = [
-  { motivo: "scaduto", nome: "Scaduto non pagato" },
   { motivo: "bloccato", nome: "Bloccato o in legale" },
+  { motivo: "scaduto", nome: "Scaduto non pagato" },
   { motivo: "da_autorizzare", nome: "Da autorizzare" },
   { motivo: "ordini_oltre_fido", nome: "Ordini oltre il fido" },
 ];
