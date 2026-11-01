@@ -14,6 +14,159 @@ export type Database = {
   }
   public: {
     Tables: {
+      _backup_fm55_approvazioni_20261101: {
+        Row: {
+          approvatore_id: string | null
+          created_at: string | null
+          esito: Database["public"]["Enums"]["esito_approvazione"] | null
+          esito_condizione_pagamento: string | null
+          esito_fido: string | null
+          id: string | null
+          importo_approvato: number | null
+          livello: number | null
+          note: string | null
+          richiesta_id: string | null
+        }
+        Insert: {
+          approvatore_id?: string | null
+          created_at?: string | null
+          esito?: Database["public"]["Enums"]["esito_approvazione"] | null
+          esito_condizione_pagamento?: string | null
+          esito_fido?: string | null
+          id?: string | null
+          importo_approvato?: number | null
+          livello?: number | null
+          note?: string | null
+          richiesta_id?: string | null
+        }
+        Update: {
+          approvatore_id?: string | null
+          created_at?: string | null
+          esito?: Database["public"]["Enums"]["esito_approvazione"] | null
+          esito_condizione_pagamento?: string | null
+          esito_fido?: string | null
+          id?: string | null
+          importo_approvato?: number | null
+          livello?: number | null
+          note?: string | null
+          richiesta_id?: string | null
+        }
+        Relationships: []
+      }
+      _backup_fm55_richieste_fido_20261101: {
+        Row: {
+          approvato_da: string | null
+          cliente_id: string | null
+          condizione_pagamento_cod: string | null
+          condizione_pagamento_modificata: boolean | null
+          condizione_pagamento_precedente_cod: string | null
+          condizione_pagamento_richiesta_cod: string | null
+          created_at: string | null
+          created_by: string | null
+          data_approvazione: string | null
+          data_chiusura: string | null
+          data_export: string | null
+          data_invio: string | null
+          data_processata: string | null
+          data_scadenza: string | null
+          durata_mesi: number | null
+          esito_condizione_pagamento: string | null
+          esito_fido: string | null
+          esportata_da: string | null
+          fido_teorico_riferimento: number | null
+          id: string | null
+          importo_approvato: number | null
+          importo_richiesto: number | null
+          livello_corrente: number | null
+          livello_richiesto: number | null
+          motivazione: string | null
+          motivo_extra_teorico: string | null
+          note: string | null
+          note_export: string | null
+          processata_da: string | null
+          scaduto_al_momento: number | null
+          stato: Database["public"]["Enums"]["stato_richiesta"] | null
+          stato_export: string | null
+          store_id: string | null
+          tipo: Database["public"]["Enums"]["tipo_richiesta"] | null
+          updated_at: string | null
+        }
+        Insert: {
+          approvato_da?: string | null
+          cliente_id?: string | null
+          condizione_pagamento_cod?: string | null
+          condizione_pagamento_modificata?: boolean | null
+          condizione_pagamento_precedente_cod?: string | null
+          condizione_pagamento_richiesta_cod?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          data_approvazione?: string | null
+          data_chiusura?: string | null
+          data_export?: string | null
+          data_invio?: string | null
+          data_processata?: string | null
+          data_scadenza?: string | null
+          durata_mesi?: number | null
+          esito_condizione_pagamento?: string | null
+          esito_fido?: string | null
+          esportata_da?: string | null
+          fido_teorico_riferimento?: number | null
+          id?: string | null
+          importo_approvato?: number | null
+          importo_richiesto?: number | null
+          livello_corrente?: number | null
+          livello_richiesto?: number | null
+          motivazione?: string | null
+          motivo_extra_teorico?: string | null
+          note?: string | null
+          note_export?: string | null
+          processata_da?: string | null
+          scaduto_al_momento?: number | null
+          stato?: Database["public"]["Enums"]["stato_richiesta"] | null
+          stato_export?: string | null
+          store_id?: string | null
+          tipo?: Database["public"]["Enums"]["tipo_richiesta"] | null
+          updated_at?: string | null
+        }
+        Update: {
+          approvato_da?: string | null
+          cliente_id?: string | null
+          condizione_pagamento_cod?: string | null
+          condizione_pagamento_modificata?: boolean | null
+          condizione_pagamento_precedente_cod?: string | null
+          condizione_pagamento_richiesta_cod?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          data_approvazione?: string | null
+          data_chiusura?: string | null
+          data_export?: string | null
+          data_invio?: string | null
+          data_processata?: string | null
+          data_scadenza?: string | null
+          durata_mesi?: number | null
+          esito_condizione_pagamento?: string | null
+          esito_fido?: string | null
+          esportata_da?: string | null
+          fido_teorico_riferimento?: number | null
+          id?: string | null
+          importo_approvato?: number | null
+          importo_richiesto?: number | null
+          livello_corrente?: number | null
+          livello_richiesto?: number | null
+          motivazione?: string | null
+          motivo_extra_teorico?: string | null
+          note?: string | null
+          note_export?: string | null
+          processata_da?: string | null
+          scaduto_al_momento?: number | null
+          stato?: Database["public"]["Enums"]["stato_richiesta"] | null
+          stato_export?: string | null
+          store_id?: string | null
+          tipo?: Database["public"]["Enums"]["tipo_richiesta"] | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       agenti: {
         Row: {
           codice: string

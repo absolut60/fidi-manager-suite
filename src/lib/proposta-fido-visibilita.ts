@@ -45,16 +45,21 @@ export function righeVisibiliProposta<T extends string, R extends RigaVisibilita
   return righe.filter((r) => !r.richiestaInCorso && (toccate.has(r.cliente_id) || !!mostraSempre?.has(r.cliente_id) || passaFiltriProposta(r, filtri)));
 }
 
-/** Rosse non spuntate, salvo riduzioni a zero di bloccati/legali; nessuna modifica agli importi. */
-export function inclusoInizialeProposta({ proponibile, rossa, regola, fidoAttuale, fidoProposto }: {
+/** Rosse non spuntate, salvo riduzioni a zero di bloccati/legali; scaduto non incassato portato a zero
+ *  da un fido > 0 sempre non spuntato (va valutato); nessuna modifica agli importi. */
+export function inclusoInizialeProposta({ proponibile, rossa, regola, fidoAttuale, fidoProposto, segnalazioni }: {
   proponibile: boolean;
   rossa: boolean;
   regola: string;
   fidoAttuale: number;
   fidoProposto: number;
+  segnalazioni?: readonly string[] | null;
 }): boolean {
   const azzeramentoBloccatoLegale = (regola === "cliente_bloccato" || regola === "gestione_legale")
     && fidoAttuale > 0 && fidoProposto === 0;
+  const azzeramentoScaduto = (regola === "scaduto_non_incassato" || !!segnalazioni?.includes("scaduto_non_incassato"))
+    && fidoAttuale > 0 && fidoProposto === 0;
+  if (azzeramentoScaduto && !azzeramentoBloccatoLegale) return false;
   return proponibile && (!rossa || azzeramentoBloccatoLegale);
 }
 
