@@ -66,6 +66,23 @@ export function giaDecisoDa(protezioneValida: boolean, riferimento: number | nul
   return protezioneValida && riferimento != null && Number(riferimento) === Number(fidoGamma ?? 0);
 }
 
+/**
+ * "Già deciso" per gli AVVISI (notifiche ed email Alert fidi), decisione 01/11/2026 opzione 2:
+ * protezione attiva (protezione_valida, entro protetto_fino_al) e fido Gamma = importo approvato.
+ * Gemello TS di public.alert_fido_gia_deciso(uuid), che lo applica in invia_notifiche_alert_fidi.
+ * Non usa il riferimento ricalcolato della pagina: può differire da giaDeciso solo se il riferimento
+ * supera l'importo approvato.
+ */
+export function giaDecisoAvviso(
+  protetto: Pick<ExtraFidoProtetto, "protezione_valida" | "protetto_fino_al" | "importo_approvato"> | null | undefined,
+  fidoGamma: number | null | undefined,
+  oggiIso: string,
+): boolean {
+  if (!protetto || protetto.protezione_valida !== true) return false;
+  if (String(protetto.protetto_fino_al).slice(0, 10) < oggiIso.slice(0, 10)) return false;
+  return Number(fidoGamma ?? 0) === Number(protetto.importo_approvato);
+}
+
 function giornoMeseIso(d: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d);
   if (m && d.length === 10) return `${m[3]}/${m[2]}`;
