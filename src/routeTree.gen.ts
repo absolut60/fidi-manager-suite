@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IscrizioneWhatsappRouteImport } from './routes/iscrizione-whatsapp'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as ProvaAlertTempRouteImport } from './routes/prova-alert-temp'
 import { Route as ProvaMassivaTempRouteImport } from './routes/prova-massiva-temp'
 import { Route as VerificaCodiceRouteImport } from './routes/verifica-codice'
 import { Route as AppAlertFidiRouteImport } from './routes/_app/alert-fidi'
@@ -118,6 +119,11 @@ const IscrizioneWhatsappRoute = IscrizioneWhatsappRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProvaAlertTempRoute = ProvaAlertTempRouteImport.update({
+  id: '/prova-alert-temp',
+  path: '/prova-alert-temp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProvaMassivaTempRoute = ProvaMassivaTempRouteImport.update({
@@ -579,6 +585,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
+  '/prova-alert-temp': typeof ProvaAlertTempRoute
   '/prova-massiva-temp': typeof ProvaMassivaTempRoute
   '/verifica-codice': typeof VerificaCodiceRoute
   '/alert-fidi': typeof AppAlertFidiRoute
@@ -671,6 +678,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
+  '/prova-alert-temp': typeof ProvaAlertTempRoute
   '/prova-massiva-temp': typeof ProvaMassivaTempRoute
   '/verifica-codice': typeof VerificaCodiceRoute
   '/alert-fidi': typeof AppAlertFidiRoute
@@ -762,6 +770,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
+  '/prova-alert-temp': typeof ProvaAlertTempRoute
   '/prova-massiva-temp': typeof ProvaMassivaTempRoute
   '/verifica-codice': typeof VerificaCodiceRoute
   '/_app/alert-fidi': typeof AppAlertFidiRoute
@@ -856,6 +865,7 @@ export interface FileRouteTypes {
     | '/'
     | '/iscrizione-whatsapp'
     | '/login'
+    | '/prova-alert-temp'
     | '/prova-massiva-temp'
     | '/verifica-codice'
     | '/alert-fidi'
@@ -948,6 +958,7 @@ export interface FileRouteTypes {
     | '/'
     | '/iscrizione-whatsapp'
     | '/login'
+    | '/prova-alert-temp'
     | '/prova-massiva-temp'
     | '/verifica-codice'
     | '/alert-fidi'
@@ -1038,6 +1049,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/iscrizione-whatsapp'
     | '/login'
+    | '/prova-alert-temp'
     | '/prova-massiva-temp'
     | '/verifica-codice'
     | '/_app/alert-fidi'
@@ -1132,6 +1144,7 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   IscrizioneWhatsappRoute: typeof IscrizioneWhatsappRoute
   LoginRoute: typeof LoginRoute
+  ProvaAlertTempRoute: typeof ProvaAlertTempRoute
   ProvaMassivaTempRoute: typeof ProvaMassivaTempRoute
   VerificaCodiceRoute: typeof VerificaCodiceRoute
   ConsensiTokenRoute: typeof ConsensiTokenRoute
@@ -1175,6 +1188,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prova-alert-temp': {
+      id: '/prova-alert-temp'
+      path: '/prova-alert-temp'
+      fullPath: '/prova-alert-temp'
+      preLoaderRoute: typeof ProvaAlertTempRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/prova-massiva-temp': {
@@ -1998,6 +2018,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   IscrizioneWhatsappRoute: IscrizioneWhatsappRoute,
   LoginRoute: LoginRoute,
+  ProvaAlertTempRoute: ProvaAlertTempRoute,
   ProvaMassivaTempRoute: ProvaMassivaTempRoute,
   VerificaCodiceRoute: VerificaCodiceRoute,
   ConsensiTokenRoute: ConsensiTokenRoute,
