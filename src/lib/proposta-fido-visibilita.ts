@@ -108,6 +108,9 @@ export function motivoRigaProposta({ regola, segnalazioni, dati }: {
       : `Cliente con scaduto: fido già confermato a ${euro(dati.consigliato)}.`;
   } else if (motivo === "da_autorizzare") frase = `Compra molto più del solito: per coprirlo servono ${euro(perCoprire)}.`;
   else if (motivo === "ordini_oltre_fido") frase = `Ordini in arrivo ${euro(ordini)}: con la consegna supera il fido.`;
+  // FM55 fetta 6: il DB (get_fido_teorico_v2 + public.cliente_attivo) certifica il non attivo nella spiegazione.
+  // Riga bianca (nessun motivo), spunta invariata: non è un'anomalia.
+  else if (Number(dati.consigliato) === 0 && /^Cliente non attivo:/.test(dati.spiegazione ?? "")) frase = "Cliente non attivo: proposta a zero.";
   else if (dati.consigliato < dati.fidoAttuale) {
     // Il DB certifica il freno nella spiegazione; mt.valore è il valore prima del freno.
     // Non ricostruiamo qui profili, margini o il picco.

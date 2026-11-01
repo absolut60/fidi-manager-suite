@@ -84,3 +84,11 @@ Le azioni multiple su `richieste_fido` passano dall'helper a blocchi `src/lib/ri
 - `isSenzaPartitaIvaFido` (`src/lib/fido-teorico.ts`) = senza partita IVA; gemello SQL `cliente_privato_fido(text)`.
 - `isPrivatoFido` = fuori dal giro fidi = senza partita IVA **o** Sede Centrale (`isSedeCentraleFido`); gemello SQL `cliente_privato_fido(clienti)`. Gemello SQL della Sede Centrale: `cliente_sede_centrale_fido(uuid)`.
 - La card "Privati (senza partita IVA)" conta i senza partita IVA escludendo la Sede Centrale (`isPrivatoCard` in `src/lib/dashboard-fidi-giro.ts`, gemello `get_dashboard_fidi_giro` / `get_clienti_giro_fidi_ids`). La card "POS / contanti con fido" conta `regola_applicata = 'pagamento_immediato'` con fido concesso > 0.
+
+## Cliente non attivo = fido teorico zero (FM55 fetta 6, decisione di Andrea, 01/11/2026)
+
+- Fonte unica: `isClienteAttivo` (`src/hooks/use-config.ts`); gemello SQL `public.cliente_attivo(_ultima_fatturazione date, _doc_da_fatturare numeric)` (anno da `public.cliente_attivo_cutoff_anno()`, chiave `configurazioni.cutoff_cliente_attivo_anno`).
+- NON attivo = (ultima_data_fatturazione IS NULL OR < {cutoff}-01-01) AND COALESCE(doc_da_fatturare,0) <= 0.
+- `get_fido_teorico_v2`, dopo il freno: regola `calcolo`, profilo diverso da `nuovo_in_attesa`, ordini aperti = 0 e non attivo → fido proposto 0, spiegazione "Cliente non attivo: nessuna fattura dal 01/01/{cutoff}, fido teorico zero.". Altre regole invariate.
+- Massiva: frase "Cliente non attivo: proposta a zero.", riga bianca e spuntata.
+- ATTENZIONE: il cutoff è un anno fisso. Se a gennaio 2027 viene portato a 2027, il giorno stesso tutti i clienti diventano non attivi e il fido teorico va a zero per tutti. Non cambiarlo senza decisione di Andrea.
