@@ -14,9 +14,14 @@ export function isSedeCentraleFido(cliente: { store_id?: string | null }): boole
   return cliente.store_id === "b07c4c61-12e4-4a87-8e79-bbb9c181ffe9";
 }
 
-/** Fuori dal giro fidi: privati e Sede Centrale. Gemello SQL: cliente_privato_fido(clienti). */
+/** Senza partita IVA (classificazione fiscale). Gemello SQL: cliente_privato_fido(text). */
+export function isSenzaPartitaIvaFido(cliente: { partita_iva?: string | null }): boolean {
+  return !cliente.partita_iva?.trim();
+}
+
+/** Fuori dal giro fidi: senza partita IVA o Sede Centrale. Gemello SQL: cliente_privato_fido(clienti). */
 export function isPrivatoFido(cliente: { partita_iva?: string | null; store_id?: string | null }): boolean {
-  return !cliente.partita_iva?.trim() || isSedeCentraleFido(cliente);
+  return isSenzaPartitaIvaFido(cliente) || isSedeCentraleFido(cliente);
 }
 
 /** Opzione del preset Revisione fidi; nella lista normale rimane false. */
