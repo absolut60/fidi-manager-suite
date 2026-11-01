@@ -1,3 +1,4 @@
+import { AccessoAreaFidi } from "@/components/accesso-area-fidi";
 import { createFileRoute } from "@tanstack/react-router";
 import { useAuth, RUOLI_LABEL } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
@@ -8,8 +9,12 @@ import { DashboardFidi } from "@/components/dashboard-fidi";
 import { DashboardFidiDettaglio } from "@/components/dashboard-fidi-dettaglio";
 
 export const Route = createFileRoute("/_app/fidi-dashboard")({
-  component: FidiDashboardPage,
+  component: FidiDashboardPageProtetta,
 });
+
+function FidiDashboardPageProtetta() {
+  return <AccessoAreaFidi pagina="Dashboard fidi"><FidiDashboardPage /></AccessoAreaFidi>;
+}
 
 function FidiDashboardPage() {
   const { role } = useAuth();

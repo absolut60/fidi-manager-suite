@@ -1,3 +1,4 @@
+import { AccessoAreaFidi } from "@/components/accesso-area-fidi";
 import { createFileRoute, useNavigate, Outlet, useMatchRoute, Link } from "@tanstack/react-router";
 import { leggiTutteLeRighe } from "@/lib/leggi-tutte-le-righe";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -81,7 +82,7 @@ export const Route = createFileRoute("/_app/richieste")({
       ? { tab: t as (typeof TAB_RICHIESTE)[number] }
       : {};
   },
-  component: RichiestePage,
+  component: RichiestePageProtetta,
 });
 
 const STATI_IN_APPROVAZIONE = ["in_approvazione", "in_attesa_liv1", "in_attesa_liv2", "in_attesa_liv3", "integrazioni_richieste"];
@@ -265,6 +266,10 @@ function userName(p: any): string {
   if (!p) return "—";
   const n = `${p.nome ?? ""} ${p.cognome ?? ""}`.trim();
   return n || p.email || "—";
+}
+
+function RichiestePageProtetta() {
+  return <AccessoAreaFidi pagina="Richieste fido"><RichiestePage /></AccessoAreaFidi>;
 }
 
 function RichiestePage() {
