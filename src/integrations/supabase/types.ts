@@ -1763,6 +1763,7 @@ export type Database = {
           ultima_importazione_d: string | null
           ultima_sincronizzazione: string | null
           updated_at: string
+          cliente_privato_fido: boolean | null
         }
         Insert: {
           a_scadere?: number | null
@@ -6854,6 +6855,14 @@ export type Database = {
         Returns: Json
       }
       classifica_iscritto_whatsapp: { Args: { _id: string }; Returns: Json }
+      cliente_privato_fido:
+        | {
+            Args: { "": Database["public"]["Tables"]["clienti"]["Row"] }
+            Returns: {
+              error: true
+            } & "the function public.cliente_privato_fido with parameter or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache"
+          }
+        | { Args: { partita_iva: string }; Returns: boolean }
       clienti_ambito_utente_ids: { Args: never; Returns: string[] }
       clienti_scaduto_oltre_60: {
         Args: never

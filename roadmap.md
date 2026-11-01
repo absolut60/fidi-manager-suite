@@ -1,7 +1,8 @@
 # FM55 — Privati fuori dal giro fidi
-- [ ] Fonte unica TS/SQL per partita IVA assente e preset solo partita IVA, senza cambiare lista predefinita.
-- [ ] Migrazione perimetro Alert, confronto contenuto applicato e un aggiornamento con conteggi prima/dopo.
-- [ ] Test bun e verifica invarianti: fidi e notifiche invariati.
+- [x] Bloccati/legali: riferimento senza protezioni, rinnovi zero esclusi dai da guardare; già fuori dal perimetro SQL Alert, nessuna ulteriore migrazione.
+- [x] Fonte unica TS/SQL per partita IVA assente e preset solo partita IVA, senza cambiare lista predefinita; query e RPC verificate nell'anteprima autenticata, che restituisce zero clienti (verifica dati reali UI non disponibile).
+- [x] Migrazione 0121 applicata e definizione confrontata con la precedente: solo perimetro. Un refresh: 6 privati chiusi; consumo non chiusi 170→164, extra 22→22, riduzioni 0→0; richieste attive riallineate dal meccanismo esistente.
+- [x] bun test: 147 pass, zero fail; build OK. Firma teorico v2 invariata su 12.904 righe: 56c635f2045cbe0fd93443ec12963824; notifiche false.
 - [x] Categoria rinnovi da guardare predefinita, conteggi indipendenti dai filtri e spunta iniziale senza rossi; tipo inviato sempre rinnovo.
 - [x] Cinque caselle, motivi grammaticali e SemaforoPallino condiviso in richieste, massiva e Alert; dati canonici conservati dal normalizzatore.
 - [x] bun test: 133 superati, zero falliti; compilazione OK. Chromium 320/390/768/1280/1920 con 603 righe: ultima modificabile, rossa non spuntata e selezionabile a mano, nessun overflow o errore. Anteprima autenticata senza clienti/alert: invio reale e Safari iOS non verificati.

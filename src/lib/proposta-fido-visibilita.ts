@@ -17,6 +17,7 @@ export interface RigaVisibilita<T extends string = string> {
   tipo: T;
   regola: string;
   fido_proposto: number;
+  fido_attuale?: number;
   richiestaInCorso?: unknown;
   /** FM55 3C: cliente con alert aperto o segnalazione arancione/rossa (vedi daValutareProposta). */
   inAlertOAnomalia?: boolean;
@@ -24,8 +25,9 @@ export interface RigaVisibilita<T extends string = string> {
   alertAperto?: boolean;
 }
 
-/** Rinnovi con alert o anomalie: categoria di visibilità, mai un nuovo tipo richiesta. */
+/** Rinnovi con alert o anomalie; zero su zero non è mai da guardare. Non cambia il tipo richiesta. */
 export function daValutareProposta<T extends string>(r: RigaVisibilita<T>): boolean {
+  if (r.fido_proposto === 0 && r.fido_attuale === 0) return false;
   return r.tipo === "rinnovo" && !!r.inAlertOAnomalia;
 }
 

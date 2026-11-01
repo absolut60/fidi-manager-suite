@@ -412,6 +412,7 @@ export function riferimentoConExtraProtetto(riferimento: number, protetto: Extra
 
 /**
  * Riferimento della richiesta per una riga del teorico pubblicato.
+ * Bloccati e gestione legale: teorico pubblicato (zero), senza protezione debito/soglia o extra.
  * Con regola 'scaduto_non_incassato' non si applica la protezione debito/soglia; l'extra approvato
  * resta protetto solo se lo scaduto era già noto alla decisione (protezione_valida da extra_fido_protetti).
  */
@@ -421,6 +422,7 @@ export function riferimentoRichiesta(
   protetto: ExtraFidoProtetto | undefined,
 ): number | null {
   if (!isProponibile(r.regola_applicata)) return null;
+  if (r.regola_applicata === "cliente_bloccato" || r.regola_applicata === "gestione_legale") return r.fido_proposto;
   if (r.regola_applicata === "scaduto_non_incassato") return riferimentoConExtraProtetto(r.fido_proposto, protetto);
   return riferimentoConExtraProtetto(
     fidoPropostoPerRichiesta(r.fido_attuale, r.fido_proposto, r.esposizione_corrente + (r.ordini_aperti ?? 0), soglia),
