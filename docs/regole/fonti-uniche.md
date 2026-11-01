@@ -71,3 +71,10 @@ Le azioni multiple su `richieste_fido` passano dall'helper a blocchi `src/lib/ri
 - **Perché:** il tempo di un blocco di ricalcolo varia molto con il carico del database (misurati da 0,5 s a 24 s sullo stesso blocco). Con 8 s anche tre tentativi non bastavano e il ricalcolo si è fermato due volte a metà: blocco 14 da 500 clienti, poi blocco 39 da 200.
 - **Regola:** mai chiamare una RPC pesante dal client con l'utente (8 s): passa da una server function che usa `supabaseAdmin` (60 s). Blocchi da 200 clienti e riprova automatica sui timeout restano come rete di sicurezza (fonte unica `src/lib/fido-teorico-ricalcolo-riprova.ts`).
 - **Verifica:** `tests/sql/service-role-timeout.sql` (sola lettura) controlla che `service_role` abbia 60 s e che `authenticated` resti a 8 s.
+
+## Un solo ricalcolo del fido teorico alla volta (FM55 fetta 4d)
+
+- Lock unico: riga `configurazioni.chiave = 'fido_teorico_ricalcolo_lock'` (token, origine, ora di avvio, blocco/previsti); `updated_at` è il battito aggiornato a ogni passo e blocco.
+- Preso all'avvio, rinnovato a ogni blocco, rilasciato dopo la chiusura; scade dopo 15 minuti senza avanzamento.
+- Fonte unica: `src/lib/fido-teorico-ricalcolo-lock.ts`, usato da `fido-teorico-ricalcolo-passi.server.ts` (pulsante e job Inngest, concurrency 1).
+- Con lock attivo: pulsante e "Riprendi da blocco N" disabilitati con "Ricalcolo già in corso (avviato alle HH:MM, automatico/manuale): attendi"; il job automatico termina senza ricalcolare.

@@ -157,7 +157,7 @@ export function etichettaRipresa(r: RipresaRicalcolo): string {
 export async function eseguiSequenzaRicalcolo(p: {
   ripresa: RipresaRicalcolo | null;
   avvia: () => Promise<{ blocchiPrevisti: number }>;
-  blocco: (dopoId: string | null) => Promise<string | null>;
+  blocco: (dopoId: string | null, numero: number, previsti: number) => Promise<string | null>;
   chiudi: (passo: PassoChiusura) => Promise<void>;
   onAvanzamento?: (testo: string) => void;
 }): Promise<{ ok: true } | { ok: false; errore: string; ripresa: RipresaRicalcolo | null }> {
@@ -174,13 +174,16 @@ export async function eseguiSequenzaRicalcolo(p: {
   }
   if (r.fase === "blocchi") {
     const previsti = r.previsti;
+    let numero = r.numero;
     try {
       await eseguiBlocchiRicalcolo({
         dopoId: r.dopoId,
         numeroIniziale: r.numero,
-        eseguiBlocco: p.blocco,
-        onBlocco: (n) =>
-          p.onAvanzamento?.(n <= previsti ? `Blocco ${n} di ${previsti}` : "Ultimi controlli dei blocchi…"),
+        eseguiBlocco: (dopoId) => p.blocco(dopoId, numero, previsti),
+        onBlocco: (n) => {
+          numero = n;
+          p.onAvanzamento?.(n <= previsti ? `Blocco ${n} di ${previsti}` : "Ultimi controlli dei blocchi…");
+        },
       });
     } catch (e) {
       if (e instanceof ErroreBloccoRicalcolo) {
