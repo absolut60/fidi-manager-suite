@@ -1,17 +1,7 @@
 // FM55 fetta 5: testi brevi della riga della proposta fido massiva (fonte unica, solo presentazione).
 import { motivoRigaProposta, type MotivoRigaProposta } from "@/lib/proposta-fido-visibilita";
 
-export const AVVISO_FIDO_ZERO = "Con fido a zero il cliente resta bloccato: solo pagamento alla consegna.";
-
-/** Avviso rosso: valore nella casella 0, fido attuale > 0, cliente non già bloccato/in legale. */
-export function mostraAvvisoFidoZero({ valore, fidoAttuale, regola }: {
-  valore: number; fidoAttuale: number; regola: string;
-}): boolean {
-  if (regola === "cliente_bloccato" || regola === "gestione_legale") return false;
-  return Number(valore) === 0 && Number(fidoAttuale) > 0;
-}
-
-export type EtichettaRiga = { tono: "rosso_scuro" | "rossa" | "viola" | "arancione"; testo: string } | null;
+export type EtichettaRiga = { tono: "rossa" | "arancione" | "viola" | "azzurra"; testo: string } | null;
 
 /** Al massimo una etichetta, decisa dal motivo vincente (fonte unica: motivoRigaProposta). */
 export function etichettaRigaProposta({ regola, segnalazioni }: {
@@ -19,11 +9,11 @@ export function etichettaRigaProposta({ regola, segnalazioni }: {
   segnalazioni?: readonly string[] | null;
 }): EtichettaRiga {
   const { motivo } = motivoRigaProposta({ regola, segnalazioni });
-  if (motivo === "bloccato") return { tono: "rosso_scuro", testo: "Bloccato" };
-  if (motivo === "legale") return { tono: "rosso_scuro", testo: "In legale" };
-  if (motivo === "scaduto") return { tono: "rossa", testo: "Scaduto non pagato" };
+  if (motivo === "bloccato") return { tono: "rossa", testo: "Bloccato" };
+  if (motivo === "legale") return { tono: "rossa", testo: "In legale" };
+  if (motivo === "scaduto") return { tono: "arancione", testo: "Cliente con scaduto" };
   if (motivo === "da_autorizzare") return { tono: "viola", testo: "Da autorizzare: compra molto più del solito" };
-  if (motivo === "ordini_oltre_fido") return { tono: "arancione", testo: "Ordini oltre il fido" };
+  if (motivo === "ordini_oltre_fido") return { tono: "azzurra", testo: "Ordini oltre il fido" };
   return null;
 }
 
@@ -64,7 +54,7 @@ export const CLASSI_MOTIVO_RIGA: Record<Exclude<MotivoRigaProposta, null>, { bor
 /** Legenda dei quattro motivi colorati, in cima all'elenco. */
 export const LEGENDA_MOTIVI: { motivo: Exclude<MotivoRigaProposta, null>; nome: string }[] = [
   { motivo: "bloccato", nome: "Bloccato o in legale" },
-  { motivo: "scaduto", nome: "Scaduto non pagato" },
+  { motivo: "scaduto", nome: "Cliente con scaduto" },
   { motivo: "da_autorizzare", nome: "Da autorizzare" },
   { motivo: "ordini_oltre_fido", nome: "Ordini oltre il fido" },
 ];

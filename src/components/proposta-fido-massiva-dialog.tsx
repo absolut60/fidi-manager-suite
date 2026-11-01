@@ -27,7 +27,7 @@ import {
   fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchExtraFidoProtetti, fetchSogliaConsumoFido, fidoPerTornareSottoSoglia, notaExtraProtetto, MOTIVAZIONE_PROFILO_FIDO, isProponibile,
   REGOLA_LABEL, MOTIVO_NON_PROPONIBILE, MOTIVO_NON_PROPONIBILE_BREVE, isSedeCentraleFido,
 } from "@/lib/fido-teorico";
-import { AVVISO_FIDO_ZERO, CLASSI_MOTIVO_RIGA, LEGENDA_MOTIVI, etichettaRigaProposta, mostraAvvisoFidoZero } from "@/lib/proposta-fido-riga";
+import { CLASSI_MOTIVO_RIGA, LEGENDA_MOTIVI, etichettaRigaProposta } from "@/lib/proposta-fido-riga";
 import { riepilogoProposte } from "@/lib/proposta-fido-riepilogo";
 import { motivazioneEffettiva } from "@/lib/motivazione-proposta";
 import { Button } from "@/components/ui/button";
@@ -524,7 +524,7 @@ export function ProposteFidoMassivoDialog({
         }}
       />
   );
-  /** Riga semplice: numeri → casella → differenza, una frase, avviso fido a zero, ▸ dettagli. */
+  /** Riga semplice: numeri → casella → differenza, una frase, ▸ dettagli. */
   const renderCorpo = (r: RigaProposta, casellaClass: string) => {
     const scost = r.proponibile ? r.fido_proposto - r.fido_attuale : 0;
     const teo = teoricoMap?.get(r.cliente_id);
@@ -556,9 +556,6 @@ export function ProposteFidoMassivoDialog({
             )}
           </span>
         </div>
-        {r.proponibile && mostraAvvisoFidoZero({ valore: r.fido_proposto, fidoAttuale: r.fido_attuale, regola: r.regola }) && (
-          <p className="break-words font-medium text-destructive" data-avviso-fido-zero>{AVVISO_FIDO_ZERO}</p>
-        )}
         {r.proponibile && (
           <CampoExtraTeorico compatto importo={r.fido_proposto} teorico={r.fido_teorico}
             motivo={r.motivo_extra} onMotivo={(v) => aggiornaMotivoExtra(r.cliente_id, v)} />
