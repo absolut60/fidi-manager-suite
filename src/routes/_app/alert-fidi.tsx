@@ -182,23 +182,29 @@ function AlertFidiContenuto({ userId, puoProporre }: { userId: string; puoPropor
   const filtriAttivi = Number(stati.length !== STATI_ALERT_DEFAULT.length || !STATI_ALERT_DEFAULT.every((s) => stati.includes(s)))
     + Number(tipi.length > 0) + Number(negozi.length > 0) + Number(agentiSel.length > 0) + Number(richiestaSel.length > 0);
 
-  const linkCliente = (a: AlertFidoRow) => (
+  const linkCliente = (a: AlertFidoRow, intero = false) => (
     <Link to="/clienti/$clienteId" params={{ clienteId: a.cliente_id }} search={{ tab: "storico" } as any}
-      className="break-words line-clamp-2 font-medium text-primary hover:underline">
+      className={`break-words ${intero ? "" : "line-clamp-2"} font-medium text-primary hover:underline`}>
       {a.cliente?.ragione_sociale ?? "Cliente"}
     </Link>
   );
   const nomeAgenteAlert = (a: AlertFidoRow) => a.cliente?.codice_agente ? (nomeAgente.get(a.cliente.codice_agente) ?? a.cliente.codice_agente) : null;
-  const renderCliente = (a: AlertFidoRow) => (
+  const renderCliente = (a: AlertFidoRow, scheda = false) => (
     <div className="min-w-0">
       <div className="flex min-w-0 items-start gap-2">
-        <SemaforoPallino cliente={{ fido_teorico_cliente: teoricoMap?.get(a.cliente_id) }} className="mt-1.5" />
-        <div className="min-w-0">{linkCliente(a)}</div>
+        <SemaforoPallino cliente={{ fido_teorico_cliente: teoricoMap?.get(a.cliente_id) }} className="mt-1.5 shrink-0" />
+        <div className="min-w-0">{linkCliente(a, scheda)}</div>
       </div>
       {a.cliente?.codice_gestionale && <div className="text-xs text-muted-foreground">{a.cliente.codice_gestionale}</div>}
       <div className="break-words text-xs text-muted-foreground">
         {[a.cliente?.stores?.nome ?? "Senza negozio", nomeAgenteAlert(a) ?? "Senza agente"].join(" · ")}
       </div>
+      {scheda && (
+        <div className="mt-1 flex min-w-0 flex-wrap gap-1">
+          <Badge variant="outline" className="whitespace-normal break-words">{etichettaAvviso(a)}</Badge>
+          {renderEtichettaMotivo(a)}
+        </div>
+      )}
     </div>
   );
   const fidoGammaAlert = (a: AlertFidoRow) => Number(a.cliente?.fido_gestionale ?? a.fido_gamma ?? 0);
@@ -243,6 +249,17 @@ function AlertFidiContenuto({ userId, puoProporre }: { userId: string; puoPropor
       <span>Fido teorico {renderTeorico(a)}</span>
     </div>
   );
+  /** Schede (telefono/tablet): numeri in griglia, etichetta sopra e valore sotto. */
+  const renderNumeriGriglia = (a: AlertFidoRow) => (
+    <div className="grid grid-cols-2 gap-x-3 gap-y-2 tabular-nums">
+      {([["Fido Gamma", formatEuro(fidoGammaAlert(a))], ["Ci deve", formatEuro(debitoOggi(a))], ["Fido teorico", renderTeorico(a)]] as const).map(([e, v]) => (
+        <div key={e} className="min-w-0">
+          <div className="text-xs text-muted-foreground">{e}</div>
+          <div className="break-words text-sm font-medium">{v}</div>
+        </div>
+      ))}
+    </div>
+  );
   const renderOrdini = (a: AlertFidoRow) => {
     const t = testoOrdiniAlert(a);
     return t ? <div className="break-words text-xs font-medium text-motivo-ordini">{t}</div> : null;
@@ -257,7 +274,7 @@ function AlertFidiContenuto({ userId, puoProporre }: { userId: string; puoPropor
         <div className="grid grid-cols-1 gap-1 text-xs">
           {t?.spiegazione && <p className="min-w-0 break-words text-muted-foreground">{t.spiegazione}</p>}
           {prot && (
-            <p className={`min-w-0 break-words text-[11px] ${notaExtraProtetto(prot).decaduta ? "font-medium text-destructive" : "text-success"}`}>
+            <p className={`min-w-0 break-words text-xs sm:text-[11px] ${notaExtraProtetto(prot).decaduta ? "font-medium text-destructive" : "text-success"}`}>
               {notaExtraProtetto(prot).testo}
             </p>
           )}
@@ -366,7 +383,7 @@ function AlertFidiContenuto({ userId, puoProporre }: { userId: string; puoPropor
       ) : (
         <>
         {/* Legenda: colore della riga = motivo principale (stessa fonte della proposta massiva). */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-[11px] text-muted-foreground" data-legenda-motivi>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-xs sm:text-[11px] text-muted-foreground" data-legenda-motivi>
           {LEGENDA_MOTIVI.map(({ motivo, nome }) => (
             <span key={motivo} className="flex items-center gap-1.5">
               <span aria-hidden className={`inline-block size-3 rounded-sm ${CLASSI_MOTIVO_RIGA[motivo].pallino}`} />
@@ -382,15 +399,9 @@ function AlertFidiContenuto({ userId, puoProporre }: { userId: string; puoPropor
               <SchedaLista key={a.id}
                 className={classiRigaAlert(a)}
                 selezione={selezionabile(a) ? { checked: selezionati.has(a.id), onChange: () => toggle(a.id) } : undefined}
-                titolo={renderCliente(a)}
-                badge={
-                  <div className="flex shrink-0 flex-col items-end gap-1">
-                    <Badge variant="outline" className="whitespace-normal break-words text-right">{etichettaAvviso(a)}</Badge>
-                    {renderEtichettaMotivo(a)}
-                  </div>
-                }
+                titolo={renderCliente(a, true)}
                 campi={[
-                  { etichetta: "Fido", valore: renderNumeri(a) },
+                  { etichetta: "Fido", valore: renderNumeriGriglia(a) },
                   { etichetta: "Perché", valore: renderPerche(a) },
                   ...(renderDecisione(a) ? [{ etichetta: "Ultima decisione", valore: renderDecisione(a) }] : []),
                   { etichetta: "Alert dal", valore: formatDate(a.aperto_il) },
