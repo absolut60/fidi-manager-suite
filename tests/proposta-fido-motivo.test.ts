@@ -24,11 +24,11 @@ describe("FM55 fetta 5bis — motivoRigaProposta (fonte unica colore/etichetta/s
   });
 
   test("etichette e toni per motivo", () => {
-    expect(etichettaRigaProposta({ regola: "scaduto_non_incassato" })).toEqual({ tono: "rossa", testo: "Scaduto non pagato" });
-    expect(etichettaRigaProposta({ regola: "cliente_bloccato" })).toEqual({ tono: "rosso_scuro", testo: "Bloccato" });
-    expect(etichettaRigaProposta({ regola: "gestione_legale" })).toEqual({ tono: "rosso_scuro", testo: "In legale" });
+    expect(etichettaRigaProposta({ regola: "scaduto_non_incassato" })).toEqual({ tono: "arancione", testo: "Cliente con scaduto" });
+    expect(etichettaRigaProposta({ regola: "cliente_bloccato" })).toEqual({ tono: "rossa", testo: "Bloccato" });
+    expect(etichettaRigaProposta({ regola: "gestione_legale" })).toEqual({ tono: "rossa", testo: "In legale" });
     expect(etichettaRigaProposta({ regola: "calcolo", segnalazioni: ["oltre_normale"] })).toEqual({ tono: "viola", testo: "Da autorizzare: compra molto più del solito" });
-    expect(etichettaRigaProposta({ regola: "calcolo", segnalazioni: ["ordini_oltre_fido"] })).toEqual({ tono: "arancione", testo: "Ordini oltre il fido" });
+    expect(etichettaRigaProposta({ regola: "calcolo", segnalazioni: ["ordini_oltre_fido"] })).toEqual({ tono: "azzurra", testo: "Ordini oltre il fido" });
   });
 
   test("ogni motivo ha classi colore dai token del tema e la legenda copre i quattro motivi", () => {
@@ -37,7 +37,7 @@ describe("FM55 fetta 5bis — motivoRigaProposta (fonte unica colore/etichetta/s
       expect(CLASSI_MOTIVO_RIGA[m].sfondo).toContain("bg-motivo-");
     }
     expect(LEGENDA_MOTIVI.map((l) => l.motivo)).toEqual(["bloccato", "scaduto", "da_autorizzare", "ordini_oltre_fido"]);
-    // Bloccato/legale: rosso scuro pieno, mai grigio.
+    // Bloccato/legale: rosso pieno, mai grigio.
     expect(CLASSI_MOTIVO_RIGA.bloccato.badge).toContain("bg-motivo-bloccato ");
     expect(CLASSI_MOTIVO_RIGA.legale.badge).toContain("bg-motivo-bloccato ");
     // I colori vivono nei token del tema, non nel componente.

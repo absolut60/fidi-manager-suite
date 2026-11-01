@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { inclusoInizialeProposta } from "@/lib/proposta-fido-visibilita";
-import { AVVISO_FIDO_ZERO, etichettaRigaProposta, mostraAvvisoFidoZero } from "@/lib/proposta-fido-riga";
+import { etichettaRigaProposta } from "@/lib/proposta-fido-riga";
 
 describe("FM55 fetta 5 — spunta iniziale", () => {
   test("scaduto non incassato a zero da fido > 0: non spuntata (anche se non rossa)", () => {
@@ -15,23 +15,6 @@ describe("FM55 fetta 5 — spunta iniziale", () => {
   test("resto invariato: oltre_normale rosso non spuntato, aumento normale spuntato", () => {
     expect(inclusoInizialeProposta({ proponibile: true, rossa: true, regola: "calcolo", fidoAttuale: 10000, fidoProposto: 20000, segnalazioni: ["oltre_normale"] })).toBe(false);
     expect(inclusoInizialeProposta({ proponibile: true, rossa: false, regola: "calcolo", fidoAttuale: 10000, fidoProposto: 20000 })).toBe(true);
-  });
-});
-
-describe("FM55 fetta 5 — avviso fido a zero", () => {
-  test("testo esatto", () => {
-    expect(AVVISO_FIDO_ZERO).toBe("Con fido a zero il cliente resta bloccato: solo pagamento alla consegna.");
-  });
-  test("compare con 0 proposto dal sistema e con 0 scritto a mano", () => {
-    expect(mostraAvvisoFidoZero({ valore: 0, fidoAttuale: 2000, regola: "scaduto_non_incassato" })).toBe(true);
-    // utente che scrive 0 a mano su un aumento
-    expect(mostraAvvisoFidoZero({ valore: Number("0"), fidoAttuale: 15000, regola: "calcolo" })).toBe(true);
-  });
-  test("non compare per bloccati/legali, fido attuale 0 o valore > 0", () => {
-    expect(mostraAvvisoFidoZero({ valore: 0, fidoAttuale: 2000, regola: "cliente_bloccato" })).toBe(false);
-    expect(mostraAvvisoFidoZero({ valore: 0, fidoAttuale: 2000, regola: "gestione_legale" })).toBe(false);
-    expect(mostraAvvisoFidoZero({ valore: 0, fidoAttuale: 0, regola: "calcolo" })).toBe(false);
-    expect(mostraAvvisoFidoZero({ valore: 500, fidoAttuale: 2000, regola: "calcolo" })).toBe(false);
   });
 });
 

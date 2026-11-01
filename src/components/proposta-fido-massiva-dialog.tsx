@@ -654,7 +654,7 @@ export function ProposteFidoMassivoDialog({
     const segn = teo && teo.segnalazioni.length > 0;
     const ordini = Number(teo?.ordini_aperti ?? 0);
     const spieg = teo?.spiegazione || r.nota_proposta;
-    if (!spieg && !cambio && !mot && !prot && !segn && ordini <= 0) return null;
+    if (!spieg && !cambio && !mot && !prot && !segn && ordini <= 0 && Number(teo?.scaduto_oltre ?? 0) <= 0) return null;
     return (
       <div className={`grid grid-cols-1 gap-2 text-xs ${cambio ? "xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]" : ""}`}>
         {r.proponibile && <p className="min-w-0 break-words text-muted-foreground">Regola: {renderRegola(r)}</p>}
@@ -665,6 +665,11 @@ export function ProposteFidoMassivoDialog({
           </p>
         )}
         {segn && teo && <SegnalazioniFido riga={teo} />}
+        {Number(teo?.scaduto_oltre ?? 0) > 0 && (
+          <p className="min-w-0 break-words text-muted-foreground">
+            Scaduto non pagato: {fmtEuro(Number(teo?.scaduto_oltre))}{teo?.scaduto_oltre_giorni != null ? ` da ${Math.round(Number(teo.scaduto_oltre_giorni)).toLocaleString("it-IT")} giorni` : ""}
+          </p>
+        )}
         {ordini > 0 && (
           <p className="min-w-0 break-words text-muted-foreground">
             Ordini clienti aperti (non entrano nel fido): {fmtEuro(ordini)}
