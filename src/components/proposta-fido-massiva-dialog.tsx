@@ -25,7 +25,7 @@ import { Switch } from "@/components/ui/switch";
 import { CampoExtraTeorico } from "@/components/extra-fido-teorico";
 import {
   fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchExtraFidoProtetti, fetchSogliaConsumoFido, fidoPerTornareSottoSoglia, notaExtraProtetto, MOTIVAZIONE_PROFILO_FIDO, isProponibile,
-  REGOLA_LABEL, MOTIVO_NON_PROPONIBILE, MOTIVO_NON_PROPONIBILE_BREVE,
+  REGOLA_LABEL, MOTIVO_NON_PROPONIBILE, MOTIVO_NON_PROPONIBILE_BREVE, isSedeCentraleFido,
 } from "@/lib/fido-teorico";
 import { riepilogoProposte } from "@/lib/proposta-fido-riepilogo";
 import { motivazioneEffettiva } from "@/lib/motivazione-proposta";
@@ -208,7 +208,8 @@ export function ProposteFidoMassivoDialog({
   const [avanzamentoCrea, setAvanzamentoCrea] = useState<{ fatte: number; totali: number } | null>(null);
 
   // Fido proposto = SEMPRE la RPC canonica get_fido_teorico (nessun calcolo locale)
-  const ids = useMemo(() => selectedRows.map((c) => c.id as string), [selectedRows]);
+  const clientiNelGiro = useMemo(() => selectedRows.filter((c) => !isSedeCentraleFido(c)), [selectedRows]);
+  const ids = useMemo(() => clientiNelGiro.map((c) => c.id as string), [clientiNelGiro]);
   const { data: teoricoMap, isLoading: teoricoLoading, error: teoricoError } = useQuery({
     queryKey: ["fido-teorico-massivo", [...ids].sort().join(",")],
     enabled: open && ids.length > 0,
@@ -285,7 +286,7 @@ export function ProposteFidoMassivoDialog({
     if (!open || !teoricoMap || !teoricoRichMap || !alertAperti || !inCorsoMap) return;
     setRighe((prev) => {
       const prevMap = new Map(prev.map((r) => [r.cliente_id, r]));
-      return selectedRows.map((c) => {
+      return clientiNelGiro.filter((c) => teoricoMap.get(c.id)?.regola_applicata !== "sede_esclusa").map((c) => {
         const existing = prevMap.get(c.id);
         if (existing) return existing;
         const t = teoricoMap.get(c.id);
@@ -331,7 +332,7 @@ export function ProposteFidoMassivoDialog({
         };
       });
     });
-  }, [open, selectedRows, teoricoMap, teoricoRichMap, importiDaAlert, alertAperti, inCorsoMap]);
+  }, [open, clientiNelGiro, teoricoMap, teoricoRichMap, importiDaAlert, alertAperti, inCorsoMap]);
 
   function toggleIncluso(id: string) {
     setRighe((prev) => prev.map((r) =>

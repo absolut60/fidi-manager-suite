@@ -3,7 +3,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { leggiTutteLeRighe } from "@/lib/leggi-tutte-le-righe";
 import { FIDO_CLIENTE_SELECT } from "@/lib/fido-cliente";
-import { fetchExtraFidoProtetti, protezioneAttiva, type ExtraFidoProtetto } from "@/lib/fido-teorico";
+import { fetchExtraFidoProtetti, protezioneAttiva, isPrivatoFido, type ExtraFidoProtetto } from "@/lib/fido-teorico";
 import { isRichiestaAttiva, STATO_LABEL, formatEuro, type StatoRichiesta } from "@/lib/fidi";
 
 export type TipoAlertFido = "consumo" | "riduzione" | "extra_non_usato";
@@ -29,6 +29,7 @@ export type AlertFidoRow = {
     codice_gestionale: string | null;
     ragione_sociale: string;
     store_id: string | null;
+    partita_iva?: string | null;
     codice_agente: string | null;
     totale_rischio: number | null;
     fido_gestionale: number | null;
@@ -231,7 +232,7 @@ export function importoDaAlert(a: AlertFidoRow): number | undefined {
 
 export async function fetchAlertFidiAperti(): Promise<AlertFidoRow[]> {
   const select = `id, cliente_id, tipo, livello, stato, aperto_il, fido_gamma, esposizione, ordini_aperti, consumo, fido_proposto, fido_gamma_apertura, richiesta_id, riproponi_dal,
-    cliente:clienti!alert_fidi_cliente_id_fkey(id, codice_gestionale, ragione_sociale, store_id, codice_agente, totale_rischio, ${FIDO_CLIENTE_SELECT}, stores(nome)),
+    cliente:clienti!alert_fidi_cliente_id_fkey(id, codice_gestionale, ragione_sociale, store_id, partita_iva, codice_agente, totale_rischio, ${FIDO_CLIENTE_SELECT}, stores(nome)),
     richiesta:richieste_fido!alert_fidi_richiesta_id_fkey(id, fido_teorico_riferimento)`;
   const alert = await leggiTutteLeRighe<AlertFidoRow>((da, a) =>
     (supabase as any)
@@ -245,6 +246,7 @@ export async function fetchAlertFidiAperti(): Promise<AlertFidoRow[]> {
   const perCliente = await fetchRichiesteClientiAlert(alert.map((a) => a.cliente_id));
   const out: AlertFidoRow[] = [];
   for (const a of alert) {
+    if (!a.cliente || isPrivatoFido(a.cliente)) continue;
     const fidoAttuale = a.cliente?.fido_gestionale != null ? Number(a.cliente.fido_gestionale) : null;
     const esito = esitoRichiestaAlert(a, perCliente.get(a.cliente_id) ?? [], fidoAttuale);
     if (esito.tipo === "processata") continue;

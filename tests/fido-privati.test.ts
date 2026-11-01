@@ -25,4 +25,8 @@ describe("Privati fuori dal giro fidi", () => {
     expect(applicaPerimetroFido(query, { soloPartitaIvaFido: false })).toBe(query);
     expect(chiamate).toBe(0);
   });
+  it("Sede Centrale fuori dal giro anche con partita IVA", () => {
+    expect(isPrivatoFido({ partita_iva: "12345678901", store_id: "b07c4c61-12e4-4a87-8e79-bbb9c181ffe9" })).toBe(true);
+    expect(isPrivatoFido({ partita_iva: "12345678901", store_id: "altro" })).toBe(false);
+  });
 });

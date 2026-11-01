@@ -94,11 +94,22 @@ export const SEGNALAZIONI_FIDO: Record<string, DefinizioneSegnalazione> = {
 
 const ORDINE = Object.keys(SEGNALAZIONI_FIDO);
 
+/** Non genera codici: sopprime solo oltre_normale obsoleto sulle righe pre-fetta 3.
+ * Il confronto con la soglia normale resta esclusivamente nella fonte SQL.
+ */
+export function segnalazioniCorrenti(r: {
+  segnalazioni?: unknown; fido_proposto?: number | null; fido_attuale?: number | null;
+}): string[] {
+  const codici = Array.isArray(r.segnalazioni) ? r.segnalazioni.map(String) : [];
+  return codici.filter((c) => c !== "oltre_normale" || Number(r.fido_proposto ?? 0) > Number(r.fido_attuale ?? 0));
+}
+
 /** Segnalazioni note della riga, ordinate per gravità (codici sconosciuti ignorati). */
 export function segnalazioniRiga(
   r: RigaSegnalazione & { segnalazioni: string[] },
 ): { codice: string; etichetta: string; gravita: GravitaSegnalazione; testo: string }[] {
-  return ORDINE.filter((c) => r.segnalazioni.includes(c)).map((c) => {
+  const correnti = segnalazioniCorrenti(r);
+  return ORDINE.filter((c) => correnti.includes(c)).map((c) => {
     const d = SEGNALAZIONI_FIDO[c];
     return { codice: c, etichetta: d.etichetta, gravita: d.gravita, testo: d.testo(r) };
   });

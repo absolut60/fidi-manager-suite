@@ -59,6 +59,12 @@ export function FidoTeoricoNuovoBlocco({ clienteId }: { clienteId: string }) {
         </div>
       )}
 
+      {r.esposizione_picco_30gg != null && r.esposizione_picco_30gg !== r.esposizione && (
+        <p className="text-sm break-words">
+          Punta più alta ultimi 30 giorni: {formatEuro(r.esposizione_picco_30gg)}
+        </p>
+      )}
+
       {Number(r.ordini_aperti ?? 0) > 0 && (
         <p className="text-xs text-muted-foreground break-words">
           Ordini clienti aperti (non entrano nel fido): {formatEuro(r.ordini_aperti ?? 0)}

@@ -51,6 +51,17 @@ describe("Proposta massiva: cinque categorie (01/11)", () => {
     })).toBe(true);
     expect(inclusoInizialeProposta({ proponibile: false, rossa: false, regola: "calcolo", fidoAttuale: 60000, fidoProposto: 60000 })).toBe(false);
   });
+  it("riduzione sopra 1,5 volte base non rossa e inclusa anche con codice pubblicato obsoleto", () => {
+    const t = normalizza({ cliente_id: "rid", base: 10000, tetto: 15000, fido_proposto: 25000, fido_attuale: 30000, segnalazioni: ["oltre_normale"] });
+    expect(t.fido_proposto).toBeGreaterThan(1.5 * Number(t.base));
+    expect(t.segnalazioni).toEqual([]);
+    expect(anomaliaRossa(t.segnalazioni)).toBe(false);
+    expect(inclusoInizialeProposta({ proponibile: true, rossa: anomaliaRossa(t.segnalazioni), regola: "calcolo", fidoAttuale: 30000, fidoProposto: 25000 })).toBe(true);
+  });
+  it("aumento sopra il normale resta rosso solo se pubblicato dal DB", () => {
+    expect(normalizza({ cliente_id: "a", fido_attuale: 20000, fido_proposto: 25000, segnalazioni: ["oltre_normale"] }).segnalazioni).toEqual(["oltre_normale"]);
+    expect(normalizza({ cliente_id: "a", base: 1000, fido_attuale: 20000, fido_proposto: 25000, segnalazioni: [] }).segnalazioni).toEqual([]);
+  });
   it("mostraSempre e righe toccate restano visibili ma non scavalcano richieste in corso", () => {
     const righe = [riga("a"), { ...riga("b"), richiestaInCorso: {} }];
     const scelti = new Set(["a", "b"]);
