@@ -897,6 +897,13 @@
       "when": 1793556067184,
       "tag": "0127_fm55_cliente_non_attivo_fido_zero",
       "breakpoints": true
+    },
+    {
+      "idx": 128,
+      "version": "7",
+      "when": 1793569651415,
+      "tag": "0128_fm55_alert_fidi_gia_deciso_notifiche",
+      "breakpoints": true
     }
   ]
 }

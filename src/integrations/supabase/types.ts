@@ -6843,6 +6843,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      alert_fido_gia_deciso: { Args: { _cliente_id: string }; Returns: boolean }
       allegato_storage_path_cliente_id: {
         Args: { _name: string }
         Returns: string
