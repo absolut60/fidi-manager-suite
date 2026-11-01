@@ -136,3 +136,73 @@ export async function eseguiBlocchiRicalcolo(p: {
     fatti += 1;
   }
 }
+
+export type PassoChiusura = "finalizza" | "alert" | "chiusura";
+
+/** Punto da cui riprendere un ricalcolo interrotto (tenuto nello stato della pagina). */
+export type RipresaRicalcolo =
+  | { fase: "blocchi"; dopoId: string | null; numero: number; previsti: number }
+  | { fase: "chiusura"; passo: PassoChiusura };
+
+export function etichettaRipresa(r: RipresaRicalcolo): string {
+  return r.fase === "blocchi" ? `Riprendi da blocco ${r.numero}` : "Riprendi dalla chiusura";
+}
+
+/**
+ * Sequenza del pulsante: avvia → blocchi → finalizza → alert → chiusura.
+ * Con una ripresa non rifà l'avvio né i blocchi già completati; finalizza e alert
+ * partono solo dopo che TUTTI i blocchi sono riusciti.
+ * Esito: ok, oppure errore con la ripresa da proporre (null se fallisce l'avvio).
+ */
+export async function eseguiSequenzaRicalcolo(p: {
+  ripresa: RipresaRicalcolo | null;
+  avvia: () => Promise<{ blocchiPrevisti: number }>;
+  blocco: (dopoId: string | null) => Promise<string | null>;
+  chiudi: (passo: PassoChiusura) => Promise<void>;
+  onAvanzamento?: (testo: string) => void;
+}): Promise<{ ok: true } | { ok: false; errore: string; ripresa: RipresaRicalcolo | null }> {
+  const msg = (e: unknown) => (e instanceof Error ? e.message : String(e));
+  let r = p.ripresa;
+  if (!r) {
+    p.onAvanzamento?.("Preparazione dei dati…");
+    try {
+      const { blocchiPrevisti } = await p.avvia();
+      r = { fase: "blocchi", dopoId: null, numero: 1, previsti: blocchiPrevisti };
+    } catch (e) {
+      return { ok: false, errore: msg(e), ripresa: null };
+    }
+  }
+  if (r.fase === "blocchi") {
+    const previsti = r.previsti;
+    try {
+      await eseguiBlocchiRicalcolo({
+        dopoId: r.dopoId,
+        numeroIniziale: r.numero,
+        eseguiBlocco: p.blocco,
+        onBlocco: (n) =>
+          p.onAvanzamento?.(n <= previsti ? `Blocco ${n} di ${previsti}` : "Ultimi controlli dei blocchi…"),
+      });
+    } catch (e) {
+      if (e instanceof ErroreBloccoRicalcolo) {
+        return { ok: false, errore: e.message, ripresa: { fase: "blocchi", dopoId: e.dopoId, numero: e.numero, previsti } };
+      }
+      return { ok: false, errore: msg(e), ripresa: r };
+    }
+    r = { fase: "chiusura", passo: "finalizza" };
+  }
+  const ordine: PassoChiusura[] = ["finalizza", "alert", "chiusura"];
+  const testi: Record<PassoChiusura, string> = {
+    finalizza: "Chiusura del ricalcolo…",
+    alert: "Aggiornamento degli alert fidi…",
+    chiusura: "Ultimi passaggi…",
+  };
+  for (const passo of ordine.slice(ordine.indexOf(r.passo))) {
+    p.onAvanzamento?.(testi[passo]);
+    try {
+      await p.chiudi(passo);
+    } catch (e) {
+      return { ok: false, errore: msg(e), ripresa: { fase: "chiusura", passo } };
+    }
+  }
+  return { ok: true };
+}

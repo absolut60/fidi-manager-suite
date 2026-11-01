@@ -14,6 +14,11 @@ import { Card } from "@/components/ui/card";
 import { ricalcoloFidoAvvia, ricalcoloFidoBlocco, ricalcoloFidoChiudi } from "@/lib/fido-teorico-precalcolo.functions";
 import { intervalloAttesaPrecalcolo } from "@/lib/precalcolo-polling";
 import {
+  eseguiSequenzaRicalcolo,
+  etichettaRipresa,
+  type RipresaRicalcolo,
+} from "@/lib/fido-teorico-ricalcolo-riprova";
+import {
   elencoMancantiTesto,
   istanteDa,
   leggiStatoImportCompleti,
@@ -79,7 +84,8 @@ function useStatoPrecalcolo(pollingAttivo = false) {
 /**
  * Esegue i passi del ricalcolo uno alla volta (stessa sequenza del job automatico):
  * avvia → blocchi → finalizza → alert fidi → chiusura. Mostra l'avanzamento e,
- * se un passo fallisce, il messaggio d'errore (mai una rotellina infinita).
+ * se un passo fallisce (dopo la riprova automatica sui timeout, lato server),
+ * il messaggio d'errore e "Riprendi da blocco N" dall'ultimo id completato.
  */
 function useRicalcolo() {
   const qc = useQueryClient();
@@ -90,34 +96,30 @@ function useRicalcolo() {
   const [avanzamento, setAvanzamento] = useState<string | null>(null);
   const [errore, setErrore] = useState<string | null>(null);
   const [completato, setCompletato] = useState(false);
+  const [ripresa, setRipresa] = useState<RipresaRicalcolo | null>(null);
   const attivo = useRef(false);
 
-  const esegui = async () => {
+  const esegui = async (da: RipresaRicalcolo | null) => {
     if (attivo.current) return;
     attivo.current = true;
     setInCorso(true); setErrore(null); setCompletato(false);
     try {
-      setAvanzamento("Preparazione dei dati…");
-      const { blocchiPrevisti } = await avvia();
-      let dopoId: string | null = null;
-      for (let i = 1; i <= MAX_BLOCCHI; i++) {
-        setAvanzamento(testoAvanzamentoBlocco(i, blocchiPrevisti));
-        const { ultimoId }: { ultimoId: string | null } = await blocco({ data: { dopoId } });
-        if (!ultimoId) break;
-        dopoId = ultimoId;
-        if (i === MAX_BLOCCHI) throw new Error(`Superato il limite di ${MAX_BLOCCHI} blocchi`);
+      const esito = await eseguiSequenzaRicalcolo({
+        ripresa: da,
+        avvia: () => avvia(),
+        blocco: async (dopoId) => (await blocco({ data: { dopoId } })).ultimoId,
+        chiudi: async (passo) => { await chiudi({ data: { passo } }); },
+        onAvanzamento: setAvanzamento,
+      });
+      if (esito.ok) {
+        setRipresa(null);
+        setCompletato(true);
+        toast.success("Fido teorico ricalcolato");
+      } else {
+        setRipresa(esito.ripresa);
+        setErrore(esito.errore);
+        toast.error(`Ricalcolo non riuscito: ${esito.errore}`);
       }
-      setAvanzamento("Chiusura del ricalcolo…");
-      await chiudi({ data: { passo: "finalizza" } });
-      setAvanzamento("Aggiornamento degli alert fidi…");
-      await chiudi({ data: { passo: "alert" } });
-      await chiudi({ data: { passo: "chiusura" } });
-      setCompletato(true);
-      toast.success("Fido teorico ricalcolato");
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setErrore(msg);
-      toast.error(`Ricalcolo non riuscito: ${msg}`);
     } finally {
       attivo.current = false;
       setInCorso(false); setAvanzamento(null);
@@ -125,10 +127,14 @@ function useRicalcolo() {
     }
   };
 
-  return { avvia: () => void esegui(), inCorso, avanzamento, errore, completato };
+  return {
+    avvia: () => void esegui(ripresa),
+    ricomincia: () => { setRipresa(null); void esegui(null); },
+    ripresa,
+    etichettaRipresa: ripresa ? etichettaRipresa(ripresa) : null,
+    inCorso, avanzamento, errore, completato,
+  };
 }
-
-const MAX_BLOCCHI = 400;
 
 
 export function FidoTeoricoPrecalcoloCard() {
@@ -198,8 +204,13 @@ export function FidoTeoricoPrecalcoloCard() {
           onClick={ric.avvia}
         >
           {ric.inCorso && <Loader2 className="size-4 animate-spin" />}
-          Ricalcola fido teorico ora
+          {ric.etichettaRipresa ?? "Ricalcola fido teorico ora"}
         </Button>
+        {ric.ripresa && !ric.inCorso && (
+          <Button variant="ghost" size="sm" onClick={ric.ricomincia}>
+            Ricomincia da capo
+          </Button>
+        )}
         {ric.inCorso && (
           <span className="text-sm text-muted-foreground" aria-live="polite">
             Ricalcolo in corso: {ric.avanzamento ?? "avvio…"}
@@ -247,7 +258,7 @@ export function RicalcolaFidoTeoricoAvviso() {
       <div className="flex items-center gap-2 flex-wrap">
         <Button size="sm" disabled={ric.inCorso} onClick={ric.avvia}>
           {ric.inCorso && <Loader2 className="size-4 animate-spin" />}
-          Ricalcola fido teorico
+          {ric.etichettaRipresa ?? "Ricalcola fido teorico"}
         </Button>
         {ric.inCorso && (
           <span className="text-xs text-muted-foreground" aria-live="polite">Ricalcolo in corso: {ric.avanzamento ?? "avvio…"}</span>
