@@ -13,7 +13,7 @@ export function BadgeMotiviRiga({ regola, segnalazioni, className = "" }: {
   return (
     <>
       {etichette.map((e) => (
-        <Badge key={e.motivo} className={`shrink-0 whitespace-normal break-words px-1.5 text-[10px] ${CLASSI_MOTIVO_RIGA[e.motivo].badge} ${className}`}>
+        <Badge key={e.motivo} className={`shrink-0 whitespace-normal break-words px-1.5 text-xs sm:text-[10px] ${CLASSI_MOTIVO_RIGA[e.motivo].badge} ${className}`}>
           {e.testo}
         </Badge>
       ))}
@@ -27,7 +27,7 @@ export function DettagliRiga({ frase, children }: { frase?: string | null; child
   return (
     <details className="group min-w-0">
       <summary className="grid min-h-8 cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
-        <span className="line-clamp-1 min-w-0 text-muted-foreground" title={frase ?? undefined}>{frase}</span>
+        <span className="min-w-0 break-words text-muted-foreground sm:line-clamp-1" title={frase ?? undefined}>{frase}</span>
         {children && <span className="whitespace-nowrap text-primary"><span aria-hidden className="inline-block transition-transform group-open:rotate-90">▸</span> dettagli</span>}
       </summary>
       {children && <div className="pt-1">{children}</div>}

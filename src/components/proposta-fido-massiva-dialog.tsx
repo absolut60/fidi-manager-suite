@@ -1,8 +1,8 @@
 import { BadgeMotiviRiga, DettagliRiga } from "@/components/badge-motivi-riga";
 import { SemaforoPallino } from "@/components/semaforo-pallino";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronDown, MessageSquare, X } from "lucide-react";
+import { MessageSquare, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
