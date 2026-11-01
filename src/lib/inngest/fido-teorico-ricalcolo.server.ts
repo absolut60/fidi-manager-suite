@@ -7,13 +7,17 @@ import {
   passoNotificheAlertFidi,
   passoRegistraOrigine,
 } from "@/lib/fido-teorico-ricalcolo-passi.server";
+import { MAX_BLOCCHI_RICALCOLO } from "@/lib/fido-teorico-ricalcolo-riprova";
 
-const MAX_ITERAZIONI = 400;
+const MAX_ITERAZIONI = MAX_BLOCCHI_RICALCOLO;
 
 /**
  * Ricalcolo automatico del precalcolo fido teorico (public.fido_teorico_cliente).
  * Stessi passi del pulsante manuale (fido-teorico-ricalcolo-passi.server.ts),
- * uno step Inngest per passo/blocco. Nessun evento che ri-triggera sé stesso.
+ * uno step Inngest per passo e per ogni blocco da 200 (con riprova sui timeout dentro
+ * il passo): se un blocco fallisce, Inngest riprende da quel blocco.
+ * finalizza e aggiorna_alert_fidi partono solo dopo l'ultimo blocco riuscito.
+ * Nessun evento che ri-triggera sé stesso.
  */
 export const ricalcolaFidoTeorico = inngest.createFunction(
   {
