@@ -499,30 +499,24 @@ export function ProposteFidoMassivoDialog({
     }
   }
 
-  // Evidenza righe da controllare (rossa prevale), poi "Da verificare".
-  const sfondoRiga = (r: RigaProposta, conBordo: boolean) => {
-    if (!r.proponibile) return "";
-    if (r.controllo === "rossa") return `bg-destructive/10${conBordo ? " border-l-4 border-l-destructive" : ""}`;
-    if (r.controllo === "arancione") return `bg-warning/10${conBordo ? " border-l-4 border-l-warning" : ""}`;
-    if (r.richiede_verifica) return `bg-warning/10${conBordo ? " border-l-2 border-l-warning" : ""}`;
-    return "";
-  };
+  // Bordo delle righe da controllare (rossa prevale).
   const bordoRiga = (r: RigaProposta) =>
     !r.proponibile ? "" : r.controllo === "rossa" ? "border-l-4 border-l-destructive" : r.controllo === "arancione" ? "border-l-4 border-l-warning" : "";
 
   // Pezzi condivisi tra tabella desktop e schede mobile (stessi handler)
-  const renderCliente = (r: RigaProposta) => (
+  const renderCliente = (r: RigaProposta) => {
+    const etichetta = r.proponibile ? etichettaRigaProposta(r.segnalazioni) : null;
+    return (
     <>
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-1">
       <span className="flex min-w-0 items-start gap-2">
         <SemaforoPallino cliente={{ fido_teorico_cliente: teoricoMap?.get(r.cliente_id) }} className="mt-1" />
-        <span className="min-w-0 break-words line-clamp-2" title={r.ragione_sociale}>{r.ragione_sociale}</span>
+        <span className="min-w-0 break-words line-clamp-2" title={r.ragione_sociale}>
+          {r.ragione_sociale}{r.negozio && <span className="font-normal text-muted-foreground"> · {r.negozio}</span>}
+        </span>
       </span>
-      {r.proponibile && r.controllo && (
-        <Badge className={`shrink-0 whitespace-nowrap px-1 text-[10px] ${r.controllo === "rossa" ? "bg-destructive/15 text-destructive hover:bg-destructive/20" : "bg-warning/20 text-foreground hover:bg-warning/25"}`} title="Ci sono segnalazioni: controlla prima di creare la richiesta">Controlla</Badge>
-      )}
-      {r.richiede_verifica && (
-        <Badge className="shrink-0 whitespace-nowrap px-1 text-[10px] bg-warning/15 text-warning hover:bg-warning/20">Da verificare</Badge>
+      {etichetta && (
+        <Badge className={`shrink-0 whitespace-nowrap px-1.5 text-[10px] ${etichetta.tono === "rossa" ? "bg-destructive/15 text-destructive hover:bg-destructive/20" : "bg-warning/20 text-foreground hover:bg-warning/25"}`}>{etichetta.testo}</Badge>
       )}
       </div>
       {r.richiestaInCorso && (
@@ -533,15 +527,12 @@ export function ProposteFidoMassivoDialog({
         </div>
       )}
     </>
-  );
-  const renderImporto = (r: RigaProposta, className: string) => (
-    <div className="min-w-0 space-y-1">
-      {r.proponibile && Number(r.fido_proposto) !== Number(r.fido_iniziale) && (
-        <Badge variant="outline" className="whitespace-nowrap border-info/40 bg-info/10 px-1.5 text-[10px] text-info">Modificato</Badge>
-      )}
+    );
+  };
+  const renderCasella = (r: RigaProposta, className: string) => (
       <Input
         type="number"
-        className={`${className} text-right tabular-nums`}
+        className={`${className} tabular-nums`}
         value={r.fido_proposto}
         disabled={!r.proponibile}
         aria-label={`Fido proposto per ${r.ragione_sociale}`}
@@ -553,12 +544,52 @@ export function ProposteFidoMassivoDialog({
           aggiornaImporto(r.cliente_id, valore);
         }}
       />
-      {r.proponibile && (
-        <CampoExtraTeorico compatto importo={r.fido_proposto} teorico={r.fido_teorico}
-          motivo={r.motivo_extra} onMotivo={(v) => aggiornaMotivoExtra(r.cliente_id, v)} />
-      )}
-    </div>
   );
+  /** Riga semplice: numeri → casella → differenza, una frase, avviso fido a zero, ▸ dettagli. */
+  const renderCorpo = (r: RigaProposta, casellaClass: string) => {
+    const scost = r.proponibile ? r.fido_proposto - r.fido_attuale : 0;
+    const teo = teoricoMap?.get(r.cliente_id);
+    const frase = r.proponibile ? fraseBreveProposta(teo, r.fido_attuale, r.fido_iniziale) : null;
+    const dettagli = renderDettagli(r);
+    return (
+      <div className="min-w-0 space-y-1 text-xs">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 tabular-nums">
+          <span>Fido attuale <strong className="font-medium">{fmtEuro(r.fido_attuale)}</strong></span>
+          <span aria-hidden className="text-muted-foreground">|</span>
+          <span>Ci deve <strong className="font-medium">{fmtEuro(r.esposizione)}</strong></span>
+          <span aria-hidden className="text-muted-foreground">|</span>
+          <span>Consigliato <strong>{r.proponibile && r.fido_teorico != null ? fmtEuro(r.fido_teorico) : "—"}</strong></span>
+          <span className="flex items-center gap-2">
+            <span aria-hidden className="text-muted-foreground">→</span>
+            {renderCasella(r, casellaClass)}
+            <span className={`whitespace-nowrap ${scost > 0 ? "text-success" : scost < 0 ? "text-warning" : "text-muted-foreground"}`}>
+              {r.proponibile ? `${scost > 0 ? "+" : scost < 0 ? "−" : ""}${fmtEuro(Math.abs(scost))}` : "—"}
+            </span>
+            {r.proponibile && Number(r.fido_proposto) !== Number(r.fido_iniziale) && (
+              <Badge variant="outline" className="whitespace-nowrap border-info/40 bg-info/10 px-1.5 text-[10px] text-info">Modificato</Badge>
+            )}
+          </span>
+        </div>
+        {r.proponibile && mostraAvvisoFidoZero({ valore: r.fido_proposto, fidoAttuale: r.fido_attuale, regola: r.regola }) && (
+          <p className="break-words font-medium text-destructive" data-avviso-fido-zero>{AVVISO_FIDO_ZERO}</p>
+        )}
+        {r.proponibile && (
+          <CampoExtraTeorico compatto importo={r.fido_proposto} teorico={r.fido_teorico}
+            motivo={r.motivo_extra} onMotivo={(v) => aggiornaMotivoExtra(r.cliente_id, v)} />
+        )}
+        {!r.proponibile && <p className="break-words">{renderRegola(r)}</p>}
+        {(frase || dettagli) && (
+          <details className="group min-w-0">
+            <summary className="grid min-h-8 cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
+              <span className="break-words text-muted-foreground">{frase}</span>
+              {dettagli && <span className="whitespace-nowrap text-primary"><span aria-hidden className="inline-block transition-transform group-open:rotate-90">▸</span> dettagli</span>}
+            </summary>
+            {dettagli && <div className="pt-1">{dettagli}</div>}
+          </details>
+        )}
+      </div>
+    );
+  };
   const renderRegola = (r: RigaProposta) =>
     r.proponibile ? (
       <span className="text-muted-foreground">{REGOLA_LABEL[r.regola] ?? r.regola ?? "—"}</span>
