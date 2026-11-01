@@ -33,8 +33,9 @@ SELECT 'scaduto non incassato resta segnalato',
 -- Confronto indipendente delle medie sui tre clienti reali richiesti.
 WITH cfg AS (
   SELECT date_trunc('month',CURRENT_DATE)::date m0,
-    (SELECT array_agg(trim(x)::numeric/100 ORDER BY o)
-       FROM unnest(string_to_array((SELECT valore FROM public.configurazioni WHERE chiave='fido_v2_stagionalita'),',')) WITH ORDINALITY u(x,o)) idx
+    COALESCE((SELECT array_agg(trim(x)::numeric/100 ORDER BY o)
+       FROM unnest(string_to_array((SELECT valore FROM public.configurazioni WHERE chiave='fido_v2_stagionalita'),',')) WITH ORDINALITY u(x,o)
+       HAVING count(*)=12), ARRAY[0.77,0.93,1.07,1.16,1.08,1.03,1.13,0.37,1.00,1.24,1.17,1.07]::numeric[]) idx
 ), cli AS (
   SELECT id,doc_da_fatturare FROM public.clienti WHERE codice_gestionale IN ('7457','7819','13380')
 ), primo AS (
