@@ -1,4 +1,5 @@
 import { anomaliaRossa, etichetteSegnalazioni } from "@/lib/fido-segnalazioni";
+import { arrotondaFidoV2, fidoPerTornareSottoSoglia } from "@/lib/fido-teorico";
 
 /**
  * Visibilità delle righe nella proposta fido massiva.
@@ -55,11 +56,10 @@ export function inclusoInizialeProposta({ proponibile, rossa, regola, fidoAttual
   fidoProposto: number;
   segnalazioni?: readonly string[] | null;
 }): boolean {
-  // La spunta non segue la priorità del colore: bloccato/legale resta spuntato
-  // anche se vince lo scaduto; lo scaduto toglie la spunta solo agli altri clienti.
+  // Bloccato/legale resta spuntato a zero anche in presenza di scaduto.
   const azzeramentoBloccatoLegale = (regola === "cliente_bloccato" || regola === "gestione_legale" || !!segnalazioni?.includes("bloccato"))
     && fidoAttuale > 0 && fidoProposto === 0;
-  const azzeramentoScaduto = motivoRigaProposta({ regola, segnalazioni }) === "scaduto" && fidoAttuale > 0 && fidoProposto === 0;
+  const azzeramentoScaduto = motivoRigaProposta({ regola, segnalazioni }).motivo === "scaduto" && fidoAttuale > 0 && fidoProposto === 0;
   if (azzeramentoScaduto && !azzeramentoBloccatoLegale) return false;
   return proponibile && (!rossa || azzeramentoBloccatoLegale);
 }
@@ -71,17 +71,56 @@ export function inclusoInizialeProposta({ proponibile, rossa, regola, fidoAttual
  */
 export type MotivoRigaProposta = "scaduto" | "bloccato" | "legale" | "da_autorizzare" | "ordini_oltre_fido" | null;
 
-export function motivoRigaProposta({ regola, segnalazioni }: {
+export function motivoRigaProposta({ regola, segnalazioni, dati }: {
   regola: string;
   segnalazioni?: readonly string[] | null;
-}): MotivoRigaProposta {
+  dati?: {
+    fidoAttuale: number;
+    consigliato: number;
+    esposizione_corrente: number;
+    ordini_aperti?: number | null;
+    scaduto_oltre?: number | null;
+    scaduto_oltre_giorni?: number | null;
+    acquisto_mensile?: number | null;
+    ciclo_gg?: number | null;
+    valore_senza_tetto?: number | null;
+    spiegazione?: string | null;
+  };
+}): { motivo: MotivoRigaProposta; frase: string | null; perCoprire: number | null } {
   const s = segnalazioni ?? [];
-  if (regola === "cliente_bloccato" || s.includes("bloccato")) return "bloccato";
-  if (regola === "gestione_legale") return "legale";
-  if (regola === "scaduto_non_incassato" || s.includes("scaduto_non_incassato")) return "scaduto";
-  if (s.includes("oltre_normale")) return "da_autorizzare";
-  if (s.includes("ordini_oltre_fido")) return "ordini_oltre_fido";
-  return null;
+  const motivo: MotivoRigaProposta = regola === "cliente_bloccato" || s.includes("bloccato") ? "bloccato"
+    : regola === "gestione_legale" ? "legale"
+    : regola === "scaduto_non_incassato" || s.includes("scaduto_non_incassato") ? "scaduto"
+    : s.includes("oltre_normale") ? "da_autorizzare"
+    : s.includes("ordini_oltre_fido") ? "ordini_oltre_fido" : null;
+  if (!dati) return { motivo, frase: null, perCoprire: null };
+  const euro = (n: number) => `${new Intl.NumberFormat("it-IT", { maximumFractionDigits: 0, useGrouping: "always" } as unknown as Intl.NumberFormatOptions).format(Math.round(n))} €`;
+  const ordini = Number(dati.ordini_aperti ?? 0);
+  // Confronto informativo fisso all'80%, mai usato per importi o spunte.
+  const perCoprire = fidoPerTornareSottoSoglia(dati.esposizione_corrente + ordini, 0.80);
+  let frase: string | null = null;
+  if (motivo === "bloccato") frase = "Cliente bloccato: fido a zero.";
+  else if (motivo === "legale") frase = "Cliente in legale: fido a zero.";
+  else if (motivo === "scaduto") {
+    const scaduto = Number(dati.scaduto_oltre ?? 0);
+    frase = scaduto > 0
+      ? `Scaduto non pagato ${euro(scaduto)} da ${Math.round(Number(dati.scaduto_oltre_giorni ?? 0)).toLocaleString("it-IT")} giorni: fido a zero finché non paga.`
+      : "Scaduto non pagato: fido a zero finché non paga.";
+  } else if (motivo === "da_autorizzare") frase = `Compra molto più del solito: per coprirlo servono ${euro(perCoprire)}.`;
+  else if (motivo === "ordini_oltre_fido") frase = `Ordini in arrivo ${euro(ordini)}: con la consegna supera il fido.`;
+  else if (dati.consigliato < dati.fidoAttuale) {
+    // Il DB certifica il freno nella spiegazione; mt.valore è il valore prima del freno.
+    // Non ricostruiamo qui profili, margini o il picco.
+    const frenoOrdini = /Ha ordini aperti per/.test(dati.spiegazione ?? "");
+    const frenoPicco = /Negli ultimi 30 giorni è arrivato a doverci/.test(dati.spiegazione ?? "");
+    const prima = dati.valore_senza_tetto == null ? null : arrotondaFidoV2(dati.valore_senza_tetto);
+    frase = (frenoOrdini || frenoPicco) && prima != null && prima < dati.consigliato
+      ? `Ne basterebbero ${euro(prima)}, ma ${frenoOrdini ? "con gli ordini in arrivo" : "per quanto ci doveva negli ultimi 30 giorni"} servono ${euro(dati.consigliato)}.`
+      : `Usa meno fido del solito: ne bastano ${euro(dati.consigliato)}.`;
+  } else if (Number(dati.acquisto_mensile ?? 0) > 0 && dati.ciclo_gg != null) {
+    frase = `Compra ${euro(Number(dati.acquisto_mensile))} al mese e paga in ${Math.round(dati.ciclo_gg).toLocaleString("it-IT")} giorni.`;
+  }
+  return { motivo, frase, perCoprire };
 }
 
 /** Evidenza "Controlla": riga con segnalazioni arancioni/rosse (fonti: segnalazioniAnomalia/anomaliaRossa). */

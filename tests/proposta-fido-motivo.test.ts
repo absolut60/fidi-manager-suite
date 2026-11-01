@@ -5,22 +5,22 @@ import { CLASSI_MOTIVO_RIGA, LEGENDA_MOTIVI, etichettaRigaProposta } from "@/lib
 
 describe("FM55 fetta 5bis — motivoRigaProposta (fonte unica colore/etichetta/spunta)", () => {
   test("un motivo solo", () => {
-    expect(motivoRigaProposta({ regola: "scaduto_non_incassato", segnalazioni: [] })).toBe("scaduto");
-    expect(motivoRigaProposta({ regola: "calcolo", segnalazioni: ["scaduto_non_incassato"] })).toBe("scaduto");
-    expect(motivoRigaProposta({ regola: "cliente_bloccato", segnalazioni: [] })).toBe("bloccato");
-    expect(motivoRigaProposta({ regola: "calcolo", segnalazioni: ["bloccato"] })).toBe("bloccato");
-    expect(motivoRigaProposta({ regola: "gestione_legale", segnalazioni: [] })).toBe("legale");
-    expect(motivoRigaProposta({ regola: "calcolo", segnalazioni: ["oltre_normale"] })).toBe("da_autorizzare");
-    expect(motivoRigaProposta({ regola: "calcolo", segnalazioni: ["ordini_oltre_fido"] })).toBe("ordini_oltre_fido");
-    expect(motivoRigaProposta({ regola: "calcolo", segnalazioni: ["uso_pieno"] })).toBeNull();
-    expect(motivoRigaProposta({ regola: "calcolo" })).toBeNull();
+    expect(motivoRigaProposta({ regola: "scaduto_non_incassato", segnalazioni: [] }).motivo).toBe("scaduto");
+    expect(motivoRigaProposta({ regola: "calcolo", segnalazioni: ["scaduto_non_incassato"] }).motivo).toBe("scaduto");
+    expect(motivoRigaProposta({ regola: "cliente_bloccato", segnalazioni: [] }).motivo).toBe("bloccato");
+    expect(motivoRigaProposta({ regola: "calcolo", segnalazioni: ["bloccato"] }).motivo).toBe("bloccato");
+    expect(motivoRigaProposta({ regola: "gestione_legale", segnalazioni: [] }).motivo).toBe("legale");
+    expect(motivoRigaProposta({ regola: "calcolo", segnalazioni: ["oltre_normale"] }).motivo).toBe("da_autorizzare");
+    expect(motivoRigaProposta({ regola: "calcolo", segnalazioni: ["ordini_oltre_fido"] }).motivo).toBe("ordini_oltre_fido");
+    expect(motivoRigaProposta({ regola: "calcolo", segnalazioni: ["uso_pieno"] }).motivo).toBeNull();
+    expect(motivoRigaProposta({ regola: "calcolo" }).motivo).toBeNull();
   });
 
   test("priorità: bloccato/legale > scaduto > da autorizzare > ordini", () => {
-    expect(motivoRigaProposta({ regola: "cliente_bloccato", segnalazioni: ["scaduto_non_incassato", "oltre_normale"] })).toBe("bloccato");
-    expect(motivoRigaProposta({ regola: "gestione_legale", segnalazioni: ["scaduto_non_incassato"] })).toBe("legale");
-    expect(motivoRigaProposta({ regola: "calcolo", segnalazioni: ["scaduto_non_incassato", "ordini_oltre_fido"] })).toBe("scaduto");
-    expect(motivoRigaProposta({ regola: "calcolo", segnalazioni: ["ordini_oltre_fido", "oltre_normale"] })).toBe("da_autorizzare");
+    expect(motivoRigaProposta({ regola: "cliente_bloccato", segnalazioni: ["scaduto_non_incassato", "oltre_normale"] }).motivo).toBe("bloccato");
+    expect(motivoRigaProposta({ regola: "gestione_legale", segnalazioni: ["scaduto_non_incassato"] }).motivo).toBe("legale");
+    expect(motivoRigaProposta({ regola: "calcolo", segnalazioni: ["scaduto_non_incassato", "ordini_oltre_fido"] }).motivo).toBe("scaduto");
+    expect(motivoRigaProposta({ regola: "calcolo", segnalazioni: ["ordini_oltre_fido", "oltre_normale"] }).motivo).toBe("da_autorizzare");
   });
 
   test("etichette e toni per motivo", () => {
