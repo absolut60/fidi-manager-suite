@@ -640,7 +640,8 @@ export function ProposteFidoMassivoDialog({
     const prot = protettiMap?.get(r.cliente_id);
     const teo = teoricoMap?.get(r.cliente_id);
     const segn = teo && teo.segnalazioni.length > 0;
-    if (!r.nota_proposta && !cambio && !mot && !prot && !segn) return null;
+    const ordini = Number(teo?.ordini_aperti ?? 0);
+    if (!r.nota_proposta && !cambio && !mot && !prot && !segn && ordini <= 0) return null;
     return (
       <div className={`grid grid-cols-1 gap-2 text-xs ${cambio ? "xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]" : ""}`}>
         {r.nota_proposta && (
@@ -654,11 +655,16 @@ export function ProposteFidoMassivoDialog({
           </p>
         )}
         {segn && teo && <SegnalazioniFido riga={teo} />}
+        {ordini > 0 && (
+          <p className="min-w-0 break-words text-muted-foreground">
+            Ordini clienti aperti (non entrano nel fido): {fmtEuro(ordini)}
+          </p>
+        )}
         {teo && sogliaConsumo && daValutareProposta(r)
-          && (teo.segnalazioni.includes("impegni_sopra_base") || teo.segnalazioni.includes("uso_pieno")) && (
+          && (teo.segnalazioni.includes("oltre_normale") || teo.segnalazioni.includes("impegni_sopra_base") || teo.segnalazioni.includes("uso_pieno")) && (
           <p className="min-w-0 break-words text-[11px] text-muted-foreground">
             Per tornare sotto il {Math.round(sogliaConsumo * 100).toLocaleString("it-IT")}% servirebbero{" "}
-            <span className="font-medium tabular-nums text-foreground">{fmtEuro(fidoPerTornareSottoSoglia(teo.esposizione_corrente + (teo.ordini_aperti ?? 0), sogliaConsumo))}</span>
+            <span className="font-medium tabular-nums text-foreground">{fmtEuro(fidoPerTornareSottoSoglia(teo.esposizione_corrente, sogliaConsumo))}</span>
           </p>
         )}
         {mot && (

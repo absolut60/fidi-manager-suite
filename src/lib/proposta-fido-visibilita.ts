@@ -130,6 +130,7 @@ export function riepilogoVisibilita<T extends string, R extends RigaVisibilita<T
 export function testoMotivoDaGuardare(motivo: string, numero: number): string {
   const singolare = numero === 1;
   if (motivo === "alert_aperto") return singolare ? "ha quasi finito il fido (alert aperto)" : "hanno quasi finito il fido (alert aperto)";
+  if (etichetteSegnalazioni(["oltre_normale"]).includes(motivo)) return singolare ? "è molto sopra il suo normale" : "sono molto sopra il loro normale";
   if (etichetteSegnalazioni(["impegni_sopra_base"]).includes(motivo)) return `${singolare ? "compra" : "comprano"} più del solito (${motivo})`;
   if (etichetteSegnalazioni(["scaduto_non_incassato", "scaduto_da_incassare"]).includes(motivo)) return `${singolare ? "ha" : "hanno"} scaduto non pagato`;
   if (etichetteSegnalazioni(["bloccato"]).includes(motivo)) return singolare ? "è bloccato" : "sono bloccati";

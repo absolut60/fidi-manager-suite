@@ -12,19 +12,16 @@ type RigaSegnalazione = Pick<
   FidoTeoricoRow,
   "fabbisogno" | "base" | "ordini_aperti" | "fido_attuale" | "scaduto_oltre" | "scaduto_oltre_giorni" | "pagato_12m"
 > &
-  Partial<Pick<FidoTeoricoRow, "ordini_fuori" | "tetto" | "valore_senza_tetto" | "acquisto_mensile" | "profilo">>;
+  Partial<Pick<FidoTeoricoRow, "esposizione_corrente" | "fido_proposto" | "ordini_fuori" | "tetto" | "valore_senza_tetto" | "acquisto_mensile" | "profilo">>;
 
-/** "Ci deve" = fabbisogno senza gli ordini aperti (per i profili patologici il fabbisogno non li include già). */
-export function ciDeve(r: Pick<RigaSegnalazione, "fabbisogno" | "ordini_aperti" | "profilo">): number {
-  const fab = Number(r.fabbisogno ?? 0);
-  if (r.profilo?.startsWith("patologico")) return fab;
-  return Math.max(fab - Number(r.ordini_aperti ?? 0), 0);
+/** Esposizione canonica, anche sulle righe precedenti in cui fabbisogno includeva gli ordini. */
+export function ciDeve(r: Pick<RigaSegnalazione, "fabbisogno" | "esposizione_corrente" | "ordini_aperti" | "profilo">): number {
+  return Number(r.esposizione_corrente ?? r.fabbisogno ?? 0);
 }
 
-/** "ci deve X € e ha ordini clienti aperti per Y €" (ordini solo se contano e sono > 0). */
-export function testoCiDeve(r: Pick<RigaSegnalazione, "fabbisogno" | "ordini_aperti" | "profilo">): string {
-  const ord = r.profilo?.startsWith("patologico") ? 0 : Number(r.ordini_aperti ?? 0);
-  return `ci deve ${formatEuro(ciDeve(r))}${ord > 0 ? ` e ha ordini clienti aperti per ${formatEuro(ord)}` : ""}`;
+/** Gli ordini sono informativi e vengono mostrati separatamente. */
+export function testoCiDeve(r: Pick<RigaSegnalazione, "fabbisogno" | "esposizione_corrente" | "ordini_aperti" | "profilo">): string {
+  return `ci deve ${formatEuro(ciDeve(r))}`;
 }
 
 export type DefinizioneSegnalazione = {
@@ -46,6 +43,11 @@ export const SEGNALAZIONI_FIDO: Record<string, DefinizioneSegnalazione> = {
     testo: (r) =>
       `Scaduto non incassato: ${formatEuro(r.scaduto_oltre ?? 0)} oltre soglia (fino a ${r.scaduto_oltre_giorni ?? 0} giorni)`,
   },
+  oltre_normale: {
+    etichetta: "Molto sopra il suo normale",
+    gravita: "rossa",
+    testo: (r) => `Sta comprando molto più del solito: fido proposto ${formatEuro(r.fido_proposto ?? 0)} oltre una volta e mezza il fido giusto (${formatEuro(r.tetto ?? 0)}) — da autorizzare`,
+  },
   scaduto_da_incassare: {
     etichetta: "Scaduto da incassare",
     gravita: "arancione",
@@ -55,6 +57,12 @@ export const SEGNALAZIONI_FIDO: Record<string, DefinizioneSegnalazione> = {
       return `Scaduto da incassare: ${formatEuro(r.scaduto_oltre ?? 0)} oltre soglia (fino a ${r.scaduto_oltre_giorni ?? 0} giorni), pari al ${perc.toLocaleString("it-IT")}% di quanto pagato in 12 mesi`;
     },
   },
+  ordini_oltre_fido: {
+    etichetta: "Ordini oltre il fido",
+    gravita: "arancione",
+    testo: (r) => `Ha ordini clienti aperti per ${formatEuro(r.ordini_aperti ?? 0)}: se consegnati, ci dovrebbe ${formatEuro(ciDeve(r) + Number(r.ordini_aperti ?? 0))}, più del fido proposto`,
+  },
+  // Compatibilità con righe materializzate prima del 01/11; non più prodotti dal calcolo.
   impegni_sopra_base: {
     etichetta: "Acquisti sopra il previsto",
     gravita: "arancione",
@@ -96,36 +104,18 @@ export function segnalazioniRiga(
   });
 }
 
-/** Codici mostrati insieme come un'unica etichetta "Acquisti sopra il previsto" (solo presentazione). */
-export const CODICI_ACQUISTI_SOPRA: readonly string[] = ["impegni_sopra_base", "ordine_fuori_giro", "oltre_tetto"];
-const ETICHETTA_ACQUISTI_SOPRA = "Acquisti sopra il previsto";
+/** Nessun codice corrente richiede il precedente raggruppamento degli acquisti. */
+export const CODICI_ACQUISTI_SOPRA: readonly string[] = [];
 
 function etichettaGruppo(codice: string): string {
-  return CODICI_ACQUISTI_SOPRA.includes(codice) ? ETICHETTA_ACQUISTI_SOPRA : (SEGNALAZIONI_FIDO[codice]?.etichetta ?? codice);
+  return SEGNALAZIONI_FIDO[codice]?.etichetta ?? codice;
 }
 
-/**
- * Segnalazioni da mostrare: impegni_sopra_base / ordine_fuori_giro / oltre_tetto diventano
- * UNA voce "Acquisti sopra il previsto" con le sole parti presenti. Fonte unica per ogni pagina.
- */
+/** Fonte unica di presentazione: segnalazioni separate, legacy riconosciute, sconosciute ignorate. */
 export function raggruppaSegnalazioni(
   r: RigaSegnalazione & { segnalazioni: string[] },
 ): { codice: string; etichetta: string; gravita: GravitaSegnalazione; testo: string }[] {
-  const out: { codice: string; etichetta: string; gravita: GravitaSegnalazione; testo: string }[] = [];
-  const parti: string[] = [];
-  for (const s of segnalazioniRiga(r)) {
-    if (!CODICI_ACQUISTI_SOPRA.includes(s.codice)) { out.push(s); continue; }
-    if (parti.length === 0) out.push({ codice: "acquisti_sopra_previsto", etichetta: ETICHETTA_ACQUISTI_SOPRA, gravita: "arancione", testo: "" });
-    if (s.codice === "impegni_sopra_base") parti.push(`${testoCiDeve(r)}, contro un fido giusto di ${formatEuro(r.base ?? 0)}`);
-    else if (s.codice === "ordine_fuori_giro") parti.push(`ordini oltre un mese di acquisti: ${formatEuro(r.ordini_fuori ?? 0)}`);
-    else parti.push(`supera i ${formatEuro(r.tetto ?? 0)} che il sistema propone da solo`);
-  }
-  const g = out.find((s) => s.codice === "acquisti_sopra_previsto");
-  if (g) {
-    const t = parti.join("; ");
-    g.testo = `${t.charAt(0).toUpperCase()}${t.slice(1)} — da autorizzare`;
-  }
-  return out;
+  return segnalazioniRiga(r);
 }
 
 /** Etichette delle anomalie senza duplicati (es. riquadro "Da autorizzare"). */

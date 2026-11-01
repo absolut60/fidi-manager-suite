@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { riepilogoVisibilita } from "@/lib/proposta-fido-visibilita";
+import { riepilogoVisibilita, testoMotivoDaGuardare } from "@/lib/proposta-fido-visibilita";
 import { etichetteSegnalazioni } from "@/lib/fido-segnalazioni";
 
 const filtri = { tipi: ["aumento", "diminuzione", "nuovo_fido"] };
@@ -37,5 +37,16 @@ describe("Rinnovi da guardare per motivo", () => {
   it("nessun motivo a zero e codici sconosciuti ignorati", () => {
     const conto = riepilogoVisibilita([riga("s", ["scaduto_non_incassato", "sconosciuto"])], filtri, new Set());
     expect(conto.daDeciderePerMotivo).toEqual({ [etichetteSegnalazioni(["scaduto_non_incassato"])[0]]: 1 });
+  });
+});
+
+describe("oltre normale nella massiva", () => {
+  it("rosso senza alert rende il rinnovo da guardare, con un motivo per cliente", () => {
+    const conto = riepilogoVisibilita([riga("a", ["oltre_normale", "oltre_normale", "ordini_oltre_fido"])], filtri, new Set());
+    expect(conto.daDecidere).toBe(1);
+    expect(conto.daDeciderePerMotivo).toEqual({ "Molto sopra il suo normale": 1 });
+    expect(conto.tipiSpenti.rinnovo_da_guardare).toBe(1);
+    expect(testoMotivoDaGuardare("Molto sopra il suo normale", 1)).toBe("è molto sopra il suo normale");
+    expect(testoMotivoDaGuardare("Molto sopra il suo normale", 2)).toBe("sono molto sopra il loro normale");
   });
 });

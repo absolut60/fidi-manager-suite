@@ -52,10 +52,10 @@ test('aumenti e uguaglianza restano identici anche con debito elevato', () => {
   expect(fidoPropostoPerRichiesta(45000,45000,90000)).toBe(45000);
 });
 
-test('riduzione: debito comprende esposizione e ordini, soglia default 0.80', async () => {
+test('riduzione: debito comprende solo esposizione, soglia default 0.80', async () => {
   rows = [{cliente_id:'rid',regola_applicata:'calcolo',fido_attuale:60000,fido_proposto:20000,esposizione_corrente:24000,ordini_aperti:6000}];
   const risultato = (await fetchFidoTeoricoPerRichiesta(['rid'], null)).get('rid');
-  expect(risultato).toBe(40000);
+  expect(risultato).toBe(30000);
   expect(determinaTipoRichiesta(60000, Number(risultato))).toBe('diminuzione');
   expect(extraFidoTeorico(risultato, risultato)).toBe(0);
   expect(motivoExtraObbligatorio(risultato, risultato)).toBe(false);
@@ -77,7 +77,7 @@ test('configurazione soglia 0.60 modifica il riferimento letto, senza modificare
   sogliaConfigurata = '0.60';
   try {
     rows = [{cliente_id:'rid',regola_applicata:'calcolo',fido_attuale:60000,fido_proposto:20000,esposizione_corrente:24000,ordini_aperti:6000}];
-    expect((await fetchFidoTeoricoPerRichiesta(['rid'],null)).get('rid')).toBe(50000);
+    expect((await fetchFidoTeoricoPerRichiesta(['rid'],null)).get('rid')).toBe(40000);
     expect(normalizza(rows[0]).fido_proposto).toBe(20000);
   } finally { sogliaConfigurata = null; }
 });
@@ -112,4 +112,11 @@ test('extra approvato protetto: riferimento non scende sotto l\'importo approvat
   expect((await fetchFidoTeoricoPerRichiesta(['a'],null)).get('a')).toBe(10000);
   protetti = [];
   expect((await fetchFidoTeoricoPerRichiesta(['a'],null)).get('a')).toBe(1000);
+});
+
+
+test('riduzione richiesta: esposizione 80.000 e ordini 50.000 non alzano il riferimento oltre 100.000', async () => {
+  rows = [{cliente_id:'senza-ordini',regola_applicata:'calcolo',fido_attuale:120000,fido_proposto:60000,esposizione_corrente:80000,ordini_aperti:50000}];
+  expect((await fetchFidoTeoricoPerRichiesta(['senza-ordini'], null)).get('senza-ordini')).toBe(100000);
+  expect(normalizza(rows[0]).fido_proposto).toBe(60000);
 });

@@ -62,7 +62,7 @@ export type FidoTeoricoRow = {
   scaduto_oltre_giorni: number;
   /** Incassato reale ultimi 12 mesi (public.scaduto_oltre_giorni). */
   pagato_12m: number;
-  /** FM55 fetta 3A: ordini oltre N mesi di acquisti, tetto (base × fido_v2_tetto_base) e valore prima del tetto. */
+  /** FM55 dal 01/11: ordini_fuori = 0, soglia normale (base × fattore) solo informativa, valore senza limite. */
   ordini_fuori: number;
   tetto: number | null;
   valore_senza_tetto: number | null;
@@ -345,7 +345,7 @@ export function arrotondaFidoV2(importo: number): number {
 }
 
 /** fido_riduzione_proposta — gemello della protezione SQL in aggiorna_alert_fidi.
- * Stesso debito/soglia e arrotonda_fido_v2; nelle richieste si conserva il teorico
+ * Solo esposizione senza ordini/soglia e arrotonda_fido_v2; nelle richieste si conserva il teorico
  * negli aumenti e si limita la riduzione al fido attuale (al limite è un rinnovo).
  */
 export function fidoPropostoPerRichiesta(
@@ -425,7 +425,7 @@ export function riferimentoRichiesta(
   if (r.regola_applicata === "cliente_bloccato" || r.regola_applicata === "gestione_legale") return r.fido_proposto;
   if (r.regola_applicata === "scaduto_non_incassato") return riferimentoConExtraProtetto(r.fido_proposto, protetto);
   return riferimentoConExtraProtetto(
-    fidoPropostoPerRichiesta(r.fido_attuale, r.fido_proposto, r.esposizione_corrente + (r.ordini_aperti ?? 0), soglia),
+    fidoPropostoPerRichiesta(r.fido_attuale, r.fido_proposto, r.esposizione_corrente, soglia),
     protetto,
   );
 }
