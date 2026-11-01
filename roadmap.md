@@ -1,4 +1,7 @@
-# FM55 — Proposta massiva chiara e scorrevole
+# FM55 — Quinta casella e semafori
+- [ ] Categoria rinnovi da guardare predefinita, conteggi e spunta iniziale senza rossi.
+- [ ] Cinque caselle, motivi grammaticali e semafori canonici in massiva e Alert.
+- [ ] Test bun e verifica scorrimento mobile e desktop.
 - [x] Dettagliare i rinnovi da guardare per motivi usando le segnalazioni canoniche, con quattro nuovi test.
 - [x] Unico scorrimento mobile, dettagli pieghevoli e footer compatto; PC invariato.
 - [x] bun test: 125 superati; verifica Chromium a 320, 390, 768, 1280 e 1920px con 603 clienti di prova, ultima riga raggiungibile. Sessione reale senza clienti; Safari iOS non disponibile nel sandbox.
