@@ -4,12 +4,20 @@
  * avvia → blocchi → finalizza → aggiorna_alert_fidi → notifiche (interruttore DB) → origine.
  *
  * Ogni passo è una chiamata separata: le RPC passano dal Data API, dove vale il
- * limite di 8 secondi per istruzione; per questo i blocchi sono da 500 clienti
- * (1000 clienti superavano il limite dopo FM55 fetta 3).
+ * limite di 8 secondi per istruzione. Blocchi da 200 clienti e riprova automatica
+ * sui timeout (fido-teorico-ricalcolo-riprova.ts): il tempo di un blocco è variabile.
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import {
+  DIMENSIONE_BLOCCO_FIDO_TEORICO,
+  bloccoConRiprova,
+  rpcConRiprova,
+  type ClienteRpc,
+} from "@/lib/fido-teorico-ricalcolo-riprova";
 
-export const DIMENSIONE_BLOCCO_FIDO_TEORICO = 500;
+export { DIMENSIONE_BLOCCO_FIDO_TEORICO };
+
+const client = supabaseAdmin as unknown as ClienteRpc;
 
 function errore(passo: string, e: { message: string }): Error {
   return new Error(`Ricalcolo fido teorico, passo "${passo}": ${e.message}`);
@@ -24,25 +32,19 @@ export async function passoAvvia(): Promise<{ totaleClienti: number; blocchiPrev
   return { totaleClienti: totale, blocchiPrevisti: Math.max(1, Math.ceil(totale / DIMENSIONE_BLOCCO_FIDO_TEORICO)) };
 }
 
-/** Restituisce l'ultimo id elaborato, oppure null quando non ci sono altri clienti. */
+/** Restituisce l'ultimo id elaborato, oppure null quando non ci sono altri clienti. Riprova sui timeout. */
 export async function passoBlocco(dopoId: string | null): Promise<string | null> {
-  const res = await supabaseAdmin.rpc(
-    "ricalcola_fido_teorico_blocco",
-    { _dopo_id: dopoId, _dimensione: DIMENSIONE_BLOCCO_FIDO_TEORICO } as never,
-  );
-  if (res.error) throw errore("blocco", res.error);
-  return (res.data as unknown as string | null) ?? null;
+  return bloccoConRiprova(client, dopoId);
 }
 
+/** Da chiamare solo dopo che tutti i blocchi sono andati a buon fine. Riprova sui timeout. */
 export async function passoFinalizza(): Promise<void> {
-  const { error } = await supabaseAdmin.rpc("ricalcola_fido_teorico_finalizza");
-  if (error) throw errore("finalizzazione", error);
+  await rpcConRiprova(client, "finalizzazione", "ricalcola_fido_teorico_finalizza");
 }
 
+/** Da chiamare solo dopo la finalizzazione. Riprova sui timeout. */
 export async function passoAlertFidi(): Promise<unknown> {
-  const { data, error } = await supabaseAdmin.rpc("aggiorna_alert_fidi" as never);
-  if (error) throw errore("alert fidi", error);
-  return data as unknown;
+  return rpcConRiprova(client, "alert fidi", "aggiorna_alert_fidi");
 }
 
 /** Nessuna scrittura se l'interruttore DB delle notifiche non è esattamente 'true'. */
