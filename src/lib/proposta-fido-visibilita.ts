@@ -77,6 +77,24 @@ export function inclusoInizialeProposta({ proponibile, rossa, regola, fidoAttual
  */
 export type MotivoRigaProposta = "scaduto" | "bloccato" | "legale" | "da_autorizzare" | "ordini_oltre_fido" | null;
 
+/**
+ * Tutti i motivi presenti sulla riga, già ordinati per priorità:
+ * bloccato/legale > scaduto > da_autorizzare > ordini_oltre_fido. Fonte unica dei badge.
+ */
+export function motiviRigaProposta({ regola, segnalazioni }: {
+  regola: string;
+  segnalazioni?: readonly string[] | null;
+}): Exclude<MotivoRigaProposta, null>[] {
+  const s = segnalazioni ?? [];
+  const out: Exclude<MotivoRigaProposta, null>[] = [];
+  if (regola === "cliente_bloccato" || s.includes("bloccato")) out.push("bloccato");
+  else if (regola === "gestione_legale") out.push("legale");
+  if (regola === "scaduto_non_incassato" || s.includes("scaduto_non_incassato")) out.push("scaduto");
+  if (s.includes("oltre_normale")) out.push("da_autorizzare");
+  if (s.includes("ordini_oltre_fido")) out.push("ordini_oltre_fido");
+  return out;
+}
+
 export function motivoRigaProposta({ regola, segnalazioni, dati }: {
   regola: string;
   segnalazioni?: readonly string[] | null;
@@ -93,12 +111,8 @@ export function motivoRigaProposta({ regola, segnalazioni, dati }: {
     spiegazione?: string | null;
   };
 }): { motivo: MotivoRigaProposta; frase: string | null; perCoprire: number | null } {
-  const s = segnalazioni ?? [];
-  const motivo: MotivoRigaProposta = regola === "cliente_bloccato" || s.includes("bloccato") ? "bloccato"
-    : regola === "gestione_legale" ? "legale"
-    : regola === "scaduto_non_incassato" || s.includes("scaduto_non_incassato") ? "scaduto"
-    : s.includes("oltre_normale") ? "da_autorizzare"
-    : s.includes("ordini_oltre_fido") ? "ordini_oltre_fido" : null;
+  // Il primo motivo (per priorità) decide colore della riga e spunta.
+  const motivo: MotivoRigaProposta = motiviRigaProposta({ regola, segnalazioni })[0] ?? null;
   if (!dati) return { motivo, frase: null, perCoprire: null };
   const euro = (n: number) => `${new Intl.NumberFormat("it-IT", { maximumFractionDigits: 0, useGrouping: "always" } as unknown as Intl.NumberFormatOptions).format(Math.round(n))} €`;
   const ordini = Number(dati.ordini_aperti ?? 0);
