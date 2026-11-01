@@ -1,5 +1,6 @@
 import { anomaliaRossa, etichetteSegnalazioni } from "@/lib/fido-segnalazioni";
-import { arrotondaFidoV2, fidoPerTornareSottoSoglia } from "@/lib/fido-teorico";
+import { arrotondaFidoV2, fidoPerTornareSottoSoglia, type ExtraFidoProtetto } from "@/lib/fido-teorico";
+import { giaDeciso } from "@/lib/alert-fidi";
 
 /**
  * Visibilità delle righe nella proposta fido massiva.
@@ -23,10 +24,15 @@ export interface RigaVisibilita<T extends string = string> {
   segnalazioni?: string[];
   /** Solo alert di consumo con statoEffettivoAlert = aperto. */
   alertAperto?: boolean;
+  /** Fonte SQL extra_fido_protetti: le protezioni scadute non sono restituite. */
+  protezione?: ExtraFidoProtetto;
+  /** Riferimento canonico della richiesta, non l'importo editabile della riga. */
+  riferimentoRichiesta?: number | null;
 }
 
 /** Solo consumo effettivamente aperto o rosso con fido Gamma positivo; zero su zero mai da guardare. */
 export function daValutareProposta<T extends string>(r: RigaVisibilita<T>): boolean {
+  if (giaDeciso(r.protezione, r.riferimentoRichiesta, r.fido_attuale)) return false;
   if (r.fido_proposto === 0 && r.fido_attuale === 0) return false;
   return r.tipo === "rinnovo" && (!!r.alertAperto || (anomaliaRossa(r.segnalazioni) && Number(r.fido_attuale ?? 0) > 0));
 }
@@ -160,6 +166,8 @@ export interface RiepilogoVisibilita {
   nascosti: Record<MotivoNascosto, number>;
   /** Tipi spenti nel filtro, per tipo (nuovo_fido, aumento, diminuzione…). */
   tipiSpenti: Record<string, number>;
+  /** Sottoinsieme dei rinnovi nascosti già decisi, raggruppato per fine protezione. */
+  giaDecisiPerScadenza: Record<string, number>;
   nonProponibili: Record<string, number>;
   nonProponibiliTotale: number;
 }
@@ -171,6 +179,7 @@ export function riepilogoVisibilita<T extends string, R extends RigaVisibilita<T
 ): RiepilogoVisibilita {
   const nascosti: Record<MotivoNascosto, number> = { rinnovo: 0, tipo_spento: 0, in_corso: 0 };
   const tipiSpenti: Record<string, number> = {};
+  const giaDecisiPerScadenza: Record<string, number> = {};
   const nonProponibili: Record<string, number> = {};
   const daDeciderePerMotivo: Record<string, number> = {};
   let visibili = 0, daDecidere = 0, altriRinnovi = 0, nonProponibiliTotale = 0;
@@ -190,12 +199,16 @@ export function riepilogoVisibilita<T extends string, R extends RigaVisibilita<T
     const m = r.richiestaInCorso ? "in_corso" : toccate.has(r.cliente_id) || mostraSempre?.has(r.cliente_id) ? null : motivoNascostoProposta(r, filtri);
     if (!m) { visibili++; continue; }
     nascosti[m]++;
+    if (m === "rinnovo" && giaDeciso(r.protezione, r.riferimentoRichiesta, r.fido_attuale) && r.protezione) {
+      const fino = r.protezione.protetto_fino_al.slice(0, 10);
+      giaDecisiPerScadenza[fino] = (giaDecisiPerScadenza[fino] ?? 0) + 1;
+    }
     if (m === "tipo_spento") {
       const categoria = categoriaProposta(r);
       tipiSpenti[categoria] = (tipiSpenti[categoria] ?? 0) + 1;
     }
   }
-  return { totale: righe.length, visibili, daDecidere, altriRinnovi, daDeciderePerMotivo, nascosti, tipiSpenti, nonProponibili, nonProponibiliTotale };
+  return { totale: righe.length, visibili, daDecidere, altriRinnovi, daDeciderePerMotivo, nascosti, tipiSpenti, giaDecisiPerScadenza, nonProponibili, nonProponibiliTotale };
 }
 
 /** Frasi brevi per i gruppi canonici, senza copiare la classificazione delle segnalazioni. */

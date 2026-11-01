@@ -348,8 +348,10 @@ export function ProposteFidoMassivoDialog({
   }, [tipoForzato]);
 
   const righeConInCorso = useMemo(
-    () => righe.map((r) => ({ ...r, richiestaInCorso: inCorsoMap?.get(r.cliente_id) })),
-    [righe, inCorsoMap],
+    () => righe.map((r) => ({ ...r, richiestaInCorso: inCorsoMap?.get(r.cliente_id),
+      protezione: protettiMap?.get(r.cliente_id), riferimentoRichiesta: teoricoRichMap?.get(r.cliente_id),
+    })),
+    [righe, inCorsoMap, protettiMap, teoricoRichMap],
   );
 
   const righeVisibiliTutte = useMemo(
@@ -371,6 +373,9 @@ export function ProposteFidoMassivoDialog({
   const vociNascoste: string[] = (() => {
     const n = riepilogoVis.nascosti;
     const v: string[] = [];
+    for (const [fino, numero] of Object.entries(riepilogoVis.giaDecisiPerScadenza).sort(([a], [b]) => a.localeCompare(b))) {
+      v.push(`${fmtN(numero)} già decisi (protetti fino al ${fino.slice(8, 10)}/${fino.slice(5, 7)})`);
+    }
     if (n.in_corso > 0) v.push(`Non vedi ${fmtN(n.in_corso)} clienti che hanno già una richiesta in corso.`);
     const nomi: Record<string, string> = { aumento: "aumenti", diminuzione: "riduzioni", nuovo_fido: "nuovi fidi", rinnovo_da_guardare: "fidi invariati da guardare" };
     for (const [tipo, numero] of Object.entries(riepilogoVis.tipiSpenti)) {
