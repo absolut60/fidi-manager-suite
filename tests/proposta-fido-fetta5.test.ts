@@ -21,7 +21,7 @@ describe("FM55 fetta 5 — spunta iniziale", () => {
 describe("FM55 fetta 5 — riga semplice", () => {
   test("una sola etichetta, decisa dal motivo vincente", () => {
     expect(etichettaRigaProposta({ regola: "calcolo", segnalazioni: ["oltre_normale", "ordini_oltre_fido"] })).toEqual({ tono: "viola", testo: "Da autorizzare: compra molto più del solito" });
-    expect(etichettaRigaProposta({ regola: "calcolo", segnalazioni: ["ordini_oltre_fido"] })).toEqual({ tono: "arancione", testo: "Ordini oltre il fido" });
+    expect(etichettaRigaProposta({ regola: "calcolo", segnalazioni: ["ordini_oltre_fido"] })).toEqual({ tono: "azzurra", testo: "Ordini oltre il fido" });
     expect(etichettaRigaProposta({ regola: "calcolo", segnalazioni: [] })).toBeNull();
   });
   test("la riga non contiene più 'Teorico:' né 'Da verificare'", () => {
