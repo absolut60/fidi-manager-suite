@@ -18,7 +18,7 @@ import {
   type StatoRichiesta, type TipoRichiesta,
   extraFidoTeorico, motivoExtraObbligatorio,
 } from "@/lib/fidi";
-import { daValutareProposta, categoriaProposta, CATEGORIE_PROPOSTA_DEFAULT, testoMotivoDaGuardare, righeVisibiliProposta, riepilogoVisibilita, inclusoInizialeProposta, livelloControlloProposta, type CategoriaProposta, type LivelloControllo } from "@/lib/proposta-fido-visibilita";
+import { daValutareProposta, categoriaProposta, CATEGORIE_PROPOSTA_DEFAULT, testoMotivoDaGuardare, righeVisibiliProposta, riepilogoVisibilita, inclusoInizialeProposta, livelloControlloProposta, motivoRigaProposta, type CategoriaProposta, type LivelloControllo } from "@/lib/proposta-fido-visibilita";
 import { segnalazioniAnomalia, anomaliaRossa } from "@/lib/fido-segnalazioni";
 import { alertConsumoAperto, fetchAlertFidiAperti, giaDeciso, teoricoPropostaIniziale } from "@/lib/alert-fidi";
 import { Switch } from "@/components/ui/switch";
@@ -801,7 +801,7 @@ export function ProposteFidoMassivoDialog({
           {righeVisibili.map((r) => (
               <SchedaLista
                 key={r.cliente_id}
-                className={`${!r.proponibile ? "opacity-60" : ""} ${bordoRiga(r)}`}
+                className={`${!r.proponibile ? "opacity-60" : ""} ${classiRiga(r)}`}
                 selezione={{ checked: r.incluso && r.proponibile, onChange: () => { if (r.proponibile) toggleIncluso(r.cliente_id); } }}
                 titolo={renderCliente(r)}
                 badge={
@@ -843,7 +843,7 @@ export function ProposteFidoMassivoDialog({
             <TableBody>
               {righeVisibili.map((r) => (
                     <TableRow key={r.cliente_id} className={`${!r.proponibile ? "opacity-60" : ""} border-b-2 border-border`}>
-                      <TableCell className={bordoRiga(r)}><Checkbox checked={r.incluso && r.proponibile} disabled={!r.proponibile} onCheckedChange={() => toggleIncluso(r.cliente_id)} aria-label={`Includi ${r.ragione_sociale}`} /></TableCell>
+                      <TableCell className={classiRiga(r)}><Checkbox checked={r.incluso && r.proponibile} disabled={!r.proponibile} onCheckedChange={() => toggleIncluso(r.cliente_id)} aria-label={`Includi ${r.ragione_sociale}`} /></TableCell>
                       <TableCell className="min-w-0">
                         <div className="font-medium">{renderCliente(r)}</div>
                         <div className="mt-1">{renderCorpo(r, "h-10 w-32 px-1 text-xs text-right")}</div>
