@@ -1,6 +1,6 @@
 import { SegnalazioniFido } from "@/components/segnalazioni-fido";
 import { SemaforoPallino } from "@/components/semaforo-pallino";
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, MessageSquare, X } from "lucide-react";
 import { toast } from "sonner";
