@@ -59,7 +59,7 @@ export function CampoExtraTeorico({
   }
   return (
     <div className={compatto ? "w-full min-w-0 space-y-1" : "min-w-0 space-y-1"}>
-      <p className="text-[11px] text-muted-foreground break-words tabular-nums">Teorico: {formatEuro(teorico)}</p>
+      {!compatto && <p className="text-[11px] text-muted-foreground break-words tabular-nums">Teorico: {formatEuro(teorico)}</p>}
       {extra > 0 && (
         <div className="min-w-0 space-y-1.5 rounded-md border border-warning/40 bg-warning/10 p-2">
           <p className="text-xs font-semibold text-warning break-words tabular-nums">
