@@ -3,7 +3,6 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SegnalazioniFido } from "@/components/segnalazioni-fido";
 import { formatEuro } from "@/lib/fidi";
-import { testoCiDeve } from "@/lib/fido-segnalazioni";
 import {
   PROFILO_FIDO_LABEL,
   fetchFidoTeoricoNuovo,
@@ -50,15 +49,20 @@ export function FidoTeoricoNuovoBlocco({ clienteId }: { clienteId: string }) {
             <div className="text-xs text-muted-foreground">quanto gli serve di solito</div>
           </div>
           <div className="rounded-md border p-3 min-w-0">
-            <div className="text-xs text-muted-foreground">Ci deve + ordini aperti</div>
-            <div className="text-2xl sm:text-3xl font-semibold break-words">{formatEuro(r.fabbisogno ?? 0)}</div>
-            <div className="text-xs text-muted-foreground break-words">{testoCiDeve({ fabbisogno: r.fabbisogno, ordini_aperti: r.ordini_aperti, profilo: r.profilo }).replace(/^c/, "C")}</div>
+            <div className="text-xs text-muted-foreground">Ci deve</div>
+            <div className="text-2xl sm:text-3xl font-semibold break-words">{formatEuro(r.esposizione ?? 0)}</div>
           </div>
           <div className="rounded-md border border-primary bg-primary/5 p-3 min-w-0">
             <div className="text-xs text-muted-foreground">Fido proposto</div>
             <div className="text-2xl sm:text-3xl font-bold text-primary break-words">{formatEuro(r.fido_proposto ?? 0)}</div>
           </div>
         </div>
+      )}
+
+      {Number(r.ordini_aperti ?? 0) > 0 && (
+        <p className="text-xs text-muted-foreground break-words">
+          Ordini clienti aperti (non entrano nel fido): {formatEuro(r.ordini_aperti ?? 0)}
+        </p>
       )}
 
       {calcolo && (
