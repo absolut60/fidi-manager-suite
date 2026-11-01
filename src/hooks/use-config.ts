@@ -77,6 +77,11 @@ export function useConfigReady(): boolean {
 //   OPPURE
 //   B) ha documenti / DDT ancora da fatturare (doc_da_fatturare > 0)
 // Se nessuna delle due => Non attivo.
+// Gemello SQL: public.cliente_attivo(date, numeric) (migrazione 0127), usato da get_fido_teorico_v2:
+// cliente NON attivo => fido teorico zero (salvo nuovo_in_attesa o ordini aperti).
+// ATTENZIONE: il cutoff è un anno fisso in configurazioni. Se a gennaio 2027 viene portato a 2027,
+// il giorno stesso tutti i clienti diventano "non attivi" e il fido teorico va a zero per tutti.
+// Non cambiare il cutoff senza decisione di Andrea.
 export function isClienteAttivo(
   ultimaDataFatturazione: string | null | undefined,
   docDaFatturare: number | string | null | undefined,
