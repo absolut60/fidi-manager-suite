@@ -78,3 +78,9 @@ Le azioni multiple su `richieste_fido` passano dall'helper a blocchi `src/lib/ri
 - Preso all'avvio, rinnovato a ogni blocco, rilasciato dopo la chiusura; scade dopo 15 minuti senza avanzamento.
 - Fonte unica: `src/lib/fido-teorico-ricalcolo-lock.ts`, usato da `fido-teorico-ricalcolo-passi.server.ts` (pulsante e job Inngest, concurrency 1).
 - Con lock attivo: pulsante e "Riprendi da blocco N" disabilitati con "Ricalcolo già in corso (avviato alle HH:MM, automatico/manuale): attendi"; il job automatico termina senza ricalcolare.
+
+## Privati senza partita IVA vs fuori dal giro fidi (FM55, card Dashboard Fidi)
+
+- `isSenzaPartitaIvaFido` (`src/lib/fido-teorico.ts`) = senza partita IVA; gemello SQL `cliente_privato_fido(text)`.
+- `isPrivatoFido` = fuori dal giro fidi = senza partita IVA **o** Sede Centrale (`isSedeCentraleFido`); gemello SQL `cliente_privato_fido(clienti)`. Gemello SQL della Sede Centrale: `cliente_sede_centrale_fido(uuid)`.
+- La card "Privati (senza partita IVA)" conta i senza partita IVA escludendo la Sede Centrale (`isPrivatoCard` in `src/lib/dashboard-fidi-giro.ts`, gemello `get_dashboard_fidi_giro` / `get_clienti_giro_fidi_ids`). La card "POS / contanti con fido" conta `regola_applicata = 'pagamento_immediato'` con fido concesso > 0.
