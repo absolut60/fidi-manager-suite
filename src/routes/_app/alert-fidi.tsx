@@ -68,7 +68,7 @@ function AlertFidiPage() {
   return <AlertFidiContenuto userId={user.id} puoProporre={puoProporreDaAlertFidi(roles as string[])} />;
 }
 
-export function AlertFidiContenuto({ userId, puoProporre }: { userId: string; puoProporre: boolean }) {
+function AlertFidiContenuto({ userId, puoProporre }: { userId: string; puoProporre: boolean }) {
   // Sola lettura (approvatori, responsabile agenti, agenti): niente selezione né "Apri proposta".
   const selezionabile = (a: AlertFidoRow) => puoProporre && alertSelezionabile(a);
   const queryClient = useQueryClient();
