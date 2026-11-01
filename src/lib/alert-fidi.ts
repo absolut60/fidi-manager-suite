@@ -319,7 +319,7 @@ export function percheAlert(
   const oltre = cod.includes("oltre_normale") ? " e sta comprando molto più del solito" : "";
   if (a.tipo === "consumo") {
     const p = percentualeFido(debitoOggi(a), a.fido_gamma);
-    const base = p != null ? `Ci deve il ${p}% del fido` : `Ci deve ${formatEuro(debitoOggi(a))}`;
+    const base = p != null ? `Ci deve il ${p}% del fido`.replace(/^Ci deve il (8|11)/, "Ci deve l'$1") : `Ci deve ${formatEuro(debitoOggi(a))}`;
     return `${base}${oltre}.`;
   }
   if (a.tipo === "riduzione") return "Usa poco il fido: ne basta meno.";

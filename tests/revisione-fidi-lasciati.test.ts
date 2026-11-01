@@ -20,7 +20,7 @@ describe("lasciatoCosiValido", () => {
 describe("percheAlert", () => {
   const a = { tipo: "consumo" as const, fido_gamma: 25000, esposizione: 20000, ordini_aperti: 2210.97, consumo: 0.8884388, fido_proposto: null };
   it("consumo: percentuale sul solo debito (ordini esclusi)", () =>
-    expect(percheAlert(a)).toBe("Ci deve l'80% del fido.".replace("l'80%", "il 80%")));
+    expect(percheAlert(a)).toBe("Ci deve l'80% del fido."));
   it("consumo al 92%", () =>
     expect(percheAlert({ ...a, esposizione: 23000 })).toBe("Ci deve il 92% del fido."));
   it("scaduto prevale", () =>
