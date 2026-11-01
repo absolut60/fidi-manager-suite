@@ -94,7 +94,7 @@ export function motivoRigaProposta({ regola, segnalazioni, dati }: {
     : s.includes("oltre_normale") ? "da_autorizzare"
     : s.includes("ordini_oltre_fido") ? "ordini_oltre_fido" : null;
   if (!dati) return { motivo, frase: null, perCoprire: null };
-  const euro = (n: number) => `${new Intl.NumberFormat("it-IT", { maximumFractionDigits: 0, useGrouping: "always" }).format(Math.round(n))} €`;
+  const euro = (n: number) => `${new Intl.NumberFormat("it-IT", { maximumFractionDigits: 0, useGrouping: "always" } as unknown as Intl.NumberFormatOptions).format(Math.round(n))} €`;
   const ordini = Number(dati.ordini_aperti ?? 0);
   // Confronto informativo fisso all'80%, mai usato per importi o spunte.
   const perCoprire = fidoPerTornareSottoSoglia(dati.esposizione_corrente + ordini, 0.80);
