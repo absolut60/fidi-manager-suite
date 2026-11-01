@@ -22,8 +22,8 @@ describe("scaduto non incassato", () => {
   it("A.N. COSTRUZIONI: riferimento 0 con protezione decaduta", () => {
     expect(riferimentoRichiesta(riga, 0.8, { ...prot, protezione_valida: false })).toBe(0);
   });
-  it("con regola calcolo restano le protezioni", () => {
-    expect(riferimentoRichiesta({ ...riga, regola_applicata: "calcolo" }, 0.8, undefined)).toBe(455000);
+  it("con regola calcolo resta la protezione sul solo debito, non sugli ordini", () => {
+    expect(riferimentoRichiesta({ ...riga, regola_applicata: "calcolo" }, 0.8, undefined)).toBe(365000);
   });
 });
 

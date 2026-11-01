@@ -41,12 +41,12 @@ describe("Proposta massiva: cinque categorie (01/11)", () => {
     }
   });
   it("segnalazioni rosse senza azzeramento bloccato/legale partono senza spunta", () => {
-    for (const codice of ["bloccato", "scaduto_non_incassato"]) expect(inclusoInizialeProposta({
+    for (const codice of ["bloccato", "scaduto_non_incassato", "oltre_normale"]) expect(inclusoInizialeProposta({
       proponibile: true, rossa: anomaliaRossa([codice]), regola: "calcolo", fidoAttuale: 60000, fidoProposto: 60000,
     })).toBe(false);
   });
   it("arancioni e righe senza segnalazioni partono spuntate se proponibili", () => {
-    for (const segn of [["oltre_tetto"], ["scaduto_da_incassare"], []]) expect(inclusoInizialeProposta({
+    for (const segn of [["oltre_tetto"], ["ordini_oltre_fido"], ["scaduto_da_incassare"], []]) expect(inclusoInizialeProposta({
       proponibile: true, rossa: anomaliaRossa(segn), regola: "calcolo", fidoAttuale: 60000, fidoProposto: 60000,
     })).toBe(true);
     expect(inclusoInizialeProposta({ proponibile: false, rossa: false, regola: "calcolo", fidoAttuale: 60000, fidoProposto: 60000 })).toBe(false);

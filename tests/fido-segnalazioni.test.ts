@@ -2,7 +2,7 @@ import { formatEuro } from "@/lib/fidi";
 import { describe, expect, it } from "bun:test";
 import { segnalazioniRiga, raggruppaSegnalazioni, etichetteSegnalazioni } from "@/lib/fido-segnalazioni";
 
-const base = { fabbisogno: 38555.7, base: 500, ordini_aperti: 35428.7, fido_attuale: 40000, scaduto_oltre: 0, scaduto_oltre_giorni: 0, pagato_12m: 0 };
+const base = { esposizione_corrente: 3127, fido_proposto: 5000, fabbisogno: 38555.7, base: 500, ordini_aperti: 35428.7, fido_attuale: 40000, scaduto_oltre: 0, scaduto_oltre_giorni: 0, pagato_12m: 0 };
 
 describe("segnalazioni fido", () => {
   it("ordina per gravità e ignora codici sconosciuti", () => {
@@ -26,22 +26,24 @@ describe("segnalazioni fido", () => {
     expect(l.every((s) => s.gravita === "arancione")).toBe(true);
   });
 
-  const an = { ...base, fabbisogno: 452888, base: 260000, ordini_fuori: 94690, tetto: 390000 };
-  it("raggruppa con 1 codice", () => {
-    const l = raggruppaSegnalazioni({ ...an, segnalazioni: ["ordine_fuori_giro"] });
-    expect(l).toHaveLength(1);
-    expect(l[0].etichetta).toBe("Acquisti sopra il previsto");
-    expect(l[0].testo).toBe(`Ordini oltre un mese di acquisti: ${formatEuro(94690)} — da autorizzare`);
+  it("oltre normale: rosso e proposta confrontata con la soglia normale", () => {
+    const l = raggruppaSegnalazioni({ ...base, fido_proposto: 100000, tetto: 90000, segnalazioni: ["oltre_normale"] });
+    expect(l[0]).toEqual({ codice: "oltre_normale", etichetta: "Molto sopra il suo normale", gravita: "rossa",
+      testo: `Sta comprando molto più del solito: fido proposto ${formatEuro(100000)} oltre una volta e mezza il fido giusto (${formatEuro(90000)}) — da autorizzare` });
   });
-  it("raggruppa con 2 codici", () => {
-    const l = raggruppaSegnalazioni({ ...an, segnalazioni: ["oltre_tetto", "impegni_sopra_base"] });
-    expect(l).toHaveLength(1);
-    expect(l[0].testo).toBe(`Ci deve ${formatEuro(452888 - 35428.7)} e ha ordini clienti aperti per ${formatEuro(35428.7)}, contro un fido giusto di ${formatEuro(260000)}; supera i ${formatEuro(390000)} che il sistema propone da solo — da autorizzare`);
+  it("ordini oltre fido: arancione, esposizione canonica più ordini anche su righe vecchie", () => {
+    const l = raggruppaSegnalazioni({ ...base, esposizione_corrente: 80000, ordini_aperti: 50000, fabbisogno: 999999, segnalazioni: ["ordini_oltre_fido"] });
+    expect(l[0]).toEqual({ codice: "ordini_oltre_fido", etichetta: "Ordini oltre il fido", gravita: "arancione",
+      testo: `Ha ordini clienti aperti per ${formatEuro(50000)}: se consegnati, ci dovrebbe ${formatEuro(130000)}, più del fido proposto` });
   });
-  it("raggruppa con 3 codici (A.N. COSTRUZIONI) e lascia gli altri separati", () => {
-    const l = raggruppaSegnalazioni({ ...an, segnalazioni: ["scaduto_da_incassare", "impegni_sopra_base", "ordine_fuori_giro", "oltre_tetto"] });
-    expect(l.map((s) => s.etichetta)).toEqual(["Scaduto da incassare", "Acquisti sopra il previsto"]);
-    expect(l[1].testo).toBe(`Ci deve ${formatEuro(452888 - 35428.7)} e ha ordini clienti aperti per ${formatEuro(35428.7)}, contro un fido giusto di ${formatEuro(260000)}; ordini oltre un mese di acquisti: ${formatEuro(94690)}; supera i ${formatEuro(390000)} che il sistema propone da solo — da autorizzare`);
-    expect(etichetteSegnalazioni(["oltre_tetto", "scaduto_da_incassare", "impegni_sopra_base"])).toEqual(["Scaduto da incassare", "Acquisti sopra il previsto"]);
+  it("nuovi segnali separati, rossi prima degli arancioni; sconosciuti ignorati", () => {
+    const l = raggruppaSegnalazioni({ ...base, segnalazioni: ["ordini_oltre_fido", "ignoto", "oltre_normale", "uso_pieno", "oltre_normale"] });
+    expect(l.map(s => s.codice)).toEqual(["oltre_normale", "ordini_oltre_fido", "uso_pieno"]);
+  });
+  it("legacy riconosciuti separatamente, senza gruppo acquisti sintetico né voci vuote", () => {
+    const l = raggruppaSegnalazioni({ ...base, segnalazioni: ["oltre_tetto", "ordine_fuori_giro", "impegni_sopra_base"] });
+    expect(l.map(s => s.codice)).toEqual(["impegni_sopra_base", "ordine_fuori_giro", "oltre_tetto"]);
+    expect(l.every(s => s.testo.length > 0)).toBe(true);
+    expect(etichetteSegnalazioni(["oltre_tetto", "scaduto_da_incassare", "impegni_sopra_base"])).toEqual(["Scaduto da incassare", "Acquisti sopra il previsto", "Oltre il massimo automatico"]);
   });
 });
