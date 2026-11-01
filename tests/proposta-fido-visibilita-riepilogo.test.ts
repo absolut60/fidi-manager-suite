@@ -38,7 +38,8 @@ describe("riepilogo visibilità proposta massiva", () => {
     const r = riepilogoVisibilita(righe, filtri, new Set());
     expect(r.visibili).toBe(1);
     expect(r.daDecidere).toBe(2);
-    expect(r.nascosti.rinnovo).toBe(4);
+    expect(r.nascosti.rinnovo).toBe(2);
+    expect(r.tipiSpenti.rinnovo_da_guardare).toBe(2);
     expect(r.nascosti.in_corso).toBe(1);
     const somma = r.visibili + Object.values(r.nascosti).reduce((a, b) => a + b, 0) + r.nonProponibiliTotale;
     expect(somma).toBe(7);
