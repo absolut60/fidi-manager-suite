@@ -418,7 +418,6 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
                         <Badge variant="outline" className="whitespace-normal">{etichettaAvviso(a)}</Badge>
                         {renderEtichettaMotivo(a)}
                       </div>
-
                       {renderPerche(a)}
                     </TableCell>
                     <TableCell className="align-top text-right tabular-nums">{formatEuro(fidoGammaAlert(a))}</TableCell>
