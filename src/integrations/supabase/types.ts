@@ -7011,6 +7011,11 @@ export type Database = {
         Returns: Json
       }
       classifica_iscritto_whatsapp: { Args: { _id: string }; Returns: Json }
+      cliente_attivo: {
+        Args: { _doc_da_fatturare: number; _ultima_fatturazione: string }
+        Returns: boolean
+      }
+      cliente_attivo_cutoff_anno: { Args: never; Returns: number }
       cliente_privato_fido:
         | {
             Args: { "": Database["public"]["Tables"]["clienti"]["Row"] }
