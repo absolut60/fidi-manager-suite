@@ -20,7 +20,7 @@ import {
 } from "@/lib/fidi";
 import { daValutareProposta, categoriaProposta, CATEGORIE_PROPOSTA_DEFAULT, testoMotivoDaGuardare, righeVisibiliProposta, riepilogoVisibilita, inclusoInizialeProposta, livelloControlloProposta, type CategoriaProposta, type LivelloControllo } from "@/lib/proposta-fido-visibilita";
 import { segnalazioniAnomalia, anomaliaRossa } from "@/lib/fido-segnalazioni";
-import { alertConsumoAperto, fetchAlertFidiAperti, giaDeciso } from "@/lib/alert-fidi";
+import { alertConsumoAperto, fetchAlertFidiAperti, giaDeciso, teoricoPropostaIniziale } from "@/lib/alert-fidi";
 import { Switch } from "@/components/ui/switch";
 import { CampoExtraTeorico } from "@/components/extra-fido-teorico";
 import {
@@ -292,10 +292,7 @@ export function ProposteFidoMassivoDialog({
         const t = teoricoMap.get(c.id);
         const regola = t?.regola_applicata ?? "";
         const proponibile = isProponibile(regola);
-        const daAlert = importiDaAlert?.get(c.id);
-        const teoricoRiga = proponibile
-          ? (daAlert !== undefined ? daAlert : (teoricoRichMap.get(c.id) ?? null))
-          : null;
+        const teoricoRiga = teoricoPropostaIniziale(proponibile, importiDaAlert?.get(c.id), teoricoRichMap.get(c.id));
         const proposto = teoricoRiga ?? 0;
         // Fido di riferimento = getFidoAttuale (src/lib/fido-cliente.ts), lo stesso
         // usato dalla RPC, cosi' lista, scheda cliente e proposta massiva coincidono.
