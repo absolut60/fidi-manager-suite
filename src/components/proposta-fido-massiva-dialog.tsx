@@ -670,14 +670,12 @@ export function ProposteFidoMassivoDialog({
     const teo = teoricoMap?.get(r.cliente_id);
     const segn = teo && teo.segnalazioni.length > 0;
     const ordini = Number(teo?.ordini_aperti ?? 0);
-    if (!r.nota_proposta && !cambio && !mot && !prot && !segn && ordini <= 0) return null;
+    const spieg = teo?.spiegazione || r.nota_proposta;
+    if (!spieg && !cambio && !mot && !prot && !segn && ordini <= 0) return null;
     return (
       <div className={`grid grid-cols-1 gap-2 text-xs ${cambio ? "xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]" : ""}`}>
-        {r.nota_proposta && (
-          <div className="min-w-0">
-            <NotaPropostaDettaglio nota={r.nota_proposta} />
-          </div>
-        )}
+        {r.proponibile && <p className="min-w-0 break-words text-muted-foreground">Regola: {renderRegola(r)}</p>}
+        {spieg && <p className="min-w-0 break-words text-muted-foreground">{spieg}</p>}
         {prot && (
           <p className={`min-w-0 break-words text-[11px] ${notaExtraProtetto(prot).decaduta ? "font-medium text-destructive" : "text-success"}`}>
             {notaExtraProtetto(prot).testo}
