@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { formatEuro, formatDate } from "@/lib/fidi";
-import { fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchUtentiAnteprimaFidoNuovo, isProponibile } from "@/lib/fido-teorico";
+import { fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchUtentiAnteprimaFidoNuovo, isProponibile, notaExtraProtetto } from "@/lib/fido-teorico";
 import { SemaforoPallino } from "@/components/semaforo-pallino";
 import { fetchUltimiLasciati } from "@/lib/revisione-fidi";
 // FM55: colore/etichetta delle righe Alert fidi = stessa fonte della proposta massiva
@@ -23,7 +23,6 @@ import { fetchUltimiLasciati } from "@/lib/revisione-fidi";
 import { motivoRigaProposta, type MotivoRigaProposta } from "@/lib/proposta-fido-visibilita";
 import { CLASSI_MOTIVO_RIGA, LEGENDA_MOTIVI } from "@/lib/proposta-fido-riga";
 import { BadgeMotiviRiga, DettagliRiga } from "@/components/badge-motivi-riga";
-import { notaExtraProtetto } from "@/lib/fido-teorico";
 
 import {
   fetchAlertFidiAperti, etichettaAvviso, testoOrdiniAlert, teoricoPropostaIniziale, debitoOggi, alertSelezionabile,
