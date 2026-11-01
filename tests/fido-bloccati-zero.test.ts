@@ -16,11 +16,12 @@ describe("Bloccati e legali: proposta a zero", () => {
   });
   it("bloccato ignora anche l'extra protetto", () => expect(riferimentoRichiesta(bloccato, 0.8, protetto)).toBe(0));
   it("gestione legale ignora debito e extra", () => expect(riferimentoRichiesta({ ...bloccato, regola_applicata: "gestione_legale" }, 0.8, protetto)).toBe(0));
-  it("riduzione zero visibile, rossa e non spuntata", () => {
+  it("riduzione zero visibile, rossa e già spuntata", () => {
     const r = { cliente_id: "b", regola: "cliente_bloccato", tipo: "diminuzione", fido_attuale: 5000, fido_proposto: 0, proponibile: true, alertAperto: true, segnalazioni: ["bloccato"] };
     expect(righeVisibiliProposta([r], filtri, new Set())).toEqual([r]);
     expect(anomaliaRossa(r.segnalazioni)).toBe(true);
-    expect(inclusoInizialeProposta(r.proponibile, anomaliaRossa(r.segnalazioni))).toBe(false);
+    expect(inclusoInizialeProposta({ proponibile: r.proponibile, rossa: anomaliaRossa(r.segnalazioni),
+      regola: r.regola, fidoAttuale: r.fido_attuale, fidoProposto: r.fido_proposto })).toBe(true);
   });
   it("bloccato già zero non visibile nei da guardare e non contato", () => {
     const r = { cliente_id: "z", regola: "cliente_bloccato", tipo: "rinnovo", fido_attuale: 0, fido_proposto: 0, proponibile: true, segnalazioni: ["bloccato"], alertAperto: true };

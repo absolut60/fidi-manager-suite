@@ -1,4 +1,5 @@
 # FM55 — Privati fuori dal giro fidi
+- [ ] Selezione iniziale: eccezione esplicita per riduzioni zero bloccati/legali; migrare chiamante e test vecchia firma, verificare scaduto e zero→zero.
 - [x] Rinnovi da guardare solo con alert consumo effettivamente aperti o rossi con Gamma positivo; lettura condivisa stato richieste e protezione già deciso, motivi solo consumo/rossi. bun test: 159 pass, zero fail; build OK. Anteprima senza errori alla pagina login, accesso personale non disponibile: finestra con dati reali non verificata.
 - [x] Bloccati/legali: riferimento senza protezioni, rinnovi zero esclusi dai da guardare; già fuori dal perimetro SQL Alert, nessuna ulteriore migrazione.
 - [x] Fonte unica TS/SQL per partita IVA assente e preset solo partita IVA, senza cambiare lista predefinita; query e RPC verificate nell'anteprima autenticata, che restituisce zero clienti (verifica dati reali UI non disponibile).

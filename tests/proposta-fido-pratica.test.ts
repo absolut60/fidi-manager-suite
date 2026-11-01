@@ -40,8 +40,8 @@ describe("proposta massiva pratica (31/10)", () => {
     expect(righeVisibiliProposta([riga("a", "rinnovo", { alertAperto: true })], f, new Set())).toHaveLength(1);
   });
   it("tutte le righe proponibili spuntate all'apertura, anche con anomalie", () => {
-    expect(inclusoInizialeProposta(true)).toBe(true);
-    expect(inclusoInizialeProposta(false)).toBe(false);
+    expect(inclusoInizialeProposta({ proponibile: true, rossa: false, regola: "calcolo", fidoAttuale: 1000, fidoProposto: 2000 })).toBe(true);
+    expect(inclusoInizialeProposta({ proponibile: false, rossa: false, regola: "calcolo", fidoAttuale: 1000, fidoProposto: 2000 })).toBe(false);
   });
   it("riga con anomalia marcata da controllare", () => {
     const codici = ["impegni_sopra_base"];
