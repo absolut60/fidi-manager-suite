@@ -1,17 +1,17 @@
 /**
  * Card e pulsante per il ricalcolo del precalcolo persistente del fido teorico.
- * La logica di calcolo resta nella RPC canonica get_fido_teorico: qui si
- * avvia solo il job Inngest che invoca public.ricalcola_fido_teorico().
+ * La logica di calcolo resta nelle RPC canoniche: il pulsante esegue i passi
+ * avvia → blocchi → finalizza → aggiorna_alert_fidi (mai il legacy ricalcola_fido_teorico).
  */
-import { useEffect, useRef, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Loader2, Calculator, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ricalcolaFidoTeorico } from "@/lib/fido-teorico-precalcolo.functions";
+import { ricalcoloFidoAvvia, ricalcoloFidoBlocco, ricalcoloFidoChiudi } from "@/lib/fido-teorico-precalcolo.functions";
 import { intervalloAttesaPrecalcolo } from "@/lib/precalcolo-polling";
 import {
   elencoMancantiTesto,
@@ -20,7 +20,11 @@ import {
 } from "@/lib/fido-teorico-import-completi";
 
 const POLL_MS = 5_000;
-const POLL_MAX_MS = 3 * 60_000;
+
+/** Testo dell'avanzamento, es. "Blocco 3 di 6". */
+export function testoAvanzamentoBlocco(n: number, previsti: number): string {
+  return n <= previsti ? `Blocco ${n} di ${previsti}` : "Ultimi controlli dei blocchi…";
+}
 
 function formatData(iso: string | null): string | null {
   if (!iso) return null;
@@ -197,15 +201,22 @@ export function FidoTeoricoPrecalcoloCard() {
           Ricalcola fido teorico ora
         </Button>
         {ric.inCorso && (
-          <span className="text-sm text-muted-foreground">
-            Ricalcolo in corso… (può richiedere qualche secondo)
+          <span className="text-sm text-muted-foreground" aria-live="polite">
+            Ricalcolo in corso: {ric.avanzamento ?? "avvio…"}
           </span>
         )}
-        {ric.scaduto && (
-          <span className="text-sm text-muted-foreground">
-            Ricalcolo avviato: aggiorna la pagina tra poco.
+        {ric.completato && (
+          <span className="text-sm text-success inline-flex items-center gap-1">
+            <CheckCircle2 className="size-4" /> Fatto
           </span>
         )}
+      </div>
+      {ric.errore && (
+        <p className="break-words rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          Ricalcolo non riuscito: {ric.errore}
+        </p>
+      )}
+      <div className="hidden">
       </div>
     </Card>
   );
@@ -241,12 +252,10 @@ export function RicalcolaFidoTeoricoAvviso() {
           Ricalcola fido teorico
         </Button>
         {ric.inCorso && (
-          <span className="text-xs text-muted-foreground">Ricalcolo in corso…</span>
+          <span className="text-xs text-muted-foreground" aria-live="polite">Ricalcolo in corso: {ric.avanzamento ?? "avvio…"}</span>
         )}
-        {ric.scaduto && (
-          <span className="text-xs text-muted-foreground">
-            Ricalcolo avviato: aggiorna la pagina tra poco.
-          </span>
+        {ric.errore && (
+          <span className="break-words text-xs text-destructive">Ricalcolo non riuscito: {ric.errore}</span>
         )}
         {ric.completato && (
           <span className="text-xs text-success inline-flex items-center gap-1">
