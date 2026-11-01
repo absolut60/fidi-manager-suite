@@ -15,9 +15,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { formatEuro, formatDate } from "@/lib/fidi";
-import { fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchUtentiAnteprimaFidoNuovo, isProponibile, notaExtraProtetto } from "@/lib/fido-teorico";
+import { fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, isProponibile, notaExtraProtetto } from "@/lib/fido-teorico";
 import { SemaforoPallino } from "@/components/semaforo-pallino";
 import { fetchUltimiLasciati } from "@/lib/revisione-fidi";
+import { puoVedereAlertFidi, puoProporreDaAlertFidi } from "@/lib/permessi-fidi";
 // FM55: colore/etichetta delle righe Alert fidi = stessa fonte della proposta massiva
 // (motivoRigaProposta per il motivo, CLASSI_MOTIVO_RIGA/LEGENDA_MOTIVI per i colori del tema).
 import { motivoRigaProposta, type MotivoRigaProposta } from "@/lib/proposta-fido-visibilita";
@@ -49,31 +50,27 @@ function fmtGiornoMese(d: string | null): string {
 }
 
 function AlertFidiPage() {
-  const { user } = useAuth();
-  const { data: abilitati, isLoading: abilitatiLoading } = useQuery({
-    queryKey: ["fido-v2-anteprima-utenti"],
-    queryFn: fetchUtentiAnteprimaFidoNuovo,
-    staleTime: 5 * 60_000,
-  });
-  const abilitato = !!user && (abilitati ?? []).includes(user.id);
-
-  if (abilitatiLoading || !user) {
+  const { user, roles } = useAuth();
+  if (!user) {
     return <div className="mx-auto w-full max-w-7xl p-4"><Skeleton className="h-40 w-full" /></div>;
   }
-  if (!abilitato) {
+  // Regola unica di visibilità e azioni: src/lib/permessi-fidi.ts.
+  if (!puoVedereAlertFidi(roles as string[])) {
     return (
       <div className="mx-auto w-full max-w-3xl p-4">
         <Card className="p-6 text-center">
-          <p className="font-medium">Pagina non disponibile</p>
-          <p className="mt-1 text-sm text-muted-foreground">Gli alert fidi sono in anteprima e visibili solo agli utenti abilitati.</p>
+          <p className="font-medium">Accesso riservato</p>
+          <p className="mt-1 text-sm text-muted-foreground">Il tuo ruolo non prevede la pagina Alert fidi.</p>
         </Card>
       </div>
     );
   }
-  return <AlertFidiContenuto userId={user.id} />;
+  return <AlertFidiContenuto userId={user.id} puoProporre={puoProporreDaAlertFidi(roles as string[])} />;
 }
 
-function AlertFidiContenuto({ userId }: { userId: string }) {
+function AlertFidiContenuto({ userId, puoProporre }: { userId: string; puoProporre: boolean }) {
+  // Sola lettura (approvatori, responsabile agenti, agenti): niente selezione né "Apri proposta".
+  const selezionabile = (a: AlertFidoRow) => puoProporre && alertSelezionabile(a);
   const queryClient = useQueryClient();
   const { data: righeBase, isLoading, error } = useQuery({
     queryKey: ["alert-fidi-aperti"],
@@ -155,7 +152,7 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
     [tutte, negozi, agentiSel, richiestaSel]);
   // Selezione per alert (solo selezionabili e visibili).
   const [selezionati, setSelezionati] = useState<Set<string>>(new Set());
-  const selezionabiliVisibili = visibili.filter(alertSelezionabile);
+  const selezionabiliVisibili = visibili.filter(selezionabile);
   const selVisibili = selezionabiliVisibili.filter((a) => selezionati.has(a.id));
   const tuttiSel = selezionabiliVisibili.length > 0 && selVisibili.length === selezionabiliVisibili.length;
   const toggle = (id: string) => setSelezionati((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
@@ -304,7 +301,7 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
     }
     return null;
   };
-  const renderAzioni = (a: AlertFidoRow) => alertSelezionabile(a) ? (
+  const renderAzioni = (a: AlertFidoRow) => selezionabile(a) ? (
     <Button size="sm" className="h-auto min-h-10 w-full whitespace-normal" onClick={() => apriProposta([a])}>Apri proposta</Button>
   ) : null;
 
@@ -313,7 +310,7 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
           <h1 className="flex items-center gap-2 text-xl font-semibold sm:text-2xl">
-            <Bell className="size-5 shrink-0" /> Alert fidi <Badge variant="secondary">Anteprima</Badge>
+            <Bell className="size-5 shrink-0" /> Alert fidi
           </h1>
           <p className="text-sm text-muted-foreground">Clienti con il fido da rivedere. Si aggiornano a ogni ricalcolo del fido teorico.</p>
         </div>
@@ -377,14 +374,14 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
             </span>
           ))}
         </div>
-        <ElencoSchede selezioneTutti={{
+        <ElencoSchede selezioneTutti={puoProporre ? {
             tutti: tuttiSel, alcuni: selVisibili.length > 0, disabled: selezionabiliVisibili.length === 0,
             onChange: toggleTutti, etichetta: `Seleziona tutti (${selezionabiliVisibili.length})`,
-          }}>
+          } : undefined}>
             {visibili.map((a) => (
               <SchedaLista key={a.id}
                 className={classiRigaAlert(a)}
-                selezione={alertSelezionabile(a) ? { checked: selezionati.has(a.id), onChange: () => toggle(a.id) } : undefined}
+                selezione={selezionabile(a) ? { checked: selezionati.has(a.id), onChange: () => toggle(a.id) } : undefined}
                 titolo={renderCliente(a)}
                 badge={
                   <div className="flex shrink-0 flex-col items-end gap-1">
@@ -407,9 +404,9 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
             <Table className="table-fixed">
               <TableHeader><TableRow>
                 <TableHead className="w-10">
-                  <Checkbox checked={tuttiSel ? true : selVisibili.length > 0 ? "indeterminate" : false}
+                  {puoProporre && <Checkbox checked={tuttiSel ? true : selVisibili.length > 0 ? "indeterminate" : false}
                     disabled={selezionabiliVisibili.length === 0} onCheckedChange={() => toggleTutti(!tuttiSel)}
-                    aria-label="Seleziona tutti" />
+                    aria-label="Seleziona tutti" />}
                 </TableHead>
                 <TableHead className="w-[17%]">Cliente</TableHead>
                 <TableHead>Perché</TableHead>
@@ -424,7 +421,7 @@ function AlertFidiContenuto({ userId }: { userId: string }) {
                 {visibili.map((a) => (
                   <TableRow key={a.id} className={classiRigaAlert(a)}>
                     <TableCell className={`align-top ${classiRigaAlert(a)}`}>
-                      {alertSelezionabile(a) && (
+                      {selezionabile(a) && (
                         <Checkbox checked={selezionati.has(a.id)} onCheckedChange={() => toggle(a.id)}
                           aria-label={`Seleziona ${a.cliente?.ragione_sociale ?? "cliente"}`} />
                       )}
