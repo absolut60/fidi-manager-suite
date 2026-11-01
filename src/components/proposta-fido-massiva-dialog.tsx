@@ -27,7 +27,7 @@ import {
   fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchExtraFidoProtetti, fetchSogliaConsumoFido, fidoPerTornareSottoSoglia, notaExtraProtetto, MOTIVAZIONE_PROFILO_FIDO, isProponibile,
   REGOLA_LABEL, MOTIVO_NON_PROPONIBILE, MOTIVO_NON_PROPONIBILE_BREVE, isSedeCentraleFido,
 } from "@/lib/fido-teorico";
-import { AVVISO_FIDO_ZERO, CLASSI_MOTIVO_RIGA, LEGENDA_MOTIVI, etichettaRigaProposta, fraseBreveProposta, mostraAvvisoFidoZero } from "@/lib/proposta-fido-riga";
+import { AVVISO_FIDO_ZERO, CLASSI_MOTIVO_RIGA, LEGENDA_MOTIVI, etichettaRigaProposta, mostraAvvisoFidoZero } from "@/lib/proposta-fido-riga";
 import { riepilogoProposte } from "@/lib/proposta-fido-riepilogo";
 import { motivazioneEffettiva } from "@/lib/motivazione-proposta";
 import { Button } from "@/components/ui/button";
@@ -474,7 +474,7 @@ export function ProposteFidoMassivoDialog({
   // Colore della riga in base al motivo vincente (fonte unica: motivoRigaProposta).
   const classiRiga = (r: RigaProposta) => {
     if (!r.proponibile) return "";
-    const motivo = motivoRigaProposta({ regola: r.regola, segnalazioni: r.segnalazioni });
+    const { motivo } = motivoRigaProposta({ regola: r.regola, segnalazioni: r.segnalazioni });
     if (!motivo) return "";
     const c = CLASSI_MOTIVO_RIGA[motivo];
     return `${c.bordo} ${c.sfondo}`;
@@ -493,7 +493,7 @@ export function ProposteFidoMassivoDialog({
         </span>
       </span>
       {etichetta && (() => {
-        const motivo = motivoRigaProposta({ regola: r.regola, segnalazioni: r.segnalazioni });
+        const { motivo } = motivoRigaProposta({ regola: r.regola, segnalazioni: r.segnalazioni });
         const badgeClass = motivo ? CLASSI_MOTIVO_RIGA[motivo].badge : "";
         return <Badge className={`shrink-0 whitespace-nowrap px-1.5 text-[10px] ${badgeClass}`}>{etichetta.testo}</Badge>;
       })()}
@@ -528,14 +528,21 @@ export function ProposteFidoMassivoDialog({
   const renderCorpo = (r: RigaProposta, casellaClass: string) => {
     const scost = r.proponibile ? r.fido_proposto - r.fido_attuale : 0;
     const teo = teoricoMap?.get(r.cliente_id);
-    const frase = r.proponibile ? fraseBreveProposta(teo, r.fido_attuale, r.fido_iniziale) : null;
+    const esposizione = teo?.esposizione_corrente ?? r.esposizione;
+    const ordini = Number(teo?.ordini_aperti ?? 0);
+    const { frase, perCoprire } = motivoRigaProposta({ regola: r.regola, segnalazioni: r.segnalazioni,
+      dati: r.proponibile && teo ? { ...teo, fidoAttuale: r.fido_attuale, consigliato: r.fido_iniziale } : undefined });
     const dettagli = renderDettagli(r);
     return (
       <div className="min-w-0 space-y-1 text-xs">
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 tabular-nums">
           <span>Fido attuale <strong className="font-medium">{fmtEuro(r.fido_attuale)}</strong></span>
           <span aria-hidden className="text-muted-foreground">|</span>
-          <span>Ci deve <strong className="font-medium">{fmtEuro(r.esposizione)}</strong></span>
+          <span>Ci deve <strong className="font-medium">{fmtEuro(esposizione)}</strong>
+            {ordini > 0 && <> + ordini <strong className="font-medium">{fmtEuro(ordini)}</strong></>}
+          </span>
+          <span aria-hidden className="text-muted-foreground">|</span>
+          <span className={perCoprire === r.fido_teorico ? "text-muted-foreground" : ""}>Per coprire <strong className="font-medium">{perCoprire == null ? "—" : fmtEuro(perCoprire)}</strong></span>
           <span aria-hidden className="text-muted-foreground">|</span>
           <span>Consigliato <strong>{r.proponibile && r.fido_teorico != null ? fmtEuro(r.fido_teorico) : "—"}</strong></span>
           <span className="flex items-center gap-2">
@@ -560,7 +567,7 @@ export function ProposteFidoMassivoDialog({
         {(frase || dettagli) && (
           <details className="group min-w-0">
             <summary className="grid min-h-8 cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
-              <span className="break-words text-muted-foreground">{frase}</span>
+              <span className="line-clamp-1 min-w-0 text-muted-foreground" title={frase ?? undefined}>{frase}</span>
               {dettagli && <span className="whitespace-nowrap text-primary"><span aria-hidden className="inline-block transition-transform group-open:rotate-90">▸</span> dettagli</span>}
             </summary>
             {dettagli && <div className="pt-1">{dettagli}</div>}
