@@ -55,10 +55,11 @@ export function inclusoInizialeProposta({ proponibile, rossa, regola, fidoAttual
   fidoProposto: number;
   segnalazioni?: readonly string[] | null;
 }): boolean {
-  const motivo = motivoRigaProposta({ regola, segnalazioni });
-  const azzeramentoBloccatoLegale = (motivo === "bloccato" || motivo === "legale")
+  // La spunta non segue la priorità del colore: bloccato/legale resta spuntato
+  // anche se vince lo scaduto; lo scaduto toglie la spunta solo agli altri clienti.
+  const azzeramentoBloccatoLegale = (regola === "cliente_bloccato" || regola === "gestione_legale" || !!segnalazioni?.includes("bloccato"))
     && fidoAttuale > 0 && fidoProposto === 0;
-  const azzeramentoScaduto = motivo === "scaduto" && fidoAttuale > 0 && fidoProposto === 0;
+  const azzeramentoScaduto = motivoRigaProposta({ regola, segnalazioni }) === "scaduto" && fidoAttuale > 0 && fidoProposto === 0;
   if (azzeramentoScaduto && !azzeramentoBloccatoLegale) return false;
   return proponibile && (!rossa || azzeramentoBloccatoLegale);
 }
