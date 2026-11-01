@@ -7,6 +7,9 @@ import { inngest } from "./client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendEmailViaEdge } from "./send-email.server";
 import { buildVariazioniBloccoEmail } from "@/lib/variazioni-blocco-email-render";
+import { alertPerNegozio, type AlertEmail } from "@/lib/alert-fidi-email";
+import { etichetteRigaProposta } from "@/lib/proposta-fido-riga";
+import { segnalazioniCorrenti } from "@/lib/fido-segnalazioni";
 
 function withTimeout<T>(p: PromiseLike<T>, ms: number, label: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -120,6 +123,59 @@ export const notificaVariazioniBlocco = inngest.createFunction(
   async ({ event, step, logger }) => {
     const importazioneId = ((event.data as { importazioneId?: string | null })?.importazioneId ??
       null) as string | null;
+    // FM55: alert fidi appena notificati da invia_notifiche_alert_fidi (marcatore notificato_il):
+    // entrano nella stessa email per negozio, solo agli store manager (gli agenti hanno la notifica in app).
+    const alertIds = (((event.data as { alertIds?: unknown })?.alertIds ?? []) as unknown[])
+      .filter((x): x is string => typeof x === "string");
+
+    const alertFidi = await step.run("carica-alert-fidi", async (): Promise<AlertEmail[]> => {
+      if (!alertIds.length) return [];
+      const out: AlertEmail[] = [];
+      for (let i = 0; i < alertIds.length; i += 200) {
+        const { data, error } = await withTimeout(
+          supabaseAdmin
+            .from("alert_fidi")
+            .select("id, tipo, consumo, esposizione, ordini_aperti, fido_gamma, fido_proposto, cliente_id, clienti(codice_gestionale, ragione_sociale, store_id, stores(nome))")
+            .in("id", alertIds.slice(i, i + 200)),
+          T_MS,
+          "carica alert fidi",
+        );
+        if (error) throw new Error(`carica alert fidi: ${error.message}`);
+        const rows = (data ?? []) as unknown as Array<{
+          id: string; tipo: string; consumo: number | null; esposizione: number | null; ordini_aperti: number | null;
+          fido_gamma: number | null; fido_proposto: number | null; cliente_id: string;
+          clienti: { codice_gestionale: string | null; ragione_sociale: string | null; store_id: string | null; stores: { nome: string | null } | null } | null;
+        }>;
+        const { data: teo, error: eT } = await withTimeout(
+          supabaseAdmin
+            .from("fido_teorico_cliente")
+            .select("cliente_id, regola_applicata, segnalazioni, fido_proposto, fido_attuale")
+            .in("cliente_id", rows.map((r) => r.cliente_id)),
+          T_MS,
+          "fido teorico alert",
+        );
+        if (eT) throw new Error(`fido teorico alert: ${eT.message}`);
+        const teoMap = new Map(((teo ?? []) as Array<Record<string, unknown>>).map((t) => [t.cliente_id as string, t]));
+        for (const r of rows) {
+          const t = teoMap.get(r.cliente_id);
+          const motivi = t
+            ? etichetteRigaProposta({
+                regola: String(t.regola_applicata ?? ""),
+                segnalazioni: segnalazioniCorrenti(t as { segnalazioni?: unknown; fido_proposto?: number | null; fido_attuale?: number | null }),
+              }).map((e) => e.testo)
+            : [];
+          out.push({
+            id: r.id, tipo: r.tipo, consumo: r.consumo, esposizione: r.esposizione, ordini_aperti: r.ordini_aperti,
+            fido_gamma: r.fido_gamma, fido_proposto: r.fido_proposto,
+            store_id: r.clienti?.store_id ?? null, negozio: r.clienti?.stores?.nome ?? null,
+            codice: r.clienti?.codice_gestionale ?? null, ragione_sociale: r.clienti?.ragione_sociale ?? null,
+            motivi,
+          });
+        }
+      }
+      return out;
+    });
+    const alertNegozio = alertPerNegozio(alertFidi);
 
     const rilevate = await step.run("rileva", async () => {
       const { data, error } = await withTimeout(
@@ -273,9 +329,12 @@ export const notificaVariazioniBlocco = inngest.createFunction(
     let mailFallite = 0;
     let notificheInserite = 0;
 
+    for (const sid of alertNegozio.keys()) if (!perNegozio.has(sid)) perNegozio.set(sid, []);
+
     for (const [storeId, righe] of perNegozio) {
       const esito = await step.run(`negozio-${storeId}`, async () => {
-        const negozioNome = righe[0]?.negozio ?? "sede";
+        const alertDelNegozio = alertNegozio.get(storeId) ?? [];
+        const negozioNome = righe[0]?.negozio ?? alertDelNegozio[0]?.negozio ?? "sede";
         const ids = righe.map((r) => r.id);
 
         // a) destinatari reali: store manager del negozio, attivi, email valida
@@ -323,7 +382,7 @@ export const notificaVariazioniBlocco = inngest.createFunction(
         // c) nessun destinatario
         if (!emails.length && !userIds.length) {
           logger.warn(`Negozio ${negozioNome} (${storeId}): nessun destinatario, ${ids.length} variazioni marcate`);
-          await marcaNotificate(ids);
+          if (ids.length) await marcaNotificate(ids);
           return { avvisato: false, inviate: 0, fallite: 0, notifiche: 0 };
         }
 
@@ -350,6 +409,7 @@ export const notificaVariazioniBlocco = inngest.createFunction(
           appUrl,
           dataRilevazione: new Date(),
           testInfo: emailTest ? { emailReali: reali.map((r) => r.email) } : null,
+          alertFidi: alertDelNegozio,
         });
 
         // e) invio, uno per destinatario
@@ -375,7 +435,8 @@ export const notificaVariazioniBlocco = inngest.createFunction(
 
         // f) notifiche in app (la push parte dal trigger esistente)
         let notifiche = 0;
-        if (userIds.length) {
+        // Gli alert fidi hanno già la loro notifica in app (invia_notifiche_alert_fidi).
+        if (userIds.length && ids.length) {
           const titolo = `${isTest ? "[TEST] " : ""}Variazioni blocco e legale clienti — ${negozioNome}`;
           const messaggio = messaggioConteggi(bloccati.length, sbloccati.length, inLegale.length, uscitiLegale.length);
           const { error: eN } = await withTimeout(
@@ -406,7 +467,7 @@ export const notificaVariazioniBlocco = inngest.createFunction(
 
         // g) marca o ritenta
         if (inviate > 0 || notifiche > 0) {
-          await marcaNotificate(ids);
+          if (ids.length) await marcaNotificate(ids);
           return { avvisato: true, inviate, fallite, notifiche };
         }
         throw new Error(`Negozio ${negozioNome}: tutte le mail fallite e nessuna notifica inserita`);
