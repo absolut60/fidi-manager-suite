@@ -20,7 +20,7 @@ describe("Cosa vuoi mandare: quattro caselle", () => {
     });
   }
   it("fido invariato: spento di default, visibile se spuntato", () => {
-    const r = riga("r", "rinnovo", { inAlertOAnomalia: true });
+    const r = riga("r", "rinnovo", { alertAperto: true });
     expect(passaFiltriProposta(r, filtri)).toBe(false);
     expect(passaFiltriProposta(r, { tipi: [...filtri.tipi, "rinnovo_da_guardare"] })).toBe(true);
   });
@@ -30,7 +30,7 @@ describe("Cosa vuoi mandare: quattro caselle", () => {
     expect(motivoNascostoProposta(r, { tipi: ["aumento"] })).toBe("tipo_spento");
   });
   it("richieste in corso sempre escluse anche se toccate o mostraSempre", () => {
-    const righe = [riga("c", "rinnovo", { richiestaInCorso: { id: "richiesta" }, inAlertOAnomalia: true })];
+    const righe = [riga("c", "rinnovo", { richiestaInCorso: { id: "richiesta" }, alertAperto: true })];
     const scelti = new Set(["c"]);
     expect(righeVisibiliProposta(righe, filtri, scelti, scelti)).toHaveLength(0);
     expect(passaFiltriProposta(righe[0], { tipi: ["rinnovo"] })).toBe(false);
@@ -41,8 +41,8 @@ describe("Cosa vuoi mandare: quattro caselle", () => {
   });
   it("ogni riga del riquadro ha il suo conteggio senza sovrapposizioni", () => {
     const righe = [
-      riga("r1", "rinnovo"), riga("r2", "rinnovo", { inAlertOAnomalia: true }),
-      riga("c", "rinnovo", { richiestaInCorso: {}, inAlertOAnomalia: true }),
+      riga("r1", "rinnovo"), riga("r2", "rinnovo", { alertAperto: true }),
+      riga("c", "rinnovo", { richiestaInCorso: {}, alertAperto: true }),
       riga("a", "aumento"), riga("d", "diminuzione"), riga("n", "nuovo_fido"),
       riga("blocco", "aumento", { proponibile: false, regola: "cliente_bloccato" }),
     ];
@@ -55,7 +55,7 @@ describe("Cosa vuoi mandare: quattro caselle", () => {
     expect(conto.totale).toBe(7);
   });
   it("mostraSempre da Alert mantiene visibili i rinnovi senza richiesta", () => {
-    const righe = [riga("a", "rinnovo", { inAlertOAnomalia: true }), riga("b", "rinnovo")];
+    const righe = [riga("a", "rinnovo", { alertAperto: true }), riga("b", "rinnovo")];
     const scelti = new Set(["a", "b"]);
     expect(righeVisibiliProposta(righe, filtri, new Set(), scelti)).toHaveLength(2);
     const conto = riepilogoVisibilita(righe, filtri, new Set(), scelti);

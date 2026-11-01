@@ -4,8 +4,8 @@ import { anomaliaRossa } from "@/lib/fido-segnalazioni";
 import { normalizza } from "@/lib/fido-teorico";
 import { semaforoDaCliente } from "@/lib/semaforo-ui";
 
-const riga = (id: string, tipo = "rinnovo", inAlertOAnomalia = false) => ({
-  cliente_id: id, tipo, inAlertOAnomalia, regola: "calcolo", proponibile: true, fido_proposto: 60000,
+const riga = (id: string, tipo = "rinnovo", alertAperto = false) => ({
+  cliente_id: id, tipo, alertAperto, regola: "calcolo", proponibile: true, fido_proposto: 60000,
 });
 const filtri = { tipi: CATEGORIE_PROPOSTA_DEFAULT };
 
@@ -35,7 +35,7 @@ describe("Proposta massiva: cinque categorie (01/11)", () => {
       const conto = riepilogoVisibilita(righe, f, new Set());
       expect(conto.daDecidere).toBe(1);
       expect(conto.altriRinnovi).toBe(1);
-      expect(conto.daDeciderePerMotivo).toEqual({ "Cliente bloccato": 1, "Acquisti sopra il previsto": 1, alert_aperto: 1 });
+      expect(conto.daDeciderePerMotivo).toEqual({ "Cliente bloccato": 1, alert_aperto: 1 });
       expect(conto.nascosti.rinnovo).toBe(1);
       expect(conto.nascosti.in_corso).toBe(1);
     }
