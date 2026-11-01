@@ -1,6 +1,7 @@
 # FM55 — Privati fuori dal giro fidi
-- [ ] Fetta 2b TypeScript: nuove segnalazioni, riferimenti senza ordini, dati e testi separati, motivo rosso oltre_normale.
-- [ ] Aggiornare solo test interessati, aggiungere test delle nuove regole ed eseguire bun test; nessun SQL, refresh o ricalcolo.
+- [x] Fetta 2b TypeScript: oltre_normale rosso non spuntato, ordini_oltre_fido arancione, legacy riconosciuti senza gruppo sintetico; riferimento e testo Ci deve solo esposizione, ordini separati, motivo rosso canonico.
+- [x] Sei file test esistenti aggiornati: fido-segnalazioni, fido-linguaggio-semplice, fido-teorico, extra-fido-protetto, proposta-fido-cinque-caselle, proposta-fido-motivi. bun test: 170 pass, zero fail, build OK. Caso esposizione 80.000/ordini 50.000/teorico 60.000/Gamma 120.000: riferimento 100.000. Nessun SQL, refresh, ricalcolo o notifiche.
+- [x] Verifica UI autenticata: /clienti senza errori ma zero clienti anche togliendo filtro attività; scheda e massiva con righe reali e controllo visivo 320–1920 non verificabili in questa sessione, senza creare o alterare dati per la prova.
 - [x] Fetta 2a SQL: migrazione 0122 applicata, acquisti chiusi con DDT, tendenza calendario 3 mesi, ciclo pesato, esposizione senza ordini e margine senza tetto; sei firme invariate.
 - [x] Segnalazioni e protezione riduzioni Alert allineate; sei definizioni corrispondono alla migrazione. SELECT GMP/PIGNONE/A.N. eseguita; proposta 70.000/2.000/365.000, PIGNONE puntuale.
 - [x] bun test 167 pass, zero fail; nove casi SQL e dodici verifiche sui tre clienti positivi in tests/fido-teorico-2a.sql; build OK. Nessun ricalcolo o refresh: firma delle 12.904 righe pubblicate invariata 95be664ca77a6cd3f050576e2444ae42, dilazioni ancora tutte zero, notifiche false. Nessuna modifica TypeScript.
