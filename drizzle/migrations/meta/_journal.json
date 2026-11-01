@@ -855,6 +855,13 @@
       "when": 1793517072355,
       "tag": "0121_fm55_privati_fuori_giro_fidi",
       "breakpoints": true
+    },
+    {
+      "idx": 122,
+      "version": "7",
+      "when": 1793531335952,
+      "tag": "0122_fm55_fido_esposizione_ciclo_e_acquisti_chiusi",
+      "breakpoints": true
     }
   ]
 }
