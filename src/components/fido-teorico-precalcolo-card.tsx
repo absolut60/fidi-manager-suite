@@ -72,57 +72,59 @@ function useStatoPrecalcolo(pollingAttivo = false) {
   });
 }
 
-/** Avvia il job Inngest e attende il cambio di timestamp con polling leggero. */
+/**
+ * Esegue i passi del ricalcolo uno alla volta (stessa sequenza del job automatico):
+ * avvia → blocchi → finalizza → alert fidi → chiusura. Mostra l'avanzamento e,
+ * se un passo fallisce, il messaggio d'errore (mai una rotellina infinita).
+ */
 function useRicalcolo() {
   const qc = useQueryClient();
-  const fn = useServerFn(ricalcolaFidoTeorico);
+  const avvia = useServerFn(ricalcoloFidoAvvia);
+  const blocco = useServerFn(ricalcoloFidoBlocco);
+  const chiudi = useServerFn(ricalcoloFidoChiudi);
   const [inCorso, setInCorso] = useState(false);
-  const [scaduto, setScaduto] = useState(false);
-  const partenza = useRef<string | null>(null);
-  const inizio = useRef<number>(0);
+  const [avanzamento, setAvanzamento] = useState<string | null>(null);
+  const [errore, setErrore] = useState<string | null>(null);
+  const [completato, setCompletato] = useState(false);
+  const attivo = useRef(false);
 
-  const { data } = useStatoPrecalcolo(inCorso);
-  const ultimoRicalcolo = data?.ultimoRicalcolo ?? null;
-
-  useEffect(() => {
-    if (!inCorso) return;
-    const nuovo =
-      ultimoRicalcolo &&
-      (!partenza.current ||
-        (istanteDa(ultimoRicalcolo) ?? 0) > (istanteDa(partenza.current) ?? 0));
-    if (nuovo) {
-      setInCorso(false);
+  const esegui = async () => {
+    if (attivo.current) return;
+    attivo.current = true;
+    setInCorso(true); setErrore(null); setCompletato(false);
+    try {
+      setAvanzamento("Preparazione dei dati…");
+      const { blocchiPrevisti } = await avvia();
+      let dopoId: string | null = null;
+      for (let i = 1; i <= MAX_BLOCCHI; i++) {
+        setAvanzamento(testoAvanzamentoBlocco(i, blocchiPrevisti));
+        const { ultimoId }: { ultimoId: string | null } = await blocco({ data: { dopoId } });
+        if (!ultimoId) break;
+        dopoId = ultimoId;
+        if (i === MAX_BLOCCHI) throw new Error(`Superato il limite di ${MAX_BLOCCHI} blocchi`);
+      }
+      setAvanzamento("Chiusura del ricalcolo…");
+      await chiudi({ data: { passo: "finalizza" } });
+      setAvanzamento("Aggiornamento degli alert fidi…");
+      await chiudi({ data: { passo: "alert" } });
+      await chiudi({ data: { passo: "chiusura" } });
+      setCompletato(true);
       toast.success("Fido teorico ricalcolato");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setErrore(msg);
+      toast.error(`Ricalcolo non riuscito: ${msg}`);
+    } finally {
+      attivo.current = false;
+      setInCorso(false); setAvanzamento(null);
       qc.invalidateQueries({ queryKey: ["fido-teorico-precalcolo-stato"] });
-      return;
     }
-    if (Date.now() - inizio.current > POLL_MAX_MS) {
-      setInCorso(false);
-      setScaduto(true);
-    }
-  }, [inCorso, ultimoRicalcolo, qc]);
-
-  const avvio = useMutation({
-    mutationFn: async () => await fn({ data: undefined as never }),
-    onMutate: () => {
-      partenza.current = ultimoRicalcolo;
-      inizio.current = Date.now();
-      setScaduto(false);
-      setInCorso(true);
-    },
-    onError: (e: unknown) => {
-      setInCorso(false);
-      toast.error(e instanceof Error ? e.message : "Avvio ricalcolo non riuscito");
-    },
-  });
-
-  return {
-    avvia: () => avvio.mutate(),
-    inCorso: inCorso || avvio.isPending,
-    scaduto,
-    completato: avvio.isSuccess && !inCorso && !scaduto,
   };
+
+  return { avvia: () => void esegui(), inCorso, avanzamento, errore, completato };
 }
+
+const MAX_BLOCCHI = 400;
 
 
 export function FidoTeoricoPrecalcoloCard() {
