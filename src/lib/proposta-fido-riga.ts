@@ -1,6 +1,6 @@
 // FM55 fetta 5: testi brevi della riga della proposta fido massiva (fonte unica, solo presentazione).
 
-const euro = (n: number) => `${new Intl.NumberFormat("it-IT", { maximumFractionDigits: 0, useGrouping: "always" } as Intl.NumberFormatOptions).format(Math.round(n))} €`;
+const euro = (n: number) => `${new Intl.NumberFormat("it-IT", { maximumFractionDigits: 0, useGrouping: "always" } as unknown as Intl.NumberFormatOptions).format(Math.round(n))} €`;
 
 export const AVVISO_FIDO_ZERO = "Con fido a zero il cliente resta bloccato: solo pagamento alla consegna.";
 
