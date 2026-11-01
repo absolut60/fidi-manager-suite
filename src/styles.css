@@ -47,6 +47,7 @@
   --color-motivo-ordini: var(--motivo-ordini);
   --color-motivo-ordini-bg: var(--motivo-ordini-bg);
   --color-motivo-bloccato: var(--motivo-bloccato);
+  --color-motivo-bloccato-fg: var(--motivo-bloccato-fg);
   --color-motivo-bloccato-bg: var(--motivo-bloccato-bg);
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
 }
@@ -100,15 +101,17 @@
   --sidebar-accent-foreground: oklch(0.98 0 0);
   --sidebar-border: oklch(0.32 0.04 257);
 
-  /* Motivi riga proposta fido massiva: bordo + sfondo chiarissimo, contrasto leggibile */
+  /* Motivi riga proposta fido massiva: bordo + sfondo, contrasto leggibile.
+     Bloccato/legale = rosso scuro ben marcato (caso più grave); scaduto = rosso chiaro. */
   --motivo-scaduto: oklch(0.58 0.22 27);
   --motivo-scaduto-bg: oklch(0.97 0.015 27);
   --motivo-autorizzare: oklch(0.5 0.18 295);
   --motivo-autorizzare-bg: oklch(0.96 0.02 295);
   --motivo-ordini: oklch(0.68 0.15 55);
   --motivo-ordini-bg: oklch(0.96 0.02 70);
-  --motivo-bloccato: oklch(0.55 0.01 257);
-  --motivo-bloccato-bg: oklch(0.96 0.005 247);
+  --motivo-bloccato: oklch(0.42 0.17 27);
+  --motivo-bloccato-fg: oklch(0.98 0 0);
+  --motivo-bloccato-bg: oklch(0.93 0.03 27);
 }
 
 @layer base {
