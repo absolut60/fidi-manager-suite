@@ -1,7 +1,7 @@
 /**
  * Card e pulsante per il ricalcolo del precalcolo persistente del fido teorico.
- * La logica di calcolo resta nelle RPC canoniche: il pulsante esegue i passi
- * avvia → blocchi → finalizza → aggiorna_alert_fidi (mai il legacy ricalcola_fido_teorico).
+ * Il pulsante avvia sul server lo stesso job Inngest dell'automatico
+ * (avvia → blocchi → finalizza → aggiorna_alert_fidi → avvisi; mai il legacy ricalcola_fido_teorico).
  */
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -11,13 +11,8 @@ import { Loader2, Calculator, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ricalcoloFidoAvvia, ricalcoloFidoBlocco, ricalcoloFidoChiudi } from "@/lib/fido-teorico-precalcolo.functions";
+import { ricalcoloFidoAvvia } from "@/lib/fido-teorico-precalcolo.functions";
 import { intervalloAttesaPrecalcolo } from "@/lib/precalcolo-polling";
-import {
-  eseguiSequenzaRicalcolo,
-  etichettaRipresa,
-  type RipresaRicalcolo,
-} from "@/lib/fido-teorico-ricalcolo-riprova";
 import {
   elencoMancantiTesto,
   istanteDa,
@@ -94,95 +89,37 @@ function useStatoPrecalcolo(pollingAttivo = false) {
 }
 
 /**
- * Esegue i passi del ricalcolo uno alla volta (stessa sequenza del job automatico):
- * avvia → blocchi → finalizza → alert fidi → chiusura. Mostra l'avanzamento e,
- * se un passo fallisce (dopo la riprova automatica sui timeout, lato server),
- * il messaggio d'errore e "Riprendi da blocco N" dall'ultimo id completato.
+ * Il pulsante prende il lock e invia il job Inngest (stesso job dell'automatico):
+ * nessun blocco gira nella pagina. Avanzamento, fasi e "avviato da …" si leggono
+ * solo dal lock, per tutti, compreso chi ha cliccato.
  */
 function useRicalcolo() {
   const qc = useQueryClient();
   const avvia = useServerFn(ricalcoloFidoAvvia);
-  const blocco = useServerFn(ricalcoloFidoBlocco);
-  const chiudi = useServerFn(ricalcoloFidoChiudi);
-  const [inCorso, setInCorso] = useState(false);
-  const [avanzamento, setAvanzamento] = useState<string | null>(null);
+  const [invio, setInvio] = useState(false);
   const [errore, setErrore] = useState<string | null>(null);
-  const [completato, setCompletato] = useState(false);
-  const [ripresa, setRipresa] = useState<RipresaRicalcolo | null>(null);
-  const attivo = useRef(false);
-  const token = useRef<string | null>(null);
-
-  const esegui = async (da: RipresaRicalcolo | null) => {
-    if (attivo.current) return;
-    attivo.current = true;
-    setInCorso(true); setErrore(null); setCompletato(false);
+  const esegui = async () => {
+    if (invio) return;
+    setInvio(true); setErrore(null);
     try {
-      const esito = await eseguiSequenzaRicalcolo({
-        ripresa: da,
-        avvia: async () => {
-          const r = await avvia({ data: { token: token.current } });
-          token.current = r.token;
-          return r;
-        },
-        blocco: async (dopoId, numero, previsti) => {
-          if (!token.current) throw new Error("Ricalcolo non avviato: ricomincia da capo");
-          return (await blocco({ data: { token: token.current, dopoId, numero, previsti } })).ultimoId;
-        },
-        chiudi: async (passo) => {
-          if (!token.current) throw new Error("Ricalcolo non avviato: ricomincia da capo");
-          await chiudi({ data: { token: token.current, passo } });
-        },
-        onAvanzamento: setAvanzamento,
-      });
-      if (esito.ok) {
-        setRipresa(null);
-        token.current = null;
-        setCompletato(true);
-        toast.success("Fido teorico ricalcolato");
-      } else {
-        setRipresa(esito.ripresa);
-        setErrore(esito.errore);
-        toast.error(`Ricalcolo non riuscito: ${esito.errore}`);
-      }
+      await avvia();
+      toast.success("Ricalcolo avviato: prosegue sul server anche se chiudi la pagina");
+    } catch (e) {
+      const m = e instanceof Error ? e.message : String(e);
+      setErrore(m);
+      toast.error(`Ricalcolo non avviato: ${m}`);
     } finally {
-      attivo.current = false;
-      setInCorso(false); setAvanzamento(null);
+      setInvio(false);
       qc.invalidateQueries({ queryKey: ["fido-teorico-precalcolo-stato"] });
     }
   };
-
-  return {
-    avvia: () => void esegui(ripresa),
-    ricomincia: () => { setRipresa(null); void esegui(null); },
-    ripresa,
-    etichettaRipresa: ripresa ? etichettaRipresa(ripresa) : null,
-    inCorso, avanzamento, errore, completato,
-    token: () => token.current,
-  };
-}
-
-/** Ricalcolo di un altro (job automatico o altro utente) attivo secondo il lock nel DB. */
-function useRicalcoloAltrui(
-  lock: RigaLock | null | undefined,
-  ric: ReturnType<typeof useRicalcolo>,
-) {
-  const s = ricalcoloAttivo(lock ?? null, Date.now());
-  if (!s || ric.inCorso || s.token === ric.token()) return null;
-  return s;
-}
-
-/** Riquadro dal lock (anche per il proprio ricalcolo); "interrotto" solo se non si sta lavorando. */
-function useBarra(lock: RigaLock | null | undefined, ric: ReturnType<typeof useRicalcolo>) {
-  const b = barraRicalcolo(lock ?? null, Date.now());
-  if (b?.tipo === "interrotto" && ric.inCorso) return null;
-  return b;
+  return { avvia: () => void esegui(), invio, errore };
 }
 
 export function FidoTeoricoPrecalcoloCard() {
   const { data } = useStatoPrecalcolo();
   const ric = useRicalcolo();
-  const altrui = useRicalcoloAltrui(data?.lock, ric);
-  const barra = useBarra(data?.lock, ric);
+  const barra = barraRicalcolo(data?.lock ?? null, Date.now());
   const attivo = barra?.tipo === "attivo";
 
   const ultimoRicalcolo = data?.ultimoRicalcolo ?? null;
@@ -247,32 +184,17 @@ export function FidoTeoricoPrecalcoloCard() {
       <div className="flex items-center gap-3 flex-wrap">
         <Button
           variant={daRicalcolare ? "default" : "secondary"}
-          disabled={ric.inCorso || !!altrui}
+          disabled={ric.invio || attivo}
           onClick={ric.avvia}
         >
-          {ric.inCorso && <Loader2 className="size-4 animate-spin" />}
-          {ric.etichettaRipresa ?? "Ricalcola fido teorico ora"}
+          {ric.invio && <Loader2 className="size-4 animate-spin" />}
+          Ricalcola fido teorico ora
         </Button>
-        {ric.ripresa && !ric.inCorso && !altrui && (
-          <Button variant="ghost" size="sm" onClick={ric.ricomincia}>
-            Ricomincia da capo
-          </Button>
-        )}
-        {altrui && <span className="text-sm text-muted-foreground">{TESTO_ATTENDI}</span>}
-        {ric.inCorso && !attivo && (
-          <span className="text-sm text-muted-foreground" aria-live="polite">
-            Ricalcolo in corso: {ric.avanzamento ?? "avvio…"}
-          </span>
-        )}
-        {ric.completato && (
-          <span className="text-sm text-success inline-flex items-center gap-1">
-            <CheckCircle2 className="size-4" /> Fatto
-          </span>
-        )}
+        {attivo && <span className="text-sm text-muted-foreground">{TESTO_ATTENDI}</span>}
       </div>
       {ric.errore && (
         <p className="break-words rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          Ricalcolo non riuscito: {ric.errore}
+          Ricalcolo non avviato: {ric.errore}
         </p>
       )}
     </Card>
@@ -283,8 +205,7 @@ export function FidoTeoricoPrecalcoloCard() {
 export function RicalcolaFidoTeoricoAvviso() {
   const ric = useRicalcolo();
   const { data } = useStatoPrecalcolo();
-  const altrui = useRicalcoloAltrui(data?.lock, ric);
-  const barra = useBarra(data?.lock, ric);
+  const barra = barraRicalcolo(data?.lock ?? null, Date.now());
   const attivo = barra?.tipo === "attivo";
   const attesa = data?.importCompleti && !data.importCompleti.pronto
     ? elencoMancantiTesto(data.importCompleti)
@@ -309,21 +230,13 @@ export function RicalcolaFidoTeoricoAvviso() {
         </p>
       )}
       <div className="flex items-center gap-2 flex-wrap">
-        <Button size="sm" disabled={ric.inCorso || !!altrui} onClick={ric.avvia}>
-          {ric.inCorso && <Loader2 className="size-4 animate-spin" />}
-          {ric.etichettaRipresa ?? "Ricalcola fido teorico"}
+        <Button size="sm" disabled={ric.invio || attivo} onClick={ric.avvia}>
+          {ric.invio && <Loader2 className="size-4 animate-spin" />}
+          Ricalcola fido teorico
         </Button>
-        {ric.inCorso && !attivo && (
-          <span className="text-xs text-muted-foreground" aria-live="polite">Ricalcolo in corso: {ric.avanzamento ?? "avvio…"}</span>
-        )}
-        {altrui && <span className="break-words text-xs text-muted-foreground">{TESTO_ATTENDI}</span>}
+        {attivo && <span className="break-words text-xs text-muted-foreground">{TESTO_ATTENDI}</span>}
         {ric.errore && (
-          <span className="break-words text-xs text-destructive">Ricalcolo non riuscito: {ric.errore}</span>
-        )}
-        {ric.completato && (
-          <span className="text-xs text-success inline-flex items-center gap-1">
-            <CheckCircle2 className="size-3.5" /> Fatto
-          </span>
+          <span className="break-words text-xs text-destructive">Ricalcolo non avviato: {ric.errore}</span>
         )}
       </div>
     </div>
