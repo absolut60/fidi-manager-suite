@@ -6821,6 +6821,7 @@ export type Database = {
         Args: { _isc_id: string; _lead_id: string }
         Returns: string
       }
+      _fm55_diag_explain: { Args: { _sql: string }; Returns: string[] }
       _segmento_filtro_elenco: { Args: { _v: Json }; Returns: string[] }
       agente_codice_corrente: { Args: never; Returns: string }
       agente_vede_record: {
