@@ -32,13 +32,14 @@ export const ricalcolaFidoTeorico = inngest.createFunction(
     triggers: [{ event: "fido-teorico/ricalcolo.requested" }],
   },
   async ({ event, step }) => {
-    const origine =
-      (event.data as { origine?: string } | undefined)?.origine === "automatico"
-        ? "automatico"
-        : "manuale";
-    // Token del lock memorizzato da Inngest: le riprove degli step usano lo stesso.
-    const token = await step.run("token-lock", async () => crypto.randomUUID());
-    const lock = { token, origine } as const;
+    const dati = (event.data ?? {}) as { origine?: string; token?: string; avviatoDa?: string | null };
+    const origine = dati.origine === "automatico" ? "automatico" : "manuale";
+    // Manuale: il pulsante ha già preso il lock con questo token (chi clicca per primo vince).
+    // Token memorizzato da Inngest: le riprove degli step usano lo stesso.
+    const tokenEvento = typeof dati.token === "string" && /^[0-9a-f-]{36}$/i.test(dati.token) ? dati.token : null;
+    const token = await step.run("token-lock", async () => tokenEvento ?? crypto.randomUUID());
+    const avviatoDa = origine === "manuale" && typeof dati.avviatoDa === "string" ? dati.avviatoDa : null;
+    const lock = { token, origine, avviatoDa } as const;
     const avvio = await step.run("refresh-fatturato", async () => {
       try {
         const r = await passoAvvia(lock);
