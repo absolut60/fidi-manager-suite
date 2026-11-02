@@ -939,6 +939,13 @@
       "when": 1793621968153,
       "tag": "0133_fm55_rimuovi_funzioni_temporanee",
       "breakpoints": true
+    },
+    {
+      "idx": 134,
+      "version": "7",
+      "when": 1793625811379,
+      "tag": "0134_fm55_fidi_approvati_in_attesa_gamma",
+      "breakpoints": true
     }
   ]
 }

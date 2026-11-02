@@ -7305,6 +7305,15 @@ export type Database = {
           scaduto_attuale: number
         }[]
       }
+      fidi_approvati_in_attesa_gamma: {
+        Args: { _cliente_ids?: string[] }
+        Returns: {
+          cliente_id: string
+          data_export: string
+          importo_approvato: number
+          richiesta_id: string
+        }[]
+      }
       fido_consumato_perc: {
         Args: { c: Database["public"]["Tables"]["clienti"]["Row"] }
         Returns: number
