@@ -25,7 +25,7 @@ import { alertConsumoAperto, fetchAlertFidiAperti, giaDeciso, teoricoPropostaIni
 import { Switch } from "@/components/ui/switch";
 import { CampoExtraTeorico } from "@/components/extra-fido-teorico";
 import {
-  fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchExtraFidoProtetti, fetchSogliaConsumoFido, fidoPerTornareSottoSoglia, notaExtraProtetto, MOTIVAZIONE_PROFILO_FIDO, isProponibile,
+  fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, fetchExtraFidoProtetti, fetchFidiInAttesaGamma, fetchSogliaConsumoFido, fidoPerTornareSottoSoglia, notaExtraProtetto, MOTIVAZIONE_PROFILO_FIDO, isProponibile,
   REGOLA_LABEL, MOTIVO_NON_PROPONIBILE, MOTIVO_NON_PROPONIBILE_BREVE, isSedeCentraleFido,
 } from "@/lib/fido-teorico";
 import { CLASSI_MOTIVO_RIGA, LEGENDA_MOTIVI } from "@/lib/proposta-fido-riga";

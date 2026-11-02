@@ -71,7 +71,7 @@ function AlertFidiPage() {
 
 function AlertFidiContenuto({ userId, puoProporre }: { userId: string; puoProporre: boolean }) {
   // Sola lettura (approvatori, responsabile agenti, agenti): niente selezione né "Apri proposta".
-  const selezionabile = (a: AlertFidoRow) => puoProporre && alertSelezionabile(a);
+  const selezionabile = (a: AlertFidoRow) => puoProporre && alertSelezionabile(a) && !inAttesaGammaMap?.get(a.cliente_id);
   const queryClient = useQueryClient();
   const { data: righeBase, isLoading, error } = useQuery({
     queryKey: ["alert-fidi-aperti"],
@@ -98,6 +98,13 @@ function AlertFidiContenuto({ userId, puoProporre }: { userId: string; puoPropor
     enabled: idsClienti.length > 0,
     staleTime: 5 * 60_000,
     queryFn: () => fetchDecisioniProtette(idsClienti),
+  });
+  // FM55 fetta 9: fido già approvato che Gamma non ha ancora recepito → niente proposta su quella riga.
+  const { data: inAttesaGammaMap } = useQuery({
+    queryKey: ["fidi-in-attesa-gamma-alert", idsClienti.join(",")],
+    enabled: idsClienti.length > 0,
+    staleTime: 60_000,
+    queryFn: () => fetchFidiInAttesaGamma(idsClienti),
   });
   const { data: lasciatiMap } = useQuery({
     queryKey: ["revisione-fidi-lasciati-alert", idsClienti.join(",")],
@@ -292,6 +299,10 @@ function AlertFidiContenuto({ userId, puoProporre }: { userId: string; puoPropor
   );
   // "Ultima decisione": solo quando c'è (decisione, già deciso, lasciato così); il badge della richiesta attiva resta.
   const renderDecisione = (a: AlertFidoRow) => {
+    const attesa = inAttesaGammaMap?.get(a.cliente_id);
+    if (attesa) {
+      return <Badge variant="secondary" className="whitespace-normal break-words text-left">{testoInAttesaGammaBreve(attesa)}</Badge>;
+    }
     if (statoEffettivoAlert(a) === "gia_deciso" && a.gia_deciso) {
       return <span className="break-words text-xs text-muted-foreground">{testoGiaDeciso(a.gia_deciso)}</span>;
     }
