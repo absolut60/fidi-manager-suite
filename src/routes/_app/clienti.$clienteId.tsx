@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { FidoInAttesaGammaNota } from "@/components/fido-in-attesa-gamma-nota";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -1130,6 +1131,7 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Colpo d'occhio
         </h3>
+        <FidoInAttesaGammaNota clienteId={cliente.id} />
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           <Card className="p-3.5 rounded-xl border-[0.5px]">
             <p className="text-[11px] font-medium text-muted-foreground uppercase truncate">
