@@ -72,6 +72,13 @@ Le azioni multiple su `richieste_fido` passano dall'helper a blocchi `src/lib/ri
 - **Regola:** mai chiamare una RPC pesante dal client con l'utente (8 s): passa da una server function che usa `supabaseAdmin` (60 s). Blocchi da 200 clienti e riprova automatica sui timeout restano come rete di sicurezza (fonte unica `src/lib/fido-teorico-ricalcolo-riprova.ts`).
 - **Verifica:** `tests/sql/service-role-timeout.sql` (sola lettura) controlla che `service_role` abbia 60 s e che `authenticated` resti a 8 s.
 
+## Memoria del ricalcolo del fido teorico (FM55 fetta 7, 02/11/2026)
+
+- **Causa dei riavvii del database:** `get_fido_teorico_v2` aveva una catena di CTE non materializzate (`b` → `b2` → `b3` → `b4` → `b5_originale` → `freno`); il pianificatore le espandeva a ogni riferimento: 672 sottopiani e circa 74 MB di memoria solo per preparare 200 clienti (`get_fido_teorico`: 21 MB). Chiamate ripetute (65 blocchi) accumulavano memoria fino al riavvio, anche senza scritture.
+- **Regola:** nelle funzioni SQL lunghe del fido teorico le CTE intermedie sono `AS MATERIALIZED`. Non togliere `MATERIALIZED` e non aggiungere CTE intermedie senza: controllare con `EXPLAIN (MEMORY)` che la pianificazione resti sotto pochi MB.
+- I calcoli non cambiano (solo funzioni STABLE/IMMUTABLE): impronta md5 di tutti i clienti identica prima e dopo (migrazione `0132_fm55_ricalcolo_meno_memoria.sql`).
+- Misure e letture di massa sul database: mai di seguito; blocchi da 200 con pause di alcuni secondi.
+
 ## Un solo ricalcolo del fido teorico alla volta (FM55 fetta 4d)
 
 - Lock unico: riga `configurazioni.chiave = 'fido_teorico_ricalcolo_lock'` (token, origine, ora di avvio, blocco/previsti); `updated_at` è il battito aggiornato a ogni passo e blocco.
