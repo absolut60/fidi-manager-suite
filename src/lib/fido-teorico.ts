@@ -437,7 +437,7 @@ export async function fetchFidiInAttesaGamma(clienteIds: string[]): Promise<Map<
 }
 
 const fmtEuroIt = (n: number) => new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
-const fmtGgMm = (iso: string) => new Intl.DateTimeFormat("it-IT", { day: "2-digit", month: "2-digit", timeZone: "Europe/Rome" }).format(new Date(iso));
+const fmtGgMmGamma = (iso: string) => new Intl.DateTimeFormat("it-IT", { day: "2-digit", month: "2-digit", timeZone: "Europe/Rome" }).format(new Date(iso));
 
 /** Badge breve (Alert fidi, proposta massiva). */
 export function testoInAttesaGammaBreve(f: FidoInAttesaGamma): string {
@@ -446,7 +446,7 @@ export function testoInAttesaGammaBreve(f: FidoInAttesaGamma): string {
 
 /** Riga informativa della scheda cliente. */
 export function testoInAttesaGammaScheda(f: FidoInAttesaGamma): string {
-  return `Fido approvato ${fmtEuroIt(f.importo_approvato)} il ${fmtGgMm(f.data_export)}, in attesa di caricamento in Gamma`;
+  return `Fido approvato ${fmtEuroIt(f.importo_approvato)} il ${fmtGgMmGamma(f.data_export)}, in attesa di caricamento in Gamma`;
 }
 
 /** Protezione in vigore: esiste e la regola SQL non l'ha fatta decadere. */
