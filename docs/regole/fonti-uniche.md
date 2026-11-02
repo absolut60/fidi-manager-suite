@@ -105,3 +105,6 @@ Le azioni multiple su `richieste_fido` passano dall'helper a blocchi `src/lib/ri
 - La usa solo `invia_notifiche_alert_fidi`: i già decisi non vengono notificati né marcati, quindi ripartono quando la protezione scade o decade.
 - La pagina continua a usare `giaDeciso` (riferimento della richiesta = Gamma). Le due possono differire solo se il riferimento supera l'importo approvato (nessun caso reale al 01/11/2026).
 - Email unica per negozio: gli alert appena marcati da `notificato_il` entrano nel job `variazioni-blocco` (sezione "Alert fidi", solo store manager); il testo del consumo ha il gemello TS `messaggioConsumoAlert` (`src/lib/alert-fidi-email.ts`).
+
+### Fidi approvati in attesa di Gamma (FM55 fetta 9)
+Fonte unica SQL `public.fidi_approvati_in_attesa_gamma(_cliente_ids)` (lettore TS `fetchFidiInAttesaGamma` in `src/lib/fido-teorico.ts`): ultima richiesta approvata con importo e `data_export`, importo ≠ `clienti.fido_gestionale`, nessuna variazione di `fido_gestionale` in `audit_log` dopo l'export. Massiva: motivo nascosto `in_attesa_gamma` (proposta-fido-visibilita); Alert fidi: badge e nessuna proposta; scheda cliente: riga informativa.
