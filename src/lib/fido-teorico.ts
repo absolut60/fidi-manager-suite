@@ -436,7 +436,7 @@ export async function fetchFidiInAttesaGamma(clienteIds: string[]): Promise<Map<
   return out;
 }
 
-const fmtEuroIt = (n: number) => new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0, useGrouping: "always" } as Intl.NumberFormatOptions).format(n);
+const fmtEuroIt = (n: number) => new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0, useGrouping: "always" } as unknown as Intl.NumberFormatOptions).format(n);
 const fmtGgMmGamma = (iso: string) => new Intl.DateTimeFormat("it-IT", { day: "2-digit", month: "2-digit", timeZone: "Europe/Rome" }).format(new Date(iso));
 
 /** Badge breve (Alert fidi, proposta massiva). */
