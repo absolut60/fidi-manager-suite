@@ -25,11 +25,13 @@ import {
 } from "@/lib/fido-teorico-import-completi";
 import {
   LOCK_CHIAVE,
+  barraRicalcolo,
   ricalcoloAttivo,
-  testoAvanzamentoLock,
-  testoRicalcoloInCorso,
   type RigaLock,
 } from "@/lib/fido-teorico-ricalcolo-lock";
+import { RiquadroRicalcoloFido } from "@/components/ricalcolo-fido-barra";
+
+const TESTO_ATTENDI = "Attendi la fine del ricalcolo in corso";
 
 const POLL_MS = 5_000;
 
@@ -166,13 +168,22 @@ function useRicalcoloAltrui(
 ) {
   const s = ricalcoloAttivo(lock ?? null, Date.now());
   if (!s || ric.inCorso || s.token === ric.token()) return null;
-  return { testo: testoRicalcoloInCorso(s), avanzamento: testoAvanzamentoLock(s) };
+  return s;
+}
+
+/** Riquadro dal lock (anche per il proprio ricalcolo); "interrotto" solo se non si sta lavorando. */
+function useBarra(lock: RigaLock | null | undefined, ric: ReturnType<typeof useRicalcolo>) {
+  const b = barraRicalcolo(lock ?? null, Date.now());
+  if (b?.tipo === "interrotto" && ric.inCorso) return null;
+  return b;
 }
 
 export function FidoTeoricoPrecalcoloCard() {
   const { data } = useStatoPrecalcolo();
   const ric = useRicalcolo();
   const altrui = useRicalcoloAltrui(data?.lock, ric);
+  const barra = useBarra(data?.lock, ric);
+  const attivo = barra?.tipo === "attivo";
 
   const ultimoRicalcolo = data?.ultimoRicalcolo ?? null;
   const ultimoImport = data?.ultimoImport ?? null;
@@ -196,7 +207,9 @@ export function FidoTeoricoPrecalcoloCard() {
         </div>
       </div>
 
-      {daRicalcolare ? (
+      <RiquadroRicalcoloFido barra={barra} />
+
+      {attivo ? null : daRicalcolare ? (
         <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning">
           <AlertTriangle className="size-4 mt-0.5 shrink-0" />
           <span className="min-w-0 break-words">
@@ -211,7 +224,8 @@ export function FidoTeoricoPrecalcoloCard() {
         </div>
       ) : (
         <div className="flex items-center gap-2 rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
-          <CheckCircle2 className="size-4 shrink-0" /> Fido teorico già aggiornato
+          <CheckCircle2 className="size-4 shrink-0" />
+          {ultimoRicalcolo ? `Fido teorico aggiornato alle ${formatData(ultimoRicalcolo)}` : "Fido teorico già aggiornato"}
         </div>
       )}
 
@@ -244,7 +258,8 @@ export function FidoTeoricoPrecalcoloCard() {
             Ricomincia da capo
           </Button>
         )}
-        {ric.inCorso && (
+        {altrui && <span className="text-sm text-muted-foreground">{TESTO_ATTENDI}</span>}
+        {ric.inCorso && !attivo && (
           <span className="text-sm text-muted-foreground" aria-live="polite">
             Ricalcolo in corso: {ric.avanzamento ?? "avvio…"}
           </span>
@@ -255,11 +270,6 @@ export function FidoTeoricoPrecalcoloCard() {
           </span>
         )}
       </div>
-      {altrui && (
-        <p className="break-words rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning" aria-live="polite">
-          {altrui.testo}. Avanzamento: {altrui.avanzamento}.
-        </p>
-      )}
       {ric.errore && (
         <p className="break-words rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           Ricalcolo non riuscito: {ric.errore}
@@ -274,11 +284,14 @@ export function RicalcolaFidoTeoricoAvviso() {
   const ric = useRicalcolo();
   const { data } = useStatoPrecalcolo();
   const altrui = useRicalcoloAltrui(data?.lock, ric);
+  const barra = useBarra(data?.lock, ric);
+  const attivo = barra?.tipo === "attivo";
   const attesa = data?.importCompleti && !data.importCompleti.pronto
     ? elencoMancantiTesto(data.importCompleti)
     : null;
   return (
     <div className="rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-sm space-y-2">
+      <RiquadroRicalcoloFido barra={barra} />
       <p className="break-words">
         {attesa
           ? `Import completato. Il giro di oggi attende ancora: ${attesa}. Il fido teorico si aggiornerà da solo quando saranno completate tutte le quattro fonti di oggi. Se vuoi, puoi ricalcolarlo subito.`
@@ -288,8 +301,9 @@ export function RicalcolaFidoTeoricoAvviso() {
               ? "Import completato. Le quattro fonti sono state importate oggi e ci sono dati nuovi: il fido teorico si aggiornerà da solo tra pochi minuti. Se vuoi, puoi ricalcolarlo subito."
               : "Import completato. Non ci sono nuove importazioni delle quattro fonti di oggi successive all'ultimo ricalcolo. Se vuoi, puoi ricalcolarlo subito."}
       </p>
-      {data?.ultimoRicalcolo && (
-        <p className="text-xs text-muted-foreground">
+      {data?.ultimoRicalcolo && !attivo && (
+        <p className="inline-flex items-center gap-1 text-xs text-success">
+          <CheckCircle2 className="size-3.5 shrink-0" />
           Fido teorico aggiornato alle {formatData(data.ultimoRicalcolo)}
           {data.origine ? ` (${data.origine})` : ""}.
         </p>
@@ -299,12 +313,10 @@ export function RicalcolaFidoTeoricoAvviso() {
           {ric.inCorso && <Loader2 className="size-4 animate-spin" />}
           {ric.etichettaRipresa ?? "Ricalcola fido teorico"}
         </Button>
-        {ric.inCorso && (
+        {ric.inCorso && !attivo && (
           <span className="text-xs text-muted-foreground" aria-live="polite">Ricalcolo in corso: {ric.avanzamento ?? "avvio…"}</span>
         )}
-        {altrui && (
-          <span className="break-words text-xs text-warning" aria-live="polite">{altrui.testo}. Avanzamento: {altrui.avanzamento}.</span>
-        )}
+        {altrui && <span className="break-words text-xs text-muted-foreground">{TESTO_ATTENDI}</span>}
         {ric.errore && (
           <span className="break-words text-xs text-destructive">Ricalcolo non riuscito: {ric.errore}</span>
         )}
