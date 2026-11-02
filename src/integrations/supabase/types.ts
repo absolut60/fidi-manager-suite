@@ -6822,6 +6822,56 @@ export type Database = {
         Returns: string
       }
       _fm55_diag_explain: { Args: { _sql: string }; Returns: string[] }
+      _fm55_nuova_get_fido_teorico: {
+        Args: { _cliente_ids?: string[]; _solo_condizione_mancante?: boolean }
+        Returns: {
+          cliente_id: string
+          coefficiente: number
+          ddt_da_fatturare: number
+          esposizione_corrente: number
+          fatturato_rolling: number
+          fido_attuale: number
+          fido_base: number
+          fido_base_lordo: number
+          fido_proposto: number
+          fido_proposto_senza_coefficiente: number
+          fido_teorico_puro: number
+          giorni: number
+          giorni_mancanti: boolean
+          giorni_oltre_accordo: number
+          nota_proposta: string
+          pavimento_applicato: boolean
+          profilo_pagamento: string
+          regola_applicata: string
+          richiede_verifica: boolean
+          ritmo_mensile: number
+          scostamento: number
+          sede_cinisello: boolean
+        }[]
+      }
+      _fm55_nuova_get_fido_teorico_v2: {
+        Args: { _cliente_ids?: string[] }
+        Returns: {
+          acquisto_mensile: number
+          acquisto_storico: number
+          acquisto_tendenza: number
+          base: number
+          ciclo_gg: number
+          cliente_id: string
+          coefficiente: number
+          consumo_perc: number
+          da_verificare: boolean
+          esposizione: number
+          fabbisogno: number
+          fido_attuale: number
+          fido_proposto: number
+          mesi_stagionali: number
+          ordini_aperti: number
+          profilo: string
+          regola: string
+          spiegazione: string
+        }[]
+      }
       _segmento_filtro_elenco: { Args: { _v: Json }; Returns: string[] }
       agente_codice_corrente: { Args: never; Returns: string }
       agente_vede_record: {
