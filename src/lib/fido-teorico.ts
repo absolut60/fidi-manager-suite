@@ -414,6 +414,41 @@ export async function fetchExtraFidoProtetti(clienteIds: string[]): Promise<Map<
   return out;
 }
 
+/** FM55 fetta 9: fido approvato ed esportato che Gamma non ha ancora recepito (fonte SQL fidi_approvati_in_attesa_gamma). */
+export interface FidoInAttesaGamma {
+  richiesta_id: string;
+  importo_approvato: number;
+  data_export: string;
+}
+
+/** Lettura della fonte unica SQL `fidi_approvati_in_attesa_gamma()`; nessuna regola ricalcolata qui. */
+export async function fetchFidiInAttesaGamma(clienteIds: string[]): Promise<Map<string, FidoInAttesaGamma>> {
+  const out = new Map<string, FidoInAttesaGamma>();
+  const ids = clienteIds.filter(Boolean);
+  if (!ids.length) return out;
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data, error } = await supabase.rpc("fidi_approvati_in_attesa_gamma", { _cliente_ids: ids.slice(i, i + 200) });
+    if (error) throw error;
+    for (const r of data ?? []) {
+      out.set(r.cliente_id, { richiesta_id: r.richiesta_id, importo_approvato: Number(r.importo_approvato), data_export: r.data_export });
+    }
+  }
+  return out;
+}
+
+const fmtEuroIt = (n: number) => new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+const fmtGgMm = (iso: string) => new Intl.DateTimeFormat("it-IT", { day: "2-digit", month: "2-digit", timeZone: "Europe/Rome" }).format(new Date(iso));
+
+/** Badge breve (Alert fidi, proposta massiva). */
+export function testoInAttesaGammaBreve(f: FidoInAttesaGamma): string {
+  return `Approvato ${fmtEuroIt(f.importo_approvato)}, in attesa di Gamma`;
+}
+
+/** Riga informativa della scheda cliente. */
+export function testoInAttesaGammaScheda(f: FidoInAttesaGamma): string {
+  return `Fido approvato ${fmtEuroIt(f.importo_approvato)} il ${fmtGgMm(f.data_export)}, in attesa di caricamento in Gamma`;
+}
+
 /** Protezione in vigore: esiste e la regola SQL non l'ha fatta decadere. */
 export function protezioneAttiva(protetto: ExtraFidoProtetto | undefined): protetto is ExtraFidoProtetto {
   return !!protetto && protetto.protezione_valida !== false;

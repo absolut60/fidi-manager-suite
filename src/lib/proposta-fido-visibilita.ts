@@ -28,6 +28,8 @@ export interface RigaVisibilita<T extends string = string> {
   protezione?: ExtraFidoProtetto;
   /** Riferimento canonico della richiesta, non l'importo editabile della riga. */
   riferimentoRichiesta?: number | null;
+  /** Fonte SQL fidi_approvati_in_attesa_gamma: fido già approvato che Gamma non ha ancora recepito. */
+  inAttesaGamma?: unknown;
 }
 
 /** Solo consumo effettivamente aperto o rosso con fido Gamma positivo; zero su zero mai da guardare. */
@@ -49,7 +51,7 @@ export function righeVisibiliProposta<T extends string, R extends RigaVisibilita
   righe: R[], filtri: FiltriProposta<T>, toccate: ReadonlySet<string>,
   mostraSempre?: ReadonlySet<string>,
 ): R[] {
-  return righe.filter((r) => !r.richiestaInCorso && (toccate.has(r.cliente_id) || !!mostraSempre?.has(r.cliente_id) || passaFiltriProposta(r, filtri)));
+  return righe.filter((r) => !r.richiestaInCorso && !r.inAttesaGamma && (toccate.has(r.cliente_id) || !!mostraSempre?.has(r.cliente_id) || passaFiltriProposta(r, filtri)));
 }
 
 /** Rosse non spuntate, salvo riduzioni a zero di bloccati/legali; scaduto non incassato portato a zero
@@ -158,12 +160,13 @@ export function livelloControlloProposta(nAnomalie: number, rossa: boolean): Liv
 }
 
 /** Motivo per cui una riga proponibile è nascosta: stessa sequenza di passaFiltriProposta. */
-export type MotivoNascosto = "rinnovo" | "tipo_spento" | "in_corso";
+export type MotivoNascosto = "rinnovo" | "tipo_spento" | "in_corso" | "in_attesa_gamma";
 
 export function motivoNascostoProposta<T extends string>(
   r: RigaVisibilita<T>, f: FiltriProposta<T>,
 ): MotivoNascosto | null {
   if (r.richiestaInCorso) return "in_corso";
+  if (r.inAttesaGamma) return "in_attesa_gamma";
   const categoria = categoriaProposta(r);
   if (!f.tipi.includes(categoria)) return categoria === "rinnovo" ? "rinnovo" : "tipo_spento";
   return null;
@@ -191,7 +194,7 @@ export function riepilogoVisibilita<T extends string, R extends RigaVisibilita<T
   righe: R[], filtri: FiltriProposta<T>, toccate: ReadonlySet<string>,
   mostraSempre?: ReadonlySet<string>,
 ): RiepilogoVisibilita {
-  const nascosti: Record<MotivoNascosto, number> = { rinnovo: 0, tipo_spento: 0, in_corso: 0 };
+  const nascosti: Record<MotivoNascosto, number> = { rinnovo: 0, tipo_spento: 0, in_corso: 0, in_attesa_gamma: 0 };
   const tipiSpenti: Record<string, number> = {};
   const giaDecisiPerScadenza: Record<string, number> = {};
   const nonProponibili: Record<string, number> = {};
@@ -203,14 +206,15 @@ export function riepilogoVisibilita<T extends string, R extends RigaVisibilita<T
       nonProponibiliTotale++;
       continue;
     }
-    if (!r.richiestaInCorso && daValutareProposta(r)) {
+    const bloccataPrima = !!r.richiestaInCorso || !!r.inAttesaGamma;
+    if (!bloccataPrima && daValutareProposta(r)) {
       daDecidere++;
       const motivi = etichetteSegnalazioni((r.segnalazioni ?? []).filter((c) => anomaliaRossa([c])));
       if (r.alertAperto) motivi.push("alert_aperto");
       for (const motivo of motivi) daDeciderePerMotivo[motivo] = (daDeciderePerMotivo[motivo] ?? 0) + 1;
     }
-    if (!r.richiestaInCorso && categoriaProposta(r) === "rinnovo") altriRinnovi++;
-    const m = r.richiestaInCorso ? "in_corso" : toccate.has(r.cliente_id) || mostraSempre?.has(r.cliente_id) ? null : motivoNascostoProposta(r, filtri);
+    if (!bloccataPrima && categoriaProposta(r) === "rinnovo") altriRinnovi++;
+    const m = r.richiestaInCorso ? "in_corso" : r.inAttesaGamma ? "in_attesa_gamma" : toccate.has(r.cliente_id) || mostraSempre?.has(r.cliente_id) ? null : motivoNascostoProposta(r, filtri);
     if (!m) { visibili++; continue; }
     nascosti[m]++;
     if (m === "rinnovo" && giaDeciso(r.protezione, r.riferimentoRichiesta, r.fido_attuale) && r.protezione) {
