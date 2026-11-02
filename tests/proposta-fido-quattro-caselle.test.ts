@@ -47,7 +47,7 @@ describe("Cosa vuoi mandare: quattro caselle", () => {
       riga("blocco", "aumento", { proponibile: false, regola: "cliente_bloccato" }),
     ];
     const conto = riepilogoVisibilita(righe, { tipi: [] }, new Set());
-    expect(conto.nascosti).toEqual({ rinnovo: 1, in_corso: 1, tipo_spento: 4 });
+    expect(conto.nascosti).toEqual({ rinnovo: 1, in_corso: 1, tipo_spento: 4, in_attesa_gamma: 0 });
     expect(conto.daDecidere).toBe(1);
     expect(conto.tipiSpenti).toEqual({ rinnovo_da_guardare: 1, aumento: 1, diminuzione: 1, nuovo_fido: 1 });
     expect(conto.nonProponibili).toEqual({ cliente_bloccato: 1 });
