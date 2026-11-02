@@ -54,7 +54,10 @@ export function RiquadroRicalcoloFido({ barra }: { barra: BarraRicalcolo | null 
 
 /** Striscia compatta in cima alle pagine: solo mentre il ricalcolo è attivo. */
 export function StrisciaRicalcoloFido() {
-  const barra = useLockRicalcoloFido();
+  return <StrisciaVista barra={useLockRicalcoloFido()} />;
+}
+
+export function StrisciaVista({ barra }: { barra: BarraRicalcolo | null }) {
   if (barra?.tipo !== "attivo") return null;
   return (
     <div className="space-y-1.5 rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-sm" role="status" aria-live="polite">
