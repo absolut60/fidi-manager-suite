@@ -19,9 +19,10 @@ export const ricalcoloFidoAvvia = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     await assertPuoImportareGamma(context.supabase, context.userId, context.claims);
-    const { passoAvvia } = await import("@/lib/fido-teorico-ricalcolo-passi.server");
+    const { passoAvvia, nomeUtente } = await import("@/lib/fido-teorico-ricalcolo-passi.server");
     const token = data.token ?? crypto.randomUUID();
-    return { ...(await passoAvvia({ token, origine: "manuale" })), token };
+    const avviatoDa = await nomeUtente(context.userId).catch(() => null);
+    return { ...(await passoAvvia({ token, origine: "manuale", avviatoDa })), token };
   });
 
 const UUID = /^[0-9a-f-]{36}$/i;
@@ -58,8 +59,7 @@ export const ricalcoloFidoChiudi = createServerFn({ method: "POST" })
     if (data.passo === "finalizza") await p.passoFinalizza(lock);
     else if (data.passo === "alert") await p.passoAlertFidi(lock);
     else {
-      await p.passoLock(lock, { fase: "chiusura", blocco: null, previsti: null });
-      await p.passoNotificheAlertFidi();
+      await p.passoNotificheAlertFidi(lock);
       await p.passoRegistraOrigine("manuale");
       await p.passoRilasciaLock(data.token);
     }
