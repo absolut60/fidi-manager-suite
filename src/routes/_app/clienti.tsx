@@ -1,4 +1,5 @@
 import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
+import { StrisciaRicalcoloFido } from "@/components/ricalcolo-fido-barra";
 import { filtroElenco } from "@/lib/filtro-elenco";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -1760,6 +1761,7 @@ function ClientiPage() {
 
   return (
     <div className="space-y-6">
+      <StrisciaRicalcoloFido />
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Clienti</h1>

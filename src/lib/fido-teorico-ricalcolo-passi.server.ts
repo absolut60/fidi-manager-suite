@@ -66,7 +66,7 @@ const archivioLock: ArchivioLock = {
   },
 };
 
-export type LockRicalcolo = { token: string; origine: OrigineRicalcolo };
+export type LockRicalcolo = { token: string; origine: OrigineRicalcolo; avviatoDa?: string | null };
 
 /** Prende o rinnova il lock; se un altro ricalcolo è attivo lancia ErroreRicalcoloInCorso. */
 export async function passoLock(lock: LockRicalcolo, avanzamento: Avanzamento, nuovoAvvio = false): Promise<void> {
@@ -114,7 +114,7 @@ export async function passoFinalizza(lock: LockRicalcolo): Promise<void> {
 
 /** Da chiamare solo dopo la finalizzazione. Riprova sui timeout. */
 export async function passoAlertFidi(lock: LockRicalcolo): Promise<unknown> {
-  await passoLock(lock, { fase: "chiusura", blocco: null, previsti: null });
+  await passoLock(lock, { fase: "alert", blocco: null, previsti: null });
   return rpcConRiprova(client, "alert fidi", "aggiorna_alert_fidi");
 }
 
@@ -124,7 +124,9 @@ export async function passoAlertFidi(lock: LockRicalcolo): Promise<unknown> {
  * garantisce un solo ricalcolo alla volta) vanno nell'email unica per negozio,
  * una volta sola, tramite il job variazioni-blocco.
  */
-export async function passoNotificheAlertFidi(): Promise<unknown> {
+export async function passoNotificheAlertFidi(lock: LockRicalcolo): Promise<unknown> {
+  // Rinnova il lock anche qui: job automatico e pulsante mostrano la stessa fase.
+  await passoLock(lock, { fase: "avvisi", blocco: null, previsti: null });
   const { data: prima, error: eP } = await supabaseAdmin
     .from("alert_fidi").select("notificato_il").not("notificato_il", "is", null)
     .order("notificato_il", { ascending: false }).limit(1).maybeSingle();
@@ -144,6 +146,13 @@ export async function passoNotificheAlertFidi(): Promise<unknown> {
     }
   }
   return data as unknown;
+}
+
+/** Nome leggibile di chi avvia il ricalcolo manuale (per "avviato da …"). */
+export async function nomeUtente(userId: string): Promise<string | null> {
+  const { data } = await supabaseAdmin.from("profili").select("nome, cognome").eq("id", userId).maybeSingle();
+  const n = [data?.nome, data?.cognome].filter(Boolean).join(" ").trim();
+  return n || null;
 }
 
 export async function passoRegistraOrigine(origine: "automatico" | "manuale"): Promise<void> {
