@@ -1,4 +1,5 @@
 import { BadgeMotiviRiga, DettagliRiga } from "@/components/badge-motivi-riga";
+import { useLockRicalcoloFido } from "@/components/ricalcolo-fido-barra";
 import { SemaforoPallino } from "@/components/semaforo-pallino";
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -176,6 +177,7 @@ export function ProposteFidoMassivoDialog({
   const [toccate, setToccate] = useState<Set<string>>(() => new Set());
   const tocca = (id: string) => setToccate((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
   useEffect(() => { setToccate(new Set()); }, [open, filtroTipi]);
+  const ricalcoloInCorso = useLockRicalcoloFido()?.tipo === "attivo";
   const [avanzamentoCrea, setAvanzamentoCrea] = useState<{ fatte: number; totali: number } | null>(null);
 
   // Fido proposto = SEMPRE la RPC canonica get_fido_teorico (nessun calcolo locale)
@@ -997,8 +999,8 @@ export function ProposteFidoMassivoDialog({
               </div>
             </div>
             <Button variant="outline" className="hidden sm:inline-flex sm:w-auto" onClick={() => onOpenChange(false)} disabled={submitting}>Annulla</Button>
-            <Button className="col-span-2 h-10 w-full sm:w-auto" onClick={creaRichieste} disabled={submitting || righeVisibiliIncluse.length === 0}>
-              {submitting ? (avanzamentoCrea ? `Creazione: ${avanzamentoCrea.fatte.toLocaleString("it-IT")} di ${avanzamentoCrea.totali.toLocaleString("it-IT")}…` : "Creazione…") : `Crea ${righeVisibiliIncluse.length} richieste`}
+            <Button className="col-span-2 h-10 w-full sm:w-auto" onClick={creaRichieste} disabled={submitting || ricalcoloInCorso || righeVisibiliIncluse.length === 0}>
+              {ricalcoloInCorso && !submitting ? "Attendi la fine del ricalcolo" : submitting ? (avanzamentoCrea ? `Creazione: ${avanzamentoCrea.fatte.toLocaleString("it-IT")} di ${avanzamentoCrea.totali.toLocaleString("it-IT")}…` : "Creazione…") : `Crea ${righeVisibiliIncluse.length} richieste`}
             </Button>
           </DialogFooter>
         </div>

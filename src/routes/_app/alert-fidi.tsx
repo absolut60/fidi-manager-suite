@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { StrisciaRicalcoloFido } from "@/components/ricalcolo-fido-barra";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell } from "lucide-react";
@@ -324,6 +325,7 @@ function AlertFidiContenuto({ userId, puoProporre }: { userId: string; puoPropor
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-4 p-3 sm:p-4">
+      <StrisciaRicalcoloFido />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
           <h1 className="flex items-center gap-2 text-xl font-semibold sm:text-2xl">
