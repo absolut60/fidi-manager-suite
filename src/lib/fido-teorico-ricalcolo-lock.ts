@@ -9,7 +9,7 @@
  */
 
 export const LOCK_CHIAVE = "fido_teorico_ricalcolo_lock";
-export const SCADENZA_LOCK_MS = 15 * 60 * 1000;
+export const SCADENZA_LOCK_MS = 3 * 60 * 1000;
 
 export type OrigineRicalcolo = "automatico" | "manuale";
 
@@ -96,7 +96,7 @@ export type BarraRicalcolo =
 
 /**
  * Stato da mostrare nelle pagine (card, avviso import, Alert fidi, Lista clienti).
- * Lock attivo → barra; lock scaduto (15 minuti senza avanzamento) → "interrotto"; nessun lock → null.
+ * Lock attivo → barra; lock scaduto (3 minuti senza avanzamento) → "interrotto"; nessun lock → null.
  */
 export function barraRicalcolo(riga: RigaLock | null, ora: number): BarraRicalcolo | null {
   if (!riga) return null;

@@ -7,7 +7,7 @@
  * limite di 8 secondi per istruzione. Blocchi da 200 clienti e riprova automatica
  * sui timeout (fido-teorico-ricalcolo-riprova.ts): il tempo di un blocco è variabile.
  * Un solo ricalcolo alla volta: ogni passo prende/rinnova il lock (fido-teorico-ricalcolo-lock.ts),
- * rilasciato a fine sequenza o scaduto dopo 15 minuti senza avanzamento.
+ * rilasciato a fine sequenza o scaduto dopo 3 minuti senza avanzamento (SCADENZA_LOCK_MS).
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
@@ -39,7 +39,7 @@ const archivioLock: ArchivioLock = {
   async inserisci(valore, oraIso) {
     const { error } = await supabaseAdmin.from("configurazioni").insert({
       chiave: LOCK_CHIAVE, valore, updated_at: oraIso,
-      descrizione: "Lock del ricalcolo fido teorico in corso (scade dopo 15 minuti senza avanzamento)",
+      descrizione: "Lock del ricalcolo fido teorico in corso (scade dopo 3 minuti senza avanzamento)",
     });
     if (!error) return true;
     if (error.code === "23505") return false;
