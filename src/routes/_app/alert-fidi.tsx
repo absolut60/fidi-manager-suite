@@ -16,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { formatEuro, formatDate } from "@/lib/fidi";
-import { fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, isProponibile, notaExtraProtetto } from "@/lib/fido-teorico";
+import { fetchFidoTeorico, fetchFidoTeoricoPerRichiesta, isProponibile, notaExtraProtetto, fetchFidiInAttesaGamma, testoInAttesaGammaBreve } from "@/lib/fido-teorico";
 import { SemaforoPallino } from "@/components/semaforo-pallino";
 import { fetchUltimiLasciati } from "@/lib/revisione-fidi";
 import { puoVedereAreaFidi, puoProporreDaAlertFidi } from "@/lib/permessi-fidi";
