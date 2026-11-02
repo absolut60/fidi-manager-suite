@@ -82,7 +82,7 @@ Le azioni multiple su `richieste_fido` passano dall'helper a blocchi `src/lib/ri
 ## Un solo ricalcolo del fido teorico alla volta (FM55 fetta 4d)
 
 - Lock unico: riga `configurazioni.chiave = 'fido_teorico_ricalcolo_lock'` (token, origine, ora di avvio, blocco/previsti); `updated_at` è il battito aggiornato a ogni passo e blocco.
-- Preso all'avvio, rinnovato a ogni blocco, rilasciato dopo la chiusura; scade dopo 15 minuti senza avanzamento.
+- Preso all'avvio, rinnovato a ogni blocco, rilasciato dopo la chiusura; scade dopo 3 minuti senza aggiornamenti (SCADENZA_LOCK_MS). Il pulsante prende il lock e invia l'evento Inngest: i blocchi girano solo nel job, mai nel browser.
 - Fonte unica: `src/lib/fido-teorico-ricalcolo-lock.ts`, usato da `fido-teorico-ricalcolo-passi.server.ts` (pulsante e job Inngest, concurrency 1).
 - Con lock attivo: pulsante e "Riprendi da blocco N" disabilitati con "Ricalcolo già in corso (avviato alle HH:MM, automatico/manuale): attendi"; il job automatico termina senza ricalcolare.
 
