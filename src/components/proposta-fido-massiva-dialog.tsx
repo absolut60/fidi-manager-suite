@@ -223,6 +223,13 @@ export function ProposteFidoMassivoDialog({
     staleTime: 10 * 60_000,
     queryFn: fetchSogliaConsumoFido,
   });
+  // FM55 fetta 9: fidi già approvati che Gamma non ha ancora recepito (fonte SQL unica).
+  const { data: inAttesaGammaMap } = useQuery({
+    queryKey: ["fidi-in-attesa-gamma-massivo", [...ids].sort().join(",")],
+    enabled: open && ids.length > 0,
+    staleTime: 60_000,
+    queryFn: () => fetchFidiInAttesaGamma(ids),
+  });
   const { data: inCorsoMap } = useQuery({
     queryKey: ["richieste-in-corso-massivo", [...ids].sort().join(",")],
     enabled: open && ids.length > 0,
@@ -352,8 +359,9 @@ export function ProposteFidoMassivoDialog({
   const righeConInCorso = useMemo(
     () => righe.map((r) => ({ ...r, richiestaInCorso: inCorsoMap?.get(r.cliente_id),
       protezione: protettiMap?.get(r.cliente_id), riferimentoRichiesta: teoricoRichMap?.get(r.cliente_id),
+      inAttesaGamma: inAttesaGammaMap?.get(r.cliente_id),
     })),
-    [righe, inCorsoMap, protettiMap, teoricoRichMap],
+    [righe, inCorsoMap, protettiMap, teoricoRichMap, inAttesaGammaMap],
   );
 
   const righeVisibiliTutte = useMemo(
@@ -379,6 +387,7 @@ export function ProposteFidoMassivoDialog({
       v.push(`${fmtN(numero)} già decisi (protetti fino al ${fino.slice(8, 10)}/${fino.slice(5, 7)})`);
     }
     if (n.in_corso > 0) v.push(`Non vedi ${fmtN(n.in_corso)} clienti che hanno già una richiesta in corso.`);
+    if (n.in_attesa_gamma > 0) v.push(`Già approvati, in attesa di Gamma (${fmtN(n.in_attesa_gamma)})`);
     const nomi: Record<string, string> = { aumento: "aumenti", diminuzione: "riduzioni", nuovo_fido: "nuovi fidi", rinnovo_da_guardare: "fidi invariati da guardare" };
     for (const [tipo, numero] of Object.entries(riepilogoVis.tipiSpenti)) {
       if (numero > 0) v.push(`Non vedi ${fmtN(numero)} ${nomi[tipo] ?? tipo}: hai tolto la spunta in «Cosa vuoi mandare».`);
@@ -396,7 +405,7 @@ export function ProposteFidoMassivoDialog({
   const righeConExtra = righeVisibiliIncluse.filter((r) => motivoExtraObbligatorio(r.fido_proposto, r.fido_teorico));
   const totaleExtra = righeConExtra.reduce((acc, r) => acc + extraFidoTeorico(r.fido_proposto, r.fido_teorico), 0);
   const tipoCount = (t: CategoriaProposta) => t === "rinnovo_da_guardare" ? riepilogoVis.daDecidere
-    : t === "rinnovo" ? riepilogoVis.altriRinnovi : righeConInCorso.filter((r) => r.proponibile && !r.richiestaInCorso && categoriaProposta(r) === t).length;
+    : t === "rinnovo" ? riepilogoVis.altriRinnovi : righeConInCorso.filter((r) => r.proponibile && !r.richiestaInCorso && !r.inAttesaGamma && categoriaProposta(r) === t).length;
   function toggleTipo(t: CategoriaProposta) {
     setFiltroTipi((prev) => prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]);
   }
