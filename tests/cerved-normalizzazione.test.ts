@@ -58,7 +58,7 @@ test('ATECO: 6 cifre col punto, già formattato e valore mancante', () => {
 
 test('tutti gli stati attività documentati hanno la descrizione', () => {
   const attese: Record<string, string> = {
-    A: 'attiva', C: 'cessata', D: 'in procedures', F: 'fallita', G: 'amministrazione giudiziaria',
+    A: 'attiva', C: 'cessata', D: 'in procedure', F: 'fallita', G: 'amministrazione giudiziaria',
     I: 'inattiva', L: 'in scioglimento/liquidazione', N: 'in procedura concorsuale',
     P: 'iscrizione', R: 'registrata', S: 'sospesa', T: 'cancellata',
   };
