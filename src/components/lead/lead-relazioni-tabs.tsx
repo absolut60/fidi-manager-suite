@@ -1,3 +1,4 @@
+import { useSoloShowroom } from "@/hooks/use-solo-showroom";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -230,6 +231,8 @@ export function LeadCantieriTab({
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  // FM56: cantieri in sola lettura per lo showroom (RESTRICTIVE su cantieri).
+  const soloShowroom = useSoloShowroom();
 
   const soggettoFisso = useMemo(
     () => ({
@@ -277,9 +280,11 @@ export function LeadCantieriTab({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
+        {!soloShowroom && (
         <Button size="sm" className="gap-1.5 ml-auto" onClick={() => setOpen(true)}>
           <Plus className="size-4" /> Nuovo cantiere
         </Button>
+        )}
       </div>
 
       <CantiereDialog
@@ -315,6 +320,7 @@ export function LeadCantieriTab({
                   </div>
                   {c.descrizione && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{c.descrizione}</p>}
                 </div>
+                {!soloShowroom && (
                 <div className="flex gap-1">
                 <Button
                   variant="ghost" size="icon" title="Modifica"
@@ -336,6 +342,7 @@ export function LeadCantieriTab({
                   <Trash2 className="size-4" />
                 </Button>
                 </div>
+                )}
               </div>
               {(c.indirizzo || c.citta) && (
                 <div className="mt-3 flex items-start gap-1.5 text-xs text-muted-foreground">

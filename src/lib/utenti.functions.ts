@@ -1,3 +1,4 @@
+import { erroreSedeObbligatoria } from "@/lib/permessi-showroom";
 import { valutaEsitoEmail } from "@/lib/email-esito";
 import { assertSessioneAal2 } from "@/lib/sessione-aal2.server";
 import { createServerFn } from "@tanstack/react-start";
@@ -81,9 +82,8 @@ export const creaUtente = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId, context.claims);
 
-    if (data.ruoli.includes("store_manager") && !data.storeId) {
-      throw new Error("Il ruolo Store Manager richiede un punto vendita");
-    }
+    const erroreSede = erroreSedeObbligatoria(data.ruoli, data.storeId);
+    if (erroreSede) throw new Error(erroreSede);
     if (data.ruoli.includes("agente") && !data.codiceAgente) {
       throw new Error("Il ruolo Agente richiede un agente collegato");
     }
@@ -374,9 +374,8 @@ export const updateUtenteRuoli = createServerFn({ method: "POST" })
       throw new Error("Non puoi disattivare il tuo account");
     }
 
-    if (data.ruoli.includes("store_manager") && !data.storeId) {
-      throw new Error("Il ruolo Store Manager richiede un punto vendita");
-    }
+    const erroreSede = erroreSedeObbligatoria(data.ruoli, data.storeId);
+    if (erroreSede) throw new Error(erroreSede);
     if (data.ruoli.includes("agente") && !data.codiceAgente) {
       throw new Error("Il ruolo Agente richiede un agente collegato");
     }

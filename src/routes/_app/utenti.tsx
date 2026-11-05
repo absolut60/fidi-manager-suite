@@ -1,3 +1,4 @@
+import { erroreSedeObbligatoria } from "@/lib/permessi-showroom";
 import { createFileRoute } from "@tanstack/react-router";
 import { messaggioPasswordNonValida } from "@/lib/regole-password";
 import { useMemo, useState } from "react";
@@ -46,6 +47,7 @@ const RUOLI_CREDITO: AppRole[] = [
   "amministrazione",
   "amministrazione_strumenti",
   "store_manager",
+  "showroom",
   "approvatore_liv1",
   "approvatore_liv2",
   "approvatore_liv3",
@@ -552,13 +554,14 @@ function EditUtenteDialog({ utente, haMfa, onClose }: { utente: UserRow; haMfa: 
   const { data: agenti } = useAgenti();
   const fn = useServerFn(updateUtenteRuoli);
 
-  const richiedeStore = ruoli.includes("store_manager");
+  const richiedeStore = ruoli.includes("store_manager") || ruoli.includes("showroom");
   const richiedeAgente = ruoli.includes("agente") || ruoli.includes("preventivi_write");
 
   const mutation = useMutation({
     mutationFn: async () => {
       if (ruoli.length === 0) throw new Error("Seleziona almeno un ruolo");
-      if (richiedeStore && storeId === "_none") throw new Error("Il ruolo Store Manager richiede un punto vendita");
+      const erroreSede = erroreSedeObbligatoria(ruoli, storeId === "_none" ? null : storeId);
+      if (erroreSede) throw new Error(erroreSede);
       if (ruoli.includes("agente") && codiceAgente === "_none") throw new Error("Il ruolo Agente richiede un agente collegato");
       await fn({ data: {
         userId: utente.id,
@@ -660,6 +663,9 @@ function EditUtenteDialog({ utente, haMfa, onClose }: { utente: UserRow; haMfa: 
               ))}
             </SelectContent>
           </Select>
+          {ruoli.includes("showroom") && storeId === "_none" && (
+            <p className="text-xs text-destructive">Il ruolo Showroom richiede la sede dello showroom: sceglila qui.</p>
+          )}
         </div>
         {richiedeAgente && (
           <div className="space-y-1.5">
@@ -783,7 +789,7 @@ function NewUtenteDialog({ onClose }: { onClose: () => void }) {
   const fn = useServerFn(creaUtente);
   const fnInviaCred = useServerFn(inviaCredenziali);
 
-  const richiedeStore = ruoli.includes("store_manager");
+  const richiedeStore = ruoli.includes("store_manager") || ruoli.includes("showroom");
   const richiedeAgente = ruoli.includes("agente") || ruoli.includes("preventivi_write");
 
   const mutation = useMutation({
@@ -791,7 +797,8 @@ function NewUtenteDialog({ onClose }: { onClose: () => void }) {
       if (!email.trim()) throw new Error("Email obbligatoria");
       { const errPwd = messaggioPasswordNonValida(password); if (errPwd) throw new Error(errPwd); }
       if (ruoli.length === 0) throw new Error("Seleziona almeno un ruolo");
-      if (richiedeStore && storeId === "_none") throw new Error("Il ruolo Store Manager richiede un punto vendita");
+      const erroreSede = erroreSedeObbligatoria(ruoli, storeId === "_none" ? null : storeId);
+      if (erroreSede) throw new Error(erroreSede);
       if (ruoli.includes("agente") && codiceAgente === "_none") throw new Error("Il ruolo Agente richiede un agente collegato");
       const res = await fn({ data: {
         email: email.trim(),
@@ -913,6 +920,9 @@ function NewUtenteDialog({ onClose }: { onClose: () => void }) {
               ))}
             </SelectContent>
           </Select>
+          {ruoli.includes("showroom") && storeId === "_none" && (
+            <p className="text-xs text-destructive">Il ruolo Showroom richiede la sede dello showroom: sceglila qui.</p>
+          )}
         </div>
         {richiedeAgente && (
           <div className="space-y-1.5">

@@ -1,3 +1,4 @@
+import { isSoloShowroom, puoModificareContattoClienteShowroom } from "@/lib/permessi-showroom";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { FidoInAttesaGammaNota } from "@/components/fido-in-attesa-gamma-nota";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -293,8 +294,10 @@ function ClienteDetail() {
   const { edit, tab, insolutiTab } = Route.useSearch();
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const { role, hasRole } = useAuth();
+  const { role, hasRole, roles, user: utente } = useAuth();
   const isAdmin = role === "amministratore";
+  // FM56: showroom in sola lettura sull'anagrafica (fonte unica permessi-showroom.ts).
+  const soloShowroom = isSoloShowroom(roles as string[]);
   const isStoreManager = role === "store_manager";
   // Retro-compatibilita': i vecchi link ?tab=insoluti&insolutiTab=x puntano ora al tab promosso
   // "solleciti" (scheda rimossa, FM48): i vecchi link aprono Attività recupero.
@@ -515,7 +518,7 @@ function ClienteDetail() {
                 <ShieldOff className="size-3" /> Privacy da richiedere
               </Badge>
             )}
-            {!isAgente && (
+            {!isAgente && !soloShowroom && (
               <Dialog open={openEdit} onOpenChange={setOpenEdit}>
                 <DialogTrigger asChild>
                   <Button size="sm" variant="outline" className="gap-1.5">
@@ -531,7 +534,7 @@ function ClienteDetail() {
               </Dialog>
             )}
 
-            {!isAgente && cliente.attivo && (
+            {!isAgente && !soloShowroom && cliente.attivo && (
               <Dialog open={openDisattiva} onOpenChange={setOpenDisattiva}>
                 <DialogTrigger asChild>
                   <Button size="sm" variant="outline" className="gap-1.5">
@@ -803,7 +806,10 @@ function ClienteDetail() {
                   cliente={cliente}
                   clienteId={clienteId}
                   contatto={c}
-                  puoModificare={contattiModificabili?.has(c.id) ?? false}
+                  puoModificare={
+                    (contattiModificabili?.has(c.id) ?? false) &&
+                    puoModificareContattoClienteShowroom(roles as string[], utente?.id, c.created_by)
+                  }
                   puoEliminare={puoEliminareContatti}
                   onDelete={() => {
                     if (confirm("Eliminare questo contatto?")) deleteContatto.mutate(c.id);
@@ -882,7 +888,7 @@ function ClienteDetail() {
               entitaTipo="cliente"
               entitaId={clienteId}
               clienteId={clienteId}
-              canEdit
+              canEdit={!soloShowroom}
               title="Documenti del cliente"
             />
           </Card>

@@ -1,3 +1,4 @@
+import { puoModificareAttivitaCommerciale } from "@/lib/permessi-showroom";
 // Calendario commerciale (CRM): attività pianificate su griglia mese/settimana/giorno.
 // Riusa il pattern del calendario recupero crediti (FullCalendar) con fonte dati attivita_commerciale.
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
@@ -80,7 +81,7 @@ function CalendarioCommercialePage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const isMobile = useIsMobile();
-  const { roles } = useAuth();
+  const { roles, user } = useAuth();
   const isAgente = roles.includes("agente");
   const isTrasversale = roles.some((r) =>
     ["amministratore", "amministrazione", "direzione", "marketing", "store_manager", "responsabile_agenti"].includes(r),
@@ -410,12 +411,15 @@ function CalendarioCommercialePage() {
                     <ExternalLink className="size-4 mr-2" /> Scheda cliente
                   </Button>
                 )}
+                {/* FM56: lo showroom modifica solo le proprie attività non legate a opportunità. */}
+                {puoModificareAttivitaCommerciale(roles as string[], user?.id, aperta) && (<>
                 <Button variant="outline" onClick={() => setModificaOpen(true)}>Modifica</Button>
                 {!aperta.completata && (
                   <Button onClick={() => completa(aperta)}>
                     <Check className="size-4 mr-2" /> Segna completata
                   </Button>
                 )}
+                </>)}
               </DialogFooter>
             </>
           )}

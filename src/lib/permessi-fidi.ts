@@ -13,6 +13,7 @@ export const RUOLI_VEDONO_FIDI = [
   "approvatore_liv3",
   "responsabile_agenti",
   "agente",
+  "showroom", // FM56: sola lettura, solo la sua sede (RLS)
 ] as const;
 
 export const RUOLI_PROPONGONO_FIDI = ["amministratore", "direzione", "amministrazione", "store_manager"] as const;

@@ -25,7 +25,7 @@ export function utenteAttivo(profilo: Pick<Profilo, "attivo"> | null | undefined
   return profilo?.attivo !== false;
 }
 
-const ORDINE_RUOLI: AppRole[] = ["amministratore", "approvatore_liv3", "approvatore_liv2", "approvatore_liv1", "direzione", "responsabile_agenti", "store_manager", "marketing", "agente", "preventivi_manage", "preventivi_write", "preventivi_read", "approvatore_richieste_liv2", "approvatore_richieste_liv1", "gestore_richieste", "esecutore_richieste", "tesoreria", "richiedente", "recupero_crediti"];
+const ORDINE_RUOLI: AppRole[] = ["amministratore", "approvatore_liv3", "approvatore_liv2", "approvatore_liv1", "direzione", "responsabile_agenti", "store_manager", "marketing", "agente", "preventivi_manage", "preventivi_write", "preventivi_read", "approvatore_richieste_liv2", "approvatore_richieste_liv1", "gestore_richieste", "esecutore_richieste", "tesoreria", "richiedente", "recupero_crediti", "showroom"];
 
 type AuthContextValue = {
   session: Session | null;

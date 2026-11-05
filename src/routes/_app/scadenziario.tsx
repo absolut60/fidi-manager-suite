@@ -5,6 +5,7 @@ import { AlertTriangle, Calendar, FileText, Ban, CalendarClock, Scale, ChevronDo
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { InvioMassivoDialog } from "@/components/invio-massivo-dialog";
 import { puoInviareComunicazioniRecupero, tipoAzioneConsentito } from "@/lib/recupero-permessi";
+import { isSoloShowroom } from "@/lib/permessi-showroom";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -965,9 +966,11 @@ function ScadenziarioPage() {
             >
               Deseleziona
             </button>
+            {!isSoloShowroom(roles as string[]) && (
             <Button size="sm" onClick={() => void apriAzioneRecupero()} disabled={loadingDialogRows}>
               {loadingDialogRows ? <Loader2 className="size-4 animate-spin" /> : <Megaphone className="size-4" />} Avvia azione di recupero
             </Button>
+            )}
           </div>
         </Card>
       )}

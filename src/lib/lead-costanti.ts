@@ -36,7 +36,8 @@ export function puoGestireLead(roles: readonly string[]): boolean {
  * il filtro è fatto dalla RLS (agente_vede_record).
  */
 export function puoAccedereLead(roles: readonly string[]): boolean {
-  return puoGestireLead(roles) || roles.includes("agente");
+  // FM56: lo showroom vede (e crea/modifica) i lead della sua sede; filtro della RLS.
+  return puoGestireLead(roles) || roles.includes("agente") || roles.includes("showroom");
 }
 
 export const LEAD_STATI: LeadStato[] = [

@@ -55,6 +55,7 @@ import { useAuth, RUOLI_LABEL } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { puoVedereAreaFidi } from "@/lib/permessi-fidi";
+import { isSoloShowroom, voceMenuVisibileShowroom } from "@/lib/permessi-showroom";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { contaNonLette, notificheNonLetteQueryKey } from "@/lib/notifiche";
 import { useBadgeNotifiche } from "@/hooks/use-badge-notifiche";
@@ -284,6 +285,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isPrevWrite = hasUserRole("preventivi_write");
   const isPrevManage = hasUserRole("preventivi_manage");
   const hasAccessoPreventivi = isAdmin || isPrevRead || isPrevWrite || isPrevManage;
+  const soloShowroom = isSoloShowroom(userRoles);
   const isOnlyAgente =
     isAgente && !isAdmin && !isApprovatore && !isStoreManager && !isAmministrazione && !isMarketing && !hasUserRole("direzione") && !hasAccessoPreventivi;
 
@@ -338,6 +340,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       if (item.richiesteScope === "gestione") return canGestioneRich;
       return true;
     }
+    // FM56: menu dello showroom da fonte unica (permessi-showroom.ts); preventivi solo con ruolo preventivi_*.
+    if (soloShowroom) return voceMenuVisibileShowroom(item, hasAccessoPreventivi);
     if (isOnlyMarketingEventi) return item.to === "/eventi";
     if (isOnlyAgente) return AGENTE_WHITELIST.has(item.to);
     if (!item.roles) return true;

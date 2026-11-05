@@ -1,3 +1,4 @@
+import { isSoloShowroom } from "@/lib/permessi-showroom";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -132,6 +133,8 @@ function LeadDettaglioPage() {
   const { roles, loading: authLoading, user } = useAuth();
   const canSee = useMemo(() => puoAccedereLead(roles as string[]), [roles]);
   const canManage = useMemo(() => puoGestireLead(roles as string[]), [roles]);
+  // FM56: lo showroom non può spostare il lead in un'altra sede (policy lead della migrazione 0141).
+  const soloShowroom = useMemo(() => isSoloShowroom(roles as string[]), [roles]);
   // Agente senza permessi di gestione: non può riassegnare il lead ad altri
   const agenteVincolato = useMemo(
     () => (roles as string[]).includes("agente") && !canManage,
@@ -919,6 +922,7 @@ function LeadDettaglioPage() {
                   <Select
                     value={f.store_id || NESSUNO}
                     onValueChange={(v) => set("store_id", v === NESSUNO ? "" : v)}
+                    disabled={soloShowroom}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Nessuna" />

@@ -12,6 +12,8 @@ import {
   STATO_LABEL, STATO_CLASS, TIPO_LABEL, fmtEuro, fmtData, type OpportunitaRow,
 } from "@/lib/opportunita";
 import { useCategorieSegmento } from "@/lib/use-categorie-segmento";
+import { useSoloShowroom } from "@/hooks/use-solo-showroom";
+import { AttivitaCommercialeDialog } from "@/components/attivita-commerciale-dialog";
 
 export function OpportunitaSoggettoLista({
   soggetto,
@@ -20,6 +22,9 @@ export function OpportunitaSoggettoLista({
 }) {
   const [openNew, setOpenNew] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  // FM56: lo showroom non gestisce opportunità; registra attività commerciali sul soggetto della sua sede.
+  const soloShowroom = useSoloShowroom();
+  const [attivitaOpen, setAttivitaOpen] = useState(false);
   const { data: settori } = useCategorieSegmento("settore");
 
   const queryKey = useMemo(
@@ -58,9 +63,15 @@ export function OpportunitaSoggettoLista({
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button size="sm" className="gap-1.5" onClick={() => setOpenNew(true)}>
-          <Plus className="size-4" /> Nuova opportunità
-        </Button>
+        {soloShowroom ? (
+          <Button size="sm" className="gap-1.5 min-h-10 sm:min-h-9" onClick={() => setAttivitaOpen(true)}>
+            <Plus className="size-4" /> Registra attività
+          </Button>
+        ) : (
+          <Button size="sm" className="gap-1.5" onClick={() => setOpenNew(true)}>
+            <Plus className="size-4" /> Nuova opportunità
+          </Button>
+        )}
       </div>
 
       {isLoading ? (
@@ -92,9 +103,11 @@ export function OpportunitaSoggettoLista({
                     </p>
                   )}
                 </div>
+                {!soloShowroom && (
                 <Button variant="ghost" size="icon" title="Modifica" onClick={() => setEditId(o.id)}>
                   <Pencil className="size-4" />
                 </Button>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
                 <div>
@@ -131,6 +144,13 @@ export function OpportunitaSoggettoLista({
         queryKeysExtra={queryKeysExtra}
         onDeleted={() => setEditId(null)}
       />
+      {soloShowroom && (
+        <AttivitaCommercialeDialog
+          open={attivitaOpen}
+          onOpenChange={setAttivitaOpen}
+          contesto={soggetto.tipo === "cliente" ? { cliente_id: soggetto.id } : { lead_id: soggetto.id }}
+        />
+      )}
     </div>
   );
 }
