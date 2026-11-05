@@ -59,6 +59,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
+import { ClienteCervedTab } from "@/components/cliente-cerved-tab";
 import { OpportunitaSoggettoLista } from "@/components/opportunita-soggetto-lista";
 import { ClienteCantieriTab } from "@/components/cliente-cantieri-tab";
 import { ClienteStoricoFidoTab } from "@/components/cliente-storico-fido-tab";
@@ -99,6 +100,7 @@ const TAB_VALUES = [
   "cantieri",
   "commerciale",
   "storico",
+  "cerved",
   "scadenziario",
   "solleciti",
   "piani",
@@ -599,6 +601,7 @@ function ClienteDetail() {
           <TabsTrigger value="cantieri">Cantieri</TabsTrigger>
           <TabsTrigger value="commerciale">Commerciale</TabsTrigger>
           <TabsTrigger value="storico">Fido</TabsTrigger>
+          <TabsTrigger value="cerved">Cerved</TabsTrigger>
           <TabsTrigger value="scadenziario">Scadenziario</TabsTrigger>
           <TabsTrigger value="piani">Piani di rientro</TabsTrigger>
           <TabsTrigger value="promesse">Promesse ({nPromesseAttive} attive)</TabsTrigger>
@@ -844,6 +847,12 @@ function ClienteDetail() {
         <TabsContent value="storico">
           <SectionErrorBoundary nome="Fido">
           <ClienteStoricoFidoTab clienteId={clienteId} />
+          </SectionErrorBoundary>
+        </TabsContent>
+
+        <TabsContent value="cerved">
+          <SectionErrorBoundary nome="Cerved">
+            <ClienteCervedTab clienteId={cliente.id} partitaIva={cliente.partita_iva} fidoMade={getFidoAttuale(cliente)} />
           </SectionErrorBoundary>
         </TabsContent>
 
