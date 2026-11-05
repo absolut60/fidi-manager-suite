@@ -106,3 +106,30 @@ export const provaArchivioCerved = createServerFn({ method: "POST" })
 
     return { id_soggetto: idSoggetto, cliente_trovato: !!cli, prodotti, archivio, documento };
   });
+
+/** Recupero di un documento già acquistato (XML), sola lettura, NESSUN acquisto: solo amministratori. */
+export const provaRecuperoCerved = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { request_id: string }) =>
+    z.object({ request_id: z.string().regex(/^\d{1,20}$/, "Il numero richiesta deve contenere solo cifre") }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: isAdmin } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "amministratore",
+    });
+    if (!isAdmin) throw new Error("Operazione riservata agli amministratori");
+    const m = await import("./cerved.server");
+    const d = await m.recuperaDocumento(data.request_id, { utenteId: context.userId, clienteId: null });
+    const doc = d.esito === "ok" ? (d.risposta as ReturnType<typeof m.normalizzaDocumentoCerved>) : null;
+    const xml = doc?.contenuto_xml ?? "";
+    return {
+      errore: d.esito === "ok" ? null : (d.errore ?? "Errore nel recupero del documento."),
+      http_status: d.http_status,
+      request_id: data.request_id,
+      delivery_status: doc?.delivery_status ?? null,
+      detailed_delivery_status: doc?.detailed_delivery_status ?? null,
+      lunghezza: xml.length,
+      anteprima: xml.slice(0, 1500),
+    };
+  });
