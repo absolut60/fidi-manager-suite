@@ -1,0 +1,2 @@
+-- Ripristina i grant originali di lascia_cosi_revisione (la 0142 aveva aggiunto per errore supabase_read_only_user).
+REVOKE EXECUTE ON FUNCTION public.lascia_cosi_revisione(uuid) FROM supabase_read_only_user;

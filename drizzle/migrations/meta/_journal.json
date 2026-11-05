@@ -995,6 +995,20 @@
       "when": 1793879405514,
       "tag": "0141_fm56_showroom_permessi",
       "breakpoints": true
+    },
+    {
+      "idx": 142,
+      "version": "7",
+      "when": 1793879840118,
+      "tag": "0142_fm56_showroom_funzioni_definer",
+      "breakpoints": true
+    },
+    {
+      "idx": 143,
+      "version": "7",
+      "when": 1793879869725,
+      "tag": "0143_fm56_showroom_ripristina_grant_lascia_cosi",
+      "breakpoints": true
     }
   ]
 }
