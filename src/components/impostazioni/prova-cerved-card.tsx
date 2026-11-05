@@ -8,22 +8,65 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
+const siNo = (v: boolean | null) => (v == null ? null : v ? "Sì" : "No");
+
+/** Data in gg/mm/aaaa; se Cerved la manda in un formato non riconosciuto, la lasciamo com'è. */
+function dataIt(v: string | null): string | null {
+  if (!v) return null;
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return v;
+  return d.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+/** "MAGENTA (MI)"; se manca uno dei due, mostra quello che c'è. */
+function comuneProvincia(comune: string | null, provincia: string | null): string | null {
+  if (comune && provincia) return `${comune} (${provincia})`;
+  return comune || provincia || null;
+}
+
 export function ProvaCervedCard() {
   const [piva, setPiva] = useState("");
   const fn = useServerFn(provaCercaCerved);
   const m = useMutation({ mutationFn: (p: string) => fn({ data: { piva: p } }) });
   const valida = /^\d{11}$/.test(piva);
   const r = m.data;
-  const righe: [string, string | null][] = r?.prima
+  const a = r?.prima ?? null;
+
+  const stato = a
+    ? a.stato_attivita_descrizione
+      ? a.stato_attivita_codice
+        ? `${a.stato_attivita_descrizione} (${a.stato_attivita_codice})`
+        : a.stato_attivita_descrizione
+      : a.stato_attivita_codice
+    : null;
+
+  const forma = a ? [a.forma_giuridica, a.classe_forma_descrizione].filter(Boolean).join(" · ") || null : null;
+
+  const ateco = a ? [a.ateco_2025_codice, a.ateco_2025_descrizione].filter(Boolean).join(" — ") || null : null;
+
+  const rea = a ? [a.rea, a.data_iscrizione_rea && `iscrizione ${dataIt(a.data_iscrizione_rea)}`].filter(Boolean).join(" · ") || null : null;
+
+  const sede = a?.sede
+    ? [a.sede.indirizzo, a.sede.cap, comuneProvincia(a.sede.comune, a.sede.provincia)]
+        .filter(Boolean)
+        .join(", ") || null
+    : null;
+
+  const righe: [string, string | null][] = a
     ? [
-        ["ID soggetto", r.prima.id_soggetto],
-        ["Denominazione", r.prima.denominazione],
-        ["Partita IVA", r.prima.partita_iva],
-        ["Stato attività", r.prima.codice_stato_attivita],
-        ["Forma giuridica", r.prima.forma_giuridica],
-        ["ATECO 2025", r.prima.ateco_2025],
+        ["ID soggetto", a.id_soggetto],
+        ["Denominazione", a.denominazione],
+        ["Partita IVA", a.partita_iva],
+        ["Stato attività", stato],
+        ["Operativa", siNo(a.operativa)],
+        ["Forma giuridica", forma],
+        ["ATECO 2025", ateco],
+        ["REA", rea],
+        ["Sede", sede],
+        ["Pubblica amministrazione", siNo(a.ente_pa)],
       ]
     : [];
+
   return (
     <Card className="p-4 sm:p-5 max-w-2xl">
       <h2 className="font-semibold flex items-center gap-2 mb-3"><Search className="size-4" /> Prova Cerved</h2>
