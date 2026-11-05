@@ -1044,6 +1044,13 @@
       "when": 1793894967329,
       "tag": "0148_fm57_cerved_soggetti_fotografie",
       "breakpoints": true
+    },
+    {
+      "idx": 149,
+      "version": "7",
+      "when": 1793900099023,
+      "tag": "0149_fm57_cerved_fotografie_tipi_estesi",
+      "breakpoints": true
     }
   ]
 }
