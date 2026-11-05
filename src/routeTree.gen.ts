@@ -13,7 +13,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IscrizioneWhatsappRouteImport } from './routes/iscrizione-whatsapp'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as ProvaCervedC6RouteImport } from './routes/prova-cerved-c6'
 import { Route as VerificaCodiceRouteImport } from './routes/verifica-codice'
 import { Route as AppAlertFidiRouteImport } from './routes/_app/alert-fidi'
 import { Route as AppApprovazioniRouteImport } from './routes/_app/approvazioni'
@@ -118,11 +117,6 @@ const IscrizioneWhatsappRoute = IscrizioneWhatsappRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProvaCervedC6Route = ProvaCervedC6RouteImport.update({
-  id: '/prova-cerved-c6',
-  path: '/prova-cerved-c6',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VerificaCodiceRoute = VerificaCodiceRouteImport.update({
@@ -579,7 +573,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
-  '/prova-cerved-c6': typeof ProvaCervedC6Route
   '/verifica-codice': typeof VerificaCodiceRoute
   '/alert-fidi': typeof AppAlertFidiRoute
   '/approvazioni': typeof AppApprovazioniRoute
@@ -671,7 +664,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
-  '/prova-cerved-c6': typeof ProvaCervedC6Route
   '/verifica-codice': typeof VerificaCodiceRoute
   '/alert-fidi': typeof AppAlertFidiRoute
   '/approvazioni': typeof AppApprovazioniRoute
@@ -762,7 +754,6 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
-  '/prova-cerved-c6': typeof ProvaCervedC6Route
   '/verifica-codice': typeof VerificaCodiceRoute
   '/_app/alert-fidi': typeof AppAlertFidiRoute
   '/_app/approvazioni': typeof AppApprovazioniRoute
@@ -856,7 +847,6 @@ export interface FileRouteTypes {
     | '/'
     | '/iscrizione-whatsapp'
     | '/login'
-    | '/prova-cerved-c6'
     | '/verifica-codice'
     | '/alert-fidi'
     | '/approvazioni'
@@ -948,7 +938,6 @@ export interface FileRouteTypes {
     | '/'
     | '/iscrizione-whatsapp'
     | '/login'
-    | '/prova-cerved-c6'
     | '/verifica-codice'
     | '/alert-fidi'
     | '/approvazioni'
@@ -1038,7 +1027,6 @@ export interface FileRouteTypes {
     | '/_app'
     | '/iscrizione-whatsapp'
     | '/login'
-    | '/prova-cerved-c6'
     | '/verifica-codice'
     | '/_app/alert-fidi'
     | '/_app/approvazioni'
@@ -1132,7 +1120,6 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   IscrizioneWhatsappRoute: typeof IscrizioneWhatsappRoute
   LoginRoute: typeof LoginRoute
-  ProvaCervedC6Route: typeof ProvaCervedC6Route
   VerificaCodiceRoute: typeof VerificaCodiceRoute
   ConsensiTokenRoute: typeof ConsensiTokenRoute
   FirmaPrivacyTokenRoute: typeof FirmaPrivacyTokenRoute
@@ -1175,13 +1162,6 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/prova-cerved-c6': {
-      id: '/prova-cerved-c6'
-      path: '/prova-cerved-c6'
-      fullPath: '/prova-cerved-c6'
-      preLoaderRoute: typeof ProvaCervedC6RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/verifica-codice': {
@@ -1998,7 +1978,6 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   IscrizioneWhatsappRoute: IscrizioneWhatsappRoute,
   LoginRoute: LoginRoute,
-  ProvaCervedC6Route: ProvaCervedC6Route,
   VerificaCodiceRoute: VerificaCodiceRoute,
   ConsensiTokenRoute: ConsensiTokenRoute,
   FirmaPrivacyTokenRoute: FirmaPrivacyTokenRoute,
