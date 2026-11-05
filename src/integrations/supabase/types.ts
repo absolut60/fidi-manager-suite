@@ -7221,6 +7221,33 @@ export type Database = {
           partecipante_id: string
         }[]
       }
+      dashboard_fidi_appartenenze: {
+        Args: never
+        Returns: {
+          aumento: boolean
+          card: string
+          cliente_id: string
+          con_fido: boolean
+          gruppo: string
+          importo: number
+          riduzione: boolean
+        }[]
+      }
+      dashboard_fidi_clienti_base: {
+        Args: never
+        Returns: {
+          categoria: string
+          cliente_id: string
+          fermo: boolean
+          fido_gestionale: number
+          fido_proposto: number
+          occhio_ordini: boolean
+          occhio_piu: boolean
+          occhio_vicino: boolean
+          oltre_fido: number
+          totale_rischio: number
+        }[]
+      }
       decidi_candidato_riconciliazione: {
         Args: { _candidati: Json; _ragione_sociale_dichiarata: string }
         Returns: Json
@@ -7418,6 +7445,12 @@ export type Database = {
           n_azioni: number
           ultima_data: string
           ultima_tipo: string
+        }[]
+      }
+      get_clienti_dashboard_fidi_ids: {
+        Args: { _card: string; _gruppo: string }
+        Returns: {
+          cliente_id: string
         }[]
       }
       get_clienti_disiscritti_ids: {
@@ -7679,6 +7712,18 @@ export type Database = {
           privati_concesso_eur: number
           privati_esposizione_eur: number
           privati_proposto_eur: number
+        }[]
+      }
+      get_dashboard_fidi_gruppi: {
+        Args: never
+        Returns: {
+          card: string
+          gruppo: string
+          importo: number
+          n_aumenti: number
+          n_clienti: number
+          n_con_fido: number
+          n_riduzioni: number
         }[]
       }
       get_destinatari_copia_recupero: {
