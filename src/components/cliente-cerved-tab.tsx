@@ -306,7 +306,7 @@ function Quadratino({ esito }: { esito: EsitoScore }) {
 
 const ARCO_ESITO: Record<EsitoScore, string> = { verde: "text-success", ambra: "text-warning", rosso: "text-destructive", neutro: "text-muted-foreground" };
 
-function CardScore({ scores, fido, fidoMade }: { scores: ScoreCervedVista[]; fido: Obj | null | undefined; fidoMade: number | null | undefined }) {
+export function CardScore({ scores, fido, fidoMade }: { scores: ScoreCervedVista[]; fido: Obj | null | undefined; fidoMade: number | null | undefined }) {
   const cgs = trovaScore(scores, "CGS");
   const sem = trovaScore(scores, "SEM_CGS");
   const esito = esitoDaSemaforo(sem?.categoria_codice);
