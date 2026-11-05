@@ -946,6 +946,13 @@
       "when": 1793625811379,
       "tag": "0134_fm55_fidi_approvati_in_attesa_gamma",
       "breakpoints": true
+    },
+    {
+      "idx": 135,
+      "version": "7",
+      "when": 1793868297150,
+      "tag": "0135_fm56_dashboard_fidi_gruppi",
+      "breakpoints": true
     }
   ]
 }
