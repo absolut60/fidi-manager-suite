@@ -7471,12 +7471,6 @@ export type Database = {
           cliente_id: string
         }[]
       }
-      get_clienti_giro_fidi_ids: {
-        Args: { _tipo: string }
-        Returns: {
-          cliente_id: string
-        }[]
-      }
       get_clienti_lite_by_ids: {
         Args: { _ids: string[] }
         Returns: {
@@ -7701,17 +7695,6 @@ export type Database = {
           n_clienti_con_fido: number
           ordine: number
           tipo: string
-        }[]
-      }
-      get_dashboard_fidi_giro: {
-        Args: never
-        Returns: {
-          pos_con_fido_n: number
-          pos_concesso_eur: number
-          privati_con_fido_n: number
-          privati_concesso_eur: number
-          privati_esposizione_eur: number
-          privati_proposto_eur: number
         }[]
       }
       get_dashboard_fidi_gruppi: {
