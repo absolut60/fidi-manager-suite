@@ -5,6 +5,7 @@
  * ed e' materializzata in public.fido_teorico_cliente.semaforo_stadio/_motivo.
  * Qui si mappa solo lo stadio alle classi/label della UI.
  */
+import { formatEuro } from "@/lib/fidi";
 
 export type SemaforoStadio = "rosso" | "arancione" | "giallo" | "verde" | "spento" | null;
 
@@ -73,4 +74,21 @@ export function semaforoDaCliente(
   const s = ftc?.semaforo_stadio ?? null;
   const stadio = (s === "rosso" || s === "arancione" || s === "giallo" || s === "verde" || s === "spento" ? s : null) as SemaforoStadio;
   return { stadio, motivo: ftc?.semaforo_motivo ?? null };
+}
+
+/** Legenda per stadio (tooltip): descrive la regola di calcola_semaforo_affidabilita_batch (FM58). */
+export const LEGENDA_STADIO: Record<Exclude<SemaforoStadio, null>, string> = {
+  verde: "Paga regolarmente: negli ultimi 12 mesi ritardo medio entro 15 giorni",
+  giallo: "Da tenere d'occhio: negli ultimi 12 mesi paga in media oltre 15 giorni dopo la scadenza, oppure ha uno scaduto sotto i 1.000 €",
+  arancione: "A rischio: scaduto tra 1.000 e 10.000 €, oppure scaduto fermo da oltre 60 giorni",
+  rosso: "Critico: scaduto oltre 10.000 €, insoluti, cliente bloccato o in gestione legale",
+  spento: "Nessun pagamento registrato: cliente nuovo o senza storico",
+};
+
+/** Testo del numero accanto al pallino (numero/numero_unita dal DB). null = non mostrare. */
+export function testoNumeroSemaforo(numero: number | null | undefined, unita: string | null | undefined): string | null {
+  if (!unita || numero == null || !Number.isFinite(numero) || numero <= 0) return null;
+  if (unita === "eur") return formatEuro(numero);
+  if (unita === "gg") return `${Math.round(numero)} gg`;
+  return null;
 }
