@@ -988,6 +988,13 @@
       "when": 1793879337476,
       "tag": "0140_fm56_ruolo_showroom_enum",
       "breakpoints": true
+    },
+    {
+      "idx": 141,
+      "version": "7",
+      "when": 1793879405514,
+      "tag": "0141_fm56_showroom_permessi",
+      "breakpoints": true
     }
   ]
 }

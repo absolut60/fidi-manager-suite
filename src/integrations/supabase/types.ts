@@ -6888,6 +6888,7 @@ export type Database = {
       }
       arrotonda_fido_proposto: { Args: { _fido_base: number }; Returns: number }
       arrotonda_fido_v2: { Args: { _x: number }; Returns: number }
+      auth_e_showroom: { Args: never; Returns: boolean }
       auth_gestisce_contatti_clienti: { Args: never; Returns: boolean }
       auth_ha_accesso_preventivi: { Args: never; Returns: boolean }
       auth_ha_ruolo_globale_clienti: { Args: never; Returns: boolean }
@@ -6918,6 +6919,7 @@ export type Database = {
         Args: { _preventivo_id: string }
         Returns: boolean
       }
+      auth_solo_showroom: { Args: never; Returns: boolean }
       auth_vede_campagne_entita: {
         Args: { _cliente_id: string; _lead_id: string }
         Returns: boolean
@@ -8821,6 +8823,11 @@ export type Database = {
             }
             Returns: string[]
           }
+      showroom_cliente_della_sede: {
+        Args: { _cliente_id: string }
+        Returns: boolean
+      }
+      showroom_lead_della_sede: { Args: { _lead_id: string }; Returns: boolean }
       sposta_lead_ambito: {
         Args: { _ambito: string; _lead_ids: string[] }
         Returns: number
