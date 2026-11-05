@@ -96,16 +96,6 @@ export function DashboardFidi() {
     },
   });
 
-  const { data: quasiSaturi } = useQuery({
-    queryKey: ["fidi-quasi-saturi-80"],
-    staleTime: 5 * 60_000,
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc("count_fidi_quasi_saturi");
-      if (error) throw error;
-      return Number(data ?? 0);
-    },
-  });
-
   const { data: gruppi } = useQuery({
     queryKey: ["dashboard-fidi-gruppi"],
     staleTime: 5 * 60_000,
