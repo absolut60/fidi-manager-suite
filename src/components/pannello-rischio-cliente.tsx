@@ -18,40 +18,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEsperienzaPagamentoCliente } from "@/hooks/use-esperienza-pagamento";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { formatEuro, formatDate } from "@/lib/fidi";
-import { semaforoUI, type SemaforoStadio } from "@/lib/semaforo-ui";
+import { semaforoUI, LEGENDA_STADIO, testoNumeroSemaforo } from "@/lib/semaforo-ui";
+import { useSemaforoAffidabilitaCliente, type SemaforoAffidabilitaDati } from "@/hooks/use-semaforo-affidabilita";
+import type { EsperienzaPagamento } from "@/hooks/use-esperienza-pagamento";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CondizionePagamentoTesto } from "@/components/condizione-pagamento-richiesta-select";
 
-/** Solo la frase di legenda del tooltip: colori e label vengono da semaforoUI (fonte unica). */
-const LEGENDA_STADIO: Record<Exclude<SemaforoStadio, null>, string> = {
-  verde: "Affidabile — pagamenti regolari",
-  giallo: "Da tenere d'occhio — ritardi sistematici ma nessuna sofferenza",
-  arancione: "A rischio — scaduto fermo oltre 60 giorni, importo contenuto",
-  rosso: "Critico — insoluti, scaduto grave, blocco o gestione legale",
-  spento: "Nessuna esperienza di pagamento — cliente nuovo o senza storico",
-};
-
-function normalizzaStadio(s: unknown): SemaforoStadio {
-  return s === "rosso" || s === "arancione" || s === "giallo" || s === "verde" || s === "spento" ? s : null;
-}
-
-type SemaforoData = {
-  stadio: SemaforoStadio;
-  motivo: string;
-  ritardoMedioRitardi: number;
-  eurScadutoGrave: number;
-} | null;
-
-export function SemaforoAffidabilita({ sem }: { sem: SemaforoData }) {
+export function SemaforoAffidabilita({ sem }: { sem: SemaforoAffidabilitaDati }) {
   if (!sem) return <span className="text-muted-foreground">—</span>;
   const ui = semaforoUI(sem.stadio, sem.motivo);
   const legenda = sem.stadio ? LEGENDA_STADIO[sem.stadio] : null;
-  const numero =
-    sem.stadio === "arancione" || sem.stadio === "rosso"
-      ? sem.eurScadutoGrave > 0
-        ? formatEuro(sem.eurScadutoGrave)
-        : `${sem.ritardoMedioRitardi} gg`
-      : `${sem.ritardoMedioRitardi} gg`;
+  const numero = testoNumeroSemaforo(sem.numero, sem.numeroUnita);
 
   return (
     <TooltipProvider>
@@ -60,9 +37,7 @@ export function SemaforoAffidabilita({ sem }: { sem: SemaforoData }) {
           <span className="inline-flex items-center gap-2 cursor-help">
             <span className={`h-2.5 w-2.5 rounded-full ${ui.dotClass}`} aria-hidden />
             <span className={`font-medium ${ui.textClass}`}>{ui.label}</span>
-            {sem.stadio && sem.stadio !== "spento" && (
-              <span className="text-muted-foreground tabular-nums">· {numero}</span>
-            )}
+            {numero && <span className="text-muted-foreground tabular-nums">· {numero}</span>}
           </span>
         </TooltipTrigger>
         <TooltipContent className="max-w-[260px]">
@@ -76,29 +51,10 @@ export function SemaforoAffidabilita({ sem }: { sem: SemaforoData }) {
 
 /**
  * Badge autonomo: carica da solo il semaforo affidabilita' del cliente
- * (fonte unica: RPC get_semaforo_affidabilita_cliente) e lo mostra.
+ * (fonte unica: useSemaforoAffidabilitaCliente) e lo mostra.
  */
 export function SemaforoAffidabilitaBadge({ clienteId }: { clienteId?: string | null }) {
-  const { data: sem, isLoading } = useQuery<SemaforoData>({
-    queryKey: ["semaforo-affidabilita", clienteId],
-    staleTime: 5 * 60_000,
-    gcTime: 30 * 60_000,
-    enabled: !!clienteId,
-    queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc("get_semaforo_affidabilita_cliente", {
-        p_cliente_id: clienteId,
-      });
-      if (error) throw error;
-      const row = Array.isArray(data) ? data[0] : data;
-      if (!row) return null;
-      return {
-        stadio: normalizzaStadio(row.stadio),
-        motivo: String(row.motivo ?? ""),
-        ritardoMedioRitardi: Number(row.ritardo_medio_ritardi ?? 0),
-        eurScadutoGrave: Number(row.eur_scaduto_grave ?? 0),
-      };
-    },
-  });
+  const { data: sem, isLoading } = useSemaforoAffidabilitaCliente(clienteId);
 
   if (isLoading || !sem) {
     return (
@@ -110,9 +66,6 @@ export function SemaforoAffidabilitaBadge({ clienteId }: { clienteId?: string | 
   }
   return <SemaforoAffidabilita sem={sem} />;
 }
-
-
-
 
 interface Props {
   cliente: any;
@@ -155,26 +108,7 @@ export function PannelloRischioCliente({
 
   const { data: esp } = useEsperienzaPagamentoCliente(cliente?.id);
 
-  const { data: sem } = useQuery<SemaforoData>({
-    queryKey: ["semaforo-affidabilita", cliente?.id],
-    staleTime: 5 * 60_000,
-    gcTime: 30 * 60_000,
-    enabled: !!cliente?.id,
-    queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc("get_semaforo_affidabilita_cliente", {
-        p_cliente_id: cliente.id,
-      });
-      if (error) throw error;
-      const row = Array.isArray(data) ? data[0] : data;
-      if (!row) return null;
-      return {
-        stadio: normalizzaStadio(row.stadio),
-        motivo: String(row.motivo ?? ""),
-        ritardoMedioRitardi: Number(row.ritardo_medio_ritardi ?? 0),
-        eurScadutoGrave: Number(row.eur_scaduto_grave ?? 0),
-      };
-    },
-  });
+  const { data: sem } = useSemaforoAffidabilitaCliente(cliente?.id);
 
   if (!cliente) return null;
 
@@ -371,63 +305,46 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
   );
 }
 
-/** Variante extended: le 4 card esperienza dentro la griglia unica del quadro. */
+type EspData = EsperienzaPagamento | null | undefined;
+
+const fmtGg = (n: number | null | undefined) => `${Math.round(n ?? 0)} gg`;
+
+/** Variante extended: card esperienza dentro la griglia del quadro. Nessun colore: lo dà solo il semaforo. */
 function EsperienzaPagamentoCards({ esp }: { esp: EspData }) {
   if (!esp || esp.nPagate === 0) {
-    return (
-      <QuadroCell label="Esperienza pagamento">Nessuno storico</QuadroCell>
-    );
+    return <QuadroCell label="Esperienza pagamento">Nessuno storico</QuadroCell>;
   }
-  const ritMedio = esp.ritardoMedio ?? 0;
-  const pct = esp.pctInRitardo ?? 0;
-  // Stesse soglie indicative di EsperienzaPagamentoBlock (NON è il semaforo)
-  const toneMedio: "neutral" | "destructive" | "success" =
-    ritMedio > 20 ? "destructive" : ritMedio > 5 ? "neutral" : "success";
-  const tonePct: "neutral" | "destructive" | "success" =
-    pct > 50 ? "destructive" : pct > 20 ? "neutral" : "success";
-  const pre = "Esp. ·";
+  const titolo = "Esperienza pagamento: ultimi 12 mesi · escluse RiBa e anticipi";
   return (
-    <>
-      <div className="contents" title={`Esperienza pagamento (su ${esp.nPagate} scadenze pagate, escluse RiBa)`}>
-        <MetricCard label={`${pre} Ritardo medio`} value={`${ritMedio.toFixed(1)} gg`} tone={toneMedio} />
-        <MetricCard label={`${pre} Pagate in ritardo`} value={`${pct.toFixed(1)}%`} tone={tonePct} />
-        <MetricCard label={`${pre} N. ritardi`} value={`${esp.nInRitardo} su ${esp.nPagate}`} />
-        <MetricCard
-          label={`${pre} Ritardo massimo`}
-          value={`${esp.maxRitardo ?? 0} gg`}
-          tone={esp.maxRitardo != null && esp.maxRitardo > 60 ? "destructive" : "neutral"}
-        />
-      </div>
-    </>
+    <div className="contents" title={titolo}>
+      {esp.nPagate12m === 0 ? (
+        <QuadroCell label="Esp. 12 mesi" className="col-span-2">Nessun pagamento negli ultimi 12 mesi</QuadroCell>
+      ) : (
+        <>
+          <MetricCard label="Ritardo medio 12 mesi" value={fmtGg(esp.ritardoMedio12m)} subtext="escluse RiBa e anticipi" />
+          <MetricCard label="In ritardo 12 mesi" value={`${esp.nInRitardo12m} su ${esp.nPagate12m}`} />
+        </>
+      )}
+      <MetricCard label="In ritardo storico" value={`${esp.nInRitardo} su ${esp.nPagate}`} />
+      <MetricCard label="Ritardo massimo storico" value={fmtGg(esp.maxRitardo)} />
+    </div>
   );
 }
 
-type EspData = {
-  nPagate: number;
-  nInRitardo: number;
-  pctInRitardo: number | null;
-  ritardoMedio: number | null;
-  maxRitardo: number | null;
-} | null | undefined;
-
-function EsperienzaPagamentoBlock({ esp, variant }: { esp: EspData; variant: "compact" | "extended" }) {
+function EsperienzaPagamentoBlock({ esp }: { esp: EspData; variant: "compact" }) {
   const noStorico = !esp || esp.nPagate === 0;
   const title = (
     <div className="flex items-end justify-between gap-2 flex-wrap">
-      <h3 className={variant === "extended" ? "font-semibold text-sm" : "font-medium text-xs"}>
-        Esperienza di pagamento
-      </h3>
+      <h3 className="font-medium text-xs">Esperienza di pagamento</h3>
       {!noStorico && (
-        <span className="text-[11px] text-muted-foreground">
-          su {esp!.nPagate} scadenze pagate (escluse RiBa)
-        </span>
+        <span className="text-[11px] text-muted-foreground">ultimi 12 mesi · escluse RiBa e anticipi</span>
       )}
     </div>
   );
 
   if (noStorico) {
     return (
-      <div className={variant === "extended" ? "border-t pt-3 space-y-2" : "border-t pt-1.5 space-y-1"}>
+      <div className="border-t pt-1.5 space-y-1">
         {title}
         <p className="text-xs text-muted-foreground">Nessuno storico pagamenti disponibile</p>
       </div>
@@ -435,59 +352,28 @@ function EsperienzaPagamentoBlock({ esp, variant }: { esp: EspData; variant: "co
   }
 
   const e = esp!;
-  const ritMedio = e.ritardoMedio ?? 0;
-  const pct = e.pctInRitardo ?? 0;
-  // Soglie indicative (NON è il semaforo): verde ≤5gg, ambra 6–20gg, rosso >20gg
-  const toneMedio: "neutral" | "destructive" | "success" =
-    ritMedio > 20 ? "destructive" : ritMedio > 5 ? "neutral" : "success";
-  const tonePct: "neutral" | "destructive" | "success" =
-    pct > 50 ? "destructive" : pct > 20 ? "neutral" : "success";
-
-  if (variant === "extended") {
+  if (e.nPagate12m === 0) {
     return (
-      <div className="border-t pt-3 space-y-3">
+      <div className="border-t pt-1.5 space-y-1">
         {title}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <MetricCard
-            label="Ritardo medio"
-            value={`${ritMedio.toFixed(1)} gg`}
-            tone={toneMedio}
-          />
-          <MetricCard
-            label="Pagate in ritardo"
-            value={`${pct.toFixed(1)}%`}
-            tone={tonePct}
-          />
-          <MetricCard
-            label="N. ritardi"
-            value={`${e.nInRitardo} su ${e.nPagate}`}
-          />
-          <MetricCard
-            label="Ritardo massimo"
-            value={`${e.maxRitardo ?? 0} gg`}
-            tone={e.maxRitardo != null && e.maxRitardo > 60 ? "destructive" : "neutral"}
-          />
-        </div>
+        <p className="text-xs text-muted-foreground">
+          Nessun pagamento negli ultimi 12 mesi · storico {e.nInRitardo} su {e.nPagate} in ritardo
+        </p>
       </div>
     );
   }
 
-  // compact: solo ritardo medio + % in ritardo
   return (
     <div className="border-t pt-1.5 space-y-1">
       {title}
       <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Ritardo medio</span>
-          <span className={`tabular-nums ${toneMedio === "destructive" ? "text-destructive font-medium" : toneMedio === "success" ? "text-success" : ""}`}>
-            {ritMedio.toFixed(1)} gg
-          </span>
+        <div className="flex justify-between gap-2">
+          <span className="text-muted-foreground">Ritardo medio 12 mesi</span>
+          <span className="tabular-nums">{fmtGg(e.ritardoMedio12m)}</span>
         </div>
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Pagate in ritardo</span>
-          <span className={`tabular-nums ${tonePct === "destructive" ? "text-destructive font-medium" : tonePct === "success" ? "text-success" : ""}`}>
-            {pct.toFixed(1)}%
-          </span>
+        <div className="flex justify-between gap-2">
+          <span className="text-muted-foreground">In ritardo 12 mesi</span>
+          <span className="tabular-nums">{e.nInRitardo12m} su {e.nPagate12m}</span>
         </div>
       </div>
     </div>

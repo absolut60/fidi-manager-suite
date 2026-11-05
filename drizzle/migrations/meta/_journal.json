@@ -1058,6 +1058,13 @@
       "when": 1793908104321,
       "tag": "0150_fm58_semaforo_regola_come_paga",
       "breakpoints": true
+    },
+    {
+      "idx": 151,
+      "version": "7",
+      "when": 1793908579285,
+      "tag": "0151_fm58_semaforo_numero_unita",
+      "breakpoints": true
     }
   ]
 }
