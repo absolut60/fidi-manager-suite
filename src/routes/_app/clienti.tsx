@@ -1,3 +1,4 @@
+import { useSoloShowroom } from "@/hooks/use-solo-showroom";
 import { decodificaFiltroDashboard, etichettaChipDashboard, PREFISSO_PRESET } from "@/lib/dashboard-fidi-gruppi";
 import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { StrisciaRicalcoloFido } from "@/components/ricalcolo-fido-barra";
