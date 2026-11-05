@@ -534,3 +534,124 @@ export function scegliAziendaPerPiva(risposta: unknown, piva: string): unknown |
   }
   return null;
 }
+
+// ── Dati estesi (sola lettura) ────────────────────────────────────────────
+
+/** Elenco dei bilanci disponibili per un soggetto. */
+export function elencoBilanciCerved(idSoggetto: string, ctx: Ctx) {
+  return chiamaCerved({
+    operazione: "cerved_balancesheets_list",
+    percorso: "/v1/entityProfile/cerved/balancesheetslist",
+    parametri: { id_soggetto: idSoggetto },
+    ...ctx,
+  });
+}
+
+/** Un bilancio: data_chiusura 'dd-MM-yyyy', tipo 'E' o 'C'. */
+export function bilancioCerved(idSoggetto: string, dataChiusura: string, tipo: "E" | "C", ctx: Ctx) {
+  return chiamaCerved({
+    operazione: "cerved_balancesheet",
+    percorso: "/v1/entityProfile/cerved/balancesheet",
+    parametri: { id_soggetto: idSoggetto, data_chiusura: dataChiusura, tipo_bilancio: tipo },
+    ...ctx,
+  });
+}
+
+/** Fido accordabile Cerved (FCERT o FMED). */
+export function fidoCerved(idSoggetto: string, codice: "FCERT" | "FMED", ctx: Ctx) {
+  return chiamaCerved({
+    operazione: `fido_${codice.toLowerCase()}`,
+    percorso: `/v1.1/fido/accordabile/impresa/finance/${codice}`,
+    parametri: { id_soggetto: idSoggetto },
+    ...ctx,
+  });
+}
+
+/** Flag degli eventi negativi (tutte le categorie). */
+export function eventiNegativiFlag(idSoggetto: string, ctx: Ctx) {
+  return chiamaCerved({
+    operazione: "negative_flags",
+    percorso: "/v1.1/rischi/negative/events/flags/ALL",
+    parametri: { subjectId: idSoggetto },
+    ...ctx,
+  });
+}
+
+/** Tutti gli oggetti annidati nella risposta (visita in profondità). */
+function oggettiAnnidati(v: unknown, out: Record<string, unknown>[] = []): Record<string, unknown>[] {
+  if (Array.isArray(v)) v.forEach((x) => oggettiAnnidati(x, out));
+  else if (v && typeof v === "object") {
+    out.push(v as Record<string, unknown>);
+    Object.values(v).forEach((x) => oggettiAnnidati(x, out));
+  }
+  return out;
+}
+
+/** 'dd-MM-yyyy' → 'yyyyMMdd' per ordinare (sola manipolazione di stringa). */
+function chiaveData(d: string): string {
+  const m = /^(\d{2})-(\d{2})-(\d{4})/.exec(d);
+  return m ? `${m[3]}${m[2]}${m[1]}` : d;
+}
+
+export type BilancioElenco = { data_chiusura: string; tipo: string | null };
+
+/** Bilanci dell'elenco: ogni oggetto con data_chiusura (campo tipo/tipo_bilancio se presente). */
+export function normalizzaElencoBilanci(corpo: unknown): BilancioElenco[] {
+  const visti = new Set<string>();
+  const out: BilancioElenco[] = [];
+  for (const o of oggettiAnnidati(corpo)) {
+    const d = o["data_chiusura"] ?? o["data_chiusura_bilancio"];
+    if (typeof d !== "string" || !d) continue;
+    const t = o["tipo_bilancio"] ?? o["tipo"] ?? null;
+    const tipo = t == null ? null : typeof t === "object" ? String((t as Record<string, unknown>)["codice"] ?? "") || null : String(t);
+    const k = `${d}|${tipo}`;
+    if (visti.has(k)) continue;
+    visti.add(k);
+    out.push({ data_chiusura: d, tipo });
+  }
+  return out;
+}
+
+/** I due bilanci di tipo 'E' più recenti per data di chiusura. */
+export function dueBilanciEPiuRecenti(elenco: BilancioElenco[]): BilancioElenco[] {
+  return elenco
+    .filter((b) => (b.tipo ?? "").toUpperCase() === "E")
+    .sort((a, b) => chiaveData(b.data_chiusura).localeCompare(chiaveData(a.data_chiusura)))
+    .slice(0, 2);
+}
+
+/** Riassunto di un bilancio: sezioni = array di primo livello, voci = elementi totali in essi. */
+export function riassuntoBilancio(corpo: unknown): { sezioni: number; voci: number } {
+  let sezioni = 0;
+  let voci = 0;
+  const radice = corpo && typeof corpo === "object" && !Array.isArray(corpo) ? (corpo as Record<string, unknown>) : {};
+  const visita = (o: Record<string, unknown>) => {
+    for (const v of Object.values(o)) {
+      if (Array.isArray(v)) { sezioni++; voci += v.length; }
+      else if (v && typeof v === "object") visita(v as Record<string, unknown>);
+    }
+  };
+  visita(radice);
+  return { sezioni, voci };
+}
+
+/** Primo valore_fido trovato nella risposta. */
+export function valoreFidoCerved(corpo: unknown): number | string | null {
+  for (const o of oggettiAnnidati(corpo)) {
+    const v = o["valore_fido"];
+    if (typeof v === "number" || typeof v === "string") return v;
+  }
+  return null;
+}
+
+/** Flag booleani/testuali degli eventi negativi, appiattiti "chiave: valore". */
+export function flagEventiNegativi(corpo: unknown): string[] {
+  const out: string[] = [];
+  for (const o of oggettiAnnidati(corpo)) {
+    for (const [k, v] of Object.entries(o)) {
+      if (typeof v === "boolean") out.push(`${k}: ${v ? "Sì" : "No"}`);
+      else if (/flag/i.test(k) && (typeof v === "string" || typeof v === "number")) out.push(`${k}: ${v}`);
+    }
+  }
+  return out.slice(0, 50);
+}
