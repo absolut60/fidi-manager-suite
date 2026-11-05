@@ -3,6 +3,7 @@ import type React from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation } from "@tanstack/react-query";
 import { Search } from "lucide-react";
+import { formattaDataCerved as dc } from "@/lib/cerved/cerved.server";
 import { provaCercaCerved } from "@/lib/cerved/cerved-prova.functions";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,11 +17,11 @@ const euro = (n: number | null) =>
   n == null ? null : `${new Intl.NumberFormat("it-IT", { maximumFractionDigits: 0 }).format(n)} €`;
 
 /** Colore della categoria del semaforo Cerved, se riconoscibile. */
-function coloreSemaforo(cat: string | null): string | null {
-  const c = (cat ?? "").toLowerCase();
-  if (/verde|green/.test(c)) return "bg-success text-success-foreground";
-  if (/giall|yellow/.test(c)) return "bg-warning text-warning-foreground";
-  if (/ross|red/.test(c)) return "bg-destructive text-destructive-foreground";
+function coloreSemaforo(codice: string | null): string | null {
+  const c = (codice ?? "").toUpperCase();
+  if (c === "V") return "bg-success text-success-foreground";
+  if (c === "G") return "bg-warning text-warning-foreground";
+  if (c === "R") return "bg-destructive text-destructive-foreground";
   return null;
 }
 
@@ -63,7 +64,7 @@ export function ProvaCervedCard() {
 
   const ateco = a ? [a.ateco_2025_codice, a.ateco_2025_descrizione].filter(Boolean).join(" — ") || null : null;
 
-  const rea = a ? [a.rea, a.data_iscrizione_rea && `iscrizione ${a.data_iscrizione_rea}`].filter(Boolean).join(" · ") || null : null;
+  const rea = a ? [a.rea, a.data_iscrizione_rea && `iscrizione ${dc(a.data_iscrizione_rea)}`].filter(Boolean).join(" · ") || null : null;
 
   const sede = a?.sede
     ? [a.sede.indirizzo, a.sede.cap, comuneProvincia(a.sede.comune, a.sede.provincia)]
@@ -92,15 +93,15 @@ export function ProvaCervedCard() {
         ["Telefono", p.telefono],
         ["Sito web", p.sito_web],
         ["PEC", p.pec.length ? p.pec.join(", ") : null],
-        ["Costituzione", p.data_costituzione],
-        ["Inizio attività", p.data_inizio_attivita],
-        ["Stato attività", [p.stato_attivita_descrizione ?? p.stato_attivita_codice, p.data_stato_attivita && `dal ${p.data_stato_attivita}`].filter(Boolean).join(" ") || null],
+        ["Costituzione", dc(p.data_costituzione)],
+        ["Inizio attività", dc(p.data_inizio_attivita)],
+        ["Stato attività", [p.stato_attivita_descrizione ?? p.stato_attivita_codice, p.data_stato_attivita && `dal ${dc(p.data_stato_attivita)}`].filter(Boolean).join(" ") || null],
         ["Macrosettore", p.macrosettore],
         ["Gruppo", p.gruppo == null ? null : p.gruppo ? (p.capogruppo.length ? `Sì · capogruppo: ${p.capogruppo.join(", ")}` : "Sì") : "No"],
-        ["Rating legalità", p.rating_legalita],
+        ["Rating legalità", p.rating_legalita ? `${p.rating_legalita}${p.rating_legalita_rinnovo ? ` (rinnovo ${dc(p.rating_legalita_rinnovo)})` : ""}` : null],
         ["Dipendenti", p.dipendenti == null ? null : `${p.dipendenti.toLocaleString("it-IT")}${p.dipendenti_anno ? ` (${p.dipendenti_anno})` : ""}`],
         ["Unità locali", p.unita_locali == null ? null : p.unita_locali.toLocaleString("it-IT")],
-        ["Ultimo bilancio", p.anno_ultimo_bilancio],
+        ["Ultimo bilancio", p.anno_ultimo_bilancio ? `${p.anno_ultimo_bilancio}${p.data_chiusura_ultimo_bilancio ? ` (chiuso il ${dc(p.data_chiusura_ultimo_bilancio)})` : ""}` : dc(p.data_chiusura_ultimo_bilancio)],
         ["Capitale sociale", euro(p.capitale_sociale)],
         ["Fatturato", euro(p.fatturato)],
         ["MOL", euro(p.mol)],
@@ -162,21 +163,22 @@ export function ProvaCervedCard() {
             <ul className="divide-y">
               {scores.map((s, i) => {
                 const sem = s.codice_score === "SEM_CGS";
-                const colore = sem ? coloreSemaforo(s.categoria_descrizione ?? s.categoria_codice) : null;
+                const colore = sem ? coloreSemaforo(s.categoria_codice) : null;
                 const categoria = s.categoria_descrizione ?? s.categoria_codice;
                 return (
                   <li key={`${s.codice_score}-${i}`} className={sem ? "py-2 font-medium" : "py-2"}>
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span className="min-w-0 break-words">{s.descrizione_score ?? s.codice_score ?? "—"}</span>
-                      {s.valore != null && <span className="shrink-0 tabular-nums">{s.valore.toLocaleString("it-IT")}/100</span>}
+                      {!sem && s.valore != null && <span className="shrink-0 tabular-nums">{s.valore.toLocaleString("it-IT")}/100</span>}
                       {categoria && (colore
                         ? <span className={`shrink-0 rounded px-2 py-0.5 text-xs ${colore}`}>{categoria}</span>
                         : <span className="shrink-0 text-muted-foreground">{categoria}</span>)}
                     </div>
-                    <div className="text-xs text-muted-foreground font-normal">
-                      {[s.pd != null && `Prob. insolvenza ${(s.pd * (s.pd <= 1 ? 100 : 1)).toLocaleString("it-IT", { maximumFractionDigits: 2 })}%`,
-                        (s.trend_descrizione ?? s.trend_codice) && `Trend: ${s.trend_descrizione ?? s.trend_codice}`].filter(Boolean).join(" · ") || "—"}
-                    </div>
+                    {(() => {
+                      const extra = [s.pd != null && `Prob. insolvenza ${(s.pd * 100).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`,
+                        (s.trend_descrizione ?? s.trend_codice) && `Trend: ${s.trend_descrizione ?? s.trend_codice}`].filter(Boolean).join(" · ");
+                      return extra ? <div className="text-xs text-muted-foreground font-normal">{extra}</div> : null;
+                    })()}
                   </li>
                 );
               })}
