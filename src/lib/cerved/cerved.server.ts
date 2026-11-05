@@ -2,7 +2,7 @@
  * UNICO punto dell'app che parla con Cerved. La chiave (CERVED_API_KEY) si legge
  * solo qui, al momento della chiamata, e non viene mai registrata né restituita.
  */
-const BASE_URL = "https://api.cerved.com/cervedApi/v1";
+const BASE_URL = "https://api.cerved.com/cervedApi";
 const TIMEOUT_MS = 15_000;
 
 export type EsitoCerved = {
@@ -83,8 +83,26 @@ async function chiamaCerved(opts: {
 export function cercaSoggettoPerPiva(piva: string, ctx: { utenteId: string | null; clienteId: string | null }) {
   return chiamaCerved({
     operazione: "entity_search",
-    percorso: "/entitySearch/live",
+    percorso: "/v1/entitySearch/live",
     parametri: { testoricerca: piva, filtroricerca: "COMPANIES_ONLY" },
+    ...ctx,
+  });
+}
+
+export function leggiProfilo(idSoggetto: string, ctx: { utenteId: string | null; clienteId: string | null }) {
+  return chiamaCerved({
+    operazione: "entity_profile",
+    percorso: "/v1/entityProfile/live",
+    parametri: { id_soggetto: idSoggetto },
+    ...ctx,
+  });
+}
+
+export function leggiScore(idSoggetto: string, ctx: { utenteId: string | null; clienteId: string | null }) {
+  return chiamaCerved({
+    operazione: "score_all_cgs",
+    percorso: "/v1.1/score/impresa/corporate/ALL_CGS",
+    parametri: { id_soggetto: idSoggetto },
     ...ctx,
   });
 }
@@ -98,7 +116,7 @@ export function cercaSoggettoPerPiva(piva: string, ctx: { utenteId: string | nul
 const STATO_ATTIVITA_CERVED: Record<string, string> = {
   A: "attiva",
   C: "cessata",
-  D: "in procedures",
+  D: "in procedure",
   F: "fallita",
   G: "amministrazione giudiziaria",
   I: "inattiva",
@@ -204,4 +222,144 @@ export function normalizzaAziendaCerved(azienda: unknown): AziendaCerved {
     sede: sedePiena,
     ente_pa: booleano(pa.ente) === true,
   };
+}
+
+/* ------------------------------------------------------------------ */
+/* Profilo (entityProfile/live) e Score (ALL_CGS) — fonte unica.       */
+/* Le date Cerved restano stringhe grezze: formato non ancora certo.   */
+/* ------------------------------------------------------------------ */
+
+type Obj = Record<string, unknown>;
+const obj = (v: unknown): Obj => (v && typeof v === "object" && !Array.isArray(v) ? (v as Obj) : {});
+const numero = (v: unknown): number | null => {
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  const s = testo(v);
+  if (s == null) return null;
+  const n = Number(s.replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+};
+/** Valori Cerved in migliaia di euro → euro. */
+const migliaiaInEuro = (v: unknown): number | null => {
+  const n = numero(v);
+  return n == null ? null : Math.round(n * 1000);
+};
+/** Valore che può essere scalare o { valore/value/importo, anno }. */
+const valoreDi = (v: unknown): unknown => {
+  if (v && typeof v === "object" && !Array.isArray(v)) {
+    const o = v as Obj;
+    return o.valore ?? o.value ?? o.importo ?? o.numero ?? null;
+  }
+  return v;
+};
+
+export type ProfiloCerved = {
+  telefono: string | null;
+  sito_web: string | null;
+  pec: string[];
+  data_costituzione: string | null;
+  data_inizio_attivita: string | null;
+  stato_attivita_codice: string | null;
+  stato_attivita_descrizione: string | null;
+  data_stato_attivita: string | null;
+  macrosettore: string | null;
+  gruppo: boolean | null;
+  capogruppo: string[];
+  rating_legalita: string | null;
+  dipendenti: number | null;
+  dipendenti_anno: string | null;
+  unita_locali: number | null;
+  anno_ultimo_bilancio: string | null;
+  capitale_sociale: number | null;
+  fatturato: number | null;
+  mol: number | null;
+  attivo: number | null;
+  patrimonio_netto: number | null;
+  utile_perdita_esercizio: number | null;
+};
+
+export function normalizzaProfiloCerved(risposta: unknown): ProfiloCerved {
+  const r = obj(risposta);
+  const anag = obj(r.dati_anagrafici);
+  const att = obj(r.dati_attivita);
+  const grp = obj(r.dati_gruppo);
+  const eco = obj(r.dati_economici_dimensionali);
+  const codifica = obj(obj(att.ateco_2025_info).codifica_ateco);
+
+  const pecRaw = obj(anag.pec).email ?? anag.pec;
+  const pec = (Array.isArray(pecRaw) ? pecRaw : [pecRaw])
+    .map((e) => testo(typeof e === "object" && e ? (obj(e).email ?? obj(e).indirizzo) : e))
+    .filter((e): e is string => !!e);
+
+  const capoRaw = grp.capogruppo ?? grp.capogruppi ?? grp.lista_capogruppo ?? [];
+  const capogruppo = (Array.isArray(capoRaw) ? capoRaw : [capoRaw])
+    .map((c) => testo(typeof c === "object" && c ? (obj(c).denominazione ?? obj(c).nome ?? obj(c).ragione_sociale) : c))
+    .filter((c): c is string => !!c);
+
+  const macro = obj(codifica.macrosettore);
+  const macrosettore = typeof codifica.macrosettore === "object"
+    ? testo(macro.descrizione ?? macro.description ?? macro.codice)
+    : testo(codifica.macrosettore);
+
+  const rating = r.rating_legalita ?? att.rating_legalita ?? anag.rating_legalita;
+  const ratingTxt = typeof rating === "object" && rating
+    ? testo(obj(rating).punteggio ?? obj(rating).valore ?? obj(rating).descrizione ?? obj(rating).stelle)
+    : testo(rating);
+
+  const codice = testo(att.codice_stato_attivita);
+  const statoKey = codice ? codice.toUpperCase().charAt(0) : null;
+  const dip = eco.numero_dipendenti ?? eco.dipendenti;
+
+  return {
+    telefono: testo(anag.telefono ?? obj(anag.contatti).telefono),
+    sito_web: testo(anag.sito_web ?? anag.web ?? obj(anag.contatti).sito_web),
+    pec,
+    data_costituzione: testo(att.data_costituzione ?? anag.data_costituzione),
+    data_inizio_attivita: testo(att.data_inizio_attivita),
+    stato_attivita_codice: codice,
+    stato_attivita_descrizione: statoKey ? (STATO_ATTIVITA_CERVED[statoKey] ?? null) : null,
+    data_stato_attivita: testo(att.data_stato_attivita),
+    macrosettore,
+    gruppo: booleano(grp.flag_gruppo),
+    capogruppo,
+    rating_legalita: ratingTxt,
+    dipendenti: numero(valoreDi(dip)),
+    dipendenti_anno: testo(eco.anno_dipendenti ?? eco.anno_numero_dipendenti ?? obj(dip).anno),
+    unita_locali: numero(valoreDi(eco.numero_unita_locali ?? eco.unita_locali)),
+    anno_ultimo_bilancio: testo(eco.anno_ultimo_bilancio ?? eco.anno_bilancio),
+    capitale_sociale: numero(valoreDi(eco.capitale_sociale)),
+    fatturato: migliaiaInEuro(valoreDi(eco.fatturato)),
+    mol: migliaiaInEuro(valoreDi(eco.mol)),
+    attivo: migliaiaInEuro(valoreDi(eco.attivo)),
+    patrimonio_netto: migliaiaInEuro(valoreDi(eco.patrimonio_netto)),
+    utile_perdita_esercizio: migliaiaInEuro(valoreDi(eco.utile_perdita_esercizio)),
+  };
+}
+
+export type ScoreCerved = {
+  codice_score: string | null;
+  descrizione_score: string | null;
+  valore: number | null;
+  categoria_codice: string | null;
+  categoria_descrizione: string | null;
+  pd: number | null;
+  trend_codice: string | null;
+  trend_descrizione: string | null;
+};
+
+export function normalizzaScoreCerved(risposta: unknown): ScoreCerved[] {
+  const lista = obj(risposta).scores;
+  if (!Array.isArray(lista)) return [];
+  return lista.map((x) => {
+    const s = obj(x);
+    return {
+      codice_score: testo(s.codice_score),
+      descrizione_score: testo(s.descrizione_score),
+      valore: numero(s.valore),
+      categoria_codice: testo(s.categoria_codice),
+      categoria_descrizione: testo(s.categoria_descrizione),
+      pd: numero(s.pd),
+      trend_codice: testo(s.trend_codice),
+      trend_descrizione: testo(s.trend_descrizione),
+    };
+  });
 }

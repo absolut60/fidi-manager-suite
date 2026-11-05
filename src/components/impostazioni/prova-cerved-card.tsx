@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type React from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation } from "@tanstack/react-query";
 import { Search } from "lucide-react";
@@ -10,12 +11,30 @@ import { Button } from "@/components/ui/button";
 
 const siNo = (v: boolean | null) => (v == null ? null : v ? "Sì" : "No");
 
-/** Data in gg/mm/aaaa; se Cerved la manda in un formato non riconosciuto, la lasciamo com'è. */
-function dataIt(v: string | null): string | null {
-  if (!v) return null;
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return v;
-  return d.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" });
+/** Euro all'italiana senza decimali (es. 2.500.000 €). */
+const euro = (n: number | null) =>
+  n == null ? null : `${new Intl.NumberFormat("it-IT", { maximumFractionDigits: 0 }).format(n)} €`;
+
+/** Colore della categoria del semaforo Cerved, se riconoscibile. */
+function coloreSemaforo(cat: string | null): string | null {
+  const c = (cat ?? "").toLowerCase();
+  if (/verde|green/.test(c)) return "bg-success text-success-foreground";
+  if (/giall|yellow/.test(c)) return "bg-warning text-warning-foreground";
+  if (/ross|red/.test(c)) return "bg-destructive text-destructive-foreground";
+  return null;
+}
+
+function Righe({ righe }: { righe: [string, React.ReactNode][] }) {
+  return (
+    <dl className="grid grid-cols-1 sm:grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 pt-1">
+      {righe.map(([k, v]) => (
+        <div key={k} className="contents">
+          <dt className="text-muted-foreground">{k}</dt>
+          <dd className="break-words">{v ?? "—"}</dd>
+        </div>
+      ))}
+    </dl>
+  );
 }
 
 /** "MAGENTA (MI)"; se manca uno dei due, mostra quello che c'è. */
@@ -44,7 +63,7 @@ export function ProvaCervedCard() {
 
   const ateco = a ? [a.ateco_2025_codice, a.ateco_2025_descrizione].filter(Boolean).join(" — ") || null : null;
 
-  const rea = a ? [a.rea, a.data_iscrizione_rea && `iscrizione ${dataIt(a.data_iscrizione_rea)}`].filter(Boolean).join(" · ") || null : null;
+  const rea = a ? [a.rea, a.data_iscrizione_rea && `iscrizione ${a.data_iscrizione_rea}`].filter(Boolean).join(" · ") || null : null;
 
   const sede = a?.sede
     ? [a.sede.indirizzo, a.sede.cap, comuneProvincia(a.sede.comune, a.sede.provincia)]
@@ -66,6 +85,33 @@ export function ProvaCervedCard() {
         ["Pubblica amministrazione", siNo(a.ente_pa)],
       ]
     : [];
+
+  const p = r?.profilo?.dati ?? null;
+  const righeProfilo: [string, React.ReactNode][] = p
+    ? [
+        ["Telefono", p.telefono],
+        ["Sito web", p.sito_web],
+        ["PEC", p.pec.length ? p.pec.join(", ") : null],
+        ["Costituzione", p.data_costituzione],
+        ["Inizio attività", p.data_inizio_attivita],
+        ["Stato attività", [p.stato_attivita_descrizione ?? p.stato_attivita_codice, p.data_stato_attivita && `dal ${p.data_stato_attivita}`].filter(Boolean).join(" ") || null],
+        ["Macrosettore", p.macrosettore],
+        ["Gruppo", p.gruppo == null ? null : p.gruppo ? (p.capogruppo.length ? `Sì · capogruppo: ${p.capogruppo.join(", ")}` : "Sì") : "No"],
+        ["Rating legalità", p.rating_legalita],
+        ["Dipendenti", p.dipendenti == null ? null : `${p.dipendenti.toLocaleString("it-IT")}${p.dipendenti_anno ? ` (${p.dipendenti_anno})` : ""}`],
+        ["Unità locali", p.unita_locali == null ? null : p.unita_locali.toLocaleString("it-IT")],
+        ["Ultimo bilancio", p.anno_ultimo_bilancio],
+        ["Capitale sociale", euro(p.capitale_sociale)],
+        ["Fatturato", euro(p.fatturato)],
+        ["MOL", euro(p.mol)],
+        ["Attivo", euro(p.attivo)],
+        ["Patrimonio netto", euro(p.patrimonio_netto)],
+        ["Utile/perdita", p.utile_perdita_esercizio == null ? null : (
+          <span className={p.utile_perdita_esercizio < 0 ? "text-destructive font-medium" : undefined}>{euro(p.utile_perdita_esercizio)}</span>
+        )],
+      ]
+    : [];
+  const scores = r?.score?.dati ?? [];
 
   return (
     <Card className="p-4 sm:p-5 max-w-2xl">
@@ -96,15 +142,45 @@ export function ProvaCervedCard() {
           {r.errore && <p className="text-destructive break-words">{r.errore}</p>}
           {r.esito === "ok" && <p><span className="text-muted-foreground">Aziende trovate:</span> {r.numero_aziende}</p>}
           {r.cliente_trovato && <p className="text-muted-foreground">Cliente presente in anagrafica: collegato al registro.</p>}
-          {righe.length > 0 && (
-            <dl className="grid grid-cols-1 sm:grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 pt-1">
-              {righe.map(([k, v]) => (
-                <div key={k} className="contents">
-                  <dt className="text-muted-foreground">{k}</dt>
-                  <dd className="break-words">{v ?? "—"}</dd>
-                </div>
-              ))}
-            </dl>
+          {righe.length > 0 && <Righe righe={righe} />}
+        </div>
+      )}
+      {r?.profilo && (
+        <div className="mt-3 rounded-md border p-3 text-sm">
+          <h3 className="font-medium">Profilo</h3>
+          {r.profilo.errore ? <p className="text-destructive break-words">{r.profilo.errore}</p> : <Righe righe={righeProfilo} />}
+        </div>
+      )}
+      {r?.score && (
+        <div className="mt-3 rounded-md border p-3 text-sm">
+          <h3 className="font-medium mb-1">Score Cerved</h3>
+          {r.score.errore ? (
+            <p className="text-destructive break-words">{r.score.errore}</p>
+          ) : scores.length === 0 ? (
+            <p className="text-muted-foreground">Nessuno score restituito.</p>
+          ) : (
+            <ul className="divide-y">
+              {scores.map((s, i) => {
+                const sem = s.codice_score === "SEM_CGS";
+                const colore = sem ? coloreSemaforo(s.categoria_descrizione ?? s.categoria_codice) : null;
+                const categoria = s.categoria_descrizione ?? s.categoria_codice;
+                return (
+                  <li key={`${s.codice_score}-${i}`} className={sem ? "py-2 font-medium" : "py-2"}>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="min-w-0 break-words">{s.descrizione_score ?? s.codice_score ?? "—"}</span>
+                      {s.valore != null && <span className="shrink-0 tabular-nums">{s.valore.toLocaleString("it-IT")}/100</span>}
+                      {categoria && (colore
+                        ? <span className={`shrink-0 rounded px-2 py-0.5 text-xs ${colore}`}>{categoria}</span>
+                        : <span className="shrink-0 text-muted-foreground">{categoria}</span>)}
+                    </div>
+                    <div className="text-xs text-muted-foreground font-normal">
+                      {[s.pd != null && `Prob. insolvenza ${(s.pd * (s.pd <= 1 ? 100 : 1)).toLocaleString("it-IT", { maximumFractionDigits: 2 })}%`,
+                        (s.trend_descrizione ?? s.trend_codice) && `Trend: ${s.trend_descrizione ?? s.trend_codice}`].filter(Boolean).join(" · ") || "—"}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </div>
       )}
