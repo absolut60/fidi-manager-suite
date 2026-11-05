@@ -97,7 +97,7 @@ test('elemento vuoto o mancante non esplode', () => {
 });
 
 import { normalizzaProfiloCerved, normalizzaScoreCerved } from '../src/lib/cerved/cerved.server';
-test('profilo: importi di bilancio da migliaia a euro, date grezze', () => {
+test('profilo: importi di bilancio da migliaia a euro, date GG/MM/AAAA', () => {
   const p = normalizzaProfiloCerved({
     dati_anagrafici: { pec: { email: ['a@pec.it'] } },
     dati_attivita: { data_costituzione: '05-01-2007' },
@@ -106,7 +106,7 @@ test('profilo: importi di bilancio da migliaia a euro, date grezze', () => {
   expect(p.fatturato).toBe(2500000);
   expect(p.utile_perdita_esercizio).toBe(-12000);
   expect(p.capitale_sociale).toBe(10000);
-  expect(p.data_costituzione).toBe('05-01-2007');
+  expect(p.data_costituzione).toBe('05/01/2007');
   expect(p.pec).toEqual(['a@pec.it']);
 });
 test('score: legge scores[]', () => {
