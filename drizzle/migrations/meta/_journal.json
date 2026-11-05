@@ -1037,6 +1037,13 @@
       "when": 1793890832462,
       "tag": "0147_fm57_cerved_chiamate",
       "breakpoints": true
+    },
+    {
+      "idx": 148,
+      "version": "7",
+      "when": 1793894967329,
+      "tag": "0148_fm57_cerved_soggetti_fotografie",
+      "breakpoints": true
     }
   ]
 }

@@ -88,3 +88,9 @@ Estratto dal knowledge di progetto il 08/10/2026 (sessione 40). Si aggiorna modi
 - Fonte unica schermo: `src/lib/permessi-showroom.ts` (`isSoloShowroom`, gemello SQL `public.auth_solo_showroom()`; menu `voceMenuVisibileShowroom`; `puoModificareAttivitaCommerciale`, `puoModificareContattoClienteShowroom`, `erroreSedeObbligatoria`). Hook: `src/hooks/use-solo-showroom.ts`. Nessun controllo "showroom" sparso.
 - Showroom vede l'area fidi (`RUOLI_VEDONO_FIDI`) ma non propone; accede ai lead (`puoAccedereLead`) ma non li gestisce; `tipiAzioneConsentiti` restituisce `[]` (recupero in sola lettura).
 - Nella scheda Commerciale lo showroom ha "Registra attività" al posto di "Nuova opportunità".
+
+## Cerved (FM57)
+
+- Chi può collegare/aggiornare Cerved: fonte unica `puoAggiornareCerved` (`src/lib/permessi-cerved.ts`, ruoli amministratore, amministrazione, recupero_crediti), gemello SQL `public.auth_puo_aggiornare_cerved()`.
+- `cerved_soggetti` (collegamento cliente ↔ soggetto) e `cerved_fotografie` (dati datati, solo in aggiunta): lettura per chi vede il cliente (stesso schema di `scadenze`), scrittura solo dal server con service_role; RESTRICTIVE "Secondo fattore (FM44)". Nessun accesso anon.
+- Unico punto che parla con Cerved: `src/lib/cerved/cerved.server.ts`. Mai chiamare l'endpoint di acquisto senza decisione del proprietario.

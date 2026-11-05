@@ -1893,6 +1893,109 @@ export type Database = {
           },
         ]
       }
+      cerved_fotografie: {
+        Row: {
+          chiamata_id: string | null
+          cliente_id: string
+          dati: Json
+          id: string
+          id_soggetto: number
+          letta_da: string | null
+          letta_il: string
+          tipo: string
+        }
+        Insert: {
+          chiamata_id?: string | null
+          cliente_id: string
+          dati: Json
+          id?: string
+          id_soggetto: number
+          letta_da?: string | null
+          letta_il?: string
+          tipo: string
+        }
+        Update: {
+          chiamata_id?: string | null
+          cliente_id?: string
+          dati?: Json
+          id?: string
+          id_soggetto?: number
+          letta_da?: string | null
+          letta_il?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cerved_fotografie_chiamata_id_fkey"
+            columns: ["chiamata_id"]
+            isOneToOne: false
+            referencedRelation: "cerved_chiamate"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cerved_fotografie_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cerved_fotografie_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+        ]
+      }
+      cerved_soggetti: {
+        Row: {
+          aggiornato_da: string | null
+          cliente_id: string
+          collegato_da: string | null
+          collegato_il: string
+          denominazione_cerved: string | null
+          id_soggetto: number
+          partita_iva: string | null
+          ultimo_aggiornamento: string | null
+        }
+        Insert: {
+          aggiornato_da?: string | null
+          cliente_id: string
+          collegato_da?: string | null
+          collegato_il?: string
+          denominazione_cerved?: string | null
+          id_soggetto: number
+          partita_iva?: string | null
+          ultimo_aggiornamento?: string | null
+        }
+        Update: {
+          aggiornato_da?: string | null
+          cliente_id?: string
+          collegato_da?: string | null
+          collegato_il?: string
+          denominazione_cerved?: string | null
+          id_soggetto?: number
+          partita_iva?: string | null
+          ultimo_aggiornamento?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cerved_soggetti_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: true
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cerved_soggetti_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: true
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+        ]
+      }
       clienti: {
         Row: {
           a_scadere: number | null
@@ -6961,6 +7064,7 @@ export type Database = {
       auth_ha_ruolo_globale_clienti: { Args: never; Returns: boolean }
       auth_mfa_ok: { Args: never; Returns: boolean }
       auth_puo_accedere_marketing: { Args: never; Returns: boolean }
+      auth_puo_aggiornare_cerved: { Args: never; Returns: boolean }
       auth_puo_eliminare_contatti_clienti: { Args: never; Returns: boolean }
       auth_puo_gestire_anagrafiche_prev: { Args: never; Returns: boolean }
       auth_puo_gestire_legale: { Args: never; Returns: boolean }
