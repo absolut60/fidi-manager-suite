@@ -108,3 +108,9 @@ Le azioni multiple su `richieste_fido` passano dall'helper a blocchi `src/lib/ri
 
 ### Fidi approvati in attesa di Gamma (FM55 fetta 9)
 Fonte unica SQL `public.fidi_approvati_in_attesa_gamma(_cliente_ids)` (lettore TS `fetchFidiInAttesaGamma` in `src/lib/fido-teorico.ts`): ultima richiesta approvata con importo e `data_export`, importo ≠ `clienti.fido_gestionale`, nessuna variazione di `fido_gestionale` in `audit_log` dopo l'export. Massiva: motivo nascosto `in_attesa_gamma` (proposta-fido-visibilita); Alert fidi: badge e nessuna proposta; scheda cliente: riga informativa.
+
+### Dashboard fidi: gruppi delle card (FM56)
+Fonte unica SQL `public.dashboard_fidi_clienti_base()` (una riga per cliente, visibilità `store_id_effettivo(NULL)`) e `public.dashboard_fidi_appartenenze()` (abbinamenti cliente-card-gruppo), usate sia da `get_dashboard_fidi_gruppi()` (aggregati) sia da `get_clienti_dashboard_fidi_ids(_card,_gruppo)` (liste): conteggio card = righe della lista.
+- Categoria unica per cliente: legale > bloccati > contanti_pos (`pagamento_immediato`) > privati (senza partita IVA, esclusa Sede Centrale) > imprese.
+- `oltre_fido` = rischio − fido concesso, solo clienti attivi, ordini aperti esclusi.
+- "Fidi da tenere d'occhio" (vicini al limite, compra più del solito, ordini oltre il fido): solo categoria `imprese` E `regola_applicata` NON in (`sede_esclusa`, `esclusa_gruppo`) — Sede Centrale e società del gruppo sono fuori dal giro fidi come negli Alert fidi (FM56 fetta 1-bis).
