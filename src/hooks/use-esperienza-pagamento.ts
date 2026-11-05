@@ -13,6 +13,9 @@ export type EsperienzaPagamento = {
   nInRitardo12m: number;
   ritardoMedioRitardi: number | null;
   tolleranza: number;
+  nPagate12m: number;
+  ritardoMedio12m: number | null;
+  ritardoMedioRitardi12m: number | null;
 };
 
 export function useEsperienzaPagamentoCliente(clienteId: string | null | undefined) {
@@ -37,6 +40,9 @@ export function useEsperienzaPagamentoCliente(clienteId: string | null | undefin
         nInRitardo12m: Number(row.n_in_ritardo_12m ?? 0),
         ritardoMedioRitardi: row.ritardo_medio_ritardi_gg != null ? Number(row.ritardo_medio_ritardi_gg) : null,
         tolleranza: Number(row.tolleranza_gg ?? 5),
+        nPagate12m: Number(row.n_pagate_12m ?? 0),
+        ritardoMedio12m: row.ritardo_medio_12m != null ? Number(row.ritardo_medio_12m) : null,
+        ritardoMedioRitardi12m: row.ritardo_medio_ritardi_12m != null ? Number(row.ritardo_medio_ritardi_12m) : null,
       };
     },
   });
@@ -45,17 +51,18 @@ export function useEsperienzaPagamentoCliente(clienteId: string | null | undefin
 /** Testi formattati della cella "Pagate in ritardo" (lo stile lo decide la pagina). */
 export function testiPagateInRitardo(esp: EsperienzaPagamento | null | undefined) {
   const label = "Pagate in ritardo";
-  if (!esp) return { label, valore: "—", dettaglio: undefined, titolo: undefined, inRitardo: false };
-  const titolo = `Scadenze pagate oltre ${esp.tolleranza} giorni dalla scadenza (bonifici e altri pagamenti non RiBa; le RiBa non pagate sono negli insoluti), su tutto lo storico disponibile`;
-  if (esp.nPagate === 0) return { label, valore: "Nessun pagamento non RiBa", dettaglio: undefined, titolo, inRitardo: false };
-  const media = esp.ritardoMedioRitardi != null
-    ? ` · media +${esp.ritardoMedioRitardi.toLocaleString("it-IT", { maximumFractionDigits: 1 })} gg`
-    : "";
+  if (!esp) return { label, valore: "—", dettaglio: undefined as string | undefined, titolo: undefined as string | undefined, inRitardo: false };
+  const titolo = `In ritardo = pagate oltre ${esp.tolleranza} giorni dalla scadenza. Il ritardo medio conta tutte le pagate degli ultimi 12 mesi (quelle puntuali valgono zero). Escluse RiBa (le non pagate sono negli insoluti) e anticipi.`;
+  const storico = `storico ${esp.nInRitardo} su ${esp.nPagate}`;
+  if (esp.nPagate === 0) return { label, valore: "Nessun pagamento non RiBa", dettaglio: undefined as string | undefined, titolo, inRitardo: false };
+  if (esp.nPagate12m === 0) {
+    return { label, valore: "Nessun pagamento negli ultimi 12 mesi", dettaglio: `${storico} in ritardo`, titolo, inRitardo: esp.nInRitardo12m > 0 };
+  }
   return {
     label,
-    valore: `${esp.nInRitardo} su ${esp.nPagate}`,
-    dettaglio: `${esp.nInRitardo12m} negli ultimi 12 mesi${media}`,
+    valore: `${esp.nInRitardo12m} su ${esp.nPagate12m} negli ultimi 12 mesi`,
+    dettaglio: `ritardo medio ${Math.round(esp.ritardoMedio12m ?? 0)} gg · ${storico}`,
     titolo,
-    inRitardo: esp.nInRitardo > 0,
+    inRitardo: esp.nInRitardo12m > 0,
   };
 }
