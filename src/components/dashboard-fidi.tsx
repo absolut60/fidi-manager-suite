@@ -108,9 +108,9 @@ export function DashboardFidi() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Card key={i} className="p-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Card key={i} className="p-3 xl:p-4">
             <Skeleton className="h-4 w-28 mb-3" />
             <Skeleton className="h-8 w-40" />
           </Card>
@@ -140,12 +140,11 @@ export function DashboardFidi() {
     const r = riga(G, card, gruppo);
     return { card, gruppo, etichetta: etichettaRiga(card, gruppo), valore: pronto ? valore(r) : "…", ...extra };
   };
-  const nEuro = (r: RigaGruppo) => `${numero(r.n_clienti)} clienti · ${euro(r.importo)}`;
+  const nEuro = (r: RigaGruppo) => `${numero(r.n_clienti)} · ${euro(r.importo)}`;
   const segno = (v: number) => `${v >= 0 ? "+" : "−"}${euro(Math.abs(v))}`;
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 items-stretch gap-3">
         <CardRighe
           titolo="Fido concesso"
           valore={euro(data.fido_concesso_eur)}
@@ -174,9 +173,6 @@ export function DashboardFidi() {
           }))}
           link={{ testo: `${numero(data.da_verificare_n)} posizioni da verificare`, to: "/clienti", search: { preset: "da_verificare" } }}
         />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
         <CardRighe
           titolo="Esposizione oltre il fido"
           valore={pronto ? euro(oltreTot.importo) : "…"}
@@ -186,13 +182,13 @@ export function DashboardFidi() {
           righe={CATEGORIE_OLTRE.map((g) => rigaCat("oltre", g, nEuro))}
           righeSotto={[rigaCat("oltre", "contanti_pos", nEuro, { attenuata: true })]}
         />
-        <Riquadro
-          compatto
+        <CardRighe
           titolo="Insoluti in corso"
           valore={euro(data.insoluti_eur)}
           sottotitolo={`${numero(data.insoluti_n)} clienti · ${numero(data.insoluti_non_bloccati_n)} non bloccati (sotto trattativa)`}
           icona={CircleAlert}
           tono="danger"
+          righe={[]}
           cardLink={{ to: "/clienti", search: { preset: "insoluti" } }}
           nota="Vedi i clienti con insoluti"
         />
@@ -202,15 +198,15 @@ export function DashboardFidi() {
           sottotitolo="Comprano nel 2026, nessun acquisto negli ultimi 3 mesi"
           icona={PauseCircle}
           tono="info"
-          righe={(["imprese", "privati"] as const).map((g) => rigaCat("fermi", g, (r) => `${numero(r.n_clienti)} · fido non usato ${euro(r.importo)}`))}
+          righe={(["imprese", "privati"] as const).map((g) => rigaCat("fermi", g, (r) => `${numero(r.n_clienti)} · ${euro(r.importo)} non usati`))}
         />
-        <Riquadro
-          compatto
+        <CardRighe
           titolo="Scaduto totale"
           valore={euro(data.scaduto_eur)}
           sottotitolo={`di cui oltre 60 giorni: ${euro(data.scaduto_over60_eur)}`}
           icona={Clock}
           tono="warning"
+          righe={[]}
           cardLink={{ to: "/scadenziario" }}
           nota="Vedi lo scadenzario"
           notaExtra="Coerente con lo scadenziario (esclude BOS e gestione legale)"
@@ -227,7 +223,6 @@ export function DashboardFidi() {
           link={{ testo: "Vai agli Alert fidi", to: "/alert-fidi" }}
         />
       </div>
-    </div>
   );
 }
 
@@ -250,19 +245,19 @@ function RigaCard({ card, gruppo, etichetta, valore, dettaglio, attenuata }: Rig
       to="/clienti"
       search={linkLista(card, gruppo) as any}
       aria-label={`Apri la lista: ${etichetta}`}
-      className={`flex min-h-10 sm:min-h-8 items-center justify-between gap-3 rounded-md px-2 -mx-2 text-sm cursor-pointer hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${attenuata ? "text-muted-foreground" : "text-foreground"}`}
+      className={`grid grid-cols-1 @min-[260px]:grid-cols-[minmax(0,1fr)_auto] min-h-9 sm:min-h-6 items-center gap-x-2 gap-y-0.5 rounded-md px-1 -mx-1 py-1 sm:py-0.5 text-xs cursor-pointer hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${attenuata ? "text-muted-foreground" : "text-foreground"}`}
     >
       <span className="min-w-0 break-words">{etichetta}</span>
-      <span className="shrink-0 text-right tabular-nums">
+      <span className="shrink-0 whitespace-nowrap text-right tabular-nums">
         {valore}
-        {dettaglio && <span className="ml-2 text-xs text-muted-foreground">{dettaglio}</span>}
+        {dettaglio && <span className="block text-xs sm:text-[11px] text-muted-foreground">{dettaglio}</span>}
       </span>
     </Link>
   );
 }
 
 function CardRighe({
-  titolo, valore, sottotitolo, icona: Icon, tono, righe, righeSotto, link, nota, valoreLink,
+  titolo, valore, sottotitolo, icona: Icon, tono, righe, righeSotto, link, nota, valoreLink, cardLink, notaExtra,
 }: {
   titolo: string;
   valore: string;
@@ -274,6 +269,8 @@ function CardRighe({
   link?: { testo: string; to: string; search?: Record<string, string> };
   nota?: string;
   valoreLink?: { card: string; gruppo: string };
+  cardLink?: { to: string; search?: Record<string, string> };
+  notaExtra?: string;
 }) {
   const toneClass = {
     primary: "bg-primary/10 text-primary",
@@ -282,34 +279,35 @@ function CardRighe({
     info: "bg-info/15 text-info",
     danger: "bg-destructive/10 text-destructive",
   }[tono];
-  const numeroGrande = <p className="text-2xl font-bold text-foreground tabular-nums break-words">{valore}</p>;
-  return (
-    <Card className="p-4 sm:p-5 space-y-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="space-y-1 min-w-0">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{titolo}</p>
+  const numeroGrande = <p className="text-xl font-bold text-foreground tabular-nums break-words">{valore}</p>;
+  const content = (
+    <div className="space-y-2">
+      <div className="space-y-1 min-w-0">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
+          <p className="min-w-0 break-words text-xs font-medium text-muted-foreground uppercase">{titolo}</p>
+          <div className={`size-8 shrink-0 rounded-md flex items-center justify-center ${toneClass}`}>
+            <Icon className="size-4" />
+          </div>
+        </div>
           {valoreLink ? (
             <Link to="/clienti" search={linkLista(valoreLink.card, valoreLink.gruppo) as any} className="block cursor-pointer hover:underline">
               {numeroGrande}
             </Link>
           ) : numeroGrande}
           {sottotitolo && <p className="text-xs text-muted-foreground">{sottotitolo}</p>}
-        </div>
-        <div className={`size-10 shrink-0 rounded-lg flex items-center justify-center ${toneClass}`}>
-          <Icon className="size-5" />
-        </div>
       </div>
-      <div className="space-y-0.5">
+      <div>
         {righe.map((r) => <RigaCard key={r.gruppo} {...r} />)}
       </div>
       {righeSotto && righeSotto.length > 0 && (
-        <div className="border-t pt-2 space-y-0.5">
+        <div className="border-t pt-1">
           {righeSotto.map((r) => <RigaCard key={r.gruppo} {...r} />)}
         </div>
       )}
-      {(nota || link) && (
+      {(nota || link || notaExtra) && (
         <div className="space-y-1">
           {nota && <p className="text-xs text-muted-foreground">{nota}</p>}
+          {notaExtra && <p className="text-xs text-muted-foreground">{notaExtra}</p>}
           {link && (
             <Link to={link.to as any} search={link.search as any} className="inline-flex min-h-10 sm:min-h-0 items-center text-xs font-medium text-primary hover:underline">
               {link.testo}
@@ -317,75 +315,10 @@ function CardRighe({
           )}
         </div>
       )}
-    </Card>
-  );
-}
-
-function Riquadro({
-  titolo,
-  valore,
-  sottotitolo,
-  icona: Icon,
-  tono,
-  nota,
-  notaLink,
-  notaExtra,
-  cardLink,
-  compatto,
-  righe,
-}: {
-  titolo: string;
-  valore: string;
-  sottotitolo?: string;
-  icona: LucideIcon;
-  tono: "primary" | "success" | "warning" | "info" | "danger";
-  nota?: string;
-  notaLink?: { to: string; search: Record<string, string> };
-  notaExtra?: string;
-  cardLink?: { to: string; search?: Record<string, string> };
-  compatto?: boolean;
-  righe?: string[];
-}) {
-  const toneClass = {
-    primary: "bg-primary/10 text-primary",
-    success: "bg-success/15 text-success",
-    warning: "bg-warning/15 text-warning",
-    info: "bg-info/15 text-info",
-    danger: "bg-destructive/10 text-destructive",
-  }[tono];
-
-  const content = (
-    <div className="flex items-start justify-between gap-3">
-      <div className="space-y-1 min-w-0">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{titolo}</p>
-        <p className={`font-bold text-foreground ${compatto ? "text-xl" : "text-2xl"}`}>{valore}</p>
-        {sottotitolo && <p className="text-xs text-muted-foreground">{sottotitolo}</p>}
-        {righe?.map((r) => <p key={r} className="text-xs text-muted-foreground">{r}</p>)}
-        {nota && (
-          cardLink ? (
-            <p className="text-xs text-muted-foreground">{nota}</p>
-          ) : notaLink ? (
-            <Link
-              to={notaLink.to as any}
-              search={notaLink.search as any}
-              className="inline-block text-xs font-medium text-primary hover:underline"
-            >
-              {nota}
-            </Link>
-          ) : (
-            <p className="text-xs text-muted-foreground">{nota}</p>
-          )
-        )}
-        {notaExtra && <p className="text-xs text-muted-foreground">{notaExtra}</p>}
-      </div>
-      <div className={`size-10 shrink-0 rounded-lg flex items-center justify-center ${toneClass}`}>
-        <Icon className="size-5" />
-      </div>
     </div>
   );
-
   return (
-    <Card className={`${compatto ? "p-4" : "p-5"} ${cardLink ? "hover:shadow-md transition-shadow" : ""}`}>
+    <Card className={`@container min-w-0 p-3 xl:p-4 ${cardLink ? "hover:shadow-md transition-shadow" : ""}`}>
       {cardLink ? (
         <Link
           to={cardLink.to as any}
