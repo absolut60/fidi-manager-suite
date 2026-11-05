@@ -92,9 +92,22 @@ export function scalaScore(codice_score: string | null | undefined): string[] | 
   return SCALE_SCORE_CERVED[(codice_score ?? "").trim().toUpperCase()] ?? null;
 }
 
-export function esitoValutazione(livello: number | null | undefined): "ottimo" | "attenzione" | null {
-  if (livello == null || !Number.isFinite(livello) || livello < 1) return null;
-  return livello === 1 ? "ottimo" : "attenzione";
+export type EsitoScore = "verde" | "ambra" | "rosso" | "neutro";
+
+export const sigleEcofin = ["S1", "S2", "S3", "S4", "V1", "V2", "R1", "R2", "R3", "R4"] as const;
+
+/** Fasce colore per score Cerved (livello da categoria_codice, es. "PAY_3"). */
+export function esitoScore(codice_score: string | null | undefined, categoria_codice: string | null | undefined): EsitoScore {
+  const liv = livelloCategoria(categoria_codice);
+  if (liv == null) return "neutro";
+  switch ((codice_score ?? "").trim().toUpperCase()) {
+    case "PAY": return liv <= 2 ? "verde" : liv === 3 ? "ambra" : "rosso";
+    case "NEG": return liv === 1 ? "verde" : liv <= 3 ? "ambra" : "rosso";
+    case "GOV": return liv === 1 ? "verde" : liv === 2 ? "ambra" : "neutro";
+    case "ECOFIN": return liv <= 4 ? "verde" : liv <= 6 ? "ambra" : liv <= 10 ? "rosso" : "neutro";
+    case "CNSL": return liv === 1 ? "verde" : liv === 2 ? "ambra" : "rosso";
+    default: return "neutro";
+  }
 }
 
 /** 2419063 → "2,42 mln €"; 519363 → "519 mila €"; sotto 1.000 il valore intero. */

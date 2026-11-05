@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { etichettaScoreCerved, coloreSemaforo, statoAttivitaAnomalo, formattaPdCerved, formattaAggiornatoIl, livelloCategoria, scalaScore, esitoValutazione, formattaEuroCompatto, variazionePercentuale } from "@/lib/cerved-presentazione";
+import { etichettaScoreCerved, coloreSemaforo, statoAttivitaAnomalo, formattaPdCerved, formattaAggiornatoIl, livelloCategoria, scalaScore, esitoScore, sigleEcofin, formattaEuroCompatto, variazionePercentuale } from "@/lib/cerved-presentazione";
 
 describe("cerved-presentazione", () => {
   it("etichette semplici e fallback alla descrizione", () => {
@@ -41,10 +41,30 @@ describe("cerved-presentazione", () => {
     expect(scalaScore("CNSL")).toBeNull();
     expect(scalaScore("ZZZ")).toBeNull();
   });
-  it("esito valutazione", () => {
-    expect(esitoValutazione(1)).toBe("ottimo");
-    expect(esitoValutazione(3)).toBe("attenzione");
-    expect(esitoValutazione(null)).toBeNull();
+  it("esitoScore: fasce per score", () => {
+    expect(esitoScore("PAY", "PAY_2")).toBe("verde");
+    expect(esitoScore("PAY", "PAY_3")).toBe("ambra");
+    expect(esitoScore("PAY", "PAY_4")).toBe("rosso");
+    expect(esitoScore("NEG", "NEG_1")).toBe("verde");
+    expect(esitoScore("NEG", "NEG_3")).toBe("ambra");
+    expect(esitoScore("NEG", "NEG_5")).toBe("rosso");
+    expect(esitoScore("GOV", "GOV_1")).toBe("verde");
+    expect(esitoScore("GOV", "GOV_2")).toBe("ambra");
+    expect(esitoScore("ECOFIN", "ECOFIN_4")).toBe("verde");
+    expect(esitoScore("ECOFIN", "ECOFIN_6")).toBe("ambra");
+    expect(esitoScore("ECOFIN", "ECOFIN_7")).toBe("rosso");
+    expect(esitoScore("ECOFIN", "ECOFIN_10")).toBe("rosso");
+    expect(esitoScore("CNSL", "CNSL_1")).toBe("verde");
+    expect(esitoScore("CNSL", "CNSL_2")).toBe("ambra");
+    expect(esitoScore("CNSL", "CNSL_3")).toBe("rosso");
+    expect(esitoScore("IMMO", "IMMO_1")).toBe("neutro");
+    expect(esitoScore("ZZZ", "ZZZ_1")).toBe("neutro");
+    expect(esitoScore("PAY", null)).toBe("neutro");
+  });
+  it("sigle ECOFIN", () => {
+    expect(sigleEcofin).toHaveLength(10);
+    expect(sigleEcofin[0]).toBe("S1");
+    expect(sigleEcofin[9]).toBe("R4");
   });
   it("euro compatto", () => {
     expect(formattaEuroCompatto(2419063)).toBe("2,42 mln €");
