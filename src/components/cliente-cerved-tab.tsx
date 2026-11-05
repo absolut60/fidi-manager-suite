@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Loader2, RefreshCw, Link2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Loader2, RefreshCw, Link2, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useNomiUtentiQuery, formatNomeUtente } from "@/hooks/use-nomi-utenti";
@@ -10,15 +10,14 @@ import { puoAggiornareCerved } from "@/lib/permessi-cerved";
 import { aggiornaCervedCliente } from "@/lib/cerved/cerved-cliente.functions";
 import { formatEuro } from "@/lib/fidi";
 import {
-  ALTRI_SCORE_CERVED, coloreSemaforo, etichettaScoreCerved, formattaAggiornatoIl,
-  formattaPdCerved, statoAttivitaAnomalo, trovaScore, type ScoreCervedVista,
-  livelloCategoria, scalaScore, esitoValutazione, formattaEuroCompatto, variazionePercentuale,
+  coloreSemaforo, formattaAggiornatoIl, formattaPdCerved, statoAttivitaAnomalo, trovaScore,
+  type ScoreCervedVista, type EsitoScore, livelloCategoria, esitoScore, sigleEcofin,
+  formattaEuroCompatto, variazionePercentuale,
 } from "@/lib/cerved-presentazione";
 import { useEsperienzaPagamentoCliente, testiPagateInRitardo } from "@/hooks/use-esperienza-pagamento";
 import { SemaforoAffidabilitaBadge } from "@/components/pannello-rischio-cliente";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -94,7 +93,7 @@ function Riquadro({ children }: { children: React.ReactNode }) {
   return <Card className="max-w-2xl"><CardContent className="p-4">{children}</CardContent></Card>;
 }
 
-/** Parte solo presentazionale (riusabile con dati finti). */
+/** Parte solo presentazionale (riusabile con dati finti). Impianto della prima pagina del Light Report. */
 export function VistaCerved({ dati, clienteId, fidoMade, puoAggiornare, inCorso, onAggiorna }: {
   dati: DatiCervedCliente; clienteId: string; fidoMade: number | null | undefined; puoAggiornare: boolean;
   inCorso: boolean; onAggiorna: () => void;
@@ -105,7 +104,7 @@ export function VistaCerved({ dati, clienteId, fidoMade, puoAggiornare, inCorso,
 
   const pulsante = puoAggiornare ? (
     <>
-      <Button size="sm" className="min-h-10 shrink-0" onClick={() => setConferma(true)} disabled={inCorso}>
+      <Button size="sm" className="min-h-10 w-full sm:w-auto" onClick={() => setConferma(true)} disabled={inCorso}>
         {inCorso ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : collegato ? <RefreshCw className="mr-1 h-4 w-4" /> : <Link2 className="mr-1 h-4 w-4" />}
         {collegato ? "Aggiorna da Cerved" : "Collega a Cerved"}
       </Button>
@@ -148,124 +147,136 @@ export function VistaCerved({ dati, clienteId, fidoMade, puoAggiornare, inCorso,
   const statoDescr = p?.stato_attivita_descrizione ?? r.stato_attivita_descrizione ?? statoCodice;
   const anomalo = statoAttivitaAnomalo(statoCodice);
   const sede = r.sede ? [r.sede.indirizzo, [r.sede.cap, r.sede.comune].filter(Boolean).join(" "), r.sede.provincia ? `(${r.sede.provincia})` : null].filter(Boolean).join(", ") : null;
-
-  const cgs = trovaScore(scores, "CGS");
-  const sem = trovaScore(scores, "SEM_CGS");
-  const colore = coloreSemaforo(sem?.categoria_codice ?? null);
-  const altri = ALTRI_SCORE_CERVED.map((c) => trovaScore(scores, c)).filter((x): x is ScoreCervedVista => !!x);
-
-  const fido = dati.foto.fido;
   const ev = dati.foto.eventi_negativi;
-  const bil = dati.foto.bilancio;
+  const immo = trovaScore(scores, "IMMO");
+  const ecofin = trovaScore(scores, "ECOFIN");
+  const cnsl = trovaScore(scores, "CNSL");
+  const anni: Obj[] = Array.isArray(dati.foto.bilancio?.anni) ? dati.foto.bilancio!.anni : [];
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-3">
-      <Card>
-        <CardContent className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto]">
-          <div className="min-w-0 space-y-1.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="break-words text-base font-semibold sm:text-lg">{s.denominazione_cerved ?? r.denominazione ?? "—"}</h2>
-              {statoDescr && <Badge variant={anomalo ? "destructive" : "secondary"}>{statoDescr}</Badge>}
+      {/* A) Intestazione */}
+      <Card className="rounded-md">
+        <CardContent className="grid grid-cols-1 gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_14rem]">
+          <div className="min-w-0 space-y-3">
+            <div>
+              <h2 className="break-words text-xl font-bold leading-tight sm:text-2xl">{s.denominazione_cerved ?? r.denominazione ?? "—"}</h2>
+              {statoDescr && <p className={`mt-0.5 text-sm font-bold uppercase ${anomalo ? "text-destructive" : ""}`}>{statoDescr}</p>}
             </div>
-            <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-xs sm:grid-cols-2">
-              <Voce k="Forma giuridica" v={[r.forma_giuridica, r.classe_forma_descrizione ? `(${r.classe_forma_descrizione})` : null].filter(Boolean).join(" ") || null} />
-              <Voce k="ATECO 2025" v={[r.ateco_2025_codice, r.ateco_2025_descrizione].filter(Boolean).join(" – ") || null} />
-              <Voce k="REA" v={[r.rea, r.data_iscrizione_rea ? `iscritta il ${r.data_iscrizione_rea}` : null].filter(Boolean).join(" · ") || null} />
-              <Voce k="Sede" v={sede} />
-              <Voce k="PEC" v={p?.pec?.length ? p.pec.join(", ") : null} />
-              <Voce k="Telefono" v={p?.telefono} />
-              <Voce k="Sito" v={p?.sito_web} />
-            </dl>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div className="min-w-0 space-y-2">
+                <Campo k="P.IVA / CF" v={[r.partita_iva ?? s.partita_iva, r.codice_fiscale && r.codice_fiscale !== r.partita_iva ? r.codice_fiscale : null].filter(Boolean).join(" / ") || null} />
+                <Campo k="N. REA" v={r.rea} />
+                <Campo k="Natura giuridica" v={r.forma_giuridica} />
+              </div>
+              <div className="min-w-0 space-y-2">
+                <Campo k="Settore attività" v={[r.ateco_2025_codice, r.ateco_2025_descrizione].filter(Boolean).join(" – ") || null} />
+              </div>
+              <div className="min-w-0 space-y-2">
+                <Campo k="Indirizzo internet" v={p?.sito_web} />
+                <Campo k="Indirizzo" v={sede} />
+                <Campo k="PEC" v={p?.pec?.length ? p.pec.join(", ") : null} />
+                <Campo k="Telefono" v={p?.telefono} />
+              </div>
+            </div>
           </div>
-          <div className="flex flex-col gap-2 sm:items-end">
-            {aggIl && <p className="text-xs text-muted-foreground">Aggiornato il {aggIl}{nomeAgg ? ` da ${nomeAgg}` : ""}</p>}
+          <div className="flex flex-col gap-3 border-t pt-3 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
+            <Campo k="Data aggiornamento" v={aggIl ? `${aggIl}${nomeAgg ? ` da ${nomeAgg}` : ""}` : null} />
+            <Campo k="Codice Cerved" v={s.id_soggetto != null ? String(s.id_soggetto) : null} />
             {pulsante}
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <Box titolo="Affidabilità Cerved">
-          {cgs || sem ? (
-            <div className="grid grid-cols-1 items-center gap-3 sm:grid-cols-[auto_minmax(0,1fr)]">
-              <Semicerchio valore={cgs?.valore ?? null} categoria={cgs?.categoria_descrizione ?? null} />
-              <dl className="space-y-1 text-xs sm:text-sm">
-                <div className="flex items-center gap-2">
-                  <span className={`h-4 w-4 shrink-0 rounded-full ${colore.classe}`} aria-hidden />
-                  <span>Semaforo: <span className="font-medium">{colore.etichetta}</span></span>
-                </div>
-                <Voce k="Probabilità di insolvenza" v={formattaPdCerved(cgs?.pd ?? sem?.pd)} />
-                <Voce k="Andamento" v={cgs?.trend_descrizione ?? sem?.trend_descrizione} />
-              </dl>
+      {/* B) Riga principale */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        <CardScore scores={scores} fido={dati.foto.fido} fidoMade={fidoMade} />
+        <Sezione titolo="Valutazioni parziali">
+          {scores.length ? (
+            <div className="divide-y">
+              {([["NEG", "Eventi negativi"], ["PAY", "Tempi di pagamento"], ["GOV", "Profilo strutturale"]] as const).map(([c, et]) => {
+                const x = trovaScore(scores, c);
+                return (
+                  <div key={c} className="flex items-center justify-between gap-3 py-3">
+                    <span className="min-w-0 text-sm">{et}</span>
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="break-words text-right text-sm font-bold">{x?.categoria_descrizione ?? "Dato non disponibile"}</span>
+                      {x && <Quadratino esito={esitoScore(c, x.categoria_codice)} />}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           ) : <NonDisp />}
-          <div className="mt-3 space-y-1 rounded-md border bg-muted/40 p-3 text-xs sm:text-sm">
-            <RigaValore k="Fido MADE" v={formatEuro(fidoMade ?? 0)} forte />
-            {fido ? (
-              <>
-                <RigaValore k="Fido certificato Cerved" v={euro(fido.fcert?.valore) ?? "Dato non disponibile"} />
-                <RigaValore k="Fido medio accordabile" v={euro(fido.fmed?.valore) ?? "Dato non disponibile"} />
-              </>
-            ) : <p className="text-xs text-muted-foreground">Fido Cerved: servizio non ancora attivo</p>}
-          </div>
-        </Box>
-
-        <Box titolo="Valutazioni">
-          {altri.length ? (
-            <ul className="divide-y">
-              {altri.map((x) => (
-                <li key={x.codice_score}>
-                  <RigaValutazione s={x} />
-                  {x.codice_score?.toUpperCase() === "PAY" && <ComePagaMade clienteId={clienteId} />}
-                </li>
-              ))}
-            </ul>
-          ) : <NonDisp />}
-        </Box>
+          <ComePagaMade clienteId={clienteId} />
+        </Sezione>
       </div>
 
-      <BloccoBilancio bil={bil} profilo={p} />
+      {/* C) Bilancio */}
+      <BloccoBilancio anni={anni} profilo={p} />
 
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <Box titolo="Eventi negativi">
-          {ev?.azienda ? (
-            <div className="space-y-2">
-              <ul className="grid grid-cols-1 gap-x-6 gap-y-1 text-xs sm:grid-cols-2 sm:text-sm">
+      {/* D) Elementi principali */}
+      <Sezione titolo="Elementi principali">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          {(() => {
+            if (!ev?.azienda) return <Elemento k="Eventi negativi su azienda" v="Dato non disponibile" />;
+            const presenti = EVENTI.filter(([k]) => ev.azienda[k] === true).map(([, et]) => et);
+            return <Elemento k="Eventi negativi su azienda" v={presenti.length ? presenti.join(", ") : "Assenti"} tono={presenti.length ? "rosso" : "verde"} />;
+          })()}
+          {(() => {
+            if (!ev) return <Elemento k="Eventi negativi su soggetti relazionati" v="Dato non disponibile" />;
+            const n = (Array.isArray(ev.persone) ? ev.persone : []).filter((pp: Obj) => EVENTI.some(([k]) => pp[k] === true)).length;
+            return <Elemento k="Eventi negativi su soggetti relazionati" v={n ? `${n} ${n === 1 ? "persona" : "persone"}` : "Assenti"} tono={n ? "rosso" : "verde"} />;
+          })()}
+          <Elemento k="Appartenenza a un gruppo" v={p?.gruppo == null ? "—" : p.gruppo ? `Sì${p.capogruppo?.length ? ` – ${p.capogruppo.join(", ")}` : ""}` : "No"} />
+          <Elemento k="N. addetti" v={p?.dipendenti != null ? `${Number(p.dipendenti).toLocaleString("it-IT")}${p.dipendenti_anno ? ` (${p.dipendenti_anno})` : ""}` : "—"} />
+          <Elemento k="Unità locali" v={p?.unita_locali != null ? String(p.unita_locali) : "—"} />
+          <Elemento k="Unità immobiliari" v={immo?.categoria_descrizione ?? "—"} />
+          <Elemento k="Costituita il" v={p?.data_costituzione ?? "—"} />
+          <Elemento k="Pubblica amministrazione" v={r.ente_pa === true ? "Sì" : r.ente_pa === false ? "No" : "—"} />
+        </div>
+      </Sezione>
+
+      {/* E) Altri dati */}
+      <Sezione titolo="Altri dati">
+        <div className="divide-y">
+          <SottoSezione titolo="Solidità economico-finanziaria">
+            {ecofin ? <ScalaEcofin s={ecofin} /> : <NonDisp />}
+          </SottoSezione>
+          <SottoSezione titolo="Debiti e crediti">
+            {anni[0] ? (
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                {VOCI_SECONDARIE.map(([k, et]) => <Cifra key={k} etichetta={et} valore={anni[0][k]} precedente={anni[1]?.[k]} piccola />)}
+              </div>
+            ) : <NonDisp />}
+          </SottoSezione>
+          <SottoSezione titolo="Richieste di informazioni su questa azienda">
+            {cnsl ? (
+              <p className="flex items-center gap-2 text-sm font-bold"><Quadratino esito={esitoScore("CNSL", cnsl.categoria_codice)} /><span className="min-w-0 break-words">{cnsl.categoria_descrizione ?? "—"}</span></p>
+            ) : <NonDisp />}
+          </SottoSezione>
+          <SottoSezione titolo="Dettaglio eventi negativi">
+            {ev?.azienda ? (
+              <ul className="grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-2 lg:grid-cols-3">
                 {EVENTI.map(([k, et]) => {
                   const val = ev.azienda[k];
                   return (
                     <li key={k} className="flex items-center justify-between gap-2">
                       <span className="min-w-0 break-words">{et}</span>
-                      <span className={`shrink-0 font-medium ${val === true ? "text-destructive" : val === false ? "text-success" : "text-muted-foreground"}`}>
+                      <span className={`shrink-0 font-bold ${val === true ? "text-destructive" : val === false ? "text-success" : "text-muted-foreground"}`}>
                         {val === true ? "Presenti" : val === false ? "Assenti" : "—"}
                       </span>
                     </li>
                   );
                 })}
               </ul>
-              {(() => {
-                const n = (Array.isArray(ev.persone) ? ev.persone : []).filter((pp: Obj) => EVENTI.some(([k]) => pp[k] === true)).length;
-                return <p className={`border-t pt-2 text-xs ${n ? "font-medium text-destructive" : "text-muted-foreground"}`}>
-                  {n ? `${n} ${n === 1 ? "persona collegata" : "persone collegate"} con eventi negativi` : "Persone collegate: nessun evento"}
-                </p>;
-              })()}
-            </div>
-          ) : <NonDisp />}
-        </Box>
-
-        <Box titolo="Altre informazioni">
-          {p || r.denominazione ? (
-            <dl className="grid grid-cols-1 gap-1 text-xs sm:grid-cols-2 sm:text-sm">
-              <Voce k="Dipendenti" v={p?.dipendenti != null ? `${p.dipendenti.toLocaleString("it-IT")}${p.dipendenti_anno ? ` (${p.dipendenti_anno})` : ""}` : null} />
-              <Voce k="Unità locali" v={p?.unita_locali != null ? String(p.unita_locali) : null} />
-              <Voce k="Gruppo" v={p?.gruppo == null ? null : p.gruppo ? `Sì${p.capogruppo?.length ? ` – capogruppo ${p.capogruppo.join(", ")}` : ""}` : "No"} />
-              <Voce k="Costituita il" v={p?.data_costituzione} />
-              <Voce k="Rating di legalità" v={p?.rating_legalita ? `${p.rating_legalita}${p.rating_legalita_rinnovo ? ` (rinnovo ${p.rating_legalita_rinnovo})` : ""}` : null} />
-              <Voce k="Pubblica amministrazione" v={r.ente_pa === true ? "Sì" : r.ente_pa === false ? "No" : null} />
-            </dl>
-          ) : <NonDisp />}
-        </Box>
-      </div>
+            ) : <NonDisp />}
+          </SottoSezione>
+          <SottoSezione titolo="Rating di legalità">
+            <p className="text-sm font-bold">{p?.rating_legalita ? `${p.rating_legalita}${p.rating_legalita_rinnovo ? ` (rinnovo ${p.rating_legalita_rinnovo})` : ""}` : "Non presente"}</p>
+          </SottoSezione>
+        </div>
+      </Sezione>
     </div>
   );
 }
@@ -275,59 +286,86 @@ const EVENTI = [
   ["eventi_crisi", "Eventi di crisi"], ["cigs", "Cassa integrazione straordinaria"], ["fallimenti_propri", "Fallimenti in proprio"],
 ] as const;
 
-const TRATTI = ["text-destructive", "text-destructive opacity-70", "text-warning", "text-success opacity-70", "text-success"];
+const TESTO_ESITO: Record<EsitoScore, string> = { verde: "text-success", ambra: "text-warning", rosso: "text-destructive", neutro: "text-foreground" };
+const SFONDO_ESITO: Record<EsitoScore, string> = {
+  verde: "bg-success text-success-foreground", ambra: "bg-warning text-warning-foreground",
+  rosso: "bg-destructive text-destructive-foreground", neutro: "bg-muted text-muted-foreground",
+};
+const esitoDaSemaforo = (c: string | null | undefined): EsitoScore => {
+  const t = coloreSemaforo(c).tono;
+  return t === "giallo" ? "ambra" : t;
+};
 
-function Semicerchio({ valore, categoria }: { valore: number | null; categoria: string | null }) {
-  const pt = (deg: number, r = 80) => [100 + r * Math.cos((deg * Math.PI) / 180), 100 - r * Math.sin((deg * Math.PI) / 180)];
-  const attivo = valore == null ? -1 : Math.min(4, Math.max(0, Math.floor(valore / 20)));
+function Quadratino({ esito }: { esito: EsitoScore }) {
   return (
-    <div className="mx-auto w-44 shrink-0 sm:w-48" role="img" aria-label={`Affidabilità ${valore ?? "non disponibile"} su 100`}>
-      <svg viewBox="0 0 200 112" className="w-full">
-        {TRATTI.map((cl, i) => {
-          const [x1, y1] = pt(180 - i * 36 - 1.5);
-          const [x2, y2] = pt(180 - (i + 1) * 36 + 1.5);
-          return <path key={i} d={`M ${x1} ${y1} A 80 80 0 0 1 ${x2} ${y2}`} fill="none" stroke="currentColor"
-            strokeWidth={i === attivo ? 20 : 12} className={`${cl} ${i === attivo || attivo < 0 ? "" : "opacity-25"}`} />;
-        })}
-        <text x="100" y="92" textAnchor="middle" className="fill-foreground" style={{ fontSize: 30, fontWeight: 700 }}>{valore ?? "—"}</text>
-        <text x="100" y="108" textAnchor="middle" className="fill-muted-foreground" style={{ fontSize: 11 }}>/100</text>
-      </svg>
-      {categoria && <p className="text-center text-sm font-medium">{categoria}</p>}
-    </div>
+    <span className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-sm text-xs font-bold ${SFONDO_ESITO[esito]}`} aria-hidden>
+      {esito === "verde" ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : esito === "neutro" ? "–" : "!"}
+    </span>
   );
 }
 
-function RigaValutazione({ s }: { s: ScoreCervedVista }) {
-  const scala = scalaScore(s.codice_score);
-  const liv = livelloCategoria(s.categoria_codice);
-  const esito = esitoValutazione(liv);
-  const peggioreAMeglio = scala ? [...scala].reverse() : null;
-  const attivo = scala && liv != null && liv <= scala.length ? scala.length - liv : -1;
+const TRATTI = ["text-destructive", "text-warning", "text-warning", "text-success", "text-success"];
+
+function CardScore({ scores, fido, fidoMade }: { scores: ScoreCervedVista[]; fido: Obj | null | undefined; fidoMade: number | null | undefined }) {
+  const cgs = trovaScore(scores, "CGS");
+  const sem = trovaScore(scores, "SEM_CGS");
+  const esito = esitoDaSemaforo(sem?.categoria_codice);
+  const valore = cgs?.valore ?? null;
+  const pt = (deg: number, rr = 80) => [100 + rr * Math.cos((deg * Math.PI) / 180), 100 - rr * Math.sin((deg * Math.PI) / 180)];
+  const attivo = valore == null ? -1 : Math.min(4, Math.max(0, Math.floor(valore / 20)));
+  const pd = formattaPdCerved(cgs?.pd ?? sem?.pd);
+  const andamento = cgs?.trend_descrizione ?? sem?.trend_descrizione;
   return (
-    <div className="grid grid-cols-1 gap-1 py-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-3">
-      <div className="min-w-0">
-        <p className="break-words text-xs text-muted-foreground">{etichettaScoreCerved(s)}</p>
-        <p className="flex items-center gap-1.5 text-sm font-medium">
-          {esito === "ottimo" && <CheckCircle2 className="h-4 w-4 shrink-0 text-success" aria-hidden />}
-          {esito === "attenzione" && <AlertTriangle className="h-4 w-4 shrink-0 text-warning" aria-hidden />}
-          <span className="min-w-0 break-words">{s.categoria_descrizione ?? "—"}</span>
-        </p>
-      </div>
-      {peggioreAMeglio && (
-        <div className="w-full sm:w-40">
-          <div className="flex items-center justify-between gap-1" aria-label={`Livello ${liv ?? "?"} su ${scala!.length}`}>
-            {peggioreAMeglio.map((et, i) => (
-              <span key={et} title={et} className={`rounded-full ${i === attivo
-                ? `h-3.5 w-3.5 ${esito === "ottimo" ? "bg-success" : "bg-warning"} ring-2 ring-offset-1 ring-offset-background ${esito === "ottimo" ? "ring-success/40" : "ring-warning/40"}`
-                : "h-2 w-2 bg-muted-foreground/30"}`} />
-            ))}
-          </div>
-          <div className="mt-0.5 hidden justify-between gap-2 text-[10px] leading-tight text-muted-foreground sm:flex">
-            <span className="min-w-0 break-words">{peggioreAMeglio[0]}</span>
-            <span className="min-w-0 break-words text-right">{peggioreAMeglio[peggioreAMeglio.length - 1]}</span>
-          </div>
+    <Sezione titolo="Cerved Group Score">
+      {cgs || sem ? (
+        <div className="flex flex-col items-center">
+          <svg viewBox="0 0 200 108" className="w-full max-w-64" role="img" aria-label={`Affidabilità ${valore ?? "non disponibile"} su 100`}>
+            {TRATTI.map((cl, i) => {
+              const [x1, y1] = pt(180 - i * 36 - 1.5);
+              const [x2, y2] = pt(180 - (i + 1) * 36 + 1.5);
+              const on = i === attivo;
+              return <path key={i} d={`M ${x1} ${y1} A 80 80 0 0 1 ${x2} ${y2}`} fill="none" stroke="currentColor"
+                strokeWidth={on ? 22 : 12} className={on ? TESTO_ESITO[esito] : `${cl} opacity-25`} />;
+            })}
+          </svg>
+          <p className={`-mt-14 flex items-baseline gap-1 ${TESTO_ESITO[esito]}`}>
+            <span className="text-5xl font-bold tabular-nums">{valore ?? "—"}</span>
+            <span className="text-sm text-muted-foreground">/100</span>
+          </p>
+          {cgs?.categoria_descrizione && <p className={`mt-1 text-xl font-bold ${TESTO_ESITO[esito]}`}>Affidabilità {cgs.categoria_descrizione.toLowerCase()}</p>}
+          <p className="mt-1 text-center text-xs text-muted-foreground">
+            {[pd ? `Probabilità di insolvenza ${pd}` : null, andamento ? `Andamento: ${andamento}` : null].filter(Boolean).join(" · ")}
+          </p>
         </div>
-      )}
+      ) : <NonDisp />}
+      <div className="mt-4 rounded-sm bg-muted p-3">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Fido certificato</p>
+        {fido?.fcert?.valore != null ? (
+          <>
+            <p className="text-2xl font-bold tabular-nums">{formatEuro(fido.fcert.valore)}</p>
+            {fido.fmed?.valore != null && <p className="text-xs text-muted-foreground">Fido medio: {formatEuro(fido.fmed.valore)}</p>}
+          </>
+        ) : <p className="text-sm font-bold text-muted-foreground">Non ancora attivo</p>}
+        <p className="mt-2 border-t pt-2 text-sm">Fido MADE: <span className="font-bold tabular-nums">{formatEuro(fidoMade ?? 0)}</span></p>
+      </div>
+    </Sezione>
+  );
+}
+
+function ScalaEcofin({ s }: { s: ScoreCervedVista }) {
+  const liv = livelloCategoria(s.categoria_codice);
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-10 gap-0.5" aria-label={`Classe ${liv ? sigleEcofin[liv - 1] : "?"}`}>
+        {sigleEcofin.map((sg, i) => {
+          const e = esitoScore("ECOFIN", `ECOFIN_${i + 1}`);
+          const on = liv === i + 1;
+          return (
+            <span key={sg} className={`flex h-8 items-center justify-center rounded-sm text-[10px] font-bold sm:text-xs ${SFONDO_ESITO[e]} ${on ? "ring-2 ring-foreground ring-offset-1 ring-offset-background" : "opacity-35"}`}>{sg}</span>
+          );
+        })}
+      </div>
+      <p className={`text-sm font-bold ${TESTO_ESITO[esitoScore("ECOFIN", s.categoria_codice)]}`}>{s.categoria_descrizione ?? "—"}</p>
     </div>
   );
 }
@@ -335,12 +373,13 @@ function RigaValutazione({ s }: { s: ScoreCervedVista }) {
 function ComePagaMade({ clienteId }: { clienteId: string }) {
   const { data: esp } = useEsperienzaPagamentoCliente(clienteId);
   const t = testiPagateInRitardo(esp);
+  const soloRiba = t.valore === "Nessun pagamento non RiBa";
   return (
-    <div className="mb-2 flex flex-col gap-1 rounded-md border border-dashed bg-muted/40 p-2 text-xs sm:flex-row sm:items-center sm:justify-between">
+    <div className="mt-2 flex flex-col gap-2 rounded-sm border border-dashed bg-muted/40 p-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
-        <p className="text-muted-foreground">Come paga noi (MADE)</p>
-        <p title={t.titolo} className={t.inRitardo ? "font-medium text-warning" : "font-medium"}>
-          {t.label}: {t.valore}{t.dettaglio ? <span className="font-normal text-muted-foreground"> · {t.dettaglio}</span> : null}
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Come paga MADE</p>
+        <p title={t.titolo} className={`text-sm font-bold ${t.inRitardo ? "text-warning" : ""}`}>
+          {soloRiba ? "Paga con RiBa: nessun ritardo da misurare" : <>{t.label}: {t.valore}{t.dettaglio ? <span className="font-normal text-muted-foreground"> · {t.dettaglio}</span> : null}</>}
         </p>
       </div>
       <div className="shrink-0"><SemaforoAffidabilitaBadge clienteId={clienteId} /></div>
@@ -349,7 +388,7 @@ function ComePagaMade({ clienteId }: { clienteId: string }) {
 }
 
 const VOCI_PRINCIPALI = [
-  ["ricavi", "Ricavi", "fatturato"], ["acquisti", "Acquisti", null], ["mol", "MOL", "mol"],
+  ["ricavi", "Fatturato", "fatturato"], ["acquisti", "Acquisti", null], ["mol", "MOL", "mol"],
   ["utile", "Utile/Perdita", "utile_perdita_esercizio"], ["patrimonio_netto", "Patrimonio netto", "patrimonio_netto"],
 ] as const;
 const VOCI_SECONDARIE = [
@@ -357,37 +396,28 @@ const VOCI_SECONDARIE = [
   ["crediti_clienti", "Crediti verso clienti"], ["liquidita", "Liquidità"],
 ] as const;
 
-function BloccoBilancio({ bil, profilo }: { bil: Obj | null | undefined; profilo: Obj | null }) {
-  const anni: Obj[] = Array.isArray(bil?.anni) ? bil!.anni : [];
+function BloccoBilancio({ anni, profilo }: { anni: Obj[]; profilo: Obj | null }) {
   const att = anni[0];
   const prec = anni[1];
   if (att) {
     return (
-      <Box titolo={`Dati di bilancio${att.data_chiusura ? ` (chiuso il ${att.data_chiusura})` : ""}`}>
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
-          {VOCI_PRINCIPALI.map(([k, et]) => (
-            <Cifra key={k} etichetta={k === "utile" && att[k] != null && att[k] < 0 ? "Perdita" : k === "utile" ? "Utile" : et}
-              valore={att[k]} precedente={prec?.[k]} />
-          ))}
+      <Sezione titolo={`Dati di bilancio${att.data_chiusura ? ` del ${att.data_chiusura}` : ""}`}>
+        <div className="grid grid-cols-2 gap-x-3 gap-y-4 md:grid-cols-5">
+          {VOCI_PRINCIPALI.map(([k, et]) => <Cifra key={k} etichetta={et} valore={att[k]} precedente={prec?.[k]} />)}
         </div>
-        <div className="mt-2 grid grid-cols-2 gap-2 md:grid-cols-4">
-          {VOCI_SECONDARIE.map(([k, et]) => <Cifra key={k} etichetta={et} valore={att[k]} precedente={prec?.[k]} piccola />)}
-        </div>
-        {prec?.data_chiusura && <p className="mt-2 text-xs text-muted-foreground">Variazioni rispetto al bilancio chiuso il {prec.data_chiusura}.</p>}
-      </Box>
+        {prec?.data_chiusura && <p className="mt-3 text-xs text-muted-foreground">Variazione rispetto al bilancio del {prec.data_chiusura}</p>}
+      </Sezione>
     );
   }
   const daProfilo = profilo && VOCI_PRINCIPALI.some(([, , pk]) => pk && profilo[pk] != null);
   return (
-    <Box titolo={daProfilo && profilo?.data_chiusura_ultimo_bilancio ? `Dati di bilancio (chiuso il ${profilo.data_chiusura_ultimo_bilancio})` : "Dati di bilancio"}>
+    <Sezione titolo={daProfilo && profilo?.data_chiusura_ultimo_bilancio ? `Dati di bilancio del ${profilo.data_chiusura_ultimo_bilancio}` : "Dati di bilancio"}>
       {daProfilo ? (
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
-          {VOCI_PRINCIPALI.filter(([, , pk]) => pk).map(([k, et, pk]) => (
-            <Cifra key={k} etichetta={et} valore={profilo![pk!]} />
-          ))}
+        <div className="grid grid-cols-2 gap-x-3 gap-y-4 md:grid-cols-4">
+          {VOCI_PRINCIPALI.filter(([, , pk]) => pk).map(([k, et, pk]) => <Cifra key={k} etichetta={et} valore={profilo![pk!]} />)}
         </div>
       ) : <p className="text-sm text-muted-foreground">Bilancio non disponibile (le ditte individuali non lo depositano)</p>}
-    </Box>
+    </Sezione>
   );
 }
 
@@ -395,14 +425,14 @@ function Cifra({ etichetta, valore, precedente, piccola }: { etichetta: string; 
   const v = variazionePercentuale(valore, precedente);
   const negativo = valore != null && valore < 0;
   return (
-    <div className="min-w-0 rounded-md border p-2">
-      <p className="break-words text-xs text-muted-foreground">{etichetta}</p>
+    <div className="min-w-0">
+      <p className="break-words text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{etichetta}</p>
       <p title={valore != null ? formatEuro(valore) : undefined}
-        className={`font-semibold tabular-nums ${piccola ? "text-sm" : "text-base sm:text-lg"} ${negativo ? "text-destructive" : ""}`}>
+        className={`font-bold tabular-nums ${piccola ? "text-base" : "text-xl sm:text-2xl"} ${negativo ? "text-destructive" : ""}`}>
         {formattaEuroCompatto(valore) ?? "—"}
       </p>
       {v != null && (
-        <p className={`text-xs font-medium tabular-nums ${v >= 0 ? "text-success" : "text-destructive"}`}>
+        <p className={`text-xs font-semibold tabular-nums ${v >= 0 ? "text-success" : "text-destructive"}`}>
           {v >= 0 ? "▲" : "▼"} {Math.abs(v).toLocaleString("it-IT", { maximumFractionDigits: 1 })}%
         </p>
       )}
@@ -410,35 +440,48 @@ function Cifra({ etichetta, valore, precedente, piccola }: { etichetta: string; 
   );
 }
 
-function RigaValore({ k, v, forte }: { k: string; v: string; forte?: boolean }) {
+function Titolo({ children }: { children: React.ReactNode }) {
+  return <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{children}</h3>;
+}
+
+function Sezione({ titolo, children }: { titolo: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-baseline justify-between gap-2">
-      <span className="min-w-0 text-muted-foreground">{k}</span>
-      <span className={`shrink-0 tabular-nums ${forte ? "font-semibold" : "font-medium"}`}>{v}</span>
+    <Card className="rounded-md">
+      <CardContent className="space-y-3 p-4">
+        <Titolo>{titolo}</Titolo>
+        <div>{children}</div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SottoSezione({ titolo, children }: { titolo: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-2 py-3 first:pt-0 last:pb-0">
+      <p className="text-sm font-semibold">{titolo}</p>
+      {children}
     </div>
   );
 }
 
-const euro = (v: number | null | undefined) => (v == null ? null : formatEuro(v));
-
-function Box({ titolo, children }: { titolo: string; children: React.ReactNode }) {
+function Campo({ k, v }: { k: string; v: string | null | undefined }) {
   return (
-    <Card>
-      <CardHeader className="p-4 pb-2"><CardTitle className="text-sm font-semibold">{titolo}</CardTitle></CardHeader>
-      <CardContent className="p-4 pt-0">{children}</CardContent>
-    </Card>
+    <div className="min-w-0">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{k}</p>
+      <p className="break-words text-sm font-bold">{v || "—"}</p>
+    </div>
+  );
+}
+
+function Elemento({ k, v, tono }: { k: string; v: string; tono?: "verde" | "rosso" }) {
+  return (
+    <div className="min-w-0 rounded-sm border p-3">
+      <p className="break-words text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{k}</p>
+      <p className={`mt-1 break-words text-sm font-bold ${tono === "verde" ? "text-success" : tono === "rosso" ? "text-destructive" : ""}`}>{v}</p>
+    </div>
   );
 }
 
 function NonDisp() {
   return <p className="text-sm text-muted-foreground">Dato non disponibile</p>;
-}
-
-function Voce({ k, v, rosso }: { k: string; v: string | null | undefined; rosso?: boolean }) {
-  return (
-    <div className="min-w-0">
-      <dt className="inline text-muted-foreground">{k}: </dt>
-      <dd className={`inline break-words ${rosso ? "font-medium text-destructive" : ""}`}>{v ?? "—"}</dd>
-    </div>
-  );
 }
