@@ -27,7 +27,8 @@ export type AllegatoEntitaTipo =
   | "azione_recupero"
   | "richiesta_fido"
   | "piano_rientro"
-  | "campagna_email";
+  | "campagna_email"
+  | "lead";
 
 export const ALLEGATI_BUCKET = "allegati";
 export const ALLEGATI_MAX_BYTES = 20 * 1024 * 1024; // 20 MB
@@ -56,6 +57,7 @@ type AllegatoRow = {
   descrizione: string | null;
   caricato_da: string | null;
   created_at: string;
+  origine_lead_id: string | null;
 };
 
 type Props = {
@@ -65,6 +67,8 @@ type Props = {
   canEdit?: boolean;
   title?: string;
   compact?: boolean;
+  /** Mostra "Elimina" su tutti gli allegati (es. lead: chi può modificare il lead). */
+  eliminaTutti?: boolean;
 };
 
 function fmtBytes(n: number | null): string {
@@ -144,7 +148,7 @@ export function fmtAllegatoBytes(n: number | null): string {
 }
 
 export function AllegatiSection({
-  entitaTipo, entitaId, clienteId, canEdit = true, title = "Allegati", compact = false,
+  entitaTipo, entitaId, clienteId, canEdit = true, title = "Allegati", compact = false, eliminaTutti = false,
 }: Props) {
   const qc = useQueryClient();
   const { user, roles } = useAuth();
@@ -160,7 +164,7 @@ export function AllegatiSection({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("allegati")
-        .select("id, nome_file, storage_path, mime_type, dimensione_bytes, descrizione, caricato_da, created_at")
+        .select("id, nome_file, storage_path, mime_type, dimensione_bytes, descrizione, caricato_da, created_at, origine_lead_id")
         .eq("entita_tipo", entitaTipo)
         .eq("entita_id", entitaId)
         .order("created_at", { ascending: false });
@@ -209,7 +213,7 @@ export function AllegatiSection({
       ) : (
         <ul className={GRIGLIA_ALLEGATI}>
           {data.map((a) => {
-            const canDelete = canManageAll || a.caricato_da === user?.id;
+            const canDelete = eliminaTutti || canManageAll || a.caricato_da === user?.id;
             return (
               <SchedaAllegato
                 key={a.id}
@@ -221,6 +225,9 @@ export function AllegatiSection({
                 dettagli={
                   <>
                     <div>{fmtDate(a.created_at)}</div>
+                    {a.origine_lead_id && (
+                      <div className="mt-0.5 text-[11px] font-medium text-primary">dal lead</div>
+                    )}
                     {a.descrizione && <div className="mt-0.5">{a.descrizione}</div>}
                   </>
                 }
