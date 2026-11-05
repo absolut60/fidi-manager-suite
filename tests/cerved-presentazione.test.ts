@@ -70,3 +70,17 @@ describe("cerved-presentazione", () => {
     expect(variazionePercentuale(1, null)).toBeNull();
   });
 });
+
+import { settoreGaugeCerved, SETTORI_GAUGE_CERVED } from "../src/lib/cerved-presentazione";
+test("settore del gauge CGS", () => {
+  expect(SETTORI_GAUGE_CERVED.length).toBe(8);
+  expect(settoreGaugeCerved(0)).toBe(0);
+  expect(settoreGaugeCerved(10)).toBe(0);
+  expect(settoreGaugeCerved(36)).toBe(2);
+  expect(settoreGaugeCerved(49.9)).toBe(3);
+  expect(settoreGaugeCerved(50)).toBe(4);
+  expect(settoreGaugeCerved(56)).toBe(4);
+  expect(settoreGaugeCerved(95)).toBe(7);
+  expect(settoreGaugeCerved(100)).toBe(7);
+  expect(settoreGaugeCerved(null)).toBeNull();
+});
