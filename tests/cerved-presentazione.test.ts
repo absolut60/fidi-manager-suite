@@ -1,5 +1,5 @@
-import { describe, it, expect } from "bun:test";
-import { etichettaScoreCerved, coloreSemaforo, statoAttivitaAnomalo, formattaPdCerved, formattaAggiornatoIl, livelloCategoria, esitoScore, sigleEcofin, formattaEuroCompatto, variazionePercentuale } from "@/lib/cerved-presentazione";
+import { describe, it, test, expect } from "bun:test";
+import { etichettaScoreCerved, coloreSemaforo, statoAttivitaAnomalo, formattaPdCerved, formattaAggiornatoIl, livelloCategoria, esitoScore, sigleEcofin, formattaEuroCompatto, variazionePercentuale, settoreGaugeCerved, SETTORI_GAUGE_CERVED } from "@/lib/cerved-presentazione";
 
 describe("cerved-presentazione", () => {
   it("etichette semplici e fallback alla descrizione", () => {
@@ -71,7 +71,6 @@ describe("cerved-presentazione", () => {
   });
 });
 
-import { settoreGaugeCerved, SETTORI_GAUGE_CERVED } from "../src/lib/cerved-presentazione";
 test("settore del gauge CGS", () => {
   expect(SETTORI_GAUGE_CERVED.length).toBe(8);
   expect(settoreGaugeCerved(0)).toBe(0);

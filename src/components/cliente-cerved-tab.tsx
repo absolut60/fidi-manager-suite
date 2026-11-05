@@ -10,7 +10,7 @@ import { puoAggiornareCerved } from "@/lib/permessi-cerved";
 import { aggiornaCervedCliente } from "@/lib/cerved/cerved-cliente.functions";
 import { formatEuro } from "@/lib/fidi";
 import {
-  coloreSemaforo, formattaAggiornatoIl, formattaPdCerved, statoAttivitaAnomalo, trovaScore,
+  coloreSemaforo, formattaAggiornatoIl, settoreGaugeCerved, SETTORI_GAUGE_CERVED, formattaPdCerved, statoAttivitaAnomalo, trovaScore,
   type ScoreCervedVista, type EsitoScore, livelloCategoria, esitoScore, sigleEcofin,
   formattaEuroCompatto, variazionePercentuale,
 } from "@/lib/cerved-presentazione";
@@ -304,46 +304,59 @@ function Quadratino({ esito }: { esito: EsitoScore }) {
   );
 }
 
-const ARCO_ESITO: Record<EsitoScore, string> = { verde: "text-success", ambra: "text-warning", rosso: "text-destructive", neutro: "text-muted-foreground" };
+// Gauge come nel Light Report: 270° da 225° (basso sinistra) a −45° (basso destra), 8 settori.
+function GaugeCerved({ valore }: { valore: number | null }) {
+  const attivo = settoreGaugeCerved(valore);
+  const pt = (deg: number, r: number) => [100 + r * Math.cos((deg * Math.PI) / 180), 100 - r * Math.sin((deg * Math.PI) / 180)];
+  const ampiezza = 270 / 8;
+  const spazio = 3;
+  return (
+    <svg viewBox="0 0 200 180" className="w-full max-w-64" role="img" aria-label={`Affidabilità ${valore ?? "non disponibile"} su 100`}>
+      {SETTORI_GAUGE_CERVED.map((c, i) => {
+        const on = i === attivo;
+        const r = on ? 80 : 76;
+        const da = 225 - i * ampiezza - spazio / 2;
+        const a = 225 - (i + 1) * ampiezza + spazio / 2;
+        const [x1, y1] = pt(da, r);
+        const [x2, y2] = pt(a, r);
+        return <path key={i} d={`M ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2}`} fill="none" stroke={on ? c.pieno : c.pastello} strokeWidth={on ? 22 : 14} strokeLinecap="butt" />;
+      })}
+    </svg>
+  );
+}
 
 function CardScore({ scores, fido, fidoMade }: { scores: ScoreCervedVista[]; fido: Obj | null | undefined; fidoMade: number | null | undefined }) {
   const cgs = trovaScore(scores, "CGS");
   const sem = trovaScore(scores, "SEM_CGS");
-  const esito = esitoDaSemaforo(sem?.categoria_codice);
-  const valore = cgs?.valore ?? null;
-  const pt = (deg: number, rr = 80) => [100 + rr * Math.cos((deg * Math.PI) / 180), 100 - rr * Math.sin((deg * Math.PI) / 180)];
-  const v = valore == null || !Number.isFinite(valore) ? null : Math.min(100, Math.max(0, valore));
-  const fine = v == null ? null : pt(180 - v * 1.8);
+  const semaforo = coloreSemaforo(sem?.categoria_codice);
+  const valore = cgs?.valore != null && Number.isFinite(cgs.valore) ? cgs.valore : null;
+  const settore = settoreGaugeCerved(valore);
+  const tinta = settore == null ? undefined : SETTORI_GAUGE_CERVED[settore].pieno;
+  const categoria = cgs?.categoria_descrizione ? cgs.categoria_descrizione.charAt(0).toUpperCase() + cgs.categoria_descrizione.slice(1).toLowerCase() : null;
   const pd = formattaPdCerved(cgs?.pd ?? sem?.pd);
   const andamento = cgs?.trend_descrizione ?? sem?.trend_descrizione;
   return (
     <Sezione titolo="Cerved Group Score">
       {cgs || sem ? (
         <div className="flex flex-col items-center">
-          <svg viewBox="0 0 200 122" className="w-full max-w-64" role="img" aria-label={`Affidabilità ${valore ?? "non disponibile"} su 100`}>
-            <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="currentColor" strokeWidth={14} strokeLinecap="round" className="text-muted" />
-            {Array.from({ length: 11 }, (_, i) => {
-              const [x1, y1] = pt(180 - i * 18, 92);
-              const [x2, y2] = pt(180 - i * 18, 98);
-              return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="currentColor" strokeWidth={1} className="text-muted-foreground opacity-50" />;
-            })}
-            <text x={20} y={118} textAnchor="middle" fontSize={9} fill="currentColor" className="text-muted-foreground">0</text>
-            <text x={180} y={118} textAnchor="middle" fontSize={9} fill="currentColor" className="text-muted-foreground">100</text>
-            {fine && (
-              <g className={ARCO_ESITO[esito]}>
-                {v! > 0 && <path d={`M 20 100 A 80 80 0 0 1 ${fine[0]} ${fine[1]}`} fill="none" stroke="currentColor" strokeWidth={14} strokeLinecap="round" />}
-                <circle cx={fine[0]} cy={fine[1]} r={9} fill="currentColor" stroke="var(--color-card, white)" strokeWidth={2} />
-              </g>
+          <div className="relative w-full max-w-64">
+            <GaugeCerved valore={valore} />
+            <p className="absolute inset-x-0 top-[38%] flex items-baseline justify-center gap-1" style={{ color: tinta }}>
+              <span className="text-5xl font-bold tabular-nums">{valore ?? "—"}</span>
+              <span className="text-sm opacity-60">/100</span>
+            </p>
+          </div>
+          {categoria && <p className="-mt-6 text-xl font-bold" style={{ color: tinta }}>Affidabilità {categoria}</p>}
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center text-xs text-muted-foreground">
+            {sem && (
+              <span className="inline-flex items-center gap-1">
+                <span className={`h-2.5 w-2.5 rounded-full ${semaforo.classe}`} aria-hidden />
+                Semaforo: {semaforo.etichetta}
+              </span>
             )}
-          </svg>
-          <p className={`-mt-14 flex items-baseline gap-1 ${TESTO_ESITO[esito]}`}>
-            <span className="text-5xl font-bold tabular-nums">{valore ?? "—"}</span>
-            <span className="text-sm text-muted-foreground">/100</span>
-          </p>
-          {cgs?.categoria_descrizione && <p className={`mt-1 text-xl font-bold ${TESTO_ESITO[esito]}`}>Affidabilità {cgs.categoria_descrizione.toLowerCase()}</p>}
-          <p className="mt-1 text-center text-xs text-muted-foreground">
-            {[pd ? `Probabilità di insolvenza ${pd}` : null, andamento ? `Andamento: ${andamento}` : null].filter(Boolean).join(" · ")}
-          </p>
+            {pd && <span>Probabilità di insolvenza {pd}</span>}
+            {andamento && <span>Andamento: {andamento}</span>}
+          </div>
         </div>
       ) : <NonDisp />}
       <div className="mt-4 rounded-sm bg-muted p-3">
