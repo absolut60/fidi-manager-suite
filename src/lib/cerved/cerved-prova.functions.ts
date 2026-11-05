@@ -18,11 +18,26 @@ export const provaCercaCerved = createServerFn({ method: "POST" })
     const { data: cli } = await context.supabase
       .from("clienti").select("id").eq("partita_iva", data.piva).limit(1).maybeSingle();
 
-    const { cercaSoggettoPerPiva, normalizzaAziendaCerved } = await import("./cerved.server");
-    const r = await cercaSoggettoPerPiva(data.piva, { utenteId: context.userId, clienteId: cli?.id ?? null });
+    const { cercaSoggettoPerPiva, leggiProfilo, leggiScore, normalizzaAziendaCerved, normalizzaProfiloCerved, normalizzaScoreCerved } =
+      await import("./cerved.server");
+    const ctx = { utenteId: context.userId, clienteId: cli?.id ?? null };
+    const r = await cercaSoggettoPerPiva(data.piva, ctx);
 
     const corpo = (r.risposta ?? {}) as { companies?: unknown[] };
     const aziende = Array.isArray(corpo.companies) ? corpo.companies : [];
+    const prima = aziende.length > 0 ? normalizzaAziendaCerved(aziende[0]) : null;
+
+    let profilo = null as null | { errore: string | null; dati: ReturnType<typeof normalizzaProfiloCerved> | null };
+    let score = null as null | { errore: string | null; dati: ReturnType<typeof normalizzaScoreCerved> };
+    if (prima?.id_soggetto) {
+      const [p, s] = await Promise.all([leggiProfilo(prima.id_soggetto, ctx), leggiScore(prima.id_soggetto, ctx)]);
+      profilo = p.esito === "ok"
+        ? { errore: null, dati: normalizzaProfiloCerved(p.risposta) }
+        : { errore: p.errore ?? "Errore nella lettura del profilo.", dati: null };
+      score = s.esito === "ok"
+        ? { errore: null, dati: normalizzaScoreCerved(s.risposta) }
+        : { errore: s.errore ?? "Errore nella lettura dello score.", dati: [] };
+    }
 
     return {
       http_status: r.http_status,
@@ -30,6 +45,8 @@ export const provaCercaCerved = createServerFn({ method: "POST" })
       errore: r.errore,
       numero_aziende: aziende.length,
       cliente_trovato: !!cli,
-      prima: aziende.length > 0 ? normalizzaAziendaCerved(aziende[0]) : null,
+      prima,
+      profilo,
+      score,
     };
   });
