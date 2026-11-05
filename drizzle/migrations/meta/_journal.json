@@ -1016,6 +1016,13 @@
       "when": 1793880263119,
       "tag": "0144_fm56_showroom_attivita_commerciale",
       "breakpoints": true
+    },
+    {
+      "idx": 145,
+      "version": "7",
+      "when": 1793881635807,
+      "tag": "0145_fm56_allegati_lead",
+      "breakpoints": true
     }
   ]
 }

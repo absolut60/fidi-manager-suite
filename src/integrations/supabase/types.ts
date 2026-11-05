@@ -297,6 +297,7 @@ export type Database = {
           id: string
           mime_type: string | null
           nome_file: string
+          origine_lead_id: string | null
           storage_path: string
         }
         Insert: {
@@ -310,6 +311,7 @@ export type Database = {
           id?: string
           mime_type?: string | null
           nome_file: string
+          origine_lead_id?: string | null
           storage_path: string
         }
         Update: {
@@ -323,6 +325,7 @@ export type Database = {
           id?: string
           mime_type?: string | null
           nome_file?: string
+          origine_lead_id?: string | null
           storage_path?: string
         }
         Relationships: [
@@ -339,6 +342,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "allegati_origine_lead_id_fkey"
+            columns: ["origine_lead_id"]
+            isOneToOne: false
+            referencedRelation: "lead"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -6903,6 +6913,7 @@ export type Database = {
         Args: { _cliente_id: string; _created_by: string; _lead_id: string }
         Returns: boolean
       }
+      auth_puo_modificare_lead: { Args: { _lead_id: string }; Returns: boolean }
       auth_puo_scrivere_blocco: {
         Args: { _blocco_id: string }
         Returns: boolean
@@ -6919,6 +6930,7 @@ export type Database = {
         Args: { _preventivo_id: string }
         Returns: boolean
       }
+      auth_puo_vedere_lead: { Args: { _lead_id: string }; Returns: boolean }
       auth_solo_showroom: { Args: never; Returns: boolean }
       auth_vede_campagne_entita: {
         Args: { _cliente_id: string; _lead_id: string }
@@ -8727,6 +8739,7 @@ export type Database = {
         Args: { _importazione_id: string }
         Returns: number
       }
+      riporta_allegati_al_lead: { Args: { _lead_id: string }; Returns: number }
       risolvi_pubblico_segmento: {
         Args: { _filtri: Json }
         Returns: {
@@ -8854,6 +8867,10 @@ export type Database = {
           _scaduto: number
         }
         Returns: string
+      }
+      trasferisci_allegati_lead_a_cliente: {
+        Args: { _cliente_id: string; _lead_id: string }
+        Returns: number
       }
       trasferisci_privacy_contatto: {
         Args: { _a: string; _da: string }
