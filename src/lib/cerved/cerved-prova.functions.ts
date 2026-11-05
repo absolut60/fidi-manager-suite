@@ -133,3 +133,56 @@ export const provaRecuperoCerved = createServerFn({ method: "POST" })
       anteprima: xml.slice(0, 1500),
     };
   });
+
+/** Prova dati estesi Cerved (bilanci, fido, eventi negativi), sola lettura, NESSUN acquisto: solo amministratori. */
+export const provaDatiEstesiCerved = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { piva: string }) =>
+    z.object({ piva: z.string().regex(/^\d{11}$/, "La partita IVA deve avere 11 cifre") }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: isAdmin } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "amministratore",
+    });
+    if (!isAdmin) throw new Error("Operazione riservata agli amministratori");
+
+    const { data: cli } = await context.supabase
+      .from("clienti").select("id").eq("partita_iva", data.piva).limit(1).maybeSingle();
+
+    const m = await import("./cerved.server");
+    const ctx = { utenteId: context.userId, clienteId: cli?.id ?? null };
+    type Passo = { operazione: string; http_status: number | null; esito: string; errore: string | null; riassunto: string[] };
+    const passi: Passo[] = [];
+    const passo = (operazione: string, r: { http_status: number | null; esito: string; errore: string | null }, riassunto: string[]) =>
+      passi.push({ operazione, http_status: r.http_status, esito: r.esito, errore: r.errore, riassunto });
+
+    const ricerca = await m.cercaSoggettoPerPiva(data.piva, ctx);
+    const azienda = m.scegliAziendaPerPiva(ricerca.risposta, data.piva);
+    const idSoggetto = azienda ? m.normalizzaAziendaCerved(azienda).id_soggetto : null;
+    passo("entity_search", ricerca, [idSoggetto ? `ID soggetto ${idSoggetto}` : "Nessuna azienda con questa partita IVA"]);
+    if (!idSoggetto) return { id_soggetto: null, passi };
+
+    const el = await m.elencoBilanciCerved(idSoggetto, ctx);
+    const elenco = el.esito === "ok" ? m.normalizzaElencoBilanci(el.risposta) : [];
+    passo("cerved_balancesheets_list", el, el.esito === "ok"
+      ? [`${elenco.length} bilanci`, ...elenco.map((b) => `${b.data_chiusura} (${b.tipo ?? "?"})`)]
+      : []);
+
+    for (const b of m.dueBilanciEPiuRecenti(elenco)) {
+      const r = await m.bilancioCerved(idSoggetto, b.data_chiusura, "E", ctx);
+      const s = r.esito === "ok" ? m.riassuntoBilancio(r.risposta) : null;
+      passo(`cerved_balancesheet ${b.data_chiusura}`, r, s ? [`${s.sezioni} sezioni, ${s.voci} voci`] : []);
+    }
+
+    for (const codice of ["FCERT", "FMED"] as const) {
+      const r = await m.fidoCerved(idSoggetto, codice, ctx);
+      const v = r.esito === "ok" ? m.valoreFidoCerved(r.risposta) : null;
+      passo(`fido_${codice.toLowerCase()}`, r, r.esito === "ok" ? [`valore_fido: ${v ?? "—"}`] : []);
+    }
+
+    const nf = await m.eventiNegativiFlag(idSoggetto, ctx);
+    passo("negative_flags", nf, nf.esito === "ok" ? m.flagEventiNegativi(nf.risposta) : []);
+
+    return { id_soggetto: idSoggetto, passi };
+  });

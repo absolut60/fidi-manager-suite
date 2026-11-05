@@ -3,7 +3,7 @@ import type React from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation } from "@tanstack/react-query";
 import { Search } from "lucide-react";
-import { provaCercaCerved, provaArchivioCerved, provaRecuperoCerved } from "@/lib/cerved/cerved-prova.functions";
+import { provaCercaCerved, provaArchivioCerved, provaRecuperoCerved, provaDatiEstesiCerved } from "@/lib/cerved/cerved-prova.functions";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,6 +55,9 @@ export function ProvaCervedCard() {
   const fnRec = useServerFn(provaRecuperoCerved);
   const mr = useMutation({ mutationFn: (id: string) => fnRec({ data: { request_id: id } }) });
   const rr = mr.data;
+  const fnEst = useServerFn(provaDatiEstesiCerved);
+  const me = useMutation({ mutationFn: (p: string) => fnEst({ data: { piva: p } }) });
+  const re = me.data;
   const r = m.data;
   const a = r?.prima ?? null;
 
@@ -132,13 +135,17 @@ export function ProvaCervedCard() {
           <Input id="cerved-piva" inputMode="numeric" maxLength={11} placeholder="11 cifre"
             value={piva} onChange={(e) => setPiva(e.target.value.replace(/\D/g, ""))} />
         </div>
-        <div className="grid grid-cols-2 sm:flex gap-2">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
           <Button type="submit" disabled={!valida || m.isPending} className="h-10">
             {m.isPending ? "Ricerca…" : "Prova ricerca"}
           </Button>
           <Button type="button" variant="outline" disabled={!valida || ma.isPending} className="h-10"
             onClick={() => ma.mutate(piva)}>
             {ma.isPending ? "Lettura…" : "Prova archivio"}
+          </Button>
+          <Button type="button" variant="outline" disabled={!valida || me.isPending} className="h-10 col-span-2 sm:col-span-1"
+            onClick={() => me.mutate(piva)}>
+            {me.isPending ? "Lettura…" : "Prova dati estesi"}
           </Button>
         </div>
       </form>
@@ -171,6 +178,26 @@ export function ProvaCervedCard() {
               )}
             </>
           )}
+        </div>
+      )}
+      {me.error && <p className="mt-3 text-sm text-destructive break-words">{me.error.message}</p>}
+      {re && (
+        <div className="mt-3 rounded-md border p-3 text-sm">
+          <h3 className="font-medium mb-1">Dati estesi</h3>
+          <ul className="divide-y">
+            {re.passi.map((ps, i) => (
+              <li key={`${ps.operazione}-${i}`} className="py-1.5">
+                <div className="flex flex-wrap gap-x-2">
+                  <span className="font-mono text-xs pt-0.5 break-all min-w-0">{ps.operazione}</span>
+                  <span className={ps.esito === "ok" ? "text-xs" : "text-xs text-destructive"}>
+                    {ps.esito === "ok" ? "OK" : "Errore"}{ps.http_status != null && ` · HTTP ${ps.http_status}`}
+                  </span>
+                </div>
+                {ps.errore && <p className="text-xs text-destructive break-words">{ps.errore}</p>}
+                {ps.riassunto.length > 0 && <p className="text-xs text-muted-foreground break-words">{ps.riassunto.join(" · ")}</p>}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
       {m.error && <p className="mt-3 text-sm text-destructive break-words">{m.error.message}</p>}
