@@ -13,6 +13,8 @@ export type EsitoCerved = {
   esito: "ok" | "errore";
   errore: string | null;
   risposta: unknown;
+  /** id della riga scritta in cerved_chiamate (null se il registro non è stato salvato). */
+  chiamata_id: string | null;
 };
 
 function messaggioErrore(status: number): string {
@@ -36,7 +38,8 @@ async function chiamaCerved(opts: {
   trasforma?: (corpo: unknown) => unknown;
 }): Promise<EsitoCerved> {
   const inizio = Date.now();
-  let risultato: EsitoCerved;
+  let risultato: Omit<EsitoCerved, "chiamata_id">;
+  let chiamataId: string | null = null;
   const apiKey = process.env["CERVED_API_KEY"];
   if (!apiKey) {
     risultato = { http_status: null, esito: "errore", errore: "Chiave Cerved non configurata.", risposta: null };
@@ -73,7 +76,7 @@ async function chiamaCerved(opts: {
 
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.from("cerved_chiamate").insert({
+    const { data: riga, error } = await supabaseAdmin.from("cerved_chiamate").insert({
       utente_id: opts.utenteId,
       cliente_id: opts.clienteId,
       operazione: opts.operazione,
@@ -83,12 +86,13 @@ async function chiamaCerved(opts: {
       errore: risultato.errore,
       durata_ms: Date.now() - inizio,
       risposta: (risultato.risposta ?? null) as never,
-    });
+    }).select("id").single();
+    chiamataId = riga?.id ?? null;
     if (error) console.error("[cerved] registro non salvato", error.message);
   } catch (e) {
     console.error("[cerved] registro non salvato", e instanceof Error ? e.message : "errore");
   }
-  return risultato;
+  return { ...risultato, chiamata_id: chiamataId };
 }
 
 export function cercaSoggettoPerPiva(piva: string, ctx: { utenteId: string | null; clienteId: string | null }) {
@@ -512,4 +516,21 @@ export function normalizzaScoreCerved(risposta: unknown): ScoreCerved[] {
       trend_descrizione: testo(s.trend_descrizione),
     };
   }).sort((a, b) => ordine(a.codice_score) - ordine(b.codice_score));
+}
+
+/**
+ * Sceglie fra companies[] di entitySearch l'azienda con la stessa partita IVA
+ * (confronto su sole cifre). Più corrispondenze → la prima; nessuna → null.
+ */
+export function scegliAziendaPerPiva(risposta: unknown, piva: string): unknown | null {
+  const cifre = (v: unknown) => String(v ?? "").replace(/\D/g, "");
+  const target = cifre(piva);
+  if (!target) return null;
+  const corpo = (risposta && typeof risposta === "object" ? risposta : {}) as { companies?: unknown };
+  const aziende = Array.isArray(corpo.companies) ? corpo.companies : [];
+  for (const a of aziende) {
+    const da = (a && typeof a === "object" ? (a as Record<string, unknown>)["dati_anagrafici"] : null) as Record<string, unknown> | null;
+    if (da && cifre(da["partita_iva"]) === target) return a;
+  }
+  return null;
 }
