@@ -18,6 +18,8 @@ const RUOLI_TUTTI_I_TIPI = ["amministratore", "amministrazione", "direzione", "r
 
 /** null = tutti i tipi consentiti; altrimenti l'elenco dei soli tipi ammessi. */
 export function tipiAzioneConsentiti(roles: readonly string[]): readonly string[] | null {
+  // FM56: lo showroom è in sola lettura sul recupero (RESTRICTIVE su azioni_recupero, migrazione 0141).
+  if (isSoloShowroom(roles)) return [];
   const soloAgente = roles.includes("agente") && !RUOLI_TUTTI_I_TIPI.some((r) => roles.includes(r));
   return soloAgente ? TIPI_AZIONE_AGENTE : null;
 }
