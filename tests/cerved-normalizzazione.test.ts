@@ -97,7 +97,7 @@ test('elemento vuoto o mancante non esplode', () => {
 });
 
 import { normalizzaProfiloCerved, normalizzaScoreCerved } from '../src/lib/cerved/cerved.server';
-test('profilo: importi di bilancio da migliaia a euro, date grezze', () => {
+test('profilo: importi di bilancio da migliaia a euro, date GG/MM/AAAA', () => {
   const p = normalizzaProfiloCerved({
     dati_anagrafici: { pec: { email: ['a@pec.it'] } },
     dati_attivita: { data_costituzione: '05-01-2007' },
@@ -106,11 +106,42 @@ test('profilo: importi di bilancio da migliaia a euro, date grezze', () => {
   expect(p.fatturato).toBe(2500000);
   expect(p.utile_perdita_esercizio).toBe(-12000);
   expect(p.capitale_sociale).toBe(10000);
-  expect(p.data_costituzione).toBe('05-01-2007');
+  expect(p.data_costituzione).toBe('05/01/2007');
   expect(p.pec).toEqual(['a@pec.it']);
 });
 test('score: legge scores[]', () => {
   const s = normalizzaScoreCerved({ scores: [{ codice_score: 'SEM_CGS', valore: 70, categoria_descrizione: 'VERDE' }] });
   expect(s[0].codice_score).toBe('SEM_CGS');
   expect(s[0].valore).toBe(70);
+});
+
+import { formattaDataCerved } from '../src/lib/cerved/cerved.server';
+test('date Cerved GG-MM-AAAA → GG/MM/AAAA, altrimenti invariate', () => {
+  expect(formattaDataCerved('14-12-2006')).toBe('14/12/2006');
+  expect(formattaDataCerved('2006-12-14')).toBe('2006-12-14');
+  expect(formattaDataCerved(null)).toBeNull();
+});
+test('profilo: url_sito_web in minuscolo, rating e chiusura bilancio', () => {
+  const p = normalizzaProfiloCerved({
+    dati_anagrafici: { url_sito_web: 'WWW.MADE.IT' },
+    dati_attivita: { rating_legalita: { rating: '**+', data_rinnovo: '01-02-2025' }, stato_attivita: 'ATTIVA' },
+    dati_economici_dimensionali: { anno_numero_dipendenti_inps: 2024, data_chiusura_ultimo_bilancio: '30-09-2025' },
+  });
+  expect(p.sito_web).toBe('www.made.it');
+  expect(p.rating_legalita).toBe('**+');
+  expect(p.rating_legalita_rinnovo).toBe('01/02/2025');
+  expect(p.dipendenti_anno).toBe('2024');
+  expect(p.data_chiusura_ultimo_bilancio).toBe('30/09/2025');
+  expect(p.stato_attivita_descrizione).toBe('ATTIVA');
+});
+test('score: pd frazione, semaforo V, ordine SEM_CGS, CGS, altri', () => {
+  const s = normalizzaScoreCerved({ scores: [
+    { codice_score: 'ALTRO', valore: 50 },
+    { codice_score: 'CGS', valore: 60, pd: 0.02671 },
+    { codice_score: 'SEM_CGS', categoria_codice: 'V', categoria_descrizione: 'VERDE' },
+  ] });
+  expect(s.map((x) => x.codice_score)).toEqual(['SEM_CGS', 'CGS', 'ALTRO']);
+  expect(s[0].categoria_codice).toBe('V');
+  expect(s[1].pd! * 100).toBeCloseTo(2.671, 3);
+  expect(s[2].pd).toBeNull();
 });

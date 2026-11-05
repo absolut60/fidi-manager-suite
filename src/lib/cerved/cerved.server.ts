@@ -148,6 +148,13 @@ const booleano = (v: unknown): boolean | null => {
   return null;
 };
 
+/** Data Cerved "GG-MM-AAAA" → "GG/MM/AAAA" (solo stringa, niente Date); altrimenti invariata. */
+export function formattaDataCerved(v: string | null | undefined): string | null {
+  if (v == null) return null;
+  const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(v.trim());
+  return m ? `${m[1]}/${m[2]}/${m[3]}` : v;
+}
+
 /** "410000" → "41.00.00"; se ha già i punti (o non è a 6 cifre) resta com'è. */
 export function formattaAtecoCerved(v: unknown): string | null {
   const s = testo(v);
@@ -218,7 +225,7 @@ export function normalizzaAziendaCerved(azienda: unknown): AziendaCerved {
     ateco_2025_codice: formattaAtecoCerved(att.codice_ateco_2025 ?? a.codice_ateco_2025),
     ateco_2025_descrizione: testo(att.ateco_2025 ?? a.ateco_2025),
     rea: testo(att.codice_rea ?? a.codice_rea),
-    data_iscrizione_rea: testo(att.data_iscrizione_rea ?? a.data_iscrizione_rea),
+    data_iscrizione_rea: formattaDataCerved(testo(att.data_iscrizione_rea ?? a.data_iscrizione_rea)),
     sede: sedePiena,
     ente_pa: booleano(pa.ente) === true,
   };
@@ -265,6 +272,8 @@ export type ProfiloCerved = {
   gruppo: boolean | null;
   capogruppo: string[];
   rating_legalita: string | null;
+  rating_legalita_rinnovo: string | null;
+  data_chiusura_ultimo_bilancio: string | null;
   dipendenti: number | null;
   dipendenti_anno: string | null;
   unita_locali: number | null;
@@ -300,10 +309,7 @@ export function normalizzaProfiloCerved(risposta: unknown): ProfiloCerved {
     ? testo(macro.descrizione ?? macro.description ?? macro.codice)
     : testo(codifica.macrosettore);
 
-  const rating = r.rating_legalita ?? att.rating_legalita ?? anag.rating_legalita;
-  const ratingTxt = typeof rating === "object" && rating
-    ? testo(obj(rating).punteggio ?? obj(rating).valore ?? obj(rating).descrizione ?? obj(rating).stelle)
-    : testo(rating);
+  const rating = obj(att.rating_legalita);
 
   const codice = testo(att.codice_stato_attivita);
   const statoKey = codice ? codice.toUpperCase().charAt(0) : null;
@@ -311,21 +317,23 @@ export function normalizzaProfiloCerved(risposta: unknown): ProfiloCerved {
 
   return {
     telefono: testo(anag.telefono ?? obj(anag.contatti).telefono),
-    sito_web: testo(anag.sito_web ?? anag.web ?? obj(anag.contatti).sito_web),
+    sito_web: testo(anag.url_sito_web)?.toLowerCase() ?? null,
     pec,
-    data_costituzione: testo(att.data_costituzione ?? anag.data_costituzione),
-    data_inizio_attivita: testo(att.data_inizio_attivita),
+    data_costituzione: formattaDataCerved(testo(att.data_costituzione)),
+    data_inizio_attivita: formattaDataCerved(testo(att.data_inizio_attivita)),
     stato_attivita_codice: codice,
-    stato_attivita_descrizione: statoKey ? (STATO_ATTIVITA_CERVED[statoKey] ?? null) : null,
-    data_stato_attivita: testo(att.data_stato_attivita),
+    stato_attivita_descrizione: testo(att.stato_attivita) ?? (statoKey ? (STATO_ATTIVITA_CERVED[statoKey] ?? null) : null),
+    data_stato_attivita: formattaDataCerved(testo(att.data_stato_attivita)),
     macrosettore,
     gruppo: booleano(grp.flag_gruppo),
     capogruppo,
-    rating_legalita: ratingTxt,
+    rating_legalita: testo(rating.rating),
+    rating_legalita_rinnovo: formattaDataCerved(testo(rating.data_rinnovo)),
+    data_chiusura_ultimo_bilancio: formattaDataCerved(testo(eco.data_chiusura_ultimo_bilancio)),
     dipendenti: numero(valoreDi(dip)),
-    dipendenti_anno: testo(eco.anno_dipendenti ?? eco.anno_numero_dipendenti ?? obj(dip).anno),
+    dipendenti_anno: testo(eco.anno_numero_dipendenti_inps),
     unita_locali: numero(valoreDi(eco.numero_unita_locali ?? eco.unita_locali)),
-    anno_ultimo_bilancio: testo(eco.anno_ultimo_bilancio ?? eco.anno_bilancio),
+    anno_ultimo_bilancio: testo(eco.anno_ultimo_bilancio),
     capitale_sociale: numero(valoreDi(eco.capitale_sociale)),
     fatturato: migliaiaInEuro(valoreDi(eco.fatturato)),
     mol: migliaiaInEuro(valoreDi(eco.mol)),
@@ -349,6 +357,7 @@ export type ScoreCerved = {
 export function normalizzaScoreCerved(risposta: unknown): ScoreCerved[] {
   const lista = obj(risposta).scores;
   if (!Array.isArray(lista)) return [];
+  const ordine = (c: string | null) => (c === "SEM_CGS" ? 0 : c === "CGS" ? 1 : 2);
   return lista.map((x) => {
     const s = obj(x);
     return {
@@ -361,5 +370,5 @@ export function normalizzaScoreCerved(risposta: unknown): ScoreCerved[] {
       trend_codice: testo(s.trend_codice),
       trend_descrizione: testo(s.trend_descrizione),
     };
-  });
+  }).sort((a, b) => ordine(a.codice_score) - ordine(b.codice_score));
 }
