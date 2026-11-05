@@ -7456,6 +7456,24 @@ export type Database = {
           storage_path: string
         }[]
       }
+      esperienza_pagamento_batch: {
+        Args: { _ids: string[] }
+        Returns: {
+          cliente_id: string
+          max_ritardo_gg: number
+          n_in_ritardo: number
+          n_in_ritardo_12m: number
+          n_pagate: number
+          n_pagate_12m: number
+          n_pagate_reali: number
+          perc_in_ritardo: number
+          ritardo_medio_12m: number
+          ritardo_medio_gg: number
+          ritardo_medio_ritardi_12m: number
+          ritardo_medio_ritardi_gg: number
+          tolleranza_gg: number
+        }[]
+      }
       esposizione_oltre_fido: {
         Args: { c: Database["public"]["Tables"]["clienti"]["Row"] }
         Returns: boolean
@@ -8908,6 +8926,16 @@ export type Database = {
           cliente_id: string
         }[]
       }
+      ritardo_pagamento_riga: {
+        Args: {
+          _codice_pagamento: string
+          _data_pagamento: string
+          _data_scadenza: string
+          _importo_pagato: number
+          _numero_documento: string
+        }
+        Returns: number
+      }
       scadenza_chiusa_anticipata: {
         Args: {
           _data_pagamento_effettiva: string
@@ -8961,6 +8989,15 @@ export type Database = {
           giorni_max: number
           pagato_12m: number
           scaduto_oltre: number
+        }[]
+      }
+      scaduto_semaforo_batch: {
+        Args: { _ids: string[] }
+        Returns: {
+          cliente_id: string
+          eur_grave: number
+          eur_scaduto: number
+          n_grave: number
         }[]
       }
       scarta_righe_import: {
