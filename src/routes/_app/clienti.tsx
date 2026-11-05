@@ -179,7 +179,10 @@ function ClientiPage() {
   const isListRoute = currentPath === "/clienti";
   const { role: _roleEarly, profilo: _profiloEarly, hasRole: _hasRoleEarly, user: _userEarly } = useAuth();
   const isStoreManager = _roleEarly === "store_manager";
-  const isAgente = _hasRoleEarly("agente");
+  const isAgenteRuolo = _hasRoleEarly("agente");
+  // FM56: lo showroom (sola lettura) ha le stesse esclusioni di azioni dell'agente in questa lista.
+  const soloShowroom = useSoloShowroom();
+  const isAgente = isAgenteRuolo || soloShowroom;
   const config = useConfig();
   const isConfigReady = useConfigReady();
   const myStoreId = _profiloEarly?.store_id ?? null;
@@ -1782,12 +1785,14 @@ function ClientiPage() {
             />
           )}
           <Dialog open={open} onOpenChange={setOpen}>
+            {!soloShowroom && (
             <DialogTrigger asChild>
               <Button className="gap-1.5 w-full sm:w-auto">
                 <Plus className="size-4" />
                 Nuova scheda cliente
               </Button>
             </DialogTrigger>
+            )}
             <SchedaClienteDialog onClose={() => { setOpen(false); setSearchInput(""); setSearch(""); }} />
           </Dialog>
         </div>
