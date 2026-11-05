@@ -7129,6 +7129,7 @@ export type Database = {
           cliente_id: string
           motivo: string
           numero: number
+          numero_unita: string
           stadio: string
         }[]
       }
@@ -8050,8 +8051,11 @@ export type Database = {
           n_in_ritardo: number
           n_in_ritardo_12m: number
           n_pagate: number
+          n_pagate_12m: number
           perc_in_ritardo: number
+          ritardo_medio_12m: number
           ritardo_medio_gg: number
+          ritardo_medio_ritardi_12m: number
           ritardo_medio_ritardi_gg: number
           tolleranza_gg: number
         }[]
@@ -8482,6 +8486,8 @@ export type Database = {
           motivo: string
           n_scaduto_grave: number
           num_insoluti: number
+          numero: number
+          numero_unita: string
           ritardo_medio_ritardi: number
           stadio: string
         }[]
