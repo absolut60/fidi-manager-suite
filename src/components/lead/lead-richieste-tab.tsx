@@ -1,3 +1,4 @@
+import { isSoloShowroom } from "@/lib/permessi-showroom";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -70,7 +71,9 @@ const FORM_VUOTO: FormRichiesta = {
 
 export function LeadRichiesteTab({ leadId }: { leadId: string }) {
   const qc = useQueryClient();
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
+  // FM56: richieste del lead in sola lettura per lo showroom (RESTRICTIVE su lead_richieste).
+  const soloShowroom = isSoloShowroom(roles as string[]);
   const [aperto, setAperto] = useState(false);
   const [inModifica, setInModifica] = useState<Richiesta | null>(null);
   const [f, setF] = useState<FormRichiesta>(FORM_VUOTO);
@@ -179,11 +182,13 @@ export function LeadRichiesteTab({ leadId }: { leadId: string }) {
 
   return (
     <div className="space-y-3">
+      {!soloShowroom && (
       <div className="flex justify-end">
         <Button size="sm" className="gap-1.5" onClick={apriNuova}>
           <Plus className="size-4" /> Nuova richiesta
         </Button>
       </div>
+      )}
 
       {isLoading ? (
         <Card className="p-6 text-sm text-muted-foreground">Caricamento…</Card>
@@ -224,6 +229,7 @@ export function LeadRichiesteTab({ leadId }: { leadId: string }) {
                   </TableCell>
                   <TableCell className="text-xs">{formatData(r.created_at)}</TableCell>
                   <TableCell>
+                    {!soloShowroom && (
                     <div className="flex justify-end gap-1">
                       <Button size="icon" variant="ghost" onClick={() => apriModifica(r)} aria-label="Modifica">
                         <Pencil className="size-4" />
