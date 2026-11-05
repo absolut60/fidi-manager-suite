@@ -51,10 +51,18 @@ export const aggiornaCervedCliente = createServerFn({ method: "POST" })
       ricerca = { dati: norm, chiamata_id: r.chiamata_id };
     }
 
-    const [p, s] = await Promise.all([
-      m.leggiProfilo(String(idSoggetto), ctx),
-      m.leggiScore(String(idSoggetto), ctx),
+    const ids = String(idSoggetto);
+    const [p, s, el, ev, fc, fm] = await Promise.all([
+      m.leggiProfilo(ids, ctx),
+      m.leggiScore(ids, ctx),
+      m.elencoBilanciCerved(ids, ctx),
+      m.eventiNegativiFlag(ids, ctx),
+      m.fidoCerved(ids, "FCERT", ctx),
+      m.fidoCerved(ids, "FMED", ctx),
     ]);
+    // Bilanci: i due di tipo 'E' più recenti (nessuno, es. ditte individuali → niente foto, niente errore).
+    const scelti = el.esito === "ok" ? m.dueBilanciEPiuRecenti(m.normalizzaElencoBilanci(el.risposta)) : [];
+    const bil = await Promise.all(scelti.map((b) => m.bilancioCerved(ids, b.data_chiusura, "E", ctx)));
 
     const ora = new Date().toISOString();
     if (esistente) {
@@ -77,6 +85,32 @@ export const aggiornaCervedCliente = createServerFn({ method: "POST" })
     if (s.esito === "ok") foto.push({ tipo: "score", dati: { scores: m.normalizzaScoreCerved(s.risposta) }, chiamata_id: s.chiamata_id });
     else errori.push(`Score: ${s.errore ?? "lettura non riuscita"}`);
 
+    let bilanciOk = el.esito === "ok";
+    if (!bilanciOk) errori.push(`Bilanci: ${el.errore ?? "lettura non riuscita"}`);
+    const anni = bil.filter((b) => b.esito === "ok").map((b) => m.normalizzaBilancioCerved(b.risposta));
+    bil.filter((b) => b.esito !== "ok").forEach((b) => errori.push(`Bilancio: ${b.errore ?? "lettura non riuscita"}`));
+    if (bil.some((b) => b.esito !== "ok")) bilanciOk = false;
+    if (anni.length) foto.push({ tipo: "bilancio", dati: { anni }, chiamata_id: bil.find((b) => b.esito === "ok")?.chiamata_id ?? null });
+
+    if (ev.esito === "ok") foto.push({ tipo: "eventi_negativi", dati: m.normalizzaEventiNegativiCerved(ev.risposta), chiamata_id: ev.chiamata_id });
+    else errori.push(`Eventi negativi: ${ev.errore ?? "lettura non riuscita"}`);
+
+    // Fido: un 403 significa prodotto non abilitato → fido_disponibile false, non è un errore.
+    const fidoDisponibile = !(fc.http_status === 403 || fm.http_status === 403);
+    for (const [nome, f] of [["FCERT", fc], ["FMED", fm]] as const) {
+      if (f.esito !== "ok" && f.http_status !== 403) errori.push(`Fido ${nome}: ${f.errore ?? "lettura non riuscita"}`);
+    }
+    if (fc.esito === "ok" || fm.esito === "ok") {
+      foto.push({
+        tipo: "fido",
+        dati: {
+          fcert: fc.esito === "ok" ? m.normalizzaFidoCerved(fc.risposta) : null,
+          fmed: fm.esito === "ok" ? m.normalizzaFidoCerved(fm.risposta) : null,
+        },
+        chiamata_id: (fc.esito === "ok" ? fc : fm).chiamata_id,
+      });
+    }
+
     if (foto.length) {
       const { error } = await supabaseAdmin.from("cerved_fotografie").insert(
         foto.map((f) => ({
@@ -96,6 +130,9 @@ export const aggiornaCervedCliente = createServerFn({ method: "POST" })
       denominazione_cerved: denominazione,
       profilo_ok: p.esito === "ok",
       score_ok: s.esito === "ok",
+      bilanci_ok: bilanciOk,
+      eventi_ok: ev.esito === "ok",
+      fido_disponibile: fidoDisponibile,
       errori,
     };
   });
