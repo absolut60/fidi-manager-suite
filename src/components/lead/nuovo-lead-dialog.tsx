@@ -1,3 +1,4 @@
+import { isSoloShowroom } from "@/lib/permessi-showroom";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -66,6 +67,9 @@ export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
   // Agente senza ruoli di gestione: il lead è sempre assegnato a sé stesso (RLS lo richiede).
   const agenteVincolato = roles.includes("agente") && !puoGestireLead(roles as string[]);
   const mioCodiceAgente = profilo?.codice_agente ?? null;
+  // FM56: per lo showroom la sede è la sua, precompilata e non modificabile (policy lead 0141).
+  const soloShowroom = isSoloShowroom(roles as string[]);
+  const sedeShowroom = soloShowroom ? (profilo?.store_id ?? null) : null;
   const [f, setF] = useState<Form>(EMPTY);
   const [duplicati, setDuplicati] = useState<DedupMatch[]>([]);
   const [checking, setChecking] = useState(false);
@@ -115,6 +119,10 @@ export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
     f.ragione_sociale.trim().length > 0 || (f.nome.trim().length > 0 && f.cognome.trim().length > 0);
 
   useEffect(() => {
+    if (sedeShowroom) setF((p) => ({ ...p, store_id: sedeShowroom }));
+  }, [sedeShowroom]);
+
+  useEffect(() => {
     if (agenteVincolato && mioCodiceAgente) setF((p) => ({ ...p, agente_codice: mioCodiceAgente }));
   }, [agenteVincolato, mioCodiceAgente]);
 
@@ -141,7 +149,7 @@ export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
         fonte_dettaglio: f.fonte_dettaglio,
         tipo_lead: f.tipo_lead,
         priorita: f.priorita,
-        store_id: f.store_id,
+        store_id: sedeShowroom ?? f.store_id,
         agente_codice: agenteVincolato ? mioCodiceAgente : f.agente_codice,
         note: f.note,
         createdBy: user?.id ?? null,
@@ -313,7 +321,7 @@ export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
         </div>
         <div>
           <Label className="text-xs">Sede</Label>
-          <Select value={f.store_id || NESSUNO} onValueChange={(v) => set("store_id", v === NESSUNO ? "" : v)}>
+          <Select value={f.store_id || NESSUNO} onValueChange={(v) => set("store_id", v === NESSUNO ? "" : v)} disabled={soloShowroom}>
             <SelectTrigger><SelectValue placeholder="Nessuna" /></SelectTrigger>
             <SelectContent>
               <SelectItem value={NESSUNO}>Nessuna</SelectItem>
@@ -350,7 +358,7 @@ export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
 
       <DialogFooter>
         <Button variant="outline" onClick={onClose}>Annulla</Button>
-        <Button disabled={!valido || mut.isPending || (agenteVincolato && !mioCodiceAgente)} onClick={() => mut.mutate()}>
+        <Button disabled={!valido || mut.isPending || (agenteVincolato && !mioCodiceAgente) || (soloShowroom && !sedeShowroom)} onClick={() => mut.mutate()}>
           {mut.isPending && <Loader2 className="size-4 animate-spin mr-1" />}
           Crea lead
         </Button>
