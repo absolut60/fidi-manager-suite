@@ -18,6 +18,12 @@ function dataIt(v: string | null): string | null {
   return d.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
+/** "MAGENTA (MI)"; se manca uno dei due, mostra quello che c'è. */
+function comuneProvincia(comune: string | null, provincia: string | null): string | null {
+  if (comune && provincia) return `${comune} (${provincia})`;
+  return comune || provincia || null;
+}
+
 export function ProvaCervedCard() {
   const [piva, setPiva] = useState("");
   const fn = useServerFn(provaCercaCerved);
