@@ -145,3 +145,24 @@ test('score: pd frazione, semaforo V, ordine SEM_CGS, CGS, altri', () => {
   expect(s[1].pd! * 100).toBeCloseTo(2.671, 3);
   expect(s[2].pd).toBeNull();
 });
+
+import { normalizzaDocumentoCerved, normalizzaArchivioCerved, normalizzaProdottiCerved, reportPiuRecente } from "../src/lib/cerved/cerved.server";
+import { describe as d2, it as i2, expect as e2 } from "vitest";
+
+d2("archivio Cerved", () => {
+  i2("decodifica il contenuto base64 in XML UTF-8", () => {
+    const content = Buffer.from("<x>Società</x>", "utf-8").toString("base64");
+    const r = normalizzaDocumentoCerved({ content, delivery_status: "DELIVERED", format: "XML", request_id: "9" });
+    e2(r.contenuto_xml).toBe("<x>Società</x>");
+    e2(r).not.toHaveProperty("content");
+  });
+  i2("sceglie il report più recente (GG-MM-AAAA)", () => {
+    const rs = normalizzaArchivioCerved({ documents: [
+      { request_id: "a", request_date: "31-12-2024" }, { request_id: "b", request_date: "01-02-2025" },
+    ] });
+    e2(reportPiuRecente(rs)?.request_id).toBe("b");
+  });
+  i2("legge i prodotti", () => {
+    e2(normalizzaProdottiCerved({ products: [{ product_id: "P1", description: "Report" }] })).toEqual([{ codice: "P1", descrizione: "Report" }]);
+  });
+});
