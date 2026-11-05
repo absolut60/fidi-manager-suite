@@ -1,3 +1,4 @@
+import { isSoloShowroom } from "@/lib/permessi-showroom";
 import { BadgeStatoPromessa, SelettoreStatoPromessa } from "@/components/stato-promessa";
 import { useMemo, useState, type ReactNode } from "react";
 import type { QueryClient } from "@tanstack/react-query";
@@ -123,6 +124,8 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda, onApriProm
   const qc = useQueryClient();
   const { user, roles } = useAuth();
   const puoInviare = puoInviareComunicazioniRecupero(roles as string[]);
+  // FM56: showroom in sola lettura sul recupero.
+  const soloShowroom = isSoloShowroom(roles as string[]);
 
   const [sollecitoOpen, setSollecitoOpen] = useState(false);
   const [creaOpen, setCreaOpen] = useState(false);
@@ -296,6 +299,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda, onApriProm
             <Send className="size-4" /> Invia email
           </Button>
         )}
+        {!soloShowroom && (<>
         <Button size="sm" variant="outline" onClick={() => openNuova("promemoria")} className="gap-1.5">
           <Bell className="size-4" /> Nuovo promemoria
         </Button>
@@ -308,6 +312,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda, onApriProm
         <Button size="sm" variant="outline" onClick={() => setPromessaOpen(true)} className="gap-1.5">
           <HandCoins className="size-4" /> Registra promessa
         </Button>
+        </>)}
         {puoInviare && (
           <Button size="sm" variant="ghost" onClick={() => setLetteraOpen(true)} className="gap-1.5">
             <FileText className="size-4" /> Lettera
@@ -519,6 +524,7 @@ export function TimelineItem({
   // "Invia ora": stessa regola e stessa finestra ovunque compaia la riga (attività e promesse).
   const { roles } = useAuth();
   const mostraInviaOra = isEmailDaInviare(azione) && puoInviareComunicazioniRecupero(roles);
+  const soloShowroomRiga = isSoloShowroom(roles as string[]);
   const [inviaOpen, setInviaOpen] = useState(false);
   return (<>
     <div className={`rounded-md border p-3 ${highlight ? "border-yellow-500/40 bg-yellow-500/5" : "border-border bg-background"}`}>
@@ -571,6 +577,7 @@ export function TimelineItem({
             <SelettoreStatoPromessa azioneId={azione.id} clienteId={azione.cliente_id} stato={azione.stato_promessa} />
           ) : (<>
           {esitoBadge(azione.esito)}
+          {!soloShowroomRiga && (
           <Select value={azione.esito} onValueChange={(v) => onChangeEsito(v as Esito)}>
             <SelectTrigger className="h-7 w-[150px] text-xs">
               <SelectValue />
@@ -581,6 +588,7 @@ export function TimelineItem({
               ))}
             </SelectContent>
           </Select>
+          )}
           </>)}
           {canEdit && (
             <div className="flex gap-1">
@@ -606,7 +614,7 @@ export function TimelineItem({
             entitaTipo="azione_recupero"
             entitaId={azione.id}
             clienteId={azione.cliente_id}
-            canEdit
+            canEdit={!soloShowroomRiga}
             compact
           />
         </div>

@@ -1,3 +1,4 @@
+import { isSoloShowroom } from "@/lib/permessi-showroom";
 // Scheda "Promesse" del cliente. Dati: useAzioniRecuperoCliente (stessa cache di
 // Attività recupero) filtrati con isPromessaPagamento. Riga: TimelineItem della
 // timeline, con scadenza, fatture collegate e badge "Da verificare" in più.
@@ -103,7 +104,8 @@ export function ClientePromesseTab({ clienteId }: { clienteId: string }) {
     }
   }
 
-  const pulsante = (
+  // FM56: showroom in sola lettura sul recupero, nessuna nuova promessa.
+  const pulsante = isSoloShowroom(roles as string[]) ? null : (
     <Button size="sm" onClick={() => setNuovaOpen(true)} className="gap-1.5 min-h-10 sm:min-h-9">
       <HandCoins className="size-4" /> Registra promessa
     </Button>

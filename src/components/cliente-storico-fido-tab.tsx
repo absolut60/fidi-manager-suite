@@ -1,3 +1,4 @@
+import { isSoloShowroom } from "@/lib/permessi-showroom";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -25,8 +26,9 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
   const qc = useQueryClient();
   const [openNew, setOpenNew] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
-  const { hasRole } = useAuth();
-  const isAgente = hasRole("agente");
+  const { hasRole, roles } = useAuth();
+  // FM56: lo showroom non crea né modifica richieste fido (come l'agente in questa scheda).
+  const isAgente = hasRole("agente") || isSoloShowroom(roles as string[]);
 
   const { data: richieste, isLoading } = useQuery({
     queryKey: ["richieste-cliente", clienteId],

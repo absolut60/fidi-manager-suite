@@ -1,3 +1,4 @@
+import { useSoloShowroom } from "@/hooks/use-solo-showroom";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -23,6 +24,8 @@ export function ClienteCantieriTab({
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { puoEliminareCantiere } = usePermessiCommerciale();
+  // FM56: cantieri in sola lettura per lo showroom (RESTRICTIVE su cantieri).
+  const soloShowroom = useSoloShowroom();
   const [openNew, setOpenNew] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
 
@@ -73,11 +76,13 @@ export function ClienteCantieriTab({
 
   return (
     <div className="space-y-4">
+      {!soloShowroom && (
       <div className="flex justify-end">
         <Button size="sm" className="gap-1.5" onClick={() => setOpenNew(true)}>
           <Plus className="size-4" /> Nuovo cantiere
         </Button>
       </div>
+      )}
 
       {isLoading ? (
         <div className="space-y-2">
@@ -115,6 +120,7 @@ export function ClienteCantieriTab({
                   >
                     <MapIcon className="size-4" />
                   </Button>
+                  {!soloShowroom && (
                   <Button
                     variant="ghost" size="icon" title="Modifica"
                     onClick={() => setEditId(c.id)}
@@ -122,6 +128,7 @@ export function ClienteCantieriTab({
                   >
                     <Pencil className="size-4" />
                   </Button>
+                  )}
                   {puoEliminareCantiere(c) && (
                     <BottoneElimina
                       titolo="Eliminare questo cantiere?"
