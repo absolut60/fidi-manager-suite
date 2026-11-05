@@ -523,15 +523,6 @@ function CampoTestata({ k, v, sotto, piccolo, className = "" }: { k: string; v: 
   );
 }
 
-function Campo({ k, v }: { k: string; v: string | null | undefined }) {
-  return (
-    <div className="min-w-0">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{k}</p>
-      <p className="break-words text-sm font-bold">{v || "—"}</p>
-    </div>
-  );
-}
-
 function Elemento({ k, v, tono }: { k: string; v: string; tono?: "verde" | "rosso" }) {
   return (
     <div className="min-w-0 rounded-sm border p-3">
