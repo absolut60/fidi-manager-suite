@@ -974,6 +974,13 @@
       "when": 1793868929316,
       "tag": "0138_fm56_dashboard_occhio_escludi_sede_gruppo",
       "breakpoints": true
+    },
+    {
+      "idx": 139,
+      "version": "7",
+      "when": 1793874548543,
+      "tag": "0139_fm56_drop_dashboard_fidi_giro",
+      "breakpoints": true
     }
   ]
 }

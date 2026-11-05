@@ -33,7 +33,8 @@ describe("Dashboard fidi: righe delle card", () => {
   test("la pagina legge solo le due funzioni della fonte unica", () => {
     const pagina = readFileSync("src/components/dashboard-fidi.tsx", "utf8");
     expect(pagina).toContain('rpc("get_dashboard_fidi_gruppi")');
-    expect(pagina).not.toContain("get_dashboard_fidi_giro");
+    expect(pagina).not.toContain(["get_dashboard", "fidi", "giro"].join("_"));
+    expect(readFileSync("src/routes/_app/clienti.tsx", "utf8")).not.toContain(["get_clienti", "giro", "fidi", "ids"].join("_"));
     expect(pagina).not.toContain("≤ 500");
     const lista = readFileSync("src/routes/_app/clienti.tsx", "utf8");
     expect(lista).toContain('rpc("get_clienti_dashboard_fidi_ids"');
