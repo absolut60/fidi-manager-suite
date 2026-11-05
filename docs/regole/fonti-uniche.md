@@ -123,3 +123,13 @@ Fonte unica `isSoloShowroom` (`src/lib/permessi-showroom.ts`) / `public.auth_sol
 
 ## Dashboard fidi (FM56)
 Numeri da `get_dashboard_fidi_gruppi`, liste da `get_clienti_dashboard_fidi_ids` (base `dashboard_fidi_clienti_base` / `dashboard_fidi_appartenenze`).
+
+## Semaforo di affidabilità e «come paga» (FM58)
+
+- **Ritardo di pagamento per riga:** solo `public.ritardo_pagamento_riga` (conta solo pagate davvero, con data scadenza, non RiBa `/^RB/i`, non anticipo; giorni = pagamento − scadenza).
+- **Numeri "come paga" per cliente** (storico e ultimi 12 mesi, tolleranza da `configurazioni.tolleranza_ritardo_pagamento_gg`): solo `public.esperienza_pagamento_batch`. Ritardo medio 12 mesi = media su tutte le pagate dei 12 mesi, le puntuali valgono 0.
+- **Scaduto del semaforo e scaduto grave (> 60 gg):** solo `public.scaduto_semaforo_batch` (righe 'scaduto' di `categoria_scadenza_riga` come lo scadenziario, BOS esclusi, `calcola_scaduto`).
+- **Cascata dei colori:** solo `public.calcola_semaforo_affidabilita_batch` (rosso: bloccato/legale/insoluti/scaduto > 10.000; arancione: scaduto grave o 1.000–10.000; giallo: scaduto < 1.000, oppure ≥ 3 pagate 12 mesi e ritardo medio 12 mesi > 15 gg; spento: nessun pagamento; verde: altrimenti). `get_semaforo_affidabilita_cliente` e `get_esperienza_pagamento_cliente` leggono soltanto.
+- **TypeScript:** legenda, colori e testo del numero solo in `src/lib/semaforo-ui.ts` (`LEGENDA_STADIO`, `testoNumeroSemaforo`); lettura del singolo cliente solo con `useSemaforoAffidabilitaCliente`; liste da `fido_teorico_cliente.semaforo_stadio`. Mai calcoli o colori locali sul ritardo (niente soglie proprie nelle card).
+- **Il ricalcolo del fido teorico riscrive i colori salvati:** se cambia la regola, i colori salvati vanno allineati subito.
+- **Non ancora allineato (decisione del proprietario):** profilo di puntualità del fido teorico (`get_fido_teorico_v2` / `coefficiente_comportamento`).
