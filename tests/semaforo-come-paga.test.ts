@@ -18,8 +18,8 @@ describe("testoNumeroSemaforo", () => {
     expect(testoNumeroSemaforo(17.6, "gg")).toBe("18 gg");
   });
   test("eur in formato italiano", () => {
-    const t = testoNumeroSemaforo(1234.5, "eur")!;
-    expect(t).toContain("1.234,50");
+    const t = testoNumeroSemaforo(12345.5, "eur")!;
+    expect(t).toContain("12.345,50");
     expect(t).toContain("€");
   });
 });
