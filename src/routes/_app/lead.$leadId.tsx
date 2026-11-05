@@ -45,6 +45,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { OpportunitaSoggettoLista } from "@/components/opportunita-soggetto-lista";
+import { AllegatiSection } from "@/components/allegati-section";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CampagneEntitaTab } from "@/components/marketing/campagne-entita-tab";
 import {
@@ -135,6 +136,15 @@ function LeadDettaglioPage() {
   const canManage = useMemo(() => puoGestireLead(roles as string[]), [roles]);
   // FM56: lo showroom non può spostare il lead in un'altra sede (policy lead della migrazione 0141).
   const soloShowroom = useMemo(() => isSoloShowroom(roles as string[]), [roles]);
+  // Chi può modificare il lead (e quindi i suoi allegati) lo decide solo il database: public.auth_puo_modificare_lead.
+  const { data: puoModificareLeadDb } = useQuery({
+    queryKey: ["auth_puo_modificare_lead", leadId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("auth_puo_modificare_lead", { _lead_id: leadId });
+      if (error) throw error;
+      return data === true;
+    },
+  });
   // Agente senza permessi di gestione: non può riassegnare il lead ad altri
   const agenteVincolato = useMemo(
     () => (roles as string[]).includes("agente") && !canManage,
@@ -614,6 +624,7 @@ function LeadDettaglioPage() {
           <TabsTrigger value="cantieri">Cantieri</TabsTrigger>
           <TabsTrigger value="commerciale">Commerciale</TabsTrigger>
           <TabsTrigger value="richieste">Richieste</TabsTrigger>
+          <TabsTrigger value="allegati">Allegati</TabsTrigger>
           <TabsTrigger value="campagne">Campagne</TabsTrigger>
           <TabsTrigger value="privacy">Privacy</TabsTrigger>
           <TabsTrigger value="storico">Storico</TabsTrigger>
@@ -1044,6 +1055,18 @@ function LeadDettaglioPage() {
 
         <TabsContent value="richieste" className="mt-4">
           <LeadRichiesteTab leadId={leadId} />
+        </TabsContent>
+
+        <TabsContent value="allegati" className="mt-4">
+          <Card className="p-4 sm:p-6">
+            <AllegatiSection
+              entitaTipo="lead"
+              entitaId={leadId}
+              canEdit={puoModificareLeadDb === true}
+              eliminaTutti={puoModificareLeadDb === true}
+              title="Documenti del lead"
+            />
+          </Card>
         </TabsContent>
 
         <TabsContent value="campagne" className="mt-4">
