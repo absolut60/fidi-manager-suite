@@ -663,6 +663,9 @@ function EditUtenteDialog({ utente, haMfa, onClose }: { utente: UserRow; haMfa: 
               ))}
             </SelectContent>
           </Select>
+          {ruoli.includes("showroom") && storeId === "_none" && (
+            <p className="text-xs text-destructive">Il ruolo Showroom richiede la sede dello showroom: sceglila qui.</p>
+          )}
         </div>
         {richiedeAgente && (
           <div className="space-y-1.5">
@@ -917,6 +920,9 @@ function NewUtenteDialog({ onClose }: { onClose: () => void }) {
               ))}
             </SelectContent>
           </Select>
+          {ruoli.includes("showroom") && storeId === "_none" && (
+            <p className="text-xs text-destructive">Il ruolo Showroom richiede la sede dello showroom: sceglila qui.</p>
+          )}
         </div>
         {richiedeAgente && (
           <div className="space-y-1.5">
