@@ -187,3 +187,49 @@ d2("scegliAziendaPerPiva", () => {
     e2(scegliAziendaPerPiva({}, "01234567890")).toBeNull();
   });
 });
+
+import { normalizzaBilancioCerved, normalizzaEventiNegativiCerved, normalizzaFidoCerved } from "../src/lib/cerved/cerved.server";
+
+test("bilancio: MOL ABBRUSCATO 30/09/2025 e valori già in euro", () => {
+  const b = normalizzaBilancioCerved({
+    data_chiusura: "30-09-2025", tipo_bilancio: "E",
+    voci_integrale: {
+      conto_economico: [
+        { codice_voce: "270", valore: 2582103 }, { codice_voce: "320", valore: 519363 },
+        { codice_voce: "330", valore: 389075 }, { codice_voce: "302", valore: 1319118 },
+        { codice_voce: "304", valore: 38720 }, { codice_voce: "370", valore: 211958 },
+      ],
+      stato_patrimoniale: [{ codice_voce: "160", valore: 50000 }],
+    },
+  });
+  expect(b.mol).toBe(103869);
+  expect(b.valore_produzione).toBe(2582103);
+  expect(b.patrimonio_netto).toBe(50000);
+  expect(b.data_chiusura).toBe("30/09/2025");
+  expect(b.tipo_bilancio).toBe("E");
+  expect(b.ricavi).toBeNull();
+});
+
+test("bilancio senza voci: tutto null, MOL null", () => {
+  const b = normalizzaBilancioCerved({ data_chiusura: "31-12-2024" });
+  expect(b.mol).toBeNull();
+  expect(b.valore_produzione).toBeNull();
+  expect(b.data_chiusura).toBe("31/12/2024");
+});
+
+test("eventi negativi: azienda e persone", () => {
+  const e = normalizzaEventiNegativiCerved({
+    companies: [{ protesti: false, pregiudizievoli: true, procedure: false, cigs: false }],
+    people: [{ nome: "MARIO ROSSI", protesti: true, codice_fiscale: "X" }],
+  });
+  expect(e.azienda).toEqual({ protesti: false, pregiudizievoli: true, procedure: false, eventi_crisi: null, cigs: false, fallimenti_propri: null });
+  expect(e.persone[0].nome).toBe("MARIO ROSSI");
+  expect(e.persone[0].protesti).toBe(true);
+  expect(e.persone[0].cigs).toBeNull();
+  expect(normalizzaEventiNegativiCerved({}).azienda).toBeNull();
+});
+
+test("fido: codice, descrizione, valore", () => {
+  expect(normalizzaFidoCerved({ codice: "FCERT", descrizione: "Fido Cerved", valore: 25000 }))
+    .toEqual({ codice: "FCERT", descrizione: "Fido Cerved", valore: 25000 });
+});
