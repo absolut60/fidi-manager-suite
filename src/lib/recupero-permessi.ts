@@ -2,6 +2,8 @@
 // (sollecito email, email libera, lettera PDF, invio massivo).
 // Gemello SQL: public.auth_puo_inviare_recupero(). Se cambia uno, cambia l'altro.
 
+import { isSoloShowroom } from "@/lib/permessi-showroom";
+
 export const RUOLI_INVIO_RECUPERO = ["recupero_crediti", "amministratore"] as const;
 
 export function puoInviareComunicazioniRecupero(roles: readonly string[]): boolean {
