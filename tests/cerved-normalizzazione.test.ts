@@ -171,3 +171,19 @@ d2("archivio Cerved", () => {
     e2(normalizzaArchivioCerved({ documents: [{ request_id: "a" }] })).toEqual([]);
   });
 });
+
+import { scegliAziendaPerPiva } from "../src/lib/cerved/cerved.server";
+d2("scegliAziendaPerPiva", () => {
+  const az = (piva: string, id: number) => ({ dati_anagrafici: { partita_iva: piva, id_soggetto: id } });
+  i2("tiene la corrispondenza esatta e scarta P.IVA diverse", () => {
+    const r = { companies: [az("99999999999", 1), az("01234567890", 2)] };
+    e2(scegliAziendaPerPiva(r, "IT 01234567890")).toEqual(az("01234567890", 2));
+  });
+  i2("più corrispondenze: la prima", () => {
+    e2(scegliAziendaPerPiva({ companies: [az("01234567890", 3), az("01234567890", 4)] }, "01234567890")).toEqual(az("01234567890", 3));
+  });
+  i2("nessuna corrispondenza: null", () => {
+    e2(scegliAziendaPerPiva({ companies: [az("99999999999", 1)] }, "01234567890")).toBeNull();
+    e2(scegliAziendaPerPiva({}, "01234567890")).toBeNull();
+  });
+});
