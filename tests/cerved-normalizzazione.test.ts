@@ -147,7 +147,7 @@ test('score: pd frazione, semaforo V, ordine SEM_CGS, CGS, altri', () => {
 });
 
 import { normalizzaDocumentoCerved, normalizzaArchivioCerved, normalizzaProdottiCerved, reportPiuRecente } from "../src/lib/cerved/cerved.server";
-import { describe as d2, it as i2, expect as e2 } from "vitest";
+import { describe as d2, it as i2, expect as e2 } from "bun:test";
 
 d2("archivio Cerved", () => {
   i2("decodifica il contenuto base64 in XML UTF-8", () => {
