@@ -69,3 +69,45 @@ export function formattaAggiornatoIl(iso: string | null | undefined): string | n
   const ora = d.toLocaleTimeString("it-IT", { timeZone: "Europe/Rome", hour: "2-digit", minute: "2-digit" });
   return `${data} alle ${ora}`;
 }
+
+/** Scale del Light Report Cerved, dal migliore (livello 1) al peggiore. CNSL e codici ignoti: nessuna scala. */
+export const SCALE_SCORE_CERVED: Record<string, string[]> = {
+  PAY: ["Regolari", "Prevalentemente regolari", "Dilazionati", "Ritardi", "Ritardi significativi"],
+  NEG: ["Assenti", "Minimi", "Limitati", "Gravi", "Gravissimi"],
+  GOV: ["Assenza di segnali di rischio", "Potenziali segnali di rischio"],
+  ECOFIN: ["Sicurezza elevata", "Sicurezza", "Ampia solvibilità", "Solvibilità", "Solvibilità moderata",
+    "Solvibilità bassa", "Rischio moderato", "Rischio", "Rischio elevato", "Rischio molto elevato"],
+  IMMO: ["Elevata", "Ampia", "Buona", "Discreta", "Moderata", "Non significativa"],
+};
+
+/** "PAY_2" → 2; senza numero dopo "_" → null. */
+export function livelloCategoria(categoria_codice: string | null | undefined): number | null {
+  const m = /_(\d+)$/.exec((categoria_codice ?? "").trim());
+  if (!m) return null;
+  const n = Number(m[1]);
+  return n >= 1 ? n : null;
+}
+
+export function scalaScore(codice_score: string | null | undefined): string[] | null {
+  return SCALE_SCORE_CERVED[(codice_score ?? "").trim().toUpperCase()] ?? null;
+}
+
+export function esitoValutazione(livello: number | null | undefined): "ottimo" | "attenzione" | null {
+  if (livello == null || !Number.isFinite(livello) || livello < 1) return null;
+  return livello === 1 ? "ottimo" : "attenzione";
+}
+
+/** 2419063 → "2,42 mln €"; 519363 → "519 mila €"; sotto 1.000 il valore intero. */
+export function formattaEuroCompatto(n: number | null | undefined): string | null {
+  if (n == null || !Number.isFinite(n)) return null;
+  const a = Math.abs(n);
+  if (a >= 1_000_000) return `${(n / 1_000_000).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} mln €`;
+  if (a >= 1_000) return `${Math.round(n / 1_000).toLocaleString("it-IT")} mila €`;
+  return `${Math.round(n).toLocaleString("it-IT")} €`;
+}
+
+/** Variazione % rispetto al precedente; null se precedente 0 o mancante. */
+export function variazionePercentuale(attuale: number | null | undefined, precedente: number | null | undefined): number | null {
+  if (attuale == null || precedente == null || !Number.isFinite(attuale) || !Number.isFinite(precedente) || precedente === 0) return null;
+  return ((attuale - precedente) / Math.abs(precedente)) * 100;
+}

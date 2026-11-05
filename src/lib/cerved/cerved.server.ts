@@ -736,15 +736,15 @@ export type EventiNegativiCervedNorm = {
 };
 
 const flagDa = (o: Record<string, unknown>): FlagEventiCerved => ({
-  protesti: booleano(o["protesti"]),
-  pregiudizievoli: booleano(o["pregiudizievoli"]),
-  procedure: booleano(o["procedure"]),
-  eventi_crisi: booleano(o["eventi_crisi"]),
+  protesti: booleano(o["protests"]),
+  pregiudizievoli: booleano(o["prejudicialEvents"]),
+  procedure: booleano(o["procedures"]),
+  eventi_crisi: booleano(o["crisisEvents"]),
   cigs: booleano(o["cigs"]),
-  fallimenti_propri: booleano(o["fallimenti_propri"]),
+  fallimenti_propri: booleano(o["personalBankruptcies"]),
 });
 
-/** Flag eventi negativi: azienda dal primo elemento di companies, persone da people (solo nome). */
+/** Flag eventi negativi (nomi reali): azienda dal primo elemento di companies, persone da people (name). */
 export function normalizzaEventiNegativiCerved(risposta: unknown): EventiNegativiCervedNorm {
   const r = risposta && typeof risposta === "object" ? (risposta as Record<string, unknown>) : {};
   const comp = Array.isArray(r["companies"]) ? r["companies"] : [];
@@ -754,20 +754,19 @@ export function normalizzaEventiNegativiCerved(risposta: unknown): EventiNegativ
     azienda: primo ? flagDa(primo) : null,
     persone: ppl.filter((p) => p && typeof p === "object").map((p) => {
       const o = p as Record<string, unknown>;
-      return { nome: testo(o["nome"] ?? o["name"]), ...flagDa(o) };
+      return { nome: testo(o["name"]), ...flagDa(o) };
     }),
   };
 }
 
 export type FidoCervedNorm = { codice: string | null; descrizione: string | null; valore: number | null };
 
-/** Fido Cerved: primo oggetto con codice/descrizione/valore (valore_fido se presente). */
+/** Fido Cerved: risposta piatta con codice_fido, descrizione_fido, valore_fido. */
 export function normalizzaFidoCerved(risposta: unknown): FidoCervedNorm {
-  let codice: string | null = null, descrizione: string | null = null, valore: number | null = null;
-  for (const o of oggettiAnnidati(risposta)) {
-    codice ??= testo(o["codice"]);
-    descrizione ??= testo(o["descrizione"]);
-    valore ??= numeroCerved(o["valore_fido"] ?? o["valore"]);
-  }
-  return { codice, descrizione, valore };
+  const r = risposta && typeof risposta === "object" ? (risposta as Record<string, unknown>) : {};
+  return {
+    codice: testo(r["codice_fido"]),
+    descrizione: testo(r["descrizione_fido"]),
+    valore: numeroCerved(r["valore_fido"]),
+  };
 }

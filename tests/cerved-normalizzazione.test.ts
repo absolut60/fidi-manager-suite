@@ -217,19 +217,24 @@ test("bilancio senza voci: tutto null, MOL null", () => {
   expect(b.data_chiusura).toBe("31/12/2024");
 });
 
-test("eventi negativi: azienda e persone", () => {
+test("eventi negativi: nomi reali", () => {
   const e = normalizzaEventiNegativiCerved({
-    companies: [{ protesti: false, pregiudizievoli: true, procedure: false, cigs: false }],
-    people: [{ nome: "MARIO ROSSI", protesti: true, codice_fiscale: "X" }],
+    companies: [{ protests: false, prejudicialEvents: false, procedures: false, crisisEvents: false, cigs: false, personalBankruptcies: false }],
+    people: [],
   });
-  expect(e.azienda).toEqual({ protesti: false, pregiudizievoli: true, procedure: false, eventi_crisi: null, cigs: false, fallimenti_propri: null });
-  expect(e.persone[0].nome).toBe("MARIO ROSSI");
-  expect(e.persone[0].protesti).toBe(true);
-  expect(e.persone[0].cigs).toBeNull();
+  expect(e.azienda).toEqual({ protesti: false, pregiudizievoli: false, procedure: false, eventi_crisi: false, cigs: false, fallimenti_propri: false });
+  expect(e.persone).toEqual([]);
+  const e2b = normalizzaEventiNegativiCerved({ companies: [{ prejudicialEvents: true }], people: [{ name: "MARIO ROSSI", protests: true }] });
+  expect(e2b.azienda?.pregiudizievoli).toBe(true);
+  expect(e2b.azienda?.protesti).toBeNull();
+  expect(e2b.persone[0].nome).toBe("MARIO ROSSI");
+  expect(e2b.persone[0].protesti).toBe(true);
+  expect(normalizzaEventiNegativiCerved({ companies: [{ protesti: true }] }).azienda?.protesti).toBeNull();
   expect(normalizzaEventiNegativiCerved({}).azienda).toBeNull();
 });
 
-test("fido: codice, descrizione, valore", () => {
-  expect(normalizzaFidoCerved({ codice: "FCERT", descrizione: "Fido Cerved", valore: 25000 }))
-    .toEqual({ codice: "FCERT", descrizione: "Fido Cerved", valore: 25000 });
+test("fido: campi reali piatti", () => {
+  expect(normalizzaFidoCerved({ codice_fido: "FCERT", descrizione_fido: "Fido certificato", valore_fido: 25000 }))
+    .toEqual({ codice: "FCERT", descrizione: "Fido certificato", valore: 25000 });
+  expect(normalizzaFidoCerved({ dati: { valore_fido: 1 } }).valore).toBeNull();
 });

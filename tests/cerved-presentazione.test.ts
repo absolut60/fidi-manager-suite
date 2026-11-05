@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { etichettaScoreCerved, coloreSemaforo, statoAttivitaAnomalo, formattaPdCerved, formattaAggiornatoIl } from "@/lib/cerved-presentazione";
+import { etichettaScoreCerved, coloreSemaforo, statoAttivitaAnomalo, formattaPdCerved, formattaAggiornatoIl, livelloCategoria, scalaScore, esitoValutazione, formattaEuroCompatto, variazionePercentuale } from "@/lib/cerved-presentazione";
 
 describe("cerved-presentazione", () => {
   it("etichette semplici e fallback alla descrizione", () => {
@@ -25,5 +25,37 @@ describe("cerved-presentazione", () => {
   });
   it("aggiornato il in ora di Roma", () => {
     expect(formattaAggiornatoIl("2026-11-05T15:04:00Z")).toBe("05/11/2026 alle 16:04");
+  });
+  it("livello dal categoria_codice", () => {
+    expect(livelloCategoria("PAY_2")).toBe(2);
+    expect(livelloCategoria("ECOFIN_10")).toBe(10);
+    expect(livelloCategoria("V")).toBeNull();
+    expect(livelloCategoria(null)).toBeNull();
+  });
+  it("scale: ordine dal migliore, CNSL senza scala", () => {
+    expect(scalaScore("PAY")?.[0]).toBe("Regolari");
+    expect(scalaScore("NEG")?.[4]).toBe("Gravissimi");
+    expect(scalaScore("GOV")).toHaveLength(2);
+    expect(scalaScore("ECOFIN")).toHaveLength(10);
+    expect(scalaScore("IMMO")?.[5]).toBe("Non significativa");
+    expect(scalaScore("CNSL")).toBeNull();
+    expect(scalaScore("ZZZ")).toBeNull();
+  });
+  it("esito valutazione", () => {
+    expect(esitoValutazione(1)).toBe("ottimo");
+    expect(esitoValutazione(3)).toBe("attenzione");
+    expect(esitoValutazione(null)).toBeNull();
+  });
+  it("euro compatto", () => {
+    expect(formattaEuroCompatto(2419063)).toBe("2,42 mln €");
+    expect(formattaEuroCompatto(519363)).toBe("519 mila €");
+    expect(formattaEuroCompatto(850)).toBe("850 €");
+    expect(formattaEuroCompatto(null)).toBeNull();
+  });
+  it("variazione percentuale", () => {
+    expect(variazionePercentuale(2419063, 3516421)!).toBeCloseTo(-31.21, 2);
+    expect(variazionePercentuale(54886, 43730)!).toBeCloseTo(25.51, 2);
+    expect(variazionePercentuale(1, 0)).toBeNull();
+    expect(variazionePercentuale(1, null)).toBeNull();
   });
 });
