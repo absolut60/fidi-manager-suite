@@ -90,7 +90,7 @@ Le azioni multiple su `richieste_fido` passano dall'helper a blocchi `src/lib/ri
 
 - `isSenzaPartitaIvaFido` (`src/lib/fido-teorico.ts`) = senza partita IVA; gemello SQL `cliente_privato_fido(text)`.
 - `isPrivatoFido` = fuori dal giro fidi = senza partita IVA **o** Sede Centrale (`isSedeCentraleFido`); gemello SQL `cliente_privato_fido(clienti)`. Gemello SQL della Sede Centrale: `cliente_sede_centrale_fido(uuid)`.
-- La card "Privati (senza partita IVA)" conta i senza partita IVA escludendo la Sede Centrale (`isPrivatoCard` in `src/lib/dashboard-fidi-giro.ts`, gemello `get_dashboard_fidi_giro` / `get_clienti_giro_fidi_ids`). La card "POS / contanti con fido" conta `regola_applicata = 'pagamento_immediato'` con fido concesso > 0.
+- Le vecchie card "Privati" e "POS / contanti con fido" (e le funzioni `get_dashboard_fidi_giro` / `get_clienti_giro_fidi_ids`) sono state rimosse in FM56 fetta 3: Privati e Contanti/POS sono gruppi delle card di `get_dashboard_fidi_gruppi`.
 
 ## Cliente non attivo = fido teorico zero (FM55 fetta 6, decisione di Andrea, 01/11/2026)
 
