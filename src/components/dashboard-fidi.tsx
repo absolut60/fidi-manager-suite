@@ -12,10 +12,12 @@ import {
   PauseCircle,
   CircleAlert,
   Clock,
-  Users,
-  Banknote,
+  Eye,
 } from "lucide-react";
-import { percentualeSuTotale } from "@/lib/dashboard-fidi-giro";
+import {
+  CATEGORIE_DASHBOARD, CATEGORIE_OLTRE, PREFISSO_PRESET, codificaFiltroDashboard, etichettaRiga,
+  normalizzaGruppi, riga, sommaRighe, type RigaGruppo,
+} from "@/lib/dashboard-fidi-gruppi";
 import type { LucideIcon } from "lucide-react";
 
 type DashboardFidi = {
@@ -104,22 +106,13 @@ export function DashboardFidi() {
     },
   });
 
-  const { data: giro } = useQuery({
-    queryKey: ["dashboard-fidi-giro"],
+  const { data: gruppi } = useQuery({
+    queryKey: ["dashboard-fidi-gruppi"],
     staleTime: 5 * 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_dashboard_fidi_giro");
+      const { data, error } = await supabase.rpc("get_dashboard_fidi_gruppi");
       if (error) throw error;
-      const r = (Array.isArray(data) ? data[0] : data) ?? null;
-      const num = (x: unknown) => Number(x ?? 0);
-      return {
-        privatiN: num(r?.privati_con_fido_n),
-        privatiConcesso: num(r?.privati_concesso_eur),
-        privatiProposto: num(r?.privati_proposto_eur),
-        privatiEsposizione: num(r?.privati_esposizione_eur),
-        posN: num(r?.pos_con_fido_n),
-        posConcesso: num(r?.pos_concesso_eur),
-      };
+      return normalizzaGruppi(data);
     },
   });
 
@@ -148,46 +141,60 @@ export function DashboardFidi() {
   const deltaPerc = data.fido_concesso_eur > 0 ? (delta / data.fido_concesso_eur) * 100 : 0;
   const positivo = delta >= 0;
 
+  const G = gruppi ?? [];
+  const pronto = !!gruppi;
+  const oltreTot = sommaRighe(G, "oltre", CATEGORIE_OLTRE);
+  const fermiTot = sommaRighe(G, "fermi", ["imprese", "privati"]);
+  const occhioTot = riga(G, "occhio", "totale");
+  const rigaCat = (card: string, gruppo: string, valore: (r: RigaGruppo) => string, extra?: Partial<RigaCardProps>): RigaCardProps => {
+    const r = riga(G, card, gruppo);
+    return { card, gruppo, etichetta: etichettaRiga(card, gruppo), valore: pronto ? valore(r) : "…", ...extra };
+  };
+  const nEuro = (r: RigaGruppo) => `${numero(r.n_clienti)} clienti · ${euro(r.importo)}`;
+  const segno = (v: number) => `${v >= 0 ? "+" : "−"}${euro(Math.abs(v))}`;
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Riquadro
+        <CardRighe
           titolo="Fido concesso"
           valore={euro(data.fido_concesso_eur)}
           sottotitolo={`${numero(data.fido_concesso_clienti)} clienti con fido attivo`}
           icona={Wallet}
           tono="primary"
-          nota={`di cui ${numero(data.fido_concesso_piccoli_n)} fidi ≤ 500 € · ${euro(data.fido_concesso_piccoli_eur)}`}
+          righe={CATEGORIE_DASHBOARD.map((g) => rigaCat("concesso", g, nEuro))}
+          righeSotto={[rigaCat("concesso", "fermi", (r) => `${numero(r.n_clienti)} · ${euro(r.importo)}`, { etichetta: "di cui clienti fermi" })]}
         />
-        <Riquadro
+        <CardRighe
           titolo="Fido proposto"
           valore={euro(data.fido_proposto_eur)}
           sottotitolo={`Calcolo teorico aggiornato al ${dataOra(data.aggiornato_al)}`}
           icona={Calculator}
           tono="info"
-          nota={`di cui ${numero(data.fido_proposto_piccoli_n)} proposte ≤ 500 € · ${euro(data.fido_proposto_piccoli_eur)}`}
+          righe={CATEGORIE_DASHBOARD.map((g) => rigaCat("proposto", g, nEuro))}
         />
-        <Riquadro
+        <CardRighe
           titolo="Variazione"
           valore={`${positivo ? "+" : "−"}${euro(Math.abs(delta))}`}
           sottotitolo={`${positivo ? "+" : "−"}${Math.abs(deltaPerc).toFixed(1)}% rispetto al concesso`}
           icona={positivo ? TrendingUp : TrendingDown}
           tono={positivo ? "success" : "warning"}
-          nota={`${numero(data.da_verificare_n)} posizioni da verificare`}
-          notaLink={{ to: "/clienti", search: { preset: "da_verificare" } }}
+          righe={CATEGORIE_DASHBOARD.map((g) => rigaCat("variazione", g, (r) => segno(r.importo), {
+            dettaglio: pronto ? `↑${numero(riga(G, "variazione", g).n_aumenti)} · ↓${numero(riga(G, "variazione", g).n_riduzioni)}` : undefined,
+          }))}
+          link={{ testo: `${numero(data.da_verificare_n)} posizioni da verificare`, to: "/clienti", search: { preset: "da_verificare" } }}
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-        <Riquadro
-          compatto
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <CardRighe
           titolo="Esposizione oltre il fido"
-          valore={euro(data.oltre_fido_eur)}
-          sottotitolo={`${numero(data.oltre_fido_n)} clienti oltre il fido concesso`}
+          valore={pronto ? euro(oltreTot.importo) : "…"}
+          sottotitolo={pronto ? `${numero(oltreTot.n_clienti)} clienti oltre il fido concesso` : undefined}
           icona={AlertTriangle}
           tono="warning"
-          notaLink={{ to: "/clienti", search: { preset: "oltre_fido" } }}
-          nota="Vedi la lista"
+          righe={CATEGORIE_OLTRE.map((g) => rigaCat("oltre", g, nEuro))}
+          righeSotto={[rigaCat("oltre", "contanti_pos", nEuro, { attenuata: true })]}
         />
         <Riquadro
           compatto
@@ -199,15 +206,13 @@ export function DashboardFidi() {
           cardLink={{ to: "/clienti", search: { preset: "insoluti" } }}
           nota="Vedi i clienti con insoluti"
         />
-        <Riquadro
-          compatto
+        <CardRighe
           titolo="Clienti fermi"
-          valore={numero(data.fermi_n)}
-          sottotitolo={`Fatturato negli ultimi 12 mesi, nulla negli ultimi 3`}
+          valore={pronto ? numero(fermiTot.n_clienti) : "…"}
+          sottotitolo="Comprano nel 2026, nessun acquisto negli ultimi 3 mesi"
           icona={PauseCircle}
           tono="info"
-          cardLink={{ to: "/clienti", search: { preset: "fermi" } }}
-          nota={`Scaduto residuo: ${euro(data.fermi_scaduto_eur)}`}
+          righe={(["imprese", "privati"] as const).map((g) => rigaCat("fermi", g, (r) => `${numero(r.n_clienti)} · fido non usato ${euro(r.importo)}`))}
         />
         <Riquadro
           compatto
@@ -220,42 +225,109 @@ export function DashboardFidi() {
           nota="Vedi lo scadenzario"
           notaExtra="Coerente con lo scadenziario (esclude BOS e gestione legale)"
         />
-        <Riquadro
-          compatto
-          titolo="Fidi ≥80% consumato"
-          valore={quasiSaturi == null ? "…" : numero(quasiSaturi)}
-          sottotitolo="Clienti che hanno consumato almeno l'80% del fido"
-          icona={AlertTriangle}
+        <CardRighe
+          titolo="Fidi da tenere d'occhio"
+          valore={pronto ? `${numero(occhioTot.n_clienti)} clienti` : "…"}
+          sottotitolo={pronto ? `fido concesso ${euro(occhioTot.importo)}` : undefined}
+          valoreLink={{ card: "occhio", gruppo: "totale" }}
+          icona={Eye}
           tono="warning"
-          cardLink={{ to: "/clienti", search: { preset: "quasi_saturo" } }}
-          nota="Azioni sui clienti quasi saturi"
-        />
-        <Riquadro
-          compatto
-          titolo="Privati (senza partita IVA)"
-          valore={giro ? euro(giro.privatiConcesso) : "…"}
-          sottotitolo={giro ? `${numero(giro.privatiN)} clienti con fido · ${percentualeSuTotale(giro.privatiConcesso, data.fido_concesso_eur)} del fido concesso totale` : undefined}
-          righe={giro ? [
-            `Proposto ${euro(giro.privatiProposto)} · ci devono ${euro(giro.privatiEsposizione)}`,
-            "Fuori dal giro fidi: controllo a parte.",
-          ] : undefined}
-          icona={Users}
-          tono="info"
-          notaLink={{ to: "/clienti", search: { preset: "privati_con_fido" } }}
-          nota="Vedi la lista"
-        />
-        <Riquadro
-          compatto
-          titolo="POS / contanti con fido"
-          valore={giro ? numero(giro.posN) : "…"}
-          sottotitolo={giro ? (giro.posN > 0 ? `Fido concesso ${euro(giro.posConcesso)} · da azzerare` : "Nessuno ✓") : undefined}
-          icona={Banknote}
-          tono={giro && giro.posN > 0 ? "danger" : "success"}
-          notaLink={{ to: "/clienti", search: { preset: "pos_con_fido" } }}
-          nota="Vedi la lista"
+          righe={(["vicini", "piu", "ordini"] as const).map((g) => rigaCat("occhio", g, (r) => `${numero(r.n_clienti)} · ${euro(r.importo)}`))}
+          nota="Un cliente può comparire in più righe."
+          link={{ testo: "Vai agli Alert fidi", to: "/alert-fidi" }}
         />
       </div>
     </div>
+  );
+}
+
+type RigaCardProps = {
+  card: string;
+  gruppo: string;
+  etichetta: string;
+  valore: string;
+  dettaglio?: string;
+  attenuata?: boolean;
+};
+
+function linkLista(card: string, gruppo: string) {
+  return { preset: `${PREFISSO_PRESET}${codificaFiltroDashboard(card, gruppo)}` };
+}
+
+function RigaCard({ card, gruppo, etichetta, valore, dettaglio, attenuata }: RigaCardProps) {
+  return (
+    <Link
+      to="/clienti"
+      search={linkLista(card, gruppo) as any}
+      aria-label={`Apri la lista: ${etichetta}`}
+      className={`flex min-h-10 sm:min-h-8 items-center justify-between gap-3 rounded-md px-2 -mx-2 text-sm cursor-pointer hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${attenuata ? "text-muted-foreground" : "text-foreground"}`}
+    >
+      <span className="min-w-0 break-words">{etichetta}</span>
+      <span className="shrink-0 text-right tabular-nums">
+        {valore}
+        {dettaglio && <span className="ml-2 text-xs text-muted-foreground">{dettaglio}</span>}
+      </span>
+    </Link>
+  );
+}
+
+function CardRighe({
+  titolo, valore, sottotitolo, icona: Icon, tono, righe, righeSotto, link, nota, valoreLink,
+}: {
+  titolo: string;
+  valore: string;
+  sottotitolo?: string;
+  icona: LucideIcon;
+  tono: "primary" | "success" | "warning" | "info" | "danger";
+  righe: RigaCardProps[];
+  righeSotto?: RigaCardProps[];
+  link?: { testo: string; to: string; search?: Record<string, string> };
+  nota?: string;
+  valoreLink?: { card: string; gruppo: string };
+}) {
+  const toneClass = {
+    primary: "bg-primary/10 text-primary",
+    success: "bg-success/15 text-success",
+    warning: "bg-warning/15 text-warning",
+    info: "bg-info/15 text-info",
+    danger: "bg-destructive/10 text-destructive",
+  }[tono];
+  const numeroGrande = <p className="text-2xl font-bold text-foreground tabular-nums break-words">{valore}</p>;
+  return (
+    <Card className="p-4 sm:p-5 space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1 min-w-0">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{titolo}</p>
+          {valoreLink ? (
+            <Link to="/clienti" search={linkLista(valoreLink.card, valoreLink.gruppo) as any} className="block cursor-pointer hover:underline">
+              {numeroGrande}
+            </Link>
+          ) : numeroGrande}
+          {sottotitolo && <p className="text-xs text-muted-foreground">{sottotitolo}</p>}
+        </div>
+        <div className={`size-10 shrink-0 rounded-lg flex items-center justify-center ${toneClass}`}>
+          <Icon className="size-5" />
+        </div>
+      </div>
+      <div className="space-y-0.5">
+        {righe.map((r) => <RigaCard key={r.gruppo} {...r} />)}
+      </div>
+      {righeSotto && righeSotto.length > 0 && (
+        <div className="border-t pt-2 space-y-0.5">
+          {righeSotto.map((r) => <RigaCard key={r.gruppo} {...r} />)}
+        </div>
+      )}
+      {(nota || link) && (
+        <div className="space-y-1">
+          {nota && <p className="text-xs text-muted-foreground">{nota}</p>}
+          {link && (
+            <Link to={link.to as any} search={link.search as any} className="inline-flex min-h-10 sm:min-h-0 items-center text-xs font-medium text-primary hover:underline">
+              {link.testo}
+            </Link>
+          )}
+        </div>
+      )}
+    </Card>
   );
 }
 
