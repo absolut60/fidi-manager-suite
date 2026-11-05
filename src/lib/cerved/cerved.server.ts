@@ -655,3 +655,119 @@ export function flagEventiNegativi(corpo: unknown): string[] {
   }
   return out.slice(0, 50);
 }
+
+// ── Normalizzatori per le fotografie del cliente (fonte unica, FM57 C4) ──
+
+const numeroCerved = (v: unknown): number | null => {
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  if (typeof v === "string" && v.trim() !== "") {
+    const n = Number(v.trim());
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+};
+
+export type BilancioCervedNorm = {
+  data_chiusura: string | null;
+  tipo_bilancio: string | null;
+  valore_produzione: number | null;
+  ricavi: number | null;
+  acquisti: number | null;
+  utile: number | null;
+  patrimonio_netto: number | null;
+  totale_attivo: number | null;
+  debiti: number | null;
+  debiti_banche: number | null;
+  debiti_fornitori: number | null;
+  crediti_clienti: number | null;
+  liquidita: number | null;
+  dipendenti: number | null;
+  mol: number | null;
+};
+
+/**
+ * Bilancio Cerved: legge voci_integrale (tutte le sezioni) per codice_voce.
+ * Regola: i valori sono GIÀ in euro (non moltiplicare). MOL = 270 − 320 − 330
+ * − 302 − 304 − 370 (voce mancante = 0; senza 270 → null).
+ */
+export function normalizzaBilancioCerved(risposta: unknown): BilancioCervedNorm {
+  const r = risposta && typeof risposta === "object" ? (risposta as Record<string, unknown>) : {};
+  const voci = new Map<string, number | null>();
+  for (const o of oggettiAnnidati(r["voci_integrale"])) {
+    const c = testo(o["codice_voce"]);
+    if (c == null || voci.has(c)) continue;
+    voci.set(c, numeroCerved(o["valore"] ?? o["importo"] ?? o["valore_voce"]));
+  }
+  const v = (c: string) => voci.get(c) ?? null;
+  const vp = v("270");
+  const mol = vp == null ? null
+    : vp - ["320", "330", "302", "304", "370"].reduce((s, c) => s + (v(c) ?? 0), 0);
+  const tb = r["tipo_bilancio"];
+  return {
+    data_chiusura: formattaDataCerved(testo(r["data_chiusura"] ?? r["data_chiusura_bilancio"])),
+    tipo_bilancio: tb && typeof tb === "object" ? testo((tb as Record<string, unknown>)["codice"]) : testo(tb),
+    valore_produzione: vp,
+    ricavi: v("280"),
+    acquisti: v("320"),
+    utile: v("477"),
+    patrimonio_netto: v("160"),
+    totale_attivo: v("150"),
+    debiti: v("190"),
+    debiti_banche: v("193"),
+    debiti_fornitori: v("195"),
+    crediti_clienti: v("102"),
+    liquidita: v("120"),
+    dipendenti: v("480"),
+    mol,
+  };
+}
+
+export type FlagEventiCerved = {
+  protesti: boolean | null;
+  pregiudizievoli: boolean | null;
+  procedure: boolean | null;
+  eventi_crisi: boolean | null;
+  cigs: boolean | null;
+  fallimenti_propri: boolean | null;
+};
+export type EventiNegativiCervedNorm = {
+  azienda: FlagEventiCerved | null;
+  persone: (FlagEventiCerved & { nome: string | null })[];
+};
+
+const flagDa = (o: Record<string, unknown>): FlagEventiCerved => ({
+  protesti: booleano(o["protesti"]),
+  pregiudizievoli: booleano(o["pregiudizievoli"]),
+  procedure: booleano(o["procedure"]),
+  eventi_crisi: booleano(o["eventi_crisi"]),
+  cigs: booleano(o["cigs"]),
+  fallimenti_propri: booleano(o["fallimenti_propri"]),
+});
+
+/** Flag eventi negativi: azienda dal primo elemento di companies, persone da people (solo nome). */
+export function normalizzaEventiNegativiCerved(risposta: unknown): EventiNegativiCervedNorm {
+  const r = risposta && typeof risposta === "object" ? (risposta as Record<string, unknown>) : {};
+  const comp = Array.isArray(r["companies"]) ? r["companies"] : [];
+  const ppl = Array.isArray(r["people"]) ? r["people"] : [];
+  const primo = comp[0] && typeof comp[0] === "object" ? (comp[0] as Record<string, unknown>) : null;
+  return {
+    azienda: primo ? flagDa(primo) : null,
+    persone: ppl.filter((p) => p && typeof p === "object").map((p) => {
+      const o = p as Record<string, unknown>;
+      return { nome: testo(o["nome"] ?? o["name"]), ...flagDa(o) };
+    }),
+  };
+}
+
+export type FidoCervedNorm = { codice: string | null; descrizione: string | null; valore: number | null };
+
+/** Fido Cerved: primo oggetto con codice/descrizione/valore (valore_fido se presente). */
+export function normalizzaFidoCerved(risposta: unknown): FidoCervedNorm {
+  let codice: string | null = null, descrizione: string | null = null, valore: number | null = null;
+  for (const o of oggettiAnnidati(risposta)) {
+    codice ??= testo(o["codice"]);
+    descrizione ??= testo(o["descrizione"]);
+    valore ??= numeroCerved(o["valore_fido"] ?? o["valore"]);
+  }
+  return { codice, descrizione, valore };
+}
