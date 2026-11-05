@@ -304,7 +304,7 @@ function Quadratino({ esito }: { esito: EsitoScore }) {
   );
 }
 
-const TRATTI = ["text-destructive", "text-warning", "text-warning", "text-success", "text-success"];
+const ARCO_ESITO: Record<EsitoScore, string> = { verde: "text-success", ambra: "text-warning", rosso: "text-destructive", neutro: "text-muted-foreground" };
 
 function CardScore({ scores, fido, fidoMade }: { scores: ScoreCervedVista[]; fido: Obj | null | undefined; fidoMade: number | null | undefined }) {
   const cgs = trovaScore(scores, "CGS");
@@ -312,21 +312,29 @@ function CardScore({ scores, fido, fidoMade }: { scores: ScoreCervedVista[]; fid
   const esito = esitoDaSemaforo(sem?.categoria_codice);
   const valore = cgs?.valore ?? null;
   const pt = (deg: number, rr = 80) => [100 + rr * Math.cos((deg * Math.PI) / 180), 100 - rr * Math.sin((deg * Math.PI) / 180)];
-  const attivo = valore == null ? -1 : Math.min(4, Math.max(0, Math.floor(valore / 20)));
+  const v = valore == null || !Number.isFinite(valore) ? null : Math.min(100, Math.max(0, valore));
+  const fine = v == null ? null : pt(180 - v * 1.8);
   const pd = formattaPdCerved(cgs?.pd ?? sem?.pd);
   const andamento = cgs?.trend_descrizione ?? sem?.trend_descrizione;
   return (
     <Sezione titolo="Cerved Group Score">
       {cgs || sem ? (
         <div className="flex flex-col items-center">
-          <svg viewBox="0 0 200 108" className="w-full max-w-64" role="img" aria-label={`Affidabilità ${valore ?? "non disponibile"} su 100`}>
-            {TRATTI.map((cl, i) => {
-              const [x1, y1] = pt(180 - i * 36 - 1.5);
-              const [x2, y2] = pt(180 - (i + 1) * 36 + 1.5);
-              const on = i === attivo;
-              return <path key={i} d={`M ${x1} ${y1} A 80 80 0 0 1 ${x2} ${y2}`} fill="none" stroke="currentColor"
-                strokeWidth={on ? 22 : 12} className={on ? TESTO_ESITO[esito] : `${cl} opacity-25`} />;
+          <svg viewBox="0 0 200 122" className="w-full max-w-64" role="img" aria-label={`Affidabilità ${valore ?? "non disponibile"} su 100`}>
+            <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="currentColor" strokeWidth={14} strokeLinecap="round" className="text-muted" />
+            {Array.from({ length: 11 }, (_, i) => {
+              const [x1, y1] = pt(180 - i * 18, 92);
+              const [x2, y2] = pt(180 - i * 18, 98);
+              return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="currentColor" strokeWidth={1} className="text-muted-foreground opacity-50" />;
             })}
+            <text x={20} y={118} textAnchor="middle" fontSize={9} fill="currentColor" className="text-muted-foreground">0</text>
+            <text x={180} y={118} textAnchor="middle" fontSize={9} fill="currentColor" className="text-muted-foreground">100</text>
+            {fine && (
+              <g className={ARCO_ESITO[esito]}>
+                {v! > 0 && <path d={`M 20 100 A 80 80 0 0 1 ${fine[0]} ${fine[1]}`} fill="none" stroke="currentColor" strokeWidth={14} strokeLinecap="round" />}
+                <circle cx={fine[0]} cy={fine[1]} r={9} fill="currentColor" stroke="var(--color-card, white)" strokeWidth={2} />
+              </g>
+            )}
           </svg>
           <p className={`-mt-14 flex items-baseline gap-1 ${TESTO_ESITO[esito]}`}>
             <span className="text-5xl font-bold tabular-nums">{valore ?? "—"}</span>

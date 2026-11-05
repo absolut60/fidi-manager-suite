@@ -25,8 +25,6 @@ export const ETICHETTE_SCORE_CERVED: Record<string, string> = {
   IMMO: "Patrimonio immobiliare",
 };
 
-export const ALTRI_SCORE_CERVED = ["PAY", "NEG", "ECOFIN", "GOV", "CNSL", "IMMO"] as const;
-
 export function etichettaScoreCerved(s: { codice_score: string | null; descrizione_score: string | null }): string {
   const c = s.codice_score?.toUpperCase() ?? "";
   return ETICHETTE_SCORE_CERVED[c] ?? s.descrizione_score ?? (c || "Valutazione");
@@ -70,26 +68,12 @@ export function formattaAggiornatoIl(iso: string | null | undefined): string | n
   return `${data} alle ${ora}`;
 }
 
-/** Scale del Light Report Cerved, dal migliore (livello 1) al peggiore. CNSL e codici ignoti: nessuna scala. */
-export const SCALE_SCORE_CERVED: Record<string, string[]> = {
-  PAY: ["Regolari", "Prevalentemente regolari", "Dilazionati", "Ritardi", "Ritardi significativi"],
-  NEG: ["Assenti", "Minimi", "Limitati", "Gravi", "Gravissimi"],
-  GOV: ["Assenza di segnali di rischio", "Potenziali segnali di rischio"],
-  ECOFIN: ["Sicurezza elevata", "Sicurezza", "Ampia solvibilità", "Solvibilità", "Solvibilità moderata",
-    "Solvibilità bassa", "Rischio moderato", "Rischio", "Rischio elevato", "Rischio molto elevato"],
-  IMMO: ["Elevata", "Ampia", "Buona", "Discreta", "Moderata", "Non significativa"],
-};
-
 /** "PAY_2" → 2; senza numero dopo "_" → null. */
 export function livelloCategoria(categoria_codice: string | null | undefined): number | null {
   const m = /_(\d+)$/.exec((categoria_codice ?? "").trim());
   if (!m) return null;
   const n = Number(m[1]);
   return n >= 1 ? n : null;
-}
-
-export function scalaScore(codice_score: string | null | undefined): string[] | null {
-  return SCALE_SCORE_CERVED[(codice_score ?? "").trim().toUpperCase()] ?? null;
 }
 
 export type EsitoScore = "verde" | "ambra" | "rosso" | "neutro";

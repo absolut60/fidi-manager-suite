@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { etichettaScoreCerved, coloreSemaforo, statoAttivitaAnomalo, formattaPdCerved, formattaAggiornatoIl, livelloCategoria, scalaScore, esitoScore, sigleEcofin, formattaEuroCompatto, variazionePercentuale } from "@/lib/cerved-presentazione";
+import { etichettaScoreCerved, coloreSemaforo, statoAttivitaAnomalo, formattaPdCerved, formattaAggiornatoIl, livelloCategoria, esitoScore, sigleEcofin, formattaEuroCompatto, variazionePercentuale } from "@/lib/cerved-presentazione";
 
 describe("cerved-presentazione", () => {
   it("etichette semplici e fallback alla descrizione", () => {
@@ -31,15 +31,6 @@ describe("cerved-presentazione", () => {
     expect(livelloCategoria("ECOFIN_10")).toBe(10);
     expect(livelloCategoria("V")).toBeNull();
     expect(livelloCategoria(null)).toBeNull();
-  });
-  it("scale: ordine dal migliore, CNSL senza scala", () => {
-    expect(scalaScore("PAY")?.[0]).toBe("Regolari");
-    expect(scalaScore("NEG")?.[4]).toBe("Gravissimi");
-    expect(scalaScore("GOV")).toHaveLength(2);
-    expect(scalaScore("ECOFIN")).toHaveLength(10);
-    expect(scalaScore("IMMO")?.[5]).toBe("Non significativa");
-    expect(scalaScore("CNSL")).toBeNull();
-    expect(scalaScore("ZZZ")).toBeNull();
   });
   it("esitoScore: fasce per score", () => {
     expect(esitoScore("PAY", "PAY_2")).toBe("verde");
