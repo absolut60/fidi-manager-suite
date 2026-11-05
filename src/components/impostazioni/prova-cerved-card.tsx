@@ -3,7 +3,7 @@ import type React from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation } from "@tanstack/react-query";
 import { Search } from "lucide-react";
-import { provaCercaCerved, provaArchivioCerved } from "@/lib/cerved/cerved-prova.functions";
+import { provaCercaCerved, provaArchivioCerved, provaRecuperoCerved } from "@/lib/cerved/cerved-prova.functions";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,6 +51,10 @@ export function ProvaCervedCard() {
   const ma = useMutation({ mutationFn: (p: string) => fnArch({ data: { piva: p } }) });
   const ra = ma.data;
   const valida = /^\d{11}$/.test(piva);
+  const [reqId, setReqId] = useState("");
+  const fnRec = useServerFn(provaRecuperoCerved);
+  const mr = useMutation({ mutationFn: (id: string) => fnRec({ data: { request_id: id } }) });
+  const rr = mr.data;
   const r = m.data;
   const a = r?.prima ?? null;
 
@@ -138,6 +142,37 @@ export function ProvaCervedCard() {
           </Button>
         </div>
       </form>
+      <form
+        className="mt-3 flex flex-col sm:flex-row sm:items-end gap-2"
+        onSubmit={(e) => { e.preventDefault(); if (reqId) mr.mutate(reqId); }}
+      >
+        <div className="flex-1 min-w-0 space-y-1">
+          <Label htmlFor="cerved-reqid">Numero richiesta (request_id)</Label>
+          <Input id="cerved-reqid" inputMode="numeric" maxLength={20} placeholder="Facoltativo"
+            value={reqId} onChange={(e) => setReqId(e.target.value.replace(/\D/g, ""))} />
+        </div>
+        <Button type="submit" variant="outline" disabled={!reqId || mr.isPending} className="h-10">
+          {mr.isPending ? "Recupero…" : "Recupera documento"}
+        </Button>
+      </form>
+      {mr.error && <p className="mt-3 text-sm text-destructive break-words">{mr.error.message}</p>}
+      {rr && (
+        <div className="mt-3 rounded-md border p-3 text-sm">
+          <h3 className="font-medium mb-1">Documento {rr.request_id}</h3>
+          {rr.errore ? <p className="text-destructive break-words">{rr.errore}</p> : (
+            <>
+              <Righe righe={[
+                ["Stato consegna", rr.delivery_status],
+                ["Dettaglio stato", rr.detailed_delivery_status],
+                ["Lunghezza XML", `${rr.lunghezza.toLocaleString("it-IT")} caratteri`],
+              ]} />
+              {rr.anteprima && (
+                <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-all rounded bg-muted p-2 text-xs">{rr.anteprima}</pre>
+              )}
+            </>
+          )}
+        </div>
+      )}
       {m.error && <p className="mt-3 text-sm text-destructive break-words">{m.error.message}</p>}
       {ma.error && <p className="mt-3 text-sm text-destructive break-words">{ma.error.message}</p>}
       {ra && (

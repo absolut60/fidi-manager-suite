@@ -157,12 +157,17 @@ d2("archivio Cerved", () => {
     e2(r).not.toHaveProperty("content");
   });
   i2("sceglie il report più recente (GG-MM-AAAA)", () => {
-    const rs = normalizzaArchivioCerved({ documents: [
+    const rs = normalizzaArchivioCerved({ reports: [
       { request_id: "a", request_date: "31-12-2024" }, { request_id: "b", request_date: "01-02-2025" },
     ] });
     e2(reportPiuRecente(rs)?.request_id).toBe("b");
   });
   i2("legge i prodotti", () => {
-    e2(normalizzaProdottiCerved({ products: [{ product_id: "P1", description: "Report" }] })).toEqual([{ codice: "P1", descrizione: "Report" }]);
+    e2(normalizzaProdottiCerved({ available_products: [{ code: "52015", description: "Light Report" }], subject_id: 7883047 })).toEqual([{ codice: "52015", descrizione: "Light Report" }]);
+    e2(normalizzaProdottiCerved({ products: [{ code: "X" }] })).toEqual([]);
+  });
+  i2("archivio vuoto reale", () => {
+    e2(normalizzaArchivioCerved({ pagination: {}, reports: [], reports_count: 0 })).toEqual([]);
+    e2(normalizzaArchivioCerved({ documents: [{ request_id: "a" }] })).toEqual([]);
   });
 });

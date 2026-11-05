@@ -203,9 +203,9 @@ function primoArray(corpo: unknown, chiavi: string[]): Record<string, unknown>[]
 export type ProdottoCerved = { codice: string | null; descrizione: string | null };
 
 export function normalizzaProdottiCerved(corpo: unknown): ProdottoCerved[] {
-  return primoArray(corpo, ["products", "purchasable_products", "items", "data"]).map((p) => ({
-    codice: testo(p["product_id"] ?? p["code"] ?? p["codice"] ?? p["id"]),
-    descrizione: testo(p["description"] ?? p["product_description"] ?? p["descrizione"] ?? p["name"]),
+  return primoArray(corpo, ["available_products"]).map((p) => ({
+    codice: testo(p["code"]),
+    descrizione: testo(p["description"]),
   }));
 }
 
@@ -221,7 +221,7 @@ export type ReportArchivioCerved = {
 };
 
 export function normalizzaArchivioCerved(corpo: unknown): ReportArchivioCerved[] {
-  return primoArray(corpo, ["documents", "reports", "items", "content", "data"]).map((d) => {
+  return primoArray(corpo, ["reports"]).map((d) => {
     const f = d["document_formats"];
     return {
       request_id: testo(d["request_id"]),
