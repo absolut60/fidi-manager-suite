@@ -95,3 +95,22 @@ test('elemento vuoto o mancante non esplode', () => {
     expect(r.ente_pa).toBe(false);
   }
 });
+
+import { normalizzaProfiloCerved, normalizzaScoreCerved } from '../src/lib/cerved/cerved.server';
+test('profilo: importi di bilancio da migliaia a euro, date grezze', () => {
+  const p = normalizzaProfiloCerved({
+    dati_anagrafici: { pec: { email: ['a@pec.it'] } },
+    dati_attivita: { data_costituzione: '05-01-2007' },
+    dati_economici_dimensionali: { fatturato: 2500, utile_perdita_esercizio: -12, capitale_sociale: 10000 },
+  });
+  expect(p.fatturato).toBe(2500000);
+  expect(p.utile_perdita_esercizio).toBe(-12000);
+  expect(p.capitale_sociale).toBe(10000);
+  expect(p.data_costituzione).toBe('05-01-2007');
+  expect(p.pec).toEqual(['a@pec.it']);
+});
+test('score: legge scores[]', () => {
+  const s = normalizzaScoreCerved({ scores: [{ codice_score: 'SEM_CGS', valore: 70, categoria_descrizione: 'VERDE' }] });
+  expect(s[0].codice_score).toBe('SEM_CGS');
+  expect(s[0].valore).toBe(70);
+});
