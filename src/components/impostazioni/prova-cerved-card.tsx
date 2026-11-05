@@ -3,7 +3,6 @@ import type React from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation } from "@tanstack/react-query";
 import { Search } from "lucide-react";
-import { formattaDataCerved as dc } from "@/lib/cerved/cerved.server";
 import { provaCercaCerved } from "@/lib/cerved/cerved-prova.functions";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -64,7 +63,7 @@ export function ProvaCervedCard() {
 
   const ateco = a ? [a.ateco_2025_codice, a.ateco_2025_descrizione].filter(Boolean).join(" — ") || null : null;
 
-  const rea = a ? [a.rea, a.data_iscrizione_rea && `iscrizione ${dc(a.data_iscrizione_rea)}`].filter(Boolean).join(" · ") || null : null;
+  const rea = a ? [a.rea, a.data_iscrizione_rea && `iscrizione ${a.data_iscrizione_rea}`].filter(Boolean).join(" · ") || null : null;
 
   const sede = a?.sede
     ? [a.sede.indirizzo, a.sede.cap, comuneProvincia(a.sede.comune, a.sede.provincia)]
@@ -93,15 +92,15 @@ export function ProvaCervedCard() {
         ["Telefono", p.telefono],
         ["Sito web", p.sito_web],
         ["PEC", p.pec.length ? p.pec.join(", ") : null],
-        ["Costituzione", dc(p.data_costituzione)],
-        ["Inizio attività", dc(p.data_inizio_attivita)],
-        ["Stato attività", [p.stato_attivita_descrizione ?? p.stato_attivita_codice, p.data_stato_attivita && `dal ${dc(p.data_stato_attivita)}`].filter(Boolean).join(" ") || null],
+        ["Costituzione", p.data_costituzione],
+        ["Inizio attività", p.data_inizio_attivita],
+        ["Stato attività", [p.stato_attivita_descrizione ?? p.stato_attivita_codice, p.data_stato_attivita && `dal ${p.data_stato_attivita}`].filter(Boolean).join(" ") || null],
         ["Macrosettore", p.macrosettore],
         ["Gruppo", p.gruppo == null ? null : p.gruppo ? (p.capogruppo.length ? `Sì · capogruppo: ${p.capogruppo.join(", ")}` : "Sì") : "No"],
-        ["Rating legalità", p.rating_legalita ? `${p.rating_legalita}${p.rating_legalita_rinnovo ? ` (rinnovo ${dc(p.rating_legalita_rinnovo)})` : ""}` : null],
+        ["Rating legalità", p.rating_legalita ? `${p.rating_legalita}${p.rating_legalita_rinnovo ? ` (rinnovo ${p.rating_legalita_rinnovo})` : ""}` : null],
         ["Dipendenti", p.dipendenti == null ? null : `${p.dipendenti.toLocaleString("it-IT")}${p.dipendenti_anno ? ` (${p.dipendenti_anno})` : ""}`],
         ["Unità locali", p.unita_locali == null ? null : p.unita_locali.toLocaleString("it-IT")],
-        ["Ultimo bilancio", p.anno_ultimo_bilancio ? `${p.anno_ultimo_bilancio}${p.data_chiusura_ultimo_bilancio ? ` (chiuso il ${dc(p.data_chiusura_ultimo_bilancio)})` : ""}` : dc(p.data_chiusura_ultimo_bilancio)],
+        ["Ultimo bilancio", p.anno_ultimo_bilancio ? `${p.anno_ultimo_bilancio}${p.data_chiusura_ultimo_bilancio ? ` (chiuso il ${p.data_chiusura_ultimo_bilancio})` : ""}` : p.data_chiusura_ultimo_bilancio],
         ["Capitale sociale", euro(p.capitale_sociale)],
         ["Fatturato", euro(p.fatturato)],
         ["MOL", euro(p.mol)],

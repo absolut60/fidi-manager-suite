@@ -129,9 +129,9 @@ test('profilo: url_sito_web in minuscolo, rating e chiusura bilancio', () => {
   });
   expect(p.sito_web).toBe('www.made.it');
   expect(p.rating_legalita).toBe('**+');
-  expect(p.rating_legalita_rinnovo).toBe('01-02-2025');
+  expect(p.rating_legalita_rinnovo).toBe('01/02/2025');
   expect(p.dipendenti_anno).toBe('2024');
-  expect(p.data_chiusura_ultimo_bilancio).toBe('30-09-2025');
+  expect(p.data_chiusura_ultimo_bilancio).toBe('30/09/2025');
   expect(p.stato_attivita_descrizione).toBe('ATTIVA');
 });
 test('score: pd frazione, semaforo V, ordine SEM_CGS, CGS, altri', () => {
