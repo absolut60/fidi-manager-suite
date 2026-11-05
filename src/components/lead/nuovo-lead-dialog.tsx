@@ -328,6 +328,11 @@ export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
               {(stores ?? []).map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
             </SelectContent>
           </Select>
+          {soloShowroom && !sedeShowroom && (
+            <p className="mt-1 text-xs text-destructive">
+              Profilo senza sede: contatta l'amministrazione
+            </p>
+          )}
         </div>
         <div>
           <Label className="text-xs">Agente</Label>
