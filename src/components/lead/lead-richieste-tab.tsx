@@ -246,6 +246,7 @@ export function LeadRichiesteTab({ leadId }: { leadId: string }) {
                         <Trash2 className="size-4" />
                       </Button>
                     </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
