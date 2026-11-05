@@ -47,7 +47,7 @@ export function ProvaCervedCard() {
   const rea = a ? [a.rea, a.data_iscrizione_rea && `iscrizione ${dataIt(a.data_iscrizione_rea)}`].filter(Boolean).join(" · ") || null : null;
 
   const sede = a?.sede
-    ? [a.sede.indirizzo, a.sede.cap, [a.sede.comune, a.sede.provincia].filter(Boolean).join(" (") + (a.sede.provincia ? ")" : "")]
+    ? [a.sede.indirizzo, a.sede.cap, comuneProvincia(a.sede.comune, a.sede.provincia)]
         .filter(Boolean)
         .join(", ") || null
     : null;
