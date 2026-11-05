@@ -291,10 +291,6 @@ const SFONDO_ESITO: Record<EsitoScore, string> = {
   verde: "bg-success text-success-foreground", ambra: "bg-warning text-warning-foreground",
   rosso: "bg-destructive text-destructive-foreground", neutro: "bg-muted text-muted-foreground",
 };
-const esitoDaSemaforo = (c: string | null | undefined): EsitoScore => {
-  const t = coloreSemaforo(c).tono;
-  return t === "giallo" ? "ambra" : t;
-};
 
 function Quadratino({ esito }: { esito: EsitoScore }) {
   return (
@@ -325,7 +321,7 @@ function GaugeCerved({ valore }: { valore: number | null }) {
   );
 }
 
-function CardScore({ scores, fido, fidoMade }: { scores: ScoreCervedVista[]; fido: Obj | null | undefined; fidoMade: number | null | undefined }) {
+export function CardScore({ scores, fido, fidoMade }: { scores: ScoreCervedVista[]; fido: Obj | null | undefined; fidoMade: number | null | undefined }) {
   const cgs = trovaScore(scores, "CGS");
   const sem = trovaScore(scores, "SEM_CGS");
   const semaforo = coloreSemaforo(sem?.categoria_codice);
