@@ -102,24 +102,27 @@ export function VistaCerved({ dati, clienteId, fidoMade, puoAggiornare, inCorso,
   const { data: nomi } = useNomiUtentiQuery();
   const collegato = !!dati.soggetto;
 
+  const dialogo = (
+    <AlertDialog open={conferma} onOpenChange={setConferma}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{collegato ? "Aggiorna da Cerved" : "Collega a Cerved"}</AlertDialogTitle>
+          <AlertDialogDescription>Leggo da Cerved profilo, affidabilità, bilanci, eventi negativi e fido di questo cliente.</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Annulla</AlertDialogCancel>
+          <AlertDialogAction onClick={() => { setConferma(false); onAggiorna(); }}>Procedi</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
   const pulsante = puoAggiornare ? (
     <>
       <Button size="sm" className="min-h-10 w-full sm:w-auto" onClick={() => setConferma(true)} disabled={inCorso}>
-        {inCorso ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : collegato ? <RefreshCw className="mr-1 h-4 w-4" /> : <Link2 className="mr-1 h-4 w-4" />}
-        {collegato ? "Aggiorna da Cerved" : "Collega a Cerved"}
+        {inCorso ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Link2 className="mr-1 h-4 w-4" />}
+        Collega a Cerved
       </Button>
-      <AlertDialog open={conferma} onOpenChange={setConferma}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{collegato ? "Aggiorna da Cerved" : "Collega a Cerved"}</AlertDialogTitle>
-            <AlertDialogDescription>Leggo da Cerved profilo, affidabilità, bilanci, eventi negativi e fido di questo cliente.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annulla</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { setConferma(false); onAggiorna(); }}>Procedi</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {dialogo}
     </>
   ) : null;
 
@@ -148,6 +151,10 @@ export function VistaCerved({ dati, clienteId, fidoMade, puoAggiornare, inCorso,
   const anomalo = statoAttivitaAnomalo(statoCodice);
   const sede = r.sede ? [r.sede.indirizzo, [r.sede.cap, r.sede.comune].filter(Boolean).join(" "), r.sede.provincia ? `(${r.sede.provincia})` : null].filter(Boolean).join(", ") : null;
   const ev = dati.foto.eventi_negativi;
+  const denominazione = s.denominazione_cerved ?? r.denominazione ?? "—";
+  const pivaCf = [r.partita_iva ?? s.partita_iva, r.codice_fiscale && r.codice_fiscale !== r.partita_iva ? r.codice_fiscale : null].filter(Boolean).join(" / ") || null;
+  const pec = p?.pec?.length ? p.pec.join(", ") : null;
+  const codiceCerved = s.id_soggetto != null ? String(s.id_soggetto) : null;
   const immo = trovaScore(scores, "IMMO");
   const ecofin = trovaScore(scores, "ECOFIN");
   const cnsl = trovaScore(scores, "CNSL");
@@ -155,38 +162,63 @@ export function VistaCerved({ dati, clienteId, fidoMade, puoAggiornare, inCorso,
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-3">
-      {/* A) Intestazione */}
+      {/* A) Intestazione (come la testata del Light Report) */}
       <Card className="rounded-md">
-        <CardContent className="grid grid-cols-1 gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_14rem]">
-          <div className="min-w-0 space-y-3">
-            <div>
-              <h2 className="break-words text-xl font-bold leading-tight sm:text-2xl">{s.denominazione_cerved ?? r.denominazione ?? "—"}</h2>
-              {statoDescr && <p className={`mt-0.5 text-sm font-bold uppercase ${anomalo ? "text-destructive" : ""}`}>{statoDescr}</p>}
+        <CardContent className="p-4 sm:p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="break-words text-2xl font-semibold leading-tight sm:text-3xl">{denominazione}</h2>
+              {statoDescr && (
+                <p className={`mt-1 inline-block border-b pb-1 text-sm font-semibold uppercase tracking-wide ${anomalo ? "border-destructive text-destructive" : "border-border"}`}>{statoDescr}</p>
+              )}
             </div>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-              <div className="min-w-0 space-y-2">
-                <Campo k="P.IVA / CF" v={[r.partita_iva ?? s.partita_iva, r.codice_fiscale && r.codice_fiscale !== r.partita_iva ? r.codice_fiscale : null].filter(Boolean).join(" / ") || null} />
-                <Campo k="N. REA" v={r.rea} />
-                <Campo k="Natura giuridica" v={r.forma_giuridica} />
-              </div>
-              <div className="min-w-0 space-y-2">
-                <Campo k="Settore attività" v={[r.ateco_2025_codice, r.ateco_2025_descrizione].filter(Boolean).join(" – ") || null} />
-              </div>
-              <div className="min-w-0 space-y-2">
-                <Campo k="Indirizzo internet" v={p?.sito_web} />
-                <Campo k="Indirizzo" v={sede} />
-                <Campo k="PEC" v={p?.pec?.length ? p.pec.join(", ") : null} />
-                <Campo k="Telefono" v={p?.telefono} />
-              </div>
-            </div>
+            {puoAggiornare && (
+              <Button variant="outline" size="sm" className="h-10 w-10 shrink-0 px-0 sm:w-auto sm:px-3" onClick={() => setConferma(true)} disabled={inCorso} aria-label="Aggiorna da Cerved" title="Aggiorna da Cerved">
+                {inCorso ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                <span className="hidden sm:inline">Aggiorna da Cerved</span>
+              </Button>
+            )}
           </div>
-          <div className="flex flex-col gap-3 border-t pt-3 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
-            <Campo k="Data aggiornamento" v={aggIl ? `${aggIl}${nomeAgg ? ` da ${nomeAgg}` : ""}` : null} />
-            <Campo k="Codice Cerved" v={s.id_soggetto != null ? String(s.id_soggetto) : null} />
-            {pulsante}
+
+          {/* Telefono */}
+          <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 md:hidden">
+            <CampoTestata k="P.IVA / CF" v={pivaCf} />
+            <CampoTestata k="N. REA" v={r.rea} />
+            <CampoTestata k="Natura giuridica" v={r.forma_giuridica} className="col-span-2" />
+            <CampoTestata k="Settore attività" v={r.ateco_2025_codice} sotto={r.ateco_2025_descrizione} className="col-span-2" />
+            <CampoTestata k="Indirizzo internet" v={p?.sito_web} />
+            <CampoTestata k="Telefono" v={p?.telefono} />
+            <CampoTestata k="Indirizzo" v={sede} className="col-span-2" />
+            <CampoTestata k="PEC" v={pec} className="col-span-2" />
+            <p className="col-span-2 border-t pt-2 text-xs text-muted-foreground">
+              {[aggIl ? `Aggiornato il ${aggIl}${nomeAgg ? ` da ${nomeAgg}` : ""}` : null, codiceCerved ? `Codice Cerved ${codiceCerved}` : null].filter(Boolean).join(" · ")}
+            </p>
+          </div>
+
+          {/* Tablet e PC */}
+          <div className="mt-5 hidden gap-x-8 gap-y-4 md:grid md:grid-cols-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.2fr)_minmax(0,0.9fr)]">
+            <div className="min-w-0 space-y-3">
+              <CampoTestata k="P.IVA / CF" v={pivaCf} />
+              <CampoTestata k="N. REA" v={r.rea} />
+              <CampoTestata k="Natura giuridica" v={r.forma_giuridica} />
+            </div>
+            <div className="min-w-0 space-y-3">
+              <CampoTestata k="Settore attività" v={r.ateco_2025_codice} sotto={r.ateco_2025_descrizione} />
+            </div>
+            <div className="min-w-0 space-y-3">
+              <CampoTestata k="Indirizzo internet" v={p?.sito_web} />
+              <CampoTestata k="Indirizzo" v={sede} />
+              <CampoTestata k="PEC" v={pec} />
+              <CampoTestata k="Telefono" v={p?.telefono} />
+            </div>
+            <div className="min-w-0 space-y-3 border-t pt-3 md:col-span-3 md:grid md:grid-cols-2 md:gap-x-8 md:space-y-0 lg:col-span-1 lg:block lg:space-y-3 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+              <CampoTestata piccolo k="Data aggiornamento" v={aggIl} sotto={nomeAgg ? `da ${nomeAgg}` : null} />
+              <CampoTestata piccolo k="Codice Cerved" v={codiceCerved} />
+            </div>
           </div>
         </CardContent>
       </Card>
+      {dialogo}
 
       {/* B) Riga principale */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
@@ -477,6 +509,16 @@ function SottoSezione({ titolo, children }: { titolo: string; children: React.Re
     <div className="space-y-2 py-3 first:pt-0 last:pb-0">
       <p className="text-sm font-semibold">{titolo}</p>
       {children}
+    </div>
+  );
+}
+
+function CampoTestata({ k, v, sotto, piccolo, className = "" }: { k: string; v: string | null | undefined; sotto?: string | null; piccolo?: boolean; className?: string }) {
+  return (
+    <div className={`min-w-0 ${className}`}>
+      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{k}</p>
+      <p className={`break-words font-medium ${piccolo ? "text-xs text-muted-foreground" : "text-sm"}`}>{v || "—"}</p>
+      {sotto && <p className={`break-words ${piccolo ? "text-xs text-muted-foreground" : "text-sm text-muted-foreground"}`}>{sotto}</p>}
     </div>
   );
 }
