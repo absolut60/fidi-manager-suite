@@ -1009,6 +1009,13 @@
       "when": 1793879869725,
       "tag": "0143_fm56_showroom_ripristina_grant_lascia_cosi",
       "breakpoints": true
+    },
+    {
+      "idx": 144,
+      "version": "7",
+      "when": 1793880263119,
+      "tag": "0144_fm56_showroom_attivita_commerciale",
+      "breakpoints": true
     }
   ]
 }
