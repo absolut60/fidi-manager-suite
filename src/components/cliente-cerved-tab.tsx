@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Loader2, RefreshCw, Link2 } from "lucide-react";
+import { Loader2, RefreshCw, Link2, CheckCircle2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useNomiUtentiQuery, formatNomeUtente } from "@/hooks/use-nomi-utenti";
@@ -12,7 +12,10 @@ import { formatEuro } from "@/lib/fidi";
 import {
   ALTRI_SCORE_CERVED, coloreSemaforo, etichettaScoreCerved, formattaAggiornatoIl,
   formattaPdCerved, statoAttivitaAnomalo, trovaScore, type ScoreCervedVista,
+  livelloCategoria, scalaScore, esitoValutazione, formattaEuroCompatto, variazionePercentuale,
 } from "@/lib/cerved-presentazione";
+import { useEsperienzaPagamentoCliente, testiPagateInRitardo } from "@/hooks/use-esperienza-pagamento";
+import { SemaforoAffidabilitaBadge } from "@/components/pannello-rischio-cliente";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 type Obj = Record<string, any>;
-type Fotografie = { ricerca: Obj | null; profilo: Obj | null; score: Obj | null };
+type Fotografie = { ricerca: Obj | null; profilo: Obj | null; score: Obj | null; bilancio?: Obj | null; eventi_negativi?: Obj | null; fido?: Obj | null };
 
 export type DatiCervedCliente = {
   soggetto: Obj | null;
@@ -46,7 +49,7 @@ export function ClienteCervedTab({ clienteId, partitaIva, fidoMade }: {
       const { data: soggetto, error } = await supabase
         .from("cerved_soggetti").select("*").eq("cliente_id", clienteId).maybeSingle();
       if (error) throw error;
-      const tipi = ["ricerca", "profilo", "score"] as const;
+      const tipi = ["ricerca", "profilo", "score", "bilancio", "eventi_negativi", "fido"] as const;
       const righe = await Promise.all(tipi.map(async (t) => {
         const { data, error: e } = await supabase.from("cerved_fotografie")
           .select("dati, letta_il").eq("cliente_id", clienteId).eq("tipo", t)
@@ -54,7 +57,7 @@ export function ClienteCervedTab({ clienteId, partitaIva, fidoMade }: {
         if (e) throw e;
         return (data?.dati as Obj) ?? null;
       }));
-      return { soggetto, foto: { ricerca: righe[0], profilo: righe[1], score: righe[2] } };
+      return { soggetto, foto: { ricerca: righe[0], profilo: righe[1], score: righe[2], bilancio: righe[3], eventi_negativi: righe[4], fido: righe[5] } };
     },
   });
 
@@ -78,6 +81,7 @@ export function ClienteCervedTab({ clienteId, partitaIva, fidoMade }: {
   return (
     <VistaCerved
       dati={q.data!}
+      clienteId={clienteId}
       fidoMade={fidoMade}
       puoAggiornare={puo}
       inCorso={mut.isPending}
@@ -91,8 +95,8 @@ function Riquadro({ children }: { children: React.ReactNode }) {
 }
 
 /** Parte solo presentazionale (riusabile con dati finti). */
-export function VistaCerved({ dati, fidoMade, puoAggiornare, inCorso, onAggiorna }: {
-  dati: DatiCervedCliente; fidoMade: number | null | undefined; puoAggiornare: boolean;
+export function VistaCerved({ dati, clienteId, fidoMade, puoAggiornare, inCorso, onAggiorna }: {
+  dati: DatiCervedCliente; clienteId: string; fidoMade: number | null | undefined; puoAggiornare: boolean;
   inCorso: boolean; onAggiorna: () => void;
 }) {
   const [conferma, setConferma] = useState(false);
@@ -109,7 +113,7 @@ export function VistaCerved({ dati, fidoMade, puoAggiornare, inCorso, onAggiorna
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{collegato ? "Aggiorna da Cerved" : "Collega a Cerved"}</AlertDialogTitle>
-            <AlertDialogDescription>Leggo da Cerved profilo e affidabilità di questo cliente.</AlertDialogDescription>
+            <AlertDialogDescription>Leggo da Cerved profilo, affidabilità, bilanci, eventi negativi e fido di questo cliente.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annulla</AlertDialogCancel>
@@ -150,7 +154,9 @@ export function VistaCerved({ dati, fidoMade, puoAggiornare, inCorso, onAggiorna
   const colore = coloreSemaforo(sem?.categoria_codice ?? null);
   const altri = ALTRI_SCORE_CERVED.map((c) => trovaScore(scores, c)).filter((x): x is ScoreCervedVista => !!x);
 
-  const bilancioPresente = p && [p.fatturato, p.mol, p.utile_perdita_esercizio, p.patrimonio_netto, p.attivo].some((v) => v != null);
+  const fido = dati.foto.fido;
+  const ev = dati.foto.eventi_negativi;
+  const bil = dati.foto.bilancio;
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-3">
@@ -181,59 +187,78 @@ export function VistaCerved({ dati, fidoMade, puoAggiornare, inCorso, onAggiorna
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <Box titolo="Affidabilità Cerved">
           {cgs || sem ? (
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-3">
-                <span className={`h-6 w-6 shrink-0 rounded-full ${colore.classe}`} aria-label={`Semaforo ${colore.etichetta}`} title={`Semaforo ${colore.etichetta}`} />
-                <span className="text-2xl font-bold sm:text-3xl">{cgs?.valore != null ? `${cgs.valore}/100` : "—"}</span>
-                {(cgs?.categoria_descrizione ?? sem?.categoria_descrizione) && <Badge variant="outline">{cgs?.categoria_descrizione ?? sem?.categoria_descrizione}</Badge>}
-              </div>
-              <dl className="grid grid-cols-1 gap-1 text-xs sm:grid-cols-2">
+            <div className="grid grid-cols-1 items-center gap-3 sm:grid-cols-[auto_minmax(0,1fr)]">
+              <Semicerchio valore={cgs?.valore ?? null} categoria={cgs?.categoria_descrizione ?? null} />
+              <dl className="space-y-1 text-xs sm:text-sm">
+                <div className="flex items-center gap-2">
+                  <span className={`h-4 w-4 shrink-0 rounded-full ${colore.classe}`} aria-hidden />
+                  <span>Semaforo: <span className="font-medium">{colore.etichetta}</span></span>
+                </div>
                 <Voce k="Probabilità di insolvenza" v={formattaPdCerved(cgs?.pd ?? sem?.pd)} />
                 <Voce k="Andamento" v={cgs?.trend_descrizione ?? sem?.trend_descrizione} />
               </dl>
             </div>
           ) : <NonDisp />}
-          <div className="mt-3 border-t pt-2 text-sm">
-            <p>Fido MADE: <span className="font-semibold">{formatEuro(fidoMade ?? 0)}</span></p>
-            <p className="text-xs text-muted-foreground">Fido certificato Cerved: arriverà con il report completo</p>
+          <div className="mt-3 space-y-1 rounded-md border bg-muted/40 p-3 text-xs sm:text-sm">
+            <RigaValore k="Fido MADE" v={formatEuro(fidoMade ?? 0)} forte />
+            {fido ? (
+              <>
+                <RigaValore k="Fido certificato Cerved" v={euro(fido.fcert?.valore) ?? "Dato non disponibile"} />
+                <RigaValore k="Fido medio accordabile" v={euro(fido.fmed?.valore) ?? "Dato non disponibile"} />
+              </>
+            ) : <p className="text-xs text-muted-foreground">Fido Cerved: servizio non ancora attivo</p>}
           </div>
         </Box>
 
         <Box titolo="Valutazioni">
           {altri.length ? (
-            <ul className="divide-y text-sm">
+            <ul className="divide-y">
               {altri.map((x) => (
-                <li key={x.codice_score} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 py-1.5">
-                  <div className="min-w-0">
-                    <p className="break-words text-xs sm:text-sm">{etichettaScoreCerved(x)}</p>
-                    {x.categoria_descrizione && <p className="text-xs text-muted-foreground">{x.categoria_descrizione}</p>}
-                  </div>
-                  <span className="shrink-0 font-medium tabular-nums">{x.valore != null ? `${x.valore}/100` : "—"}</span>
+                <li key={x.codice_score}>
+                  <RigaValutazione s={x} />
+                  {x.codice_score?.toUpperCase() === "PAY" && <ComePagaMade clienteId={clienteId} />}
                 </li>
               ))}
             </ul>
           ) : <NonDisp />}
         </Box>
+      </div>
 
-        <Box titolo={p?.anno_ultimo_bilancio ? `Ultimo bilancio (${p.anno_ultimo_bilancio}${p.data_chiusura_ultimo_bilancio ? `, chiuso il ${p.data_chiusura_ultimo_bilancio}` : ""})` : "Ultimo bilancio"}>
-          {bilancioPresente ? (
-            <dl className="grid grid-cols-1 gap-1 text-xs sm:grid-cols-2 sm:text-sm">
-              <Voce k="Fatturato" v={euro(p!.fatturato)} />
-              <Voce k="MOL" v={euro(p!.mol)} />
-              <Voce k={p!.utile_perdita_esercizio != null && p!.utile_perdita_esercizio < 0 ? "Perdita" : "Utile"} v={euro(p!.utile_perdita_esercizio)} rosso={p!.utile_perdita_esercizio != null && p!.utile_perdita_esercizio < 0} />
-              <Voce k="Patrimonio netto" v={euro(p!.patrimonio_netto)} rosso={p!.patrimonio_netto != null && p!.patrimonio_netto < 0} />
-              <Voce k="Attivo" v={euro(p!.attivo)} />
-              <Voce k="Capitale sociale" v={euro(p!.capitale_sociale)} />
-              <Voce k="Dipendenti" v={p!.dipendenti != null ? `${p!.dipendenti.toLocaleString("it-IT")}${p!.dipendenti_anno ? ` (${p!.dipendenti_anno})` : ""}` : null} />
-            </dl>
-          ) : <p className="text-sm text-muted-foreground">Bilancio non disponibile</p>}
+      <BloccoBilancio bil={bil} profilo={p} />
+
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <Box titolo="Eventi negativi">
+          {ev?.azienda ? (
+            <div className="space-y-2">
+              <ul className="grid grid-cols-1 gap-x-6 gap-y-1 text-xs sm:grid-cols-2 sm:text-sm">
+                {EVENTI.map(([k, et]) => {
+                  const val = ev.azienda[k];
+                  return (
+                    <li key={k} className="flex items-center justify-between gap-2">
+                      <span className="min-w-0 break-words">{et}</span>
+                      <span className={`shrink-0 font-medium ${val === true ? "text-destructive" : val === false ? "text-success" : "text-muted-foreground"}`}>
+                        {val === true ? "Presenti" : val === false ? "Assenti" : "—"}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+              {(() => {
+                const n = (Array.isArray(ev.persone) ? ev.persone : []).filter((pp: Obj) => EVENTI.some(([k]) => pp[k] === true)).length;
+                return <p className={`border-t pt-2 text-xs ${n ? "font-medium text-destructive" : "text-muted-foreground"}`}>
+                  {n ? `${n} ${n === 1 ? "persona collegata" : "persone collegate"} con eventi negativi` : "Persone collegate: nessun evento"}
+                </p>;
+              })()}
+            </div>
+          ) : <NonDisp />}
         </Box>
 
         <Box titolo="Altre informazioni">
           {p || r.denominazione ? (
             <dl className="grid grid-cols-1 gap-1 text-xs sm:grid-cols-2 sm:text-sm">
-              <Voce k="Gruppo" v={p?.gruppo == null ? null : p.gruppo ? `Sì${p.capogruppo?.length ? ` – capogruppo ${p.capogruppo.join(", ")}` : ""}` : "No"} />
+              <Voce k="Dipendenti" v={p?.dipendenti != null ? `${p.dipendenti.toLocaleString("it-IT")}${p.dipendenti_anno ? ` (${p.dipendenti_anno})` : ""}` : null} />
               <Voce k="Unità locali" v={p?.unita_locali != null ? String(p.unita_locali) : null} />
+              <Voce k="Gruppo" v={p?.gruppo == null ? null : p.gruppo ? `Sì${p.capogruppo?.length ? ` – capogruppo ${p.capogruppo.join(", ")}` : ""}` : "No"} />
               <Voce k="Costituita il" v={p?.data_costituzione} />
               <Voce k="Rating di legalità" v={p?.rating_legalita ? `${p.rating_legalita}${p.rating_legalita_rinnovo ? ` (rinnovo ${p.rating_legalita_rinnovo})` : ""}` : null} />
               <Voce k="Pubblica amministrazione" v={r.ente_pa === true ? "Sì" : r.ente_pa === false ? "No" : null} />
@@ -241,6 +266,155 @@ export function VistaCerved({ dati, fidoMade, puoAggiornare, inCorso, onAggiorna
           ) : <NonDisp />}
         </Box>
       </div>
+    </div>
+  );
+}
+
+const EVENTI = [
+  ["protesti", "Protesti"], ["pregiudizievoli", "Pregiudizievoli"], ["procedure", "Procedure concorsuali"],
+  ["eventi_crisi", "Eventi di crisi"], ["cigs", "Cassa integrazione straordinaria"], ["fallimenti_propri", "Fallimenti in proprio"],
+] as const;
+
+const TRATTI = ["text-destructive", "text-destructive opacity-70", "text-warning", "text-success opacity-70", "text-success"];
+
+function Semicerchio({ valore, categoria }: { valore: number | null; categoria: string | null }) {
+  const pt = (deg: number, r = 80) => [100 + r * Math.cos((deg * Math.PI) / 180), 100 - r * Math.sin((deg * Math.PI) / 180)];
+  const attivo = valore == null ? -1 : Math.min(4, Math.max(0, Math.floor(valore / 20)));
+  return (
+    <div className="mx-auto w-44 shrink-0 sm:w-48" role="img" aria-label={`Affidabilità ${valore ?? "non disponibile"} su 100`}>
+      <svg viewBox="0 0 200 112" className="w-full">
+        {TRATTI.map((cl, i) => {
+          const [x1, y1] = pt(180 - i * 36 - 1.5);
+          const [x2, y2] = pt(180 - (i + 1) * 36 + 1.5);
+          return <path key={i} d={`M ${x1} ${y1} A 80 80 0 0 1 ${x2} ${y2}`} fill="none" stroke="currentColor"
+            strokeWidth={i === attivo ? 20 : 12} className={`${cl} ${i === attivo || attivo < 0 ? "" : "opacity-25"}`} />;
+        })}
+        <text x="100" y="92" textAnchor="middle" className="fill-foreground" style={{ fontSize: 30, fontWeight: 700 }}>{valore ?? "—"}</text>
+        <text x="100" y="108" textAnchor="middle" className="fill-muted-foreground" style={{ fontSize: 11 }}>/100</text>
+      </svg>
+      {categoria && <p className="text-center text-sm font-medium">{categoria}</p>}
+    </div>
+  );
+}
+
+function RigaValutazione({ s }: { s: ScoreCervedVista }) {
+  const scala = scalaScore(s.codice_score);
+  const liv = livelloCategoria(s.categoria_codice);
+  const esito = esitoValutazione(liv);
+  const peggioreAMeglio = scala ? [...scala].reverse() : null;
+  const attivo = scala && liv != null && liv <= scala.length ? scala.length - liv : -1;
+  return (
+    <div className="grid grid-cols-1 gap-1 py-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-3">
+      <div className="min-w-0">
+        <p className="break-words text-xs text-muted-foreground">{etichettaScoreCerved(s)}</p>
+        <p className="flex items-center gap-1.5 text-sm font-medium">
+          {esito === "ottimo" && <CheckCircle2 className="h-4 w-4 shrink-0 text-success" aria-hidden />}
+          {esito === "attenzione" && <AlertTriangle className="h-4 w-4 shrink-0 text-warning" aria-hidden />}
+          <span className="min-w-0 break-words">{s.categoria_descrizione ?? "—"}</span>
+        </p>
+      </div>
+      {peggioreAMeglio && (
+        <div className="w-full sm:w-40">
+          <div className="flex items-center justify-between gap-1" aria-label={`Livello ${liv ?? "?"} su ${scala!.length}`}>
+            {peggioreAMeglio.map((et, i) => (
+              <span key={et} title={et} className={`rounded-full ${i === attivo
+                ? `h-3.5 w-3.5 ${esito === "ottimo" ? "bg-success" : "bg-warning"} ring-2 ring-offset-1 ring-offset-background ${esito === "ottimo" ? "ring-success/40" : "ring-warning/40"}`
+                : "h-2 w-2 bg-muted-foreground/30"}`} />
+            ))}
+          </div>
+          <div className="mt-0.5 hidden justify-between gap-2 text-[10px] leading-tight text-muted-foreground sm:flex">
+            <span className="min-w-0 break-words">{peggioreAMeglio[0]}</span>
+            <span className="min-w-0 break-words text-right">{peggioreAMeglio[peggioreAMeglio.length - 1]}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ComePagaMade({ clienteId }: { clienteId: string }) {
+  const { data: esp } = useEsperienzaPagamentoCliente(clienteId);
+  const t = testiPagateInRitardo(esp);
+  return (
+    <div className="mb-2 flex flex-col gap-1 rounded-md border border-dashed bg-muted/40 p-2 text-xs sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <p className="text-muted-foreground">Come paga noi (MADE)</p>
+        <p title={t.titolo} className={t.inRitardo ? "font-medium text-warning" : "font-medium"}>
+          {t.label}: {t.valore}{t.dettaglio ? <span className="font-normal text-muted-foreground"> · {t.dettaglio}</span> : null}
+        </p>
+      </div>
+      <div className="shrink-0"><SemaforoAffidabilitaBadge clienteId={clienteId} /></div>
+    </div>
+  );
+}
+
+const VOCI_PRINCIPALI = [
+  ["ricavi", "Ricavi", "fatturato"], ["acquisti", "Acquisti", null], ["mol", "MOL", "mol"],
+  ["utile", "Utile/Perdita", "utile_perdita_esercizio"], ["patrimonio_netto", "Patrimonio netto", "patrimonio_netto"],
+] as const;
+const VOCI_SECONDARIE = [
+  ["debiti_banche", "Debiti verso banche"], ["debiti_fornitori", "Debiti verso fornitori"],
+  ["crediti_clienti", "Crediti verso clienti"], ["liquidita", "Liquidità"],
+] as const;
+
+function BloccoBilancio({ bil, profilo }: { bil: Obj | null | undefined; profilo: Obj | null }) {
+  const anni: Obj[] = Array.isArray(bil?.anni) ? bil!.anni : [];
+  const att = anni[0];
+  const prec = anni[1];
+  if (att) {
+    return (
+      <Box titolo={`Dati di bilancio${att.data_chiusura ? ` (chiuso il ${att.data_chiusura})` : ""}`}>
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
+          {VOCI_PRINCIPALI.map(([k, et]) => (
+            <Cifra key={k} etichetta={k === "utile" && att[k] != null && att[k] < 0 ? "Perdita" : k === "utile" ? "Utile" : et}
+              valore={att[k]} precedente={prec?.[k]} />
+          ))}
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-2 md:grid-cols-4">
+          {VOCI_SECONDARIE.map(([k, et]) => <Cifra key={k} etichetta={et} valore={att[k]} precedente={prec?.[k]} piccola />)}
+        </div>
+        {prec?.data_chiusura && <p className="mt-2 text-xs text-muted-foreground">Variazioni rispetto al bilancio chiuso il {prec.data_chiusura}.</p>}
+      </Box>
+    );
+  }
+  const daProfilo = profilo && VOCI_PRINCIPALI.some(([, , pk]) => pk && profilo[pk] != null);
+  return (
+    <Box titolo={daProfilo && profilo?.data_chiusura_ultimo_bilancio ? `Dati di bilancio (chiuso il ${profilo.data_chiusura_ultimo_bilancio})` : "Dati di bilancio"}>
+      {daProfilo ? (
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
+          {VOCI_PRINCIPALI.filter(([, , pk]) => pk).map(([k, et, pk]) => (
+            <Cifra key={k} etichetta={et} valore={profilo![pk!]} />
+          ))}
+        </div>
+      ) : <p className="text-sm text-muted-foreground">Bilancio non disponibile (le ditte individuali non lo depositano)</p>}
+    </Box>
+  );
+}
+
+function Cifra({ etichetta, valore, precedente, piccola }: { etichetta: string; valore: number | null | undefined; precedente?: number | null; piccola?: boolean }) {
+  const v = variazionePercentuale(valore, precedente);
+  const negativo = valore != null && valore < 0;
+  return (
+    <div className="min-w-0 rounded-md border p-2">
+      <p className="break-words text-xs text-muted-foreground">{etichetta}</p>
+      <p title={valore != null ? formatEuro(valore) : undefined}
+        className={`font-semibold tabular-nums ${piccola ? "text-sm" : "text-base sm:text-lg"} ${negativo ? "text-destructive" : ""}`}>
+        {formattaEuroCompatto(valore) ?? "—"}
+      </p>
+      {v != null && (
+        <p className={`text-xs font-medium tabular-nums ${v >= 0 ? "text-success" : "text-destructive"}`}>
+          {v >= 0 ? "▲" : "▼"} {Math.abs(v).toLocaleString("it-IT", { maximumFractionDigits: 1 })}%
+        </p>
+      )}
+    </div>
+  );
+}
+
+function RigaValore({ k, v, forte }: { k: string; v: string; forte?: boolean }) {
+  return (
+    <div className="flex items-baseline justify-between gap-2">
+      <span className="min-w-0 text-muted-foreground">{k}</span>
+      <span className={`shrink-0 tabular-nums ${forte ? "font-semibold" : "font-medium"}`}>{v}</span>
     </div>
   );
 }
