@@ -3,7 +3,7 @@ import type React from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation } from "@tanstack/react-query";
 import { Search } from "lucide-react";
-import { provaCercaCerved } from "@/lib/cerved/cerved-prova.functions";
+import { provaCercaCerved, provaArchivioCerved } from "@/lib/cerved/cerved-prova.functions";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,6 +47,9 @@ export function ProvaCervedCard() {
   const [piva, setPiva] = useState("");
   const fn = useServerFn(provaCercaCerved);
   const m = useMutation({ mutationFn: (p: string) => fn({ data: { piva: p } }) });
+  const fnArch = useServerFn(provaArchivioCerved);
+  const ma = useMutation({ mutationFn: (p: string) => fnArch({ data: { piva: p } }) });
+  const ra = ma.data;
   const valida = /^\d{11}$/.test(piva);
   const r = m.data;
   const a = r?.prima ?? null;
@@ -125,11 +128,76 @@ export function ProvaCervedCard() {
           <Input id="cerved-piva" inputMode="numeric" maxLength={11} placeholder="11 cifre"
             value={piva} onChange={(e) => setPiva(e.target.value.replace(/\D/g, ""))} />
         </div>
-        <Button type="submit" disabled={!valida || m.isPending} className="h-10">
-          {m.isPending ? "Ricerca in corso…" : "Prova ricerca"}
-        </Button>
+        <div className="grid grid-cols-2 sm:flex gap-2">
+          <Button type="submit" disabled={!valida || m.isPending} className="h-10">
+            {m.isPending ? "Ricerca…" : "Prova ricerca"}
+          </Button>
+          <Button type="button" variant="outline" disabled={!valida || ma.isPending} className="h-10"
+            onClick={() => ma.mutate(piva)}>
+            {ma.isPending ? "Lettura…" : "Prova archivio"}
+          </Button>
+        </div>
       </form>
       {m.error && <p className="mt-3 text-sm text-destructive break-words">{m.error.message}</p>}
+      {ma.error && <p className="mt-3 text-sm text-destructive break-words">{ma.error.message}</p>}
+      {ra && (
+        <>
+          <div className="mt-3 rounded-md border p-3 text-sm">
+            <h3 className="font-medium mb-1">Prodotti acquistabili</h3>
+            {ra.prodotti.errore ? <p className="text-destructive break-words">{ra.prodotti.errore}</p>
+              : ra.prodotti.dati.length === 0 ? <p className="text-muted-foreground">Nessun prodotto restituito.</p>
+              : (
+                <ul className="divide-y">
+                  {ra.prodotti.dati.map((p, i) => (
+                    <li key={`${p.codice}-${i}`} className="py-1.5 flex flex-wrap gap-x-2">
+                      <span className="font-mono text-xs shrink-0 pt-0.5">{p.codice ?? "—"}</span>
+                      <span className="min-w-0 break-words">{p.descrizione ?? "—"}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+          </div>
+          <div className="mt-3 rounded-md border p-3 text-sm">
+            <h3 className="font-medium mb-1">Report già acquistati</h3>
+            {ra.archivio.errore ? <p className="text-destructive break-words">{ra.archivio.errore}</p>
+              : ra.archivio.dati.length === 0 ? <p className="text-muted-foreground">Nessun report in archivio.</p>
+              : (
+                <ul className="divide-y">
+                  {ra.archivio.dati.map((d, i) => (
+                    <li key={`${d.request_id}-${i}`} className="py-2">
+                      <Righe righe={[
+                        ["Richiesta", d.request_id],
+                        ["Prodotto", d.product_id],
+                        ["Data richiesta", d.request_date],
+                        ["Data consegna", d.delivery_date],
+                        ["Monitoraggio fino al", d.monitoring_expiry_date ? `${d.monitoring_expiry_date}${d.expired_monitoring ? " (scaduto)" : ""}` : siNo(d.expired_monitoring) && `Scaduto: ${siNo(d.expired_monitoring)}`],
+                        ["Formati", d.document_formats.length ? d.document_formats.join(", ") : null],
+                        ["Utente", d.user_id],
+                      ]} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+          </div>
+          <div className="mt-3 rounded-md border p-3 text-sm">
+            <h3 className="font-medium mb-1">Documento recuperato</h3>
+            {!ra.documento ? <p className="text-muted-foreground">Nessun report da recuperare.</p>
+              : ra.documento.errore ? <p className="text-destructive break-words">{ra.documento.errore}</p>
+              : (
+                <>
+                  <Righe righe={[
+                    ["Richiesta", ra.documento.request_id],
+                    ["Stato consegna", ra.documento.delivery_status],
+                    ["Lunghezza XML", `${ra.documento.lunghezza.toLocaleString("it-IT")} caratteri`],
+                  ]} />
+                  {ra.documento.anteprima && (
+                    <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-all rounded bg-muted p-2 text-xs">{ra.documento.anteprima}</pre>
+                  )}
+                </>
+              )}
+          </div>
+        </>
+      )}
       {r && (
         <div className="mt-3 rounded-md border p-3 text-sm space-y-1">
           <p>
