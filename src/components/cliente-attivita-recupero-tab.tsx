@@ -346,10 +346,16 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda, onApriProm
       ) : (azioni?.length ?? 0) === 0 ? (
         <Card className="p-12 text-center">
           <Activity className="size-10 mx-auto text-muted-foreground/50 mb-3" />
-          <p className="text-sm font-medium">Nessuna azione registrata</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Usa i pulsanti sopra per iniziare a tracciare l'attività di recupero.
-          </p>
+          {soloShowroom ? (
+            <p className="text-sm font-medium">Nessuna attività di recupero.</p>
+          ) : (
+            <>
+              <p className="text-sm font-medium">Nessuna azione registrata</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Usa i pulsanti sopra per iniziare a tracciare l'attività di recupero.
+              </p>
+            </>
+          )}
         </Card>
       ) : (
         <div className="space-y-5">

@@ -7288,6 +7288,7 @@ export type Database = {
         }[]
       }
       elimina_lead: { Args: { _lead_id: string }; Returns: undefined }
+      elimina_lead_con_file: { Args: { _lead_id: string }; Returns: string[] }
       elimina_task: {
         Args: { _task_id: string }
         Returns: {

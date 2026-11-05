@@ -114,3 +114,12 @@ Fonte unica SQL `public.dashboard_fidi_clienti_base()` (una riga per cliente, vi
 - Categoria unica per cliente: legale > bloccati > contanti_pos (`pagamento_immediato`) > privati (senza partita IVA, esclusa Sede Centrale) > imprese.
 - `oltre_fido` = rischio − fido concesso, solo clienti attivi, ordini aperti esclusi.
 - "Fidi da tenere d'occhio" (vicini al limite, compra più del solito, ordini oltre il fido): solo categoria `imprese` E `regola_applicata` NON in (`sede_esclusa`, `esclusa_gruppo`) — Sede Centrale e società del gruppo sono fuori dal giro fidi come negli Alert fidi (FM56 fetta 1-bis).
+
+## Allegati lead → cliente (FM56 L1/L1-bis)
+Unico punto il trigger `trg_lead_allegati_cliente` (AFTER UPDATE OF cliente_id ON lead): passaggio al cliente con `origine_lead_id`, ritorno al lead all'annullamento, eliminazione insieme al lead (`elimina_lead` / `elimina_lead_con_file`; file via API Storage dal server, `src/lib/lead-elimina.functions.ts`).
+
+## Ruolo showroom (FM56)
+Fonte unica `isSoloShowroom` (`src/lib/permessi-showroom.ts`) / `public.auth_solo_showroom()`; scrittura bloccata da policy RESTRICTIVE "Showroom: …", eccezioni: contatti e lead della sede, attività commerciali proprie, allegati di task/chat/lead della sede.
+
+## Dashboard fidi (FM56)
+Numeri da `get_dashboard_fidi_gruppi`, liste da `get_clienti_dashboard_fidi_ids` (base `dashboard_fidi_clienti_base` / `dashboard_fidi_appartenenze`).

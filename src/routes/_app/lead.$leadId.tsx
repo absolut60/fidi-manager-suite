@@ -1,3 +1,4 @@
+import { eliminaLeadConFile } from "@/lib/lead-elimina.functions";
 import { isSoloShowroom } from "@/lib/permessi-showroom";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -298,8 +299,7 @@ function LeadDettaglioPage() {
 
   const delMut = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.rpc("elimina_lead", { _lead_id: leadId });
-      if (error) throw error;
+      await eliminaLeadConFile({ data: { leadId } });
     },
     onSuccess: () => {
       toast.success("Lead eliminato");
