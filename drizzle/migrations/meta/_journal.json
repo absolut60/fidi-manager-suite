@@ -1030,6 +1030,13 @@
       "when": 1793885566559,
       "tag": "0146_fm56_elimina_lead_allegati",
       "breakpoints": true
+    },
+    {
+      "idx": 147,
+      "version": "7",
+      "when": 1793890832462,
+      "tag": "0147_fm57_cerved_chiamate",
+      "breakpoints": true
     }
   ]
 }

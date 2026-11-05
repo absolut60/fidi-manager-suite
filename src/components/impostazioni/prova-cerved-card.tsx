@@ -1,0 +1,70 @@
+import { useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { useMutation } from "@tanstack/react-query";
+import { Search } from "lucide-react";
+import { provaCercaCerved } from "@/lib/cerved/cerved-prova.functions";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+
+export function ProvaCervedCard() {
+  const [piva, setPiva] = useState("");
+  const fn = useServerFn(provaCercaCerved);
+  const m = useMutation({ mutationFn: (p: string) => fn({ data: { piva: p } }) });
+  const valida = /^\d{11}$/.test(piva);
+  const r = m.data;
+  const righe: [string, string | null][] = r?.prima
+    ? [
+        ["ID soggetto", r.prima.id_soggetto],
+        ["Denominazione", r.prima.denominazione],
+        ["Partita IVA", r.prima.partita_iva],
+        ["Stato attività", r.prima.codice_stato_attivita],
+        ["Forma giuridica", r.prima.forma_giuridica],
+        ["ATECO 2025", r.prima.ateco_2025],
+      ]
+    : [];
+  return (
+    <Card className="p-4 sm:p-5 max-w-2xl">
+      <h2 className="font-semibold flex items-center gap-2 mb-3"><Search className="size-4" /> Prova Cerved</h2>
+      <form
+        className="flex flex-col sm:flex-row sm:items-end gap-2"
+        onSubmit={(e) => { e.preventDefault(); if (valida) m.mutate(piva); }}
+      >
+        <div className="flex-1 min-w-0 space-y-1">
+          <Label htmlFor="cerved-piva">Partita IVA</Label>
+          <Input id="cerved-piva" inputMode="numeric" maxLength={11} placeholder="11 cifre"
+            value={piva} onChange={(e) => setPiva(e.target.value.replace(/\D/g, ""))} />
+        </div>
+        <Button type="submit" disabled={!valida || m.isPending} className="h-10">
+          {m.isPending ? "Ricerca in corso…" : "Prova ricerca"}
+        </Button>
+      </form>
+      {m.error && <p className="mt-3 text-sm text-destructive break-words">{m.error.message}</p>}
+      {r && (
+        <div className="mt-3 rounded-md border p-3 text-sm space-y-1">
+          <p>
+            <span className="text-muted-foreground">Esito:</span>{" "}
+            <span className={r.esito === "ok" ? "font-medium" : "font-medium text-destructive"}>
+              {r.esito === "ok" ? "OK" : "Errore"}
+            </span>
+            {r.http_status != null && <span className="text-muted-foreground"> · HTTP {r.http_status}</span>}
+          </p>
+          {r.errore && <p className="text-destructive break-words">{r.errore}</p>}
+          {r.esito === "ok" && <p><span className="text-muted-foreground">Aziende trovate:</span> {r.numero_aziende}</p>}
+          {r.cliente_trovato && <p className="text-muted-foreground">Cliente presente in anagrafica: collegato al registro.</p>}
+          {righe.length > 0 && (
+            <dl className="grid grid-cols-1 sm:grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 pt-1">
+              {righe.map(([k, v]) => (
+                <div key={k} className="contents">
+                  <dt className="text-muted-foreground">{k}</dt>
+                  <dd className="break-words">{v ?? "—"}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}

@@ -1836,6 +1836,63 @@ export type Database = {
           },
         ]
       }
+      cerved_chiamate: {
+        Row: {
+          cliente_id: string | null
+          created_at: string
+          durata_ms: number | null
+          errore: string | null
+          esito: string | null
+          http_status: number | null
+          id: string
+          operazione: string
+          parametri: Json | null
+          risposta: Json | null
+          utente_id: string | null
+        }
+        Insert: {
+          cliente_id?: string | null
+          created_at?: string
+          durata_ms?: number | null
+          errore?: string | null
+          esito?: string | null
+          http_status?: number | null
+          id?: string
+          operazione: string
+          parametri?: Json | null
+          risposta?: Json | null
+          utente_id?: string | null
+        }
+        Update: {
+          cliente_id?: string | null
+          created_at?: string
+          durata_ms?: number | null
+          errore?: string | null
+          esito?: string | null
+          http_status?: number | null
+          id?: string
+          operazione?: string
+          parametri?: Json | null
+          risposta?: Json | null
+          utente_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cerved_chiamate_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cerved_chiamate_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+        ]
+      }
       clienti: {
         Row: {
           a_scadere: number | null
