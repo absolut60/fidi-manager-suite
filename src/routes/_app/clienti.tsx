@@ -1,3 +1,4 @@
+import { useVisibilitaLimitataNegozio } from "@/lib/visibilita-negozio";
 import { useSoloShowroom } from "@/hooks/use-solo-showroom";
 import { decodificaFiltroDashboard, etichettaChipDashboard, PREFISSO_PRESET } from "@/lib/dashboard-fidi-gruppi";
 import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
@@ -179,7 +180,7 @@ function ClientiPage() {
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
   const isListRoute = currentPath === "/clienti";
   const { role: _roleEarly, profilo: _profiloEarly, hasRole: _hasRoleEarly, user: _userEarly } = useAuth();
-  const isStoreManager = _roleEarly === "store_manager";
+  const isStoreManager = useVisibilitaLimitataNegozio(); // FM59: store manager e showroom (fonte unica)
   const isAgenteRuolo = _hasRoleEarly("agente");
   // FM56: lo showroom (sola lettura) ha le stesse esclusioni di azioni dell'agente in questa lista.
   const soloShowroom = useSoloShowroom();

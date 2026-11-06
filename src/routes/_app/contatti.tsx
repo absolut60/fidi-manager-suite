@@ -1,3 +1,4 @@
+import { useVisibilitaLimitataNegozio } from "@/lib/visibilita-negozio";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -33,7 +34,7 @@ function ContattiPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { role, user } = useAuth();
-  const isStoreManager = role === "store_manager";
+  const isStoreManager = useVisibilitaLimitataNegozio(); // FM59: store manager e showroom (fonte unica)
   // Filtri conservati con la fonte unica useFiltriPagina.
   const { filtri: F, setCampo } = useFiltriPagina("contatti", {
     search: "", storeId: [] as string[], clienteId: [] as string[], statoConsenso: [] as string[],

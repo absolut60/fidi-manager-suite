@@ -1,3 +1,4 @@
+import { useVisibilitaLimitataNegozio } from "@/lib/visibilita-negozio";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, Fragment } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -167,7 +168,7 @@ function daIsoGiorno(v: string): Date | undefined {
 function RecuperoCreditiPage() {
   const { role, profilo, roles, user } = useAuth();
   const puoInviare = puoInviareComunicazioniRecupero(roles as string[]);
-  const isStoreManager = role === "store_manager";
+  const isStoreManager = useVisibilitaLimitataNegozio(); // FM59: store manager e showroom (fonte unica)
   const isAgente = role === "agente";
   const isRistretto = isStoreManager || isAgente;
   const myStoreId = profilo?.store_id ?? null;

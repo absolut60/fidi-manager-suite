@@ -1,3 +1,4 @@
+import { useVisibilitaLimitataNegozio } from "@/lib/visibilita-negozio";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, Fragment, useEffect, useRef } from "react";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
@@ -244,7 +245,7 @@ function ScadenziarioPage() {
   const { role, profilo, user, roles } = useAuth();
   const isMobile = useIsMobile();
   const puoInviare = puoInviareComunicazioniRecupero(roles as string[]);
-  const isStoreManager = role === "store_manager";
+  const isStoreManager = useVisibilitaLimitataNegozio(); // FM59: store manager e showroom (fonte unica)
   const myStoreId = profilo?.store_id ?? null;
   const storeDefault = isStoreManager && myStoreId ? myStoreId : "all";
   // Filtri conservati per utente e scheda del browser (fonte unica useFiltriPagina).

@@ -1,3 +1,4 @@
+import { useVisibilitaLimitataNegozio } from "@/lib/visibilita-negozio";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -35,7 +36,7 @@ function fmtDate(v: unknown): string {
 export default function AssicurazioniPage() {
   const navigate = useNavigate();
   const { role, roles, profilo } = useAuth();
-  const isStoreManager = role === "store_manager";
+  const isStoreManager = useVisibilitaLimitataNegozio(); // FM59: store manager e showroom (fonte unica)
   const puoAprireSinistri = roles.includes("amministratore") || roles.includes("amministrazione");
   const myStoreId = profilo?.store_id ?? null;
 
