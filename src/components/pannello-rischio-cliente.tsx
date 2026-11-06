@@ -350,25 +350,3 @@ function RigaCompatta({ label, valore, dettaglio }: { label: string; valore: str
   );
 }
 
-function ValutazioneEsternaBlock({ cliente, variant }: { cliente: any; variant: "compact" | "extended" }) {
-  const rating = cliente?.rating_esterno ?? null;
-  const fonte = cliente?.rating_esterno_fonte ?? null;
-  const data = cliente?.rating_esterno_data ?? null;
-  const vuoto = !rating;
-
-  return (
-    <div className={variant === "extended" ? "border-t pt-3 space-y-2" : "border-t pt-1.5 space-y-1"}>
-      <div className="flex items-end justify-between gap-2 flex-wrap">
-        <h3 className={variant === "extended" ? "font-semibold text-sm" : "font-medium text-xs"}>
-          Valutazione esterna
-        </h3>
-        {fonte && <span className="text-[11px] text-muted-foreground">{fonte}{data ? ` · ${formatDate(data)}` : ""}</span>}
-      </div>
-      {vuoto ? (
-        <p className="text-xs text-muted-foreground">Non disponibile</p>
-      ) : (
-        <p className="text-sm font-medium">{rating}</p>
-      )}
-    </div>
-  );
-}
