@@ -166,7 +166,7 @@ export function PannelloRischioCliente({
           </div>
           <span className="ml-auto min-w-0 break-words text-[11px] text-muted-foreground">Sincronizzato: {ultimaSync}</span>
         </div>
-        <SezioneCervedCompattaCliente clienteId={cliente.id} fidoAttuale={fidoAttuale} nuovaScheda={!cervedStessaPagina} />
+        <SezioneCervedCompattaCliente clienteId={cliente.id} fidoAttuale={fidoAttuale} anteprima={!cervedStessaPagina} />
         <div className="grid grid-flow-row-dense grid-cols-2 sm:grid-cols-3 2xl:grid-cols-4 gap-x-3 gap-y-1">
           <MetricCard label="Totale rischio" value={formatEuro(totRischio)} />
           <MetricCard label="Scaduto" value={formatEuro(scaduto)} tone={scaduto > 0 ? "destructive" : "success"} />
@@ -205,7 +205,7 @@ export function PannelloRischioCliente({
   // variant === "compact" (default, immutato)
   return (
     <div className="rounded-md border p-3 text-xs space-y-1.5 bg-muted/30">
-      <SezioneCervedCompattaCliente clienteId={cliente.id} fidoAttuale={fidoAttuale} className="bg-background" nuovaScheda={!cervedStessaPagina} />
+      <SezioneCervedCompattaCliente clienteId={cliente.id} fidoAttuale={fidoAttuale} className="bg-background" anteprima={!cervedStessaPagina} />
       <div className="grid grid-cols-2 gap-x-4 gap-y-1">
         <div className="flex justify-between col-span-2 items-center gap-2 flex-wrap">
           <span className="text-muted-foreground">Fido gestionale</span>
