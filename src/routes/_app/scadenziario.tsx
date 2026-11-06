@@ -27,7 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { FiltroMultiplo } from "@/components/filtro-multiplo";
-import { useEsperienzaPagamentoCliente, testiPagateInRitardo } from "@/hooks/use-esperienza-pagamento";
+import { useEsperienzaPagamentoCliente, testiEsperienzaPagamento } from "@/hooks/use-esperienza-pagamento";
 import { useAzioniRecuperoCliente, useOperatoriAttivita, useStadioSollecitoCliente } from "@/hooks/use-azioni-recupero-cliente";
 import { TIPO_PROMESSA, TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL, testoAzione, tipoAzioneVisualizzato } from "@/lib/azioni-recupero-ui";
 import { TooltipAzioneRecupero } from "@/components/tooltip-azione-recupero";
@@ -1298,13 +1298,6 @@ function ScadenziarioPage() {
   );
 }
 
-function ritardoText(dc: number | null, de: number | null): { text: string; cls: string } {
-  if (dc == null || de == null) return { text: "—", cls: "text-muted-foreground" };
-  const diff = Number(de) - Number(dc);
-  if (diff > 0) return { text: `+${diff} gg`, cls: "text-destructive font-medium" };
-  return { text: "In orario", cls: "text-success font-medium" };
-}
-
 type RischioData = {
   fido_gestionale: number | null; fido_residuo: number | null; totale_rischio: number | null;
   doc_da_fatturare: number | null; doc_da_evadere: number | null; effetti_a_rischio: number | null;
@@ -1462,7 +1455,7 @@ function PromesseAttiveBlock({ clienteId }: { clienteId: string }) {
 function ExpandedRischioPanel({ loading, data, onApri, clienteId }: { loading: boolean; data: RischioData; onApri: (e: React.MouseEvent) => void; clienteId: string }) {
   // Montato solo con la riga espansa: la query parte solo allora.
   const { data: esp } = useEsperienzaPagamentoCliente(clienteId);
-  const pr = testiPagateInRitardo(esp);
+  const pr = testiEsperienzaPagamento(esp);
   if (loading) {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -1476,9 +1469,7 @@ function ExpandedRischioPanel({ loading, data, onApri, clienteId }: { loading: b
   const fr = d.fido_residuo;
   const ddt = Number(d.doc_da_fatturare ?? 0);
   const ord = Number(d.doc_da_evadere ?? 0);
-  const ni = d.num_insoluti;
   const eff = Number(d.effetti_a_rischio ?? 0);
-  const r = ritardoText(d.dilazione_concordata ?? null, d.dilazione_effettiva ?? null);
   return (
     <div className="space-y-3" onClick={(e) => e.stopPropagation()}>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
@@ -1487,17 +1478,14 @@ function ExpandedRischioPanel({ loading, data, onApri, clienteId }: { loading: b
         <CellInfo label="DDT da fatturare" value={fmtEuro(ddt)} cls={ddt > 0 ? "text-primary font-medium" : ""} />
         <CellInfo label="Ordini aperti" value={fmtEuro(ord)} hint="(non concorre)" />
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3 text-sm">
-        <CellInfo label="Insoluti storici" value={ni == null ? "—" : String(ni)} cls={ni != null && Number(ni) > 0 ? "text-destructive font-medium" : ""} />
-        {/* Sotto lg: riga intera in fondo (niente cella orfana); da lg subito dopo Insoluti. */}
-        <div className="min-w-0 col-span-2 sm:col-span-4 lg:col-span-1 order-last lg:order-none" title={pr.titolo}>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+        <div className="min-w-0 col-span-2" title={pr.titolo}>
           <p className="text-[10px] font-medium text-muted-foreground uppercase truncate">{pr.label}</p>
-          <p className={`tabular-nums break-words ${pr.inRitardo ? "text-destructive font-medium" : ""}`}>{pr.valore}</p>
+          <p className={`tabular-nums break-words ${pr.nonPuntuali12m ? "text-destructive font-medium" : ""}`}>{pr.valore}</p>
           {pr.dettaglio && <p className="text-[11px] text-muted-foreground break-words">{pr.dettaglio}</p>}
         </div>
         <CellInfo label="Effetti a rischio" value={fmtEuro(eff)} cls={eff > 0 ? "text-orange-600 font-medium" : ""} />
         <CellInfo label="Dilaz. concordata" value={d.dilazione_concordata != null ? `${d.dilazione_concordata} gg` : "—"} />
-        <CellInfo label="Ritardo medio" value={r.text} cls={r.cls} />
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-2 gap-3 text-sm">
         <CellInfo

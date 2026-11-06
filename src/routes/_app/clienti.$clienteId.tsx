@@ -64,7 +64,7 @@ import { OpportunitaSoggettoLista } from "@/components/opportunita-soggetto-list
 import { ClienteCantieriTab } from "@/components/cliente-cantieri-tab";
 import { ClienteStoricoFidoTab } from "@/components/cliente-storico-fido-tab";
 import { ClienteInsolutiTab } from "@/components/cliente-insoluti-tab";
-import { useEsperienzaPagamentoCliente, testiPagateInRitardo } from "@/hooks/use-esperienza-pagamento";
+import { useEsperienzaPagamentoCliente, testiEsperienzaPagamento } from "@/hooks/use-esperienza-pagamento";
 import { ClienteAttivitaRecuperoTab } from "@/components/cliente-attivita-recupero-tab";
 import { ClientePromesseTab } from "@/components/cliente-promesse-tab";
 import { useAzioniRecuperoCliente, useStadioSollecitoCliente } from "@/hooks/use-azioni-recupero-cliente";
@@ -1005,7 +1005,7 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
   const config = useConfig();
   const navigate = useNavigate();
   const { data: espPag } = useEsperienzaPagamentoCliente(clienteId);
-  const pagRit = testiPagateInRitardo(espPag);
+  const pagRit = testiEsperienzaPagamento(espPag);
   const vaiAlTab = (tab: string) =>
     navigate({
       to: "/clienti/$clienteId",
@@ -1105,7 +1105,6 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
     Number(ins?.scaduto_30_60 ?? 0) +
     Number(ins?.scaduto_oltre_60 ?? 0);
   const pct = (v: number) => (totFasce > 0 ? (v / totFasce) * 100 : 0);
-  const maxGg = Number(ins?.max_giorni_ritardo ?? 0);
 
   // Dati rischio
   const fidoGest = getFidoAttuale(cliente);
@@ -1207,9 +1206,11 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
             onClick={() => vaiAlTab("scadenziario")}
           />
           <MiniStat
-            label="Max gg ritardo"
-            value={`${maxGg} gg`}
-            tone={maxGg > 60 ? "destructive" : maxGg > 30 ? "warning" : "default"}
+            label={pagRit.label}
+            value={pagRit.valore}
+            tone={pagRit.nonPuntuali12m ? "destructive" : "default"}
+            hint={pagRit.dettaglio}
+            title={pagRit.titolo}
             size="md"
             icon={Clock}
             onClick={() => vaiAlTab("scadenziario")}
@@ -1318,36 +1319,22 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
 
         {/* Comportamento pagamento */}
         {(() => {
-          const ni = cliente.num_insoluti;
           const dc = cliente.dilazione_concordata;
-          const de = cliente.dilazione_effettiva;
-          if (ni == null && dc == null && de == null && !(espPag && espPag.nPagate > 0)) return null;
-          const r = ritardoHelper(dc, de);
+          if (dc == null && !(espPag && espPag.nPagate > 0)) return null;
           return (
             <Card className="p-4 rounded-xl border-l-[3px] border-l-slate-400">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-700 flex items-center gap-1.5 mb-3">
                 <Clock className="size-3.5" /> Comportamento pagamento
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-                <MiniStat
-                  label="Insoluti storici"
-                  value={ni == null ? "—" : String(ni)}
-                  tone={ni != null && Number(ni) > 0 ? "destructive" : "default"}
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <MiniStat
                   label={pagRit.label}
                   value={pagRit.valore}
-                  tone={pagRit.inRitardo ? "destructive" : "default"}
+                  tone={pagRit.nonPuntuali12m ? "destructive" : "default"}
                   hint={pagRit.dettaglio}
                   title={pagRit.titolo}
                 />
                 <MiniStat label="Dilazione concordata" value={dc != null ? `${dc} gg` : "—"} />
-                <MiniStat
-                  label="Ritardo medio reale"
-                  value={r.text}
-                  tone={r.tone}
-                  title="Differenza tra dilazione effettiva e concordata"
-                />
               </div>
             </Card>
           );
@@ -1358,7 +1345,7 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
           <h3 className="text-xs font-semibold uppercase tracking-wide text-amber-800 flex items-center gap-1.5 mb-3">
             <AlertTriangle className="size-3.5" /> Riepilogo insoluti
           </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
             <MiniStat
               label="Totale scaduto"
               value={formatEuro(totScaduto)}
@@ -1369,12 +1356,6 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
               label="A scadere"
               value={formatEuro(ins?.totale_a_scadere ?? 0)}
               icon={Calendar}
-            />
-            <MiniStat
-              label="Max gg ritardo"
-              value={`${maxGg} gg`}
-              tone={maxGg > 60 ? "destructive" : maxGg > 30 ? "warning" : "default"}
-              icon={Clock}
             />
             <MiniStat
               label="Ultimo sollecito"
@@ -1494,16 +1475,6 @@ function MiniStat({
       {body}
     </button>
   );
-}
-
-function ritardoHelper(
-  dilConc: number | null | undefined,
-  dilEff: number | null | undefined,
-): { text: string; tone: "destructive" | "success" | "muted" } {
-  if (dilConc == null || dilEff == null) return { text: "—", tone: "muted" };
-  const diff = Number(dilEff) - Number(dilConc);
-  if (diff > 0) return { text: `+${diff} gg`, tone: "destructive" };
-  return { text: "In orario", tone: "success" };
 }
 
 function FasciaRow({
