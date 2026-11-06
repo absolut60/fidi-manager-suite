@@ -3,6 +3,7 @@
  * Usato dalla lista /richieste (nuova richiesta) e dalla pagina della richiesta
  * (modifica, ri-invio). Contiene anche la conferma di modifica e l'annullamento.
  */
+import { chiaveRiferimentoRichiestaSingola } from "@/lib/chiavi-cache-fido";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -170,7 +171,7 @@ export function RichiestaFormDialog({
   });
   // FM55: teorico di riferimento della richiesta (fonte unica fetchFidoTeoricoPerRichiesta).
   const { data: teoricoRich } = useQuery({
-    queryKey: ["fido-teorico-per-richiesta", utente?.id ?? null, form.cliente_id],
+    queryKey: chiaveRiferimentoRichiestaSingola(utente?.id, form.cliente_id),
     enabled: isNuova && !!form.cliente_id,
     staleTime: 5 * 60_000,
     queryFn: async () => (await fetchFidoTeoricoPerRichiesta([form.cliente_id], utente?.id)).get(form.cliente_id) ?? null,

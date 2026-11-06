@@ -1,4 +1,5 @@
 import { BadgeMotiviRiga, DettagliRiga } from "@/components/badge-motivi-riga";
+import { chiaveRiferimentoRichiestaMassiva } from "@/lib/chiavi-cache-fido";
 import { useLockRicalcoloFido } from "@/components/ricalcolo-fido-barra";
 import { SemaforoPallino } from "@/components/semaforo-pallino";
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
@@ -191,7 +192,7 @@ export function ProposteFidoMassivoDialog({
   });
   // FM55: teorico di riferimento per le richieste (fonte unica fetchFidoTeoricoPerRichiesta).
   const { data: teoricoRichMap, isLoading: teoricoRichLoading } = useQuery({
-    queryKey: ["fido-teorico-per-richiesta", userId, [...ids].sort().join(",")],
+    queryKey: chiaveRiferimentoRichiestaMassiva(userId, ids),
     enabled: open && ids.length > 0,
     staleTime: 5 * 60_000,
     queryFn: () => fetchFidoTeoricoPerRichiesta(ids, userId),
@@ -213,8 +214,8 @@ export function ProposteFidoMassivoDialog({
   const alertAperti = useMemo(() => {
     if (!alertMassiva || !teoricoMap || !teoricoRichMap || !protettiMap) return undefined;
     return new Set(alertMassiva.filter((a) => alertConsumoAperto({ ...a,
-      gia_deciso: giaDeciso(protettiMap.get(a.cliente_id), teoricoRichMap.get(a.cliente_id),
-        teoricoMap.get(a.cliente_id)?.fido_attuale ?? a.cliente?.fido_gestionale ?? a.fido_gamma),
+      gia_deciso: giaDeciso(protettiMap?.get?.(a.cliente_id), teoricoRichMap?.get?.(a.cliente_id),
+        teoricoMap?.get?.(a.cliente_id)?.fido_attuale ?? a.cliente?.fido_gestionale ?? a.fido_gamma),
     })).map((a) => a.cliente_id));
   }, [alertMassiva, teoricoMap, teoricoRichMap, protettiMap]);
   const { data: sogliaConsumo } = useQuery({
