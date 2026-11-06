@@ -16,6 +16,8 @@ export function FiltroMultiplo({
   onChange,
   testoTutti = "Tutti",
   cercabile = false,
+  selezionaTutte = false,
+  testoMolti,
   className,
 }: {
   etichetta: string;
@@ -24,6 +26,10 @@ export function FiltroMultiplo({
   onChange: (v: string[]) => void;
   testoTutti?: string;
   cercabile?: boolean;
+  /** Opt-in: pulsante "Seleziona tutte" (aggiunge le opzioni visibili, anche filtrate dalla ricerca). */
+  selezionaTutte?: boolean;
+  /** Opt-in: testo riassuntivo per più selezioni (es. n => `${n} codici`). */
+  testoMolti?: (n: number) => string;
   className?: string;
 }) {
   const [cerca, setCerca] = useState("");
@@ -34,7 +40,7 @@ export function FiltroMultiplo({
       ? testoTutti
       : selezionati.length === 1
         ? opzioni.find((o) => o.valore === selezionati[0])?.label ?? "1 selezionato"
-        : `${selezionati.length} selezionati`;
+        : testoMolti ? testoMolti(selezionati.length) : `${selezionati.length} selezionati`;
 
   const visibili = useMemo(() => {
     const s = cerca.trim().toLowerCase();
@@ -96,7 +102,19 @@ export function FiltroMultiplo({
             })
           )}
         </div>
-        <div className="border-t p-1">
+        <div className={cn("border-t p-1", selezionaTutte && "grid grid-cols-2 gap-1")}>
+          {selezionaTutte && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="w-full"
+              disabled={visibili.length === 0 || visibili.every((o) => set.has(o.valore))}
+              onClick={() => onChange(Array.from(new Set([...selezionati, ...visibili.map((o) => o.valore)])))}
+            >
+              Seleziona tutte
+            </Button>
+          )}
           <Button
             type="button"
             variant="ghost"
