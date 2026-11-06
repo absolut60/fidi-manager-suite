@@ -80,6 +80,8 @@ interface Props {
   variant?: "compact" | "extended";
   /** Collegamento opzionale nell'intestazione della sola variante estesa. */
   linkScadenze?: React.ReactNode;
+  /** true nelle pagine (es. dettaglio richiesta): "Apri scheda Cerved" naviga nella stessa scheda, si torna con Indietro. */
+  cervedStessaPagina?: boolean;
 }
 
 export function PannelloRischioCliente({
