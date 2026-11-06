@@ -828,6 +828,8 @@ export type EsitoAcquistoLightReport = {
   request_id: string | null;
   delivery_status: string | null;
   risposta: unknown;
+  /** Riga di cerved_chiamate dell'acquisto. */
+  chiamata_id: string | null;
 };
 
 /**
@@ -859,7 +861,7 @@ export async function acquistaLightReport(
       if (d.esito === "ok") stato = (d.risposta as DocumentoRecuperato).delivery_status ?? stato;
     }
   }
-  return { http_status: r.http_status, esito: r.esito, errore: r.errore, request_id: requestId, delivery_status: stato, risposta: r.risposta };
+  return { http_status: r.http_status, esito: r.esito, errore: r.errore, request_id: requestId, delivery_status: stato, risposta: r.risposta, chiamata_id: r.chiamata_id };
 }
 
 // ---------------------------------------------------------------------------

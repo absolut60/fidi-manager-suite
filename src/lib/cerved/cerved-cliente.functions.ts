@@ -224,7 +224,7 @@ export const acquistaReportCervedCliente = createServerFn({ method: "POST" })
     const { data: riga, error: errIns } = await supabaseAdmin.from("cerved_report").upsert({
       cliente_id: cli.id, id_soggetto: idSoggetto, request_id: acq.request_id, prodotto: m.PRODOTTO_LIGHT_REPORT,
       acquistato_il: acquistatoIl.toISOString(), scade_il: scade.toISOString(), acquistato_da: utente,
-      chiamata_acquisto_id: (acq as { chiamata_id?: string | null }).chiamata_id ?? null,
+      chiamata_acquisto_id: acq.chiamata_id,
     }, { onConflict: "request_id" }).select("id, cliente_id, id_soggetto, request_id, scade_il").single();
     if (errIns || !riga) {
       console.error("[cerved] cerved_report non salvato", errIns?.message);
