@@ -1086,6 +1086,13 @@
       "when": 1793960575190,
       "tag": "0154_fm59_clienti_ambito_materialized",
       "breakpoints": true
+    },
+    {
+      "idx": 155,
+      "version": "7",
+      "when": 1793961294900,
+      "tag": "0155_fm59_coperture_scadenziario_ambito",
+      "breakpoints": true
     }
   ]
 }
