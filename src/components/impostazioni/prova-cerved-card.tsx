@@ -3,11 +3,16 @@ import type React from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation } from "@tanstack/react-query";
 import { Search } from "lucide-react";
-import { provaCercaCerved, provaArchivioCerved, provaRecuperoCerved, provaDatiEstesiCerved } from "@/lib/cerved/cerved-prova.functions";
+import { provaCercaCerved, provaArchivioCerved, provaRecuperoCerved, provaDatiEstesiCerved, provaAcquistoLightReport } from "@/lib/cerved/cerved-prova.functions";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const siNo = (v: boolean | null) => (v == null ? null : v ? "Sì" : "No");
 
@@ -58,6 +63,14 @@ export function ProvaCervedCard() {
   const fnEst = useServerFn(provaDatiEstesiCerved);
   const me = useMutation({ mutationFn: (p: string) => fnEst({ data: { piva: p } }) });
   const re = me.data;
+  const [pivaLr, setPivaLr] = useState("");
+  const [confermaLr, setConfermaLr] = useState(false);
+  const [pdfAperto, setPdfAperto] = useState(false);
+  const fnLr = useServerFn(provaAcquistoLightReport);
+  const ml = useMutation({ mutationFn: (p: string) => fnLr({ data: { piva: p } }) });
+  const rl = ml.data;
+  const httpTesto = (h: number | null | undefined, err: string | null | undefined) =>
+    [h != null ? `HTTP ${h}` : null, err].filter(Boolean).join(" · ") || null;
   const r = m.data;
   const a = r?.prima ?? null;
 
@@ -162,6 +175,66 @@ export function ProvaCervedCard() {
           {mr.isPending ? "Recupero…" : "Recupera documento"}
         </Button>
       </form>
+      <div className="mt-4 border-t pt-3">
+        <form
+          className="flex flex-col sm:flex-row sm:items-end gap-2"
+          onSubmit={(e) => { e.preventDefault(); if (/^\d{11}$/.test(pivaLr)) setConfermaLr(true); }}
+        >
+          <div className="flex-1 min-w-0 space-y-1">
+            <Label htmlFor="cerved-piva-lr">Partita IVA per Light Report</Label>
+            <Input id="cerved-piva-lr" inputMode="numeric" maxLength={11} placeholder="11 cifre"
+              value={pivaLr} onChange={(e) => setPivaLr(e.target.value.replace(/\D/g, ""))} />
+          </div>
+          <Button type="submit" disabled={!/^\d{11}$/.test(pivaLr) || ml.isPending} className="h-10">
+            {ml.isPending ? "Acquisto in corso…" : "Prova acquisto Light Report"}
+          </Button>
+        </form>
+        {ml.isPending && <p className="mt-2 text-xs text-muted-foreground">Se Cerved prepara il report in differita, l'attesa può arrivare a circa un minuto.</p>}
+        {ml.error && <p className="mt-3 text-sm text-destructive break-words">{ml.error.message}</p>}
+        {rl && (
+          <div className="mt-3 rounded-md border p-3 text-sm">
+            <h3 className="font-medium mb-1">Light Report</h3>
+            {rl.errore && <p className="text-destructive break-words">{rl.errore}</p>}
+            <Righe righe={[
+              ["ID soggetto", rl.id_soggetto],
+              ["Acquisto", rl.acquisto ? httpTesto(rl.acquisto.http_status, rl.acquisto.errore) : null],
+              ["Numero richiesta", rl.request_id],
+              ["Stato consegna", rl.delivery_status],
+              ["Recupero XML", rl.xml ? [httpTesto(rl.xml.http_status, rl.xml.errore), `${rl.xml.lunghezza.toLocaleString("it-IT")} caratteri`].filter(Boolean).join(" · ") : null],
+              ["Recupero PDF", rl.pdf ? [httpTesto(rl.pdf.http_status, rl.pdf.errore), rl.pdf.byte ? `${rl.pdf.byte.toLocaleString("it-IT")} byte` : null].filter(Boolean).join(" · ") : null],
+              ["Fido certificato", euro(rl.fido_certificato)],
+              ["Data report", rl.data_report],
+              ["Tag 1° livello", rl.tag_livello_1.length ? rl.tag_livello_1.join(", ") : null],
+              ["Tag 2° livello", rl.tag_livello_2.length ? rl.tag_livello_2.join(", ") : null],
+              ["PDF salvato", rl.percorso_pdf],
+            ]} />
+            {rl.url_pdf && (
+              <Button type="button" variant="outline" className="mt-2 h-10" onClick={() => setPdfAperto(true)}>Apri PDF</Button>
+            )}
+          </div>
+        )}
+      </div>
+      <AlertDialog open={confermaLr} onOpenChange={setConfermaLr}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Acquisto di prova con utenza di test</AlertDialogTitle>
+            <AlertDialogDescription>
+              Verrà acquistato il Light Report Cerved della partita IVA {pivaLr}, in XML e poi recuperato anche in PDF. Confermi?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={() => ml.mutate(pivaLr)}>Conferma acquisto</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <Dialog open={pdfAperto} onOpenChange={setPdfAperto}>
+        <DialogContent className="max-w-5xl w-[calc(100vw-1rem)] h-[90vh] flex flex-col p-3 sm:p-4">
+          <DialogHeader><DialogTitle>Light Report {rl?.request_id}</DialogTitle></DialogHeader>
+          {rl?.url_pdf && <iframe title="Light Report PDF" src={rl.url_pdf} className="flex-1 w-full rounded border" />}
+          {rl?.url_pdf && <a href={rl.url_pdf} target="_blank" rel="noreferrer" className="text-sm underline">Apri in una nuova scheda</a>}
+        </DialogContent>
+      </Dialog>
       {mr.error && <p className="mt-3 text-sm text-destructive break-words">{mr.error.message}</p>}
       {rr && (
         <div className="mt-3 rounded-md border p-3 text-sm">
