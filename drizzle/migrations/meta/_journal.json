@@ -1065,6 +1065,13 @@
       "when": 1793908579285,
       "tag": "0151_fm58_semaforo_numero_unita",
       "breakpoints": true
+    },
+    {
+      "idx": 152,
+      "version": "7",
+      "when": 1793943772027,
+      "tag": "0152_fm59_esperienza_pagamento_riba_prima_pagata",
+      "breakpoints": true
     }
   ]
 }
