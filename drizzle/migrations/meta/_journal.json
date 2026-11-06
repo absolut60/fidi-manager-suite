@@ -1079,6 +1079,13 @@
       "when": 1793952490760,
       "tag": "0153_fm59_fido_v2_profilo_ultimi_12_mesi",
       "breakpoints": true
+    },
+    {
+      "idx": 154,
+      "version": "7",
+      "when": 1793960575190,
+      "tag": "0154_fm59_clienti_ambito_materialized",
+      "breakpoints": true
     }
   ]
 }
