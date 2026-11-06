@@ -27,6 +27,8 @@ import { RegistraPromessaDialog } from "@/components/registra-promessa-dialog";
 import { isRiBa } from "@/lib/spese-insoluto";
 import { useAuth } from "@/hooks/use-auth";
 import { FiltroMultiplo } from "@/components/filtro-multiplo";
+import { useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
+import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 
 type StoreOpt = { id: string; nome: string };
 
@@ -1147,6 +1149,16 @@ type MetodoOpt = (typeof METODI_OPZIONI)[number];
 // Default: escludi rimesse dirette (codici S*/RD*/O* → "Rimessa").
 const METODI_DEFAULT: MetodoOpt[] = ["RiBa", "Bonifico", "RID", "Altro"];
 
+/** Famiglia di un codice di pagamento: gemello del CASE "metodo" di get_incassi_periodo / _dettaglio. */
+function famigliaCodicePagamento(cod: string | null | undefined): MetodoOpt {
+  const c = (cod ?? "").toUpperCase();
+  if (c.startsWith("RB")) return "RiBa";
+  if (c.startsWith("BO")) return "Bonifico";
+  if (c.startsWith("RID")) return "RID";
+  if (c.startsWith("S") || c.startsWith("RD") || c.startsWith("O")) return "Rimessa";
+  return "Altro";
+}
+
 type SortKey = "cliente" | "n_incassi" | "totale_incassato" | "ultimo_incasso";
 type SortDir = "asc" | "desc";
 type DettSortKey = "cliente" | "codice" | "importo";
@@ -1162,6 +1174,27 @@ function RicercaIncassiBlock({ storeSel }: { storeSel: string[] }) {
   const [scorciatoia, setScorciatoia] = useState<Scorciatoia>("mese");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [metodi, setMetodi] = useState<MetodoOpt[]>(METODI_DEFAULT);
+  // FM59: filtro per singolo codice di pagamento (catalogo DB), conservato tornando sulla pagina.
+  const { user } = useAuth();
+  const { filtri: FC, setCampo: setCampoFC } = useFiltriPagina(
+    "cruscotto-incassi-periodo",
+    { codici: [] as string[] },
+    { userId: user?.id, valida: { codici: Array.isArray } },
+  );
+  const { data: catalogoCodici } = useCodiciPagamento();
+  const opzioniCodici = useMemo(
+    () =>
+      (catalogoCodici ?? [])
+        .filter((c) => metodi.length === 0 || metodi.length === METODI_OPZIONI.length || metodi.includes(famigliaCodicePagamento(c.cod)))
+        .map((c) => ({ valore: c.cod, label: c.descrizione ? `${c.cod} — ${c.descrizione}` : c.cod })),
+    [catalogoCodici, metodi],
+  );
+  // Solo i codici compatibili con le famiglie scelte valgono (gli altri restano salvati ma non si applicano).
+  const codiciAttivi = useMemo(() => {
+    const ok = new Set(opzioniCodici.map((o) => o.valore));
+    return FC.codici.filter((c) => ok.has(c));
+  }, [FC.codici, opzioniCodici]);
+  const codiciParam = codiciAttivi.length > 0 ? codiciAttivi : null;
   const [sortKey, setSortKey] = useState<SortKey>("totale_incassato");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
@@ -1196,7 +1229,7 @@ function RicercaIncassiBlock({ storeSel }: { storeSel: string[] }) {
   }
 
   const { data: righe, isLoading, isFetching } = useQuery({
-    queryKey: ["ricerca_incassi_periodo", dal, al, clienteDebounced, metodi.slice().sort().join(","), storeSel],
+    queryKey: ["ricerca_incassi_periodo", dal, al, clienteDebounced, metodi.slice().sort().join(","), codiciAttivi.slice().sort().join(","), storeSel],
     queryFn: async () => {
       const { data, error } = await supabase.rpc(
         "get_incassi_periodo" as never,
@@ -1206,6 +1239,7 @@ function RicercaIncassiBlock({ storeSel }: { storeSel: string[] }) {
           _cliente_search: clienteDebounced || null,
           _metodi: metodi.length === METODI_OPZIONI.length ? null : metodi,
           _store_ids: storeSel.length > 0 ? storeSel : null,
+          _codici_pagamento: codiciParam,
         } as never,
       );
       if (error) throw error;
@@ -1410,6 +1444,19 @@ function RicercaIncassiBlock({ storeSel }: { storeSel: string[] }) {
               </PopoverContent>
             </Popover>
           </div>
+          <div className="flex w-full flex-col gap-1 sm:w-[260px]">
+            <label className="text-xs text-muted-foreground">Codice pagamento</label>
+            <FiltroMultiplo
+              etichetta="Codice pagamento"
+              opzioni={opzioniCodici}
+              selezionati={codiciAttivi}
+              onChange={(v) => { setCampoFC("codici", v); setExpanded(new Set()); }}
+              testoTutti="Tutti i codici"
+              testoMolti={(n) => `${n} codici`}
+              cercabile
+              selezionaTutte
+            />
+          </div>
         </div>
         {!periodoValido && (
           <p className="text-xs text-red-600">Il periodo non è valido: la data "Dal" deve precedere o coincidere con "Al".</p>
@@ -1511,6 +1558,7 @@ function RicercaIncassiBlock({ storeSel }: { storeSel: string[] }) {
                             dal={dal}
                             al={al}
                             metodi={metodi.length === METODI_OPZIONI.length ? null : metodi}
+                            codici={codiciParam}
                             totaleAtteso={Number(r.totale_incassato)}
                             storeSel={storeSel}
                           />
@@ -1547,17 +1595,18 @@ function RicercaIncassiBlock({ storeSel }: { storeSel: string[] }) {
 }
 
 function DettaglioIncassiCliente({
-  clienteId, dal, al, totaleAtteso, metodi, storeSel,
+  clienteId, dal, al, totaleAtteso, metodi, codici, storeSel,
 }: {
-  clienteId: string; dal: string; al: string; totaleAtteso: number; metodi: string[] | null; storeSel: string[];
+  clienteId: string; dal: string; al: string; totaleAtteso: number; metodi: string[] | null; codici: string[] | null; storeSel: string[];
 }) {
   const metodiKey = metodi ? metodi.slice().sort().join(",") : "*";
+  const codiciKey = codici ? codici.slice().sort().join(",") : "*";
   const { data, isLoading } = useQuery({
-    queryKey: ["ricerca_incassi_dettaglio", clienteId, dal, al, metodiKey, storeSel],
+    queryKey: ["ricerca_incassi_dettaglio", clienteId, dal, al, metodiKey, codiciKey, storeSel],
     queryFn: async () => {
       const { data, error } = await supabase.rpc(
         "get_incassi_periodo_dettaglio" as never,
-        { _dal: dal, _al: al, _cliente_id: clienteId, _metodi: metodi, _store_ids: storeSel.length > 0 ? storeSel : null } as never,
+        { _dal: dal, _al: al, _cliente_id: clienteId, _metodi: metodi, _store_ids: storeSel.length > 0 ? storeSel : null, _codici_pagamento: codici } as never,
       );
       if (error) throw error;
       return ((data as unknown) as RigaIncassoDettaglio[]) ?? [];
