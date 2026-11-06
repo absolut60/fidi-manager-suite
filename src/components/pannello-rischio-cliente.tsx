@@ -23,6 +23,7 @@ import { useSemaforoAffidabilitaCliente, type SemaforoAffidabilitaDati } from "@
 import type { EsperienzaPagamento } from "@/hooks/use-esperienza-pagamento";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CondizionePagamentoTesto } from "@/components/condizione-pagamento-richiesta-select";
+import { SezioneCervedCompattaCliente } from "@/components/cerved/sezione-cerved-compatta";
 import { useLightReportCliente } from "@/hooks/use-light-report-cliente";
 import { testiLightReportRischio } from "@/lib/cerved-presentazione";
 
@@ -159,13 +160,10 @@ export function PannelloRischioCliente({
             </span>
           )}
 
-          <span className="min-w-0 text-xs break-words">
-            Valutazione esterna: {cliente?.rating_esterno || "n.d."}
-            {cliente?.rating_esterno_fonte && <span className="text-[11px] font-normal text-muted-foreground"> {"("}{cliente.rating_esterno_fonte}{cliente.rating_esterno_data ? ` · ${formatDate(cliente.rating_esterno_data)}` : ""}{")"}</span>}
-          </span>
           </div>
           <span className="ml-auto min-w-0 break-words text-[11px] text-muted-foreground">Sincronizzato: {ultimaSync}</span>
         </div>
+        <SezioneCervedCompattaCliente clienteId={cliente.id} fidoAttuale={fidoAttuale} />
         <div className="grid grid-flow-row-dense grid-cols-2 sm:grid-cols-3 2xl:grid-cols-4 gap-x-3 gap-y-1">
           <MetricCard label="Totale rischio" value={formatEuro(totRischio)} />
           <MetricCard label="Scaduto" value={formatEuro(scaduto)} tone={scaduto > 0 ? "destructive" : "success"} />
@@ -195,12 +193,6 @@ export function PannelloRischioCliente({
               {lr.payline.dettaglio && <p className="mt-0.5 text-[11px] font-normal text-muted-foreground">{lr.payline.dettaglio}</p>}
             </QuadroCell>
           )}
-          {lr.fido && (
-            <QuadroCell label={lr.fido.label}>
-              {lr.fido.valore}
-              {lr.fido.confronto && <p className="mt-0.5 text-[11px] font-normal text-muted-foreground">{lr.fido.confronto}</p>}
-            </QuadroCell>
-          )}
 
         </div>
       </div>
@@ -210,6 +202,7 @@ export function PannelloRischioCliente({
   // variant === "compact" (default, immutato)
   return (
     <div className="rounded-md border p-3 text-xs space-y-1.5 bg-muted/30">
+      <SezioneCervedCompattaCliente clienteId={cliente.id} fidoAttuale={fidoAttuale} className="bg-background" />
       <div className="grid grid-cols-2 gap-x-4 gap-y-1">
         <div className="flex justify-between col-span-2 items-center gap-2 flex-wrap">
           <span className="text-muted-foreground">Fido gestionale</span>
@@ -264,8 +257,6 @@ export function PannelloRischioCliente({
       </div>
       <EsperienzaPagamentoBlock esp={esp} variant="compact" />
       {lr.payline && <RigaCompatta label={lr.payline.label} valore={lr.payline.valore} dettaglio={lr.payline.dettaglio} />}
-      {lr.fido && <RigaCompatta label={lr.fido.label} valore={lr.fido.valore} dettaglio={lr.fido.confronto} />}
-      <ValutazioneEsternaBlock cliente={cliente} variant="compact" />
       <div className="border-t pt-1.5 text-muted-foreground">
         Ultima sincronizzazione: {ultimaSync}
       </div>
