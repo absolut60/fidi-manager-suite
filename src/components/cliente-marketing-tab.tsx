@@ -8,6 +8,7 @@ import { CONSENSO_LABEL } from "@/lib/consensi-testi";
 import { Tag, Gauge, HardHat, ShieldCheck, Megaphone, MessageCircle } from "lucide-react";
 import { BadgeDisiscrizione } from "@/components/marketing/badge-disiscrizione";
 import { CampagneEntitaTab } from "@/components/marketing/campagne-entita-tab";
+import { useEsperienzaPagamentoCliente, testiEsperienzaPagamento } from "@/hooks/use-esperienza-pagamento";
 
 const DASH = "—";
 
@@ -46,8 +47,6 @@ type ClienteLike = {
   citta?: string | null;
   provincia?: string | null;
   dilazione_concordata?: number | null;
-  dilazione_effettiva?: number | null;
-  num_insoluti?: number | null;
   condizione_pagamento_desc?: string | null;
   condizioni_pagamento?: string | null;
 };
@@ -97,9 +96,8 @@ export function ClienteMarketingTab({ clienteId, cliente }: { clienteId: string;
   };
 
   const dilConc = cliente.dilazione_concordata != null ? Number(cliente.dilazione_concordata) : null;
-  const dilEff = cliente.dilazione_effettiva != null ? Number(cliente.dilazione_effettiva) : null;
-  const sfora = dilConc != null && dilEff != null && dilEff > dilConc;
-  const scarto = dilConc != null && dilEff != null ? dilEff - dilConc : null;
+  const { data: espPag } = useEsperienzaPagamentoCliente(clienteId);
+  const pagNp = testiEsperienzaPagamento(espPag);
 
   const storeLabel = data?.store
     ? [data.store.codice, data.store.nome].filter(Boolean).join(" — ")
@@ -136,19 +134,16 @@ export function ClienteMarketingTab({ clienteId, cliente }: { clienteId: string;
 
       <section className="space-y-2">
         <SectionTitle icon={Gauge}>Comportamento</SectionTitle>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           <Stat label="Dilazione concordata" value={dilConc != null ? `${dilConc} gg` : DASH} />
-          <Stat
-            label="Dilazione effettiva"
-            value={dilEff != null ? `${dilEff} gg` : DASH}
-            tone={sfora ? "destructive" : dilEff != null ? "success" : "muted"}
-            hint={scarto == null ? undefined : scarto > 0 ? `+${scarto} gg oltre l'accordo` : "Nei termini"}
-          />
-          <Stat
-            label="Insoluti storici"
-            value={cliente.num_insoluti != null ? String(cliente.num_insoluti) : DASH}
-            tone={Number(cliente.num_insoluti ?? 0) > 0 ? "destructive" : "default"}
-          />
+          <div title={pagNp.titolo} className="min-w-0">
+            <Stat
+              label={pagNp.label}
+              value={pagNp.valore}
+              tone={pagNp.nonPuntuali12m ? "destructive" : "default"}
+              hint={pagNp.dettaglio}
+            />
+          </div>
           <Stat label="Condizione di pagamento" value={condPag} />
         </div>
       </section>

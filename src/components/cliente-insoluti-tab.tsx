@@ -398,19 +398,6 @@ function PagatoBlock({
   // solo la quota incassata; il residuo resta nello scaduto.
   const totale = rows.reduce((acc, r) => acc + Number(r.importo_pagato ?? 0), 0);
   const nDoc = rows.length;
-  // Ritardo medio (informativo, non ancora "esperienza di pagamento":
-  // dati per-riga preservati per un calcolo futuro).
-  const ritardi = rows
-    .map((r) => {
-      if (!r.data_scadenza || !r.data_pagamento_effettiva) return null;
-      const ds = new Date(r.data_scadenza).getTime();
-      const dp = new Date(r.data_pagamento_effettiva).getTime();
-      if (!Number.isFinite(ds) || !Number.isFinite(dp)) return null;
-      return Math.round((dp - ds) / 86400000);
-    })
-    .filter((n): n is number => n !== null);
-  const ritardoMedio = ritardi.length ? Math.round(ritardi.reduce((a, b) => a + b, 0) / ritardi.length) : 0;
-
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -440,15 +427,9 @@ function PagatoBlock({
         </Card>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <KpiCard label="Totale incassato" value={fmtEuro(totale)} tone="info" icon={CheckCircle2} />
             <KpiCard label="Righe pagate" value={String(nDoc)} tone="info" icon={FileText} />
-            <KpiCard
-              label="Ritardo medio pagamento"
-              value={`${ritardoMedio >= 0 ? "+" : ""}${ritardoMedio} gg`}
-              tone={ritardoMedio > 30 ? "warning" : "default"}
-              icon={Clock}
-            />
           </div>
           <Card>
             <Table>

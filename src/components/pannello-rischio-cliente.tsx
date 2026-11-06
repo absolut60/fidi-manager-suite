@@ -15,7 +15,7 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useEsperienzaPagamentoCliente } from "@/hooks/use-esperienza-pagamento";
+import { useEsperienzaPagamentoCliente, testiEsperienzaPagamento } from "@/hooks/use-esperienza-pagamento";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { formatEuro, formatDate } from "@/lib/fidi";
 import { semaforoUI, LEGENDA_STADIO, testoNumeroSemaforo } from "@/lib/semaforo-ui";
@@ -162,7 +162,7 @@ export function PannelloRischioCliente({
           </div>
           <span className="ml-auto min-w-0 break-words text-[11px] text-muted-foreground">Sincronizzato: {ultimaSync}</span>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 2xl:grid-cols-4 gap-x-3 gap-y-1">
+        <div className="grid grid-flow-row-dense grid-cols-2 sm:grid-cols-3 2xl:grid-cols-4 gap-x-3 gap-y-1">
           <MetricCard label="Totale rischio" value={formatEuro(totRischio)} />
           <MetricCard label="Scaduto" value={formatEuro(scaduto)} tone={scaduto > 0 ? "destructive" : "success"} />
           <MetricCard label="A scadere" value={formatEuro(Number(cliente.a_scadere ?? 0))} />
@@ -178,14 +178,12 @@ export function PannelloRischioCliente({
             )}
           </QuadroCell>
           <MetricCard label="Fido residuo" value={formatEuro(fidoResiduo)} tone={fidoResiduo < 0 ? "destructive" : "neutral"} />
-          <MetricCard label="Insoluti" value={String(Number(cliente.num_insoluti ?? 0))} />
           <MetricCard label={`Fatturato ${annoCorrente}`} value={fatt ? formatEuro(fatt.cur) : "—"} />
           <MetricCard label={`Fatturato ${annoPrec}`} value={fatt ? formatEuro(fatt.prev) : "—"} />
           <QuadroCell label="Cond. pagamento attuale" className="col-span-2">
             <CondizionePagamentoTesto cod={cliente.condizione_pagamento_cod} descFallback={cliente.condizione_pagamento_desc ?? cliente.condizioni_pagamento} />
           </QuadroCell>
           <QuadroCell label="Dilaz. concordata">{cliente.dilazione_concordata ?? "—"}{cliente.dilazione_concordata != null ? " gg" : ""}</QuadroCell>
-          <QuadroCell label="Dilaz. effettiva">{cliente.dilazione_effettiva ?? "—"}{cliente.dilazione_effettiva != null ? " gg" : ""}</QuadroCell>
           <EsperienzaPagamentoCards esp={esp} />
 
         </div>
@@ -218,10 +216,8 @@ export function PannelloRischioCliente({
         <div className="flex justify-between"><span className="text-muted-foreground">Fido residuo</span><span className={`tabular-nums ${fidoResiduo < 0 ? "text-destructive font-medium" : ""}`}>{formatEuro(fidoResiduo)}</span></div>
         <div className="flex justify-between"><span className="text-muted-foreground">Scaduto</span><span className={`tabular-nums ${scaduto > 0 ? "text-destructive font-medium" : ""}`}>{formatEuro(scaduto)}</span></div>
         <div className="flex justify-between"><span className="text-muted-foreground">A scadere</span><span className="tabular-nums">{formatEuro(Number(cliente.a_scadere ?? 0))}</span></div>
-        <div className="flex justify-between"><span className="text-muted-foreground">Insoluti</span><span className="tabular-nums">{Number(cliente.num_insoluti ?? 0)}</span></div>
         <div className="col-span-2 flex flex-col gap-1 sm:flex-row sm:justify-between"><span className="text-muted-foreground shrink-0">Cond. pagamento attuale</span><span className="min-w-0 break-words sm:text-right"><CondizionePagamentoTesto cod={cliente.condizione_pagamento_cod} descFallback={cliente.condizione_pagamento_desc ?? cliente.condizioni_pagamento} /></span></div>
-        <div className="flex justify-between"><span className="text-muted-foreground">Dilaz. concordata</span><span className="tabular-nums">{cliente.dilazione_concordata ?? "—"}{cliente.dilazione_concordata != null ? " gg" : ""}</span></div>
-        <div className="flex justify-between"><span className="text-muted-foreground">Dilaz. effettiva</span><span className="tabular-nums">{cliente.dilazione_effettiva ?? "—"}{cliente.dilazione_effettiva != null ? " gg" : ""}</span></div>
+        <div className="flex justify-between col-span-2"><span className="text-muted-foreground">Dilaz. concordata</span><span className="tabular-nums">{cliente.dilazione_concordata ?? "—"}{cliente.dilazione_concordata != null ? " gg" : ""}</span></div>
         {showFatturato && (
           <>
             <div className="flex justify-between"><span className="text-muted-foreground">Fatt. {annoCorrente}</span><span className="tabular-nums">{fatt ? formatEuro(fatt.cur) : "—"}</span></div>
@@ -307,75 +303,27 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
 
 type EspData = EsperienzaPagamento | null | undefined;
 
-const fmtGg = (n: number | null | undefined) => `${Math.round(n ?? 0)} gg`;
-
-/** Variante extended: card esperienza dentro la griglia del quadro. Nessun colore: lo dà solo il semaforo. */
+/** Variante extended: una sola cella "Pagamenti non puntuali". Testi solo da testiEsperienzaPagamento. */
 function EsperienzaPagamentoCards({ esp }: { esp: EspData }) {
-  if (!esp || esp.nPagate === 0) {
-    return <QuadroCell label="Esperienza pagamento">Nessuno storico</QuadroCell>;
-  }
-  const titolo = "Esperienza pagamento: ultimi 12 mesi · escluse RiBa e anticipi";
+  const t = testiEsperienzaPagamento(esp);
   return (
-    <div className="contents" title={titolo}>
-      {esp.nPagate12m === 0 ? (
-        <QuadroCell label="Esp. 12 mesi" className="col-span-2">Nessun pagamento negli ultimi 12 mesi</QuadroCell>
-      ) : (
-        <>
-          <MetricCard label="Ritardo medio 12 mesi" value={fmtGg(esp.ritardoMedio12m)} subtext="escluse RiBa e anticipi" />
-          <MetricCard label="In ritardo 12 mesi" value={`${esp.nInRitardo12m} su ${esp.nPagate12m}`} />
-        </>
-      )}
-      <MetricCard label="In ritardo storico" value={`${esp.nInRitardo} su ${esp.nPagate}`} />
-      <MetricCard label="Ritardo massimo storico" value={fmtGg(esp.maxRitardo)} />
-    </div>
+    <QuadroCell label={t.label} title={t.titolo}>
+      <span className={t.nonPuntuali12m ? "text-destructive" : ""}>{t.valore}</span>
+      {t.dettaglio && <p className="mt-0.5 text-[11px] font-normal text-muted-foreground">{t.dettaglio}</p>}
+    </QuadroCell>
   );
 }
 
+/** Variante compact: stessa cella, in riga sotto il quadro. */
 function EsperienzaPagamentoBlock({ esp }: { esp: EspData; variant: "compact" }) {
-  const noStorico = !esp || esp.nPagate === 0;
-  const title = (
-    <div className="flex items-end justify-between gap-2 flex-wrap">
-      <h3 className="font-medium text-xs">Esperienza di pagamento</h3>
-      {!noStorico && (
-        <span className="text-[11px] text-muted-foreground">ultimi 12 mesi · escluse RiBa e anticipi</span>
-      )}
-    </div>
-  );
-
-  if (noStorico) {
-    return (
-      <div className="border-t pt-1.5 space-y-1">
-        {title}
-        <p className="text-xs text-muted-foreground">Nessuno storico pagamenti disponibile</p>
-      </div>
-    );
-  }
-
-  const e = esp!;
-  if (e.nPagate12m === 0) {
-    return (
-      <div className="border-t pt-1.5 space-y-1">
-        {title}
-        <p className="text-xs text-muted-foreground">
-          Nessun pagamento negli ultimi 12 mesi · storico {e.nInRitardo} su {e.nPagate} in ritardo
-        </p>
-      </div>
-    );
-  }
-
+  const t = testiEsperienzaPagamento(esp);
   return (
-    <div className="border-t pt-1.5 space-y-1">
-      {title}
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-        <div className="flex justify-between gap-2">
-          <span className="text-muted-foreground">Ritardo medio 12 mesi</span>
-          <span className="tabular-nums">{fmtGg(e.ritardoMedio12m)}</span>
-        </div>
-        <div className="flex justify-between gap-2">
-          <span className="text-muted-foreground">In ritardo 12 mesi</span>
-          <span className="tabular-nums">{e.nInRitardo12m} su {e.nPagate12m}</span>
-        </div>
-      </div>
+    <div className="border-t pt-1.5 flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-2" title={t.titolo}>
+      <span className="text-muted-foreground shrink-0">{t.label}</span>
+      <span className="min-w-0 break-words sm:text-right">
+        <span className={`tabular-nums ${t.nonPuntuali12m ? "text-destructive font-medium" : ""}`}>{t.valore}</span>
+        {t.dettaglio && <span className="block text-[11px] text-muted-foreground">{t.dettaglio}</span>}
+      </span>
     </div>
   );
 }
