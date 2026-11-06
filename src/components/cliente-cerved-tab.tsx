@@ -14,7 +14,7 @@ import {
   type ScoreCervedVista, type EsitoScore, livelloCategoria, esitoScore, sigleEcofin,
   formattaEuroCompatto, variazionePercentuale,
 } from "@/lib/cerved-presentazione";
-import { useEsperienzaPagamentoCliente, testiPagateInRitardo } from "@/hooks/use-esperienza-pagamento";
+import { useEsperienzaPagamentoCliente, testiEsperienzaPagamento } from "@/hooks/use-esperienza-pagamento";
 import { SemaforoAffidabilitaBadge } from "@/components/pannello-rischio-cliente";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -421,14 +421,13 @@ function ScalaEcofin({ s }: { s: ScoreCervedVista }) {
 
 function ComePagaMade({ clienteId }: { clienteId: string }) {
   const { data: esp } = useEsperienzaPagamentoCliente(clienteId);
-  const t = testiPagateInRitardo(esp);
-  const soloRiba = t.valore === "Nessun pagamento non RiBa";
+  const t = testiEsperienzaPagamento(esp);
   return (
     <div className="mt-2 flex flex-col gap-2 rounded-sm border border-dashed bg-muted/40 p-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Come paga MADE</p>
-        <p title={t.titolo} className={`text-sm font-bold ${t.inRitardo ? "text-warning" : ""}`}>
-          {soloRiba ? "Paga con RiBa: nessun ritardo da misurare" : <>{t.label}: {t.valore}{t.dettaglio ? <span className="font-normal text-muted-foreground"> · {t.dettaglio}</span> : null}</>}
+        <p title={t.titolo} className={`text-sm font-bold ${t.nonPuntuali12m ? "text-destructive" : ""}`}>
+          {t.label}: {t.valore}{t.dettaglio ? <span className="font-normal text-muted-foreground"> · {t.dettaglio}</span> : null}
         </p>
       </div>
       <div className="shrink-0"><SemaforoAffidabilitaBadge clienteId={clienteId} /></div>
