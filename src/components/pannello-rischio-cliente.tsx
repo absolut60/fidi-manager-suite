@@ -23,6 +23,8 @@ import { useSemaforoAffidabilitaCliente, type SemaforoAffidabilitaDati } from "@
 import type { EsperienzaPagamento } from "@/hooks/use-esperienza-pagamento";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CondizionePagamentoTesto } from "@/components/condizione-pagamento-richiesta-select";
+import { useLightReportCliente } from "@/hooks/use-light-report-cliente";
+import { testiLightReportRischio } from "@/lib/cerved-presentazione";
 
 export function SemaforoAffidabilita({ sem }: { sem: SemaforoAffidabilitaDati }) {
   if (!sem) return <span className="text-muted-foreground">—</span>;
@@ -109,10 +111,12 @@ export function PannelloRischioCliente({
   const { data: esp } = useEsperienzaPagamentoCliente(cliente?.id);
 
   const { data: sem } = useSemaforoAffidabilitaCliente(cliente?.id);
+  const { data: lightReport } = useLightReportCliente(cliente?.id);
 
   if (!cliente) return null;
 
   const fidoAttuale = getFidoAttuale(cliente);
+  const lr = testiLightReportRischio(lightReport, fidoAttuale);
   const disallineato = ultimoApprovatoImp != null && Math.abs(ultimoApprovatoImp - fidoAttuale) > 0.01;
   const scaduto = Number(cliente.scaduto ?? 0);
   const totRischio = Number(cliente.totale_rischio ?? 0);
@@ -185,6 +189,18 @@ export function PannelloRischioCliente({
           </QuadroCell>
           <QuadroCell label="Dilaz. concordata">{cliente.dilazione_concordata ?? "—"}{cliente.dilazione_concordata != null ? " gg" : ""}</QuadroCell>
           <EsperienzaPagamentoCards esp={esp} />
+          {lr.payline && (
+            <QuadroCell label={lr.payline.label}>
+              {lr.payline.valore}
+              {lr.payline.dettaglio && <p className="mt-0.5 text-[11px] font-normal text-muted-foreground">{lr.payline.dettaglio}</p>}
+            </QuadroCell>
+          )}
+          {lr.fido && (
+            <QuadroCell label={lr.fido.label}>
+              {lr.fido.valore}
+              {lr.fido.confronto && <p className="mt-0.5 text-[11px] font-normal text-muted-foreground">{lr.fido.confronto}</p>}
+            </QuadroCell>
+          )}
 
         </div>
       </div>
@@ -247,6 +263,8 @@ export function PannelloRischioCliente({
         )}
       </div>
       <EsperienzaPagamentoBlock esp={esp} variant="compact" />
+      {lr.payline && <RigaCompatta label={lr.payline.label} valore={lr.payline.valore} dettaglio={lr.payline.dettaglio} />}
+      {lr.fido && <RigaCompatta label={lr.fido.label} valore={lr.fido.valore} dettaglio={lr.fido.confronto} />}
       <ValutazioneEsternaBlock cliente={cliente} variant="compact" />
       <div className="border-t pt-1.5 text-muted-foreground">
         Ultima sincronizzazione: {ultimaSync}
@@ -328,6 +346,18 @@ function EsperienzaPagamentoBlock({ esp }: { esp: EspData; variant: "compact" })
   );
 }
 
+/** Riga compatta (Light Report) con lo stesso impianto di "Pagamenti non puntuali". */
+function RigaCompatta({ label, valore, dettaglio }: { label: string; valore: string; dettaglio: string | null }) {
+  return (
+    <div className="border-t pt-1.5 flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-2">
+      <span className="text-muted-foreground shrink-0">{label}</span>
+      <span className="min-w-0 break-words sm:text-right">
+        <span className="tabular-nums">{valore}</span>
+        {dettaglio && <span className="block text-[11px] text-muted-foreground">{dettaglio}</span>}
+      </span>
+    </div>
+  );
+}
 
 function ValutazioneEsternaBlock({ cliente, variant }: { cliente: any; variant: "compact" | "extended" }) {
   const rating = cliente?.rating_esterno ?? null;

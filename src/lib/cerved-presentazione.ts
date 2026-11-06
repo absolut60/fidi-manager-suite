@@ -192,3 +192,28 @@ export function eventoRecenteCerved(dataIso: string | null | undefined, oggiIso:
   const limite = `${Number(o[1]) - 2}-${o[2]}`;
   return `${m[1]}-${m[2]}` >= limite;
 }
+
+/**
+ * Celle del Light Report nel quadro di rischio della richiesta fido.
+ * null se il cliente non ha un Light Report (o il dato manca): nessuna cella vuota.
+ */
+export function testiLightReportRischio(lr: Record<string, any> | null | undefined, fidoAttuale: number | null | undefined) {
+  if (!lr) return { fido: null, payline: null };
+  const num = (n: unknown) => (typeof n === "number" && Number.isFinite(n) ? n : null);
+  const cert = num(lr.fido_certificato?.valore);
+  const fido = cert == null ? null : {
+    label: ETICHETTE_LIGHT_REPORT.fidoCertificato,
+    valore: `${cert.toLocaleString("it-IT", { maximumFractionDigits: 0 })} €`,
+    confronto: testoConfrontoFido(fidoAttuale, cert),
+  };
+  const pl = lr.payline ?? {};
+  const giorni = testoGiorniPayline(num(pl.giorni_effettivi), num(pl.giorni_concordati));
+  const inc = num(pl.incidenza_scaduto);
+  const aperte = num(pl.aperte_scadute);
+  const dettaglio = [
+    inc != null && inc > 0 ? `incidenza scaduto ${formattaPercentualeCerved(inc)}` : null,
+    aperte != null && aperte > 0 ? `${Math.round(aperte).toLocaleString("it-IT")} aperte scadute` : null,
+  ].filter(Boolean).join(" · ") || null;
+  const payline = giorni ? { label: ETICHETTE_LIGHT_REPORT.payline, valore: giorni, dettaglio } : null;
+  return { fido, payline };
+}
