@@ -15,6 +15,8 @@ export type EsitoCerved = {
   risposta: unknown;
   /** id della riga scritta in cerved_chiamate (null se il registro non è stato salvato). */
   chiamata_id: string | null;
+  /** Dati estratti dalla risposta grezza ma NON registrati (es. byte del PDF). */
+  extra?: unknown;
 };
 
 function messaggioErrore(status: number): string {
@@ -36,7 +38,10 @@ async function chiamaCerved(opts: {
   corpo?: Record<string, unknown>;
   /** Trasforma la risposta OK prima di registrarla e restituirla. */
   trasforma?: (corpo: unknown) => unknown;
+  /** Estrae dalla risposta OK dati da restituire senza scriverli nel registro. */
+  estrai?: (corpo: unknown) => unknown;
 }): Promise<EsitoCerved> {
+  let extra: unknown = undefined;
   const inizio = Date.now();
   let risultato: Omit<EsitoCerved, "chiamata_id">;
   let chiamataId: string | null = null;
@@ -58,6 +63,7 @@ async function chiamaCerved(opts: {
       const testo = await res.text();
       let corpo: unknown = null;
       try { corpo = testo ? JSON.parse(testo) : null; } catch { corpo = { testo: testo.slice(0, 5000) }; }
+      if (res.ok && opts.estrai) extra = opts.estrai(corpo);
       risultato = res.ok
         ? { http_status: res.status, esito: "ok", errore: null, risposta: opts.trasforma ? opts.trasforma(corpo) : corpo }
         : { http_status: res.status, esito: "errore", errore: messaggioErrore(res.status), risposta: corpo };
@@ -92,7 +98,7 @@ async function chiamaCerved(opts: {
   } catch (e) {
     console.error("[cerved] registro non salvato", e instanceof Error ? e.message : "errore");
   }
-  return { ...risultato, chiamata_id: chiamataId };
+  return { ...risultato, chiamata_id: chiamataId, ...(extra !== undefined ? { extra } : {}) };
 }
 
 export function cercaSoggettoPerPiva(piva: string, ctx: { utenteId: string | null; clienteId: string | null }) {
@@ -769,4 +775,132 @@ export function normalizzaFidoCerved(risposta: unknown): FidoCervedNorm {
     descrizione: testo(r["descrizione_fido"]),
     valore: numeroCerved(r["valore_fido"]),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Light Report (prodotto 52015): acquisto e recupero XML/PDF.
+// ---------------------------------------------------------------------------
+
+export const PRODOTTO_LIGHT_REPORT = 52015;
+const ATTESA_DEFERRED_MS = 15_000;
+const MAX_ATTESA_DEFERRED_MS = 60_000;
+
+/** Base64 → byte (runtime Worker). */
+export function decodificaBase64Byte(b64: string): Uint8Array {
+  const bin = atob(b64.replace(/\s/g, ""));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+/** Recupera un documento acquistato nel formato indicato. Per il PDF i byte vanno in `extra`, non nel registro. */
+export function recuperaDocumentoFormato(requestId: string, formato: "XML" | "PDF", ctx: Ctx) {
+  if (formato === "XML") return recuperaDocumento(requestId, ctx);
+  return chiamaCerved({
+    operazione: "document_retrieve_pdf",
+    base: "b2b",
+    percorso: `/v1/purchase/request/${encodeURIComponent(requestId)}/format/PDF`,
+    parametri: {},
+    trasforma: (corpo) => {
+      const o = (corpo && typeof corpo === "object" ? corpo : {}) as Record<string, unknown>;
+      const c = o["content"];
+      return {
+        delivery_status: testo(o["delivery_status"]),
+        detailed_delivery_status: testo(o["detailed_delivery_status"]),
+        format: testo(o["format"]),
+        request_id: testo(o["request_id"]),
+        lunghezza_base64: typeof c === "string" ? c.length : 0,
+      };
+    },
+    estrai: (corpo) => {
+      const c = (corpo && typeof corpo === "object" ? (corpo as Record<string, unknown>)["content"] : null);
+      if (typeof c !== "string" || !c) return null;
+      try { return decodificaBase64Byte(c); } catch { return null; }
+    },
+    ...ctx,
+  });
+}
+
+export type EsitoAcquistoLightReport = {
+  http_status: number | null;
+  esito: "ok" | "errore";
+  errore: string | null;
+  request_id: string | null;
+  delivery_status: string | null;
+  risposta: unknown;
+};
+
+/**
+ * Acquisto del Light Report (POST B2B /v1/purchase). Se la consegna è DEFERRED
+ * riprova il recupero XML ogni 15 s per al massimo 1 minuto, poi restituisce lo stato senza errore.
+ */
+export async function acquistaLightReport(
+  subjectId: string,
+  formato: "XML" | "PDF",
+  reference: string | null,
+  ctx: Ctx,
+): Promise<EsitoAcquistoLightReport> {
+  const corpo: Record<string, unknown> = {
+    format: formato,
+    product_id: PRODOTTO_LIGHT_REPORT,
+    subject_id: Number.isFinite(Number(subjectId)) ? Number(subjectId) : subjectId,
+    language: "ITALIAN",
+  };
+  if (reference) corpo["reference"] = reference;
+  const r = await chiamaCerved({ operazione: "purchase_light_report", base: "b2b", metodo: "POST", percorso: "/v1/purchase", parametri: {}, corpo, ...ctx });
+  const o = (r.risposta && typeof r.risposta === "object" ? r.risposta : {}) as Record<string, unknown>;
+  const requestId = testo(o["request_id"]);
+  let stato = testo(o["delivery_status"]);
+  if (r.esito === "ok" && requestId && (stato ?? "").toUpperCase() === "DEFERRED") {
+    const inizio = Date.now();
+    while (Date.now() - inizio < MAX_ATTESA_DEFERRED_MS && (stato ?? "").toUpperCase() === "DEFERRED") {
+      await new Promise((res) => setTimeout(res, ATTESA_DEFERRED_MS));
+      const d = await recuperaDocumento(requestId, ctx);
+      if (d.esito === "ok") stato = (d.risposta as DocumentoRecuperato).delivery_status ?? stato;
+    }
+  }
+  return { http_status: r.http_status, esito: r.esito, errore: r.errore, request_id: requestId, delivery_status: stato, risposta: r.risposta };
+}
+
+export type DatiLightReportXml = {
+  fido_certificato: number | null;
+  data_report: string | null;
+  tag_livello_1: string[];
+  tag_livello_2: string[];
+};
+
+/** Nome locale di un tag (senza prefisso di namespace). */
+const nomeLocale = (n: string) => n.split(":").pop() ?? n;
+
+/**
+ * Legge dal Light Report XML il fido certificato (AverageGrantableCredit/CreditLimit/Value)
+ * e, se presente, la data del report; elenca i tag dei primi due livelli. Nessun altro percorso.
+ */
+export function estraiDatiLightReportXml(xml: string): DatiLightReportXml {
+  const corpo = xml.replace(/<\?[\s\S]*?\?>/g, "").replace(/<!--[\s\S]*?-->/g, "").replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, "");
+  const re = /<(\/?)([A-Za-z_][\w.:-]*)[^>]*?(\/?)>/g;
+  const pila: string[] = [];
+  const l1: string[] = [];
+  const l2: string[] = [];
+  let fido: number | null = null;
+  let dataReport: string | null = null;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(corpo))) {
+    const [, chiusura, nomeRaw, autoChiuso] = m;
+    const nome = nomeLocale(nomeRaw);
+    if (chiusura) { pila.pop(); continue; }
+    if (pila.length === 0 && !l1.includes(nome)) l1.push(nome);
+    if (pila.length === 1 && !l2.includes(nome)) l2.push(nome);
+    pila.push(nome);
+    const fine = corpo.indexOf("<", re.lastIndex);
+    const valore = autoChiuso ? "" : corpo.slice(re.lastIndex, fine < 0 ? undefined : fine).trim();
+    const percorso = pila.join("/");
+    if (fido == null && valore && /(^|\/)AverageGrantableCredit\/CreditLimit\/Value$/.test(percorso)) {
+      const n = Number(valore.replace(",", "."));
+      if (Number.isFinite(n)) fido = n;
+    }
+    if (dataReport == null && valore && /^(ReportDate|DataReport|ReportCreationDate)$/i.test(nome)) dataReport = valore;
+    if (autoChiuso) pila.pop();
+  }
+  return { fido_certificato: fido, data_report: dataReport, tag_livello_1: l1, tag_livello_2: l2 };
 }

@@ -186,3 +186,79 @@ export const provaDatiEstesiCerved = createServerFn({ method: "POST" })
 
     return { id_soggetto: idSoggetto, passi };
   });
+
+/**
+ * Prova di ACQUISTO del Light Report (utenza di test, non addebitata): solo amministratori.
+ * Entity Search → acquisto XML → recupero XML → recupero PDF dello stesso request_id → PDF in Storage privato.
+ * Non scrive in cerved_soggetti/cerved_fotografie.
+ */
+export const provaAcquistoLightReport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { piva: string }) =>
+    z.object({ piva: z.string().regex(/^\d{11}$/, "La partita IVA deve avere 11 cifre") }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: isAdmin } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "amministratore",
+    });
+    if (!isAdmin) throw new Error("Operazione riservata agli amministratori");
+
+    const { data: cli } = await context.supabase
+      .from("clienti").select("id, codice_gestionale").eq("partita_iva", data.piva).limit(1).maybeSingle();
+
+    const m = await import("./cerved.server");
+    const ctx = { utenteId: context.userId, clienteId: cli?.id ?? null };
+    const vuoto = {
+      id_soggetto: null as string | null, request_id: null as string | null, delivery_status: null as string | null,
+      acquisto: null as null | { http_status: number | null; errore: string | null },
+      xml: null as null | { http_status: number | null; errore: string | null; delivery_status: string | null; lunghezza: number },
+      pdf: null as null | { http_status: number | null; errore: string | null; byte: number },
+      fido_certificato: null as number | null, data_report: null as string | null,
+      tag_livello_1: [] as string[], tag_livello_2: [] as string[],
+      percorso_pdf: null as string | null, url_pdf: null as string | null, errore: null as string | null,
+    };
+
+    const ricerca = await m.cercaSoggettoPerPiva(data.piva, ctx);
+    const azienda = m.scegliAziendaPerPiva(ricerca.risposta, data.piva);
+    const idSoggetto = azienda ? m.normalizzaAziendaCerved(azienda).id_soggetto : null;
+    if (!idSoggetto) {
+      return { ...vuoto, errore: ricerca.esito === "ok" ? "Nessuna azienda con questa partita IVA su Cerved." : (ricerca.errore ?? "Ricerca soggetto non riuscita.") };
+    }
+
+    const acq = await m.acquistaLightReport(idSoggetto, "XML", cli?.codice_gestionale ?? null, ctx);
+    const out = { ...vuoto, id_soggetto: idSoggetto, request_id: acq.request_id, delivery_status: acq.delivery_status,
+      acquisto: { http_status: acq.http_status, errore: acq.errore } };
+    if (acq.esito !== "ok" || !acq.request_id) return { ...out, errore: acq.errore ?? "Acquisto senza numero richiesta." };
+
+    const x = await m.recuperaDocumentoFormato(acq.request_id, "XML", ctx);
+    const doc = x.esito === "ok" ? (x.risposta as ReturnType<typeof m.normalizzaDocumentoCerved>) : null;
+    const xmlTesto = doc?.contenuto_xml ?? "";
+    out.xml = { http_status: x.http_status, errore: x.errore, delivery_status: doc?.delivery_status ?? null, lunghezza: xmlTesto.length };
+    if (doc?.delivery_status) out.delivery_status = doc.delivery_status;
+    if (xmlTesto) {
+      const d = m.estraiDatiLightReportXml(xmlTesto);
+      Object.assign(out, d);
+    }
+
+    const p = await m.recuperaDocumentoFormato(acq.request_id, "PDF", ctx);
+    const byte = p.extra instanceof Uint8Array ? p.extra : null;
+    out.pdf = { http_status: p.http_status, errore: p.errore ?? (p.esito === "ok" && !byte ? "PDF non presente nella risposta." : null), byte: byte?.length ?? 0 };
+    if (byte) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const percorso = `cerved/${idSoggetto}/${acq.request_id}.pdf`;
+      const { error } = await supabaseAdmin.storage.from(BUCKET_DOCUMENTI_CERVED)
+        .upload(percorso, byte, { contentType: "application/pdf", upsert: true });
+      if (error) {
+        out.pdf.errore = `PDF non salvato: ${error.message}`;
+      } else {
+        out.percorso_pdf = percorso;
+        const { data: firmato } = await supabaseAdmin.storage.from(BUCKET_DOCUMENTI_CERVED).createSignedUrl(percorso, 3600);
+        out.url_pdf = firmato?.signedUrl ?? null;
+      }
+    }
+    return out;
+  });
+
+/** Bucket privato esistente dei documenti dei clienti, usato anche per i report Cerved. */
+const BUCKET_DOCUMENTI_CERVED = "schede-clienti";

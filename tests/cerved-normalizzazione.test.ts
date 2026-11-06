@@ -238,3 +238,16 @@ test("fido: campi reali piatti", () => {
     .toEqual({ codice: "FCERT", descrizione: "Fido certificato", valore: 25000 });
   expect(normalizzaFidoCerved({ dati: { valore_fido: 1 } }).valore).toBeNull();
 });
+
+import { estraiDatiLightReportXml } from "../src/lib/cerved/cerved.server";
+test("Light Report XML: fido certificato da AverageGrantableCredit/CreditLimit/Value e tag dei primi due livelli", () => {
+  const xml = `<?xml version="1.0"?><ns:Report><Header><ReportDate>2026-11-06</ReportDate></Header><AverageGrantableCredit><CreditLimit><Value>25000</Value></CreditLimit></AverageGrantableCredit><Other><Value>9</Value></Other></ns:Report>`;
+  const d = estraiDatiLightReportXml(xml);
+  expect(d.fido_certificato).toBe(25000);
+  expect(d.data_report).toBe("2026-11-06");
+  expect(d.tag_livello_1).toEqual(["Report"]);
+  expect(d.tag_livello_2).toEqual(["Header", "AverageGrantableCredit", "Other"]);
+});
+test("Light Report XML senza fido: null", () => {
+  expect(estraiDatiLightReportXml("<R><Other><Value>1</Value></Other></R>").fido_certificato).toBeNull();
+});
