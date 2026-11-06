@@ -52,13 +52,12 @@ export const aggiornaCervedCliente = createServerFn({ method: "POST" })
     }
 
     const ids = String(idSoggetto);
-    const [p, s, el, ev, fc, fm] = await Promise.all([
+    // Fido certificato: arriva dal Light Report (Credit Limit dà 403, fuori contratto): fidoCerved non si chiama più.
+    const [p, s, el, ev] = await Promise.all([
       m.leggiProfilo(ids, ctx),
       m.leggiScore(ids, ctx),
       m.elencoBilanciCerved(ids, ctx),
       m.eventiNegativiFlag(ids, ctx),
-      m.fidoCerved(ids, "FCERT", ctx),
-      m.fidoCerved(ids, "FMED", ctx),
     ]);
     // Bilanci: i due di tipo 'E' più recenti (nessuno, es. ditte individuali → niente foto, niente errore).
     const scelti = el.esito === "ok" ? m.dueBilanciEPiuRecenti(m.normalizzaElencoBilanci(el.risposta)) : [];
@@ -95,22 +94,6 @@ export const aggiornaCervedCliente = createServerFn({ method: "POST" })
     if (ev.esito === "ok") foto.push({ tipo: "eventi_negativi", dati: m.normalizzaEventiNegativiCerved(ev.risposta), chiamata_id: ev.chiamata_id });
     else errori.push(`Eventi negativi: ${ev.errore ?? "lettura non riuscita"}`);
 
-    // Fido: un 403 significa prodotto non abilitato → fido_disponibile false, non è un errore.
-    const fidoDisponibile = !(fc.http_status === 403 || fm.http_status === 403);
-    for (const [nome, f] of [["FCERT", fc], ["FMED", fm]] as const) {
-      if (f.esito !== "ok" && f.http_status !== 403) errori.push(`Fido ${nome}: ${f.errore ?? "lettura non riuscita"}`);
-    }
-    if (fc.esito === "ok" || fm.esito === "ok") {
-      foto.push({
-        tipo: "fido",
-        dati: {
-          fcert: fc.esito === "ok" ? m.normalizzaFidoCerved(fc.risposta) : null,
-          fmed: fm.esito === "ok" ? m.normalizzaFidoCerved(fm.risposta) : null,
-        },
-        chiamata_id: (fc.esito === "ok" ? fc : fm).chiamata_id,
-      });
-    }
-
     if (foto.length) {
       const { error } = await supabaseAdmin.from("cerved_fotografie").insert(
         foto.map((f) => ({
@@ -141,7 +124,6 @@ export const aggiornaCervedCliente = createServerFn({ method: "POST" })
       score_ok: s.esito === "ok",
       bilanci_ok: bilanciOk,
       eventi_ok: ev.esito === "ok",
-      fido_disponibile: fidoDisponibile,
       errori,
     };
   });

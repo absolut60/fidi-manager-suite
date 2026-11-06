@@ -166,7 +166,7 @@ export const ETICHETTE_LIGHT_REPORT = {
   eventiStraordinari: "Eventi straordinari",
   omonimia: "Possibili protesti per omonimia (da verificare)",
   serieRichieste: [["banche_finanziarie", "Banche e finanziarie"], ["aziende", "Aziende"], ["altri", "Altri"]] as const,
-  conteggiEventi: [["cessioni", "Cessioni"], ["fusioni", "Fusioni"], ["variazioni", "Variazioni"], ["liquidazioni", "Liquidazioni"], ["pignoramenti", "Pignoramenti"]] as const,
+  conteggiEventi: [["trasferimenti", "Trasferimenti"], ["fusioni", "Fusioni"], ["modifiche", "Modifiche"], ["procedure_liquidazione", "Liquidazioni"], ["pignoramenti", "Pignoramenti"]] as const,
 };
 
 /** "Paga in 113 gg · concordati 115 gg". */
