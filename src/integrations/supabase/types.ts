@@ -1948,6 +1948,76 @@ export type Database = {
           },
         ]
       }
+      cerved_report: {
+        Row: {
+          acquistato_da: string | null
+          acquistato_il: string
+          chiamata_acquisto_id: string | null
+          cliente_id: string
+          created_at: string | null
+          id: string
+          id_soggetto: number
+          percorso_pdf: string | null
+          prodotto: number
+          request_id: string
+          scade_il: string
+          ultimo_recupero_da: string | null
+          ultimo_recupero_il: string | null
+        }
+        Insert: {
+          acquistato_da?: string | null
+          acquistato_il?: string
+          chiamata_acquisto_id?: string | null
+          cliente_id: string
+          created_at?: string | null
+          id?: string
+          id_soggetto: number
+          percorso_pdf?: string | null
+          prodotto?: number
+          request_id: string
+          scade_il: string
+          ultimo_recupero_da?: string | null
+          ultimo_recupero_il?: string | null
+        }
+        Update: {
+          acquistato_da?: string | null
+          acquistato_il?: string
+          chiamata_acquisto_id?: string | null
+          cliente_id?: string
+          created_at?: string | null
+          id?: string
+          id_soggetto?: number
+          percorso_pdf?: string | null
+          prodotto?: number
+          request_id?: string
+          scade_il?: string
+          ultimo_recupero_da?: string | null
+          ultimo_recupero_il?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cerved_report_chiamata_acquisto_id_fkey"
+            columns: ["chiamata_acquisto_id"]
+            isOneToOne: false
+            referencedRelation: "cerved_chiamate"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cerved_report_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cerved_report_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+        ]
+      }
       cerved_soggetti: {
         Row: {
           aggiornato_da: string | null
