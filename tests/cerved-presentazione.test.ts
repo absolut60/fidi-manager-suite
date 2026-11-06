@@ -102,3 +102,16 @@ describe("Light Report: presentazione", () => {
     expect(eventoRecenteCerved("2024-11-05", "2026-11-06")).toBe(false);
   });
 });
+
+import { testiLightReportRischio as tlr } from "../src/lib/cerved-presentazione";
+describe("testiLightReportRischio", () => {
+  it("senza Light Report non produce celle", () => {
+    expect(tlr(null, 1000)).toEqual({ fido: null, payline: null });
+  });
+  it("DELEO: fido certificato, confronto e payline", () => {
+    const r = tlr({ fido_certificato: { valore: 262000 }, payline: { giorni_effettivi: 113, giorni_concordati: 115, incidenza_scaduto: 0, aperte_scadute: 2 } }, 65500);
+    expect(r.fido?.confronto).toBe("Il fido MADE è il 25% di quello certificato");
+    expect(r.payline?.valore).toBe("Paga in 113 gg · concordati 115 gg");
+    expect(r.payline?.dettaglio).toBe("2 aperte scadute");
+  });
+});
