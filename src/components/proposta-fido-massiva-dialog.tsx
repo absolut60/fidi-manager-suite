@@ -170,7 +170,7 @@ export function ProposteFidoMassivoDialog({
     media.addEventListener("change", aggiorna);
     return () => media.removeEventListener("change", aggiorna);
   }, [open]);
-  const [modalitaInvio, setModalitaInvio] = useState<"bozza" | "invia">("bozza");
+  const [modalitaInvio, setModalitaInvio] = useState<"bozza" | "invia">("invia");
   const [tipoForzato, setTipoForzato] = useState<"auto" | "nuovo_fido" | "aumento" | "diminuzione" | "rinnovo">("auto");
   const [motivazioneGenerale, setMotivazioneGenerale] = useState<string>(MOTIVAZIONE_DEFAULT);
   const [righe, setRighe] = useState<RigaProposta[]>([]);
