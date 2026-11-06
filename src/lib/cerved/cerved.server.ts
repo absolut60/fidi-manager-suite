@@ -889,8 +889,8 @@ export function estraiDatiLightReportXml(xml: string): DatiLightReportXml {
     const [, chiusura, nomeRaw, autoChiuso] = m;
     const nome = nomeLocale(nomeRaw);
     if (chiusura) { pila.pop(); continue; }
-    if (pila.length === 1 && !l1.includes(nome)) l1.push(nome);
-    if (pila.length === 2 && !l2.includes(nome)) l2.push(nome);
+    if (pila.length === 0 && !l1.includes(nome)) l1.push(nome);
+    if (pila.length === 1 && !l2.includes(nome)) l2.push(nome);
     pila.push(nome);
     const fine = corpo.indexOf("<", re.lastIndex);
     const valore = autoChiuso ? "" : corpo.slice(re.lastIndex, fine < 0 ? undefined : fine).trim();
