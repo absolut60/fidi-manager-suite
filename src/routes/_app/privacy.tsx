@@ -1,3 +1,4 @@
+import { useVisibilitaLimitataNegozio } from "@/lib/visibilita-negozio";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -36,7 +37,7 @@ function CB({ ok }: { ok: boolean }) {
 function PrivacyPage() {
   const navigate = useNavigate();
   const { role } = useAuth();
-  const isStoreManager = role === "store_manager";
+  const isStoreManager = useVisibilitaLimitataNegozio(); // FM59: store manager e showroom (fonte unica)
 
   const [stato, setStato] = useState("tutti");
   const [storeId, setStoreId] = useState<string[]>([]);

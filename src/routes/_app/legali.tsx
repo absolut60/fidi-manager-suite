@@ -1,3 +1,4 @@
+import { useVisibilitaLimitataNegozio } from "@/lib/visibilita-negozio";
 import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
@@ -72,7 +73,7 @@ type Row = {
 function PraticheLegaliPage() {
   const navigate = useNavigate();
   const { role, profilo } = useAuth();
-  const isStoreManager = role === "store_manager";
+  const isStoreManager = useVisibilitaLimitataNegozio(); // FM59: store manager e showroom (fonte unica)
   const myStoreId = profilo?.store_id ?? null;
 
   // Filtri conservati (useFiltriPagina).

@@ -1,3 +1,4 @@
+import { useVisibilitaLimitataNegozio } from "@/lib/visibilita-negozio";
 import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { testoAzione } from "@/lib/azioni-recupero-ui";
 import { TIPO_PROMESSA, isEmailDaInviare } from "@/lib/azioni-recupero-ui";
@@ -111,7 +112,7 @@ function fmtDateTime(v: unknown): string {
 
 function CalendarioPage() {
   const { role, roles, profilo, user } = useAuth();
-  const isStoreManager = role === "store_manager";
+  const isStoreManager = useVisibilitaLimitataNegozio(); // FM59: store manager e showroom (fonte unica)
   const myStoreId = profilo?.store_id ?? null;
   const navigate = useNavigate();
   const qc = useQueryClient();

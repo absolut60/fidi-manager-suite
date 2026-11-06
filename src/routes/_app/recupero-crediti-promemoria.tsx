@@ -1,3 +1,4 @@
+import { useVisibilitaLimitataNegozio } from "@/lib/visibilita-negozio";
 import { isAnticipo, scadenzaChiusaAnticipata } from "@/lib/scadenze";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Fragment, useEffect, useMemo, useState } from "react";
@@ -105,7 +106,7 @@ type ClientePromemoria = {
 function PromemoriaScadenzaPage() {
   const { role, profilo, roles } = useAuth();
   const puoInviare = puoInviareComunicazioniRecupero(roles as string[]);
-  const isStoreManager = role === "store_manager";
+  const isStoreManager = useVisibilitaLimitataNegozio(); // FM59: store manager e showroom (fonte unica)
   const myStoreId = profilo?.store_id ?? null;
 
   const mesiRosa = useMemo(() => buildMesiRosa(6), []);
