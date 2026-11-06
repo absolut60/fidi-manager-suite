@@ -237,8 +237,10 @@ export const provaAcquistoLightReport = createServerFn({ method: "POST" })
     out.xml = { http_status: x.http_status, errore: x.errore, delivery_status: doc?.delivery_status ?? null, lunghezza: xmlTesto.length };
     if (doc?.delivery_status) out.delivery_status = doc.delivery_status;
     if (xmlTesto) {
-      const d = m.estraiDatiLightReportXml(xmlTesto);
-      Object.assign(out, d);
+      const d = m.normalizzaLightReportXml(xmlTesto);
+      Object.assign(out, m.tagPrimiLivelliXml(xmlTesto), {
+        fido_certificato: d.fido_certificato?.valore ?? null, data_report: d.data_report,
+      });
     }
 
     const p = await m.recuperaDocumentoFormato(acq.request_id, "PDF", ctx);
