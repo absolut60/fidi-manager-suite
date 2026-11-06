@@ -828,6 +828,8 @@ export type EsitoAcquistoLightReport = {
   request_id: string | null;
   delivery_status: string | null;
   risposta: unknown;
+  /** Riga di cerved_chiamate dell'acquisto. */
+  chiamata_id: string | null;
 };
 
 /**
@@ -859,48 +861,249 @@ export async function acquistaLightReport(
       if (d.esito === "ok") stato = (d.risposta as DocumentoRecuperato).delivery_status ?? stato;
     }
   }
-  return { http_status: r.http_status, esito: r.esito, errore: r.errore, request_id: requestId, delivery_status: stato, risposta: r.risposta };
+  return { http_status: r.http_status, esito: r.esito, errore: r.errore, request_id: requestId, delivery_status: stato, risposta: r.risposta, chiamata_id: r.chiamata_id };
 }
 
-export type DatiLightReportXml = {
-  fido_certificato: number | null;
-  data_report: string | null;
-  tag_livello_1: string[];
-  tag_livello_2: string[];
-};
+// ---------------------------------------------------------------------------
+// Lettura dell'XML del Light Report: UNICO lettore (nessun altro punto legge l'XML).
+// ---------------------------------------------------------------------------
 
-/** Nome locale di un tag (senza prefisso di namespace). */
+type NodoXml = { nome: string; attr: Record<string, string>; testo: string; figli: NodoXml[] };
+
+const decodificaEntita = (t: string) =>
+  t.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
+    .replace(/&amp;/g, "&");
+
+/** Nome locale di un tag o attributo (senza prefisso di namespace). */
 const nomeLocale = (n: string) => n.split(":").pop() ?? n;
 
-/**
- * Legge dal Light Report XML il fido certificato (AverageGrantableCredit/CreditLimit/Value)
- * e, se presente, la data del report; elenca i tag dei primi due livelli. Nessun altro percorso.
- */
-export function estraiDatiLightReportXml(xml: string): DatiLightReportXml {
-  const corpo = xml.replace(/<\?[\s\S]*?\?>/g, "").replace(/<!--[\s\S]*?-->/g, "").replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, "");
-  const re = /<(\/?)([A-Za-z_][\w.:-]*)[^>]*?(\/?)>/g;
-  const pila: string[] = [];
-  const l1: string[] = [];
-  const l2: string[] = [];
-  let fido: number | null = null;
-  let dataReport: string | null = null;
+/** Parser XML minimale senza dipendenze: tag con attributi, namespace, autochiusi, CDATA. */
+function analizzaXml(xml: string): NodoXml {
+  const radice: NodoXml = { nome: "#doc", attr: {}, testo: "", figli: [] };
+  const pila: NodoXml[] = [radice];
+  const corpo = xml.replace(/<\?[\s\S]*?\?>/g, "").replace(/<!--[\s\S]*?-->/g, "").replace(/<!DOCTYPE[^>]*>/gi, "");
+  const re = /<!\[CDATA\[([\s\S]*?)\]\]>|<(\/?)([A-Za-z_][\w.:-]*)((?:\s+[^\s=/>]+\s*=\s*(?:"[^"]*"|'[^']*'))*)\s*(\/?)>|([^<]+)/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(corpo))) {
-    const [, chiusura, nomeRaw, autoChiuso] = m;
-    const nome = nomeLocale(nomeRaw);
-    if (chiusura) { pila.pop(); continue; }
-    if (pila.length === 0 && !l1.includes(nome)) l1.push(nome);
-    if (pila.length === 1 && !l2.includes(nome)) l2.push(nome);
-    pila.push(nome);
-    const fine = corpo.indexOf("<", re.lastIndex);
-    const valore = autoChiuso ? "" : corpo.slice(re.lastIndex, fine < 0 ? undefined : fine).trim();
-    const percorso = pila.join("/");
-    if (fido == null && valore && /(^|\/)AverageGrantableCredit\/CreditLimit\/Value$/.test(percorso)) {
-      const n = Number(valore.replace(",", "."));
-      if (Number.isFinite(n)) fido = n;
-    }
-    if (dataReport == null && valore && /^(ReportDate|DataReport|ReportCreationDate)$/i.test(nome)) dataReport = valore;
-    if (autoChiuso) pila.pop();
+    const cima = pila[pila.length - 1];
+    if (m[1] !== undefined) { cima.testo += m[1]; continue; }
+    if (m[6] !== undefined) { cima.testo += decodificaEntita(m[6]); continue; }
+    const [, , chiusura, nomeRaw, attrRaw, autoChiuso] = m;
+    if (chiusura) { if (pila.length > 1) pila.pop(); continue; }
+    const attr: Record<string, string> = {};
+    const ra = /([^\s=/>]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
+    let a: RegExpExecArray | null;
+    while ((a = ra.exec(attrRaw ?? ""))) attr[nomeLocale(a[1])] = decodificaEntita(a[2] ?? a[3] ?? "");
+    const nodo: NodoXml = { nome: nomeLocale(nomeRaw), attr, testo: "", figli: [] };
+    cima.figli.push(nodo);
+    if (!autoChiuso) pila.push(nodo);
   }
-  return { fido_certificato: fido, data_report: dataReport, tag_livello_1: l1, tag_livello_2: l2 };
+  return radice;
+}
+
+/** Figli diretti con quel nome. */
+const figli = (n: NodoXml | null, nome: string) => (n ? n.figli.filter((f) => f.nome === nome) : []);
+
+/** Primo nodo (ordine del documento) il cui percorso termina con "A/B/C": A ovunque, poi figli diretti. */
+function trova(n: NodoXml | null, percorso: string): NodoXml | null {
+  if (!n) return null;
+  const [primo, ...resto] = percorso.split("/");
+  const visita = (x: NodoXml): NodoXml | null => {
+    if (x.nome === primo) {
+      let cur: NodoXml | null = x;
+      for (const p of resto) { cur = figli(cur, p)[0] ?? null; if (!cur) break; }
+      if (cur) return cur;
+    }
+    for (const f of x.figli) { const r = visita(f); if (r) return r; }
+    return null;
+  };
+  return visita(n);
+}
+
+const txt = (n: NodoXml | null): string | null => { const t = n?.testo.trim(); return t ? t : null; };
+const num = (n: NodoXml | null): number | null => {
+  const t = txt(n);
+  if (t == null) return null;
+  const v = Number(t.replace(",", "."));
+  return Number.isFinite(v) ? v : null;
+};
+const bool = (n: NodoXml | null): boolean | null => {
+  const t = txt(n)?.toLowerCase();
+  return t === "true" ? true : t === "false" ? false : null;
+};
+/** Nodo presente con contenuto (figli o testo). null se il tag manca. */
+const nonVuoto = (n: NodoXml | null): boolean | null => (n ? n.figli.length > 0 || !!txt(n) : null);
+/** Data di un tag Cerved: dagli attributi day/month/year, altrimenti dal testo (AAAA-MM-GG). */
+function dataXml(n: NodoXml | null): string | null {
+  if (!n) return null;
+  const { day, month, year } = n.attr;
+  if (day && month && year) return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  const t = txt(n);
+  const m = t?.match(/^(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1] : t;
+}
+
+export type LightReportCerved = {
+  data_report: string | null;
+  fido_certificato: { valore: number | null; codice: string | null } | null;
+  score_cgs: { valore: number | null; codice: string | null } | null;
+  gradings: { eventi_negativi: number | null; payline: number | null; governance: number | null };
+  payline: {
+    score: number | null; trend: string | null; esperienze: number | null; non_scadute: number | null; aperte: number | null;
+    importo_totale: number | null; incidenza_scaduto: number | null; aperte_scadute: number | null;
+    ritardo_medio_scadute: number | null; giorni_concordati: number | null; giorni_effettivi: number | null;
+    trimestri: { trimestre: string | null; azienda: number | null; settore: number | null }[];
+  } | null;
+  richieste_12_mesi: {
+    totale: number | null;
+    per_mese: { mese: string | null; anno: string | null; banche_finanziarie: number | null; aziende: number | null; altri: number | null; totale: number | null }[];
+  };
+  immobili: { valore_stimato: number | null; numero_stimati: number | null; terreni: number | null; fabbricati: number | null } | null;
+  eventi_straordinari: {
+    elenco: { tipo: string | null; tipo_trasferimento: string | null; data_atto: string | null; cessionario: string | null; cedente: string | null }[];
+    conteggi: { trasferimenti: number | null; fusioni: number | null; modifiche: number | null; procedure_liquidazione: number | null; pignoramenti: number | null };
+  } | null;
+  protesti: { possibile_omonimia: boolean | null; fallimento: boolean | null; procedure: boolean | null };
+};
+
+/** Unico lettore dell'XML del Light Report (percorsi verificati sull'XML reale). */
+export function normalizzaLightReportXml(xml: string): LightReportCerved {
+  const doc = analizzaXml(xml);
+  const fido = trova(doc, "AverageGrantableCredit/CreditLimit");
+  const cgs = trova(doc, "CervedGroupScore");
+  const pay = trova(doc, "PaymentExperiencePayline");
+  const sin = trova(pay, "Summary/Synthesis");
+  const sintesi = (k: string) => num(figli(sin, k)[0] ?? null);
+  const richieste = trova(doc, "LastTwelveMonthRequests");
+  const imm = trova(doc, "BuildingUnitRealTime");
+  const immNum = (k: string) => num(figli(imm, k)[0] ?? null);
+  const ev = trova(doc, "ExtraordinaryEvents");
+  const evNum = (k: string) => num(figli(ev, k)[0] ?? null);
+  const pr = trova(doc, "Protests");
+  const conTesto = (base: NodoXml | null, k: string) => txt(figli(base, k)[0] ?? null);
+
+  return {
+    data_report: dataXml(trova(doc, "DeliveryAndSummaryDetails/DeliveredOn")),
+    fido_certificato: fido ? { valore: num(figli(fido, "Value")[0] ?? null), codice: txt(figli(fido, "Code")[0] ?? null) } : null,
+    score_cgs: cgs ? { valore: num(figli(cgs, "Score")[0] ?? null), codice: txt(figli(cgs, "DescriptiveScoreSynthesisCode")[0] ?? null) } : null,
+    gradings: {
+      eventi_negativi: num(trova(doc, "NegativeEventsGrading/Grading")),
+      payline: num(trova(doc, "PaylineGrading/Grading")),
+      governance: num(trova(doc, "GovernanceGrading/Grading")),
+    },
+    payline: pay ? {
+      score: num(figli(pay, "Score")[0] ?? null),
+      trend: txt(figli(pay, "TrendLabel")[0] ?? null),
+      esperienze: sintesi("NumberExperiences"),
+      non_scadute: sintesi("NotExpiredExperiences"),
+      aperte: sintesi("OpenedExperiences"),
+      importo_totale: sintesi("TotalAmount"),
+      incidenza_scaduto: sintesi("ExpiredExposureIncidence"),
+      aperte_scadute: sintesi("OpenedExpiredExperiences"),
+      ritardo_medio_scadute: sintesi("ExpiredExperiencesAverageDelay"),
+      giorni_concordati: sintesi("PaymentAgreedMidTerm"),
+      giorni_effettivi: sintesi("EffectivePaymentDays"),
+      trimestri: figli(trova(pay, "AverageDaysBenchmark/Payment"), "Days").map((d) => ({
+        trimestre: d.attr["Quarter"] ?? null,
+        azienda: num(figli(d, "Company")[0] ?? null),
+        settore: num(figli(d, "Sector")[0] ?? null),
+      })),
+    } : null,
+    richieste_12_mesi: {
+      totale: num(trova(doc, "DeliveryAndSummaryDetails/CreditRequestsLastTwelveMonths")),
+      per_mese: figli(richieste, "TableRaw").map((t) => {
+        const my = figli(t, "MonthYear")[0] ?? null;
+        return {
+          mese: conTesto(my, "Month"), anno: conTesto(my, "Year"),
+          banche_finanziarie: num(figli(t, "BankOrFinancialEntities")[0] ?? null),
+          aziende: num(figli(t, "Companies")[0] ?? null),
+          altri: num(figli(t, "Others")[0] ?? null),
+          totale: num(figli(t, "Total")[0] ?? null),
+        };
+      }),
+    },
+    immobili: imm ? {
+      valore_stimato: immNum("SumOfAverageEsteemValue"), numero_stimati: immNum("TotalNumberEsteemed"),
+      terreni: immNum("TotalRealEstateUnitLandNumber"), fabbricati: immNum("TotalRealEstateUnitBuildingNumber"),
+    } : null,
+    eventi_straordinari: ev ? {
+      elenco: figli(figli(ev, "ExtraordinaryEventsList")[0] ?? null, "EventItem").map((e) => ({
+        tipo: conTesto(e, "Type"), tipo_trasferimento: conTesto(e, "TransferType"),
+        data_atto: dataXml(figli(e, "DeedDate")[0] ?? null),
+        cessionario: conTesto(e, "TransfereeName"), cedente: conTesto(e, "TransferorName"),
+      })),
+      conteggi: {
+        trasferimenti: evNum("TransferCount"), fusioni: evNum("MergerCount"), modifiche: evNum("ChangeCount"),
+        procedure_liquidazione: evNum("WindingUpProcedureCount"), pignoramenti: evNum("SeizureCount"),
+      },
+    } : null,
+    protesti: {
+      possibile_omonimia: bool(figli(pr, "ProtestsSimilarityExists")[0] ?? null),
+      fallimento: nonVuoto(trova(doc, "Bankruptcy")),
+      procedure: nonVuoto(trova(doc, "AgreedWindingUpProcedures")),
+    },
+  };
+}
+
+/** Elenco dei tag dei primi due livelli (solo per la prova in Impostazioni). */
+export function tagPrimiLivelliXml(xml: string): { tag_livello_1: string[]; tag_livello_2: string[] } {
+  const doc = analizzaXml(xml);
+  const l1 = [...new Set(doc.figli.map((f) => f.nome))];
+  const l2 = [...new Set(doc.figli.flatMap((f) => f.figli.map((g) => g.nome)))];
+  return { tag_livello_1: l1, tag_livello_2: l2 };
+}
+
+// ---------------------------------------------------------------------------
+// Recupero gratuito del Light Report già acquistato (request_id) e salvataggio.
+// ---------------------------------------------------------------------------
+
+export const BUCKET_REPORT_CERVED = "cerved-report";
+export const percorsoPdfReport = (idSoggetto: number | string, requestId: string) => `${idSoggetto}/${requestId}.pdf`;
+
+export type EsitoRecuperoReport = { xml_ok: boolean; pdf_ok: boolean; percorso_pdf: string | null; errori: string[] };
+
+/**
+ * Recupera XML e PDF con il request_id (gratis), salva il PDF in cerved-report
+ * (sovrascrivendo), una fotografia 'light_report' e ultimo_recupero_il/da. Solo service_role.
+ */
+export async function recuperaESalvaLightReport(
+  report: { id: string; cliente_id: string; id_soggetto: number; request_id: string },
+  ctx: Ctx,
+): Promise<EsitoRecuperoReport> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const errori: string[] = [];
+  const [x, p] = await Promise.all([
+    recuperaDocumentoFormato(report.request_id, "XML", ctx),
+    recuperaDocumentoFormato(report.request_id, "PDF", ctx),
+  ]);
+  let xmlOk = false;
+  const doc = x.esito === "ok" ? (x.risposta as DocumentoRecuperato) : null;
+  if (doc?.contenuto_xml) {
+    const { error } = await supabaseAdmin.from("cerved_fotografie").insert({
+      cliente_id: report.cliente_id, id_soggetto: report.id_soggetto, tipo: "light_report",
+      dati: normalizzaLightReportXml(doc.contenuto_xml) as never, chiamata_id: x.chiamata_id, letta_da: ctx.utenteId,
+    });
+    if (error) { console.error("[cerved] fotografia light_report non salvata", error.message); errori.push("Light Report: dati letti ma non salvati"); }
+    else xmlOk = true;
+  } else {
+    errori.push(`Light Report XML: ${x.errore ?? `documento non disponibile (${doc?.delivery_status ?? "stato sconosciuto"})`}`);
+  }
+  let percorso: string | null = null;
+  const byte = p.extra instanceof Uint8Array ? p.extra : null;
+  if (byte) {
+    const dest = percorsoPdfReport(report.id_soggetto, report.request_id);
+    const { error } = await supabaseAdmin.storage.from(BUCKET_REPORT_CERVED)
+      .upload(dest, byte, { contentType: "application/pdf", upsert: true });
+    if (error) { console.error("[cerved] PDF non salvato", error.message); errori.push("Light Report PDF: non salvato"); }
+    else percorso = dest;
+  } else {
+    errori.push(`Light Report PDF: ${p.errore ?? "non presente nella risposta"}`);
+  }
+  const agg: Record<string, unknown> = { ultimo_recupero_il: new Date().toISOString(), ultimo_recupero_da: ctx.utenteId };
+  if (percorso) agg["percorso_pdf"] = percorso;
+  const { error: eAgg } = await supabaseAdmin.from("cerved_report").update(agg as never).eq("id", report.id);
+  if (eAgg) console.error("[cerved] cerved_report non aggiornato", eAgg.message);
+  return { xml_ok: xmlOk, pdf_ok: !!percorso, percorso_pdf: percorso, errori };
 }

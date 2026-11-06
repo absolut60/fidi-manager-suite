@@ -2,12 +2,13 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Loader2, RefreshCw, Link2, Check } from "lucide-react";
+import { Loader2, RefreshCw, Link2, Check, FileText, ShoppingCart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useNomiUtentiQuery, formatNomeUtente } from "@/hooks/use-nomi-utenti";
 import { puoAggiornareCerved } from "@/lib/permessi-cerved";
-import { aggiornaCervedCliente } from "@/lib/cerved/cerved-cliente.functions";
+import { aggiornaCervedCliente, acquistaReportCervedCliente, apriPdfReportCervedCliente } from "@/lib/cerved/cerved-cliente.functions";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { formatEuro } from "@/lib/fidi";
 import {
   coloreSemaforo, formattaAggiornatoIl, settoreGaugeCerved, SETTORI_GAUGE_CERVED, formattaPdCerved, statoAttivitaAnomalo, trovaScore,
@@ -66,7 +67,7 @@ export function ClienteCervedTab({ clienteId, partitaIva, fidoMade }: {
     onSuccess: (r) => {
       toast.success(r.nuovo_collegamento ? "Cliente collegato a Cerved" : "Dati Cerved aggiornati");
       if (r.errori?.length) toast.warning(`Alcuni dati non sono stati letti: ${r.errori.join(" · ")}`);
-      qc.invalidateQueries({ queryKey: chiave });
+      qc.invalidateQueries({ queryKey: chiave }); qc.invalidateQueries({ queryKey: ["cerved-report", clienteId] });
     },
     onError: (e: Error) => toast.error(e.message || "Aggiornamento Cerved non riuscito"),
   });
@@ -85,6 +86,7 @@ export function ClienteCervedTab({ clienteId, partitaIva, fidoMade }: {
       puoAggiornare={puo}
       inCorso={mut.isPending}
       onAggiorna={() => mut.mutate()}
+      barraReport={<BarraReportCerved clienteId={clienteId} puo={puo} />}
     />
   );
 }
@@ -94,9 +96,9 @@ function Riquadro({ children }: { children: React.ReactNode }) {
 }
 
 /** Parte solo presentazionale (riusabile con dati finti). Impianto della prima pagina del Light Report. */
-export function VistaCerved({ dati, clienteId, fidoMade, puoAggiornare, inCorso, onAggiorna }: {
+export function VistaCerved({ dati, clienteId, fidoMade, puoAggiornare, inCorso, onAggiorna, barraReport }: {
   dati: DatiCervedCliente; clienteId: string; fidoMade: number | null | undefined; puoAggiornare: boolean;
-  inCorso: boolean; onAggiorna: () => void;
+  inCorso: boolean; onAggiorna: () => void; barraReport?: React.ReactNode;
 }) {
   const [conferma, setConferma] = useState(false);
   const { data: nomi } = useNomiUtentiQuery();
@@ -179,6 +181,7 @@ export function VistaCerved({ dati, clienteId, fidoMade, puoAggiornare, inCorso,
               </Button>
             )}
           </div>
+          {barraReport}
 
           {/* Telefono */}
           <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 md:hidden">
@@ -533,4 +536,96 @@ function Elemento({ k, v, tono }: { k: string; v: string; tono?: "verde" | "ross
 
 function NonDisp() {
   return <p className="text-sm text-muted-foreground">Dato non disponibile</p>;
+}
+
+/** "AAAA-MM-GG…" → "GG/MM/AAAA" (solo stringa, niente new Date). */
+const dataReportIt = (iso: string | null | undefined) => {
+  if (!iso) return null;
+  const [a, m, g] = iso.slice(0, 10).split("-");
+  return a && m && g ? `${g}/${m}/${a}` : null;
+};
+
+/** Stato del Light Report: attivo fino al…, acquisto annuale con conferma, apertura del PDF in finestra. */
+function BarraReportCerved({ clienteId, puo }: { clienteId: string; puo: boolean }) {
+  const qc = useQueryClient();
+  const chiaveRep = ["cerved-report", clienteId];
+  const [conferma, setConferma] = useState(false);
+  const [urlPdf, setUrlPdf] = useState<string | null>(null);
+  const rep = useQuery({
+    queryKey: chiaveRep,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("cerved_report")
+        .select("scade_il, percorso_pdf").eq("cliente_id", clienteId)
+        .order("scade_il", { ascending: false }).limit(1).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+  const acquista = useServerFn(acquistaReportCervedCliente);
+  const apri = useServerFn(apriPdfReportCervedCliente);
+  const mutAcq = useMutation({
+    mutationFn: () => acquista({ data: { clienteId } }),
+    onSuccess: (r) => {
+      if (r.acquistato) toast.success(r.messaggio); else toast.info(r.messaggio);
+      if (r.errori?.length) toast.warning(`Alcuni dati non sono stati letti: ${r.errori.join(" · ")}`);
+      qc.invalidateQueries({ queryKey: chiaveRep });
+      qc.invalidateQueries({ queryKey: ["cerved-cliente", clienteId] });
+    },
+    onError: (e: Error) => toast.error(e.message || "Acquisto del report non riuscito"),
+  });
+  const mutPdf = useMutation({
+    mutationFn: () => apri({ data: { clienteId } }),
+    onSuccess: (r) => setUrlPdf(r.url),
+    onError: (e: Error) => toast.error(e.message || "Impossibile aprire il PDF"),
+  });
+
+  if (rep.isLoading || rep.error) return null;
+  const r = rep.data;
+  // Confronto tra stringhe ISO UTC dello stesso formato del database.
+  const attivo = !!r && r.scade_il > new Date().toISOString();
+  if (!attivo && !puo) return null;
+
+  return (
+    <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+      {attivo ? (
+        <span className="text-xs text-muted-foreground">Report attivo fino al {dataReportIt(r!.scade_il)}</span>
+      ) : (
+        <Button size="sm" className="min-h-10" onClick={() => setConferma(true)} disabled={mutAcq.isPending}>
+          {mutAcq.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <ShoppingCart className="mr-1 h-4 w-4" />}
+          Acquista Light Report (1 anno)
+        </Button>
+      )}
+      {puo && r?.percorso_pdf && (
+        <Button variant="outline" size="sm" className="min-h-10" onClick={() => mutPdf.mutate()} disabled={mutPdf.isPending}>
+          {mutPdf.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileText className="mr-1 h-4 w-4" />}
+          Apri report PDF
+        </Button>
+      )}
+
+      <AlertDialog open={conferma} onOpenChange={setConferma}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Acquistare il Light Report?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Stai acquistando da Cerved il Light Report di questo cliente. Vale un anno: nel periodo di validità si aggiorna gratis con «Aggiorna da Cerved».
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setConferma(false); mutAcq.mutate(); }}>Acquista</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={!!urlPdf} onOpenChange={(o) => { if (!o) setUrlPdf(null); }}>
+        <DialogContent className="flex h-[90dvh] w-[95vw] max-w-5xl flex-col gap-2 p-3 sm:p-4">
+          <DialogHeader>
+            <DialogTitle>Light Report Cerved</DialogTitle>
+            <DialogDescription className="sr-only">Report PDF del cliente</DialogDescription>
+          </DialogHeader>
+          {urlPdf && <iframe src={urlPdf} title="Light Report Cerved" className="min-h-0 w-full flex-1 rounded border" />}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 }
