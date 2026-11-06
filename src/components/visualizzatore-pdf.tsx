@@ -48,7 +48,7 @@ export function VisualizzatorePdf({ url, nomeFile = "documento.pdf", className =
         if (!annullato) setStato("errore");
       }
     })();
-    return () => { annullato = true; doc?.destroy(); };
+    return () => { annullato = true; void doc?.cleanup(); };
   }, [url]);
 
   async function scarica() {
