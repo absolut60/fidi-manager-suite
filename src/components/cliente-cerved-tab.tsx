@@ -14,7 +14,10 @@ import {
   coloreSemaforo, formattaAggiornatoIl, settoreGaugeCerved, SETTORI_GAUGE_CERVED, formattaPdCerved, statoAttivitaAnomalo, trovaScore,
   type ScoreCervedVista, type EsitoScore, livelloCategoria, esitoScore, sigleEcofin,
   formattaEuroCompatto, variazionePercentuale,
+  dataIsoIt, meseBreveIt, formattaGiorniCerved, formattaPercentualeCerved, ETICHETTE_LIGHT_REPORT,
+  testoGiorniPayline, testoConfrontoFido, eventoRecenteCerved,
 } from "@/lib/cerved-presentazione";
+import { VisualizzatorePdf } from "@/components/visualizzatore-pdf";
 import { useEsperienzaPagamentoCliente, testiEsperienzaPagamento } from "@/hooks/use-esperienza-pagamento";
 import { SemaforoAffidabilitaBadge } from "@/components/pannello-rischio-cliente";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,7 +29,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 type Obj = Record<string, any>;
-type Fotografie = { ricerca: Obj | null; profilo: Obj | null; score: Obj | null; bilancio?: Obj | null; eventi_negativi?: Obj | null; fido?: Obj | null };
+type Fotografie = { ricerca: Obj | null; profilo: Obj | null; score: Obj | null; bilancio?: Obj | null; eventi_negativi?: Obj | null; fido?: Obj | null; light_report?: Obj | null };
 
 export type DatiCervedCliente = {
   soggetto: Obj | null;
@@ -49,7 +52,7 @@ export function ClienteCervedTab({ clienteId, partitaIva, fidoMade }: {
       const { data: soggetto, error } = await supabase
         .from("cerved_soggetti").select("*").eq("cliente_id", clienteId).maybeSingle();
       if (error) throw error;
-      const tipi = ["ricerca", "profilo", "score", "bilancio", "eventi_negativi", "fido"] as const;
+      const tipi = ["ricerca", "profilo", "score", "bilancio", "eventi_negativi", "fido", "light_report"] as const;
       const righe = await Promise.all(tipi.map(async (t) => {
         const { data, error: e } = await supabase.from("cerved_fotografie")
           .select("dati, letta_il").eq("cliente_id", clienteId).eq("tipo", t)
@@ -57,7 +60,7 @@ export function ClienteCervedTab({ clienteId, partitaIva, fidoMade }: {
         if (e) throw e;
         return (data?.dati as Obj) ?? null;
       }));
-      return { soggetto, foto: { ricerca: righe[0], profilo: righe[1], score: righe[2], bilancio: righe[3], eventi_negativi: righe[4], fido: righe[5] } };
+      return { soggetto, foto: { ricerca: righe[0], profilo: righe[1], score: righe[2], bilancio: righe[3], eventi_negativi: righe[4], fido: righe[5], light_report: righe[6] } };
     },
   });
 
@@ -161,6 +164,8 @@ export function VistaCerved({ dati, clienteId, fidoMade, puoAggiornare, inCorso,
   const ecofin = trovaScore(scores, "ECOFIN");
   const cnsl = trovaScore(scores, "CNSL");
   const anni: Obj[] = Array.isArray(dati.foto.bilancio?.anni) ? dati.foto.bilancio!.anni : [];
+  const lr = dati.foto.light_report ?? null;
+  const dataLr = dataIsoIt(lr?.data_report);
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-3">
@@ -181,6 +186,7 @@ export function VistaCerved({ dati, clienteId, fidoMade, puoAggiornare, inCorso,
               </Button>
             )}
           </div>
+          {dataLr && <p className="mt-2 text-xs font-semibold text-muted-foreground">Report Cerved del {dataLr}</p>}
           {barraReport}
 
           {/* Telefono */}
@@ -225,7 +231,7 @@ export function VistaCerved({ dati, clienteId, fidoMade, puoAggiornare, inCorso,
 
       {/* B) Riga principale */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-        <CardScore scores={scores} fido={dati.foto.fido} fidoMade={fidoMade} />
+        <CardScore scores={scores} fido={dati.foto.fido} fidoMade={fidoMade} lightReport={lr} />
         <Sezione titolo="Valutazioni parziali">
           {scores.length ? (
             <div className="divide-y">
@@ -243,9 +249,18 @@ export function VistaCerved({ dati, clienteId, fidoMade, puoAggiornare, inCorso,
               })}
             </div>
           ) : <NonDisp />}
-          <ComePagaMade clienteId={clienteId} />
+          {!lr && <ComePagaMade clienteId={clienteId} />}
         </Sezione>
       </div>
+
+      {lr && (
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <BloccoPayline payline={lr.payline} clienteId={clienteId} />
+          <BloccoRichieste richieste={lr.richieste_12_mesi} />
+          <BloccoImmobili immobili={lr.immobili} />
+          <BloccoEventiStraordinari ev={lr.eventi_straordinari} />
+        </div>
+      )}
 
       {/* C) Bilancio */}
       <BloccoBilancio anni={anni} profilo={p} />
@@ -306,6 +321,7 @@ export function VistaCerved({ dati, clienteId, fidoMade, puoAggiornare, inCorso,
                 })}
               </ul>
             ) : <NonDisp />}
+            {lr?.protesti?.possibile_omonimia === true && <p className="text-sm text-muted-foreground">{ETICHETTE_LIGHT_REPORT.omonimia}</p>}
           </SottoSezione>
           <SottoSezione titolo="Rating di legalità">
             <p className="text-sm font-bold">{p?.rating_legalita ? `${p.rating_legalita}${p.rating_legalita_rinnovo ? ` (rinnovo ${p.rating_legalita_rinnovo})` : ""}` : "Non presente"}</p>
@@ -356,7 +372,9 @@ function GaugeCerved({ valore }: { valore: number | null }) {
   );
 }
 
-export function CardScore({ scores, fido, fidoMade }: { scores: ScoreCervedVista[]; fido: Obj | null | undefined; fidoMade: number | null | undefined }) {
+export function CardScore({ scores, fido, fidoMade, lightReport }: { scores: ScoreCervedVista[]; fido: Obj | null | undefined; fidoMade: number | null | undefined; lightReport?: Obj | null }) {
+  const certificato: number | null = lightReport?.fido_certificato?.valore ?? null;
+  const confronto = testoConfrontoFido(fidoMade, certificato);
   const cgs = trovaScore(scores, "CGS");
   const sem = trovaScore(scores, "SEM_CGS");
   const semaforo = coloreSemaforo(sem?.categoria_codice);
@@ -390,6 +408,21 @@ export function CardScore({ scores, fido, fidoMade }: { scores: ScoreCervedVista
           </div>
         </div>
       ) : <NonDisp />}
+      {certificato != null ? (
+        <div className="mt-4 rounded-sm bg-muted p-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{ETICHETTE_LIGHT_REPORT.fidoCertificato}</p>
+              <p className="text-2xl font-bold tabular-nums">{formatEuro(certificato)}</p>
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Fido MADE</p>
+              <p className="text-2xl font-bold tabular-nums">{formatEuro(fidoMade ?? 0)}</p>
+            </div>
+          </div>
+          {confronto && <p className="mt-2 border-t pt-2 text-sm">{confronto}</p>}
+        </div>
+      ) : (
       <div className="mt-4 rounded-sm bg-muted p-3">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Fido certificato</p>
         {fido?.fcert?.valore != null ? (
@@ -400,6 +433,7 @@ export function CardScore({ scores, fido, fidoMade }: { scores: ScoreCervedVista
         ) : <p className="text-sm font-bold text-muted-foreground">Non ancora attivo</p>}
         <p className="mt-2 border-t pt-2 text-sm">Fido MADE: <span className="font-bold tabular-nums">{formatEuro(fidoMade ?? 0)}</span></p>
       </div>
+      )}
     </Sezione>
   );
 }
@@ -623,9 +657,138 @@ function BarraReportCerved({ clienteId, puo }: { clienteId: string; puo: boolean
             <DialogTitle>Light Report Cerved</DialogTitle>
             <DialogDescription className="sr-only">Report PDF del cliente</DialogDescription>
           </DialogHeader>
-          {urlPdf && <iframe src={urlPdf} title="Light Report Cerved" className="min-h-0 w-full flex-1 rounded border" />}
+          {urlPdf && <VisualizzatorePdf url={urlPdf} nomeFile="light-report-cerved.pdf" className="flex-1" />}
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+const num = (n: unknown) => (typeof n === "number" && Number.isFinite(n) ? n : null);
+const intIt = (n: unknown) => (num(n) == null ? "—" : Math.round(num(n)!).toLocaleString("it-IT"));
+
+function Voce({ k, v }: { k: string; v: string | null | undefined }) {
+  return (
+    <div className="min-w-0">
+      <p className="break-words text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{k}</p>
+      <p className="break-words text-sm font-bold tabular-nums">{v || "—"}</p>
+    </div>
+  );
+}
+
+function BloccoPayline({ payline, clienteId }: { payline: Obj | null | undefined; clienteId: string }) {
+  const pl = payline ?? {};
+  const giorni = testoGiorniPayline(pl.giorni_effettivi, pl.giorni_concordati);
+  const trim: Obj[] = Array.isArray(pl.trimestri) ? pl.trimestri : [];
+  const max = Math.max(1, ...trim.flatMap((t) => [num(t.azienda) ?? 0, num(t.settore) ?? 0]));
+  return (
+    <Sezione titolo={ETICHETTE_LIGHT_REPORT.payline}>
+      <div className="space-y-3">
+        <p className="text-lg font-bold">{giorni ?? "Dato non disponibile"}</p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <Voce k="Esperienze" v={intIt(pl.esperienze)} />
+          <Voce k="Importo totale" v={formattaEuroCompatto(num(pl.importo_totale))} />
+          <Voce k="Incidenza scaduto" v={formattaPercentualeCerved(num(pl.incidenza_scaduto))} />
+          <Voce k="Aperte scadute" v={intIt(pl.aperte_scadute)} />
+          <Voce k="Ritardo medio scadute" v={formattaGiorniCerved(num(pl.ritardo_medio_scadute))} />
+          {pl.trend && <Voce k="Andamento" v={pl.trend} />}
+        </div>
+        {trim.length > 0 && (
+          <div>
+            <p className="mb-1 text-xs text-muted-foreground">Giorni di pagamento per trimestre: <span className="font-semibold text-foreground">azienda</span> e <span className="font-semibold">settore</span></p>
+            <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
+              {trim.map((t, i) => (
+                <div key={i} className="flex min-w-0 flex-col items-center gap-1">
+                  <div className="flex h-20 items-end gap-0.5">
+                    <span className="w-3 rounded-t-sm bg-primary" style={{ height: `${((num(t.azienda) ?? 0) / max) * 100}%` }} title={`Azienda ${formattaGiorniCerved(num(t.azienda)) ?? "—"}`} />
+                    <span className="w-3 rounded-t-sm bg-muted-foreground/40" style={{ height: `${((num(t.settore) ?? 0) / max) * 100}%` }} title={`Settore ${formattaGiorniCerved(num(t.settore)) ?? "—"}`} />
+                  </div>
+                  <span className="text-[10px] tabular-nums text-muted-foreground">T{t.trimestre ?? "?"}</span>
+                  <span className="text-[10px] tabular-nums">{intIt(t.azienda)}/{intIt(t.settore)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        <ComePagaMade clienteId={clienteId} />
+      </div>
+    </Sezione>
+  );
+}
+
+function BloccoRichieste({ richieste }: { richieste: Obj | null | undefined }) {
+  const r = richieste ?? {};
+  const mesi: Obj[] = Array.isArray(r.per_mese) ? r.per_mese : [];
+  const max = Math.max(1, ...mesi.map((m) => num(m.totale) ?? 0));
+  const colori = ["bg-primary", "bg-warning", "bg-muted-foreground/50"];
+  return (
+    <Sezione titolo={ETICHETTE_LIGHT_REPORT.richieste}>
+      <p className="text-xs text-muted-foreground">{ETICHETTE_LIGHT_REPORT.richiesteAiuto}</p>
+      <p className="mt-1 text-2xl font-bold tabular-nums sm:text-3xl">{intIt(r.totale)}</p>
+      {mesi.length > 0 && (
+        <>
+          <div className="mt-2 grid gap-1" style={{ gridTemplateColumns: `repeat(${mesi.length}, minmax(0, 1fr))` }}>
+            {mesi.map((m, i) => (
+              <div key={i} className="flex min-w-0 flex-col items-center gap-1">
+                <div className="flex h-20 w-full max-w-6 flex-col-reverse overflow-hidden rounded-t-sm" title={`${meseBreveIt(m.mese, m.anno)}: ${intIt(m.totale)}`}>
+                  {ETICHETTE_LIGHT_REPORT.serieRichieste.map(([k], j) => (
+                    <span key={k} className={colori[j]} style={{ height: `${((num(m[k]) ?? 0) / max) * 100}%` }} />
+                  ))}
+                </div>
+                <span className="text-[9px] leading-tight text-muted-foreground sm:text-[10px]">{meseBreveIt(m.mese, m.anno)}</span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            {ETICHETTE_LIGHT_REPORT.serieRichieste.map(([k, et], j) => (
+              <span key={k} className="inline-flex items-center gap-1"><span className={`h-2.5 w-2.5 rounded-sm ${colori[j]}`} aria-hidden />{et}</span>
+            ))}
+          </div>
+        </>
+      )}
+    </Sezione>
+  );
+}
+
+function BloccoImmobili({ immobili }: { immobili: Obj | null | undefined }) {
+  const im = immobili ?? {};
+  return (
+    <Sezione titolo={ETICHETTE_LIGHT_REPORT.immobili}>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="col-span-2 min-w-0 sm:col-span-1">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Valore stimato</p>
+          <p className="text-xl font-bold tabular-nums" title={num(im.valore_stimato) != null ? formatEuro(im.valore_stimato) : undefined}>{formattaEuroCompatto(num(im.valore_stimato)) ?? "—"}</p>
+        </div>
+        <Voce k="Immobili stimati" v={intIt(im.numero_stimati)} />
+        <Voce k="Fabbricati" v={intIt(im.fabbricati)} />
+        <Voce k="Terreni" v={intIt(im.terreni)} />
+      </div>
+    </Sezione>
+  );
+}
+
+function BloccoEventiStraordinari({ ev }: { ev: Obj | null | undefined }) {
+  const elenco: Obj[] = Array.isArray(ev?.elenco) ? ev!.elenco : [];
+  const cont = ev?.conteggi ?? {};
+  const oggi = new Date().toISOString().slice(0, 10);
+  return (
+    <Sezione titolo={ETICHETTE_LIGHT_REPORT.eventiStraordinari}>
+      {elenco.length ? (
+        <ul className="divide-y">
+          {elenco.map((e, i) => {
+            const recente = eventoRecenteCerved(e.data_atto, oggi);
+            return (
+              <li key={i} className={`py-2 text-sm first:pt-0 ${recente ? "rounded-sm border-l-4 border-warning pl-2" : ""}`}>
+                <p className="font-semibold"><span className={recente ? "text-warning" : ""}>{dataIsoIt(e.data_atto) ?? "—"}</span> · <span className="break-words">{[e.tipo, e.tipo_trasferimento].filter(Boolean).join(" – ") || "—"}</span></p>
+                {(e.cedente || e.cessionario) && <p className="break-words text-muted-foreground">{e.cedente ?? "—"} → {e.cessionario ?? "—"}</p>}
+              </li>
+            );
+          })}
+        </ul>
+      ) : <p className="text-sm text-muted-foreground">Nessun evento straordinario</p>}
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t pt-2 text-xs text-muted-foreground">
+        {ETICHETTE_LIGHT_REPORT.conteggiEventi.map(([k, et]) => <span key={k}>{et}: <span className="font-semibold text-foreground">{intIt(cont[k])}</span></span>)}
+      </div>
+    </Sezione>
   );
 }

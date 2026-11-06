@@ -83,3 +83,22 @@ test("settore del gauge CGS", () => {
   expect(settoreGaugeCerved(100)).toBe(7);
   expect(settoreGaugeCerved(null)).toBeNull();
 });
+
+import { dataIsoIt, testoConfrontoFido, testoGiorniPayline, eventoRecenteCerved, meseBreveIt } from "../src/lib/cerved-presentazione";
+describe("Light Report: presentazione", () => {
+  it("data e mese in italiano", () => {
+    expect(dataIsoIt("2026-11-06")).toBe("06/11/2026");
+    expect(meseBreveIt("11", "2025")).toBe("nov 25");
+  });
+  it("confronto fido MADE / certificato", () => {
+    expect(testoConfrontoFido(65500, 262000)).toBe("Il fido MADE è il 25% di quello certificato");
+    expect(testoConfrontoFido(1000, null)).toBeNull();
+  });
+  it("giorni payline DELEO", () => {
+    expect(testoGiorniPayline(113, 115)).toBe("Paga in 113 gg · concordati 115 gg");
+  });
+  it("evento recente entro 24 mesi", () => {
+    expect(eventoRecenteCerved("2025-01-10", "2026-11-06")).toBe(true);
+    expect(eventoRecenteCerved("2024-11-05", "2026-11-06")).toBe(false);
+  });
+});
