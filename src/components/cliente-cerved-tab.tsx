@@ -575,12 +575,6 @@ function NonDisp() {
   return <p className="text-sm text-muted-foreground">Dato non disponibile</p>;
 }
 
-/** "AAAA-MM-GG…" → "GG/MM/AAAA" (solo stringa, niente new Date). */
-const dataReportIt = (iso: string | null | undefined) => {
-  if (!iso) return null;
-  const [a, m, g] = iso.slice(0, 10).split("-");
-  return a && m && g ? `${g}/${m}/${a}` : null;
-};
 
 /** Solo apertura del PDF del Light Report (dialog con visualizzatore e "Scarica"), se il cliente ha un report. */
 function BarraReportCerved({ clienteId, puo }: { clienteId: string; puo: boolean }) {
