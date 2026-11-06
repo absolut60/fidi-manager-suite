@@ -1093,6 +1093,13 @@
       "when": 1793961294900,
       "tag": "0155_fm59_coperture_scadenziario_ambito",
       "breakpoints": true
+    },
+    {
+      "idx": 156,
+      "version": "7",
+      "when": 1793961706858,
+      "tag": "0156_fm59_incassi_periodo_codici_pagamento",
+      "breakpoints": true
     }
   ]
 }

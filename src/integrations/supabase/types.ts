@@ -8133,6 +8133,7 @@ export type Database = {
         Args: {
           _al: string
           _cliente_search?: string
+          _codici_pagamento?: string[]
           _dal: string
           _metodi?: string[]
           _store_ids?: string[]
@@ -8156,6 +8157,7 @@ export type Database = {
         Args: {
           _al: string
           _cliente_id: string
+          _codici_pagamento?: string[]
           _dal: string
           _metodi?: string[]
           _store_ids?: string[]
