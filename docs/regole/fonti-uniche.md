@@ -100,6 +100,14 @@ Le azioni multiple su `richieste_fido` passano dall'helper a blocchi `src/lib/ri
 - Massiva: frase "Cliente non attivo: proposta a zero.", riga bianca e spuntata.
 - ATTENZIONE: il cutoff è un anno fisso. Se a gennaio 2027 viene portato a 2027, il giorno stesso tutti i clienti diventano non attivi e il fido teorico va a zero per tutti. Non cambiarlo senza decisione di Andrea.
 
+## Profilo di pagamento del fido teorico (FM55, aggiornato FM59 fetta 3, decisione di Andrea 06/11/2026)
+
+- Fonte unica: CTE `pag` di `public.get_fido_teorico_v2` (profili `puntuale` / `ritardo_occasionale` / `ritardo_abituale` / `ritardo_abituale_grave`).
+- **Si calcola sugli ultimi 12 mesi** (righe con `data_scadenza >= CURRENT_DATE - 12 mesi`, peso 1): ritardo medio pesato per importo pagato e quota pagata oltre tolleranza. **Lo storico** (dal 2022, peso 2 negli ultimi 12 mesi e 1 prima: formula precedente) si usa **solo se il cliente non ha nessun pagamento negli ultimi 12 mesi**; colonna interna `usa_storico`.
+- Invariati: tolleranza `fido_v2_tolleranza_gg` (15), peso per importo pagato, soglie (`fido_v2_quota_ritardo_occasionale`, 45 gg per il grave), coefficienti, regole patologiche/insoluti, `pagato12`.
+- Spiegazione: i profili `ritardo_abituale` e `ritardo_abituale_grave` terminano con "(ultimi 12 mesi)" oppure "(storico: nessun pagamento negli ultimi 12 mesi)".
+- Regola per riga uguale a `public.ritardo_pagamento_riga`: RiBa incluse, pagamenti prima della scadenza = 0 giorni, documenti `ANTICIPO` esclusi, servono data pagamento e importo pagato > 0 (in più qui solo scadenze dal 01/01/2022). Diversa solo la tolleranza: 15 gg qui, `tolleranza_ritardo_pagamento_gg` nel semaforo.
+
 ### Alert fidi: "già deciso" negli avvisi (FM55, decisione 01/11/2026, opzione 2)
 - Fonte SQL unica: `public.alert_fido_gia_deciso(cliente_id)` — protezione attiva in `extra_fido_protetti` (`protezione_valida`, entro `protetto_fino_al`) **e** `clienti.fido_gestionale` = `importo_approvato`. Gemello TS: `giaDecisoAvviso` (`src/lib/alert-fidi.ts`), test in `tests/alert-fidi-avvisi.test.ts`.
 - La usa solo `invia_notifiche_alert_fidi`: i già decisi non vengono notificati né marcati, quindi ripartono quando la protezione scade o decade.
@@ -133,4 +141,4 @@ Numeri da `get_dashboard_fidi_gruppi`, liste da `get_clienti_dashboard_fidi_ids`
 - **Cascata dei colori:** solo `public.calcola_semaforo_affidabilita_batch` (rosso: bloccato/legale/insoluti/scaduto > 10.000; arancione: scaduto grave o 1.000–10.000; giallo: scaduto < 1.000, oppure ≥ 3 pagate 12 mesi e ritardo medio 12 mesi > 15 gg; spento: nessun pagamento; verde: altrimenti). `get_semaforo_affidabilita_cliente` e `get_esperienza_pagamento_cliente` leggono soltanto.
 - **TypeScript:** legenda, colori e testo del numero solo in `src/lib/semaforo-ui.ts` (`LEGENDA_STADIO`, `testoNumeroSemaforo`); lettura del singolo cliente solo con `useSemaforoAffidabilitaCliente`; liste da `fido_teorico_cliente.semaforo_stadio`. Mai calcoli o colori locali sul ritardo (niente soglie proprie nelle card).
 - **Il ricalcolo del fido teorico riscrive i colori salvati:** se cambia la regola, i colori salvati vanno allineati subito.
-- **Non ancora allineato (decisione del proprietario):** profilo di puntualità del fido teorico (`get_fido_teorico_v2` / `coefficiente_comportamento`).
+- **Profilo di pagamento del fido teorico:** dal FM59 fetta 3 usa la stessa regola per riga e gli ultimi 12 mesi (vedi sezione "Profilo di pagamento del fido teorico"); `coefficiente_comportamento` non è stato toccato.
