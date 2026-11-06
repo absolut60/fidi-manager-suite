@@ -217,3 +217,30 @@ export function testiLightReportRischio(lr: Record<string, any> | null | undefin
   const payline = giorni ? { label: ETICHETTE_LIGHT_REPORT.payline, valore: giorni, dettaglio } : null;
   return { fido, payline };
 }
+
+/**
+ * Sezione Cerved compatta (richiesta fido e proposta massiva): solo CGS e fido certificato.
+ * CGS dall'ultimo Light Report, altrimenti dalla fotografia 'score'; fido solo dal Light Report.
+ * Fascia: descrizione Cerved della fotografia 'score' (nessuna traduzione inventata dei codici).
+ * null se non c'è nessun dato: la sezione non compare.
+ */
+export function datiCervedCompatto(
+  lr: Record<string, any> | null | undefined,
+  scores: ScoreCervedVista[] | null | undefined,
+  fidoAttuale: number | null | undefined,
+) {
+  const num = (n: unknown) => (typeof n === "number" && Number.isFinite(n) ? n : null);
+  const cgsFoto = Array.isArray(scores) ? trovaScore(scores, "CGS") : null;
+  const valore = num(lr?.score_cgs?.valore) ?? num(cgsFoto?.valore);
+  const desc = cgsFoto?.categoria_descrizione?.trim();
+  const fascia = desc ? `Affidabilità ${desc.toLowerCase()}` : null;
+  const cert = num(lr?.fido_certificato?.valore);
+  if (valore == null && cert == null) return null;
+  return {
+    valore,
+    fascia,
+    fido: cert == null ? null : `${cert.toLocaleString("it-IT", { maximumFractionDigits: 0 })} €`,
+    fidoLabel: ETICHETTE_LIGHT_REPORT.fidoCertificato,
+    confronto: cert == null ? null : testoConfrontoFido(fidoAttuale, cert),
+  };
+}

@@ -1,3 +1,5 @@
+import { SezioneCervedCompatta } from "@/components/cerved/sezione-cerved-compatta";
+import { useCervedCompattoClienti } from "@/hooks/use-cerved-compatto-clienti";
 import { BadgeMotiviRiga, DettagliRiga } from "@/components/badge-motivi-riga";
 import { chiaveRiferimentoRichiestaMassiva } from "@/lib/chiavi-cache-fido";
 import { useLockRicalcoloFido } from "@/components/ricalcolo-fido-barra";
@@ -197,6 +199,8 @@ export function ProposteFidoMassivoDialog({
     staleTime: 5 * 60_000,
     queryFn: () => fetchFidoTeoricoPerRichiesta(ids, userId),
   });
+  // Sezione Cerved compatta: una lettura batch per tutte le righe (Record, chiave dedicata).
+  const { data: cervedCompatto } = useCervedCompattoClienti(ids, open);
   // FM55: extra approvato ancora protetto (stessa fonte di fetchFidoTeoricoPerRichiesta) → nota di riga.
   const { data: protettiMap } = useQuery({
     queryKey: ["extra-fido-protetti-massivo", [...ids].sort().join(",")],
@@ -573,6 +577,7 @@ export function ProposteFidoMassivoDialog({
             )}
           </span>
         </div>
+        <SezioneCervedCompatta dati={cervedCompatto?.[r.cliente_id]} fidoAttuale={r.fido_attuale} className="w-fit max-w-full" />
         {r.proponibile && (
           <CampoExtraTeorico compatto importo={r.fido_proposto} teorico={r.fido_teorico}
             motivo={r.motivo_extra} onMotivo={(v) => aggiornaMotivoExtra(r.cliente_id, v)} />
@@ -764,6 +769,7 @@ export function ProposteFidoMassivoDialog({
         {r.proponibile && Number(r.fido_proposto) !== Number(r.fido_iniziale) && (
           <Badge variant="outline" className="border-info/40 bg-info/10 text-xs text-info">Modificato</Badge>
         )}
+        <SezioneCervedCompatta dati={cervedCompatto?.[r.cliente_id]} fidoAttuale={r.fido_attuale} className="w-fit max-w-full" />
         {r.proponibile && (
           <CampoExtraTeorico compatto importo={r.fido_proposto} teorico={r.fido_teorico}
             motivo={r.motivo_extra} onMotivo={(v) => aggiornaMotivoExtra(r.cliente_id, v)} />

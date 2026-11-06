@@ -115,3 +115,23 @@ describe("testiLightReportRischio", () => {
     expect(r.payline?.dettaglio).toBe("2 aperte scadute");
   });
 });
+
+import { datiCervedCompatto } from "../src/lib/cerved-presentazione";
+describe("datiCervedCompatto", () => {
+  const scores = [{ codice_score: "CGS", descrizione_score: null, valore: 43, categoria_codice: "CGS_5", categoria_descrizione: "Moderata", pd: 0.06, trend_codice: null, trend_descrizione: null }];
+  it("senza dati Cerved non compare", () => {
+    expect(datiCervedCompatto(null, null, 1000)).toBeNull();
+  });
+  it("Light Report: CGS e fido certificato con confronto", () => {
+    const v = datiCervedCompatto({ score_cgs: { valore: 56 }, fido_certificato: { valore: 262000 } }, null, 65500)!;
+    expect(v.valore).toBe(56);
+    expect(v.fido).toBe("262.000 €");
+    expect(v.confronto).toBe("Il fido MADE è il 25% di quello certificato");
+  });
+  it("solo fotografia score: gauge con fascia, senza fido", () => {
+    const v = datiCervedCompatto(null, scores, 1000)!;
+    expect(v.valore).toBe(43);
+    expect(v.fascia).toBe("Affidabilità moderata");
+    expect(v.fido).toBeNull();
+  });
+});
