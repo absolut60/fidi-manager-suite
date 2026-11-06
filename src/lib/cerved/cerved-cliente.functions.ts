@@ -124,7 +124,16 @@ export const aggiornaCervedCliente = createServerFn({ method: "POST" })
       }
     }
 
+    // Light Report: se c'è un report valido si recupera gratis con il request_id (nessun acquisto).
+    const rep = await reportValido(supabaseAdmin, cli.id);
+    let lightReport: null | Awaited<ReturnType<typeof m.recuperaESalvaLightReport>> = null;
+    if (rep) {
+      lightReport = await m.recuperaESalvaLightReport(rep, ctx);
+      errori.push(...lightReport.errori);
+    }
+
     return {
+      light_report_recuperato: lightReport?.xml_ok ?? false,
       nuovo_collegamento: !esistente,
       id_soggetto: idSoggetto,
       denominazione_cerved: denominazione,
@@ -135,4 +144,118 @@ export const aggiornaCervedCliente = createServerFn({ method: "POST" })
       fido_disponibile: fidoDisponibile,
       errori,
     };
+  });
+
+type Admin = (typeof import("@/integrations/supabase/client.server"))["supabaseAdmin"];
+
+/** Report Light Report ancora valido (scade_il > adesso) del cliente, il più recente. */
+async function reportValido(admin: Admin, clienteId: string) {
+  const { data, error } = await admin.from("cerved_report")
+    .select("id, cliente_id, id_soggetto, request_id, scade_il")
+    .eq("cliente_id", clienteId).gt("scade_il", new Date().toISOString())
+    .order("scade_il", { ascending: false }).limit(1).maybeSingle();
+  if (error) throw new Error("Impossibile leggere il report Cerved del cliente");
+  return data ? { ...data, id_soggetto: Number(data.id_soggetto) } : null;
+}
+
+/** "AAAA-MM-GG…" → "GG/MM/AAAA" (solo stringa). */
+const dataIt = (iso: string) => { const [a, m, g] = iso.slice(0, 10).split("-"); return `${g}/${m}/${a}`; };
+
+/**
+ * Acquisto del Light Report (una volta l'anno). Blocco anti doppio acquisto: con un
+ * report valido non acquista. Permesso: auth_puo_aggiornare_cerved() (gemello puoAggiornareCerved).
+ */
+export const acquistaReportCervedCliente = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { clienteId: string }) => z.object({ clienteId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: puo, error: errPerm } = await context.supabase.rpc("auth_puo_aggiornare_cerved");
+    if (errPerm || !puo) throw new Error("Non hai il permesso di acquistare il report Cerved");
+
+    const { data: cli } = await context.supabase
+      .from("clienti").select("id, partita_iva, codice_gestionale").eq("id", data.clienteId).maybeSingle();
+    if (!cli) throw new Error("Cliente non trovato");
+
+    const m = await import("./cerved.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const utente = context.userId;
+    const ctx = { utenteId: utente, clienteId: cli.id };
+
+    const attivo = await reportValido(supabaseAdmin, cli.id);
+    if (attivo) {
+      return { acquistato: false, messaggio: `Report già attivo fino al ${dataIt(attivo.scade_il)}`, scade_il: attivo.scade_il, errori: [] as string[] };
+    }
+
+    // Soggetto: collegamento esistente o ricerca per P.IVA (e collegamento).
+    const { data: link, error: errLink } = await supabaseAdmin
+      .from("cerved_soggetti").select("id_soggetto").eq("cliente_id", cli.id).maybeSingle();
+    if (errLink) throw new Error("Impossibile leggere il collegamento Cerved del cliente");
+    let idSoggetto: number;
+    if (link) {
+      idSoggetto = Number(link.id_soggetto);
+    } else {
+      const piva = String(cli.partita_iva ?? "").replace(/\D/g, "");
+      if (piva.length !== 11) throw new Error("Il cliente non ha una partita IVA valida: il collegamento a Cerved avviene tramite partita IVA");
+      const r = await m.cercaSoggettoPerPiva(piva, ctx);
+      if (r.esito !== "ok") throw new Error(r.errore ?? "Ricerca su Cerved non riuscita");
+      const scelta = m.scegliAziendaPerPiva(r.risposta, piva);
+      const norm = scelta ? m.normalizzaAziendaCerved(scelta) : null;
+      const id = Number(norm?.id_soggetto);
+      if (!norm?.id_soggetto || !Number.isFinite(id)) throw new Error("Nessuna azienda trovata su Cerved con questa partita IVA");
+      idSoggetto = id;
+      const ora = new Date().toISOString();
+      const { error } = await supabaseAdmin.from("cerved_soggetti").insert({
+        cliente_id: cli.id, id_soggetto: id, partita_iva: piva, denominazione_cerved: norm.denominazione,
+        collegato_da: utente, ultimo_aggiornamento: ora, aggiornato_da: utente,
+      });
+      if (error) throw new Error("Impossibile salvare il collegamento Cerved del cliente");
+      await supabaseAdmin.from("cerved_fotografie").insert({
+        cliente_id: cli.id, id_soggetto: id, tipo: "ricerca", dati: norm as never, chiamata_id: r.chiamata_id, letta_da: utente,
+      });
+    }
+
+    const acq = await m.acquistaLightReport(String(idSoggetto), "XML", cli.codice_gestionale ?? null, ctx);
+    if (acq.esito !== "ok" || !acq.request_id) throw new Error(acq.errore ?? "Acquisto Cerved senza numero richiesta");
+
+    const acquistatoIl = new Date();
+    const scade = new Date(acquistatoIl);
+    scade.setUTCFullYear(scade.getUTCFullYear() + 1);
+    // Cerved può restituire lo stesso request_id per lo stesso soggetto: si rinnova la riga esistente.
+    const { data: riga, error: errIns } = await supabaseAdmin.from("cerved_report").upsert({
+      cliente_id: cli.id, id_soggetto: idSoggetto, request_id: acq.request_id, prodotto: m.PRODOTTO_LIGHT_REPORT,
+      acquistato_il: acquistatoIl.toISOString(), scade_il: scade.toISOString(), acquistato_da: utente,
+      chiamata_acquisto_id: (acq as { chiamata_id?: string | null }).chiamata_id ?? null,
+    }, { onConflict: "request_id" }).select("id, cliente_id, id_soggetto, request_id, scade_il").single();
+    if (errIns || !riga) {
+      console.error("[cerved] cerved_report non salvato", errIns?.message);
+      throw new Error(`Report acquistato (numero richiesta ${acq.request_id}) ma non registrato: avvisa l'amministratore`);
+    }
+
+    const rec = await m.recuperaESalvaLightReport({ ...riga, id_soggetto: Number(riga.id_soggetto) }, ctx);
+    return { acquistato: true, messaggio: `Report attivo fino al ${dataIt(riga.scade_il)}`, scade_il: riga.scade_il, errori: rec.errori };
+  });
+
+/**
+ * URL firmato (10 minuti) del PDF del Light Report. Chi vede il cliente (RLS su clienti e
+ * cerved_report) e ha il permesso Cerved: in FM57 non esiste una regola PDF distinta,
+ * si usa quella di "Collega / Aggiorna" (auth_puo_aggiornare_cerved).
+ */
+export const apriPdfReportCervedCliente = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { clienteId: string }) => z.object({ clienteId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: puo, error: errPerm } = await context.supabase.rpc("auth_puo_aggiornare_cerved");
+    if (errPerm || !puo) throw new Error("Non hai il permesso di aprire il report Cerved");
+    const { data: cli } = await context.supabase.from("clienti").select("id").eq("id", data.clienteId).maybeSingle();
+    if (!cli) throw new Error("Cliente non trovato");
+    const { data: rep, error } = await context.supabase.from("cerved_report")
+      .select("percorso_pdf").eq("cliente_id", cli.id).not("percorso_pdf", "is", null)
+      .order("scade_il", { ascending: false }).limit(1).maybeSingle();
+    if (error) throw new Error("Impossibile leggere il report Cerved del cliente");
+    if (!rep?.percorso_pdf) throw new Error("PDF del report non ancora disponibile");
+    const m = await import("./cerved.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: firmato, error: eUrl } = await supabaseAdmin.storage.from(m.BUCKET_REPORT_CERVED).createSignedUrl(rep.percorso_pdf, 600);
+    if (eUrl || !firmato?.signedUrl) throw new Error("Impossibile aprire il PDF del report");
+    return { url: firmato.signedUrl };
   });
