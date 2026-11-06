@@ -1,7 +1,8 @@
 # FM59 — Esperienza di pagamento, fetta 1
-- [ ] Applicare le tre funzioni SQL, verificare grant e regole con prove SQL.
-- [ ] Aggiornare le regole FM58 con RiBa incluse e prima_pagata.
-- [ ] Avviare e verificare il ricalcolo completo esistente; riportare conteggi finali e SQL verbatim.
+- [x] Applicate le tre funzioni SQL (0152); firme, ordine colonne, grant e corpi applicati verificati; tre funzioni fuori scope con MD5 invariato.
+- [x] Aggiornate le regole FM58 con RiBa incluse e prima_pagata; aggiunte prove in tests/sql/fm59-esperienza-pagamento.sql.
+- [ ] Eseguire le prove SQL: lo strumento di lettura non ha EXECUTE su ritardo_pagamento_riga né esperienza_pagamento_batch; necessario postgres/service_role, senza ampliare i grant.
+- [ ] Avviare e verificare il ricalcolo completo esistente: /import-export, Ricalcola fido teorico ora. Bloccato: --self non trova Andrea, sessione esplicita a.giani richiede approvazione non disponibile; nessun percorso alternativo eseguito. SQL verbatim disponibile; conteggi post-ricalcolo non disponibili.
 
 # FM55 — Privati fuori dal giro fidi
 - [x] Massiva: esclusi i già decisi dai rinnovi da guardare con giaDeciso e riferimento canonico; riepilogo nascosti per scadenza, 8 nuovi test (234 verdi), build OK; nessuna migrazione o ricalcolo. Quattro casi verificati in sola lettura: La Bottega protetta fino al 01/12, gli altri fino al 30/11.
