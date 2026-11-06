@@ -1100,6 +1100,13 @@
       "when": 1793961706858,
       "tag": "0156_fm59_incassi_periodo_codici_pagamento",
       "breakpoints": true
+    },
+    {
+      "idx": 157,
+      "version": "7",
+      "when": 1793981496206,
+      "tag": "0157_fm59_cerved_report",
+      "breakpoints": true
     }
   ]
 }
