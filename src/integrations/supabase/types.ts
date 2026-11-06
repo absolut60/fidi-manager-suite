@@ -7468,6 +7468,7 @@ export type Database = {
           n_pagate_12m: number
           n_pagate_reali: number
           perc_in_ritardo: number
+          prima_pagata: string
           ritardo_medio_12m: number
           ritardo_medio_gg: number
           ritardo_medio_ritardi_12m: number
@@ -8053,6 +8054,7 @@ export type Database = {
           n_pagate: number
           n_pagate_12m: number
           perc_in_ritardo: number
+          prima_pagata: string
           ritardo_medio_12m: number
           ritardo_medio_gg: number
           ritardo_medio_ritardi_12m: number
