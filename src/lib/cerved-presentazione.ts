@@ -130,3 +130,65 @@ export function settoreGaugeCerved(valore: number | null | undefined): number | 
   const v = Math.min(100, Math.max(0, valore));
   return Math.min(7, Math.floor(v / 12.5));
 }
+
+// ===== Light Report (dati da normalizzaLightReportXml) =====
+
+const MESI_BREVI = ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"] as const;
+
+/** "AAAA-MM-GG…" → "GG/MM/AAAA" (solo stringa, niente new Date). */
+export function dataIsoIt(iso: string | null | undefined): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso ?? "");
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : null;
+}
+
+/** Mese "11", anno "2025" → "nov 25". */
+export function meseBreveIt(mese: string | null | undefined, anno: string | null | undefined): string {
+  const n = Number(mese);
+  const m = n >= 1 && n <= 12 ? MESI_BREVI[n - 1] : (mese ?? "?");
+  return anno ? `${m} ${String(anno).slice(-2)}` : m;
+}
+
+export function formattaGiorniCerved(n: number | null | undefined): string | null {
+  return n == null || !Number.isFinite(n) ? null : `${Math.round(n).toLocaleString("it-IT")} gg`;
+}
+
+/** Incidenza dello scaduto già espressa in percentuale da Cerved (es. 12,5 → "12,5%"). */
+export function formattaPercentualeCerved(n: number | null | undefined): string | null {
+  return n == null || !Number.isFinite(n) ? null : `${n.toLocaleString("it-IT", { maximumFractionDigits: 1 })}%`;
+}
+
+export const ETICHETTE_LIGHT_REPORT = {
+  fidoCertificato: "Fido certificato Cerved",
+  payline: "Come paga gli altri fornitori (Payline)",
+  richieste: "Richieste di informazioni (ultimi 12 mesi)",
+  richiesteAiuto: "Quante volte banche e aziende hanno chiesto informazioni su questo cliente",
+  immobili: "Patrimonio immobiliare",
+  eventiStraordinari: "Eventi straordinari",
+  omonimia: "Possibili protesti per omonimia (da verificare)",
+  serieRichieste: [["banche_finanziarie", "Banche e finanziarie"], ["aziende", "Aziende"], ["altri", "Altri"]] as const,
+  conteggiEventi: [["cessioni", "Cessioni"], ["fusioni", "Fusioni"], ["variazioni", "Variazioni"], ["liquidazioni", "Liquidazioni"], ["pignoramenti", "Pignoramenti"]] as const,
+};
+
+/** "Paga in 113 gg · concordati 115 gg". */
+export function testoGiorniPayline(effettivi: number | null | undefined, concordati: number | null | undefined): string | null {
+  const e = formattaGiorniCerved(effettivi);
+  const c = formattaGiorniCerved(concordati);
+  if (!e && !c) return null;
+  return [e ? `Paga in ${e}` : null, c ? `concordati ${c}` : null].filter(Boolean).join(" · ");
+}
+
+/** "Il fido MADE è il 25% di quello certificato"; null se il certificato manca o è zero. */
+export function testoConfrontoFido(fidoMade: number | null | undefined, certificato: number | null | undefined): string | null {
+  if (certificato == null || !Number.isFinite(certificato) || certificato <= 0) return null;
+  const perc = Math.round(((fidoMade ?? 0) / certificato) * 100);
+  return `Il fido MADE è il ${perc.toLocaleString("it-IT")}% di quello certificato`;
+}
+
+/** true se la data ISO dell'evento è negli ultimi 24 mesi rispetto a oggi (AAAA-MM-GG, confronto tra stringhe). */
+export function eventoRecenteCerved(dataIso: string | null | undefined, oggiIso: string): boolean {
+  const m = /^(\d{4})-(\d{2}-\d{2})/.exec(dataIso ?? "");
+  const o = /^(\d{4})-(\d{2}-\d{2})/.exec(oggiIso);
+  if (!m || !o) return false;
+  const limite = `${Number(o[1]) - 2}-${o[2]}`;
+  return `${m[1]}-${m[2]}` >= limite;
+}
