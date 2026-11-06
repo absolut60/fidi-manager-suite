@@ -239,15 +239,37 @@ test("fido: campi reali piatti", () => {
   expect(normalizzaFidoCerved({ dati: { valore_fido: 1 } }).valore).toBeNull();
 });
 
-import { estraiDatiLightReportXml } from "../src/lib/cerved/cerved.server";
-test("Light Report XML: fido certificato da AverageGrantableCredit/CreditLimit/Value e tag dei primi due livelli", () => {
-  const xml = `<?xml version="1.0"?><ns:Report><Header><ReportDate>2026-11-06</ReportDate></Header><AverageGrantableCredit><CreditLimit><Value>25000</Value></CreditLimit></AverageGrantableCredit><Other><Value>9</Value></Other></ns:Report>`;
-  const d = estraiDatiLightReportXml(xml);
-  expect(d.fido_certificato).toBe(25000);
+import { normalizzaLightReportXml } from "../src/lib/cerved/cerved.server";
+import { readFileSync } from "node:fs";
+const XML_DELEO = readFileSync(new URL("./fixtures/cerved-light-report-deleo.xml", import.meta.url), "utf8");
+
+test("Light Report DELEO: fido, CGS, payline, richieste e immobili dai percorsi reali", () => {
+  const d = normalizzaLightReportXml(XML_DELEO);
   expect(d.data_report).toBe("2026-11-06");
-  expect(d.tag_livello_1).toEqual(["Report"]);
-  expect(d.tag_livello_2).toEqual(["Header", "AverageGrantableCredit", "Other"]);
+  expect(d.fido_certificato).toEqual({ valore: 262000, codice: "DF07" });
+  expect(d.score_cgs).toEqual({ valore: 56, codice: "CGS_4" });
+  expect(d.gradings).toEqual({ eventi_negativi: 50, payline: 60, governance: 48 });
+  expect(d.payline?.giorni_effettivi).toBe(113);
+  expect(d.payline?.giorni_concordati).toBe(115);
+  expect(d.payline?.esperienze).toBe(165);
+  expect(d.payline?.score).toBe(6);
+  expect(d.payline?.trend).toBe("P1");
+  expect(d.payline?.trimestri[0]).toEqual({ trimestre: "1", azienda: 120, settore: 80 });
+  expect(d.payline?.trimestri).toHaveLength(4);
+  // Il totale viene da DeliveryAndSummaryDetails, non dal "2" delle aziende collegate.
+  expect(d.richieste_12_mesi.totale).toBe(30);
+  expect(d.richieste_12_mesi.per_mese[0]).toEqual({ mese: "11", anno: "2025", banche_finanziarie: 1, aziende: 0, altri: 2, totale: 3 });
+  expect(d.immobili).toEqual({ valore_stimato: 502183, numero_stimati: 3, terreni: 1, fabbricati: 5 });
+  expect(d.eventi_straordinari?.conteggi.trasferimenti).toBe(2);
+  expect(d.eventi_straordinari?.elenco[0]?.tipo_trasferimento).toBe("COMPRAVENDITA");
+  expect(d.eventi_straordinari?.elenco[0]?.data_atto).toBe("2005-11-03");
+  expect(d.protesti).toEqual({ possibile_omonimia: true, fallimento: false, procedure: false });
 });
-test("Light Report XML senza fido: null", () => {
-  expect(estraiDatiLightReportXml("<R><Other><Value>1</Value></Other></R>").fido_certificato).toBeNull();
+
+test("Light Report: tag con namespace e attributi, campi assenti a null", () => {
+  const d = normalizzaLightReportXml(`<ns:R xmlns:ns="x"><ns:AverageGrantableCredit a="1"><ns:CreditLimit Over="false"><ns:Value>1&#44;5</ns:Value></ns:CreditLimit></ns:AverageGrantableCredit></ns:R>`);
+  expect(d.fido_certificato).toEqual({ valore: 1.5, codice: null });
+  expect(d.score_cgs).toBeNull();
+  expect(d.payline).toBeNull();
+  expect(d.protesti).toEqual({ possibile_omonimia: null, fallimento: null, procedure: null });
 });
