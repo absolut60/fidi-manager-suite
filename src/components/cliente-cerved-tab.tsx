@@ -18,6 +18,7 @@ import {
   testoGiorniPayline, testoConfrontoFido, eventoRecenteCerved,
 } from "@/lib/cerved-presentazione";
 import { VisualizzatorePdf } from "@/components/visualizzatore-pdf";
+import { GaugeCerved } from "@/components/cerved/gauge-cerved";
 import { useLightReportCliente, chiaveLightReportCliente } from "@/hooks/use-light-report-cliente";
 import { useEsperienzaPagamentoCliente, testiEsperienzaPagamento } from "@/hooks/use-esperienza-pagamento";
 import { SemaforoAffidabilitaBadge } from "@/components/pannello-rischio-cliente";
@@ -351,27 +352,6 @@ function Quadratino({ esito }: { esito: EsitoScore }) {
     <span className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-sm text-xs font-bold ${SFONDO_ESITO[esito]}`} aria-hidden>
       {esito === "verde" ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : esito === "neutro" ? "–" : "!"}
     </span>
-  );
-}
-
-// Gauge come nel Light Report: 270° da 225° (basso sinistra) a −45° (basso destra), 8 settori.
-function GaugeCerved({ valore }: { valore: number | null }) {
-  const attivo = settoreGaugeCerved(valore);
-  const pt = (deg: number, r: number) => [100 + r * Math.cos((deg * Math.PI) / 180), 100 - r * Math.sin((deg * Math.PI) / 180)];
-  const ampiezza = 270 / 8;
-  const spazio = 3;
-  return (
-    <svg viewBox="0 0 200 180" className="w-full max-w-64" role="img" aria-label={`Affidabilità ${valore ?? "non disponibile"} su 100`}>
-      {SETTORI_GAUGE_CERVED.map((c, i) => {
-        const on = i === attivo;
-        const r = on ? 80 : 76;
-        const da = 225 - i * ampiezza - spazio / 2;
-        const a = 225 - (i + 1) * ampiezza + spazio / 2;
-        const [x1, y1] = pt(da, r);
-        const [x2, y2] = pt(a, r);
-        return <path key={i} d={`M ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2}`} fill="none" stroke={on ? c.pieno : c.pastello} strokeWidth={on ? 22 : 14} strokeLinecap="butt" />;
-      })}
-    </svg>
   );
 }
 
