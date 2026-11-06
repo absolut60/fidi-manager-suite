@@ -1,10 +1,17 @@
+import { Link } from "@tanstack/react-router";
+import { ExternalLink } from "lucide-react";
 import { GaugeCerved, tintaGaugeCerved } from "@/components/cerved/gauge-cerved";
 import { datiCervedCompatto } from "@/lib/cerved-presentazione";
 import { useCervedCompattoClienti, type CervedCompattoCliente } from "@/hooks/use-cerved-compatto-clienti";
 
 /** Sezione Cerved compatta: gauge CGS piccolo + fido certificato. Nulla se non ci sono dati. */
-export function SezioneCervedCompatta({ dati, fidoAttuale, className = "" }: {
+/**
+ * clienteId abilita "Apri scheda Cerved" (?tab=cerved). nuovaScheda=true apre in una nuova scheda del browser:
+ * usato dentro dialog con dati non salvati (nuova richiesta, proposta massiva) per non perdere il lavoro.
+ */
+export function SezioneCervedCompatta({ dati, fidoAttuale, className = "", clienteId, nuovaScheda = true }: {
   dati: CervedCompattoCliente | null | undefined; fidoAttuale: number | null | undefined; className?: string;
+  clienteId?: string | null; nuovaScheda?: boolean;
 }) {
   const v = datiCervedCompatto(dati?.lightReport, dati?.scores, fidoAttuale);
   if (!v) return null;
@@ -21,6 +28,14 @@ export function SezioneCervedCompatta({ dati, fidoAttuale, className = "" }: {
           {v.fascia && <span className="min-w-0 break-words text-xs font-semibold" style={{ color: tinta }}>{v.fascia}</span>}
         </span>
       )}
+      {clienteId && (
+        <Link to="/clienti/$clienteId" params={{ clienteId }} search={{ tab: "cerved" }}
+          {...(nuovaScheda ? { target: "_blank", rel: "noopener" } : {})}
+          className="ml-auto inline-flex size-10 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground sm:size-8 sm:order-last"
+          title="Apri scheda Cerved" aria-label="Apri scheda Cerved">
+          <ExternalLink className="size-4" />
+        </Link>
+      )}
       {v.fido && (
         <span className="min-w-0 text-xs">
           <span className="text-muted-foreground">{v.fidoLabel} </span>
@@ -33,10 +48,10 @@ export function SezioneCervedCompatta({ dati, fidoAttuale, className = "" }: {
 }
 
 /** Variante per un singolo cliente: stessa lettura batch con un solo id. */
-export function SezioneCervedCompattaCliente({ clienteId, fidoAttuale, className }: {
-  clienteId: string | null | undefined; fidoAttuale: number | null | undefined; className?: string;
+export function SezioneCervedCompattaCliente({ clienteId, fidoAttuale, className, nuovaScheda = true }: {
+  clienteId: string | null | undefined; fidoAttuale: number | null | undefined; className?: string; nuovaScheda?: boolean;
 }) {
   const ids = clienteId ? [clienteId] : [];
   const { data } = useCervedCompattoClienti(ids);
-  return <SezioneCervedCompatta dati={clienteId ? data?.[clienteId] : null} fidoAttuale={fidoAttuale} className={className} />;
+  return <SezioneCervedCompatta dati={clienteId ? data?.[clienteId] : null} fidoAttuale={fidoAttuale} className={className} clienteId={clienteId} nuovaScheda={nuovaScheda} />;
 }

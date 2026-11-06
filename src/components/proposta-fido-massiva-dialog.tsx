@@ -577,7 +577,7 @@ export function ProposteFidoMassivoDialog({
             )}
           </span>
         </div>
-        <SezioneCervedCompatta dati={cervedCompatto?.[r.cliente_id]} fidoAttuale={r.fido_attuale} className="w-fit max-w-full" />
+        <SezioneCervedCompatta dati={cervedCompatto?.[r.cliente_id]} fidoAttuale={r.fido_attuale} clienteId={r.cliente_id} className="w-fit max-w-full" />
         {r.proponibile && (
           <CampoExtraTeorico compatto importo={r.fido_proposto} teorico={r.fido_teorico}
             motivo={r.motivo_extra} onMotivo={(v) => aggiornaMotivoExtra(r.cliente_id, v)} />
@@ -769,7 +769,7 @@ export function ProposteFidoMassivoDialog({
         {r.proponibile && Number(r.fido_proposto) !== Number(r.fido_iniziale) && (
           <Badge variant="outline" className="border-info/40 bg-info/10 text-xs text-info">Modificato</Badge>
         )}
-        <SezioneCervedCompatta dati={cervedCompatto?.[r.cliente_id]} fidoAttuale={r.fido_attuale} className="w-fit max-w-full" />
+        <SezioneCervedCompatta dati={cervedCompatto?.[r.cliente_id]} fidoAttuale={r.fido_attuale} clienteId={r.cliente_id} className="w-fit max-w-full" />
         {r.proponibile && (
           <CampoExtraTeorico compatto importo={r.fido_proposto} teorico={r.fido_teorico}
             motivo={r.motivo_extra} onMotivo={(v) => aggiornaMotivoExtra(r.cliente_id, v)} />

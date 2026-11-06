@@ -387,7 +387,7 @@ function RichiestaDetail() {
         <div className={`min-w-0 space-y-2 ${r.stato !== "bozza" && r.created_by ? "lg:col-span-7" : "lg:col-span-12"}`}>
       {cliente && (
         <Card className="p-2.5">
-          <PannelloRischioCliente cliente={cliente} variant="extended"
+          <PannelloRischioCliente cliente={cliente} variant="extended" cervedStessaPagina
             linkScadenze={
               <Button asChild variant="outline" size="sm" className="h-10 sm:h-7 max-w-full whitespace-normal text-xs px-3">
                 <Link to="/clienti/$clienteId" params={{ clienteId: r.cliente_id }}
