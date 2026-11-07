@@ -7,6 +7,7 @@ import { RecuperoStriscia } from "@/routes/_app/scadenziario";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import type { Azione } from "@/hooks/use-azioni-recupero-cliente";
+import { AuthContext } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/fm60-verifica")({ component: Verifica });
 const clienteId = "00000000-0000-4000-8000-000000000060";
@@ -31,10 +32,10 @@ function Verifica() {
   const [sheet, setSheet] = useState(false);
   const [promesse, setPromesse] = useState(false);
   const contenuto = <><RecuperoStriscia clienteId={clienteId} pianoRientro={{pagate: 1, totali: 4}} aperto={aperto} onToggle={() => setAperto(!aperto)} />{aperto && <ClienteAttivitaRecuperoTab clienteId={clienteId} senzaRiepilogo onApriScheda={() => {}} />}</>;
-  return <QueryClientProvider client={qc}><main className="mx-auto max-w-6xl space-y-4 p-4">
+  return <AuthContext.Provider value={{ session: null, user: null, profilo: null, role: "amministratore", roles: ["amministratore"], hasRole: () => true, hasAnyRole: () => true, loading: false, aggiornaProfilo: async () => {} }}><QueryClientProvider client={qc}><main className="mx-auto max-w-6xl space-y-4 p-4">
     <h1 className="text-xl font-semibold">Scadenziario · Cliente di prova</h1>
     <div className="flex flex-wrap gap-2"><Button onClick={() => setSheet(true)}>Apri Sheet</Button><Button variant="outline" onClick={() => setPromesse(!promesse)}>Scheda Promesse</Button></div>
     {promesse ? <ClientePromesseTab clienteId={clienteId} /> : <section className="space-y-4 border-t pt-4">{contenuto}</section>}
     <Sheet open={sheet} onOpenChange={setSheet}><SheetContent side="bottom" className="h-[90dvh] overflow-y-auto p-4"><SheetHeader className="pr-8 text-left"><SheetTitle>Cliente di prova con ragione sociale lunga</SheetTitle><SheetDescription>5003 · Negozio di prova</SheetDescription></SheetHeader><div className="mt-4 space-y-4">{contenuto}</div></SheetContent></Sheet>
-  </main></QueryClientProvider>;
+  </main></QueryClientProvider></AuthContext.Provider>;
 }
