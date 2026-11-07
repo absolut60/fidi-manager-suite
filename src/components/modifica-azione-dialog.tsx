@@ -224,7 +224,10 @@ export function ModificaAzioneDialog({
 
   return (
     <Dialog open={open} onOpenChange={cambiaApertura}>
-      <DialogContent className="flex h-dvh max-h-dvh w-full max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[92dvh] sm:max-w-xl sm:rounded-lg sm:p-0">
+      <DialogContent
+        className="flex h-dvh max-h-dvh w-full max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[92dvh] sm:max-w-xl sm:rounded-lg sm:p-0"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <DialogHeader className="shrink-0 border-b p-4 pr-10 text-left">
           <DialogTitle className="flex items-center gap-2">
             <Pencil className="size-5" /> Modifica {meta.label}
@@ -251,8 +254,8 @@ export function ModificaAzioneDialog({
                 <Badge variant="outline">Sollecito liv. {azione.livello_sollecito}</Badge>
               )}
             </div>
-            <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <Lock className="size-3" /> non modificabile
+            <span className="text-muted-foreground" title="Tipo non modificabile" aria-label="Tipo non modificabile" role="img">
+              <Lock className="size-3.5" />
             </span>
           </div>
 
