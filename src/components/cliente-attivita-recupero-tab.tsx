@@ -261,9 +261,9 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda, onApriProm
       {/* Azioni dirette */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         {!soloShowroom && <div className="flex min-w-0 gap-2">
-          {puoInviare && <Button size="sm" onClick={() => setSollecitoOpen(true)} className="h-11 min-w-0 flex-1 gap-1.5 sm:flex-none">
-            <Send className="size-4" /> Invia email
-          </Button>}
+          <Button size="sm" onClick={() => openNuova("nota")} className="h-11 min-w-0 flex-1 gap-1.5 sm:flex-none">
+            <StickyNote className="size-4" /> Nota
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="sm" variant="outline" className="h-11 min-w-0 flex-1 gap-1.5 sm:flex-none">
@@ -271,9 +271,9 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda, onApriProm
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
+              {puoInviare && <DropdownMenuItem className="min-h-11" onSelect={() => setSollecitoOpen(true)}><Send /> Invia email</DropdownMenuItem>}
               <DropdownMenuItem className="min-h-11" onSelect={() => openNuova("promemoria")}><Bell /> Promemoria</DropdownMenuItem>
               <DropdownMenuItem className="min-h-11" onSelect={() => openNuova("telefonata")}><Phone /> Telefonata</DropdownMenuItem>
-              <DropdownMenuItem className="min-h-11" onSelect={() => openNuova("nota")}><StickyNote /> Nota</DropdownMenuItem>
               <DropdownMenuItem className="min-h-11" onSelect={() => setPromessaOpen(true)}><HandCoins /> Registra promessa</DropdownMenuItem>
               {puoInviare && <DropdownMenuItem className="min-h-11" onSelect={() => setLetteraOpen(true)}><FileText /> Lettera</DropdownMenuItem>}
             </DropdownMenuContent>
