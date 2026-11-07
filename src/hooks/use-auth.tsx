@@ -44,7 +44,7 @@ type AuthContextValue = {
   aggiornaProfilo: (patch?: Partial<Profilo>) => Promise<void>;
 };
 
-export const AuthContext = createContext<AuthContextValue | null>(null);
+const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);

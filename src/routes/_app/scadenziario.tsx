@@ -1277,7 +1277,7 @@ function ScadenziarioPage() {
               </div>
               {recuperoApertoId === schedaMobile.cliente_id && (
                 <ClienteAttivitaRecuperoTab
-                                senzaRiepilogo
+                  senzaRiepilogo
                   clienteId={schedaMobile.cliente_id}
                   onApriScheda={() => navigate({
                     to: "/clienti/$clienteId",
@@ -1322,7 +1322,7 @@ function fmtDataOra(v: string): string {
   return new Date(v).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-export function RecuperoStriscia({ clienteId, pianoRientro, aperto, onToggle }: {
+function RecuperoStriscia({ clienteId, pianoRientro, aperto, onToggle }: {
   clienteId: string;
   pianoRientro: { pagate: number; totali: number } | null;
   aperto: boolean;
