@@ -5,13 +5,14 @@
  * pdf.js è configurato solo in src/lib/pdfjs.ts; il salvataggio passa da src/lib/salva-file.ts.
  */
 import { useEffect, useRef, useState } from "react";
-import { Download, ExternalLink, FileText, Loader2, Trash2, X } from "lucide-react";
+import { Download, ExternalLink, FileText, Loader2, Mail, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { apriPdf, canvasTuttoBianco } from "@/lib/pdfjs";
-import { salvaFileDaUrl } from "@/lib/salva-file";
+import { salvaFile, salvaFileDaUrl } from "@/lib/salva-file";
+import { leggiEmailAllegato, type EmailAllegato } from "@/lib/email-allegato";
 
 const BUCKET_DEFAULT = "allegati";
 const SCADENZA_URL_S = 600; // 10 minuti
@@ -24,8 +25,9 @@ export function formatBytes(b: number | null | undefined) {
   return `${(b / 1024 / 1024).toFixed(1)} MB`;
 }
 
-export function tipoAllegato(mimeType: string | null | undefined, nomeFile: string): "img" | "pdf" | "altro" {
-  const m = mimeType ?? "";
+export function tipoAllegato(mimeType: string | null | undefined, nomeFile: string): "img" | "pdf" | "email" | "altro" {
+  const m = (mimeType ?? "").toLowerCase();
+  if (/\.(msg|eml)$/i.test(nomeFile) || m === "application/vnd.ms-outlook" || m === "message/rfc822") return "email";
   if (m.startsWith("image/")) return "img";
   if (m === "application/pdf" || /\.pdf$/i.test(nomeFile)) return "pdf";
   return "altro";
@@ -110,17 +112,17 @@ function useInVista<T extends Element>() {
 }
 
 // ---------- UI di base ----------
-function RigaFile({ nomeFile, dimensione, onClick }: { nomeFile: string; dimensione?: number | null; onClick?: () => void }) {
+function RigaFile({ nomeFile, dimensione, onClick, email = false }: { nomeFile: string; dimensione?: number | null; onClick?: () => void; email?: boolean }) {
   return (
-    <button
+    <Button variant="ghost"
       type="button"
       onClick={onClick}
       className="mt-2 flex w-full max-w-full items-center gap-2 rounded-md border bg-background/60 px-2 py-1.5 text-left text-foreground min-h-10"
     >
-      <FileText className="size-4 shrink-0" />
+      {email ? <Mail className="size-4 shrink-0" /> : <FileText className="size-4 shrink-0" />}
       <span className="text-xs break-all line-clamp-2 min-w-0 flex-1">{nomeFile}</span>
       <span className="text-[10px] text-muted-foreground shrink-0">{formatBytes(dimensione)}</span>
-    </button>
+    </Button>
   );
 }
 
@@ -165,7 +167,7 @@ export function MiniaturaAllegato({
   const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
-    if (!visto || tipo === "altro") return;
+    if (!visto || tipo === "altro" || tipo === "email") return;
     let attivo = true;
     (async () => {
       try {
@@ -213,6 +215,8 @@ export function MiniaturaAllegato({
         )
       ) : tipo === "pdf" ? (
         <SchedaPdf mini={mini} errore={errore} nomeFile={nomeFile} dimensione={dimensione} onClick={() => setAperto(true)} />
+      ) : tipo === "email" ? (
+        <RigaFile email nomeFile={nomeFile} dimensione={dimensione} onClick={() => setAperto(true)} />
       ) : (
         <RigaFile nomeFile={nomeFile} dimensione={dimensione} onClick={salvaDiretto} />
       )}
@@ -222,6 +226,7 @@ export function MiniaturaAllegato({
           onOpenChange={setAperto}
           storagePath={storagePath}
           nomeFile={nomeFile}
+          mimeType={mimeType}
           tipo={tipo}
           bucket={bucket}
         />
@@ -250,7 +255,7 @@ export function MiniaturaPdfLocale({ file }: { file: File }) {
 
 // ---------- Visualizzatore ----------
 export function VisualizzatoreAllegato({
-  open, onOpenChange, storagePath, file, nomeFile, tipo, bucket = BUCKET_DEFAULT,
+  open, onOpenChange, storagePath, file, nomeFile, tipo, mimeType, bucket = BUCKET_DEFAULT,
 }: {
   bucket?: string;
   open: boolean;
@@ -259,8 +264,9 @@ export function VisualizzatoreAllegato({
   storagePath?: string;
   /** …oppure file locale scelto ma non ancora caricato. */
   file?: File;
+  mimeType?: string | null;
   nomeFile: string;
-  tipo: "img" | "pdf";
+  tipo: "img" | "pdf" | "email";
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const paginaRef = useRef<HTMLDivElement>(null);
@@ -268,6 +274,9 @@ export function VisualizzatoreAllegato({
   const [caricamento, setCaricamento] = useState(false);
   const [errore, setErrore] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const [email, setEmail] = useState<EmailAllegato | null>(null);
+  const [htmlEmail, setHtmlEmail] = useState<string | null>(null);
+  const [interno, setInterno] = useState<File | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -276,6 +285,7 @@ export function VisualizzatoreAllegato({
     let urlLocale: string | null = null;
     setErrore(false);
     setCaricamento(true);
+    setEmail(null); setHtmlEmail(null); setInterno(null);
 
     (async () => {
       try {
@@ -285,16 +295,34 @@ export function VisualizzatoreAllegato({
             if (!annullato) { setImgUrl(urlLocale); setCaricamento(false); }
             return;
           }
-          const url = await urlFirmatoAllegato(storagePath!, bucket);
+          if (!storagePath) throw new Error("Sorgente mancante");
+          const url = await urlFirmatoAllegato(storagePath, bucket);
           if (!annullato) { setImgUrl(url); setCaricamento(false); }
           return;
         }
         let dati: ArrayBuffer;
         if (file) dati = await file.arrayBuffer();
         else {
-          const res = await fetch(await urlFirmatoAllegato(storagePath!, bucket));
+          if (!storagePath) throw new Error("Sorgente mancante");
+          const res = await fetch(await urlFirmatoAllegato(storagePath, bucket));
           if (!res.ok) throw new Error("fetch");
           dati = await res.arrayBuffer();
+        }
+        if (annullato) return;
+        if (tipo === "email") {
+          const letta = await leggiEmailAllegato(dati, nomeFile, file?.type || mimeType || "");
+          let html: string | null = null;
+          if (letta.corpoHtml) {
+            const { default: DOMPurify } = await import("dompurify");
+            const sicuro = DOMPurify.sanitize(letta.corpoHtml, {
+              WHOLE_DOCUMENT: false,
+              FORBID_TAGS: ["script", "style", "form", "input", "button", "iframe", "object", "embed", "img", "svg", "math", "link", "meta"],
+              FORBID_ATTR: ["href", "src", "srcset", "background", "action", "formaction"],
+            });
+            html = `<!doctype html><html lang="it"><head><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"><style>body{font:14px Arial,sans-serif;margin:12px;overflow-wrap:anywhere}table{max-width:100%}pre{white-space:pre-wrap}</style></head><body>${sicuro}</body></html>`;
+          }
+          if (!annullato) { setEmail(letta); setHtmlEmail(html); setCaricamento(false); }
+          return;
         }
         doc = await apriPdf(dati);
         // attende il montaggio del contenitore nel Dialog
@@ -336,13 +364,14 @@ export function VisualizzatoreAllegato({
       (doc as { destroy?: () => Promise<void> } | null)?.destroy?.().catch(() => {});
       if (paginaRef.current) paginaRef.current.innerHTML = "";
     };
-  }, [open, storagePath, file, tipo, bucket]);
+  }, [open, storagePath, file, tipo, bucket, nomeFile, mimeType]);
 
   async function salva() {
-    if (!storagePath) return;
+    if (!storagePath && !file) return;
     setSalvando(true);
     try {
-      await salvaFileDaUrl(await urlFirmatoAllegato(storagePath, bucket), nomeFile);
+      if (file) await salvaFile(file, nomeFile);
+      else if (storagePath) await salvaFileDaUrl(await urlFirmatoAllegato(storagePath, bucket), nomeFile);
     } catch {
       toast.error("Impossibile scaricare il file");
     } finally {
@@ -361,7 +390,7 @@ export function VisualizzatoreAllegato({
             <DialogTitle className="text-sm font-semibold break-all line-clamp-2" title={nomeFile}>{nomeFile}</DialogTitle>
             <DialogDescription className="sr-only">Anteprima dell'allegato</DialogDescription>
           </div>
-          {file ? (
+          {file && tipo !== "email" ? (
             <DialogClose asChild>
               <Button size="sm" variant="secondary" className="shrink-0 h-10">Chiudi</Button>
             </DialogClose>
@@ -387,7 +416,7 @@ export function VisualizzatoreAllegato({
           {errore && (
             <div className="p-6 text-center text-sm text-destructive">
               <p>Anteprima non disponibile.</p>
-              {!file && (
+              {(!file || tipo === "email") && (
                 <Button size="sm" onClick={salva} disabled={salvando} className="mt-3 gap-1.5 h-10">
                   {salvando ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
                   Scarica
@@ -399,7 +428,35 @@ export function VisualizzatoreAllegato({
             <img src={imgUrl} alt={nomeFile} className="block w-full h-auto rounded-md" />
           )}
           {tipo === "pdf" && <div ref={paginaRef} className="mx-auto w-full" />}
+          {tipo === "email" && email && !errore && (
+            <div className="min-w-0 space-y-4 p-1 sm:p-3">
+              <dl className="grid grid-cols-[3.5rem_minmax(0,1fr)] gap-x-2 gap-y-2 text-sm">
+                <dt className="text-muted-foreground">Oggetto</dt><dd className="break-words font-semibold">{email.oggetto}</dd>
+                <dt className="text-muted-foreground">Da</dt><dd className="break-words">{email.mittente || "—"}</dd>
+                <dt className="text-muted-foreground">A</dt><dd className="break-words">{email.destinatari.a.join(", ") || "—"}</dd>
+                <dt className="text-muted-foreground">CC</dt><dd className="break-words">{email.destinatari.cc.join(", ") || "—"}</dd>
+                <dt className="text-muted-foreground">Data</dt><dd className="break-words">{email.data && !Number.isNaN(Date.parse(email.data)) ? new Date(email.data).toLocaleString("it-IT") : "—"}</dd>
+              </dl>
+              {htmlEmail ? <iframe title="Corpo dell'email" sandbox="" referrerPolicy="no-referrer" srcDoc={htmlEmail} className="h-[55dvh] min-h-60 w-full rounded-md border bg-background" />
+                : <div className="whitespace-pre-wrap break-words border-t pt-3 text-sm">{email.corpoTesto || "(Nessun testo)"}</div>}
+              {email.allegati.length > 0 && <section className="border-t pt-3">
+                <h3 className="mb-2 text-sm font-semibold">Allegati ({email.allegati.length})</h3>
+                <ul className="space-y-2">{email.allegati.map((a, i) => {
+                  const tipoInterno = tipoAllegato(a.mime, a.nome);
+                  return <li key={i} className="flex min-w-0 items-center gap-2 rounded-md border p-2">
+                    <FileText className="size-4 shrink-0" /><span className="min-w-0 flex-1 break-words text-sm">{a.nome}<span className="block text-xs text-muted-foreground">{formatBytes(a.byte.length)}</span></span>
+                    <Button size="icon" variant="ghost" className="size-10 shrink-0" title={tipoInterno === "pdf" || tipoInterno === "img" ? "Apri anteprima" : "Scarica"} aria-label={`${tipoInterno === "pdf" || tipoInterno === "img" ? "Apri anteprima di" : "Scarica"} ${a.nome}`} onClick={async () => {
+                      const locale = new File([new Uint8Array(a.byte)], a.nome, { type: a.mime });
+                      if (tipoInterno === "pdf" || tipoInterno === "img") setInterno(locale);
+                      else try { await salvaFile(locale, a.nome); } catch { toast.error("Impossibile scaricare il file"); }
+                    }}>{tipoInterno === "pdf" || tipoInterno === "img" ? <ExternalLink className="size-4" /> : <Download className="size-4" />}</Button>
+                  </li>;
+                })}</ul>
+              </section>}
+            </div>
+          )}
         </div>
+        {interno && <VisualizzatoreAllegato open onOpenChange={(v) => { if (!v) setInterno(null); }} file={interno} nomeFile={interno.name} tipo={tipoAllegato(interno.type, interno.name) === "pdf" ? "pdf" : "img"} />}
       </DialogContent>
     </Dialog>
   );
@@ -449,7 +506,7 @@ function AzioniStandard({
       )}
       {tipo !== "altro" && (
         <VisualizzatoreAllegato open={aperto} onOpenChange={setAperto} storagePath={storagePath}
-          nomeFile={nomeFile} tipo={tipo} bucket={bucket} />
+          nomeFile={nomeFile} tipo={tipo} mimeType={mimeType} bucket={bucket} />
       )}
     </div>
   );
@@ -461,6 +518,7 @@ function RigaCompatta({
 }: { storagePath: string; nomeFile: string; mimeType?: string | null; dimensione?: number | null; bucket?: string; azioni?: React.ReactNode }) {
   const tipo = tipoAllegato(mimeType, nomeFile);
   const [imgUrl, setImgUrl] = useState<string | null>(null);
+  const [aperto, setAperto] = useState(false);
   useEffect(() => {
     if (tipo !== "img") return;
     let attivo = true;
@@ -473,14 +531,16 @@ function RigaCompatta({
         <img src={imgUrl} alt="" className="size-10 shrink-0 rounded border object-cover" />
       ) : (
         <span className="inline-flex size-10 shrink-0 items-center justify-center rounded border bg-muted/40">
-          <FileText className={tipo === "pdf" ? "size-5 text-destructive" : "size-5"} />
+          {tipo === "email" ? <Mail className="size-5" /> : <FileText className={tipo === "pdf" ? "size-5 text-destructive" : "size-5"} />}
         </span>
       )}
       <div className="min-w-[3.5rem] flex-1">
-        <div className="text-xs font-medium break-all line-clamp-2">{nomeFile}</div>
+        {tipo === "email" ? <Button variant="ghost" className="h-auto min-h-10 w-full justify-start whitespace-normal p-0 text-left text-xs" onClick={() => setAperto(true)} aria-label={`Apri anteprima di ${nomeFile}`}><span className="break-all line-clamp-2">{nomeFile}</span></Button>
+          : <div className="text-xs font-medium break-all line-clamp-2">{nomeFile}</div>}
         {dimensione != null && <div className="text-[10px] text-muted-foreground">{formatBytes(dimensione)}</div>}
       </div>
       {azioni && <div className="ml-auto flex shrink-0 flex-nowrap items-center">{azioni}</div>}
+      {tipo === "email" && <VisualizzatoreAllegato open={aperto} onOpenChange={setAperto} storagePath={storagePath} nomeFile={nomeFile} mimeType={mimeType} tipo="email" bucket={bucket} />}
     </div>
   );
 }
@@ -542,7 +602,7 @@ export function SchedaFileLocale({ file, onRimuovi }: { file: File; onRimuovi: (
       ) : tipo === "pdf" ? (
         <span className="shrink-0"><MiniaturaPdfLocale file={file} /></span>
       ) : (
-        <span className="inline-flex h-14 w-10 shrink-0 items-center justify-center rounded border bg-muted/40"><FileText className="size-4" /></span>
+        <span className="inline-flex h-14 w-10 shrink-0 items-center justify-center rounded border bg-muted/40">{tipo === "email" ? <Mail className="size-4" /> : <FileText className="size-4" />}</span>
       )}
       <span className="min-w-[3.5rem] flex-1">
         <span className="block break-all line-clamp-2">{file.name}</span>

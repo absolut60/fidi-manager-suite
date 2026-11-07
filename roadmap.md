@@ -1,3 +1,7 @@
+# FM60 — Fetta 2: anteprima email allegate
+- [x] Lettore unico MSG/EML e anteprima condivisa sicura (HTML sanitizzato e isolato, risorse remote e immagini CID ignorate), allegati interni e download originale. Nessuna modifica database/storage/permessi/upload.
+- [x] Fixture sintetiche MSG/EML con PDF, 347 test verdi e controlli automatici senza errori; screenshot 375/1280 di entrambe le email e PDF interno, ritorno all'email verificato. Pagina temporanea rimossa. Safari/iPhone fisico e allegati reali non provati.
+
 # FM60 — Rimpaginazione recupero crediti
 - [x] Timeline condivisa, conteggio allegati e modifica nota/promessa senza cambiare permessi.
 - [x] Pulsanti compatti e riepilogo non duplicato nello scadenziario.
