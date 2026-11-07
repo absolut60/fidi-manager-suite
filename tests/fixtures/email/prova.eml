@@ -1,0 +1,53 @@
+Subject: Pratica di prova - documento allegato
+From: Ufficio di prova <ufficio@example.test>
+To: Studio di prova <legale@example.test>
+Cc: Amministrazione <copia@example.test>
+Date: Sat, 07 Nov 2026 09:30:00 +0000
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="===============1302480986464748068=="
+
+--===============1302480986464748068==
+Content-Type: multipart/alternative;
+ boundary="===============1609712782320266763=="
+
+--===============1609712782320266763==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+Buongiorno, in allegato il documento per la pratica di prova.
+
+--===============1609712782320266763==
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+<h2>Conferma ricezione pratica</h2><p>Buongiorno,</p><p>in allegato il docume=
+nto per la pratica di prova.</p><p>Grazie,<br>Ufficio di prova</p>
+
+--===============1609712782320266763==--
+
+--===============1302480986464748068==
+Content-Type: application/pdf
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="documento.pdf"
+MIME-Version: 1.0
+
+JVBERi0xLjcKJYGBgYEKCjYgMCBvYmoKPDwKL0ZpbHRlciAvRmxhdGVEZWNvZGUKL0xlbmd0aCAy
+MDEKPj4Kc3RyZWFtCnicdY/BSkNBDEX3+YpZC9Ikb3IzA6WgfVNcuBHmB0RqqdhFRfx+M89SEJQs
+QpJ7w7lnuu/EadTHgVYP+/ev/efx5fnWuZZc2EtNgtRfSXPqjySLVNJkyTKnfqJ1zthhcsMMQ/OY
+lJFRlZ1dsXNAlHWOrWAbZXDIRTdcgortJvU36jfUOj3R+T+q6llR1FCSyN9UbD9UU1A1ABYM8yCI
+XjHFfBd93OxCOFjGRbQpR5plDra6pBl+uWYLT/wMjKEZn7T9Iv8G8qZJQQplbmRzdHJlYW0KZW5k
+b2JqCgo3IDAgb2JqCjw8Ci9GaWx0ZXIgL0ZsYXRlRGVjb2RlCi9UeXBlIC9PYmpTdG0KL04gNQov
+Rmlyc3QgMjYKL0xlbmd0aCAzNzQKPj4Kc3RyZWFtCnic1VJRS8MwEH7Pr7hHfZCkaZu0Mgbb2irI
+UDZBUXzo2jAqI5E2k/nvvWs7xx7EZylHcnffXb7rfQEIkBBFEIJOIII4lBCDDlOYTBh//PowwB/K
+rekYv2vqDl4RI2AFb4wv3N56CNh0yk7YRenLnduyoQgCAh8RD62r95VpYVLkRSGEFkKoCE0JITM8
+F2gpmkQfczLBO5qORsOYDoUIZ5grBlN6qKF8j43H+hxPxCrCZAM2Sgb/5116Kx96yL/4pFPGl67O
+Sm/gIruWQqogwBIVyzh5ucTf0ZrSu/87XM+/cfbXCc/2TOulJbeGNNBvma9M5/ZthWsnXOEwQ5db
+s/s0vqnKKy3SBHnqJEWN9SWnXKojqRIZq2TM4XP8+X7zbqq+Dbn5wd+sPfEbAhRbmrop5+6AyhT4
+RVJAnMakz5m1zpNie61aj0zJU6N+z8Yhsoyv9xvfuxQMGJ+XnenHOPFEErZydWO3wJ8aO7NdcwxQ
+x2/BVc0tCmVuZHN0cmVhbQplbmRvYmoKCjggMCBvYmoKPDwKL1NpemUgOQovUm9vdCAyIDAgUgov
+SW5mbyAzIDAgUgovRmlsdGVyIC9GbGF0ZURlY29kZQovVHlwZSAvWFJlZgovTGVuZ3RoIDQwCi9X
+IFsgMSAyIDIgXQovSW5kZXggWyAwIDkgXQo+PgpzdHJlYW0KeJwVxLERACAMA7G3wx0tM7D/jCRY
+hYBusyEpOVVa4oB0f34wXbUDbAplbmRzdHJlYW0KZW5kb2JqCgpzdGFydHhyZWYKNzY2CiUlRU9G
+
+--===============1302480986464748068==--
