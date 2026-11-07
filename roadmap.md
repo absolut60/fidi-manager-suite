@@ -1,3 +1,7 @@
+# FM60 — Fetta 2-quater: Buffer nel client reale
+- [ ] Correggere la risoluzione client di Buffer senza cambiare la risoluzione server.
+- [ ] Eseguire test; verificare gli artefatti della compilazione automatica reale e il parser in WebKit/Chromium, se disponibili (nessun harness sostitutivo).
+
 # FM60 — Fetta 2: anteprima email allegate
 - [x] Lettore unico MSG/EML e anteprima condivisa sicura (HTML sanitizzato e isolato, risorse remote e immagini CID ignorate), allegati interni e download originale. Nessuna modifica database/storage/permessi/upload.
 - [x] Fixture sintetiche MSG/EML con PDF, 347 test verdi e controlli automatici senza errori; screenshot 375/1280 di entrambe le email e PDF interno, ritorno all'email verificato. Pagina temporanea rimossa. Safari/iPhone fisico e allegati reali non provati.
