@@ -4,14 +4,14 @@ import { isSoloShowroom } from "@/lib/permessi-showroom";
 // timeline, con scadenza, fatture collegate e badge "Da verificare" in più.
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { useConteggioAllegatiAzioni } from "@/hooks/use-conteggio-allegati-azioni";
 import { HandCoins } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useAzioniRecuperoCliente, useOperatoriAttivita, type Azione } from "@/hooks/use-azioni-recupero-cliente";
 import { giorniDaOggi, isPromessaDaVerificare, isPromessaPagamento, oggiISOLocale } from "@/lib/azioni-recupero-ui";
 import {
-  TimelineItem, eliminaAzioneConAllegati, fmtData, fmtDateTime, fmtEuro, invalidaRecuperoCliente, puoModificareAzione,
+  TimelineItem, fmtData, fmtDateTime, fmtEuro, invalidaRecuperoCliente, puoModificareAzione,
 } from "@/components/cliente-attivita-recupero-tab";
 import { RegistraPromessaDialog } from "@/components/registra-promessa-dialog";
 import { ModificaAzioneDialog, type AzioneModificabile } from "@/components/modifica-azione-dialog";
@@ -19,21 +19,16 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+
 
 export function ClientePromesseTab({ clienteId }: { clienteId: string }) {
   const qc = useQueryClient();
   const { user, roles } = useAuth();
   const { azioni, isLoading } = useAzioniRecuperoCliente(clienteId);
+  const { data: conteggiAllegati } = useConteggioAllegatiAzioni(clienteId, (azioni ?? []).map((a) => a.id));
   const { data: operatori } = useOperatoriAttivita();
   const [nuovaOpen, setNuovaOpen] = useState(false);
   const [editAzione, setEditAzione] = useState<Azione | null>(null);
-  const [deleteAzione, setDeleteAzione] = useState<Azione | null>(null);
-  const [deleting, setDeleting] = useState(false);
-
   const operatoreMap = useMemo(() => {
     const m: Record<string, string> = {};
     for (const o of operatori ?? []) m[o.id] = `${o.nome ?? ""} ${o.cognome ?? ""}`.trim() || "—";
@@ -89,21 +84,6 @@ export function ClientePromesseTab({ clienteId }: { clienteId: string }) {
     qc.invalidateQueries({ queryKey: ["promesse-cliente-fatture", clienteId] });
   }
 
-  async function handleDelete() {
-    if (!deleteAzione || deleting) return;
-    setDeleting(true);
-    try {
-      await eliminaAzioneConAllegati(deleteAzione.id);
-      toast.success("Azione eliminata");
-      setDeleteAzione(null);
-      invalida();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Errore eliminazione");
-    } finally {
-      setDeleting(false);
-    }
-  }
-
   // FM56: showroom in sola lettura sul recupero, nessuna nuova promessa.
   const pulsante = isSoloShowroom(roles as string[]) ? null : (
     <Button size="sm" onClick={() => setNuovaOpen(true)} className="gap-1.5 min-h-10 sm:min-h-9">
@@ -148,7 +128,7 @@ export function ClientePromesseTab({ clienteId }: { clienteId: string }) {
                 onChangeEsito={() => {}}
                 onViewEmail={() => {}}
                 onEdit={() => setEditAzione(a)}
-                onDelete={() => setDeleteAzione(a)}
+                numeroAllegati={conteggiAllegati?.[a.id] ?? 0}
                 extra={
                   <div className="space-y-1 text-sm">
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -181,33 +161,12 @@ export function ClientePromesseTab({ clienteId }: { clienteId: string }) {
         <ModificaAzioneDialog
           key={editAzione.id}
           open={!!editAzione}
-          onOpenChange={(v) => !v && setEditAzione(null)}
+          onOpenChange={(v) => { if (!v) { invalida(); setEditAzione(null); } }}
           azione={editAzione as AzioneModificabile}
           onSaved={invalida}
         />
       )}
 
-      <AlertDialog open={!!deleteAzione} onOpenChange={(v) => !v && !deleting && setDeleteAzione(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Eliminare questa azione?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Promessa di pagamento del {deleteAzione ? fmtDateTime(deleteAzione.data_azione) : ""}.
-              Verranno rimossi anche eventuali allegati collegati (file e righe). L'operazione è irreversibile.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Annulla</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={deleting}
-              onClick={(e) => { e.preventDefault(); void handleDelete(); }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleting ? "Eliminazione…" : "Elimina"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

@@ -34,6 +34,7 @@ import { TIPO_PROMESSA, TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL, testoAzione, tipoAz
 import { TooltipAzioneRecupero } from "@/components/tooltip-azione-recupero";
 import { StadioSollecitoBadge, StadioSollecitoBadgeCompatto } from "@/components/stadio-sollecito-badge";
 import type { StadioSollecito } from "@/lib/escalation-solleciti";
+import { ESITO_AZIONE_COLORE, ESITO_AZIONE_LABEL } from "@/lib/azioni-recupero-ui";
 import { ClienteAttivitaRecuperoTab } from "@/components/cliente-attivita-recupero-tab";
 import { ScadenziarioKpi, DettaglioCoperturaRiga } from "@/components/scadenziario/scadenziario-kpi";
 import { CopertureScadenziario } from "@/components/scadenziario/coperture-scadenziario";
@@ -1198,6 +1199,7 @@ function ScadenziarioPage() {
                             </div>
                             {recuperoApertoId === r.cliente_id && (
                               <ClienteAttivitaRecuperoTab
+                                senzaRiepilogo
                                 clienteId={r.cliente_id}
                                 onApriScheda={() => navigate({
                                   to: "/clienti/$clienteId",
@@ -1267,6 +1269,7 @@ function ScadenziarioPage() {
               </div>
               {recuperoApertoId === schedaMobile.cliente_id && (
                 <ClienteAttivitaRecuperoTab
+                                senzaRiepilogo
                   clienteId={schedaMobile.cliente_id}
                   onApriScheda={() => navigate({
                     to: "/clienti/$clienteId",
@@ -1351,59 +1354,34 @@ function RecuperoStriscia({ clienteId, pianoRientro, aperto, onToggle }: {
   const testoProssima = prossima ? testoAzione(prossima) : null;
 
   return (
-    <div className="border rounded-md p-3 bg-background space-y-3">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="min-w-0">
-          <div className="text-xs text-muted-foreground">Ultima azione fatta</div>
-          {ultimaFatta && UltimaIcon ? (
-            <div className="text-sm break-words">
-              <div className="font-medium flex items-center gap-1.5"><UltimaIcon className="size-4 shrink-0" />{TIPO_AZIONE_LABEL[tipoAzioneVisualizzato(ultimaFatta)] ?? ultimaFatta.tipo}</div>
-              <div className="text-muted-foreground">{fmtDataOra(ultimaFatta.data_azione)}{operatore ? ` · ${operatore}` : ""}</div>
-              {testoUltima && (
-                <p className="mt-1 whitespace-pre-wrap break-words line-clamp-3" title={testoUltima}>{testoUltima}</p>
-              )}
-            </div>
-          ) : <div className="text-sm text-muted-foreground">Nessuna azione</div>}
+    <div className="min-w-0 space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        {!stadioLoading && <StadioSollecitoBadge stadio={stadioRow?.stadio_sollecito ?? 0} data={stadioRow?.stadio_data ?? null} giorni={stadioRow?.stadio_giorni ?? null} />}
+        {pianoRientro && <Badge variant="outline" className={ESITO_AZIONE_COLORE.piano_rientro}>{ESITO_AZIONE_LABEL.piano_rientro} {pianoRientro.pagate}/{pianoRientro.totali}</Badge>}
+        <Badge variant="secondary">{azioni?.length ?? 0} azioni · {daFare.length} da fare</Badge>
+        {inRitardo && <Badge variant="outline" className={ESITO_AZIONE_COLORE.in_ritardo}>{ESITO_AZIONE_LABEL.in_ritardo}</Badge>}
+      </div>
+      <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start">
+        <div className="grid min-w-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="min-w-0">
+            <div className="mb-1 text-xs font-medium text-muted-foreground">Ultima azione</div>
+            {ultimaFatta && UltimaIcon ? <div className="text-sm break-words">
+              <div className="flex items-start gap-1.5"><UltimaIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" /><span>{TIPO_AZIONE_LABEL[tipoAzioneVisualizzato(ultimaFatta)]} · {fmtDataOra(ultimaFatta.data_azione)}{operatore ? ` · ${operatore}` : ""}</span></div>
+              {testoUltima && <p className="mt-1 whitespace-pre-wrap break-words line-clamp-2">{testoUltima}</p>}
+            </div> : <p className="text-sm text-muted-foreground">Nessuna azione</p>}
+          </div>
+          <div className="min-w-0">
+            <div className="mb-1 text-xs font-medium text-muted-foreground">Prossima</div>
+            {prossima ? <div className={`text-sm break-words ${inRitardo ? "text-destructive" : ""}`}>
+              <div>{TIPO_AZIONE_LABEL[tipoAzioneVisualizzato(prossima)]} · {fmtDataOra(prossima.data_azione)}</div>
+              {testoProssima && <p className="mt-1 whitespace-pre-wrap break-words line-clamp-2">{testoProssima}</p>}
+            </div> : <p className="text-sm text-muted-foreground">—</p>}
+          </div>
         </div>
-        <div className="min-w-0">
-          <div className="text-xs text-muted-foreground">Prossima pianificata</div>
-          {prossima ? (
-            <div className={`text-sm break-words ${inRitardo ? "text-destructive" : ""}`}>
-              <div className="font-medium flex flex-wrap items-center gap-1.5">
-                {TIPO_AZIONE_LABEL[tipoAzioneVisualizzato(prossima)] ?? prossima.tipo}
-                {inRitardo && <Badge variant="destructive">In ritardo</Badge>}
-              </div>
-              <div>{fmtDataOra(prossima.data_azione)}</div>
-              {testoProssima && (
-                <p className="mt-1 whitespace-pre-wrap break-words line-clamp-2" title={testoProssima}>{testoProssima}</p>
-              )}
-            </div>
-          ) : <div className="text-sm text-muted-foreground">—</div>}
-        </div>
-        <div className="min-w-0">
-          <div className="text-xs text-muted-foreground">Azioni</div>
-          <div className="text-sm font-medium tabular-nums">{azioni?.length ?? 0} totali · {daFare.length} da fare</div>
-          {!stadioLoading && (
-            <div className="mt-1">
-              <StadioSollecitoBadge
-                stadio={stadioRow?.stadio_sollecito ?? 0}
-                data={stadioRow?.stadio_data ?? null}
-                giorni={stadioRow?.stadio_giorni ?? null}
-              />
-            </div>
-          )}
-          {pianoRientro && (
-            <Badge variant="outline" className="mt-1 text-emerald-600 border-emerald-300">
-              Piano di rientro {pianoRientro.pagate}/{pianoRientro.totali}
-            </Badge>
-          )}
-        </div>
-        <div className="min-w-0 flex flex-col items-start gap-2">
-          <Button type="button" variant="outline" size="sm" className="gap-1.5 min-h-10 max-w-full h-auto whitespace-normal text-left" onClick={(e) => { e.stopPropagation(); onToggle(); }}>
-            {aperto ? <ChevronUp className="size-4 shrink-0" /> : <ChevronDown className="size-4 shrink-0" />}
-            {aperto ? "Nascondi recupero crediti" : "Mostra recupero crediti"}
-          </Button>
-        </div>
+        <Button type="button" variant="outline" size="sm" className="min-h-11 h-auto w-full gap-1.5 whitespace-normal lg:w-auto lg:max-w-60 lg:shrink-0" aria-expanded={aperto} onClick={(e) => { e.stopPropagation(); onToggle(); }}>
+          {aperto ? <ChevronUp className="size-4 shrink-0" /> : <ChevronDown className="size-4 shrink-0" />}
+          {aperto ? "Nascondi recupero crediti" : "Mostra recupero crediti"}
+        </Button>
       </div>
     </div>
   );
