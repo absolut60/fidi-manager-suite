@@ -46,7 +46,7 @@ export async function leggiEmailAllegato(dati: ArrayBuffer, nome: string, mime =
     mittente: indirizzo(email.senderName, email.senderSmtpAddress || email.senderEmail),
     destinatari: { a: destinatari("to"), cc: destinatari("cc") },
     data: email.clientSubmitTime || email.messageDeliveryTime || null,
-    corpoHtml: email.bodyHtml, corpoTesto: email.body,
+    corpoHtml: email.bodyHtml || (email.html ? new TextDecoder(email.internetCodepage === 1252 ? "windows-1252" : "utf-8").decode(email.html) : undefined), corpoTesto: email.body,
     allegati: (email.attachments || []).map((a) => {
       const contenuto = lettore.getAttachment(a);
       return { nome: contenuto.fileName || "Allegato", mime: a.attachMimeTag || "application/octet-stream", byte: new Uint8Array(contenuto.content) };

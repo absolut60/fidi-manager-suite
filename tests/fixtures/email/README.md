@@ -1,0 +1,3 @@
+# Fixture sintetiche FM60
+
+`prova.msg` è generata da zero con msgforge 0.5.0 (strumento temporaneo Python, non dipendenza dell'app); `prova.eml` con EmailMessage della libreria standard Python. Nomi e indirizzi `example.test` sono interamente fittizi. Entrambe contengono lo stesso piccolo PDF generato con pdf-lib, testo, destinatario A e CC e data 07/11/2026 09:30 UTC. Nessun file o metadato proviene da clienti.

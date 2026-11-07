@@ -226,6 +226,7 @@ export function MiniaturaAllegato({
           onOpenChange={setAperto}
           storagePath={storagePath}
           nomeFile={nomeFile}
+          mimeType={mimeType}
           tipo={tipo}
           bucket={bucket}
         />
@@ -517,6 +518,7 @@ function RigaCompatta({
 }: { storagePath: string; nomeFile: string; mimeType?: string | null; dimensione?: number | null; bucket?: string; azioni?: React.ReactNode }) {
   const tipo = tipoAllegato(mimeType, nomeFile);
   const [imgUrl, setImgUrl] = useState<string | null>(null);
+  const [aperto, setAperto] = useState(false);
   useEffect(() => {
     if (tipo !== "img") return;
     let attivo = true;
@@ -533,10 +535,12 @@ function RigaCompatta({
         </span>
       )}
       <div className="min-w-[3.5rem] flex-1">
-        <div className="text-xs font-medium break-all line-clamp-2">{nomeFile}</div>
+        {tipo === "email" ? <Button variant="ghost" className="h-auto min-h-10 w-full justify-start whitespace-normal p-0 text-left text-xs" onClick={() => setAperto(true)} aria-label={`Apri anteprima di ${nomeFile}`}><span className="break-all line-clamp-2">{nomeFile}</span></Button>
+          : <div className="text-xs font-medium break-all line-clamp-2">{nomeFile}</div>}
         {dimensione != null && <div className="text-[10px] text-muted-foreground">{formatBytes(dimensione)}</div>}
       </div>
       {azioni && <div className="ml-auto flex shrink-0 flex-nowrap items-center">{azioni}</div>}
+      {tipo === "email" && <VisualizzatoreAllegato open={aperto} onOpenChange={setAperto} storagePath={storagePath} nomeFile={nomeFile} mimeType={mimeType} tipo="email" bucket={bucket} />}
     </div>
   );
 }
