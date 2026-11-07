@@ -11,7 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
-import { Route as Fm60EmailVerificaRouteImport } from './routes/fm60-email-verifica'
 import { Route as IscrizioneWhatsappRouteImport } from './routes/iscrizione-whatsapp'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as VerificaCodiceRouteImport } from './routes/verifica-codice'
@@ -108,11 +107,6 @@ const IndexRoute = IndexRouteImport.update({
 } as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const Fm60EmailVerificaRoute = Fm60EmailVerificaRouteImport.update({
-  id: '/fm60-email-verifica',
-  path: '/fm60-email-verifica',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IscrizioneWhatsappRoute = IscrizioneWhatsappRouteImport.update({
@@ -577,7 +571,6 @@ const ApiWebhooksD360TokenRoute = ApiWebhooksD360TokenRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/fm60-email-verifica': typeof Fm60EmailVerificaRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
   '/verifica-codice': typeof VerificaCodiceRoute
@@ -669,7 +662,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/fm60-email-verifica': typeof Fm60EmailVerificaRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
   '/verifica-codice': typeof VerificaCodiceRoute
@@ -760,7 +752,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
-  '/fm60-email-verifica': typeof Fm60EmailVerificaRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
   '/verifica-codice': typeof VerificaCodiceRoute
@@ -854,7 +845,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/fm60-email-verifica'
     | '/iscrizione-whatsapp'
     | '/login'
     | '/verifica-codice'
@@ -946,7 +936,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/fm60-email-verifica'
     | '/iscrizione-whatsapp'
     | '/login'
     | '/verifica-codice'
@@ -1036,7 +1025,6 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_app'
-    | '/fm60-email-verifica'
     | '/iscrizione-whatsapp'
     | '/login'
     | '/verifica-codice'
@@ -1130,7 +1118,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
-  Fm60EmailVerificaRoute: typeof Fm60EmailVerificaRoute
   IscrizioneWhatsappRoute: typeof IscrizioneWhatsappRoute
   LoginRoute: typeof LoginRoute
   VerificaCodiceRoute: typeof VerificaCodiceRoute
@@ -1161,13 +1148,6 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AppRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/fm60-email-verifica': {
-      id: '/fm60-email-verifica'
-      path: '/fm60-email-verifica'
-      fullPath: '/fm60-email-verifica'
-      preLoaderRoute: typeof Fm60EmailVerificaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/iscrizione-whatsapp': {
@@ -1996,7 +1976,6 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
-  Fm60EmailVerificaRoute: Fm60EmailVerificaRoute,
   IscrizioneWhatsappRoute: IscrizioneWhatsappRoute,
   LoginRoute: LoginRoute,
   VerificaCodiceRoute: VerificaCodiceRoute,
