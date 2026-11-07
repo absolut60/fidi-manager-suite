@@ -14,6 +14,13 @@ function indirizzo(nome?: string, email?: string) {
   return nome && email && nome !== email ? `${nome} <${email}>` : email || nome || "";
 }
 
+function indirizzoOutlook(nome?: string, smtp?: string, email?: string, modificatore?: string) {
+  const pubblico = (valore?: string) => valore && !/^\/O=/i.test(valore.trim()) ? valore : undefined;
+  const fallback = email && /^\/O=/i.test(email.trim()) && modificatore?.includes("@")
+    ? pubblico(modificatore) : undefined;
+  return indirizzo(nome, pubblico(smtp) || pubblico(email) || fallback);
+}
+
 export async function leggiEmailAllegato(dati: ArrayBuffer, nome: string, mime = ""): Promise<EmailAllegato> {
   if (/\.eml$/i.test(nome) || mime.toLowerCase() === "message/rfc822") {
     const { default: PostalMime } = await import("postal-mime");
@@ -40,14 +47,14 @@ export async function leggiEmailAllegato(dati: ArrayBuffer, nome: string, mime =
   const email = lettore.getFileData();
   if (email.error || email.dataType !== "msg") throw new Error(email.error || "Email non valida");
   const destinatari = (tipo: "to" | "cc") => (email.recipients || [])
-    .filter((r) => r.recipType === tipo).map((r) => indirizzo(r.name, r.smtpAddress || r.email));
+    .filter((r) => r.recipType === tipo).map((r) => indirizzoOutlook(r.name, r.smtpAddress, r.email));
   return {
     oggetto: email.subject || "(Senza oggetto)",
-    mittente: indirizzo(email.senderName, email.senderSmtpAddress || email.senderEmail),
+    mittente: indirizzoOutlook(email.senderName, email.senderSmtpAddress, email.senderEmail, email.lastModifierName),
     destinatari: { a: destinatari("to"), cc: destinatari("cc") },
     data: email.clientSubmitTime || email.messageDeliveryTime || null,
     corpoHtml: email.bodyHtml || (email.html ? new TextDecoder(email.internetCodepage === 1252 ? "windows-1252" : "utf-8").decode(email.html) : undefined), corpoTesto: email.body,
-    allegati: (email.attachments || []).map((a) => {
+    allegati: (email.attachments || []).filter((a) => a.attachmentHidden !== true).map((a) => {
       const contenuto = lettore.getAttachment(a);
       return { nome: contenuto.fileName || "Allegato", mime: a.attachMimeTag || "application/octet-stream", byte: new Uint8Array(contenuto.content) };
     }),
