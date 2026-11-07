@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Pencil, Lock, Mail, Phone, Bell, StickyNote, FileText, Calendar, HandCoins } from "lucide-react";
+import { Pencil, Lock, FileText, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -19,18 +19,13 @@ import {
 import { AllegatiSection } from "@/components/allegati-section";
 import { parseNumeroIt } from "@/lib/numero-it";
 
-import { ESITI_AZIONE as ESITI, isEmailDaInviare, isPromessaPagamento, tipoAzioneVisualizzato, type EsitoAzione as Esito } from "@/lib/azioni-recupero-ui";
+import { ESITO_AZIONE_LABEL, TIPO_AZIONE_LABEL, TIPO_AZIONE_ICON, ESITI_AZIONE as ESITI, isEmailDaInviare, isPromessaPagamento, tipoAzioneVisualizzato, type EsitoAzione as Esito } from "@/lib/azioni-recupero-ui";
 import { SelettoreScadenzeAperte } from "@/components/selettore-scadenze-aperte";
-
-const TIPO_META: Record<string, { label: string; Icon: typeof Mail }> = {
-  email: { label: "email", Icon: Mail },
-  telefonata: { label: "telefonata", Icon: Phone },
-  promemoria: { label: "promemoria", Icon: Bell },
-  promemoria_scadenza: { label: "promemoria scadenza", Icon: Calendar },
-  nota: { label: "nota", Icon: StickyNote },
-  lettera: { label: "lettera", Icon: FileText },
-  promessa_pagamento: { label: "promessa di pagamento", Icon: HandCoins },
-};
+import { SelettoreStatoPromessa } from "@/components/stato-promessa";
+import { eliminaAzioneConAllegati, invalidaRecuperoCliente, puoModificareAzione } from "@/components/cliente-attivita-recupero-tab";
+import { conteggioAllegatiAzioniKey } from "@/hooks/use-conteggio-allegati-azioni";
+import { isSoloShowroom } from "@/lib/permessi-showroom";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 export type AzioneModificabile = {
   id: string;
@@ -46,6 +41,7 @@ export type AzioneModificabile = {
   email_destinatario: string | null;
   livello_sollecito: number | null;
   operatore_id?: string | null;
+  stato_promessa?: string | null;
 };
 
 function toDatetimeLocal(iso: string): string {
@@ -73,7 +69,7 @@ export function ModificaAzioneDialog({
   // Promessa (tipo promessa_pagamento): campi propri, niente esito né cambio tipo.
   const isPromessa = isPromessaPagamento(azione);
   const tipoVis = tipoAzioneVisualizzato(azione);
-  const meta = TIPO_META[tipoVis] ?? { label: tipoVis, Icon: FileText };
+  const meta = { label: (TIPO_AZIONE_LABEL[tipoVis] ?? tipoVis).toLowerCase(), Icon: TIPO_AZIONE_ICON[tipoVis] ?? FileText };
   const TipoIcon = meta.Icon;
   const titoloLabel = meta.label.charAt(0).toUpperCase() + meta.label.slice(1);
 
@@ -82,6 +78,31 @@ export function ModificaAzioneDialog({
     roles.includes("amministrazione") ||
     roles.includes("direzione");
   const canEditAllegati = canManageAll || (azione.operatore_id != null && azione.operatore_id === user?.id);
+  const canDelete = !isSoloShowroom(roles) && puoModificareAzione(roles, user?.id, { operatore_id: azione.operatore_id ?? null });
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [statoPromessa, setStatoPromessa] = useState(azione.stato_promessa);
+
+  function cambiaApertura(v: boolean) {
+    if (saving || deleting) return;
+    if (!v) qc.invalidateQueries({ queryKey: conteggioAllegatiAzioniKey(azione.cliente_id) });
+    onOpenChange(v);
+  }
+
+  async function handleDelete() {
+    if (!canDelete || deleting) return;
+    setDeleting(true);
+    try {
+      await eliminaAzioneConAllegati(azione.id);
+      invalidaRecuperoCliente(qc, azione.cliente_id);
+      toast.success("Azione eliminata");
+      setDeleteOpen(false);
+      onSaved?.();
+      onOpenChange(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore eliminazione");
+    } finally { setDeleting(false); }
+  }
 
   const [dataAzione, setDataAzione] = useState(toDatetimeLocal(azione.data_azione));
   const [esito, setEsito] = useState<Esito>(azione.esito);
@@ -116,6 +137,7 @@ export function ModificaAzioneDialog({
       setDataPromessa(azione.data_promessa_pagamento ?? "");
       setImporto(azione.importo_riferimento != null ? String(azione.importo_riferimento) : "");
       setNote(azione.note ?? "");
+      setStatoPromessa(azione.stato_promessa);
       setSaving(false);
     }
   }, [open, azione]);
@@ -190,6 +212,7 @@ export function ModificaAzioneDialog({
       qc.invalidateQueries({ queryKey: ["recupero-clienti"] });
       qc.invalidateQueries({ queryKey: ["clienti-avvisati"] });
       onSaved?.();
+      qc.invalidateQueries({ queryKey: conteggioAllegatiAzioniKey(azione.cliente_id) });
       onOpenChange(false);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Errore salvataggio";
@@ -200,9 +223,9 @@ export function ModificaAzioneDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !saving && onOpenChange(v)}>
-      <DialogContent className="max-w-xl max-h-[92vh] overflow-y-auto">
-        <DialogHeader>
+    <Dialog open={open} onOpenChange={cambiaApertura}>
+      <DialogContent className="flex h-dvh max-h-dvh w-full max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[92dvh] sm:max-w-xl sm:rounded-lg sm:p-0">
+        <DialogHeader className="shrink-0 border-b p-4 pr-10 text-left">
           <DialogTitle className="flex items-center gap-2">
             <Pencil className="size-5" /> Modifica {meta.label}
           </DialogTitle>
@@ -215,10 +238,10 @@ export function ModificaAzioneDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="min-h-0 flex-1 overflow-y-auto space-y-4 p-4">
           {/* Tipo (sola lettura) */}
-          <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2">
-            <div className="flex items-center gap-2 text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
               <span className="text-muted-foreground">Tipo:</span>
               <Badge variant="secondary" className="gap-1.5">
                 <TipoIcon className="size-3.5" />
@@ -260,8 +283,9 @@ export function ModificaAzioneDialog({
             {!isPromessa && <div className="space-y-1.5">
               <Label>Esito</Label>
               <Select value={esito} onValueChange={(v) => setEsito(v as Esito)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger><SelectValue>{ESITO_AZIONE_LABEL[esito] ?? esito}</SelectValue></SelectTrigger>
                 <SelectContent>
+                  {!ESITI.some((e) => e.value === esito) && <SelectItem value={esito} disabled>{ESITO_AZIONE_LABEL[esito] ?? esito}</SelectItem>}
                   {ESITI.map((e) => (
                     <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>
                   ))}
@@ -280,6 +304,15 @@ export function ModificaAzioneDialog({
                 onChange={(e) => setImporto(e.target.value)}
                 placeholder="0,00"
               />
+            </div>
+          )}
+
+          {isPromessa && (
+            <div className="space-y-1.5">
+              <Label>Stato promessa</Label>
+              <SelettoreStatoPromessa azioneId={azione.id} clienteId={azione.cliente_id} stato={statoPromessa} onChanged={() => {
+                void supabase.from("azioni_recupero").select("stato_promessa").eq("id", azione.id).single().then(({ data }) => { if (data) setStatoPromessa(data.stato_promessa); });
+              }} />
             </div>
           )}
 
@@ -326,14 +359,30 @@ export function ModificaAzioneDialog({
           />
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0 flex-row flex-wrap items-center gap-2 border-t bg-background p-4 sm:space-x-0">
+          {canDelete && <Button variant="ghost" className="mr-auto min-h-11 gap-1.5 text-destructive hover:text-destructive" onClick={() => setDeleteOpen(true)} disabled={saving || deleting}><Trash2 className="size-4" /> Elimina</Button>}
           {footerExtra}
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>Annulla</Button>
-          <Button onClick={handleSave} disabled={saving} className="gap-1.5">
+          <Button variant="ghost" className="min-h-11" onClick={() => cambiaApertura(false)} disabled={saving || deleting}>Annulla</Button>
+          <Button onClick={handleSave} disabled={saving || deleting} className="min-h-11 gap-1.5">
             <Pencil className="size-4" /> {saving ? "Salvataggio…" : "Salva"}
           </Button>
         </DialogFooter>
       </DialogContent>
+      <AlertDialog open={deleteOpen} onOpenChange={(v) => { if (!deleting) setDeleteOpen(v); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare questa azione?</AlertDialogTitle>
+            <AlertDialogDescription asChild><div className="space-y-2">
+              <p>{TIPO_AZIONE_LABEL[tipoVis]} del {new Date(azione.data_azione).toLocaleString("it-IT")}. Verranno rimossi anche eventuali allegati collegati (file e righe). L'operazione è irreversibile.</p>
+              {isSollecito && <p className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm font-medium text-destructive">Questa è un'email di sollecito (livello {azione.livello_sollecito}). Eliminandola lo stadio di escalation del cliente verrà ricalcolato e potrebbe abbassarsi (incidendo anche sull'icona "avvisato"). Procedere?</p>}
+            </div></AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Annulla</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" disabled={deleting} onClick={(e) => { e.preventDefault(); void handleDelete(); }}>{deleting ? "Eliminazione…" : "Elimina"}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

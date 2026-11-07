@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useNomiUtentiQuery } from "@/hooks/use-nomi-utenti";
 import type { TipoAzione } from "@/components/reminder-controls";
+import { azioneInRitardo } from "@/lib/azioni-recupero-ui";
 
 export type EsitoAzione =
   | "da_fare" | "fatto" | "nessuna_risposta" | "contestazione" | "pagato";
@@ -41,7 +42,7 @@ export function useAzioniRecuperoCliente(clienteId: string | null) {
       const { data, error } = await supabase
         .from("azioni_recupero")
         .select("id, cliente_id, operatore_id, tipo, esito, data_azione, data_promessa_pagamento, importo_riferimento, stato_promessa, note, email_oggetto, email_corpo_html, email_destinatario, email_cc, email_bcc, livello_sollecito, created_at")
-        .eq("cliente_id", clienteId!)
+        .eq("cliente_id", clienteId ?? "")
         .order("data_azione", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as Azione[];
@@ -62,7 +63,7 @@ export function useAzioniRecuperoCliente(clienteId: string | null) {
     [concluse],
   );
   const adesso = Date.now();
-  const inRitardo = daFare.some((a) => new Date(a.data_azione).getTime() < adesso);
+  const inRitardo = daFare.some((a) => azioneInRitardo(a, adesso));
 
   return { azioni, isLoading, dataUpdatedAt, daFare, concluse, prossima, ultimaFatta, inRitardo };
 }
