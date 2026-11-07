@@ -1,6 +1,7 @@
-# FM60 — Fetta 2-quater: Buffer nel client reale
-- [x] Plugin pre resolveId: Buffer npm assoluto soltanto nel client; alias precedente conservato negli altri ambienti. 355 test verdi, inclusi i casi SSR/worker; controllo automatico build OK.
-- [ ] Verifica obbligatoria sui chunk client reali in WebKit/Chromium e confronto bundle server prima/dopo: artefatti dist/client e dist/server non esposti nel sandbox; compilazioni manuali del progetto vietate dall'ambiente. Nessun harness sostitutivo usato; tipi non verificati separatamente.
+# FM60 — Fetta 2-quinquies: lettore MSG senza Buffer
+- [x] Lettore CFB fornito portato in TypeScript con import dinamico; msgreader/Buffer diretti, alias/plugin e relativo test rimossi; interfaccia preservata con conteggio nascosti facoltativo.
+- [x] 353 test verdi; fixture MSG/EML e regole X500/0x7FFE verificate con CFB sintetici reali. Processo fresco e moduli reali Vite dev WebKit/Chromium senza Buffer: oggetto corretto, 1 PDF (%PDF-). Controllo automatico build/tipi OK.
+- [x] Artefatti di produzione non accessibili: grafo verificato, cfb → adler-32/crc-32 (nessuna dipendenza), postal-mime → nessuna dipendenza; nessun percorso email verso iconv-lite/safer-buffer (restano transitive di strumenti server). Verifica pubblicata affidata a Claude come richiesto.
 
 # FM60 — Fetta 2: anteprima email allegate
 - [x] Lettore unico MSG/EML e anteprima condivisa sicura (HTML sanitizzato e isolato, risorse remote e immagini CID ignorate), allegati interni e download originale. Nessuna modifica database/storage/permessi/upload.
