@@ -36,6 +36,7 @@ import { StadioSollecitoBadge, StadioSollecitoBadgeCompatto } from "@/components
 import type { StadioSollecito } from "@/lib/escalation-solleciti";
 import { ESITO_AZIONE_COLORE, ESITO_AZIONE_LABEL } from "@/lib/azioni-recupero-ui";
 import { ClienteAttivitaRecuperoTab } from "@/components/cliente-attivita-recupero-tab";
+import { SezioneCervedCompattaCliente } from "@/components/cerved/sezione-cerved-compatta";
 import { ScadenziarioKpi, DettaglioCoperturaRiga } from "@/components/scadenziario/scadenziario-kpi";
 import { CopertureScadenziario } from "@/components/scadenziario/coperture-scadenziario";
 import { ScadenziarioPerStore } from "@/components/scadenziario/scadenziario-per-store";
@@ -1197,25 +1198,17 @@ function ScadenziarioPage() {
                               clienteId={r.cliente_id}
                               onApri={(e: React.MouseEvent) => { e.stopPropagation(); apriCliente(r.cliente_id); }}
                             />
-                            <div className="pt-3 border-t">
-                              <RecuperoStriscia
+                            <RecuperoClienteBlock
                                 clienteId={r.cliente_id}
                                 pianoRientro={r.ha_piano_rientro ? { pagate: r.piano_rate_pagate ?? 0, totali: r.piano_rate_totali ?? 0 } : null}
                                 aperto={recuperoApertoId === r.cliente_id}
                                 onToggle={() => setRecuperoApertoId(recuperoApertoId === r.cliente_id ? null : r.cliente_id)}
-                              />
-                            </div>
-                            {recuperoApertoId === r.cliente_id && (
-                              <ClienteAttivitaRecuperoTab
-                                senzaRiepilogo
-                                clienteId={r.cliente_id}
                                 onApriScheda={() => navigate({
                                   to: "/clienti/$clienteId",
                                   params: { clienteId: r.cliente_id },
                                   search: { tab: "attivita" } as never,
                                 })}
-                              />
-                            )}
+                            />
                           </TableCell>
                         </TableRow>
                       )}
@@ -1267,25 +1260,17 @@ function ScadenziarioPage() {
                 clienteId={schedaMobile.cliente_id}
                 onApri={(e) => { e.stopPropagation(); apriCliente(schedaMobile.cliente_id); }}
               />
-              <div className="pt-3 border-t">
-                <RecuperoStriscia
+              <RecuperoClienteBlock
                   clienteId={schedaMobile.cliente_id}
                   pianoRientro={schedaMobile.ha_piano_rientro ? { pagate: schedaMobile.piano_rate_pagate ?? 0, totali: schedaMobile.piano_rate_totali ?? 0 } : null}
                   aperto={recuperoApertoId === schedaMobile.cliente_id}
                   onToggle={() => setRecuperoApertoId(recuperoApertoId === schedaMobile.cliente_id ? null : schedaMobile.cliente_id)}
-                />
-              </div>
-              {recuperoApertoId === schedaMobile.cliente_id && (
-                <ClienteAttivitaRecuperoTab
-                  senzaRiepilogo
-                  clienteId={schedaMobile.cliente_id}
                   onApriScheda={() => navigate({
                     to: "/clienti/$clienteId",
                     params: { clienteId: schedaMobile.cliente_id },
                     search: { tab: "attivita" } as never,
                   })}
-                />
-              )}
+              />
             </div>
           )}
         </SheetContent>
@@ -1320,6 +1305,22 @@ type RischioData = {
 
 function fmtDataOra(v: string): string {
   return new Date(v).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function RecuperoClienteBlock({ clienteId, pianoRientro, aperto, onToggle, onApriScheda }: {
+  clienteId: string;
+  pianoRientro: { pagate: number; totali: number } | null;
+  aperto: boolean;
+  onToggle: () => void;
+  onApriScheda: () => void;
+}) {
+  return (
+    <section className="min-w-0 space-y-3 rounded-md border border-info/25 border-l-4 border-l-info bg-info/5 p-3 sm:p-4" onClick={(e) => e.stopPropagation()}>
+      <h3 className="flex items-center gap-2 text-xs font-semibold text-muted-foreground"><HandCoins className="size-4 shrink-0 text-info" />Recupero crediti</h3>
+      <RecuperoStriscia clienteId={clienteId} pianoRientro={pianoRientro} aperto={aperto} onToggle={onToggle} />
+      {aperto && <div className="min-w-0 border-t border-info/20 pt-3 [&_.bg-card]:bg-background"><ClienteAttivitaRecuperoTab senzaRiepilogo clienteId={clienteId} onApriScheda={onApriScheda} /></div>}
+    </section>
+  );
 }
 
 function RecuperoStriscia({ clienteId, pianoRientro, aperto, onToggle }: {
@@ -1362,7 +1363,16 @@ function RecuperoStriscia({ clienteId, pianoRientro, aperto, onToggle }: {
   const testoProssima = prossima ? testoAzione(prossima) : null;
 
   return (
-    <div className="min-w-0 space-y-3">
+    <div className="min-w-0 cursor-pointer space-y-3 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" role="button" tabIndex={0} aria-label="Recupero crediti" aria-expanded={aperto}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (e.target instanceof Element && e.target.closest("button, a, input, select, textarea, [role='button']") !== e.currentTarget) return;
+        onToggle();
+      }}
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget || (e.key !== "Enter" && e.key !== " ")) return;
+        e.preventDefault(); e.stopPropagation(); onToggle();
+      }}>
       <div className="flex flex-wrap items-center gap-2">
         {!stadioLoading && <StadioSollecitoBadge stadio={stadioRow?.stadio_sollecito ?? 0} data={stadioRow?.stadio_data ?? null} giorni={stadioRow?.stadio_giorni ?? null} />}
         {pianoRientro && <Badge variant="outline" className={ESITO_AZIONE_COLORE.piano_rientro}>{ESITO_AZIONE_LABEL.piano_rientro} {pianoRientro.pagate}/{pianoRientro.totali}</Badge>}
@@ -1494,6 +1504,8 @@ function ExpandedRischioPanel({ loading, data, onApri, clienteId }: { loading: b
           }
         />
       </div>
+
+      <SezioneCervedCompattaCliente clienteId={clienteId} fidoAttuale={d.fido_gestionale} anteprima={true} />
 
       <div className="pt-1">
         <button type="button" onClick={onApri} className="text-xs text-primary hover:underline font-medium">
