@@ -1,3 +1,7 @@
+# FM60 — Fetta 2: anteprima email allegate
+- [ ] Lettore unico MSG/EML e anteprima condivisa sicura, allegati interni e download originale.
+- [ ] Fixture sintetiche, test e screenshot 375/1280 email con PDF interno; rimuovere pagina temporanea.
+
 # FM60 — Rimpaginazione recupero crediti
 - [x] Timeline condivisa, conteggio allegati e modifica nota/promessa senza cambiare permessi.
 - [x] Pulsanti compatti e riepilogo non duplicato nello scadenziario.
