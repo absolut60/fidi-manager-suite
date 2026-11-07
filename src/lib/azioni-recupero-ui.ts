@@ -18,7 +18,25 @@ export const ESITO_AZIONE_LABEL: Record<string, string> = {
   nessuna_risposta: "Nessuna risposta",
   contestazione: "Contestazione",
   pagato: "Pagato",
+  piano_rientro: "Piano di rientro",
+  in_ritardo: "In ritardo",
 };
+
+/** Colori semantici condivisi da timeline e riepilogo recupero. */
+export const ESITO_AZIONE_COLORE: Record<string, string> = {
+  da_fare: "bg-warning/20 text-warning-foreground border-warning/50",
+  in_ritardo: "bg-destructive/10 text-destructive border-destructive/40",
+  fatto: "bg-info/20 text-info border-info/40",
+  pagato: "bg-success text-success-foreground border-success",
+  nessuna_risposta: "bg-muted text-muted-foreground border-border",
+  contestazione: "bg-destructive/10 text-destructive border-destructive/40",
+  piano_rientro: "bg-success/15 text-success border-success/30",
+};
+
+/** Stesso confronto temporale usato da useAzioniRecuperoCliente. */
+export function azioneInRitardo(a: { esito: string; data_azione: string }, adesso = Date.now()): boolean {
+  return a.esito === "da_fare" && new Date(a.data_azione).getTime() < adesso;
+}
 
 export const TIPO_AZIONE_ICON: Record<string, typeof Mail> = {
   email: Mail,
@@ -35,11 +53,11 @@ export const TIPO_AZIONE_ICON: Record<string, typeof Mail> = {
 export type EsitoAzione = "da_fare" | "fatto" | "nessuna_risposta" | "contestazione" | "pagato";
 
 export const ESITI_AZIONE: { value: EsitoAzione; label: string }[] = [
-  { value: "da_fare", label: "Da fare" },
-  { value: "fatto", label: "Fatto" },
-  { value: "nessuna_risposta", label: "Nessuna risposta" },
-  { value: "contestazione", label: "Contestazione" },
-  { value: "pagato", label: "Pagato" },
+  { value: "da_fare", label: ESITO_AZIONE_LABEL.da_fare },
+  { value: "fatto", label: ESITO_AZIONE_LABEL.fatto },
+  { value: "nessuna_risposta", label: ESITO_AZIONE_LABEL.nessuna_risposta },
+  { value: "contestazione", label: ESITO_AZIONE_LABEL.contestazione },
+  { value: "pagato", label: ESITO_AZIONE_LABEL.pagato },
 ];
 
 /** Testo leggibile di un'azione (fonte unica): nota, altrimenti oggetto email, altrimenti null. */

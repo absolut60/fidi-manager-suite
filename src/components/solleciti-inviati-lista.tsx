@@ -18,8 +18,9 @@ function dataOraIt(v: string): string {
   });
 }
 
-export function SollecitiInviatiLista({ clienteId, onVediEmail }: {
+export function SollecitiInviatiLista({ clienteId, onVediEmail, senzaRiepilogo = false }: {
   clienteId: string;
+  senzaRiepilogo?: boolean;
   onVediEmail: (a: Azione) => void;
 }) {
   const { azioni, isLoading } = useAzioniRecuperoCliente(clienteId);
@@ -65,6 +66,7 @@ export function SollecitiInviatiLista({ clienteId, onVediEmail }: {
 
   if (isLoading) return <Skeleton className="h-8 w-full" />;
   if (n === 0) {
+    if (senzaRiepilogo) return null;
     return <div className="rounded-md border border-border px-3 py-2 text-sm text-muted-foreground">Nessun sollecito inviato</div>;
   }
 

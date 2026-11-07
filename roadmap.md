@@ -1,3 +1,8 @@
+# FM60 — Rimpaginazione recupero crediti
+- [ ] Timeline condivisa, conteggio allegati e modifica nota/promessa senza cambiare permessi.
+- [ ] Pulsanti compatti e riepilogo non duplicato nello scadenziario.
+- [ ] Test, verifica tipi automatica e screenshot 375/1280 di timeline, Sheet e dialog; verifica Promesse/Recupero crediti.
+
 # FM59 — Esperienza di pagamento, fetta 1
 - [x] Applicate le tre funzioni SQL (0152); firme, ordine colonne, grant e corpi applicati verificati; tre funzioni fuori scope con MD5 invariato.
 - [x] Aggiornate le regole FM58 con RiBa incluse e prima_pagata; aggiunte prove in tests/sql/fm59-esperienza-pagamento.sql.
