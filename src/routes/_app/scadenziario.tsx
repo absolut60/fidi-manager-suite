@@ -1318,7 +1318,7 @@ function RecuperoClienteBlock({ clienteId, pianoRientro, aperto, onToggle, onApr
     <section className="min-w-0 space-y-3 rounded-md border border-info/25 border-l-4 border-l-info bg-info/5 p-3 sm:p-4" onClick={(e) => e.stopPropagation()}>
       <h3 className="flex items-center gap-2 text-xs font-semibold text-muted-foreground"><HandCoins className="size-4 shrink-0 text-info" />Recupero crediti</h3>
       <RecuperoStriscia clienteId={clienteId} pianoRientro={pianoRientro} aperto={aperto} onToggle={onToggle} />
-      {aperto && <div className="min-w-0 border-t border-info/20 pt-3 [&_.bg-card]:bg-background"><ClienteAttivitaRecuperoTab senzaRiepilogo clienteId={clienteId} onApriScheda={onApriScheda} /></div>}
+      {aperto && <div className="min-w-0 border-t border-info/20 pt-3 [&_.border-warning\/40]:bg-background"><ClienteAttivitaRecuperoTab senzaRiepilogo clienteId={clienteId} onApriScheda={onApriScheda} /></div>}
     </section>
   );
 }
