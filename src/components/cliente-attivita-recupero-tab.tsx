@@ -1,12 +1,12 @@
 import { isSoloShowroom } from "@/lib/permessi-showroom";
-import { BadgeStatoPromessa, SelettoreStatoPromessa } from "@/components/stato-promessa";
-import { useMemo, useState, type ReactNode } from "react";
+import { BadgeStatoPromessa } from "@/components/stato-promessa";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { QueryClient } from "@tanstack/react-query";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Send, Plus, Bell, Phone, StickyNote, FileText, Activity, Eye, CalendarClock, Paperclip,
-  Pencil, Trash2, HandCoins,
+  ChevronDown, Check, HandCoins,
 } from "lucide-react";
 import { RegistraPromessaDialog } from "@/components/registra-promessa-dialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,15 +18,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { InviaEmailRecuperoDialog } from "@/components/invia-email-recupero-dialog";
 import { CreaAzioneDialog } from "@/components/crea-azione-dialog";
 import { EmailInviataView } from "@/components/email-inviata-view";
@@ -37,6 +33,8 @@ import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
 import type { TipoAzione } from "@/components/reminder-controls";
 import { useAzioniRecuperoCliente, useOperatoriAttivita, useStadioSollecitoCliente, type Azione } from "@/hooks/use-azioni-recupero-cliente";
 import { ESITO_AZIONE_LABEL, TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL, isEmailDaInviare, isPromessaDaVerificare, isPromessaPagamento, testoAzione, tipoAzioneVisualizzato } from "@/lib/azioni-recupero-ui";
+import { useConteggioAllegatiAzioni, conteggioAllegatiAzioniKey } from "@/hooks/use-conteggio-allegati-azioni";
+import { ESITO_AZIONE_COLORE, azioneInRitardo } from "@/lib/azioni-recupero-ui";
 import { STADIO_LABEL, StadioSollecitoBadge } from "@/components/stadio-sollecito-badge";
 
 export function fmtData(v: string) {
@@ -46,24 +44,8 @@ export function fmtData(v: string) {
 
 type Esito = "da_fare" | "fatto" | "nessuna_risposta" | "contestazione" | "pagato";
 
-// Scelte del menu esito (la promessa è un tipo di azione, non un esito).
-const ESITI: { value: Esito; label: string }[] = (
-  ["da_fare", "fatto", "nessuna_risposta", "contestazione", "pagato"] as Esito[]
-).map((value) => ({ value, label: ESITO_AZIONE_LABEL[value] }));
-
 const TIPO_ICON = TIPO_AZIONE_ICON;
 const TIPO_LABEL = TIPO_AZIONE_LABEL;
-
-function esitoBadge(e: Esito) {
-  const map: Record<Esito, string> = {
-    da_fare: "bg-yellow-500 text-white hover:bg-yellow-500",
-    fatto: "bg-blue-500 text-white hover:bg-blue-500",
-    nessuna_risposta: "bg-muted text-muted-foreground hover:bg-muted",
-    contestazione: "bg-destructive text-destructive-foreground hover:bg-destructive",
-    pagato: "bg-emerald-600 text-white hover:bg-emerald-600",
-  };
-  return <Badge className={map[e]}>{ESITO_AZIONE_LABEL[e] ?? e}</Badge>;
-}
 
 export function fmtEuro(v: unknown) {
   const n = Number(v ?? 0);
@@ -81,6 +63,7 @@ export function fmtDateTime(v: unknown) {
 
 /** Invalidazione dopo creazione/modifica/eliminazione di un'azione di recupero (condivisa con la scheda Promesse). */
 export function invalidaRecuperoCliente(qc: QueryClient, clienteId: string) {
+  qc.invalidateQueries({ queryKey: conteggioAllegatiAzioniKey(clienteId) });
   qc.invalidateQueries({ queryKey: ["azioni-recupero-cliente", clienteId] });
   qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
   qc.invalidateQueries({ queryKey: ["azioni-recupero-metrics"] });
@@ -120,7 +103,7 @@ export async function eliminaAzioneConAllegati(azioneId: string): Promise<void> 
   if (error) throw error;
 }
 
-export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda, onApriPromesse }: { clienteId: string; onApriScheda?: () => void; onApriPromesse?: () => void }) {
+export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda, onApriPromesse, senzaRiepilogo = false }: { senzaRiepilogo?: boolean; clienteId: string; onApriScheda?: () => void; onApriPromesse?: () => void }) {
   const qc = useQueryClient();
   const { user, roles } = useAuth();
   const puoInviare = puoInviareComunicazioniRecupero(roles as string[]);
@@ -134,8 +117,6 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda, onApriProm
   const [promessaOpen, setPromessaOpen] = useState(false);
   const [viewEmail, setViewEmail] = useState<Azione | null>(null);
   const [editAzione, setEditAzione] = useState<Azione | null>(null);
-  const [deleteAzione, setDeleteAzione] = useState<Azione | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
   // Operatori (per mostrare nomi) — hook condiviso, stessa queryKey.
   const { data: operatori } = useOperatoriAttivita();
@@ -149,6 +130,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda, onApriProm
 
   // Azioni del cliente (fonte unica condivisa)
   const { azioni, isLoading, daFare, concluse, prossima, ultimaFatta } = useAzioniRecuperoCliente(clienteId);
+  const { data: conteggiAllegati } = useConteggioAllegatiAzioni(clienteId, (azioni ?? []).map((a) => a.id));
   // Stadio sollecito: stessa query/chiave della striscia dello scadenziario.
   const { data: stadioRow, isLoading: stadioLoading } = useStadioSollecitoCliente(clienteId);
   // Ultima promessa: dalle azioni già caricate, data promessa più recente.
@@ -187,22 +169,6 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda, onApriProm
     invalidaRecuperoCliente(qc, clienteId);
   }
 
-  async function handleDelete() {
-    if (!deleteAzione || deleting) return;
-    setDeleting(true);
-    try {
-      await eliminaAzioneConAllegati(deleteAzione.id);
-      toast.success("Azione eliminata");
-      setDeleteAzione(null);
-      invalidateRecupero();
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Errore eliminazione";
-      toast.error(msg);
-    } finally {
-      setDeleting(false);
-    }
-  }
-
   function openNuova(tipo: TipoAzione) {
     setCreaTipo(tipo);
     setCreaOpen(true);
@@ -211,7 +177,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda, onApriProm
   return (
     <div className="space-y-5">
       {/* Mini riepilogo */}
-      <Card className="p-4 space-y-4">
+      {!senzaRiepilogo && <Card className="p-4 space-y-4">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatBlock label="Azioni totali" value={String(azioni?.length ?? 0)} />
           <StatBlock label="Da fare" value={String(daFare.length)} tone="warning" />
@@ -288,45 +254,34 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda, onApriProm
             )}
           </div>
         </div>
-      </Card>
+      </Card>}
 
-      <SollecitiInviatiLista clienteId={clienteId} onVediEmail={setViewEmail} />
+      <SollecitiInviatiLista clienteId={clienteId} onVediEmail={setViewEmail} senzaRiepilogo={senzaRiepilogo} />
 
       {/* Azioni dirette */}
-      <div className="flex flex-wrap items-center gap-2">
-        {puoInviare && (
-          <Button size="sm" onClick={() => setSollecitoOpen(true)} className="gap-1.5">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        {!soloShowroom && <div className="flex min-w-0 gap-2">
+          {puoInviare && <Button size="sm" onClick={() => setSollecitoOpen(true)} className="h-11 min-w-0 flex-1 gap-1.5 sm:flex-none">
             <Send className="size-4" /> Invia email
-          </Button>
-        )}
-        {!soloShowroom && (<>
-        <Button size="sm" variant="outline" onClick={() => openNuova("promemoria")} className="gap-1.5">
-          <Bell className="size-4" /> Nuovo promemoria
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => openNuova("telefonata")} className="gap-1.5">
-          <Phone className="size-4" /> Nuova telefonata
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => openNuova("nota")} className="gap-1.5">
-          <StickyNote className="size-4" /> Nuova nota
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => setPromessaOpen(true)} className="gap-1.5">
-          <HandCoins className="size-4" /> Registra promessa
-        </Button>
-        </>)}
-        {puoInviare && (
-          <Button size="sm" variant="ghost" onClick={() => setLetteraOpen(true)} className="gap-1.5">
-            <FileText className="size-4" /> Lettera
-          </Button>
-        )}
-        {onApriScheda && (
-          <button
-            type="button"
-            onClick={onApriScheda}
-            className="inline-flex min-h-10 items-center text-sm text-primary hover:underline text-left sm:ml-auto"
-          >
-            Apri recupero nella scheda cliente →
-          </button>
-        )}
+          </Button>}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" className="h-11 min-w-0 flex-1 gap-1.5 sm:flex-none">
+                <Plus className="size-4" /> Nuova azione <ChevronDown className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem className="min-h-11" onSelect={() => openNuova("promemoria")}><Bell /> Promemoria</DropdownMenuItem>
+              <DropdownMenuItem className="min-h-11" onSelect={() => openNuova("telefonata")}><Phone /> Telefonata</DropdownMenuItem>
+              <DropdownMenuItem className="min-h-11" onSelect={() => openNuova("nota")}><StickyNote /> Nota</DropdownMenuItem>
+              <DropdownMenuItem className="min-h-11" onSelect={() => setPromessaOpen(true)}><HandCoins /> Registra promessa</DropdownMenuItem>
+              {puoInviare && <DropdownMenuItem className="min-h-11" onSelect={() => setLetteraOpen(true)}><FileText /> Lettera</DropdownMenuItem>}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>}
+        {onApriScheda && <Button variant="link" onClick={onApriScheda} className="h-auto min-h-11 justify-start whitespace-normal px-0 text-left sm:ml-auto">
+          Apri recupero nella scheda cliente →
+        </Button>}
       </div>
 
       <LetteraPdfDialog
@@ -375,7 +330,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda, onApriProm
                     onChangeEsito={(e) => updateEsito(a.id, e)}
                     onViewEmail={() => setViewEmail(a)}
                     onEdit={() => setEditAzione(a)}
-                    onDelete={() => setDeleteAzione(a)}
+                    numeroAllegati={conteggiAllegati?.[a.id] ?? 0}
                   />
                 ))}
               </div>
@@ -397,7 +352,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda, onApriProm
                     onChangeEsito={(e) => updateEsito(a.id, e)}
                     onViewEmail={() => setViewEmail(a)}
                     onEdit={() => setEditAzione(a)}
-                    onDelete={() => setDeleteAzione(a)}
+                    numeroAllegati={conteggiAllegati?.[a.id] ?? 0}
                   />
                 ))}
               </div>
@@ -449,44 +404,12 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda, onApriProm
         <ModificaAzioneDialog
           key={editAzione.id}
           open={!!editAzione}
-          onOpenChange={(v) => !v && setEditAzione(null)}
+          onOpenChange={(v) => { if (!v) { invalidateRecupero(); setEditAzione(null); } }}
           azione={editAzione as AzioneModificabile}
           onSaved={invalidateRecupero}
         />
       )}
 
-      <AlertDialog open={!!deleteAzione} onOpenChange={(v) => !v && !deleting && setDeleteAzione(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Eliminare questa azione?</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-2">
-                <div>
-                  {deleteAzione ? TIPO_LABEL[tipoAzioneVisualizzato(deleteAzione)] : ""} del {deleteAzione ? fmtDateTime(deleteAzione.data_azione) : ""}.
-                  Verranno rimossi anche eventuali allegati collegati (file e righe). L'operazione è irreversibile.
-                </div>
-                {deleteAzione?.tipo === "email" && deleteAzione.livello_sollecito != null && deleteAzione.livello_sollecito > 0 && (
-                  <div className="rounded-md border border-destructive/40 bg-destructive/10 text-destructive p-3 text-sm font-medium">
-                    Questa è un'email di sollecito (livello {deleteAzione.livello_sollecito}).
-                    Eliminandola lo stadio di escalation del cliente verrà ricalcolato e potrebbe abbassarsi
-                    (incidendo anche sull'icona "avvisato"). Procedere?
-                  </div>
-                )}
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Annulla</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => { e.preventDefault(); handleDelete(); }}
-              disabled={deleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleting ? "Eliminazione…" : "Elimina"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
@@ -503,15 +426,7 @@ function StatBlock({ label, value, tone }: { label: string; value: string; tone?
 }
 
 export function TimelineItem({
-  azione,
-  operatoreName,
-  highlight,
-  canEdit,
-  onChangeEsito,
-  onViewEmail,
-  onEdit,
-  onDelete,
-  extra,
+  azione, operatoreName, highlight, canEdit, onChangeEsito, onViewEmail, onEdit, numeroAllegati = 0, extra,
 }: {
   extra?: ReactNode;
   azione: Azione;
@@ -521,119 +436,77 @@ export function TimelineItem({
   onChangeEsito: (e: Esito) => void;
   onViewEmail: () => void;
   onEdit: () => void;
-  onDelete: () => void;
+  numeroAllegati?: number;
 }) {
   const tipoVis = tipoAzioneVisualizzato(azione);
   const promessa = isPromessaPagamento(azione);
   const Icon = TIPO_ICON[tipoVis] ?? Activity;
   const [showAllegati, setShowAllegati] = useState(false);
-  // "Invia ora": stessa regola e stessa finestra ovunque compaia la riga (attività e promesse).
   const { roles } = useAuth();
   const mostraInviaOra = isEmailDaInviare(azione) && puoInviareComunicazioniRecupero(roles);
-  const soloShowroomRiga = isSoloShowroom(roles as string[]);
+  const modificabile = canEdit && !isSoloShowroom(roles as string[]);
   const [inviaOpen, setInviaOpen] = useState(false);
+  const [testoEspanso, setTestoEspanso] = useState(false);
+  const [testoLungo, setTestoLungo] = useState(false);
+  const testoRef = useRef<HTMLParagraphElement>(null);
+  const testo = testoAzione(azione);
+  const ritardo = azioneInRitardo(azione);
+  const statoBadge = ritardo ? "in_ritardo" : azione.esito;
+  const giorniRitardo = Math.floor((Date.now() - new Date(azione.data_azione).getTime()) / 86400000);
+  useEffect(() => {
+    const el = testoRef.current;
+    if (!el || testoEspanso) return;
+    const misura = () => setTestoLungo(el.scrollHeight > el.clientHeight + 1);
+    misura();
+    const observer = new ResizeObserver(misura);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [testo, testoEspanso]);
+
   return (<>
-    <div className={`rounded-md border p-3 ${highlight ? "border-yellow-500/40 bg-yellow-500/5" : "border-border bg-background"}`}>
-      <div className="flex gap-3">
-        <div className={`size-9 rounded-md flex items-center justify-center shrink-0 ${highlight ? "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400" : "bg-muted text-muted-foreground"}`}>
-          <Icon className="size-4" />
+    <div
+      className={`min-w-0 rounded-md border p-3 space-y-2 ${highlight ? "border-warning/40 bg-warning/5" : "border-border bg-background"} ${modificabile ? "cursor-pointer transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" : ""}`}
+      role={modificabile ? "button" : undefined}
+      tabIndex={modificabile ? 0 : undefined}
+      aria-label={modificabile ? `Modifica ${TIPO_LABEL[tipoVis] ?? tipoVis}` : undefined}
+      onClick={modificabile ? onEdit : undefined}
+      onKeyDown={modificabile ? (e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onEdit(); } } : undefined}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2 text-sm font-medium">
+          <Icon className="size-4 shrink-0 text-muted-foreground" />
+          <span className="break-words">{TIPO_LABEL[tipoVis] ?? tipoVis}</span>
         </div>
-        <div className="flex-1 min-w-0 space-y-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium text-sm">{TIPO_LABEL[tipoVis] ?? tipoVis}</span>
-            <span className="text-xs text-muted-foreground">{fmtDateTime(azione.data_azione)}</span>
-            {operatoreName && (
-              <span className="text-xs text-muted-foreground">· {operatoreName}</span>
-            )}
-            {azione.importo_riferimento != null && Number(azione.importo_riferimento) > 0 && (
-              <span className="text-xs text-muted-foreground">· rif. {fmtEuro(azione.importo_riferimento)}</span>
-            )}
-            {azione.tipo === "email" && azione.livello_sollecito != null && azione.livello_sollecito > 0 && (
-              <Badge variant="outline" className="text-[10px] h-5">{STADIO_LABEL[azione.livello_sollecito] ?? `Sollecito ${azione.livello_sollecito}`}</Badge>
-            )}
-          </div>
-          {extra}
-          {azione.note && (
-            <p className="text-sm text-foreground/80 whitespace-pre-wrap line-clamp-3">{azione.note}</p>
-          )}
-          <div className="flex items-center gap-3 flex-wrap">
-            {(azione.tipo === "email" || azione.tipo === "promemoria_scadenza") && azione.email_corpo_html && (
-              <Button variant="link" size="sm" className="h-auto p-0 gap-1 text-xs" onClick={onViewEmail}>
-                <Eye className="size-3" /> Vedi email inviata
-              </Button>
-            )}
-            {mostraInviaOra && (
-              <Button size="sm" className="h-9 gap-1.5 text-xs" onClick={() => setInviaOpen(true)}>
-                <Send className="size-3.5" /> Invia ora
-              </Button>
-            )}
-            <Button
-              variant="link"
-              size="sm"
-              className="h-auto p-0 gap-1 text-xs"
-              onClick={() => setShowAllegati((v) => !v)}
-            >
-              <Paperclip className="size-3" /> {showAllegati ? "Nascondi allegati" : "Allegati"}
-            </Button>
-          </div>
-        </div>
-        <div className="shrink-0 flex flex-col items-end gap-1.5">
-          {/* Promessa: niente esito, solo lo stato (Attiva/Mantenuta/Disattesa/Annullata). */}
-          {promessa ? (
-            <SelettoreStatoPromessa azioneId={azione.id} clienteId={azione.cliente_id} stato={azione.stato_promessa} />
-          ) : (<>
-          {esitoBadge(azione.esito)}
-          {!soloShowroomRiga && (
-          <Select value={azione.esito} onValueChange={(v) => onChangeEsito(v as Esito)}>
-            <SelectTrigger className="h-7 w-[150px] text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {ESITI.map((e) => (
-                <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          )}
-          </>)}
-          {canEdit && (
-            <div className="flex gap-1">
-              <Button size="icon" variant="ghost" className="size-7" onClick={onEdit} title="Modifica">
-                <Pencil className="size-3.5" />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="size-7 text-destructive hover:text-destructive"
-                onClick={onDelete}
-                title="Elimina"
-              >
-                <Trash2 className="size-3.5" />
-              </Button>
-            </div>
-          )}
-        </div>
+        {promessa ? <BadgeStatoPromessa stato={azione.stato_promessa} /> :
+          <Badge variant="outline" className={`shrink-0 ${ESITO_AZIONE_COLORE[statoBadge] ?? ESITO_AZIONE_COLORE.nessuna_risposta}`}>{ESITO_AZIONE_LABEL[statoBadge] ?? statoBadge}</Badge>}
       </div>
-      {showAllegati && (
-        <div className="mt-3 ml-12 border-t pt-3">
-          <AllegatiSection
-            entitaTipo="azione_recupero"
-            entitaId={azione.id}
-            clienteId={azione.cliente_id}
-            canEdit={!soloShowroomRiga}
-            compact
-          />
-        </div>
-      )}
+      <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-xs text-muted-foreground break-words">
+        <span>{fmtDateTime(azione.data_azione)}</span>
+        {operatoreName && <span>· {operatoreName}</span>}
+        {azione.importo_riferimento != null && Number(azione.importo_riferimento) > 0 && <span>· rif. {fmtEuro(azione.importo_riferimento)}</span>}
+        {azione.tipo === "email" && (azione.livello_sollecito ?? 0) > 0 && <Badge variant="outline" className="text-xs">{STADIO_LABEL[azione.livello_sollecito ?? 0] ?? `Sollecito ${azione.livello_sollecito}`}</Badge>}
+      </div>
+      {azione.esito === "da_fare" && <div className="rounded-md bg-warning/10 px-2 py-1.5 text-sm break-words">
+        Previsto per il {fmtDateTime(azione.data_azione)}
+        {ritardo && <span className="text-destructive font-medium"> · in ritardo di {giorniRitardo} gg</span>}
+      </div>}
+      {extra}
+      {testo && <div>
+        <p ref={testoRef} className={`text-sm whitespace-pre-wrap break-words ${testoEspanso ? "" : "line-clamp-3"}`}>{testo}</p>
+        {(testoLungo || testoEspanso) && <Button variant="link" size="sm" className="min-h-10 px-0 text-xs" onClick={(e) => { e.stopPropagation(); setTestoEspanso((v) => !v); }}>
+          {testoEspanso ? "Mostra meno" : "Mostra tutto"}
+        </Button>}
+      </div>}
+      <div className="flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+        {(azione.tipo === "email" || azione.tipo === "promemoria_scadenza") && azione.email_corpo_html && <Button variant="link" size="sm" className="min-h-10 px-0 gap-1 text-xs" onClick={onViewEmail}><Eye className="size-3.5" /> Vedi email inviata</Button>}
+        {mostraInviaOra ? <Button size="sm" className="min-h-10 gap-1.5 text-xs" onClick={() => setInviaOpen(true)}><Send className="size-3.5" /> Invia ora</Button> :
+          azione.tipo !== "email" && azione.esito === "da_fare" && modificabile && <Button size="sm" variant="outline" className="min-h-10 gap-1.5 text-xs" onClick={() => onChangeEsito("fatto")}><Check className="size-3.5" /> Segna fatto</Button>}
+        {numeroAllegati > 0 && <Button variant="link" size="sm" className="min-h-10 px-0 gap-1 text-xs" aria-expanded={showAllegati} onClick={() => setShowAllegati((v) => !v)}><Paperclip className="size-3.5" /> {numeroAllegati} {numeroAllegati === 1 ? "allegato" : "allegati"}</Button>}
+      </div>
+      {showAllegati && numeroAllegati > 0 && <div className="border-t pt-3" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+        <AllegatiSection entitaTipo="azione_recupero" entitaId={azione.id} clienteId={azione.cliente_id} canEdit={false} compact />
+      </div>}
     </div>
-    {mostraInviaOra && (
-      <InviaEmailRecuperoDialog
-        open={inviaOpen}
-        onOpenChange={setInviaOpen}
-        clienteId={azione.cliente_id}
-        modalitaIniziale="modello"
-        azioneEsistenteId={azione.id}
-      />
-    )}
+    {mostraInviaOra && <InviaEmailRecuperoDialog open={inviaOpen} onOpenChange={setInviaOpen} clienteId={azione.cliente_id} modalitaIniziale="modello" azioneEsistenteId={azione.id} />}
   </>);
 }
