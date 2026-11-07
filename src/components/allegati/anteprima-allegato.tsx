@@ -273,6 +273,7 @@ export function VisualizzatoreAllegato({
   const [imgUrl, setImgUrl] = useState<string | null>(null);
   const [caricamento, setCaricamento] = useState(false);
   const [errore, setErrore] = useState(false);
+  const [dettaglioErrore, setDettaglioErrore] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [email, setEmail] = useState<EmailAllegato | null>(null);
   const [htmlEmail, setHtmlEmail] = useState<string | null>(null);
@@ -283,7 +284,9 @@ export function VisualizzatoreAllegato({
     let annullato = false;
     let doc: import("pdfjs-dist").PDFDocumentProxy | null = null;
     let urlLocale: string | null = null;
+    let fase: "download" | "lettura email" | "sanitizzazione" | "pdf" = "download";
     setErrore(false);
+    setDettaglioErrore(null);
     setCaricamento(true);
     setEmail(null); setHtmlEmail(null); setInterno(null);
 
@@ -305,14 +308,16 @@ export function VisualizzatoreAllegato({
         else {
           if (!storagePath) throw new Error("Sorgente mancante");
           const res = await fetch(await urlFirmatoAllegato(storagePath, bucket));
-          if (!res.ok) throw new Error("fetch");
+          if (!res.ok) throw new Error(`Download non riuscito (HTTP ${res.status})`);
           dati = await res.arrayBuffer();
         }
         if (annullato) return;
         if (tipo === "email") {
+          fase = "lettura email";
           const letta = await leggiEmailAllegato(dati, nomeFile, file?.type || mimeType || "");
           let html: string | null = null;
           if (letta.corpoHtml) {
+            fase = "sanitizzazione";
             const { default: DOMPurify } = await import("dompurify");
             const sicuro = DOMPurify.sanitize(letta.corpoHtml, {
               WHOLE_DOCUMENT: false,
@@ -324,6 +329,7 @@ export function VisualizzatoreAllegato({
           if (!annullato) { setEmail(letta); setHtmlEmail(html); setCaricamento(false); }
           return;
         }
+        fase = "pdf";
         doc = await apriPdf(dati);
         // attende il montaggio del contenitore nel Dialog
         await new Promise((r) => requestAnimationFrame(() => r(null)));
@@ -352,9 +358,14 @@ export function VisualizzatoreAllegato({
           if (i === 1 && !annullato) setCaricamento(false);
         }
         if (!annullato) setCaricamento(false);
-      } catch {
+      } catch (error) {
+        console.error("Errore anteprima allegato", { fase, error });
         if (paginaRef.current) paginaRef.current.innerHTML = "";
-        if (!annullato) { setErrore(true); setCaricamento(false); }
+        if (!annullato) {
+          const messaggio = error instanceof Error ? error.message : String(error);
+          setDettaglioErrore(`${fase} — ${messaggio}`);
+          setErrore(true); setCaricamento(false);
+        }
       }
     })();
 
@@ -416,6 +427,7 @@ export function VisualizzatoreAllegato({
           {errore && (
             <div className="p-6 text-center text-sm text-destructive">
               <p>Anteprima non disponibile.</p>
+              {dettaglioErrore && <p className="mt-2 break-words text-xs text-muted-foreground">Dettaglio: {dettaglioErrore}</p>}
               {(!file || tipo === "email") && (
                 <Button size="sm" onClick={salva} disabled={salvando} className="mt-3 gap-1.5 h-10">
                   {salvando ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
@@ -425,7 +437,12 @@ export function VisualizzatoreAllegato({
             </div>
           )}
           {tipo === "img" && imgUrl && !errore && (
-            <img src={imgUrl} alt={nomeFile} className="block w-full h-auto rounded-md" />
+            <img src={imgUrl} alt={nomeFile} className="block w-full h-auto rounded-md" onError={() => {
+              const error = new Error("Immagine non disponibile o formato non supportato");
+              console.error("Errore anteprima allegato", { fase: "download", error });
+              setDettaglioErrore(`download — ${error.message}`);
+              setErrore(true); setCaricamento(false);
+            }} />
           )}
           {tipo === "pdf" && <div ref={paginaRef} className="mx-auto w-full" />}
           {tipo === "email" && email && !errore && (
@@ -438,7 +455,7 @@ export function VisualizzatoreAllegato({
                 <dt className="text-muted-foreground">Data</dt><dd className="break-words">{email.data && !Number.isNaN(Date.parse(email.data)) ? new Date(email.data).toLocaleString("it-IT") : "—"}</dd>
               </dl>
               {htmlEmail ? <iframe title="Corpo dell'email" sandbox="" referrerPolicy="no-referrer" srcDoc={htmlEmail} className="h-[55dvh] min-h-60 w-full rounded-md border bg-background" />
-                : <div className="whitespace-pre-wrap break-words border-t pt-3 text-sm">{email.corpoTesto || "(Nessun testo)"}</div>}
+                : <div className="whitespace-pre-wrap break-words border-t pt-3 text-sm">{email.corpoTesto || "(Testo non disponibile)"}</div>}
               {email.allegati.length > 0 && <section className="border-t pt-3">
                 <h3 className="mb-2 text-sm font-semibold">Allegati ({email.allegati.length})</h3>
                 <ul className="space-y-2">{email.allegati.map((a, i) => {
