@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Pencil, Lock, Mail, Phone, Bell, StickyNote, FileText, Calendar, HandCoins, Trash2 } from "lucide-react";
+import { Pencil, Lock, FileText, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import {

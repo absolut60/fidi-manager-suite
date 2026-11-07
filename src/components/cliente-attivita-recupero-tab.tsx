@@ -2,10 +2,10 @@ import { isSoloShowroom } from "@/lib/permessi-showroom";
 import { BadgeStatoPromessa } from "@/components/stato-promessa";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { QueryClient } from "@tanstack/react-query";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  Send, Plus, Bell, Phone, StickyNote, FileText, Activity, Eye, CalendarClock, Paperclip,
+  Send, Plus, Bell, Phone, StickyNote, FileText, Activity, Eye, Paperclip,
   ChevronDown, Check, HandCoins,
 } from "lucide-react";
 import { RegistraPromessaDialog } from "@/components/registra-promessa-dialog";

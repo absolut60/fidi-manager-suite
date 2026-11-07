@@ -1,4 +1,5 @@
 # Architecture rules
+- Share recovery UI/counts to prevent per-row queries.
 
 - The credit-review perimeter uses isPrivatoFido/isSedeCentraleFido and the SQL clienti-row cliente_privato_fido overload to exclude private clients and the central store before preset pagination/count/selection; the text overload remains fiscal-only. Alert reads and refresh share this perimeter, and bulk inputs exclude the central store even before recalculation, so stale published rules cannot reintroduce it.
 
