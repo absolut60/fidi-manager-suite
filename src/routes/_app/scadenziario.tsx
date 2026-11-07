@@ -42,6 +42,14 @@ import { ScadenziarioPerStore } from "@/components/scadenziario/scadenziario-per
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export const Route = createFileRoute("/_app/scadenziario")({
+  head: () => ({ meta: [
+    { title: "Scadenziario clienti | FidiManager MADE" },
+    { name: "description", content: "Scadenze, coperture e attività di recupero crediti dei clienti MADE." },
+    { property: "og:title", content: "Scadenziario clienti | FidiManager MADE" },
+    { property: "og:description", content: "Scadenze, coperture e attività di recupero crediti dei clienti MADE." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: ScadenziarioPage,
 });
 
@@ -1314,7 +1322,7 @@ function fmtDataOra(v: string): string {
   return new Date(v).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-function RecuperoStriscia({ clienteId, pianoRientro, aperto, onToggle }: {
+export function RecuperoStriscia({ clienteId, pianoRientro, aperto, onToggle }: {
   clienteId: string;
   pianoRientro: { pagate: number; totali: number } | null;
   aperto: boolean;
