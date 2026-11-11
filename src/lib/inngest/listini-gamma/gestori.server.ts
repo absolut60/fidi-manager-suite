@@ -1,15 +1,10 @@
-import type * as XLSX from "xlsx";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import {
-  trovaFoglioFornitori,
-  parseFornitoriGammaSheet,
-  trovaFoglioArticoli,
-  parseArticoliGammaSheet,
-  type FornitoreGammaRow,
-  type AnomaliaFornitoreFile,
-  type ArticoloGammaRow,
-  type AnomaliaArticoloFile,
-} from "../parsers.server";
+import type {
+  FornitoreGammaRow,
+  AnomaliaFornitoreFile,
+  ArticoloGammaRow,
+  AnomaliaArticoloFile,
+} from "@/lib/listini-gamma-parser";
 
 /** Solo i metodi dell'API step usati dai gestori (step.run memoizzato). */
 export type StepApi = {
@@ -19,35 +14,23 @@ export type StepApi = {
 export type ContestoGestore = {
   step: StepApi;
   importazioneId: string;
-  /** Numero di lotti già preparati nello step "parse-<chiave>" (dimensione = gestore.lotto). */
+  /** Numero di pacchetti già caricati dal browser in _staging/<importazioneId>/. */
   lotti: number;
-  meta: Record<string, unknown>;
   leggiLotto: <T>(i: number) => Promise<T[]>;
   leggiAnomalie: <T>() => Promise<T[]>;
   leggiCodici: <T>() => Promise<T[]>;
+  leggiMeta: () => Promise<Record<string, unknown>>;
   /** Salva l'avanzamento del foglio (in uno step con id stabile). */
   avanzamento: (lotto: number, lotti: number, conteggi: Record<string, number>) => Promise<void>;
 };
 
 /**
- * Gestore di un foglio del file MADE_ARTICOLI_LISTINI_PQ.xlsx.
- * Aggiungere un foglio = aggiungere un gestore a GESTORI_LISTINI_GAMMA.
+ * Esecutore di un foglio del file MADE_ARTICOLI_LISTINI_PQ.xlsx: lavora solo sui JSON di
+ * staging preparati dal browser (lettura in listini-gamma-parser, PREPARATORI_LISTINI_GAMMA,
+ * stessa chiave). Il server non apre mai lo xlsx di questo import.
  */
 export type GestoreFoglio = {
   chiave: string;
-  etichetta: string;
-  /** Righe per lotto: l'orchestratore salva lo staging già diviso così. */
-  lotto: number;
-  trovaFoglio: (wb: XLSX.WorkBook) => { nome: string; sheet: XLSX.WorkSheet } | null;
-  /** Eseguito una sola volta nello step "parse-<chiave>", che legge solo questo foglio. */
-  prepara: (sheet: XLSX.WorkSheet) => {
-    righe: unknown[];
-    righeLette: number;
-    anomalie: unknown[];
-    /** Codici presenti nel file (per la disattivazione degli assenti). */
-    codici: Array<string | number>;
-    meta: Record<string, unknown>;
-  };
   /** Step del foglio (id con prefisso = chiave). Ritorna i conteggi finali. */
   esegui: (ctx: ContestoGestore) => Promise<Record<string, number>>;
 };
@@ -72,19 +55,6 @@ async function scriviAnomalie(importazioneId: string, prefisso: string, righe: R
 
 const gestoreFornitori: GestoreFoglio = {
   chiave: "fornitori",
-  etichetta: "Fornitori",
-  lotto: 500,
-  trovaFoglio: trovaFoglioFornitori,
-  prepara: (sheet) => {
-    const r = parseFornitoriGammaSheet(sheet);
-    return {
-      righe: r.rows.map(({ riga: _riga, ...resto }) => resto),
-      righeLette: r.righeLette,
-      anomalie: r.anomalie,
-      codici: r.rows.map((x) => x.codice_gestionale),
-      meta: {},
-    };
-  },
   esegui: async ({ step, importazioneId, lotti, leggiLotto, leggiAnomalie, leggiCodici, avanzamento }) => {
     await step.run("fornitori-anomalie", async () => {
       const anomalie = await leggiAnomalie<AnomaliaFornitoreFile>();
@@ -143,20 +113,7 @@ const gestoreFornitori: GestoreFoglio = {
 
 const gestoreArticoli: GestoreFoglio = {
   chiave: "articoli",
-  etichetta: "Articoli",
-  lotto: 1000,
-  trovaFoglio: trovaFoglioArticoli,
-  prepara: (sheet) => {
-    const r = parseArticoliGammaSheet(sheet);
-    return {
-      righe: r.rows.map(({ riga: _riga, ...resto }) => resto),
-      righeLette: r.righeLette,
-      anomalie: r.anomalie,
-      codici: r.rows.map((x) => x.codice),
-      meta: { marche: r.marche },
-    };
-  },
-  esegui: async ({ step, importazioneId, lotti, meta, leggiLotto, leggiAnomalie, leggiCodici, avanzamento }) => {
+  esegui: async ({ step, importazioneId, lotti, leggiMeta, leggiLotto, leggiAnomalie, leggiCodici, avanzamento }) => {
     await step.run("articoli-anomalie", async () => {
       const anomalie = await leggiAnomalie<AnomaliaArticoloFile>();
       await scriviAnomalie(
@@ -177,6 +134,7 @@ const gestoreArticoli: GestoreFoglio = {
     });
 
     const marche = await step.run("articoli-marche", async () => {
+      const meta = await leggiMeta();
       const elenco = (meta.marche ?? []) as Array<{ codice: string; descrizione: string | null }>;
       if (!elenco.length) return 0;
       const { data, error } = await supabaseAdmin.rpc("import_marche_gamma", { _righe: elenco as never });
@@ -213,5 +171,5 @@ const gestoreArticoli: GestoreFoglio = {
   },
 };
 
-/** Ordine fisso: articoli DOPO fornitori (serve fornitori aggiornati per il fornitore preferenziale). */
+/** Esecutori per chiave; l'ordine fisso è quello di PREPARATORI_LISTINI_GAMMA. */
 export const GESTORI_LISTINI_GAMMA: GestoreFoglio[] = [gestoreFornitori, gestoreArticoli];

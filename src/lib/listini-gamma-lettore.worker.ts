@@ -1,4 +1,3 @@
-/// <reference lib="webworker" />
 import { preparaFileListiniGamma } from "./listini-gamma-parser";
 
 /** Web Worker: legge MADE_ARTICOLI_LISTINI_PQ.xlsx senza bloccare la pagina. */
