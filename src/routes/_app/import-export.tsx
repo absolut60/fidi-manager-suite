@@ -1069,8 +1069,8 @@ function ArticoliListiniGammaImportCard() {
       </h2>
       <p className="text-xs text-muted-foreground mb-4">
         Carica <span className="font-medium">MADE_ARTICOLI_LISTINI_PQ.xlsx</span>: un solo file aggiorna tutti i fogli
-        riconosciuti (oggi: fornitori e articoli con listini). I fornitori inseriti a mano non vengono toccati. Puoi chiudere la pagina:
-        l'import prosegue da solo.
+        riconosciuti (oggi: fornitori e articoli con listini). I fornitori inseriti a mano non vengono toccati. Il file viene letto
+        qui nella pagina: tienila aperta fino a "Import avviato"; dopo puoi chiuderla, l'import prosegue da solo.
       </p>
       {bg.isPending && bg.fase ? (
         <div className="mb-4 flex items-center gap-2 rounded-md border bg-muted/30 p-3 text-sm">
