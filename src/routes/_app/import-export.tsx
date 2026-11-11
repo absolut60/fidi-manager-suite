@@ -1183,6 +1183,7 @@ function ArticoliListiniGammaImportCard() {
         invalid={[]}
         result={null}
         action={
+          <>
           <Button
             className="w-full gap-1.5"
             disabled={!file || !preparato || !preparato.manifest.fogli.length || lettura !== "pronto" || bg.isPending || bg.inProgress || altroInCorso}
@@ -1200,6 +1201,7 @@ function ArticoliListiniGammaImportCard() {
               C'è già un import articoli/listini in corso: attendi che finisca.
             </p>
           )}
+          </>
         }
       />
     </Card>
