@@ -4,6 +4,8 @@ import type {
   AnomaliaFornitoreFile,
   ArticoloGammaRow,
   AnomaliaArticoloFile,
+  AnomaliaChiaveFile,
+  DepositoGammaRow,
 } from "@/lib/listini-gamma-parser";
 
 /** Solo i metodi dell'API step usati dai gestori (step.run memoizzato). */
@@ -171,5 +173,119 @@ const gestoreArticoli: GestoreFoglio = {
   },
 };
 
+
+/* ---------------------------------------------- DEPOSITI / GIACENZE / ART-FORN (fetta 3A) */
+
+const TESTO_ANOMALIA: Record<AnomaliaChiaveFile["tipo"], string> = {
+  codice_mancante: "Riga scartata: codice mancante",
+  chiave_duplicata: "Chiave ripetuta nel file: tenuta l'ultima riga",
+  valore_non_valido: "Riga scartata: valore non valido",
+};
+
+function anomalieChiave(prefisso: string, campo: string, a: AnomaliaChiaveFile[]) {
+  return a.map((x) => ({
+    codice_gestionale: x.codice,
+    ragione_sociale: x.dettaglio,
+    tipo_anomalia: `${prefisso}${x.tipo}`,
+    campo,
+    valore_attuale: `riga ${x.riga}`,
+    valore_nuovo: TESTO_ANOMALIA[x.tipo],
+  }));
+}
+
+const gestoreDepositi: GestoreFoglio = {
+  chiave: "depositi",
+  esegui: async ({ step, importazioneId, lotti, leggiLotto, leggiAnomalie }) => {
+    // Un solo step: anomalie + upsert (89 righe, retry-safe).
+    return step.run("depositi-import", async () => {
+      await scriviAnomalie(importazioneId, "deposito_", anomalieChiave("deposito_", "deposito", await leggiAnomalie<AnomaliaChiaveFile>()));
+      const righe: Omit<DepositoGammaRow, "riga">[] = [];
+      for (let i = 0; i < lotti; i++) righe.push(...(await leggiLotto<Omit<DepositoGammaRow, "riga">>(i)));
+      if (!righe.length) return { inseriti: 0, aggiornati: 0, sede_senza_negozio: 0 };
+      const { data, error } = await supabaseAdmin.rpc("import_depositi_gamma", { _righe: righe as never });
+      if (error) throw new Error(`depositi: ${error.message}`);
+      const d = (data ?? {}) as Record<string, number>;
+      return { inseriti: d.inseriti ?? 0, aggiornati: d.aggiornati ?? 0, sede_senza_negozio: d.sede_senza_negozio ?? 0 };
+    });
+  },
+};
+
+/**
+ * Foglio "fotografia" a lotti: upsert con importazione_id, poi chiusura che cancella le righe
+ * di import precedenti. La chiusura parte SOLO se c'era almeno una riga e tutti i lotti sono
+ * riusciti (un lotto fallito lancia l'errore e il foglio si ferma prima della chiusura).
+ */
+function gestoreFotografia(o: {
+  chiave: string; prefisso: string; campo: string; rpcLotto: string; rpcChiudi: string;
+  anomaliaScarto?: (s: Record<string, unknown>) => Record<string, unknown>;
+  extra: string[];
+}): GestoreFoglio {
+  return {
+    chiave: o.chiave,
+    esegui: async ({ step, importazioneId, lotti, leggiLotto, leggiAnomalie, avanzamento }) => {
+      await step.run(`${o.chiave}-anomalie`, async () => {
+        await scriviAnomalie(importazioneId, o.prefisso, anomalieChiave(o.prefisso, o.campo, await leggiAnomalie<AnomaliaChiaveFile>()));
+      });
+      const tot: Record<string, number> = { inseriti: 0, aggiornati: 0, ...Object.fromEntries(o.extra.map((k) => [k, 0])) };
+      for (let li = 0; li < lotti; li++) {
+        const r = await step.run(`${o.chiave}-lotto-${String(li).padStart(3, "0")}`, async () => {
+          const slice = await leggiLotto<Record<string, unknown>>(li);
+          const { data, error } = await supabaseAdmin.rpc(o.rpcLotto as never, { _righe: slice, _importazione: importazioneId } as never);
+          if (error) throw new Error(`${o.chiave} lotto ${li + 1}/${lotti}: ${error.message}`);
+          const d = (data ?? {}) as Record<string, unknown>;
+          const scarti = Array.isArray(d.deposito_inesistente) ? (d.deposito_inesistente as Record<string, unknown>[]) : [];
+          if (o.anomaliaScarto) {
+            // Anomalie del lotto: prefisso dedicato per lotto, così il retry le riscrive senza doppioni.
+            await scriviAnomalie(importazioneId, `${o.prefisso}deposito_inesistente_l${String(li).padStart(3, "0")}`, scarti.map(o.anomaliaScarto).map((a) => ({ ...a, tipo_anomalia: `${o.prefisso}deposito_inesistente_l${String(li).padStart(3, "0")}` })));
+          }
+          const out: Record<string, number> = { inseriti: Number(d.inseriti ?? 0), aggiornati: Number(d.aggiornati ?? 0) };
+          for (const k of o.extra) out[k] = k === "deposito_inesistente" ? scarti.length : Number(d[k] ?? 0);
+          return out;
+        });
+        for (const [k, v] of Object.entries(r)) tot[k] = (tot[k] ?? 0) + v;
+        await avanzamento(li + 1, lotti, { ...tot });
+      }
+      const rimossi = await step.run(`${o.chiave}-chiudi`, async () => {
+        if (!lotti || tot.inseriti + tot.aggiornati === 0) return 0; // nessuna riga valida: non cancellare nulla
+        const { data, error } = await supabaseAdmin.rpc(o.rpcChiudi as never, { _importazione: importazioneId } as never);
+        if (error) throw new Error(`${o.chiave} chiusura: ${error.message}`);
+        return (data as number | null) ?? 0;
+      });
+      return { ...tot, rimossi };
+    },
+  };
+}
+
+const gestoreGiacenze = gestoreFotografia({
+  chiave: "giacenze",
+  prefisso: "giacenza_",
+  campo: "deposito",
+  rpcLotto: "import_giacenze_gamma_lotto",
+  rpcChiudi: "chiudi_giacenze_gamma",
+  extra: ["non_in_catalogo", "deposito_inesistente"],
+  anomaliaScarto: (s) => ({
+    codice_gestionale: s.articolo_codice,
+    ragione_sociale: `Deposito ${String(s.deposito_codice)}`,
+    campo: "deposito",
+    valore_attuale: String(s.deposito_codice),
+    valore_nuovo: "Riga scartata: deposito non presente nell'elenco depositi",
+  }),
+});
+
+const gestoreArticoliFornitori = gestoreFotografia({
+  chiave: "articoli_fornitori",
+  prefisso: "articolo_fornitore_",
+  campo: "codice_fornitore",
+  rpcLotto: "import_articoli_fornitori_gamma_lotto",
+  rpcChiudi: "chiudi_articoli_fornitori_gamma",
+  extra: ["non_in_catalogo", "fornitore_sconosciuto"],
+});
+
 /** Esecutori per chiave; l'ordine fisso è quello di PREPARATORI_LISTINI_GAMMA. */
-export const GESTORI_LISTINI_GAMMA: GestoreFoglio[] = [gestoreFornitori, gestoreArticoli];
+export const GESTORI_LISTINI_GAMMA: GestoreFoglio[] = [
+  gestoreFornitori,
+  gestoreArticoli,
+  gestoreDepositi,
+  gestoreGiacenze,
+  gestoreArticoliFornitori,
+];

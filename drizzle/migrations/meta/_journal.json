@@ -1135,6 +1135,13 @@
       "when": 1794426551175,
       "tag": "0161_fm61_articoli_gamma_catalogo",
       "breakpoints": true
+    },
+    {
+      "idx": 162,
+      "version": "7",
+      "when": 1794430045387,
+      "tag": "0162_fm61_depositi_giacenze_articoli_fornitori",
+      "breakpoints": true
     }
   ]
 }

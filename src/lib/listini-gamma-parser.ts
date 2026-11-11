@@ -392,6 +392,183 @@ export function parseArticoliGammaSheet(sheet: XLSX.WorkSheet): {
 }
 
 /* ============================================================================
+ * DEPOSITI, GIACENZE_DEPOSITO, ARTICOLI_FORNITORI (Gamma) — FM61 fetta 3A
+ * ============================================================================ */
+
+type RigaGrezza = Record<string, unknown> & { __row: number };
+
+/** Righe di un foglio: intestazione = prima riga che contiene `chiaveIntestazione` (normalizzata). */
+function righeFoglioConIntestazione(sheet: XLSX.WorkSheet, chiaveIntestazione: string, whitelist: Record<string, string>): Array<Record<string, unknown> & { __row: number }> {
+  const m = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", blankrows: true });
+  const hi = m.findIndex((r) => (r ?? []).some((c) => normalize(String(c ?? "")) === chiaveIntestazione));
+  if (hi < 0) return [];
+  const campi = (m[hi] ?? []).map((c) => whitelist[normalize(String(c ?? ""))] ?? null);
+  const out: RigaGrezza[] = [];
+  for (let i = hi + 1; i < m.length; i++) {
+    const row = m[i] ?? [];
+    if (!row.some((c) => String(c ?? "").trim() !== "")) continue;
+    const o: Record<string, unknown> = {};
+    campi.forEach((c, j) => { if (c) o[c] = row[j] ?? ""; });
+    out.push(Object.assign(o, { __row: i + 1 }));
+  }
+  return out;
+}
+
+const foglioPerNome = (nome: string) => (nomi: string[]) => nomi.find((x) => x.trim().toUpperCase() === nome) ?? null;
+export const nomeFoglioDepositi = foglioPerNome("DEPOSITI");
+export const nomeFoglioGiacenze = foglioPerNome("GIACENZE_DEPOSITO");
+export const nomeFoglioArticoliFornitori = foglioPerNome("ARTICOLI_FORNITORI");
+
+export type AnomaliaChiaveFile = {
+  riga: number;
+  tipo: "codice_mancante" | "chiave_duplicata" | "valore_non_valido";
+  codice: string | null;
+  dettaglio: string | null;
+};
+
+export const DEPOSITI_HEADERS: Record<string, string> = {
+  deposito: "codice",
+  descrizione: "descrizione",
+  "codice sede": "codice_sede",
+  "sede in gamma": "sede_gamma",
+  tipo: "tipo",
+  "conta in disponibilita sede": "conta_disponibilita",
+};
+
+export type DepositoGammaRow = {
+  riga: number;
+  codice: string;
+  descrizione: string | null;
+  codice_sede: number | null;
+  sede_gamma: number | null;
+  tipo: string | null;
+  conta_disponibilita: "si" | "no" | "logistica_comune";
+};
+
+/** "Si" → si, "No" → no, "Logistica comune" → logistica_comune; altro → null (anomalia). */
+export function contaDisponibilitaGamma(v: unknown): DepositoGammaRow["conta_disponibilita"] | null {
+  const s = normalize(String(v ?? ""));
+  if (s === "si" || s === "sì") return "si";
+  if (s === "no") return "no";
+  if (s === "logistica comune") return "logistica_comune";
+  return null;
+}
+
+function intGamma(v: unknown): number | null {
+  const n = numeroGamma(v);
+  return n == null || !Number.isInteger(n) ? null : n;
+}
+
+export function parseDepositiGammaSheet(sheet: XLSX.WorkSheet) {
+  const grezze = righeFoglioConIntestazione(sheet, "deposito", DEPOSITI_HEADERS);
+  const anomalie: AnomaliaChiaveFile[] = [];
+  const perCodice = new Map<string, DepositoGammaRow>();
+  for (const g of grezze) {
+    const codice = toStr(g.codice);
+    if (!codice) { anomalie.push({ riga: g.__row, tipo: "codice_mancante", codice: null, dettaglio: toStr(g.descrizione) }); continue; }
+    const conta = contaDisponibilitaGamma(g.conta_disponibilita);
+    if (!conta) {
+      anomalie.push({ riga: g.__row, tipo: "valore_non_valido", codice, dettaglio: `Conta in disponibilita sede: ${toStr(g.conta_disponibilita) ?? "(vuoto)"}` });
+      continue;
+    }
+    const riga: DepositoGammaRow = {
+      riga: g.__row, codice, descrizione: toStr(g.descrizione),
+      codice_sede: intGamma(g.codice_sede), sede_gamma: intGamma(g.sede_gamma), tipo: toStr(g.tipo), conta_disponibilita: conta,
+    };
+    const prec = perCodice.get(codice);
+    if (prec) { anomalie.push({ riga: prec.riga, tipo: "chiave_duplicata", codice, dettaglio: prec.descrizione }); perCodice.delete(codice); }
+    perCodice.set(codice, riga);
+  }
+  return { rows: [...perCodice.values()], anomalie, righeLette: grezze.length };
+}
+
+export const GIACENZE_HEADERS: Record<string, string> = {
+  codice: "articolo_codice",
+  deposito: "deposito_codice",
+  giacenza: "giacenza",
+  "impegnato clienti": "impegnato_clienti",
+  "ordinato fornitori": "ordinato_fornitori",
+  disponibilita: "disponibilita",
+  "aggiornato il": "aggiornato_gamma",
+};
+
+export type GiacenzaGammaRow = {
+  riga: number;
+  articolo_codice: string;
+  deposito_codice: string;
+  giacenza: number | null;
+  impegnato_clienti: number | null;
+  ordinato_fornitori: number | null;
+  /** Calcolata da Gamma (Giacenza − Impegnato + Ordinato): salvata com'è. */
+  disponibilita: number | null;
+  aggiornato_gamma: string | null;
+};
+
+export function parseGiacenzeGammaSheet(sheet: XLSX.WorkSheet) {
+  const grezze = righeFoglioConIntestazione(sheet, "codice", GIACENZE_HEADERS);
+  const anomalie: AnomaliaChiaveFile[] = [];
+  const perChiave = new Map<string, GiacenzaGammaRow>();
+  for (const g of grezze) {
+    const art = toStr(g.articolo_codice);
+    const dep = toStr(g.deposito_codice);
+    if (!art || !dep) {
+      anomalie.push({ riga: g.__row, tipo: "codice_mancante", codice: art, dettaglio: art ? "Deposito mancante" : "Codice articolo mancante" });
+      continue;
+    }
+    const riga: GiacenzaGammaRow = {
+      riga: g.__row, articolo_codice: art, deposito_codice: dep,
+      giacenza: numeroGamma(g.giacenza), impegnato_clienti: numeroGamma(g.impegnato_clienti),
+      ordinato_fornitori: numeroGamma(g.ordinato_fornitori), disponibilita: numeroGamma(g.disponibilita),
+      aggiornato_gamma: dataOraGamma(g.aggiornato_gamma),
+    };
+    const k = `${art}\u0000${dep}`;
+    const prec = perChiave.get(k);
+    if (prec) { anomalie.push({ riga: prec.riga, tipo: "chiave_duplicata", codice: art, dettaglio: `Deposito ${dep}` }); perChiave.delete(k); }
+    perChiave.set(k, riga);
+  }
+  return { rows: [...perChiave.values()], anomalie, righeLette: grezze.length };
+}
+
+export const ARTICOLI_FORNITORI_HEADERS: Record<string, string> = {
+  codice: "articolo_codice",
+  "codice fornitore": "fornitore_codice",
+  preferenziale: "preferenziale",
+  "codice articolo fornitore": "codice_articolo_fornitore",
+};
+
+export type ArticoloFornitoreGammaRow = {
+  riga: number;
+  articolo_codice: string;
+  fornitore_codice: number;
+  preferenziale: boolean;
+  codice_articolo_fornitore: string | null;
+};
+
+export function parseArticoliFornitoriGammaSheet(sheet: XLSX.WorkSheet) {
+  const grezze = righeFoglioConIntestazione(sheet, "codice fornitore", ARTICOLI_FORNITORI_HEADERS);
+  const anomalie: AnomaliaChiaveFile[] = [];
+  const perChiave = new Map<string, ArticoloFornitoreGammaRow>();
+  for (const g of grezze) {
+    const art = toStr(g.articolo_codice);
+    const forn = intStretto(typeof g.fornitore_codice === "string" ? g.fornitore_codice.trim() : g.fornitore_codice);
+    if (!art || forn == null) {
+      anomalie.push({ riga: g.__row, tipo: "codice_mancante", codice: art, dettaglio: art ? `Codice fornitore non valido: ${toStr(g.fornitore_codice) ?? "(vuoto)"}` : "Codice articolo mancante" });
+      continue;
+    }
+    const riga: ArticoloFornitoreGammaRow = {
+      riga: g.__row, articolo_codice: art, fornitore_codice: forn,
+      preferenziale: numeroGamma(g.preferenziale) === 1,
+      codice_articolo_fornitore: toStr(g.codice_articolo_fornitore),
+    };
+    const k = `${art}\u0000${forn}`;
+    const prec = perChiave.get(k);
+    if (prec) { anomalie.push({ riga: prec.riga, tipo: "chiave_duplicata", codice: art, dettaglio: `Fornitore ${forn}` }); perChiave.delete(k); }
+    perChiave.set(k, riga);
+  }
+  return { rows: [...perChiave.values()], anomalie, righeLette: grezze.length };
+}
+
+/* ============================================================================
  * Preparazione dello staging (browser): un preparatore per foglio gestito
  * ============================================================================ */
 
@@ -451,6 +628,23 @@ export const PREPARATORI_LISTINI_GAMMA: PreparatoreFoglio[] = [
       };
     },
   },
+  ...([
+    ["depositi", "Depositi", 1000, nomeFoglioDepositi, parseDepositiGammaSheet],
+    ["giacenze", "Giacenze per deposito", 2000, nomeFoglioGiacenze, parseGiacenzeGammaSheet],
+    ["articoli_fornitori", "Articoli-fornitori", 2000, nomeFoglioArticoliFornitori, parseArticoliFornitoriGammaSheet],
+  ] as const).map(([chiave, etichetta, lotto, trovaNome, parse]): PreparatoreFoglio => ({
+    chiave, etichetta, lotto, trovaNome,
+    prepara: (sheet) => {
+      const r = parse(sheet);
+      return {
+        righe: (r.rows as Array<{ riga: number }>).map(({ riga: _riga, ...resto }) => resto),
+        righeLette: r.righeLette,
+        anomalie: r.anomalie,
+        codici: [],
+        meta: {},
+      };
+    },
+  })),
 ];
 
 /** Nomi dei file di staging, relativi a `_staging/<importazioneId>/` (stessi per browser e server). */
