@@ -1,11 +1,19 @@
 import { test, expect } from "bun:test";
 import { createClient } from "@supabase/supabase-js";
 import {
-  FONTI_IMPORT_FIDO_TEORICO, valutaImportCompleti, leggiStatoImportCompleti,
+  FONTI_IMPORT_FIDO_TEORICO, isFonteImportFidoTeorico, valutaImportCompleti, leggiStatoImportCompleti,
   type RigaImportFido,
 } from "../src/lib/fido-teorico-import-completi";
 
 const ora = new Date("2026-10-31T11:03:00Z");
+test("solo le quattro fonti fidi attivano la verifica, mai articoli/listini Gamma", () => {
+  for (const fonte of ["anagrafica", "scadenziario", "analisi_rischio", "blocco_fido_assicurazione"]) {
+    expect(isFonteImportFidoTeorico(fonte)).toBe(true);
+  }
+  for (const fonte of ["articoli_listini_gamma", "eventi_partecipanti", "altra", null, undefined]) {
+    expect(isFonteImportFidoTeorico(fonte)).toBe(false);
+  }
+});
 const quattro = (created_at = "2026-10-31T08:00:00Z", stato = "completata"): RigaImportFido[] =>
   FONTI_IMPORT_FIDO_TEORICO.map((fonte) => ({ fonte, stato, created_at }));
 const scadenziario = (created_at: string, stato = "completata"): RigaImportFido =>

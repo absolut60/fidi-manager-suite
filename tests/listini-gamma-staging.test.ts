@@ -23,10 +23,10 @@ describe("staging listini Gamma preparato nel browser (FM61)", () => {
   const { manifest, pacchetti } = preparaFileListiniGamma(file());
   const nomi = pacchetti.map((p) => p.nome);
 
-  test("fogli in ordine fisso, pacchetti da 3000 fornitori e 3000 articoli", () => {
+  test("fogli in ordine fisso, pacchetti da 3000 fornitori e 1000 articoli", () => {
     expect(manifest.fogli.map((f) => [f.chiave, f.righe, f.lotti, f.anomalie])).toEqual([
       ["fornitori", 3001, 2, 1],
-      ["articoli", 3001, 2, 0],
+      ["articoli", 3001, 4, 0],
     ]);
   });
 
@@ -38,7 +38,11 @@ describe("staging listini Gamma preparato nel browser (FM61)", () => {
     for (const k of ["fornitori", "articoli"]) {
       expect(nomi).toContain(fileLottoListini(k, 0));
       expect(nomi).toContain(fileLottoListini(k, 1));
-      expect(nomi).not.toContain(fileLottoListini(k, 2));
+      if (k === "fornitori") expect(nomi).not.toContain(fileLottoListini(k, 2));
+      else {
+        expect(nomi).toContain(fileLottoListini(k, 3));
+        expect(nomi).not.toContain(fileLottoListini(k, 4));
+      }
       for (const x of ["anomalie", "codici", "meta"] as const) expect(nomi).toContain(fileExtraListini(k, x));
     }
     const lotto1 = JSON.parse(pacchetti.find((p) => p.nome === fileLottoListini("fornitori", 1))!.json);
@@ -49,7 +53,11 @@ describe("staging listini Gamma preparato nel browser (FM61)", () => {
   test("i pacchetti contengono esattamente l'uscita del parser condiviso, senza numero di riga", () => {
     const wb = XLSX.read(file(), { type: "array" });
     const atteso = parseArticoliGammaSheet(wb.Sheets.ARTICOLI).rows.map(({ riga: _r, ...x }) => x);
-    const letti = [0, 1].flatMap((i) => JSON.parse(pacchetti.find((p) => p.nome === fileLottoListini("articoli", i))!.json));
+    const letti = [0, 1, 2, 3].flatMap((i) => {
+      const pacchetto = pacchetti.find((p) => p.nome === fileLottoListini("articoli", i));
+      if (!pacchetto) throw new Error(`Pacchetto articoli ${i} mancante`);
+      return JSON.parse(pacchetto.json);
+    });
     expect(letti.map(({ hash_riga: _h, ...x }: Record<string, unknown>) => x)).toEqual(atteso);
     // Impronta = md5 del JSON dei campi importati (stessa riga → stessa impronta).
     expect(letti[0].hash_riga).toBe(md5(JSON.stringify(atteso[0])));

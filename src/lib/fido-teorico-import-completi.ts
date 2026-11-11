@@ -22,6 +22,11 @@ export const FONTI_IMPORT_FIDO_TEORICO = [
 ] as const;
 export type FonteImportFidoTeorico = (typeof FONTI_IMPORT_FIDO_TEORICO)[number];
 
+/** Solo queste fonti possono emettere la verifica automatica dopo la chiusura. */
+export function isFonteImportFidoTeorico(fonte: string | null | undefined): fonte is FonteImportFidoTeorico {
+  return FONTI_IMPORT_FIDO_TEORICO.some((f) => f === fonte);
+}
+
 export const ETICHETTE_FONTI_FIDO_TEORICO: Record<FonteImportFidoTeorico, string> = {
   anagrafica: "Anagrafica clienti",
   analisi_rischio: "Analisi rischio",
