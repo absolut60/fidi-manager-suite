@@ -560,9 +560,19 @@ export function parseArticoliFornitoriGammaSheet(sheet: XLSX.WorkSheet) {
       preferenziale: numeroGamma(g.preferenziale) === 1,
       codice_articolo_fornitore: toStr(g.codice_articolo_fornitore),
     };
-    const k = `${art}\u0000${forn}`;
+    // Chiave completa: lo stesso fornitore può avere più codici articolo fornitore per lo stesso articolo.
+    const caf = riga.codice_articolo_fornitore ?? "";
+    const k = `${art}\u0000${forn}\u0000${caf}`;
     const prec = perChiave.get(k);
-    if (prec) { anomalie.push({ riga: prec.riga, tipo: "chiave_duplicata", codice: art, dettaglio: `Fornitore ${forn}` }); perChiave.delete(k); }
+    if (prec) {
+      // Doppione vero: tiene la preferenziale se c'è, altrimenti l'ultima riga.
+      const tieni = prec.preferenziale && !riga.preferenziale ? prec : riga;
+      const scartata = tieni === prec ? riga : prec;
+      anomalie.push({ riga: scartata.riga, tipo: "chiave_duplicata", codice: art, dettaglio: `Fornitore ${forn}, codice articolo fornitore ${caf || "(vuoto)"}` });
+      perChiave.delete(k);
+      perChiave.set(k, tieni);
+      continue;
+    }
     perChiave.set(k, riga);
   }
   return { rows: [...perChiave.values()], anomalie, righeLette: grezze.length };
@@ -640,7 +650,8 @@ export const PREPARATORI_LISTINI_GAMMA: PreparatoreFoglio[] = [
         righe: (r.rows as Array<{ riga: number }>).map(({ riga: _riga, ...resto }) => resto),
         righeLette: r.righeLette,
         anomalie: r.anomalie,
-        codici: [],
+        // Depositi: codici del file per disattivare gli assenti (le fotografie non ne hanno bisogno).
+        codici: chiave === "depositi" ? (r.rows as Array<{ codice: string }>).map((x) => x.codice) : [],
         meta: {},
       };
     },
