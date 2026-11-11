@@ -37,4 +37,4 @@
 - Every page/dialog change is verified with Playwright screenshots at 375px and 1280px before done (fake data via a temporary route if no session, removed afterwards), because mobile regressions reached the owner; see docs/regole/responsive.md.
 - Recalculation progress in pages comes only from barraRicalcolo on the shared lock row, renewed with its phase by every step in fido-teorico-ricalcolo-passi.server, so automatic and manual runs look identical.
 - Showroom UI permissions live only in src/lib/permessi-showroom.ts (twin of auth_solo_showroom), so UI and RLS cannot diverge.
-- MADE_ARTICOLI_LISTINI_PQ is one import; new sheets = new gestori in listini-gamma/gestori.server.
+- MADE_ARTICOLI_LISTINI_PQ is one import read only in the browser (Web Worker, PREPARATORI_LISTINI_GAMMA in listini-gamma-parser); the server reads only the staged JSON packages, because opening the 17 MB xlsx crashed the Worker. New sheet = preparatore + esecutore in listini-gamma/gestori.server with the same key.
