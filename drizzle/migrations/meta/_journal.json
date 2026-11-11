@@ -1170,6 +1170,13 @@
       "when": 1794433796574,
       "tag": "0166_fm61_regole_prezzo_lotti",
       "breakpoints": true
+    },
+    {
+      "idx": 167,
+      "version": "7",
+      "when": 1794434102821,
+      "tag": "0167_fm61_collegamenti_fornitori_indici",
+      "breakpoints": true
     }
   ]
 }

@@ -37,6 +37,47 @@ const ManifestListiniSchema = z.object({
   nonGestiti: z.array(z.string().max(200)).max(200),
 });
 
+/** Fonti con un solo import alla volta e relativo messaggio. */
+const MESSAGGIO_IMPORT_IN_CORSO: Partial<Record<z.infer<typeof FonteEnum>, string>> = {
+  scadenziario: "C'è già un import scadenziario in corso: attendi che finisca",
+  articoli_listini_gamma: "C'è già un import articoli/listini in corso: attendi che finisca",
+};
+
+/**
+ * Blocca se un'altra importazione della stessa fonte è in_elaborazione da meno di 3 ore
+ * (quelle più vecchie non bloccano): chiude la riga appena creata come "fallita" e lancia.
+ */
+async function bloccaSeImportInCorso(
+  supabase: { from: (t: "importazioni") => any },
+  fonte: string,
+  importazioneId: string,
+  messaggio: string,
+) {
+  const soglia = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+  const { data: inCorso, error } = await supabase
+    .from("importazioni")
+    .select("id")
+    .eq("fonte", fonte)
+    .eq("stato", "in_elaborazione")
+    .gte("created_at", soglia)
+    .neq("id", importazioneId)
+    .limit(1);
+  if (error) throw new Error(`Verifica import in corso non riuscita: ${error.message}`);
+  if (inCorso && inCorso.length > 0) {
+    // Chiude la riga appena creata, così non resta "in elaborazione".
+    await supabase
+      .from("importazioni")
+      .update({
+        stato: "fallita",
+        completata_at: new Date().toISOString(),
+        log_errori: [{ riga: 0, errore: messaggio }],
+        problemi: [messaggio],
+      })
+      .eq("id", importazioneId);
+    throw new Error(messaggio);
+  }
+}
+
 export const triggerImport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
@@ -50,33 +91,11 @@ export const triggerImport = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertPuoImportareGamma(context.supabase, context.userId, context.claims);
     await assertImportazioneEsiste(context.supabase, data.importazioneId);
-    // FM50: un solo import scadenziario alla volta. Blocca se un altro è
-    // in_elaborazione da meno di 3 ore; quelli più vecchi non bloccano.
-    if (data.fonte === "scadenziario") {
-      const soglia = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
-      const { data: inCorso, error } = await context.supabase
-        .from("importazioni")
-        .select("id")
-        .eq("fonte", "scadenziario")
-        .eq("stato", "in_elaborazione")
-        .gte("created_at", soglia)
-        .neq("id", data.importazioneId)
-        .limit(1);
-      if (error) throw new Error(`Verifica import in corso non riuscita: ${error.message}`);
-      if (inCorso && inCorso.length > 0) {
-        const messaggio = "C'è già un import scadenziario in corso: attendi che finisca";
-        // Chiude la riga appena creata, così non resta "in elaborazione".
-        await context.supabase
-          .from("importazioni")
-          .update({
-            stato: "fallita",
-            completata_at: new Date().toISOString(),
-            log_errori: [{ riga: 0, errore: messaggio }],
-            problemi: [messaggio],
-          })
-          .eq("id", data.importazioneId);
-        throw new Error(messaggio);
-      }
+    // FM50/FM61: un solo import alla volta per le fonti a fotografia (le chiusure cancellano
+    // le righe di altri import).
+    const messaggioBlocco = MESSAGGIO_IMPORT_IN_CORSO[data.fonte];
+    if (messaggioBlocco) {
+      await bloccaSeImportInCorso(context.supabase, data.fonte, data.importazioneId, messaggioBlocco);
     }
     if (data.fonte === "articoli_listini_gamma" && !data.listini) {
       throw new Error("File non preparato: ricarica il file dalla pagina Import/Export");
