@@ -316,28 +316,36 @@ const gestoreArticoliFornitori = gestoreFotografia({
 });
 
 /**
- * Regole prezzo (3B): un solo step per foglio, sostituzione completa in una transazione
- * (sostituisci_regole_prezzo_gamma). Foglio vuoto → nessuna cancellazione.
+ * Regole prezzo (3B): stesso meccanismo delle fotografie — lotti ≤ 5000 con importazione_id
+ * (import_regole_prezzo_gamma_lotto), poi chiusura che cancella le righe degli import
+ * precedenti (chiudi_regole_prezzo_gamma). Foglio vuoto o lotto fallito → nessuna cancellazione.
  */
 const gestoriRegolePrezzo: GestoreFoglio[] = FOGLI_REGOLE_PREZZO.map((def) => ({
   chiave: def.chiave,
-  esegui: async ({ step, importazioneId, lotti, leggiLotto, leggiAnomalie }) =>
-    step.run(`${def.chiave}-sostituisci`, async () => {
-      const prefisso = `${def.chiave}_`;
+  esegui: async (ctx) => {
+    const { step, importazioneId, lotti, leggiLotto, leggiAnomalie } = ctx;
+    const prefisso = `${def.chiave}_`;
+    await step.run(`${def.chiave}-anomalie`, async () => {
       await scriviAnomalie(importazioneId, prefisso, anomalieChiave(prefisso, def.pk, await leggiAnomalie<AnomaliaChiaveFile>()));
-      const righe: Record<string, unknown>[] = [];
-      for (let i = 0; i < lotti; i++) righe.push(...(await leggiLotto<Record<string, unknown>>(i)));
-      if (!righe.length) return { righe: 0, clienti_non_trovati: 0, non_in_catalogo: 0, deposito_inesistente: 0 };
-      const { data, error } = await supabaseAdmin.rpc("sostituisci_regole_prezzo_gamma", {
-        _tabella: def.tabella, _righe: righe as never, _importazione: importazioneId,
+    });
+    const tot = await eseguiLotti(ctx, def.chiave, { inseriti: 0, deposito_inesistente: 0 }, async (li) => {
+      const slice = await leggiLotto<Record<string, unknown>>(li);
+      const { data, error } = await supabaseAdmin.rpc("import_regole_prezzo_gamma_lotto", {
+        _tabella: def.tabella, _righe: slice as never, _importazione: importazioneId,
       });
-      if (error) throw new Error(`${def.etichetta}: ${error.message}`);
+      if (error) throw new Error(`${def.etichetta} lotto ${li + 1}/${lotti}: ${error.message}`);
       const d = (data ?? {}) as Record<string, number>;
-      return {
-        righe: d.righe ?? 0, clienti_non_trovati: d.clienti_non_trovati ?? 0,
-        non_in_catalogo: d.non_in_catalogo ?? 0, deposito_inesistente: d.deposito_inesistente ?? 0,
-      };
-    }),
+      return { inseriti: d.inseriti ?? 0, deposito_inesistente: d.deposito_inesistente ?? 0 };
+    });
+    const chiusura = await step.run(`${def.chiave}-chiudi`, async () => {
+      if (!lotti || tot.inseriti === 0) return { righe: 0, rimossi: 0, clienti_non_trovati: 0, non_in_catalogo: 0 }; // nessuna riga: non cancellare
+      const { data, error } = await supabaseAdmin.rpc("chiudi_regole_prezzo_gamma", { _tabella: def.tabella, _importazione: importazioneId });
+      if (error) throw new Error(`${def.etichetta} chiusura: ${error.message}`);
+      const d = (data ?? {}) as Record<string, number>;
+      return { righe: d.righe ?? 0, rimossi: d.rimossi ?? 0, clienti_non_trovati: d.clienti_non_trovati ?? 0, non_in_catalogo: d.non_in_catalogo ?? 0 };
+    });
+    return { ...chiusura, deposito_inesistente: tot.deposito_inesistente };
+  },
 }));
 
 /** Esecutori per chiave; l'ordine fisso è quello di PREPARATORI_LISTINI_GAMMA. */

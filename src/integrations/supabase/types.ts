@@ -8116,6 +8116,10 @@ export type Database = {
         Args: { _importazione: string }
         Returns: number
       }
+      chiudi_regole_prezzo_gamma: {
+        Args: { _importazione: string; _tabella: string }
+        Returns: Json
+      }
       classifica_iscritti_whatsapp_batch: {
         Args: { _ids: string[] }
         Returns: Json
@@ -9566,6 +9570,10 @@ export type Database = {
         Returns: Json
       }
       import_marche_gamma: { Args: { _righe: Json }; Returns: number }
+      import_regole_prezzo_gamma_lotto: {
+        Args: { _importazione: string; _righe: Json; _tabella: string }
+        Returns: Json
+      }
       imposta_iscrizioni_evento: {
         Args: { _aperte: boolean; _evento_id: string }
         Returns: {
