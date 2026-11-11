@@ -1,5 +1,5 @@
 # FM61 — Fornitori da Gamma, fetta 1 (confermata da Andrea)
-- [ ] Dopo la pubblicazione: risincronizzare Inngest (nuova funzione process-fornitori-gamma-import) e fare il primo import col file reale
+- [ ] Dopo la pubblicazione: risincronizzare Inngest (nuova funzione process-articoli-listini-gamma-import) e fare il primo import col file reale
 - [x] (0159) Migrazione: colonne fornitori, unicità nome solo tra manuali, tabella fornitore_cliente + RLS, funzione ricalcola_collegamenti_fornitori_clienti()
 - [x] Filtro origine=manuale: fetchFornitori, due ArticoloPicker, richieste interne; cerca-poi-inserisci manuale in richieste interne e migrazione-richieste
 - [x] (fetta 1B, 0160) Import Inngest a lotti da 500 (parser whitelist, staging, step per lotto, disattiva assenti, ricalcolo collegamenti) + sezione /import-export
