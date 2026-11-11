@@ -116,7 +116,7 @@ export function NuovaRichiestaDialog({
     queryKey: ["fornitori", "select"],
     enabled: open,
     queryFn: async () => {
-      const { data, error } = await supabase.from("fornitori").select("id,nome").order("nome");
+      const { data, error } = await supabase.from("fornitori").select("id,nome").eq("origine", "manuale").order("nome");
       if (error) throw error;
       return data ?? [];
     },
@@ -212,10 +212,8 @@ export function NuovaRichiestaDialog({
         if (updErr) throw updErr;
 
         if (fornitoreTrim.length > 1) {
-          const { error: fErr } = await supabase
-            .from("fornitori")
-            .upsert({ nome: fornitoreTrim }, { onConflict: "nome", ignoreDuplicates: true });
-          if (fErr) console.warn("Upsert fornitore fallito:", fErr.message);
+          const fErr = await assicuraFornitoreManuale(fornitoreTrim);
+          if (fErr) console.warn("Inserimento fornitore fallito:", fErr);
         }
 
         toast.success("Richiesta aggiornata");
@@ -252,10 +250,8 @@ export function NuovaRichiestaDialog({
       const richiestaId = inserted.id;
 
       if (fornitoreTrim.length > 1) {
-        const { error: fErr } = await supabase
-          .from("fornitori")
-          .upsert({ nome: fornitoreTrim }, { onConflict: "nome", ignoreDuplicates: true });
-        if (fErr) console.warn("Upsert fornitore fallito:", fErr.message);
+        const fErr = await assicuraFornitoreManuale(fornitoreTrim);
+        if (fErr) console.warn("Inserimento fornitore fallito:", fErr);
       }
 
       let failed = 0;

@@ -68,6 +68,7 @@ export async function fetchFornitori(): Promise<Fornitore[]> {
   const { data, error } = await supabase
     .from("fornitori")
     .select("*")
+    .eq("origine", "manuale")
     .order("ragione_sociale");
   if (error) throw error;
   return data ?? [];
