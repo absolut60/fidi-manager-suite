@@ -614,6 +614,146 @@ export type Database = {
           },
         ]
       }
+      articoli_gamma: {
+        Row: {
+          attivo: boolean
+          codice: string
+          codice_a_barre: string | null
+          codice_articolo_fornitore: string | null
+          codice_famiglia: string | null
+          codice_sottofamiglia: string | null
+          costo_fifo: number | null
+          costo_medio: number | null
+          costo_ultimo: number | null
+          created_at: string
+          data_aggiornamento_gamma: string | null
+          data_creazione_gamma: string | null
+          descrizione: string | null
+          descrizione_estesa: string | null
+          famiglia: string | null
+          fattore_conversione: number | null
+          fornitore_pref_codice: number | null
+          fornitore_pref_id: string | null
+          iva: string | null
+          marca_codice: string | null
+          n_fornitori: number | null
+          peso_netto: number | null
+          premio_fornitore: string | null
+          sottofamiglia: string | null
+          stato_gamma: string | null
+          ultima_sincronizzazione: string | null
+          um: string | null
+          um2: string | null
+          updated_at: string
+        }
+        Insert: {
+          attivo?: boolean
+          codice: string
+          codice_a_barre?: string | null
+          codice_articolo_fornitore?: string | null
+          codice_famiglia?: string | null
+          codice_sottofamiglia?: string | null
+          costo_fifo?: number | null
+          costo_medio?: number | null
+          costo_ultimo?: number | null
+          created_at?: string
+          data_aggiornamento_gamma?: string | null
+          data_creazione_gamma?: string | null
+          descrizione?: string | null
+          descrizione_estesa?: string | null
+          famiglia?: string | null
+          fattore_conversione?: number | null
+          fornitore_pref_codice?: number | null
+          fornitore_pref_id?: string | null
+          iva?: string | null
+          marca_codice?: string | null
+          n_fornitori?: number | null
+          peso_netto?: number | null
+          premio_fornitore?: string | null
+          sottofamiglia?: string | null
+          stato_gamma?: string | null
+          ultima_sincronizzazione?: string | null
+          um?: string | null
+          um2?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attivo?: boolean
+          codice?: string
+          codice_a_barre?: string | null
+          codice_articolo_fornitore?: string | null
+          codice_famiglia?: string | null
+          codice_sottofamiglia?: string | null
+          costo_fifo?: number | null
+          costo_medio?: number | null
+          costo_ultimo?: number | null
+          created_at?: string
+          data_aggiornamento_gamma?: string | null
+          data_creazione_gamma?: string | null
+          descrizione?: string | null
+          descrizione_estesa?: string | null
+          famiglia?: string | null
+          fattore_conversione?: number | null
+          fornitore_pref_codice?: number | null
+          fornitore_pref_id?: string | null
+          iva?: string | null
+          marca_codice?: string | null
+          n_fornitori?: number | null
+          peso_netto?: number | null
+          premio_fornitore?: string | null
+          sottofamiglia?: string | null
+          stato_gamma?: string | null
+          ultima_sincronizzazione?: string | null
+          um?: string | null
+          um2?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "articoli_gamma_fornitore_pref_id_fkey"
+            columns: ["fornitore_pref_id"]
+            isOneToOne: false
+            referencedRelation: "fornitori"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "articoli_gamma_marca_codice_fkey"
+            columns: ["marca_codice"]
+            isOneToOne: false
+            referencedRelation: "marche"
+            referencedColumns: ["codice"]
+          },
+        ]
+      }
+      articoli_gamma_listini: {
+        Row: {
+          articolo_codice: string
+          costo_acquisto: number | null
+          listino: number
+          prezzo_vendita: number | null
+        }
+        Insert: {
+          articolo_codice: string
+          costo_acquisto?: number | null
+          listino: number
+          prezzo_vendita?: number | null
+        }
+        Update: {
+          articolo_codice?: string
+          costo_acquisto?: number | null
+          listino?: number
+          prezzo_vendita?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "articoli_gamma_listini_articolo_codice_fkey"
+            columns: ["articolo_codice"]
+            isOneToOne: false
+            referencedRelation: "articoli_gamma"
+            referencedColumns: ["codice"]
+          },
+        ]
+      }
       assicurazioni_credito: {
         Row: {
           assicuratore: string
@@ -4264,6 +4404,27 @@ export type Database = {
         }
         Relationships: []
       }
+      marche: {
+        Row: {
+          attivo: boolean
+          codice: string
+          descrizione: string | null
+          ultima_sincronizzazione: string | null
+        }
+        Insert: {
+          attivo?: boolean
+          codice: string
+          descrizione?: string | null
+          ultima_sincronizzazione?: string | null
+        }
+        Update: {
+          attivo?: boolean
+          codice?: string
+          descrizione?: string | null
+          ultima_sincronizzazione?: string | null
+        }
+        Relationships: []
+      }
       marketing_opt_out: {
         Row: {
           campagna_id: string | null
@@ -7625,6 +7786,10 @@ export type Database = {
         Args: { _candidati: Json; _ragione_sociale_dichiarata: string }
         Returns: Json
       }
+      disattiva_articoli_gamma_assenti: {
+        Args: { _codici: string[] }
+        Returns: number
+      }
       disattiva_fornitori_gamma_assenti: {
         Args: { _codici: number[] }
         Returns: number
@@ -8796,7 +8961,9 @@ export type Database = {
         Returns: boolean
       }
       ignora_iscritto_whatsapp: { Args: { _id: string }; Returns: Json }
+      import_articoli_gamma_lotto: { Args: { _righe: Json }; Returns: Json }
       import_fornitori_gamma_lotto: { Args: { _righe: Json }; Returns: Json }
+      import_marche_gamma: { Args: { _righe: Json }; Returns: number }
       imposta_iscrizioni_evento: {
         Args: { _aperte: boolean; _evento_id: string }
         Returns: {

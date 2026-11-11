@@ -1,4 +1,6 @@
 # FM61 — Fornitori da Gamma, fetta 1 (confermata da Andrea)
+- [x] Fetta 2A (0161): catalogo articoli, marche e listini base come gestore "articoli" dell'import unico
+- [ ] Primo import reale: verificare 64.556 articoli, 1.125 marche, fornitore preferenziale su 54.728 e tempi/memoria dello step parse
 - [ ] Dopo la pubblicazione: risincronizzare Inngest (nuova funzione process-articoli-listini-gamma-import) e fare il primo import col file reale
 - [x] (0159) Migrazione: colonne fornitori, unicità nome solo tra manuali, tabella fornitore_cliente + RLS, funzione ricalcola_collegamenti_fornitori_clienti()
 - [x] Filtro origine=manuale: fetchFornitori, due ArticoloPicker, richieste interne; cerca-poi-inserisci manuale in richieste interne e migrazione-richieste

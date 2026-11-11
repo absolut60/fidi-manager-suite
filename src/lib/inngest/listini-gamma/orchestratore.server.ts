@@ -1,6 +1,7 @@
 import { inngest } from "../client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { downloadWorkbook, chiudiImportazione, resetAnomalieAperteFonte } from "../functions.server";
+import * as XLSX from "xlsx";
+import { downloadJsonConRetry, chiudiImportazione, resetAnomalieAperteFonte } from "../functions.server";
 import { pulisciFileTemporaneiImport } from "../pulizia-file-import.server";
 import { GESTORI_LISTINI_GAMMA, type StepApi } from "./gestori.server";
 import { CHIAVE_STATO_LISTINI, type StatoFoglio, type StatoImportListini } from "./tipi";
@@ -37,27 +38,44 @@ export const processArticoliListiniGammaImport = inngest.createFunction(
   },
   async ({ event, step, logger }) => {
     const { importazioneId, filePath } = event.data as EventData;
-    const staging = (chiave: string) => `_staging/${importazioneId}/listini-${chiave}.json`;
+    const dir = `_staging/${importazioneId}`;
+    const fileLotto = (chiave: string, i: number) => `${dir}/listini-${chiave}-${String(i).padStart(3, "0")}.json`;
+    const fileExtra = (chiave: string, nome: "anomalie" | "codici") => `${dir}/listini-${chiave}-${nome}.json`;
+    const carica = async (path: string, body: unknown) => {
+      const { error } = await supabaseAdmin.storage
+        .from("import-files")
+        .upload(path, new Blob([JSON.stringify(body)], { type: "application/json" }), {
+          contentType: "application/json",
+          upsert: true,
+        });
+      if (error) throw new Error(`staging ${path}: ${error.message}`);
+    };
 
+    // Lettura unica del file: prima solo i nomi dei fogli, poi soltanto quelli con un gestore.
     const parse = await step.run("parse", async () => {
-      const wb = await downloadWorkbook(filePath);
+      const { data: blob, error: dlErr } = await supabaseAdmin.storage.from("import-files").download(filePath);
+      if (dlErr || !blob) throw new Error(`Download fallito: ${dlErr?.message ?? "no data"}`);
+      const buf = await blob.arrayBuffer();
+      const nomi = XLSX.read(buf, { type: "array", bookSheets: true }).SheetNames;
+      const vuoto = { SheetNames: nomi, Sheets: {} } as unknown as XLSX.WorkBook;
+      const voluti = GESTORI_LISTINI_GAMMA.map((g) => g.trovaFoglio({ ...vuoto, Sheets: Object.fromEntries(nomi.map((n) => [n, {}])) } as XLSX.WorkBook)?.nome).filter(Boolean) as string[];
+      const wb = voluti.length
+        ? XLSX.read(buf, { type: "array", sheets: voluti, cellFormula: false, cellHTML: false, cellStyles: false, cellText: false })
+        : vuoto;
       const usati = new Set<string>();
-      const fogli: Record<string, { foglio: string; righe: number; righeLette: number; anomalie: number; meta: Record<string, unknown> }> = {};
+      const fogli: Record<string, { foglio: string; righe: number; righeLette: number; anomalie: number; lotti: number; lotto: number; meta: Record<string, unknown> }> = {};
       for (const g of GESTORI_LISTINI_GAMMA) {
         const f = g.trovaFoglio(wb);
         if (!f) continue;
         usati.add(f.nome);
         const p = g.prepara(f.sheet);
-        const { error } = await supabaseAdmin.storage
-          .from("import-files")
-          .upload(staging(g.chiave), new Blob([JSON.stringify(p.righe)], { type: "application/json" }), {
-            contentType: "application/json",
-            upsert: true,
-          });
-        if (error) throw new Error(`staging ${g.chiave}: ${error.message}`);
-        fogli[g.chiave] = { foglio: f.nome, righe: p.righe.length, righeLette: p.righeLette, anomalie: p.anomalie, meta: p.meta };
+        const lotti = Math.ceil(p.righe.length / g.lotto);
+        for (let i = 0; i < lotti; i++) await carica(fileLotto(g.chiave, i), p.righe.slice(i * g.lotto, (i + 1) * g.lotto));
+        await carica(fileExtra(g.chiave, "anomalie"), p.anomalie);
+        await carica(fileExtra(g.chiave, "codici"), p.codici);
+        fogli[g.chiave] = { foglio: f.nome, righe: p.righe.length, righeLette: p.righeLette, anomalie: p.anomalie.length, lotti, lotto: g.lotto, meta: p.meta };
       }
-      return { fogli, nonGestiti: wb.SheetNames.filter((n) => !usati.has(n)) };
+      return { fogli, nonGestiti: nomi.filter((n) => !usati.has(n)) };
     });
 
     await step.run("reset-anomalie-aperte-fonte", () => resetAnomalieAperteFonte(FONTE, importazioneId));
@@ -82,7 +100,7 @@ export const processArticoliListiniGammaImport = inngest.createFunction(
           .update({
             righe_totali: totaleRighe,
             righe_attese: totaleRighe,
-            righe_elaborate: fs.reduce((s, f) => s + (f.stato === "completato" ? f.righe : Math.min(f.righe, f.lotto * 500)), 0),
+            righe_elaborate: Object.entries(stato.fogli).reduce((s, [k, f]) => s + (f.stato === "completato" ? f.righe : Math.min(f.righe, f.lotto * (parse.fogli[k]?.lotto ?? 500))), 0),
             righe_create: somma("inseriti"),
             righe_aggiornate: somma("aggiornati"),
             righe_errore: fs.reduce((s, f) => s + f.anomalie, 0),
@@ -103,9 +121,11 @@ export const processArticoliListiniGammaImport = inngest.createFunction(
         const conteggi = await g.esegui({
           step: step as unknown as StepApi,
           importazioneId,
-          stagingPath: staging(g.chiave),
-          meta: { ...f.meta, __righe: f.righe },
-          log: (m) => logger.warn(m),
+          lotti: f.lotti,
+          meta: f.meta,
+          leggiLotto: <T,>(i: number) => downloadJsonConRetry<T[]>(fileLotto(g.chiave, i), `${g.chiave} lotto ${i + 1}`, (m) => logger.warn(m)),
+          leggiAnomalie: <T,>() => downloadJsonConRetry<T[]>(fileExtra(g.chiave, "anomalie"), `${g.chiave} anomalie`, (m) => logger.warn(m)),
+          leggiCodici: <T,>() => downloadJsonConRetry<T[]>(fileExtra(g.chiave, "codici"), `${g.chiave} codici`, (m) => logger.warn(m)),
           avanzamento: async (lotto, lotti, c) => {
             sf.lotto = lotto;
             sf.lotti = lotti;
