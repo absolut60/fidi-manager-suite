@@ -55,7 +55,7 @@ describe("email unica per negozio", () => {
     const { oggetto, html } = buildVariazioniBloccoEmail({
       negozioNome: "SEDE A", bloccati: [], sbloccati: [], appUrl: "https://x", dataRilevazione: "2026-11-01T10:00:00Z", alertFidi: [al("1", "A", "X")],
     });
-    expect(oggetto).toStartWith("Alert fidi — SEDE A");
+    expect(oggetto).toStartWith("Aggiornamento clienti — SEDE A");
     expect(html).toContain("Alert fidi (1)");
     expect(html).toContain("/alert-fidi");
     expect(html).not.toContain("Clienti bloccati / sbloccati");

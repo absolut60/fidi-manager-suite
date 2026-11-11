@@ -60,7 +60,6 @@ const handler = serve({
     ricalcolaFidoTeorico,
     verificaImportCompletiFidoTeorico,
     notificaVariazioniBlocco,
-    avvisoLegaleDifferito,
     rilevaAgenziaRecupero,
     notificaEsitoImport,
     aggiornaCacheCruscotti,

@@ -75,6 +75,6 @@ export const ricalcolaFidoTeorico = inngest.createFunction(
       return { ok: true };
     });
 
-    return { origine, alert_fidi: alertFidi, notifiche_alert_fidi: notificheAlertFidi, blocchi_elaborati: blocchi, ultimo_id: dopoId, finalizzato: true };
+    return { origine, alert_fidi: alertFidi, blocchi_elaborati: blocchi, ultimo_id: dopoId, finalizzato: true };
   },
 );

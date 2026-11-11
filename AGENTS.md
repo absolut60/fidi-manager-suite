@@ -5,7 +5,7 @@
 
 - Official Gamma scadenziario parsing lives only in the browser-safe scadenziario-parser module; both browser staging and direct-file server entrypoints parse and resolve duplicates once before chunking, while chunk dedup remains a safety net and expected-row counters retain their existing valid-client rule.
 
-- Alert-fidi notifications are produced only by public.invia_notifiche_alert_fidi after alert refresh; it locks eligible alerts, uses the existing grouping/push triggers and marks logical deliveries rather than INSERT RETURNING rows, because grouping may cancel inserts.
+- Alert eligibility/marking lives only in public.invia_notifiche_alert_fidi, called only by the 10:00/14:30/18:00 Europe/Rome job; that job alone sends combined store/agent notifications.
 
 - TooltipDettaglio owns delayed tooltip mounting for recovery actions, commercial calendar events and task rows, so content and any detail queries mount only while open without changing click or touch handlers.
 

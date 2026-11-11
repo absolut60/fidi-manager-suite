@@ -3925,22 +3925,7 @@ export const processBloccoFidoImport = inngest.createFunction(
           });
       });
 
-      // Aggancio alert variazioni blocco: emette l'evento di rilevazione DOPO che
-      // tutte le scritture su clienti di questo import sono terminate.
-      // Un errore di emissione NON fa fallire l'import.
-      await step.run("emetti-rilevazione-variazioni-blocco", async () => {
-        try {
-          await sendInngestEvents([
-            { name: "clienti/blocco.variazioni.rileva", data: { importazioneId } },
-          ]);
-        } catch (e) {
-          logger.warn(
-            `Emissione rilevazione variazioni blocco fallita: ${e instanceof Error ? e.message : String(e)}`,
-          );
-        }
-        return true;
-      });
-
+      // FM60: nessun avviso immediato; il job a orario fisso rileva le variazioni.
 
       // Pulizia file temporanei: SOLO dopo la chiusura finale riuscita (mai dal catch).
       // Step separato e mai bloccante; include un giro sull'arretrato (> 24 ore).

@@ -1,13 +1,13 @@
-// Job Inngest: rilevazione variazioni blocco clienti a fine import
-// "blocco_fido_assicurazione" + avvisi (mail + notifica in app) agli store manager
-// del negozio del cliente, raggruppati per negozio.
+// Job Inngest a orari fissi: variazioni blocco/legale e alert fidi in un unico
+// avviso per negozio (email + notifica) e una sola notifica per agente.
 // Pattern: step.run per fase, withTimeout su ogni chiamata, un step per negozio
 // (un retry non rimanda i negozi già riusciti).
 import { inngest } from "./client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendEmailViaEdge } from "./send-email.server";
 import { buildVariazioniBloccoEmail } from "@/lib/variazioni-blocco-email-render";
-import { alertPerNegozio, type AlertEmail } from "@/lib/alert-fidi-email";
+import { type AlertEmail } from "@/lib/alert-fidi-email";
+import { messaggioConteggi, raggruppaAvvisiPerNegozio } from "@/lib/avvisi-clienti";
 import { etichetteRigaProposta } from "@/lib/proposta-fido-riga";
 import { segnalazioniCorrenti } from "@/lib/fido-segnalazioni";
 
@@ -32,6 +32,7 @@ type Pendente = {
   ragione_sociale: string | null;
   tipo: string;
   negozio: string | null;
+  importazione_id: string | null;
 };
 
 /**
@@ -103,30 +104,54 @@ async function marcaNotificate(ids: string[]): Promise<void> {
   }
 }
 
-function messaggioConteggi(n: number, m: number, l = 0, u = 0): string {
-  const parti: string[] = [];
-  if (n > 0) parti.push(`${n} ${n === 1 ? "bloccato" : "bloccati"}`);
-  if (m > 0) parti.push(`${m} ${m === 1 ? "sbloccato" : "sbloccati"}`);
-  if (l > 0) parti.push(`${l} in legale`);
-  if (u > 0) parti.push(`${u} ${u === 1 ? "uscito" : "usciti"} dal legale`);
-  return parti.join(", ");
-}
-
 export const notificaVariazioniBlocco = inngest.createFunction(
   {
     id: "clienti-variazioni-blocco-notifica",
-    name: "Clienti: variazioni blocco → avvisi store manager",
+    name: "Clienti: aggiornamento a orari fissi",
     retries: 3,
     concurrency: { limit: 1 },
-    triggers: [{ event: "clienti/blocco.variazioni.rileva" }],
+    triggers: [
+      { cron: "TZ=Europe/Rome 0 10 * * *" },
+      { cron: "TZ=Europe/Rome 30 14 * * *" },
+      { cron: "TZ=Europe/Rome 0 18 * * *" },
+    ],
   },
-  async ({ event, step, logger }) => {
-    const importazioneId = ((event.data as { importazioneId?: string | null })?.importazioneId ??
-      null) as string | null;
-    // FM55: alert fidi appena notificati da invia_notifiche_alert_fidi (marcatore notificato_il):
-    // entrano nella stessa email per negozio, solo agli store manager (gli agenti hanno la notifica in app).
-    const alertIds = (((event.data as { alertIds?: unknown })?.alertIds ?? []) as unknown[])
-      .filter((x): x is string => typeof x === "string");
+  async ({ step, logger }) => {
+    const importazioneId: string | null = null;
+    // Step memorizzato: i retry dei negozi non rieseguono la marcatura e non perdono gli ID.
+    const alertIds = await step.run("marca-alert-fidi", async (): Promise<string[]> => {
+      const { data: prima, error: eP } = await withTimeout(
+        supabaseAdmin.from("alert_fidi").select("notificato_il").not("notificato_il", "is", null)
+          .order("notificato_il", { ascending: false }).limit(1).maybeSingle(),
+        T_MS,
+        "ultimo avviso alert fidi",
+      );
+      if (eP) throw new Error(`ultimo avviso alert fidi: ${eP.message}`);
+      const { data, error } = await withTimeout(
+        supabaseAdmin.rpc("invia_notifiche_alert_fidi" as never),
+        T_MS * 4,
+        "marcatura alert fidi",
+      );
+      if (error) throw new Error(`marcatura alert fidi: ${error.message}`);
+      if (Number(data ?? 0) === 0) return [];
+      const soglia = (prima as { notificato_il?: string } | null)?.notificato_il;
+      const out: string[] = [];
+      const PAGE = 1000;
+      for (let from = 0; ; from += PAGE) {
+        let q = supabaseAdmin.from("alert_fidi").select("id").not("notificato_il", "is", null);
+        if (soglia) q = q.gt("notificato_il", soglia);
+        const { data: nuovi, error: eN } = await withTimeout(
+          q.order("id").range(from, from + PAGE - 1),
+          T_MS,
+          "alert fidi appena marcati",
+        );
+        if (eN) throw new Error(`alert fidi appena marcati: ${eN.message}`);
+        out.push(...(nuovi ?? []).map((r) => (r as { id: string }).id));
+        if ((nuovi ?? []).length < PAGE) break;
+      }
+      logger.info(`Alert fidi marcati per questo giro: ${out.length}`);
+      return out;
+    });
 
     const alertFidi = await step.run("carica-alert-fidi", async (): Promise<AlertEmail[]> => {
       if (!alertIds.length) return [];
