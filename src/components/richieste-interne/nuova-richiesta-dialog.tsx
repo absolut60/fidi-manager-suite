@@ -19,6 +19,9 @@ import { STILE_TIPO, STILE_ACCONTO, STILE_ALLEGATI } from "@/components/richiest
 import { notifyRichiestaEvento } from "@/lib/richieste-email.functions";
 import { RICHIESTE_ALLEGATI_BUCKET as BUCKET, sanitizeFileName } from "@/components/richieste-interne/utils";
 import { SchedaFileLocale } from "@/components/allegati/anteprima-allegato";
+import { assicuraFornitoreManualeCon } from "@/lib/fornitori-manuali";
+
+const assicuraFornitoreManuale = (nome: string) => assicuraFornitoreManualeCon(supabase, nome);
 
 
 type Tipo = "preventivo" | "attivita" | "acquisto";
