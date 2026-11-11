@@ -1114,6 +1114,13 @@
       "when": 1794397222237,
       "tag": "0158_fm60_avvisi_alert_orari_fissi",
       "breakpoints": true
+    },
+    {
+      "idx": 159,
+      "version": "7",
+      "when": 1794424994607,
+      "tag": "0159_fm61_fornitori_gamma_db",
+      "breakpoints": true
     }
   ]
 }
