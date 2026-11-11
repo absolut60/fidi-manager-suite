@@ -5,6 +5,7 @@ import { alertPerNegozio, messaggioConsumoAlert, type AlertEmail } from "@/lib/a
 import { buildVariazioniBloccoEmail } from "@/lib/variazioni-blocco-email-render";
 
 const SQL = readFileSync("drizzle/migrations/0128_fm55_alert_fidi_gia_deciso_notifiche.sql", "utf8");
+const SQL_ORARI = readFileSync("drizzle/migrations/0158_fm60_avvisi_alert_orari_fissi.sql", "utf8");
 const OGGI = "2026-11-01";
 const prot = (o: Partial<{ protezione_valida: boolean; protetto_fino_al: string; importo_approvato: number }> = {}) => ({
   protezione_valida: true, protetto_fino_al: "2026-11-30", importo_approvato: 3000, ...o,
@@ -21,6 +22,16 @@ describe("già deciso negli avvisi (gemello di public.alert_fido_gia_deciso)", (
     expect(SQL).toContain("p.protetto_fino_al >= (now() AT TIME ZONE 'Europe/Rome')::date");
     expect(SQL).toContain("COALESCE(c.fido_gestionale, 0)::numeric = p.importo_approvato");
     expect(SQL).toContain("AND NOT public.alert_fido_gia_deciso(af.cliente_id)");
+  });
+});
+
+describe("marcatura alert per gli avvisi a orario fisso", () => {
+  test("la funzione non crea più notifiche separate ed è riservata al job server", () => {
+    expect(SQL_ORARI).not.toContain("INSERT INTO public.notifiche");
+    expect(SQL_ORARI).toContain("SET notificato_livello");
+    expect(SQL_ORARI).toContain("notificato_il = v_now");
+    expect(SQL_ORARI).toContain("FROM PUBLIC, anon, authenticated");
+    expect(SQL_ORARI).toContain("TO service_role");
   });
 });
 
