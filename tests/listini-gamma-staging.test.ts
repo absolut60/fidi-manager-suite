@@ -22,7 +22,7 @@ describe("staging listini Gamma preparato nel browser (FM61)", () => {
   const { manifest, pacchetti } = preparaFileListiniGamma(file());
   const nomi = pacchetti.map((p) => p.nome);
 
-  test("fogli in ordine fisso, pacchetti da 500 fornitori e 1000 articoli", () => {
+  test("fogli in ordine fisso, pacchetti da 3000 fornitori e 3000 articoli", () => {
     expect(manifest.fogli.map((f) => [f.chiave, f.righe, f.lotti, f.anomalie])).toEqual([
       ["fornitori", 501, 2, 1],
       ["articoli", 1001, 2, 0],

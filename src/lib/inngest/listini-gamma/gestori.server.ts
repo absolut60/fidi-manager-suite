@@ -22,9 +22,49 @@ export type ContestoGestore = {
   leggiAnomalie: <T>() => Promise<T[]>;
   leggiCodici: <T>() => Promise<T[]>;
   leggiMeta: () => Promise<Record<string, unknown>>;
-  /** Salva l'avanzamento del foglio (in uno step con id stabile). */
+  /**
+   * Scrive l'avanzamento del foglio. Va chiamata DENTRO lo step del lotto (nessuno step
+   * dedicato): non lancia mai, un avanzamento non scritto non fa ripetere il lotto.
+   */
   avanzamento: (lotto: number, lotti: number, conteggi: Record<string, number>) => Promise<void>;
 };
+
+/** Lotti dello stesso foglio eseguiti in parallelo (sono indipendenti); i fogli restano in sequenza. */
+export const LOTTI_PARALLELI = 3;
+
+/**
+ * Esegue i lotti di un foglio a gruppi di LOTTI_PARALLELI step (Promise.all di step.run).
+ * Ogni step scrive l'avanzamento con i totali dei gruppi precedenti più il proprio lotto.
+ * Gli id degli step restano `<prefisso>-lotto-NNN`.
+ */
+async function eseguiLotti(
+  ctx: ContestoGestore,
+  prefisso: string,
+  iniziali: Record<string, number>,
+  lavora: (li: number) => Promise<Record<string, number>>,
+): Promise<Record<string, number>> {
+  const tot: Record<string, number> = { ...iniziali };
+  const somma = (a: Record<string, number>, b: Record<string, number>) => {
+    const out = { ...a };
+    for (const [k, v] of Object.entries(b)) out[k] = (out[k] ?? 0) + v;
+    return out;
+  };
+  for (let g = 0; g < ctx.lotti; g += LOTTI_PARALLELI) {
+    const base = { ...tot };
+    const ids = Array.from({ length: Math.min(LOTTI_PARALLELI, ctx.lotti - g) }, (_, i) => g + i);
+    const ris = await Promise.all(
+      ids.map((li) =>
+        ctx.step.run(`${prefisso}-lotto-${String(li).padStart(3, "0")}`, async () => {
+          const r = await lavora(li);
+          await ctx.avanzamento(li + 1, ctx.lotti, somma(base, r));
+          return r;
+        }),
+      ),
+    );
+    for (const r of ris) Object.assign(tot, somma(tot, r));
+  }
+  return tot;
+}
 
 /**
  * Esecutore di un foglio del file MADE_ARTICOLI_LISTINI_PQ.xlsx: lavora solo sui JSON di
@@ -57,7 +97,8 @@ async function scriviAnomalie(importazioneId: string, prefisso: string, righe: R
 
 const gestoreFornitori: GestoreFoglio = {
   chiave: "fornitori",
-  esegui: async ({ step, importazioneId, lotti, leggiLotto, leggiAnomalie, leggiCodici, avanzamento }) => {
+  esegui: async (ctx) => {
+    const { step, importazioneId, lotti, leggiLotto, leggiAnomalie, leggiCodici } = ctx;
     await step.run("fornitori-anomalie", async () => {
       const anomalie = await leggiAnomalie<AnomaliaFornitoreFile>();
       await scriviAnomalie(
@@ -77,20 +118,13 @@ const gestoreFornitori: GestoreFoglio = {
       );
     });
 
-    let inseriti = 0;
-    let aggiornati = 0;
-    for (let li = 0; li < lotti; li++) {
-      const r = await step.run(`fornitori-lotto-${String(li).padStart(3, "0")}`, async () => {
-        const slice = await leggiLotto<Omit<FornitoreGammaRow, "riga">>(li);
-        const { data, error } = await supabaseAdmin.rpc("import_fornitori_gamma_lotto", { _righe: slice as never });
-        if (error) throw new Error(`fornitori lotto ${li + 1}/${lotti}: ${error.message}`);
-        const e = (data ?? {}) as { inseriti?: number; aggiornati?: number };
-        return { inseriti: e.inseriti ?? 0, aggiornati: e.aggiornati ?? 0 };
-      });
-      inseriti += r.inseriti;
-      aggiornati += r.aggiornati;
-      await avanzamento(li + 1, lotti, { inseriti, aggiornati });
-    }
+    const { inseriti, aggiornati, invariati } = await eseguiLotti(ctx, "fornitori", { inseriti: 0, aggiornati: 0, invariati: 0 }, async (li) => {
+      const slice = await leggiLotto<Omit<FornitoreGammaRow, "riga">>(li);
+      const { data, error } = await supabaseAdmin.rpc("import_fornitori_gamma_lotto", { _righe: slice as never });
+      if (error) throw new Error(`fornitori lotto ${li + 1}/${lotti}: ${error.message}`);
+      const e = (data ?? {}) as { inseriti?: number; aggiornati?: number; invariati?: number };
+      return { inseriti: e.inseriti ?? 0, aggiornati: e.aggiornati ?? 0, invariati: e.invariati ?? 0 };
+    });
 
     const disattivati = await step.run("fornitori-disattiva-assenti", async () => {
       const codici = await leggiCodici<number>();
@@ -107,7 +141,7 @@ const gestoreFornitori: GestoreFoglio = {
       return { gamma: d.collegamenti_gamma ?? 0, pivaCf: d.collegamenti_piva_cf ?? 0 };
     });
 
-    return { inseriti, aggiornati, disattivati, collegamenti_gamma: coll.gamma, collegamenti_piva_cf: coll.pivaCf };
+    return { inseriti, aggiornati, invariati, disattivati, collegamenti_gamma: coll.gamma, collegamenti_piva_cf: coll.pivaCf };
   },
 };
 
@@ -115,7 +149,8 @@ const gestoreFornitori: GestoreFoglio = {
 
 const gestoreArticoli: GestoreFoglio = {
   chiave: "articoli",
-  esegui: async ({ step, importazioneId, lotti, leggiMeta, leggiLotto, leggiAnomalie, leggiCodici, avanzamento }) => {
+  esegui: async (ctx) => {
+    const { step, importazioneId, lotti, leggiMeta, leggiLotto, leggiAnomalie, leggiCodici } = ctx;
     await step.run("articoli-anomalie", async () => {
       const anomalie = await leggiAnomalie<AnomaliaArticoloFile>();
       await scriviAnomalie(
@@ -144,22 +179,13 @@ const gestoreArticoli: GestoreFoglio = {
       return (data as number | null) ?? 0;
     });
 
-    let inseriti = 0;
-    let aggiornati = 0;
-    let listini = 0;
-    for (let li = 0; li < lotti; li++) {
-      const r = await step.run(`articoli-lotto-${String(li).padStart(3, "0")}`, async () => {
-        const slice = await leggiLotto<Omit<ArticoloGammaRow, "riga">>(li);
-        const { data, error } = await supabaseAdmin.rpc("import_articoli_gamma_lotto", { _righe: slice as never });
-        if (error) throw new Error(`articoli lotto ${li + 1}/${lotti}: ${error.message}`);
-        const e = (data ?? {}) as { inseriti?: number; aggiornati?: number; listini?: number };
-        return { inseriti: e.inseriti ?? 0, aggiornati: e.aggiornati ?? 0, listini: e.listini ?? 0 };
-      });
-      inseriti += r.inseriti;
-      aggiornati += r.aggiornati;
-      listini += r.listini;
-      await avanzamento(li + 1, lotti, { marche, inseriti, aggiornati, righe_listino: listini });
-    }
+    const t = await eseguiLotti(ctx, "articoli", { marche, inseriti: 0, aggiornati: 0, invariati: 0, righe_listino: 0, listini_riscritti: 0 }, async (li) => {
+      const slice = await leggiLotto<Omit<ArticoloGammaRow, "riga">>(li);
+      const { data, error } = await supabaseAdmin.rpc("import_articoli_gamma_lotto", { _righe: slice as never });
+      if (error) throw new Error(`articoli lotto ${li + 1}/${lotti}: ${error.message}`);
+      const e = (data ?? {}) as Record<string, number | undefined>;
+      return { inseriti: e.inseriti ?? 0, aggiornati: e.aggiornati ?? 0, invariati: e.invariati ?? 0, righe_listino: e.listini ?? 0, listini_riscritti: e.listini_riscritti ?? 0 };
+    });
 
     const disattivati = await step.run("articoli-disattiva-assenti", async () => {
       const codici = await leggiCodici<string>();
@@ -169,7 +195,7 @@ const gestoreArticoli: GestoreFoglio = {
       return (data as number | null) ?? 0;
     });
 
-    return { marche, inseriti, aggiornati, disattivati, righe_listino: listini };
+    return { marche, inseriti: t.inseriti, aggiornati: t.aggiornati, invariati: t.invariati, disattivati, righe_listino: t.righe_listino, listini_riscritti: t.listini_riscritti };
   },
 };
 
@@ -231,31 +257,29 @@ function gestoreFotografia(o: {
 }): GestoreFoglio {
   return {
     chiave: o.chiave,
-    esegui: async ({ step, importazioneId, lotti, leggiLotto, leggiAnomalie, avanzamento }) => {
+    esegui: async (ctx) => {
+      const { step, importazioneId, lotti, leggiLotto, leggiAnomalie } = ctx;
       await step.run(`${o.chiave}-anomalie`, async () => {
         await scriviAnomalie(importazioneId, o.prefisso, anomalieChiave(o.prefisso, o.campo, await leggiAnomalie<AnomaliaChiaveFile>()));
       });
-      const tot: Record<string, number> = { inseriti: 0, aggiornati: 0, ...Object.fromEntries(o.extra.map((k) => [k, 0])) };
-      for (let li = 0; li < lotti; li++) {
-        const r = await step.run(`${o.chiave}-lotto-${String(li).padStart(3, "0")}`, async () => {
-          const slice = await leggiLotto<Record<string, unknown>>(li);
-          const { data, error } = await supabaseAdmin.rpc(o.rpcLotto as never, { _righe: slice, _importazione: importazioneId } as never);
-          if (error) throw new Error(`${o.chiave} lotto ${li + 1}/${lotti}: ${error.message}`);
-          const d = (data ?? {}) as Record<string, unknown>;
-          const scarti = Array.isArray(d.deposito_inesistente) ? (d.deposito_inesistente as Record<string, unknown>[]) : [];
-          if (o.anomaliaScarto) {
-            // Anomalie del lotto: prefisso dedicato per lotto, così il retry le riscrive senza doppioni.
-            await scriviAnomalie(importazioneId, `${o.prefisso}deposito_inesistente_l${String(li).padStart(3, "0")}`, scarti.map(o.anomaliaScarto).map((a) => ({ ...a, tipo_anomalia: `${o.prefisso}deposito_inesistente_l${String(li).padStart(3, "0")}` })));
-          }
-          const out: Record<string, number> = { inseriti: Number(d.inseriti ?? 0), aggiornati: Number(d.aggiornati ?? 0) };
-          for (const k of o.extra) out[k] = k === "deposito_inesistente" ? scarti.length : Number(d[k] ?? 0);
-          return out;
-        });
-        for (const [k, v] of Object.entries(r)) tot[k] = (tot[k] ?? 0) + v;
-        await avanzamento(li + 1, lotti, { ...tot });
-      }
+      const iniziali: Record<string, number> = { inseriti: 0, aggiornati: 0, invariati: 0, ...Object.fromEntries(o.extra.map((k) => [k, 0])) };
+      const tot = await eseguiLotti(ctx, o.chiave, iniziali, async (li) => {
+        const slice = await leggiLotto<Record<string, unknown>>(li);
+        const { data, error } = await supabaseAdmin.rpc(o.rpcLotto as never, { _righe: slice, _importazione: importazioneId } as never);
+        if (error) throw new Error(`${o.chiave} lotto ${li + 1}/${lotti}: ${error.message}`);
+        const d = (data ?? {}) as Record<string, unknown>;
+        const scarti = Array.isArray(d.deposito_inesistente) ? (d.deposito_inesistente as Record<string, unknown>[]) : [];
+        if (o.anomaliaScarto) {
+          // Anomalie del lotto: prefisso dedicato per lotto, così il retry le riscrive senza doppioni.
+          const pref = `${o.prefisso}deposito_inesistente_l${String(li).padStart(3, "0")}`;
+          await scriviAnomalie(importazioneId, pref, scarti.map(o.anomaliaScarto).map((a) => ({ ...a, tipo_anomalia: pref })));
+        }
+        const out: Record<string, number> = { inseriti: Number(d.inseriti ?? 0), aggiornati: Number(d.aggiornati ?? 0), invariati: Number(d.invariati ?? 0) };
+        for (const k of o.extra) out[k] = k === "deposito_inesistente" ? scarti.length : Number(d[k] ?? 0);
+        return out;
+      });
       const rimossi = await step.run(`${o.chiave}-chiudi`, async () => {
-        if (!lotti || tot.inseriti + tot.aggiornati === 0) return 0; // nessuna riga valida: non cancellare nulla
+        if (!lotti || tot.inseriti + tot.aggiornati + tot.invariati === 0) return 0; // nessuna riga valida: non cancellare nulla
         const { data, error } = await supabaseAdmin.rpc(o.rpcChiudi as never, { _importazione: importazioneId } as never);
         if (error) throw new Error(`${o.chiave} chiusura: ${error.message}`);
         return (data as number | null) ?? 0;
