@@ -27,32 +27,19 @@ BEGIN
     UNION ALL (SELECT * FROM af_test_alert EXCEPT SELECT * FROM public.alert_fidi)
   ), 'Spento non deve segnare alert';
 
-  -- Subtransazione: anche invii accesi e catalogo temporaneo vengono annullati.
+  -- Subtransazione: anche la marcatura con invii accesi viene annullata.
   BEGIN
-    INSERT INTO public.notifiche_tipi(tipo,raggruppa,chiave_metadata,titolo_gruppo,link_gruppo)
-    VALUES ('alert_fido',true,'store_id','{gruppo}: {n} alert fidi','/alert-fidi')
-    ON CONFLICT (tipo) DO UPDATE SET raggruppa=EXCLUDED.raggruppa,
-      chiave_metadata=EXCLUDED.chiave_metadata,titolo_gruppo=EXCLUDED.titolo_gruppo,link_gruppo=EXCLUDED.link_gruppo;
     INSERT INTO public.configurazioni(chiave,valore) VALUES ('alert_fidi_notifiche_attive','true');
     v_n := public.invia_notifiche_alert_fidi();
     ASSERT public.invia_notifiche_alert_fidi() = 0, 'Seconda esecuzione non deve duplicare';
     SELECT jsonb_build_object(
-      'notifiche_logiche',v_n,
-      'righe_raggruppate',(SELECT count(*) FROM public.notifiche WHERE tipo='alert_fido'),
-      'destinatari_distinti',(SELECT count(DISTINCT user_id) FROM public.notifiche WHERE tipo='alert_fido'),
-      'primi_10_destinatari',(SELECT jsonb_agg(x) FROM (
-        SELECT concat_ws(' ',p.nome,p.cognome) AS nome,
-          (SELECT string_agg(ur.role::text,', ' ORDER BY ur.role::text) FROM public.user_roles ur
-           WHERE ur.user_id=p.id AND ur.role IN ('store_manager','agente')) AS ruolo,
-          sum(n.conteggio) AS notifiche
-        FROM public.notifiche n JOIN public.profili p ON p.id=n.user_id
-        WHERE n.tipo='alert_fido' GROUP BY p.id,p.nome,p.cognome
-        ORDER BY notifiche DESC,nome LIMIT 10
-      ) x),
-      'esempi',(SELECT jsonb_agg(x) FROM (
-        SELECT titolo,messaggio FROM public.notifiche WHERE tipo='alert_fido' ORDER BY user_id,chiave_gruppo LIMIT 3
+      'alert_marcati',v_n,
+      'nuove_notifiche',(SELECT count(*) FROM (
+        SELECT * FROM public.notifiche EXCEPT SELECT * FROM af_test_notifiche
       ) x)
     ) INTO v_report;
+    ASSERT NOT EXISTS (SELECT 1 FROM (SELECT * FROM public.notifiche EXCEPT SELECT * FROM af_test_notifiche) x),
+      'La funzione non deve più creare notifiche immediate';
     RAISE EXCEPTION USING ERRCODE='ZX001', MESSAGE='Annulla prova accesa';
   EXCEPTION WHEN SQLSTATE 'ZX001' THEN
     -- Variabili conservate, tutte le scritture e le code HTTP annullate.

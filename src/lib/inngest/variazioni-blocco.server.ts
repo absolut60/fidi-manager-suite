@@ -1,13 +1,13 @@
-// Job Inngest: rilevazione variazioni blocco clienti a fine import
-// "blocco_fido_assicurazione" + avvisi (mail + notifica in app) agli store manager
-// del negozio del cliente, raggruppati per negozio.
+// Job Inngest a orari fissi: variazioni blocco/legale e alert fidi in un unico
+// avviso per negozio (email + notifica) e una sola notifica per agente.
 // Pattern: step.run per fase, withTimeout su ogni chiamata, un step per negozio
 // (un retry non rimanda i negozi già riusciti).
 import { inngest } from "./client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendEmailViaEdge } from "./send-email.server";
 import { buildVariazioniBloccoEmail } from "@/lib/variazioni-blocco-email-render";
-import { alertPerNegozio, type AlertEmail } from "@/lib/alert-fidi-email";
+import { type AlertEmail } from "@/lib/alert-fidi-email";
+import { messaggioConteggi, raggruppaAvvisiPerNegozio } from "@/lib/avvisi-clienti";
 import { etichetteRigaProposta } from "@/lib/proposta-fido-riga";
 import { segnalazioniCorrenti } from "@/lib/fido-segnalazioni";
 
@@ -32,6 +32,7 @@ type Pendente = {
   ragione_sociale: string | null;
   tipo: string;
   negozio: string | null;
+  importazione_id: string | null;
 };
 
 /**
@@ -103,30 +104,54 @@ async function marcaNotificate(ids: string[]): Promise<void> {
   }
 }
 
-function messaggioConteggi(n: number, m: number, l = 0, u = 0): string {
-  const parti: string[] = [];
-  if (n > 0) parti.push(`${n} ${n === 1 ? "bloccato" : "bloccati"}`);
-  if (m > 0) parti.push(`${m} ${m === 1 ? "sbloccato" : "sbloccati"}`);
-  if (l > 0) parti.push(`${l} in legale`);
-  if (u > 0) parti.push(`${u} ${u === 1 ? "uscito" : "usciti"} dal legale`);
-  return parti.join(", ");
-}
-
 export const notificaVariazioniBlocco = inngest.createFunction(
   {
     id: "clienti-variazioni-blocco-notifica",
-    name: "Clienti: variazioni blocco → avvisi store manager",
+    name: "Clienti: aggiornamento a orari fissi",
     retries: 3,
     concurrency: { limit: 1 },
-    triggers: [{ event: "clienti/blocco.variazioni.rileva" }],
+    triggers: [
+      { cron: "TZ=Europe/Rome 0 10 * * *" },
+      { cron: "TZ=Europe/Rome 30 14 * * *" },
+      { cron: "TZ=Europe/Rome 0 18 * * *" },
+    ],
   },
-  async ({ event, step, logger }) => {
-    const importazioneId = ((event.data as { importazioneId?: string | null })?.importazioneId ??
-      null) as string | null;
-    // FM55: alert fidi appena notificati da invia_notifiche_alert_fidi (marcatore notificato_il):
-    // entrano nella stessa email per negozio, solo agli store manager (gli agenti hanno la notifica in app).
-    const alertIds = (((event.data as { alertIds?: unknown })?.alertIds ?? []) as unknown[])
-      .filter((x): x is string => typeof x === "string");
+  async ({ step, logger }) => {
+    const importazioneId: string | null = null;
+    // Step memorizzato: i retry dei negozi non rieseguono la marcatura e non perdono gli ID.
+    const alertIds = await step.run("marca-alert-fidi", async (): Promise<string[]> => {
+      const { data: prima, error: eP } = await withTimeout(
+        supabaseAdmin.from("alert_fidi").select("notificato_il").not("notificato_il", "is", null)
+          .order("notificato_il", { ascending: false }).limit(1).maybeSingle(),
+        T_MS,
+        "ultimo avviso alert fidi",
+      );
+      if (eP) throw new Error(`ultimo avviso alert fidi: ${eP.message}`);
+      const { data, error } = await withTimeout(
+        supabaseAdmin.rpc("invia_notifiche_alert_fidi" as never),
+        T_MS * 4,
+        "marcatura alert fidi",
+      );
+      if (error) throw new Error(`marcatura alert fidi: ${error.message}`);
+      if (Number(data ?? 0) === 0) return [];
+      const soglia = (prima as { notificato_il?: string } | null)?.notificato_il;
+      const out: string[] = [];
+      const PAGE = 1000;
+      for (let from = 0; ; from += PAGE) {
+        let q = supabaseAdmin.from("alert_fidi").select("id").not("notificato_il", "is", null);
+        if (soglia) q = q.gt("notificato_il", soglia);
+        const { data: nuovi, error: eN } = await withTimeout(
+          q.order("id").range(from, from + PAGE - 1),
+          T_MS,
+          "alert fidi appena marcati",
+        );
+        if (eN) throw new Error(`alert fidi appena marcati: ${eN.message}`);
+        out.push(...(nuovi ?? []).map((r) => (r as { id: string }).id));
+        if ((nuovi ?? []).length < PAGE) break;
+      }
+      logger.info(`Alert fidi marcati per questo giro: ${out.length}`);
+      return out;
+    });
 
     const alertFidi = await step.run("carica-alert-fidi", async (): Promise<AlertEmail[]> => {
       if (!alertIds.length) return [];
@@ -165,7 +190,7 @@ export const notificaVariazioniBlocco = inngest.createFunction(
               }).map((e) => e.testo)
             : [];
           out.push({
-            id: r.id, tipo: r.tipo, consumo: r.consumo, esposizione: r.esposizione, ordini_aperti: r.ordini_aperti,
+            id: r.id, cliente_id: r.cliente_id, tipo: r.tipo, consumo: r.consumo, esposizione: r.esposizione, ordini_aperti: r.ordini_aperti,
             fido_gamma: r.fido_gamma, fido_proposto: r.fido_proposto,
             store_id: r.clienti?.store_id ?? null, negozio: r.clienti?.stores?.nome ?? null,
             codice: r.clienti?.codice_gestionale ?? null, ragione_sociale: r.clienti?.ragione_sociale ?? null,
@@ -175,7 +200,6 @@ export const notificaVariazioniBlocco = inngest.createFunction(
       }
       return out;
     });
-    const alertNegozio = alertPerNegozio(alertFidi);
 
     const rilevate = await step.run("rileva", async () => {
       const { data, error } = await withTimeout(
@@ -198,7 +222,7 @@ export const notificaVariazioniBlocco = inngest.createFunction(
         const { data, error } = await withTimeout(
           supabaseAdmin
             .from("clienti_blocco_variazioni")
-            .select("id, cliente_id, store_id, codice_gestionale, ragione_sociale, tipo, stores(nome)")
+            .select("id, cliente_id, store_id, codice_gestionale, ragione_sociale, tipo, importazione_id, stores(nome)")
             .is("notificato_at", null)
             .order("id")
             .range(from, from + PAGE - 1),
@@ -213,6 +237,7 @@ export const notificaVariazioniBlocco = inngest.createFunction(
           codice_gestionale: string | null;
           ragione_sociale: string | null;
           tipo: string;
+          importazione_id: string | null;
           stores: { nome: string | null } | null;
         }>;
         for (const r of rows) {
@@ -224,6 +249,7 @@ export const notificaVariazioniBlocco = inngest.createFunction(
             ragione_sociale: r.ragione_sociale,
             tipo: r.tipo,
             negozio: r.stores?.nome ?? null,
+            importazione_id: r.importazione_id,
           });
         }
         if (rows.length < PAGE) break;
@@ -251,43 +277,50 @@ export const notificaVariazioniBlocco = inngest.createFunction(
     });
     const isTest = !!emailTest;
 
-    const perNegozio = new Map<string, Pendente[]>();
-    for (const p of pendenti) {
-      const arr = perNegozio.get(p.store_id!) ?? [];
-      arr.push(p);
-      perNegozio.set(p.store_id!, arr);
-    }
+    const perNegozio = raggruppaAvvisiPerNegozio(pendenti, alertFidi);
 
-    // FM45: notifica in app anche agli agenti dei clienti variati (una per agente,
-    // solo i propri clienti, stesso tipo/testo/link dello store manager; mai l'autore
-    // dell'import). In modalità test nessuna notifica agli agenti reali.
-    // Va prima del ciclo negozi: le righe sono già in memoria e la marcatura resta ai negozi.
+    // Una sola notifica per agente, con variazioni e alert dei propri clienti.
+    // In modalità test nessuna notifica agli agenti reali; mai l'autore dell'import.
     const notificheAgenti = await step.run("agenti", async () => {
-      if (isTest || !pendenti.length) return 0;
-      let autoreId: string | null = null;
-      if (importazioneId) {
-        const { data: imp } = await withTimeout(
-          supabaseAdmin.from("importazioni").select("eseguita_da").eq("id", importazioneId).maybeSingle(),
+      if (isTest || (!pendenti.length && !alertFidi.length)) return 0;
+      const importIds = Array.from(new Set(pendenti.map((p) => p.importazione_id).filter((x): x is string => !!x)));
+      const autori = new Map<string, string | null>();
+      for (let i = 0; i < importIds.length; i += 500) {
+        const { data, error } = await withTimeout(
+          supabaseAdmin.from("importazioni").select("id, eseguita_da").in("id", importIds.slice(i, i + 500)),
           T_MS,
-          "autore import",
+          "autori import",
         );
-        autoreId = ((imp as { eseguita_da?: string | null } | null)?.eseguita_da ?? null) as string | null;
+        if (error) throw new Error(`autori import: ${error.message}`);
+        for (const r of (data ?? []) as Array<{ id: string; eseguita_da: string | null }>) autori.set(r.id, r.eseguita_da);
       }
-      const clienteIds = Array.from(new Set(pendenti.map((p) => p.cliente_id).filter((x): x is string => !!x)));
+      const clienteIds = Array.from(new Set([...pendenti, ...alertFidi].map((p) => p.cliente_id).filter((x): x is string => !!x)));
       const mappa = await agentiPerCliente(clienteIds);
-      const perAgente = new Map<string, Pendente[]>();
+      type GruppoAgente = { variazioni: Pendente[]; alertFidi: AlertEmail[] };
+      const perAgente = new Map<string, GruppoAgente>();
+      const gruppo = (uid: string): GruppoAgente => {
+        const esistente = perAgente.get(uid);
+        if (esistente) return esistente;
+        const nuovo: GruppoAgente = { variazioni: [], alertFidi: [] };
+        perAgente.set(uid, nuovo);
+        return nuovo;
+      };
       for (const p of pendenti) {
         if (!p.cliente_id) continue;
+        const autore = p.importazione_id ? autori.get(p.importazione_id) : null;
         for (const a of mappa.get(p.cliente_id) ?? []) {
-          if (a === autoreId) continue;
-          const arr = perAgente.get(a) ?? [];
-          arr.push(p);
-          perAgente.set(a, arr);
+          if (a === autore) continue;
+          gruppo(a).variazioni.push(p);
         }
       }
+      for (const a of alertFidi) {
+        for (const agente of mappa.get(a.cliente_id) ?? []) gruppo(agente).alertFidi.push(a);
+      }
       if (!perAgente.size) return 0;
-      const righe = Array.from(perAgente, ([uid, lista]) => {
-        const negozi = Array.from(new Set(lista.map((r) => r.negozio ?? "sede")));
+      const righe = Array.from(perAgente, ([uid, gruppo]) => {
+        const lista = gruppo.variazioni;
+        const alerts = gruppo.alertFidi;
+        const negozi = Array.from(new Set([...lista, ...alerts].map((r) => r.negozio ?? "sede")));
         const nB = lista.filter((r) => r.tipo === "bloccato").length;
         const nS = lista.filter((r) => r.tipo === "sbloccato").length;
         const nL = lista.filter((r) => r.tipo === "in_legale").length;
@@ -295,16 +328,17 @@ export const notificaVariazioniBlocco = inngest.createFunction(
         return {
           user_id: uid,
           tipo: "variazioni_blocco_clienti",
-          titolo: `Variazioni blocco e legale clienti — ${negozi.join(", ")}`,
-          messaggio: messaggioConteggi(nB, nS, nL, nU),
-          link: "/clienti-variazioni-blocco",
+          titolo: `Aggiornamento clienti — ${negozi.join(", ")}`,
+          messaggio: messaggioConteggi(nB, nS, nL, nU, alerts.length),
+          link: lista.length ? "/clienti-variazioni-blocco" : "/alert-fidi",
           metadata: {
-            store_id: negozi.length === 1 ? lista[0].store_id : null,
-            importazione_id: importazioneId,
+            store_id: negozi.length === 1 ? (lista[0]?.store_id ?? alerts[0]?.store_id) : null,
+            importazione_id: null,
             bloccati: nB,
             sbloccati: nS,
             in_legale: nL,
             usciti_legale: nU,
+            alert_fidi: alerts.length,
             test: false,
             destinatario: "agente",
           },
@@ -319,7 +353,7 @@ export const notificaVariazioniBlocco = inngest.createFunction(
         logger.error(`Notifiche agenti: ${error.message}`);
         return 0;
       }
-      logger.info(`Notifiche variazioni blocco agli agenti: ${righe.length}`);
+      logger.info(`Notifiche aggiornamento clienti agli agenti: ${righe.length}`);
       return righe.length;
     });
 
@@ -329,12 +363,11 @@ export const notificaVariazioniBlocco = inngest.createFunction(
     let mailFallite = 0;
     let notificheInserite = 0;
 
-    for (const sid of alertNegozio.keys()) if (!perNegozio.has(sid)) perNegozio.set(sid, []);
-
-    for (const [storeId, righe] of perNegozio) {
+    for (const [storeId, gruppo] of perNegozio) {
       const esito = await step.run(`negozio-${storeId}`, async () => {
-        const alertDelNegozio = alertNegozio.get(storeId) ?? [];
-        const negozioNome = righe[0]?.negozio ?? alertDelNegozio[0]?.negozio ?? "sede";
+        const righe = gruppo.variazioni;
+        const alertDelNegozio = gruppo.alertFidi;
+        const negozioNome = gruppo.negozio;
         const ids = righe.map((r) => r.id);
 
         // a) destinatari reali: store manager del negozio, attivi, email valida
@@ -433,12 +466,11 @@ export const notificaVariazioniBlocco = inngest.createFunction(
           }
         }
 
-        // f) notifiche in app (la push parte dal trigger esistente)
+        // f) unica notifica in app per destinatario (la push parte dal trigger esistente)
         let notifiche = 0;
-        // Gli alert fidi hanno già la loro notifica in app (invia_notifiche_alert_fidi).
-        if (userIds.length && ids.length) {
-          const titolo = `${isTest ? "[TEST] " : ""}Variazioni blocco e legale clienti — ${negozioNome}`;
-          const messaggio = messaggioConteggi(bloccati.length, sbloccati.length, inLegale.length, uscitiLegale.length);
+        if (userIds.length && (ids.length || alertDelNegozio.length)) {
+          const titolo = `${isTest ? "[TEST] " : ""}Aggiornamento clienti — ${negozioNome}`;
+          const messaggio = messaggioConteggi(bloccati.length, sbloccati.length, inLegale.length, uscitiLegale.length, alertDelNegozio.length);
           const { error: eN } = await withTimeout(
             supabaseAdmin.from("notifiche").insert(
               userIds.map((uid) => ({
@@ -446,14 +478,16 @@ export const notificaVariazioniBlocco = inngest.createFunction(
                 tipo: "variazioni_blocco_clienti",
                 titolo,
                 messaggio,
-                link: "/clienti-variazioni-blocco",
+                link: ids.length ? "/clienti-variazioni-blocco" : "/alert-fidi",
                 metadata: {
                   store_id: storeId,
-                  importazione_id: importazioneId,
+                  importazione_id: null,
+                  gruppo_etichetta: negozioNome,
                   bloccati: bloccati.length,
                   sbloccati: sbloccati.length,
                   in_legale: inLegale.length,
                   usciti_legale: uscitiLegale.length,
+                  alert_fidi: alertDelNegozio.length,
                   test: isTest,
                 },
               })),
@@ -485,6 +519,7 @@ export const notificaVariazioniBlocco = inngest.createFunction(
       mailFallite,
       notifiche: notificheInserite,
       notificheAgenti,
+      alertFidi: alertFidi.length,
       test: isTest,
     };
   },

@@ -4,7 +4,6 @@ import {
   passoBlocco,
   passoFinalizza,
   passoAlertFidi,
-  passoNotificheAlertFidi,
   passoRegistraOrigine,
   passoRilasciaLock,
 } from "@/lib/fido-teorico-ricalcolo-passi.server";
@@ -70,13 +69,12 @@ export const ricalcolaFidoTeorico = inngest.createFunction(
       return { ok: true };
     });
     const alertFidi = await step.run("aggiorna-alert-fidi", async () => passoAlertFidi(lock));
-    const notificheAlertFidi = await step.run("invia-notifiche-alert-fidi", async () => passoNotificheAlertFidi(lock));
     await step.run("registra-origine", async () => {
       await passoRegistraOrigine(origine);
       await passoRilasciaLock(token);
       return { ok: true };
     });
 
-    return { origine, alert_fidi: alertFidi, notifiche_alert_fidi: notificheAlertFidi, blocchi_elaborati: blocchi, ultimo_id: dopoId, finalizzato: true };
+    return { origine, alert_fidi: alertFidi, blocchi_elaborati: blocchi, ultimo_id: dopoId, finalizzato: true };
   },
 );

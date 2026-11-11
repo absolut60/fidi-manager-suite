@@ -5,7 +5,7 @@
 
 - Official Gamma scadenziario parsing lives only in the browser-safe scadenziario-parser module; both browser staging and direct-file server entrypoints parse and resolve duplicates once before chunking, while chunk dedup remains a safety net and expected-row counters retain their existing valid-client rule.
 
-- Alert-fidi notifications are produced only by public.invia_notifiche_alert_fidi after alert refresh; it locks eligible alerts, uses the existing grouping/push triggers and marks logical deliveries rather than INSERT RETURNING rows, because grouping may cancel inserts.
+- Alert eligibility/marking lives only in public.invia_notifiche_alert_fidi, called only by the 10:00/14:30/18:00 Europe/Rome job; that job alone sends combined store/agent notifications.
 
 - TooltipDettaglio owns delayed tooltip mounting for recovery actions, commercial calendar events and task rows, so content and any detail queries mount only while open without changing click or touch handlers.
 
@@ -33,7 +33,7 @@
 - Only one theoretical-credit recalculation runs at a time: every step in fido-teorico-ricalcolo-passi.server takes/renews the shared lock row in configurazioni (fido-teorico-ricalcolo-lock, conditional writes, expiry SCADENZA_LOCK_MS without lock updates, released after the closing step), used by both the button and the Inngest job (concurrency 1), because two parallel runs overloaded and restarted the database.
 - Dashboard Fidi card numbers come only from public.get_dashboard_fidi_gruppi and list links only from get_clienti_dashboard_fidi_ids (both on dashboard_fidi_clienti_base/dashboard_fidi_appartenenze), so cards and lists cannot diverge; isPrivatoFido stays the credit-review perimeter.
 - Client activity is decided only by isClienteAttivo (use-config) and its SQL twin public.cliente_attivo, which get_fido_teorico_v2 applies after the brake to zero non-active 'calcolo' clients (except nuovo_in_attesa or with open orders); the cutoff is a fixed year in configurazioni, so moving it (e.g. to 2027 in January) instantly makes every client non-active and zeroes all theoretical credit — never change it without Andrea's decision.
-- Alert-fidi notifications skip "already decided" alerts only via public.alert_fido_gia_deciso (TS twin giaDecisoAvviso), and newly marked alerts (notificato_il) join the existing per-store blocco/legale email job instead of a new mailer, so each alert is emailed once with one shared marker.
+- Alert-fidi skip "already decided" alerts only via public.alert_fido_gia_deciso (TS twin giaDecisoAvviso); newly marked alerts join the fixed-time combined store email and store/agent notifications once, using notificato_il as shared marker.
 - Every page/dialog change is verified with Playwright screenshots at 375px and 1280px before done (fake data via a temporary route if no session, removed afterwards), because mobile regressions reached the owner; see docs/regole/responsive.md.
 - Recalculation progress in pages comes only from barraRicalcolo on the shared lock row, renewed with its phase by every step in fido-teorico-ricalcolo-passi.server, so automatic and manual runs look identical.
 - Showroom UI permissions live only in src/lib/permessi-showroom.ts (twin of auth_solo_showroom), so UI and RLS cannot diverge.

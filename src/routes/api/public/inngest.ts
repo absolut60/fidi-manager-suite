@@ -26,7 +26,6 @@ import { refreshFatturatoMensileCron } from "@/lib/inngest/fatturato-mensile.ser
 import { ricalcolaFidoTeorico } from "@/lib/inngest/fido-teorico-ricalcolo.server";
 import { verificaImportCompletiFidoTeorico } from "@/lib/inngest/fido-teorico-verifica-import.server";
 import { notificaVariazioniBlocco } from "@/lib/inngest/variazioni-blocco.server";
-import { avvisoLegaleDifferito } from "@/lib/inngest/legale-variazioni-differita.server";
 import { rilevaAgenziaRecupero } from "@/lib/inngest/agenzia-recupero.server";
 import { notificaEsitoImport } from "@/lib/inngest/esito-import.server";
 import { aggiornaCacheCruscotti } from "@/lib/inngest/cache-cruscotti.server";
@@ -61,7 +60,6 @@ const handler = serve({
     ricalcolaFidoTeorico,
     verificaImportCompletiFidoTeorico,
     notificaVariazioniBlocco,
-    avvisoLegaleDifferito,
     rilevaAgenziaRecupero,
     notificaEsitoImport,
     aggiornaCacheCruscotti,

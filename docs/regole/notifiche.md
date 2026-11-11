@@ -17,13 +17,14 @@ Quando arrivano in blocco, le notifiche si raggruppano; mai una notifica (e una 
 - Fonte unica: trigger `trg_notifica_nota_recupero` → `public.notifica_nota_recupero()`; un errore della notifica non blocca mai il salvataggio della nota.
 - Raggruppate per cliente (`chiave_metadata = cliente_id`), titolo di gruppo "{n} nuove note di recupero — {cliente}"; link alla scheda cliente, tab Attività.
 
-## Avvisi legale nel flusso delle variazioni di blocco (FM48)
+## Aggiornamento clienti a orari fissi (FM60)
 
-- Ingresso e uscita dalla gestione legale si avvisano come blocco/sblocco: stesso job `clienti-variazioni-blocco-notifica` (`src/lib/inngest/variazioni-blocco.server.ts`), stessi destinatari (store manager del negozio e agenti del cliente, mai l'autore dell'import), stessa modalità test `variazioni_blocco_email_test`, stesso link `/clienti-variazioni-blocco`.
-- Tipi `in_legale` / `uscito_legale` in `clienti_blocco_variazioni`; messaggio "N in legale", "N usciti dal legale" (solo se > 0); titolo e oggetto "Variazioni blocco e legale clienti — {negozio}"; nella mail le sezioni "Entrati in gestione legale" e "Usciti dalla gestione legale", solo se non vuote.
-- Origine: il trigger `registra_variazione_legale()` scrive solo la riga in `clienti_blocco_variazioni`. Dopo ogni operazione sulle pratiche legali o sulla nota Gamma la scheda cliente chiama la server function `avvisaVariazioniLegale` (`src/lib/legale.functions.ts`), che, solo se ci sono righe legali non notificate, emette `clienti/legale.variazioni.differita` (via `sendInngestEvent`, mai `step.sendEvent`).
-- **Regola (FM50): variazioni fatte dall'app → avviso dopo 5 minuti di quiete, una email/notifica per negozio.** La funzione `clienti-legale-variazioni-differita` (`src/lib/inngest/legale-variazioni-differita.server.ts`) ha debounce Inngest `period 5m`, `timeout 15m`, senza chiave (raggruppa tutte le modifiche dell'app); quando scatta emette una sola volta `clienti/blocco.variazioni.rileva` con `importazioneId: null`. Il job esistente raggruppa per negozio. Mai emettere `clienti/blocco.variazioni.rileva` direttamente dall'app.
-- L'import blocco fido emette invece `clienti/blocco.variazioni.rileva` subito a fine giro (avviso immediato, invariato).
+- Bloccati, sbloccati, ingressi/uscite dal legale e nuovi alert fidi vengono comunicati soltanto alle **10:00, 14:30 e 18:00 Europe/Rome**. Quanto arriva dopo le 18:00 viene comunicato alle 10:00 del giorno successivo; senza novità non si invia nulla.
+- Un solo job `clienti-variazioni-blocco-notifica` (`src/lib/inngest/variazioni-blocco.server.ts`), con tre cron, chiama `rileva_variazioni_blocco(null)`, raccoglie tutte le righe con `notificato_at IS NULL` e gli alert appena marcati. Mai eventi immediati a fine import, a fine ricalcolo o dopo operazioni legali; la vecchia funzione `clienti-legale-variazioni-differita` è eliminata e `avvisaVariazioniLegale` non emette eventi.
+- Per ogni negozio: una email e una notifica per store manager, titolo/oggetto "Aggiornamento clienti — {negozio}", messaggio con i soli conteggi presenti; link `/clienti-variazioni-blocco` se ci sono variazioni, altrimenti `/alert-fidi`. La email usa `buildVariazioniBloccoEmail` con tutte le sezioni non vuote.
+- Ogni agente riceve una sola notifica in app con variazioni e alert dei propri clienti, mai quella dell'autore dell'import; nessuna email. In modalità test nessuna notifica agli agenti reali.
+- `public.invia_notifiche_alert_fidi()` conserva eleggibilità, livelli e "già deciso", ma **non crea più notifiche**: marca soltanto gli alert e restituisce quanti ne ha marcati. La chiamata è in uno step Inngest separato e memorizzato prima degli step dei negozi; nessun altro codice o trigger la chiama. Con `alert_fidi_notifiche_attive` diverso da esattamente `true` non marca né comunica alert, mentre blocco/legale partono comunque.
+- Restano rispettati `variazioni_blocco_email_test` e il raggruppamento/push esistente sul tipo `variazioni_blocco_clienti`. **Dopo la pubblicazione serve il resync di Inngest** per registrare i tre cron e rimuovere il vecchio trigger.
 
 ## Richieste interne: bonifico di acconto (FM48)
 

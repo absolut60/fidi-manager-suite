@@ -1,8 +1,9 @@
 // FM55 — Sezione "Alert fidi" dell'email unica per negozio (modulo puro, nessun import di supabase).
-// Il testo del consumo è il gemello TS di quello scritto da public.invia_notifiche_alert_fidi.
+// Testo del consumo ereditato dal precedente avviso SQL; dal FM60 la funzione SQL non scrive messaggi.
 
 export type AlertEmail = {
   id: string;
+  cliente_id: string;
   store_id: string | null;
   negozio: string | null;
   codice: string | null;

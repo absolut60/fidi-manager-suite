@@ -5,6 +5,7 @@ import { alertPerNegozio, messaggioConsumoAlert, type AlertEmail } from "@/lib/a
 import { buildVariazioniBloccoEmail } from "@/lib/variazioni-blocco-email-render";
 
 const SQL = readFileSync("drizzle/migrations/0128_fm55_alert_fidi_gia_deciso_notifiche.sql", "utf8");
+const SQL_ORARI = readFileSync("drizzle/migrations/0158_fm60_avvisi_alert_orari_fissi.sql", "utf8");
 const OGGI = "2026-11-01";
 const prot = (o: Partial<{ protezione_valida: boolean; protetto_fino_al: string; importo_approvato: number }> = {}) => ({
   protezione_valida: true, protetto_fino_al: "2026-11-30", importo_approvato: 3000, ...o,
@@ -21,6 +22,16 @@ describe("già deciso negli avvisi (gemello di public.alert_fido_gia_deciso)", (
     expect(SQL).toContain("p.protetto_fino_al >= (now() AT TIME ZONE 'Europe/Rome')::date");
     expect(SQL).toContain("COALESCE(c.fido_gestionale, 0)::numeric = p.importo_approvato");
     expect(SQL).toContain("AND NOT public.alert_fido_gia_deciso(af.cliente_id)");
+  });
+});
+
+describe("marcatura alert per gli avvisi a orario fisso", () => {
+  test("la funzione non crea più notifiche separate ed è riservata al job server", () => {
+    expect(SQL_ORARI).not.toContain("INSERT INTO public.notifiche");
+    expect(SQL_ORARI).toContain("SET notificato_livello");
+    expect(SQL_ORARI).toContain("notificato_il = v_now");
+    expect(SQL_ORARI).toContain("FROM PUBLIC, anon, authenticated");
+    expect(SQL_ORARI).toContain("TO service_role");
   });
 });
 
@@ -41,7 +52,7 @@ describe("testo del consumo solo sul debito", () => {
 });
 
 const al = (id: string, store: string | null, nome: string): AlertEmail => ({
-  id, store_id: store, negozio: store ? `SEDE ${store}` : null, codice: "C1", ragione_sociale: nome, tipo: "consumo",
+  id, cliente_id: `cliente-${id}`, store_id: store, negozio: store ? `SEDE ${store}` : null, codice: "C1", ragione_sociale: nome, tipo: "consumo",
   consumo: 0.9, esposizione: 900, ordini_aperti: 0, fido_gamma: 1000, fido_proposto: 0, motivi: ["Cliente con scaduto"],
 });
 
@@ -55,7 +66,7 @@ describe("email unica per negozio", () => {
     const { oggetto, html } = buildVariazioniBloccoEmail({
       negozioNome: "SEDE A", bloccati: [], sbloccati: [], appUrl: "https://x", dataRilevazione: "2026-11-01T10:00:00Z", alertFidi: [al("1", "A", "X")],
     });
-    expect(oggetto).toStartWith("Alert fidi — SEDE A");
+    expect(oggetto).toStartWith("Aggiornamento clienti — SEDE A");
     expect(html).toContain("Alert fidi (1)");
     expect(html).toContain("/alert-fidi");
     expect(html).not.toContain("Clienti bloccati / sbloccati");
