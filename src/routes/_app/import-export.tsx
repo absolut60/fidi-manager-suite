@@ -1043,6 +1043,11 @@ function ArticoliListiniGammaImportCard() {
         l'import prosegue da solo.
       </p>
       {bg.inProgress && p ? <BgProgressBlock progress={p} fallbackTotal={0} /> : null}
+      {bg.fallito ? (
+        <p className="mb-4 break-words rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+          Import non riuscito{bg.errore ? `: ${bg.errore}` : "."}
+        </p>
+      ) : null}
       {(bg.inProgress || bg.done) && stato ? (
         <div className="mb-4 space-y-2">
           {fogli.map(([k, f]) => (

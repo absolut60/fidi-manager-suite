@@ -19,7 +19,7 @@ export type StepApi = {
 export type ContestoGestore = {
   step: StepApi;
   importazioneId: string;
-  /** Numero di lotti già preparati nello step "parse" (dimensione = gestore.lotto). */
+  /** Numero di lotti già preparati nello step "parse-<chiave>" (dimensione = gestore.lotto). */
   lotti: number;
   meta: Record<string, unknown>;
   leggiLotto: <T>(i: number) => Promise<T[]>;
@@ -39,7 +39,7 @@ export type GestoreFoglio = {
   /** Righe per lotto: l'orchestratore salva lo staging già diviso così. */
   lotto: number;
   trovaFoglio: (wb: XLSX.WorkBook) => { nome: string; sheet: XLSX.WorkSheet } | null;
-  /** Eseguito una sola volta nello step "parse". */
+  /** Eseguito una sola volta nello step "parse-<chiave>", che legge solo questo foglio. */
   prepara: (sheet: XLSX.WorkSheet) => {
     righe: unknown[];
     righeLette: number;

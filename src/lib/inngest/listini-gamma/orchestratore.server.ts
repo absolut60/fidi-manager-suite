@@ -10,8 +10,9 @@ const FONTE = "articoli_listini_gamma";
 type EventData = { importazioneId: string; filePath: string };
 
 /**
- * Import unico del file MADE_ARTICOLI_LISTINI_PQ.xlsx: legge il file una volta,
- * poi esegue i gestori registrati in ordine fisso. Un foglio che fallisce
+ * Import unico del file MADE_ARTICOLI_LISTINI_PQ.xlsx: step "fogli" legge solo i nomi,
+ * poi per ogni gestore uno step "parse-<chiave>" legge solo il suo foglio; quindi i
+ * gestori eseguono i loro step in ordine fisso. Un foglio che fallisce
  * (dopo i retry dei suoi step) non ferma gli altri.
  */
 export const processArticoliListiniGammaImport = inngest.createFunction(
@@ -51,32 +52,62 @@ export const processArticoliListiniGammaImport = inngest.createFunction(
       if (error) throw new Error(`staging ${path}: ${error.message}`);
     };
 
-    // Lettura unica del file: prima solo i nomi dei fogli, poi soltanto quelli con un gestore.
-    const parse = await step.run("parse", async () => {
+    const scaricaFile = async () => {
       const { data: blob, error: dlErr } = await supabaseAdmin.storage.from("import-files").download(filePath);
       if (dlErr || !blob) throw new Error(`Download fallito: ${dlErr?.message ?? "no data"}`);
-      const buf = await blob.arrayBuffer();
-      const nomi = XLSX.read(buf, { type: "array", bookSheets: true }).SheetNames;
-      const vuoto = { SheetNames: nomi, Sheets: {} } as unknown as XLSX.WorkBook;
-      const voluti = GESTORI_LISTINI_GAMMA.map((g) => g.trovaFoglio({ ...vuoto, Sheets: Object.fromEntries(nomi.map((n) => [n, {}])) } as XLSX.WorkBook)?.nome).filter(Boolean) as string[];
-      const wb = voluti.length
-        ? XLSX.read(buf, { type: "array", sheets: voluti, cellFormula: false, cellHTML: false, cellStyles: false, cellText: false })
-        : vuoto;
-      const usati = new Set<string>();
-      const fogli: Record<string, { foglio: string; righe: number; righeLette: number; anomalie: number; lotti: number; lotto: number; meta: Record<string, unknown> }> = {};
-      for (const g of GESTORI_LISTINI_GAMMA) {
-        const f = g.trovaFoglio(wb);
-        if (!f) continue;
-        usati.add(f.nome);
-        const p = g.prepara(f.sheet);
-        const lotti = Math.ceil(p.righe.length / g.lotto);
-        for (let i = 0; i < lotti; i++) await carica(fileLotto(g.chiave, i), p.righe.slice(i * g.lotto, (i + 1) * g.lotto));
-        await carica(fileExtra(g.chiave, "anomalie"), p.anomalie);
-        await carica(fileExtra(g.chiave, "codici"), p.codici);
-        fogli[g.chiave] = { foglio: f.nome, righe: p.righe.length, righeLette: p.righeLette, anomalie: p.anomalie.length, lotti, lotto: g.lotto, meta: p.meta };
+      return blob.arrayBuffer();
+    };
+    /** Carica in parallelo a gruppi (non in sequenza, non tutto insieme). */
+    const caricaAGruppi = async (voci: Array<[string, unknown]>, gruppo = 8) => {
+      for (let i = 0; i < voci.length; i += gruppo) {
+        await Promise.all(voci.slice(i, i + gruppo).map(([path, body]) => carica(path, body)));
       }
-      return { fogli, nonGestiti: nomi.filter((n) => !usati.has(n)) };
+    };
+
+    // Step leggero: solo i nomi dei fogli (nessuna cella letta). Decide quali gestori eseguire.
+    const elenco = await step.run("fogli", async () => {
+      const nomi = XLSX.read(await scaricaFile(), { type: "array", bookSheets: true }).SheetNames;
+      const finto = { SheetNames: nomi, Sheets: Object.fromEntries(nomi.map((n) => [n, {}])) } as unknown as XLSX.WorkBook;
+      const assegnati: Record<string, string> = {};
+      for (const g of GESTORI_LISTINI_GAMMA) {
+        const nome = g.trovaFoglio(finto)?.nome;
+        if (nome) assegnati[g.chiave] = nome;
+      }
+      const usati = new Set(Object.values(assegnati));
+      return { assegnati, nonGestiti: nomi.filter((n) => !usati.has(n)) };
     });
+
+    // Uno step per gestore: riscarica il file e legge SOLO il proprio foglio.
+    type InfoFoglio = { foglio: string; righe: number; righeLette: number; anomalie: number; lotti: number; lotto: number; meta: Record<string, unknown> };
+    const parse: { fogli: Record<string, InfoFoglio>; nonGestiti: string[]; erroriLettura: Record<string, string> } = {
+      fogli: {}, nonGestiti: elenco.nonGestiti, erroriLettura: {},
+    };
+    for (const g of GESTORI_LISTINI_GAMMA) {
+      const nome = elenco.assegnati[g.chiave];
+      if (!nome) continue;
+      try {
+        parse.fogli[g.chiave] = await step.run(`parse-${g.chiave}`, async (): Promise<InfoFoglio> => {
+          let wb: XLSX.WorkBook | null = XLSX.read(await scaricaFile(), {
+            type: "array", sheets: [nome], dense: true,
+            cellFormula: false, cellHTML: false, cellStyles: false, cellText: false,
+          });
+          const sheet = wb.Sheets[nome];
+          if (!sheet) throw new Error(`Foglio ${nome} non leggibile`);
+          const p = g.prepara(sheet);
+          wb = null; // libera il foglio prima di caricare lo staging
+          const lotti = Math.ceil(p.righe.length / g.lotto);
+          const voci: Array<[string, unknown]> = [];
+          for (let i = 0; i < lotti; i++) voci.push([fileLotto(g.chiave, i), p.righe.slice(i * g.lotto, (i + 1) * g.lotto)]);
+          voci.push([fileExtra(g.chiave, "anomalie"), p.anomalie], [fileExtra(g.chiave, "codici"), p.codici]);
+          await caricaAGruppi(voci);
+          return { foglio: nome, righe: p.righe.length, righeLette: p.righeLette, anomalie: p.anomalie.length, lotti, lotto: g.lotto, meta: p.meta };
+        });
+      } catch (e) {
+        // Lettura del foglio fallita dopo i retry: gli altri fogli proseguono.
+        parse.erroriLettura[g.chiave] = e instanceof Error ? e.message : String(e);
+        logger.error(`lettura foglio ${g.chiave} fallita: ${parse.erroriLettura[g.chiave]}`);
+      }
+    }
 
     await step.run("reset-anomalie-aperte-fonte", () => resetAnomalieAperteFonte(FONTE, importazioneId));
 
@@ -88,6 +119,13 @@ export const processArticoliListiniGammaImport = inngest.createFunction(
       stato.fogli[g.chiave] = {
         etichetta: g.etichetta, foglio: f.foglio, stato: "in_attesa", righe: f.righe,
         lotto: 0, lotti: 0, conteggi: {}, anomalie: f.anomalie,
+      };
+    }
+    for (const [chiave, errore] of Object.entries(parse.erroriLettura)) {
+      const g = GESTORI_LISTINI_GAMMA.find((x) => x.chiave === chiave)!;
+      stato.fogli[chiave] = {
+        etichetta: g.etichetta, foglio: elenco.assegnati[chiave], stato: "errore", righe: 0,
+        lotto: 0, lotti: 0, conteggi: {}, anomalie: 0, errore: `Lettura del foglio non riuscita: ${errore}`,
       };
     }
     const totaleRighe = Object.values(stato.fogli).reduce((s, f) => s + f.righe, 0);
