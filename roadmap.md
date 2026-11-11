@@ -1,3 +1,7 @@
+# FM61 — Articoli fetta A
+- [ ] SQL elenco/facets e disponibilità condivisa; verifica invarianti e tre EXPLAIN.
+- [ ] Elenco Gamma, filtri e intestazione dettaglio; test e verifiche visive.
+
 # FM61 — Sicurezza dopo il blocco database
 - [x] Chiusa solo l'importazione 1b1cd18d come fallita con il problema richiesto, riletta dal database.
 - [x] Lotti Gamma sequenziali, articoli da 1000; migrazione 0168 elimina INSERT marche dai lotti, invariati/listini preservati.
