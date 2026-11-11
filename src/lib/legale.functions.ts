@@ -9,21 +9,5 @@ export const avvisaVariazioniLegale = createServerFn({ method: "POST" })
   .handler(async ({ context }): Promise<{ ok: boolean; inviato: boolean }> => {
     const { assertPuoGestireLegale } = await import("@/lib/recupero-permessi.server");
     await assertPuoGestireLegale(context.supabase);
-
-    // La RLS di clienti_blocco_variazioni limita la lettura all'ambito utente:
-    // per sapere se c'è qualcosa da avvisare serve il service role, dopo la guardia.
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { count, error } = await supabaseAdmin
-      .from("clienti_blocco_variazioni")
-      .select("id", { count: "exact", head: true })
-      .in("tipo", ["in_legale", "uscito_legale"])
-      .is("notificato_at", null);
-    if (error) throw new Error(`Lettura variazioni legale: ${error.message}`);
-    if (!count) return { ok: true, inviato: false };
-
-    // FM50: evento differito; il debounce (5 min) raggruppa le modifiche e
-    // poi emette una sola volta "clienti/blocco.variazioni.rileva".
-    const { sendInngestEvent } = await import("@/lib/inngest/client");
-    await sendInngestEvent("clienti/legale.variazioni.differita", {});
-    return { ok: true, inviato: true };
+    return { ok: true, inviato: false };
   });

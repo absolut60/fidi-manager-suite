@@ -69,7 +69,6 @@ export const ricalcolaFidoTeorico = inngest.createFunction(
       return { ok: true };
     });
     const alertFidi = await step.run("aggiorna-alert-fidi", async () => passoAlertFidi(lock));
-    const notificheAlertFidi = await step.run("invia-notifiche-alert-fidi", async () => passoNotificheAlertFidi(lock));
     await step.run("registra-origine", async () => {
       await passoRegistraOrigine(origine);
       await passoRilasciaLock(token);

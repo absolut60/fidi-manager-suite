@@ -41,7 +41,7 @@ describe("testo del consumo solo sul debito", () => {
 });
 
 const al = (id: string, store: string | null, nome: string): AlertEmail => ({
-  id, store_id: store, negozio: store ? `SEDE ${store}` : null, codice: "C1", ragione_sociale: nome, tipo: "consumo",
+  id, cliente_id: `cliente-${id}`, store_id: store, negozio: store ? `SEDE ${store}` : null, codice: "C1", ragione_sociale: nome, tipo: "consumo",
   consumo: 0.9, esposizione: 900, ordini_aperti: 0, fido_gamma: 1000, fido_proposto: 0, motivi: ["Cliente con scaduto"],
 });
 

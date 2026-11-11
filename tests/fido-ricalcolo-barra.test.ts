@@ -38,11 +38,12 @@ describe("barra ricalcolo fido teorico", () => {
   test("nessun lock: niente", () => {
     expect(barraRicalcolo(null, ORA)).toBeNull();
   });
-  test("job automatico rinnova il lock anche negli avvisi", () => {
+  test("il ricalcolo aggiorna gli alert ma non invia più avvisi", () => {
     const job = readFileSync("src/lib/inngest/fido-teorico-ricalcolo.server.ts", "utf8");
-    expect(job).toContain("passoNotificheAlertFidi(lock)");
+    expect(job).toContain("passoAlertFidi(lock)");
+    expect(job).not.toContain("passoNotificheAlertFidi");
     const passi = readFileSync("src/lib/fido-teorico-ricalcolo-passi.server.ts", "utf8");
-    expect(passi).toContain('fase: "avvisi"');
     expect(passi).toContain('fase: "alert"');
+    expect(passi).not.toContain("invia_notifiche_alert_fidi");
   });
 });

@@ -119,36 +119,6 @@ export async function passoAlertFidi(lock: LockRicalcolo): Promise<unknown> {
   return rpcConRiprova(client, "alert fidi", "aggiorna_alert_fidi");
 }
 
-/**
- * Nessuna scrittura se l'interruttore DB delle notifiche non è esattamente 'true'.
- * Gli alert appena marcati (notificato_il più recente del precedente massimo: il lock
- * garantisce un solo ricalcolo alla volta) vanno nell'email unica per negozio,
- * una volta sola, tramite il job variazioni-blocco.
- */
-export async function passoNotificheAlertFidi(lock: LockRicalcolo): Promise<unknown> {
-  // Rinnova il lock anche qui: job automatico e pulsante mostrano la stessa fase.
-  await passoLock(lock, { fase: "avvisi", blocco: null, previsti: null });
-  const { data: prima, error: eP } = await supabaseAdmin
-    .from("alert_fidi").select("notificato_il").not("notificato_il", "is", null)
-    .order("notificato_il", { ascending: false }).limit(1).maybeSingle();
-  if (eP) throw errore("ultimo avviso alert fidi", eP);
-  const { data, error } = await supabaseAdmin.rpc("invia_notifiche_alert_fidi" as never);
-  if (error) throw errore("notifiche alert fidi", error);
-  if (Number(data ?? 0) > 0) {
-    let q = supabaseAdmin.from("alert_fidi").select("id").not("notificato_il", "is", null);
-    const soglia = (prima as { notificato_il?: string } | null)?.notificato_il;
-    if (soglia) q = q.gt("notificato_il", soglia);
-    const { data: nuovi, error: eN } = await q;
-    if (eN) throw errore("alert fidi notificati", eN);
-    const alertIds = (nuovi ?? []).map((r) => (r as { id: string }).id);
-    if (alertIds.length) {
-      const { sendInngestEvent } = await import("@/lib/inngest/client");
-      await sendInngestEvent("clienti/blocco.variazioni.rileva", { importazioneId: null, alertIds });
-    }
-  }
-  return data as unknown;
-}
-
 /** Nome leggibile di chi avvia il ricalcolo manuale (per "avviato da …"). */
 export async function nomeUtente(userId: string): Promise<string | null> {
   const { data } = await supabaseAdmin.from("profili").select("nome, cognome").eq("id", userId).maybeSingle();
