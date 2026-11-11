@@ -4026,7 +4026,7 @@ export const processFornitoriGammaImport = inngest.createFunction(
       const { error } = await supabaseAdmin
         .from("importazioni")
         .update({
-          righe_totali: parse.righeLette,
+          righe_totali: parse.righe,
           righe_attese: parse.righe,
           righe_elaborate: 0,
           righe_create: 0,
