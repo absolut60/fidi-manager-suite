@@ -488,7 +488,7 @@ export function preparaFileListiniGamma(buf: ArrayBuffer): { manifest: ManifestL
   const pacchetti: PacchettoListini[] = [];
   if (!usati.size) return { manifest, pacchetti };
 
-  let wb: XLSX.WorkBook | null = XLSX.read(buf, {
+  const wb = XLSX.read(buf, {
     type: "array", sheets: [...usati], dense: true,
     cellFormula: false, cellHTML: false, cellStyles: false, cellText: false,
   });
@@ -516,6 +516,5 @@ export function preparaFileListiniGamma(buf: ArrayBuffer): { manifest: ManifestL
       });
     }
   }
-  wb = null;
   return { manifest, pacchetti };
 }
