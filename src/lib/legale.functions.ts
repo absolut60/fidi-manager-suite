@@ -1,7 +1,6 @@
-// Avviso delle variazioni legale (FM48, raggruppato da FM50).
-// Il trigger registra_variazione_legale() scrive solo la riga in
-// clienti_blocco_variazioni; dopo le operazioni sulle pratiche l'app chiama
-// questa funzione, che accoda l'avviso differito (debounce 5 minuti).
+// FM60: il trigger registra_variazione_legale() scrive la riga da comunicare.
+// Questa funzione resta come completamento delle operazioni dall'app, ma non emette
+// più eventi: il solo job a orario fisso raccoglie e comunica le righe non notificate.
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 

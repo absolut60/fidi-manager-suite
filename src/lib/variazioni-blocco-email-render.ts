@@ -95,10 +95,7 @@ export function buildVariazioniBloccoEmail({
 }): { oggetto: string; html: string } {
   const isTest = !!testInfo;
   const haVariazioni = bloccati.length + sbloccati.length + inLegale.length + uscitiLegale.length > 0;
-  const titolo = haVariazioni && alertFidi.length
-    ? "Variazioni clienti e alert fidi"
-    : alertFidi.length ? "Alert fidi" : "Variazioni blocco e legale clienti";
-  const oggetto = `${isTest ? "[TEST] " : ""}${titolo} — ${negozioNome} — ${formatDataRoma(dataRilevazione)}`;
+  const oggetto = `${isTest ? "[TEST] " : ""}Aggiornamento clienti — ${negozioNome} — ${formatDataRoma(dataRilevazione)}`;
 
   const parti: string[] = [];
   if (isTest) {

@@ -1,3 +1,8 @@
+# FM60 — Avvisi clienti a orari fissi
+- [ ] Tre cron Europe/Rome (10:00, 14:30, 18:00), un solo avviso per negozio e uno per agente con variazioni e alert; nessun innesco immediato.
+- [ ] SQL 0158 applicato: definizione precedente md5 7e9d2fcd74c74324bc3c77db9bd7e5ce; eleggibili prima 0, md5 ids d41d8cd98f00b204e9800998ecf8427e. Verifica in transazione annullata e riferimenti da completare.
+- [ ] Test, tipi, regole e riepilogo con risincronizzazione Inngest.
+
 # FM60 — Fetta 2-quinquies: lettore MSG senza Buffer
 - [x] Lettore CFB fornito portato in TypeScript con import dinamico; msgreader/Buffer diretti, alias/plugin e relativo test rimossi; interfaccia preservata con conteggio nascosti facoltativo.
 - [x] 353 test verdi; fixture MSG/EML e regole X500/0x7FFE verificate con CFB sintetici reali. Processo fresco e moduli reali Vite dev WebKit/Chromium senza Buffer: oggetto corretto, 1 PDF (%PDF-). Controllo automatico build/tipi OK.

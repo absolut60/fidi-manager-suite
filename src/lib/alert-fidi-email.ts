@@ -3,6 +3,7 @@
 
 export type AlertEmail = {
   id: string;
+  cliente_id: string;
   store_id: string | null;
   negozio: string | null;
   codice: string | null;

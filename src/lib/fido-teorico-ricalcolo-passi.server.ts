@@ -1,7 +1,8 @@
 /**
  * Passi del ricalcolo del fido teorico (fonte unica per il job Inngest automatico
  * e per il pulsante "Ricalcola fido teorico ora"):
- * avvia → blocchi → finalizza → aggiorna_alert_fidi → notifiche (interruttore DB) → origine.
+ * avvia → blocchi → finalizza → aggiorna_alert_fidi → origine. Gli avvisi sono
+ * gestiti soltanto dal job a orario fisso, mai dal ricalcolo.
  *
  * Ogni passo è una chiamata separata: le RPC passano dal Data API, dove vale il
  * limite di 8 secondi per istruzione. Blocchi da 200 clienti e riprova automatica
