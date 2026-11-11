@@ -47,6 +47,8 @@ import { MACROCATEGORIE, CATEGORIE } from "@/lib/macrocategorie";
 import { CODICI_PAGAMENTO } from "@/lib/codici-pagamento";
 import { RiepilogoAnomalieCard } from "@/components/riepilogo-anomalie-card";
 import { CHIAVE_STATO_LISTINI, type StatoFoglio, type StatoImportListini } from "@/lib/inngest/listini-gamma/tipi";
+import { leggiFileListiniGamma, type FileListiniPreparato } from "@/lib/listini-gamma-lettura";
+import { PREPARATORI_LISTINI_GAMMA } from "@/lib/listini-gamma-parser";
 import {
   FidoTeoricoPrecalcoloCard,
   RicalcolaFidoTeoricoAvviso,
@@ -1009,20 +1011,48 @@ function ArticoliListiniGammaImportCard() {
   const [fileName, setFileName] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  const bg = useBackgroundImport({ fonte: "articoli_listini_gamma", invalidateKeys: [["fornitori"], ["articoli"]] });
+  // Il file si legge nel browser (Web Worker): il server riceve solo i pacchetti JSON.
+  const [lettura, setLettura] = useState<"no" | "in_corso" | "pronto" | "errore">("no");
+  const [preparato, setPreparato] = useState<FileListiniPreparato | null>(null);
+  const [erroreLocale, setErroreLocale] = useState<string | null>(null);
+  const letturaCorrente = useRef(0);
+  const bg = useBackgroundImport({
+    fonte: "articoli_listini_gamma",
+    invalidateKeys: [["fornitori"], ["articoli"]],
+    onError: (m) => setErroreLocale(m),
+  });
 
   function reset() {
+    letturaCorrente.current++;
     setFileName(null);
     setFile(null);
+    setPreparato(null);
+    setLettura("no");
+    setErroreLocale(null);
     bg.reset();
     if (fileRef.current) fileRef.current.value = "";
   }
-  function handleFile(f: File) {
+  async function handleFile(f: File) {
+    const id = ++letturaCorrente.current;
     setFileName(f.name);
     setFile(f);
+    setPreparato(null);
+    setErroreLocale(null);
+    setLettura("in_corso");
     bg.reset();
-    toast.success(`File pronto: ${f.name}`);
+    try {
+      const r = await leggiFileListiniGamma(f);
+      if (id !== letturaCorrente.current) return;
+      setPreparato(r);
+      setLettura("pronto");
+    } catch (e) {
+      if (id !== letturaCorrente.current) return;
+      setLettura("errore");
+      setErroreLocale(e instanceof Error ? e.message : String(e));
+    }
   }
+  const righePreparate = preparato?.manifest.fogli.reduce((s, f) => s + f.righe, 0) ?? 0;
+  const etichettaPreparatore = (k: string) => PREPARATORI_LISTINI_GAMMA.find((x) => x.chiave === k)?.etichetta ?? k;
 
   const p = bg.progress;
   const stato = (p?.report_saltati as Record<string, StatoImportListini> | null | undefined)?.[CHIAVE_STATO_LISTINI];
@@ -1039,10 +1069,44 @@ function ArticoliListiniGammaImportCard() {
       </h2>
       <p className="text-xs text-muted-foreground mb-4">
         Carica <span className="font-medium">MADE_ARTICOLI_LISTINI_PQ.xlsx</span>: un solo file aggiorna tutti i fogli
-        riconosciuti (oggi: fornitori e articoli con listini). I fornitori inseriti a mano non vengono toccati. Puoi chiudere la pagina:
-        l'import prosegue da solo.
+        riconosciuti (oggi: fornitori e articoli con listini). I fornitori inseriti a mano non vengono toccati. Il file viene letto
+        qui nella pagina: tienila aperta fino a "Import avviato"; dopo puoi chiuderla, l'import prosegue da solo.
       </p>
+      {bg.isPending && bg.fase ? (
+        <div className="mb-4 flex items-center gap-2 rounded-md border bg-muted/30 p-3 text-sm">
+          <Loader2 className="size-4 shrink-0 animate-spin" />
+          <span className="min-w-0 break-words">{bg.fase}</span>
+        </div>
+      ) : null}
       {bg.inProgress && p ? <BgProgressBlock progress={p} fallbackTotal={0} /> : null}
+      {erroreLocale && !bg.importazioneId ? (
+        <p className="mb-4 break-words rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+          {erroreLocale}
+        </p>
+      ) : null}
+      {lettura === "in_corso" ? (
+        <div className="mb-4 flex items-center gap-2 rounded-md border bg-muted/30 p-3 text-sm">
+          <Loader2 className="size-4 shrink-0 animate-spin" />
+          <span>Lettura file…</span>
+        </div>
+      ) : null}
+      {lettura === "pronto" && preparato && !bg.importazioneId && !bg.isPending ? (
+        <div className="mb-4 space-y-1 rounded-md border bg-muted/30 p-3 text-xs">
+          <p className="text-sm font-medium">File letto, pronto per l'import</p>
+          {preparato.manifest.fogli.map((f) => (
+            <p key={f.chiave} className={f.errore ? "break-words text-destructive" : "break-words"}>
+              {etichettaPreparatore(f.chiave)} (foglio {f.foglio}):{" "}
+              {f.errore ? `non letto (${f.errore})` : `${n(f.righe)} righe valide · ${n(f.anomalie)} anomalie`}
+            </p>
+          ))}
+          {!preparato.manifest.fogli.length ? <p className="text-destructive">Nessun foglio riconosciuto nel file.</p> : null}
+          {preparato.manifest.nonGestiti.length ? (
+            <p className="break-words text-muted-foreground">
+              Fogli non ancora gestiti (ignorati): {preparato.manifest.nonGestiti.join(", ")}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
       {bg.fallito ? (
         <p className="mb-4 break-words rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
           Import non riuscito{bg.errore ? `: ${bg.errore}` : "."}
@@ -1092,23 +1156,27 @@ function ArticoliListiniGammaImportCard() {
       <ImportZone
         fileName={fileName}
         avviato={bg.isPending || !!bg.importazioneId}
-        parsing={false}
+        parsing={lettura === "in_corso"}
         dragOver={dragOver}
         setDragOver={setDragOver}
         fileRef={fileRef}
-        onFile={handleFile}
+        onFile={(f) => void handleFile(f)}
         onReset={reset}
-        valid={file ? 1 : 0}
+        valid={righePreparate}
         invalid={[]}
         result={null}
         action={
           <Button
             className="w-full gap-1.5"
-            disabled={!file || bg.isPending || bg.inProgress}
-            onClick={() => file && bg.start({ file, rowsTotali: 0 })}
+            disabled={!file || !preparato || !preparato.manifest.fogli.length || lettura !== "pronto" || bg.isPending || bg.inProgress}
+            onClick={() => {
+              if (!file || !preparato) return;
+              setErroreLocale(null);
+              bg.start({ file, rowsTotali: righePreparate, listiniStaging: preparato });
+            }}
           >
-            {(bg.isPending || bg.inProgress) && <Loader2 className="size-4 animate-spin" />}
-            {bg.inProgress ? "Elaborazione in background..." : "Avvia import"}
+            {(bg.isPending || bg.inProgress || lettura === "in_corso") && <Loader2 className="size-4 animate-spin" />}
+            {lettura === "in_corso" ? "Lettura file…" : bg.isPending ? "Caricamento…" : bg.inProgress ? "Elaborazione in background..." : "Avvia import"}
           </Button>
         }
       />
