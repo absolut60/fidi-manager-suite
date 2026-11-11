@@ -126,7 +126,6 @@ export const processArticoliListiniGammaImport = inngest.createFunction(
           leggiLotto: <T,>(i: number) => downloadJsonConRetry<T[]>(fileLotto(g.chiave, i), `${g.chiave} lotto ${i + 1}`, (m) => logger.warn(m)),
           leggiAnomalie: <T,>() => downloadJsonConRetry<T[]>(fileExtra(g.chiave, "anomalie"), `${g.chiave} anomalie`, (m) => logger.warn(m)),
           leggiCodici: <T,>() => downloadJsonConRetry<T[]>(fileExtra(g.chiave, "codici"), `${g.chiave} codici`, (m) => logger.warn(m)),
-          log: (m) => logger.warn(m),
           avanzamento: async (lotto, lotti, c) => {
             sf.lotto = lotto;
             sf.lotti = lotti;
