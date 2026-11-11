@@ -1,3 +1,8 @@
+# FM61 — Sicurezza dopo il blocco database
+- [ ] Chiudere solo l'importazione 1b1cd18d come fallita con il problema richiesto.
+- [ ] Lotti Gamma sequenziali, articoli da 1000, marche solo nello step dedicato; misurare RPC reale con annullamento.
+- [ ] Evento verifica fido solo per le quattro fonti canoniche; test e verifica chiamanti.
+
 # FM61 — Fornitori da Gamma, fetta 1 (confermata da Andrea)
 - [x] Fetta 2A (0161): catalogo articoli, marche e listini base come gestore "articoli" dell'import unico
 - [x] Lettura del file spostata nel browser (Web Worker), server solo JSON di staging; importazione 2dc096b8 chiusa come fallita
