@@ -1184,6 +1184,13 @@
       "when": 1794438561961,
       "tag": "0168_fm61_articoli_marche_solo_step",
       "breakpoints": true
+    },
+    {
+      "idx": 169,
+      "version": "7",
+      "when": 1794441333579,
+      "tag": "0169_fm61_catalogo_articoli_ricerca",
+      "breakpoints": true
     }
   ]
 }

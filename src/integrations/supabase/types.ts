@@ -7916,6 +7916,21 @@ export type Database = {
         Args: { _isc_id: string; _lead_id: string }
         Returns: string
       }
+      _giacenze_articoli_catalogo: {
+        Args: { _codice?: string }
+        Returns: {
+          articolo_codice: string
+          conta_disponibilita: string
+          conta_totale: boolean
+          deposito_codice: string
+          disponibilita: number
+          giacenza: number
+          impegnato_clienti: number
+          nome: string
+          ordinato_fornitori: number
+          store_id: string
+        }[]
+      }
       _segmento_filtro_elenco: { Args: { _v: Json }; Returns: string[] }
       agente_codice_corrente: { Args: never; Returns: string }
       agente_vede_record: {
@@ -8081,6 +8096,36 @@ export type Database = {
         }
         Returns: string
       }
+      cerca_articoli: {
+        Args: {
+          famiglie?: string[]
+          fornitori?: string[]
+          limite?: number
+          listino?: number
+          marche?: string[]
+          offset?: number
+          solo_disponibili?: boolean
+          sottofamiglie?: string[]
+          stati?: string[]
+          testo?: string
+        }
+        Returns: {
+          codice: string
+          descrizione: string
+          disponibilita_totale: number
+          famiglia: string
+          fattore_conversione: number
+          marca: string
+          origine: string
+          preventivatore_id: string
+          prezzo: number
+          sottofamiglia: string
+          stato_gamma: string
+          totale: number
+          um: string
+          um2: string
+        }[]
+      }
       cerca_candidati_per_dati: {
         Args: {
           _cellulare: string
@@ -8106,6 +8151,13 @@ export type Database = {
           id: string
           motivi: string[]
           tipo: string
+        }[]
+      }
+      cerca_fornitori_articoli: {
+        Args: { selezionati?: string[]; testo?: string }
+        Returns: {
+          id: string
+          ragione_sociale: string
         }[]
       }
       chiudi_articoli_fornitori_gamma: {
@@ -8491,6 +8543,7 @@ export type Database = {
           scaduto_attuale: number
         }[]
       }
+      facets_articoli: { Args: never; Returns: Json }
       fidi_approvati_in_attesa_gamma: {
         Args: { _cliente_ids?: string[] }
         Returns: {
