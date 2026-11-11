@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { md5 } from "./md5";
 import { normalize, toStr, excelDateToISO } from "@/lib/scadenziario-parser";
 
 /**
@@ -605,16 +606,24 @@ export type PreparatoreFoglio = {
   prepara: (sheet: XLSX.WorkSheet) => PreparazioneFoglio;
 };
 
+/**
+ * Impronta della riga importata (hash_riga): md5 del JSON dei soli campi importati, nell'ordine
+ * fisso del parser. Le RPC riscrivono solo le righe con impronta diversa o nuove.
+ */
+function conImpronta<T extends object>(righe: T[]): Array<T & { hash_riga: string }> {
+  return righe.map((x) => ({ ...x, hash_riga: md5(JSON.stringify(x)) }));
+}
+
 export const PREPARATORI_LISTINI_GAMMA: PreparatoreFoglio[] = [
   {
     chiave: "fornitori",
     etichetta: "Fornitori",
-    lotto: 500,
+    lotto: 3000, // un solo pacchetto (~2.500 fornitori)
     trovaNome: nomeFoglioFornitori,
     prepara: (sheet) => {
       const r = parseFornitoriGammaSheet(sheet);
       return {
-        righe: r.rows.map(({ riga: _riga, ...resto }) => resto),
+        righe: conImpronta(r.rows.map(({ riga: _riga, ...resto }) => resto)),
         righeLette: r.righeLette,
         anomalie: r.anomalie,
         codici: r.rows.map((x) => x.codice_gestionale),
@@ -625,12 +634,12 @@ export const PREPARATORI_LISTINI_GAMMA: PreparatoreFoglio[] = [
   {
     chiave: "articoli",
     etichetta: "Articoli",
-    lotto: 1000,
+    lotto: 3000,
     trovaNome: nomeFoglioArticoli,
     prepara: (sheet) => {
       const r = parseArticoliGammaSheet(sheet);
       return {
-        righe: r.rows.map(({ riga: _riga, ...resto }) => resto),
+        righe: conImpronta(r.rows.map(({ riga: _riga, ...resto }) => resto)),
         righeLette: r.righeLette,
         anomalie: r.anomalie,
         codici: r.rows.map((x) => x.codice),
@@ -640,14 +649,16 @@ export const PREPARATORI_LISTINI_GAMMA: PreparatoreFoglio[] = [
   },
   ...([
     ["depositi", "Depositi", 1000, nomeFoglioDepositi, parseDepositiGammaSheet],
-    ["giacenze", "Giacenze per deposito", 2000, nomeFoglioGiacenze, parseGiacenzeGammaSheet],
-    ["articoli_fornitori", "Articoli-fornitori", 2000, nomeFoglioArticoliFornitori, parseArticoliFornitoriGammaSheet],
+    ["giacenze", "Giacenze per deposito", 5000, nomeFoglioGiacenze, parseGiacenzeGammaSheet],
+    ["articoli_fornitori", "Articoli-fornitori", 5000, nomeFoglioArticoliFornitori, parseArticoliFornitoriGammaSheet],
   ] as const).map(([chiave, etichetta, lotto, trovaNome, parse]): PreparatoreFoglio => ({
     chiave, etichetta, lotto, trovaNome,
     prepara: (sheet) => {
       const r = parse(sheet);
       return {
-        righe: (r.rows as Array<{ riga: number }>).map(({ riga: _riga, ...resto }) => resto),
+        righe: ((righe) => (chiave === "depositi" ? righe : conImpronta(righe)))(
+          (r.rows as Array<{ riga: number }>).map(({ riga: _riga, ...resto }) => resto),
+        ),
         righeLette: r.righeLette,
         anomalie: r.anomalie,
         // Depositi: codici del file per disattivare gli assenti (le fotografie non ne hanno bisogno).
