@@ -1,7 +1,9 @@
 # FM61 — Sicurezza dopo il blocco database
-- [ ] Chiudere solo l'importazione 1b1cd18d come fallita con il problema richiesto.
-- [ ] Lotti Gamma sequenziali, articoli da 1000, marche solo nello step dedicato; misurare RPC reale con annullamento.
-- [ ] Evento verifica fido solo per le quattro fonti canoniche; test e verifica chiamanti.
+- [x] Chiusa solo l'importazione 1b1cd18d come fallita con il problema richiesto, riletta dal database.
+- [x] Lotti Gamma sequenziali, articoli da 1000; migrazione 0168 elimina INSERT marche dai lotti, invariati/listini preservati.
+- [x] Prove annullate su dati reali: EXPLAIN campione misto 421,617 ms inclusa preparazione; RPC sola su 1000 sincronizzati 313,508 ms, 3788 listini e xmin invariati, zero riscritture.
+- [x] Evento verifica fido solo per le quattro fonti canoniche, dalla chiusura condivisa; job filtra anche eventi vecchi. 389 test superati, build automatico OK.
+- [ ] Pubblicare e sincronizzare Inngest prima del prossimo import reale: dipende dal proprietario, nessun import avviato.
 
 # FM61 — Fornitori da Gamma, fetta 1 (confermata da Andrea)
 - [x] Fetta 2A (0161): catalogo articoli, marche e listini base come gestore "articoli" dell'import unico
