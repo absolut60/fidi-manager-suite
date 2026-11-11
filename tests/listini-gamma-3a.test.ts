@@ -80,7 +80,7 @@ describe("riconoscimento solo per nome", () => {
     const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
     const { manifest } = preparaFileListiniGamma(buf);
     expect(manifest.fogli.map((f) => [f.chiave, f.righe, f.lotto])).toEqual([
-      ["depositi", 1, 1000], ["giacenze", 1, 2000], ["articoli_fornitori", 1, 2000],
+      ["depositi", 1, 1000], ["giacenze", 1, 5000], ["articoli_fornitori", 1, 5000],
     ]);
     expect(manifest.nonGestiti).toEqual(["PREZZI"]);
   });

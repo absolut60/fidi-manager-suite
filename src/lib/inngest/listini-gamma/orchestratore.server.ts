@@ -68,8 +68,7 @@ export const processArticoliListiniGammaImport = inngest.createFunction(
         : { etichetta: p.etichetta, foglio: f.foglio, stato: "in_attesa", righe: f.righe, lotto: 0, lotti: 0, conteggi: {}, anomalie: f.anomalie };
     }
     const totaleRighe = Object.values(stato.fogli).reduce((s, f) => s + f.righe, 0);
-    const scrivi = (id: string) =>
-      step.run(id, async () => {
+    const scriviStato = async () => {
         const fs = Object.values(stato.fogli);
         const somma = (k: string) => fs.reduce((s, f) => s + (f.conteggi[k] ?? 0), 0);
         const { error } = await supabaseAdmin
@@ -85,7 +84,8 @@ export const processArticoliListiniGammaImport = inngest.createFunction(
           } as never)
           .eq("id", importazioneId);
         if (error) throw new Error(`stato import: ${error.message}`);
-      });
+    };
+    const scrivi = (id: string) => step.run(id, scriviStato);
 
     await scrivi("stato-iniziale");
 
@@ -109,7 +109,8 @@ export const processArticoliListiniGammaImport = inngest.createFunction(
             sf.lotto = lotto;
             sf.lotti = lotti;
             sf.conteggi = c;
-            await scrivi(`stato-${p.chiave}-${String(lotto).padStart(3, "0")}`);
+            // Dentro lo step del lotto: nessuno step "stato-…" per lotto. Mai bloccante.
+            await scriviStato().catch((e) => logger.warn(`avanzamento ${p.chiave}: ${e instanceof Error ? e.message : String(e)}`));
           },
         });
         sf.conteggi = conteggi;

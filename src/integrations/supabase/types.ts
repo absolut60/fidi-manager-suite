@@ -634,6 +634,7 @@ export type Database = {
           fattore_conversione: number | null
           fornitore_pref_codice: number | null
           fornitore_pref_id: string | null
+          hash_riga: string | null
           iva: string | null
           marca_codice: string | null
           n_fornitori: number | null
@@ -665,6 +666,7 @@ export type Database = {
           fattore_conversione?: number | null
           fornitore_pref_codice?: number | null
           fornitore_pref_id?: string | null
+          hash_riga?: string | null
           iva?: string | null
           marca_codice?: string | null
           n_fornitori?: number | null
@@ -696,6 +698,7 @@ export type Database = {
           fattore_conversione?: number | null
           fornitore_pref_codice?: number | null
           fornitore_pref_id?: string | null
+          hash_riga?: string | null
           iva?: string | null
           marca_codice?: string | null
           n_fornitori?: number | null
@@ -731,6 +734,7 @@ export type Database = {
           codice_articolo_fornitore: string
           fornitore_codice: number
           fornitore_id: string | null
+          hash_riga: string | null
           importazione_id: string | null
           preferenziale: boolean
         }
@@ -739,6 +743,7 @@ export type Database = {
           codice_articolo_fornitore?: string
           fornitore_codice: number
           fornitore_id?: string | null
+          hash_riga?: string | null
           importazione_id?: string | null
           preferenziale?: boolean
         }
@@ -747,6 +752,7 @@ export type Database = {
           codice_articolo_fornitore?: string
           fornitore_codice?: number
           fornitore_id?: string | null
+          hash_riga?: string | null
           importazione_id?: string | null
           preferenziale?: boolean
         }
@@ -3719,6 +3725,7 @@ export type Database = {
           created_at: string
           email: string | null
           fax: string | null
+          hash_riga: string | null
           id: string
           indirizzo: string | null
           nome: string
@@ -3754,6 +3761,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           fax?: string | null
+          hash_riga?: string | null
           id?: string
           indirizzo?: string | null
           nome: string
@@ -3789,6 +3797,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           fax?: string | null
+          hash_riga?: string | null
           id?: string
           indirizzo?: string | null
           nome?: string
@@ -3817,6 +3826,7 @@ export type Database = {
           deposito_codice: string
           disponibilita: number | null
           giacenza: number | null
+          hash_riga: string | null
           impegnato_clienti: number | null
           importazione_id: string | null
           ordinato_fornitori: number | null
@@ -3827,6 +3837,7 @@ export type Database = {
           deposito_codice: string
           disponibilita?: number | null
           giacenza?: number | null
+          hash_riga?: string | null
           impegnato_clienti?: number | null
           importazione_id?: string | null
           ordinato_fornitori?: number | null
@@ -3837,6 +3848,7 @@ export type Database = {
           deposito_codice?: string
           disponibilita?: number | null
           giacenza?: number | null
+          hash_riga?: string | null
           impegnato_clienti?: number | null
           importazione_id?: string | null
           ordinato_fornitori?: number | null
