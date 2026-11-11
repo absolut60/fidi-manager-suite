@@ -12,6 +12,9 @@ import {
   normalize,
   findSheetByName,
   type ScadRow,
+  trovaFoglioFornitori,
+  parseFornitoriGammaSheet,
+  type FornitoreGammaRow,
 } from "./parsers.server";
 import {
   isEmailValida,
@@ -3957,5 +3960,187 @@ export const processBloccoFidoImport = inngest.createFunction(
       await setImportazioneError(importazioneId, err instanceof Error ? err.message : String(err));
       throw err;
     }
+  },
+);
+
+/* ============================================================================
+ * FM61 — Fornitori (Gamma): parsing una volta, lotti da 500 idempotenti,
+ * disattivazione assenti e collegamenti fornitore↔cliente in step separati.
+ * Mai righe origine='manuale' (le RPC agiscono solo su origine='gamma').
+ * ============================================================================ */
+
+const FORNITORI_LOTTO = 500;
+
+export const processFornitoriGammaImport = inngest.createFunction(
+  {
+    id: "process-fornitori-gamma-import",
+    name: "Process fornitori Gamma import",
+    retries: 3,
+    timeouts: { finish: "20m" },
+    triggers: [{ event: "import/fornitori_gamma.requested" }],
+    onFailure: async ({ event, error }) => {
+      const d = (event.data as { event?: { data?: EventData } }).event?.data;
+      if (!d?.importazioneId) return;
+      await chiudiImportazione(
+        d.importazioneId,
+        {
+          stato: "fallita",
+          completata_at: new Date().toISOString(),
+          log_errori: [{ riga: 0, errore: `Errore fatale: ${error.message}` }],
+          problemi: [`Errore fatale: ${error.message}`],
+        },
+        { soloSeStato: "in_elaborazione" },
+      );
+    },
+  },
+  async ({ event, step, logger }) => {
+    const { importazioneId, filePath } = event.data as EventData;
+    const stagingPath = `fornitori-gamma/${importazioneId}/righe.json`;
+
+    // a) parse: legge il file una volta e salva le righe normalizzate su storage
+    const parse = await step.run("parse", async () => {
+      const wb = await downloadWorkbook(filePath);
+      const sheet = trovaFoglioFornitori(wb);
+      if (!sheet) throw new Error('Foglio "SYNC_ANAGRAFICA_FORNITORI" o "FORNITORI" non trovato');
+      const res = parseFornitoriGammaSheet(sheet);
+      const { error } = await supabaseAdmin.storage
+        .from("import-files")
+        .upload(stagingPath, new Blob([JSON.stringify(res.rows)], { type: "application/json" }), {
+          contentType: "application/json",
+          upsert: true,
+        });
+      if (error) throw new Error(`Salvataggio staging fallito: ${error.message}`);
+      return {
+        righe: res.rows.length,
+        righeLette: res.righeLette,
+        lotti: Math.ceil(res.rows.length / FORNITORI_LOTTO),
+        anomalie: res.anomalie,
+      };
+    });
+
+    await step.run("reset-anomalie-aperte-fonte", () =>
+      resetAnomalieAperteFonte("fornitori_gamma", importazioneId),
+    );
+
+    await step.run("init-importazione", async () => {
+      const { error } = await supabaseAdmin
+        .from("importazioni")
+        .update({
+          righe_totali: parse.righeLette,
+          righe_attese: parse.righe,
+          righe_elaborate: 0,
+          righe_create: 0,
+          righe_aggiornate: 0,
+          righe_errore: parse.anomalie.length,
+          righe_saltate: parse.anomalie.filter((a) => a.tipo === "codice_mancante").length,
+          chunks_totali: parse.lotti,
+          chunks_completati: 0,
+          stato: "in_elaborazione",
+        } as never)
+        .eq("id", importazioneId);
+      if (error) throw new Error(`init importazione: ${error.message}`);
+      // Anomalie del file: delete+insert, così un retry non le duplica.
+      await supabaseAdmin.from("anomalie_import" as never).delete().eq("importazione_id", importazioneId as never);
+      if (parse.anomalie.length) {
+        const righe = parse.anomalie.map((a) => ({
+          importazione_id: importazioneId,
+          codice_gestionale: a.codice,
+          ragione_sociale: a.ragione_sociale,
+          tipo_anomalia: a.tipo === "codice_mancante" ? "fornitore_codice_mancante" : "fornitore_codice_duplicato",
+          campo: "codice_fornitore",
+          valore_attuale: `riga ${a.riga}`,
+          valore_nuovo:
+            a.tipo === "codice_mancante"
+              ? "Riga scartata: codice fornitore mancante o non numerico"
+              : "Codice ripetuto nel file: tenuta l'ultima riga",
+        }));
+        const { error: aErr } = await supabaseAdmin.from("anomalie_import" as never).insert(righe as never);
+        if (aErr) throw new Error(`anomalie: ${aErr.message}`);
+      }
+    });
+
+    if (parse.righe === 0) {
+      await step.run("finalize-empty", () =>
+        chiudiImportazione(importazioneId, {
+          stato: "completata_con_errori",
+          completata_at: new Date().toISOString(),
+          log_errori: [{ riga: 0, errore: "Nessun fornitore valido nel file" }] as never,
+          problemi: ["Il file non contiene fornitori da importare"],
+        }),
+      );
+      return { righe: 0 };
+    }
+
+    // b) un lotto = uno step: upsert idempotente su codice_gestionale + avanzamento
+    let inseriti = 0;
+    let aggiornati = 0;
+    for (let li = 0; li < parse.lotti; li++) {
+      const r = await step.run(`lotto-${String(li).padStart(3, "0")}`, async () => {
+        const tutte = await downloadJsonConRetry<FornitoreGammaRow[]>(stagingPath, `staging fornitori lotto ${li + 1}`, (m) => logger.warn(m));
+        const slice = tutte
+          .slice(li * FORNITORI_LOTTO, (li + 1) * FORNITORI_LOTTO)
+          .map(({ riga: _riga, ...resto }) => resto);
+        const { data, error } = await supabaseAdmin.rpc("import_fornitori_gamma_lotto", { _righe: slice as never });
+        if (error) throw new Error(`lotto ${li + 1}/${parse.lotti}: ${error.message}`);
+        const esito = (data ?? {}) as { inseriti?: number; aggiornati?: number };
+        return { inseriti: esito.inseriti ?? 0, aggiornati: esito.aggiornati ?? 0, n: slice.length };
+      });
+      inseriti += r.inseriti;
+      aggiornati += r.aggiornati;
+      await step.run(`avanzamento-${String(li).padStart(3, "0")}`, async () => {
+        const { error } = await supabaseAdmin
+          .from("importazioni")
+          .update({
+            chunks_completati: li + 1,
+            righe_elaborate: Math.min((li + 1) * FORNITORI_LOTTO, parse.righe),
+            righe_create: inseriti,
+            righe_aggiornate: aggiornati,
+          } as never)
+          .eq("id", importazioneId);
+        if (error) throw new Error(`avanzamento: ${error.message}`);
+      });
+    }
+
+    // c) disattiva i fornitori Gamma assenti dal file (in SQL)
+    const disattivati = await step.run("disattiva-assenti", async () => {
+      const tutte = await downloadJsonConRetry<FornitoreGammaRow[]>(stagingPath, "staging fornitori (assenti)", (m) => logger.warn(m));
+      const { data, error } = await supabaseAdmin.rpc("disattiva_fornitori_gamma_assenti", {
+        _codici: tutte.map((r) => r.codice_gestionale),
+      });
+      if (error) throw new Error(`disattiva assenti: ${error.message}`);
+      return (data as number | null) ?? 0;
+    });
+
+    // d) collegamenti fornitore ↔ cliente (fonte unica SQL)
+    const coll = await step.run("collegamenti", async () => {
+      const { data, error } = await supabaseAdmin.rpc("ricalcola_collegamenti_fornitori_clienti");
+      if (error) throw new Error(`collegamenti: ${error.message}`);
+      const d = (data ?? {}) as { collegamenti_gamma?: number; collegamenti_piva_cf?: number };
+      return { gamma: d.collegamenti_gamma ?? 0, pivaCf: d.collegamenti_piva_cf ?? 0 };
+    });
+
+    // e) chiusura con riepilogo
+    await step.run("finalize", async () => {
+      const n = (x: number) => x.toLocaleString("it-IT");
+      const riepilogo = `Righe nel file ${n(parse.righeLette)} · inseriti ${n(inseriti)} · aggiornati ${n(aggiornati)} · disattivati ${n(disattivati)} · anomalie ${n(parse.anomalie.length)} · collegamenti Gamma ${n(coll.gamma)} · collegamenti P.IVA/CF ${n(coll.pivaCf)}`;
+      await chiudiImportazione(importazioneId, {
+        stato: parse.anomalie.length ? "completata_con_errori" : "completata",
+        completata_at: new Date().toISOString(),
+        righe_elaborate: parse.righe,
+        righe_create: inseriti,
+        righe_aggiornate: aggiornati,
+        report_saltati: {
+          fornitori_gamma: {
+            righe_file: parse.righeLette, inseriti, aggiornati, disattivati,
+            anomalie: parse.anomalie.length, collegamenti_gamma: coll.gamma, collegamenti_piva_cf: coll.pivaCf,
+          },
+        },
+        log_errori: [{ riga: 0, errore: riepilogo }],
+        problemi: parse.anomalie.length ? [`${n(parse.anomalie.length)} anomalie nel file fornitori: vedi Anomalie import`] : [],
+      });
+      await pulisciFileTemporaneiImport(importazioneId).catch(() => undefined);
+    });
+
+    return { inseriti, aggiornati, disattivati, collegamenti: coll };
   },
 );
