@@ -37,3 +37,4 @@
 - Every page/dialog change is verified with Playwright screenshots at 375px and 1280px before done (fake data via a temporary route if no session, removed afterwards), because mobile regressions reached the owner; see docs/regole/responsive.md.
 - Recalculation progress in pages comes only from barraRicalcolo on the shared lock row, renewed with its phase by every step in fido-teorico-ricalcolo-passi.server, so automatic and manual runs look identical.
 - Showroom UI permissions live only in src/lib/permessi-showroom.ts (twin of auth_solo_showroom), so UI and RLS cannot diverge.
+- Gamma supplier import (fornitori_gamma) parses once in process-fornitori-gamma-import, upserts 500-row idempotent batches only through public.import_fornitori_gamma_lotto and deactivates absentees only via disattiva_fornitori_gamma_assenti, so manual supplier rows are never touched; supplier↔client links come only from ricalcola_collegamenti_fornitori_clienti.
