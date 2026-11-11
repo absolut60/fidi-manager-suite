@@ -1,5 +1,3 @@
-import type * as XLSX from "xlsx";
-
 /** Stato di un foglio nell'import unico "Articoli, fornitori e listini (Gamma)". */
 export type StatoFoglio = {
   etichetta: string;

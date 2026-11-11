@@ -2,7 +2,7 @@ import { inngest } from "../client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { downloadWorkbook, chiudiImportazione, resetAnomalieAperteFonte } from "../functions.server";
 import { pulisciFileTemporaneiImport } from "../pulizia-file-import.server";
-import { GESTORI_LISTINI_GAMMA } from "./gestori.server";
+import { GESTORI_LISTINI_GAMMA, type StepApi } from "./gestori.server";
 import { CHIAVE_STATO_LISTINI, type StatoFoglio, type StatoImportListini } from "./tipi";
 
 const FONTE = "articoli_listini_gamma";
@@ -101,7 +101,7 @@ export const processArticoliListiniGammaImport = inngest.createFunction(
       sf.stato = "in_corso";
       try {
         const conteggi = await g.esegui({
-          step,
+          step: step as unknown as StepApi,
           importazioneId,
           stagingPath: staging(g.chiave),
           meta: { ...f.meta, __righe: f.righe },
