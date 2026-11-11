@@ -1163,6 +1163,13 @@
       "when": 1794432240790,
       "tag": "0165_fm61_regole_prezzo_gamma",
       "breakpoints": true
+    },
+    {
+      "idx": 166,
+      "version": "7",
+      "when": 1794433796574,
+      "tag": "0166_fm61_regole_prezzo_lotti",
+      "breakpoints": true
     }
   ]
 }
