@@ -1142,6 +1142,13 @@
       "when": 1794430045387,
       "tag": "0162_fm61_depositi_giacenze_articoli_fornitori",
       "breakpoints": true
+    },
+    {
+      "idx": 163,
+      "version": "7",
+      "when": 1794431441004,
+      "tag": "0163_fm61_articoli_fornitori_chiave_depositi_assenti",
+      "breakpoints": true
     }
   ]
 }
