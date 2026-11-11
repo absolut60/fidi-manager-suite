@@ -3995,7 +3995,7 @@ export const processFornitoriGammaImport = inngest.createFunction(
   },
   async ({ event, step, logger }) => {
     const { importazioneId, filePath } = event.data as EventData;
-    const stagingPath = `fornitori-gamma/${importazioneId}/righe.json`;
+    const stagingPath = `_staging/${importazioneId}/fornitori-gamma.json`;
 
     // a) parse: legge il file una volta e salva le righe normalizzate su storage
     const parse = await step.run("parse", async () => {
