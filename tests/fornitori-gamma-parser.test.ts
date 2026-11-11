@@ -14,7 +14,7 @@ function wb(righe: unknown[][], nome = "SYNC_ANAGRAFICA_FORNITORI") {
 
 describe("parser fornitori Gamma (FM61)", () => {
   test("mappa i campi, trim, booleani e codici interi", () => {
-    const s = trovaFoglioFornitori(wb([[101, "  ACME SRL ", "", "Valida", " 01234567890 ", "No", "RB60", "RiBa 60", "05/11/2026 08:30", 5001, 13908, 2, "x"]]))!;
+    const s = trovaFoglioFornitori(wb([[101, "  ACME SRL ", "", "Valida", " 01234567890 ", "No", "RB60", "RiBa 60", "05/11/2026 08:30", 5001, 13908, 2, "x"]]))!.sheet;
     const { rows, anomalie } = parseFornitoriGammaSheet(s);
     expect(anomalie).toHaveLength(0);
     expect(rows[0]).toMatchObject({ codice_gestionale: 101, ragione_sociale: "ACME SRL", alias: null, valida: true,

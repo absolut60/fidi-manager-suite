@@ -11,7 +11,7 @@ type Fonte =
   | "scadenziario"
   | "scadenziario_assicurazioni"
   | "blocco_fido_assicurazione"
-  | "fornitori_gamma";
+  | "articoli_listini_gamma";
 
 export type ReportSaltati = {
   cliente_non_trovato?: Record<string, { ragione_sociale: string; count: number }>;

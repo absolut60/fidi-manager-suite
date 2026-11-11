@@ -10,7 +10,7 @@ const FonteEnum = z.enum([
   "scadenziario",
   "scadenziario_assicurazioni",
   "blocco_fido_assicurazione",
-  "fornitori_gamma",
+  "articoli_listini_gamma",
 ]);
 
 /**
