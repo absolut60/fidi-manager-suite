@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { triggerImport } from "@/lib/import.functions";
 import type { DoppioneScadenziario } from "@/lib/scadenziario-parser";
+import type { FileListiniPreparato } from "@/lib/listini-gamma-lettura";
+import type { ManifestListini } from "@/lib/listini-gamma-parser";
 
 type Fonte =
   | "anagrafica"
@@ -43,7 +45,12 @@ type StartImportArgs = {
     rowErrors: Array<{ riga: number; errore: string }>;
     chunkSize?: number;
   };
+  /** Import unico listini Gamma: file già letto nel browser (pacchetti JSON pronti). */
+  listiniStaging?: FileListiniPreparato;
 };
+
+/** Pacchetti caricati in parallelo a gruppi (non uno alla volta, non tutti insieme). */
+const GRUPPO_CARICAMENTO = 6;
 
 export function useBackgroundImport(opts: {
   fonte: Fonte;
@@ -55,6 +62,8 @@ export function useBackgroundImport(opts: {
   const qc = useQueryClient();
   const [importazioneId, setImportazioneId] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  /** Fase della preparazione lato pagina (es. "Caricamento pacchetti 3 di 80"), null altrimenti. */
+  const [fase, setFase] = useState<string | null>(null);
 
   const startMut = useMutation({
     mutationFn: async (args: StartImportArgs) => {
@@ -165,12 +174,52 @@ export function useBackgroundImport(opts: {
         triggerFilePath = manifestPath;
       }
 
+      let listini: ManifestListini | undefined;
+      if (opts.fonte === "articoli_listini_gamma") {
+        // Il server non apre lo xlsx: carica i pacchetti già preparati nel browser.
+        try {
+          if (!args.listiniStaging) throw new Error("File non ancora letto: scegli di nuovo il file");
+          const { pacchetti, manifest } = args.listiniStaging;
+          let caricati = 0;
+          setFase(`Caricamento pacchetti 0 di ${pacchetti.length}`);
+          for (let i = 0; i < pacchetti.length; i += GRUPPO_CARICAMENTO) {
+            await Promise.all(
+              pacchetti.slice(i, i + GRUPPO_CARICAMENTO).map(async (p) => {
+                const { error } = await supabase.storage
+                  .from("import-files")
+                  .upload(`_staging/${imp.id}/${p.nome}`, new Blob([p.json], { type: "application/json" }), {
+                    contentType: "application/json",
+                    upsert: true,
+                  });
+                if (error) throw new Error(`Caricamento pacchetto ${p.nome} non riuscito: ${error.message}`);
+                caricati++;
+                setFase(`Caricamento pacchetti ${caricati} di ${pacchetti.length}`);
+              }),
+            );
+          }
+          listini = manifest;
+        } catch (e) {
+          await segnaFallita(imp.id, e instanceof Error ? e.message : String(e));
+          setFase(null);
+          throw e;
+        }
+      }
+
       await supabase.from("importazioni").update({ file_path: triggerFilePath }).eq("id", imp.id);
       opts.onUploadComplete?.();
 
-      await triggerImport({
-        data: { fonte: opts.fonte, importazioneId: imp.id, filePath: triggerFilePath },
-      });
+      try {
+        setFase(listini ? "Avvio dell'import…" : null);
+        await triggerImport({
+          data: { fonte: opts.fonte, importazioneId: imp.id, filePath: triggerFilePath, ...(listini ? { listini } : {}) },
+        });
+      } catch (e) {
+        // Import unico listini: la riga non deve restare "in elaborazione" se l'avvio fallisce.
+        if (listini) await segnaFallita(imp.id, `Avvio non riuscito: ${e instanceof Error ? e.message : String(e)}`);
+        throw e;
+      } finally {
+        setFase(null);
+      }
       return imp.id;
     },
     onSuccess: (id) => {
@@ -225,6 +274,7 @@ export function useBackgroundImport(opts: {
   return {
     start: (args: StartImportArgs) => startMut.mutate(args),
     isPending: startMut.isPending,
+    fase,
     importazioneId,
     inProgress: !!importazioneId && !done,
     done,
@@ -237,6 +287,19 @@ export function useBackgroundImport(opts: {
     fallito: done && progress?.stato === "fallita",
     reset,
   };
+}
+
+async function segnaFallita(id: string, messaggio: string) {
+  await supabase
+    .from("importazioni")
+    .update({
+      stato: "fallita",
+      completata_at: new Date().toISOString(),
+      log_errori: [{ riga: 0, errore: messaggio }],
+      problemi: [messaggio],
+    })
+    .eq("id", id)
+    .eq("stato", "in_elaborazione");
 }
 
 /** Primo messaggio utile da problemi/log_errori dell'importazione. */
