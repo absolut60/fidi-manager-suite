@@ -631,6 +631,23 @@ export type AnomaliaFornitoreFile = {
   ragione_sociale: string | null;
 };
 
+/** Righe del foglio fornitori: intestazione = prima riga con "Codice fornitore", dati subito sotto. */
+function righeFoglioFornitori(sheet: XLSX.WorkSheet): Array<Record<string, unknown> & { __row: number }> {
+  const m = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", blankrows: true });
+  const hi = m.findIndex((r) => (r ?? []).some((c) => normalize(String(c ?? "")) === "codice fornitore"));
+  if (hi < 0) return [];
+  const headers = (m[hi] ?? []).map((c) => String(c ?? "").trim());
+  const out: Array<Record<string, unknown> & { __row: number }> = [];
+  for (let i = hi + 1; i < m.length; i++) {
+    const row = m[i] ?? [];
+    if (!row.some((c) => String(c ?? "").trim() !== "")) continue;
+    const o: Record<string, unknown> = {};
+    headers.forEach((h, j) => { if (h) o[h] = row[j] ?? ""; });
+    out.push(Object.assign(o, { __row: i + 1 }));
+  }
+  return out;
+}
+
 /** Foglio "SYNC_ANAGRAFICA_FORNITORI" o "FORNITORI", altrimenti il primo con "Codice fornitore". */
 export function trovaFoglioFornitori(wb: XLSX.WorkBook): XLSX.WorkSheet | null {
   for (const nome of ["SYNC_ANAGRAFICA_FORNITORI", "FORNITORI"]) {
@@ -639,7 +656,7 @@ export function trovaFoglioFornitori(wb: XLSX.WorkBook): XLSX.WorkSheet | null {
   }
   for (const nome of wb.SheetNames) {
     const s = wb.Sheets[nome];
-    if (s && sheetToObjects(s, "Codice fornitore").length > 0) return s;
+    if (s && righeFoglioFornitori(s).length > 0) return s;
   }
   return null;
 }
@@ -673,7 +690,7 @@ export function parseFornitoriGammaSheet(sheet: XLSX.WorkSheet): {
   anomalie: AnomaliaFornitoreFile[];
   righeLette: number;
 } {
-  const grezze = sheetToObjects(sheet, "Codice fornitore");
+  const grezze = righeFoglioFornitori(sheet);
   const anomalie: AnomaliaFornitoreFile[] = [];
   const perCodice = new Map<number, FornitoreGammaRow>();
   for (const g of grezze) {
