@@ -1,3 +1,8 @@
+# FM61 — Fornitori da Gamma, fetta 1 (confermata da Andrea)
+- [ ] Migrazione: colonne fornitori, unicità nome solo tra manuali, tabella fornitore_cliente + RLS, funzione ricalcola_collegamenti_fornitori_clienti()
+- [ ] Filtro origine=manuale: fetchFornitori, due ArticoloPicker, richieste interne; cerca-poi-inserisci manuale in richieste interne e migrazione-richieste
+- [ ] Import Inngest a lotti da 500 (parser whitelist, staging, step per lotto, disattiva assenti, ricalcolo collegamenti) + sezione /import-export
+
 # FM60 — Avvisi clienti a orari fissi
 - [x] Tre cron Europe/Rome (10:00, 14:30, 18:00), un solo avviso per negozio e uno per agente con variazioni e alert; eliminati i tre innesci immediati e la vecchia funzione differita del legale.
 - [x] SQL 0158 applicato: definizione precedente md5 7e9d2fcd74c74324bc3c77db9bd7e5ce, nuova a8927078b468fb0b5d5103c13ba20dc8; eleggibili prima 0, md5 ids d41d8cd98f00b204e9800998ecf8427e; transazione annullata: 0 e stesso md5, nessuna marcatura persistita. Solo il job chiama la funzione; nessun riferimento in altre funzioni o trigger; grant solo service_role.
