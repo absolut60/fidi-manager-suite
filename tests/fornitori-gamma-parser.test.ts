@@ -14,7 +14,7 @@ function wb(righe: unknown[][], nome = "SYNC_ANAGRAFICA_FORNITORI") {
 
 describe("parser fornitori Gamma (FM61)", () => {
   test("mappa i campi, trim, booleani e codici interi", () => {
-    const s = trovaFoglioFornitori(wb([[101, "  ACME SRL ", "", "Valida", " 01234567890 ", "No", "RB60", "RiBa 60", "05/11/2026 08:30", 5001, 13908, 2, "x"]]))!;
+    const s = trovaFoglioFornitori(wb([[101, "  ACME SRL ", "", "Valida", " 01234567890 ", "No", "RB60", "RiBa 60", "05/11/2026 08:30", 5001, 13908, 2, "x"]]))!.sheet;
     const { rows, anomalie } = parseFornitoriGammaSheet(s);
     expect(anomalie).toHaveLength(0);
     expect(rows[0]).toMatchObject({ codice_gestionale: 101, ragione_sociale: "ACME SRL", alias: null, valida: true,
@@ -25,27 +25,27 @@ describe("parser fornitori Gamma (FM61)", () => {
   });
 
   test("Non Valida → false, Si → true", () => {
-    const { rows } = parseFornitoriGammaSheet(trovaFoglioFornitori(wb([[1, "A", "", "Non Valida", "", "Si"]]))!);
+    const { rows } = parseFornitoriGammaSheet(trovaFoglioFornitori(wb([[1, "A", "", "Non Valida", "", "Si"]]))!.sheet);
     expect(rows[0].valida).toBe(false);
     expect(rows[0].persona_fisica).toBe(true);
   });
 
   test("codice mancante → anomalia e riga scartata", () => {
-    const { rows, anomalie } = parseFornitoriGammaSheet(trovaFoglioFornitori(wb([["", "SENZA CODICE"], [2, "OK"]]))!);
+    const { rows, anomalie } = parseFornitoriGammaSheet(trovaFoglioFornitori(wb([["", "SENZA CODICE"], [2, "OK"]]))!.sheet);
     expect(rows.map((r) => r.codice_gestionale)).toEqual([2]);
     expect(anomalie).toEqual([{ riga: 2, tipo: "codice_mancante", codice: null, ragione_sociale: "SENZA CODICE" }]);
   });
 
   test("codice duplicato → anomalia, tenuta l'ultima riga", () => {
-    const { rows, anomalie } = parseFornitoriGammaSheet(trovaFoglioFornitori(wb([[7, "PRIMA"], [8, "ALTRO"], [7, "ULTIMA"]]))!);
+    const { rows, anomalie } = parseFornitoriGammaSheet(trovaFoglioFornitori(wb([[7, "PRIMA"], [8, "ALTRO"], [7, "ULTIMA"]]))!.sheet);
     expect(rows.find((r) => r.codice_gestionale === 7)?.ragione_sociale).toBe("ULTIMA");
     expect(rows).toHaveLength(2);
     expect(anomalie[0]).toMatchObject({ tipo: "codice_duplicato", codice: "7", riga: 2 });
   });
 
-  test("accetta il foglio FORNITORI o il primo con Codice fornitore", () => {
-    expect(trovaFoglioFornitori(wb([[1, "A"]], "FORNITORI"))).not.toBeNull();
-    expect(trovaFoglioFornitori(wb([[1, "A"]], "Foglio1"))).not.toBeNull();
+  test("riconosce il foglio solo per nome (FORNITORI sì, altri fogli con Codice fornitore no)", () => {
+    expect(trovaFoglioFornitori(wb([[1, "A"]], "FORNITORI"))?.nome).toBe("FORNITORI");
+    expect(trovaFoglioFornitori(wb([[1, "A"]], "SYNC_ARTICOLI_FORNITORI"))).toBeNull();
   });
 
   test("data/ora seriale Excel", () => {

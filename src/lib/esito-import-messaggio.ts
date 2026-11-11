@@ -69,7 +69,7 @@ const ETICHETTE_FONTE: Record<string, string> = {
   anagrafica: "Anagrafica clienti",
   blocco_fido_assicurazione: "Blocco fido e assicurazione",
   analisi_rischio: "Analisi rischio",
-  fornitori_gamma: "Fornitori (Gamma)",
+  articoli_listini_gamma: "Articoli, fornitori e listini (Gamma)",
   eventi_partecipanti: "Partecipanti evento",
 };
 

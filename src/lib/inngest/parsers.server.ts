@@ -648,15 +648,16 @@ function righeFoglioFornitori(sheet: XLSX.WorkSheet): Array<Record<string, unkno
   return out;
 }
 
-/** Foglio "SYNC_ANAGRAFICA_FORNITORI" o "FORNITORI", altrimenti il primo con "Codice fornitore". */
-export function trovaFoglioFornitori(wb: XLSX.WorkBook): XLSX.WorkSheet | null {
-  for (const nome of ["SYNC_ANAGRAFICA_FORNITORI", "FORNITORI"]) {
-    const s = findSheetByName(wb, nome);
-    if (s) return s;
-  }
-  for (const nome of wb.SheetNames) {
-    const s = wb.Sheets[nome];
-    if (s && righeFoglioFornitori(s).length > 0) return s;
+export const NOMI_FOGLIO_FORNITORI = ["SYNC_ANAGRAFICA_FORNITORI", "FORNITORI"];
+
+/**
+ * Foglio fornitori SOLO per nome ("SYNC_ANAGRAFICA_FORNITORI" o "FORNITORI"): nel file
+ * unico anche altri fogli (es. articoli-fornitori) hanno la colonna "Codice fornitore".
+ */
+export function trovaFoglioFornitori(wb: XLSX.WorkBook): { nome: string; sheet: XLSX.WorkSheet } | null {
+  for (const nome of NOMI_FOGLIO_FORNITORI) {
+    const sn = wb.SheetNames.find((x) => x.toLowerCase().trim() === nome.toLowerCase());
+    if (sn && wb.Sheets[sn]) return { nome: sn, sheet: wb.Sheets[sn] };
   }
   return null;
 }

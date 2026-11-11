@@ -11,8 +11,8 @@ import {
   finalizeScadenziarioImport,
   processScadAssicImport,
   processBloccoFidoImport,
-  processFornitoriGammaImport,
 } from "@/lib/inngest/functions.server";
+import { processArticoliListiniGammaImport } from "@/lib/inngest/listini-gamma/orchestratore.server";
 import { invioMassivoSolleciti } from "@/lib/inngest/sollecito-massivo.server";
 import { snapshotMensile } from "@/lib/inngest/snapshot.server";
 import { remindRatePianoRientro } from "@/lib/inngest/piano-rientro-reminder.server";
@@ -46,7 +46,7 @@ const handler = serve({
     finalizeScadenziarioImport,
     processScadAssicImport,
     processBloccoFidoImport,
-    processFornitoriGammaImport,
+    processArticoliListiniGammaImport,
     invioMassivoSolleciti,
     snapshotMensile,
     remindRatePianoRientro,

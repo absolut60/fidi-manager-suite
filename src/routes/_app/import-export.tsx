@@ -46,6 +46,7 @@ import { triggerImport } from "@/lib/import.functions";
 import { MACROCATEGORIE, CATEGORIE } from "@/lib/macrocategorie";
 import { CODICI_PAGAMENTO } from "@/lib/codici-pagamento";
 import { RiepilogoAnomalieCard } from "@/components/riepilogo-anomalie-card";
+import { CHIAVE_STATO_LISTINI, type StatoFoglio, type StatoImportListini } from "@/lib/inngest/listini-gamma/tipi";
 import {
   FidoTeoricoPrecalcoloCard,
   RicalcolaFidoTeoricoAvviso,
@@ -409,7 +410,7 @@ function ImportExportPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <FornitoriGammaImportCard />
+        <ArticoliListiniGammaImportCard />
       </div>
 
 
@@ -991,19 +992,22 @@ function RischioImportCard() {
 
 
 /* ============================================================================
- * FM61 — Fornitori (Gamma)
+ * FM61 — Articoli, fornitori e listini (Gamma): un file, un import, stato per foglio
  * ============================================================================ */
-type RiepilogoFornitoriGamma = {
-  righe_file: number; inseriti: number; aggiornati: number; disattivati: number;
-  anomalie: number; collegamenti_gamma: number; collegamenti_piva_cf: number;
+const ETICHETTE_CONTEGGI_LISTINI: Record<string, string> = {
+  inseriti: "Inseriti",
+  aggiornati: "Aggiornati",
+  disattivati: "Disattivati (assenti dal file)",
+  collegamenti_gamma: "Collegamenti Gamma",
+  collegamenti_piva_cf: "Collegamenti P.IVA / CF",
 };
 
-function FornitoriGammaImportCard() {
+function ArticoliListiniGammaImportCard() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  const bg = useBackgroundImport({ fonte: "fornitori_gamma", invalidateKeys: [["fornitori"]] });
+  const bg = useBackgroundImport({ fonte: "articoli_listini_gamma", invalidateKeys: [["fornitori"], ["articoli"]] });
 
   function reset() {
     setFileName(null);
@@ -1019,52 +1023,62 @@ function FornitoriGammaImportCard() {
   }
 
   const p = bg.progress;
-  const totale = Number(p?.righe_totali ?? 0);
-  const lotti = Math.ceil(totale / 500);
-  const lottoCorrente = Math.min(lotti, Math.ceil(Number(p?.righe_elaborate ?? 0) / 500));
-  const riep = (p?.report_saltati as { fornitori_gamma?: RiepilogoFornitoriGamma } | null | undefined)?.fornitori_gamma;
+  const stato = (p?.report_saltati as Record<string, StatoImportListini> | null | undefined)?.[CHIAVE_STATO_LISTINI];
+  const fogli = stato ? Object.entries(stato.fogli) : [];
   const n = (x: number) => x.toLocaleString("it-IT");
+  const etichettaStato: Record<StatoFoglio["stato"], string> = {
+    in_attesa: "In attesa", in_corso: "In corso", completato: "Completato", errore: "Non completato",
+  };
 
   return (
     <Card className="p-5">
       <h2 className="font-semibold flex items-center gap-2 mb-1">
-        <Truck className="size-4" /> Fornitori (Gamma)
+        <Truck className="size-4" /> Articoli, fornitori e listini (Gamma)
       </h2>
       <p className="text-xs text-muted-foreground mb-4">
-        Carica <span className="font-medium">MADE_ARTICOLI_LISTINI_PQ.xlsx</span> (foglio SYNC_ANAGRAFICA_FORNITORI):
-        aggiorna l'anagrafica fornitori di Gamma a pacchetti da 500. I fornitori inseriti a mano non vengono toccati.
-        Puoi chiudere la pagina: l'import prosegue da solo.
+        Carica <span className="font-medium">MADE_ARTICOLI_LISTINI_PQ.xlsx</span>: un solo file aggiorna tutti i fogli
+        riconosciuti (oggi: fornitori). I fornitori inseriti a mano non vengono toccati. Puoi chiudere la pagina:
+        l'import prosegue da solo.
       </p>
-      {bg.inProgress && p ? (
-        <>
-          <BgProgressBlock progress={p} fallbackTotal={0} />
-          {lotti > 0 ? (
-            <p className="-mt-2 mb-4 text-xs text-muted-foreground">Pacchetto {n(lottoCorrente)} di {n(lotti)}</p>
-          ) : null}
-        </>
-      ) : null}
-      {bg.done && riep ? (
-        <div className="mb-4 rounded-md border bg-muted/30 p-3 text-sm">
-          <div className="mb-2 flex items-center gap-2 font-medium">
-            <CheckCircle2 className="size-4 text-success" /> Import fornitori completato
-          </div>
-          <dl className="grid grid-cols-1 gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
-            {([
-              ["Righe nel file", riep.righe_file], ["Inseriti", riep.inseriti],
-              ["Aggiornati", riep.aggiornati], ["Disattivati (assenti dal file)", riep.disattivati],
-              ["Anomalie", riep.anomalie], ["Collegamenti Gamma", riep.collegamenti_gamma],
-              ["Collegamenti P.IVA / CF", riep.collegamenti_piva_cf],
-            ] as Array<[string, number]>).map(([k, v]) => (
-              <div key={k} className="flex justify-between gap-2">
-                <dt className="text-muted-foreground">{k}</dt>
-                <dd className="font-medium tabular-nums">{n(v)}</dd>
+      {bg.inProgress && p ? <BgProgressBlock progress={p} fallbackTotal={0} /> : null}
+      {(bg.inProgress || bg.done) && stato ? (
+        <div className="mb-4 space-y-2">
+          {fogli.map(([k, f]) => (
+            <div key={k} className="rounded-md border bg-muted/30 p-3 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="min-w-0 break-words font-medium">
+                  {f.etichetta} <span className="text-xs font-normal text-muted-foreground">· foglio {f.foglio}</span>
+                </span>
+                <span className={f.stato === "errore" ? "text-xs font-medium text-destructive" : f.stato === "completato" ? "text-xs font-medium text-success" : "text-xs text-muted-foreground"}>
+                  {etichettaStato[f.stato]}
+                  {f.stato === "in_corso" && f.lotti > 0 ? ` · pacchetto ${n(f.lotto)} di ${n(f.lotti)}` : ""}
+                </span>
               </div>
-            ))}
-          </dl>
-          {riep.anomalie > 0 ? (
-            <a href="#anomalie-import" className="mt-2 inline-block text-xs font-medium text-primary underline-offset-2 hover:underline">
-              Vedi le anomalie
-            </a>
+              <dl className="mt-2 grid grid-cols-1 gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
+                <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Righe valide</dt><dd className="font-medium tabular-nums">{n(f.righe)}</dd></div>
+                {Object.entries(f.conteggi).map(([ck, v]) => (
+                  <div key={ck} className="flex justify-between gap-2">
+                    <dt className="text-muted-foreground">{ETICHETTE_CONTEGGI_LISTINI[ck] ?? ck}</dt>
+                    <dd className="font-medium tabular-nums">{n(v)}</dd>
+                  </div>
+                ))}
+                <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Anomalie</dt><dd className="font-medium tabular-nums">{n(f.anomalie)}</dd></div>
+              </dl>
+              {f.errore ? <p className="mt-2 break-words text-xs text-destructive">{f.errore}</p> : null}
+              {f.anomalie > 0 ? (
+                <a href="#anomalie-import" className="mt-2 inline-block text-xs font-medium text-primary underline-offset-2 hover:underline">
+                  Vedi le anomalie
+                </a>
+              ) : null}
+            </div>
+          ))}
+          {stato.non_gestiti.length ? (
+            <p className="break-words text-xs text-muted-foreground">
+              Fogli non ancora gestiti (ignorati): {stato.non_gestiti.join(", ")}
+            </p>
+          ) : null}
+          {bg.done && !fogli.length ? (
+            <p className="text-xs text-destructive">Nessun foglio riconosciuto nel file.</p>
           ) : null}
         </div>
       ) : null}
@@ -1087,7 +1101,7 @@ function FornitoriGammaImportCard() {
             onClick={() => file && bg.start({ file, rowsTotali: 0 })}
           >
             {(bg.isPending || bg.inProgress) && <Loader2 className="size-4 animate-spin" />}
-            {bg.inProgress ? "Elaborazione in background..." : "Avvia import fornitori"}
+            {bg.inProgress ? "Elaborazione in background..." : "Avvia import"}
           </Button>
         }
       />
