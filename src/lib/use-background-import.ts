@@ -50,7 +50,7 @@ type StartImportArgs = {
 };
 
 /** Pacchetti caricati in parallelo a gruppi (non uno alla volta, non tutti insieme). */
-const GRUPPO_CARICAMENTO = 6;
+const GRUPPO_CARICAMENTO = 8;
 
 export function useBackgroundImport(opts: {
   fonte: Fonte;
