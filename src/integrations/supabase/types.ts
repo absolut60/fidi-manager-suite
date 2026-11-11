@@ -725,6 +725,41 @@ export type Database = {
           },
         ]
       }
+      articoli_gamma_fornitori: {
+        Row: {
+          articolo_codice: string
+          codice_articolo_fornitore: string | null
+          fornitore_codice: number
+          fornitore_id: string | null
+          importazione_id: string | null
+          preferenziale: boolean
+        }
+        Insert: {
+          articolo_codice: string
+          codice_articolo_fornitore?: string | null
+          fornitore_codice: number
+          fornitore_id?: string | null
+          importazione_id?: string | null
+          preferenziale?: boolean
+        }
+        Update: {
+          articolo_codice?: string
+          codice_articolo_fornitore?: string | null
+          fornitore_codice?: number
+          fornitore_id?: string | null
+          importazione_id?: string | null
+          preferenziale?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "articoli_gamma_fornitori_fornitore_id_fkey"
+            columns: ["fornitore_id"]
+            isOneToOne: false
+            referencedRelation: "fornitori"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       articoli_gamma_listini: {
         Row: {
           articolo_codice: string
@@ -3062,6 +3097,50 @@ export type Database = {
           },
         ]
       }
+      depositi: {
+        Row: {
+          attivo: boolean
+          codice: string
+          codice_sede: number | null
+          conta_disponibilita: string
+          descrizione: string | null
+          sede_gamma: number | null
+          store_id: string | null
+          tipo: string | null
+          ultima_sincronizzazione: string | null
+        }
+        Insert: {
+          attivo?: boolean
+          codice: string
+          codice_sede?: number | null
+          conta_disponibilita?: string
+          descrizione?: string | null
+          sede_gamma?: number | null
+          store_id?: string | null
+          tipo?: string | null
+          ultima_sincronizzazione?: string | null
+        }
+        Update: {
+          attivo?: boolean
+          codice?: string
+          codice_sede?: number | null
+          conta_disponibilita?: string
+          descrizione?: string | null
+          sede_gamma?: number | null
+          store_id?: string | null
+          tipo?: string | null
+          ultima_sincronizzazione?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "depositi_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       esportazioni: {
         Row: {
           created_at: string
@@ -3730,6 +3809,47 @@ export type Database = {
           valida?: boolean | null
         }
         Relationships: []
+      }
+      giacenze_gamma: {
+        Row: {
+          aggiornato_gamma: string | null
+          articolo_codice: string
+          deposito_codice: string
+          disponibilita: number | null
+          giacenza: number | null
+          impegnato_clienti: number | null
+          importazione_id: string | null
+          ordinato_fornitori: number | null
+        }
+        Insert: {
+          aggiornato_gamma?: string | null
+          articolo_codice: string
+          deposito_codice: string
+          disponibilita?: number | null
+          giacenza?: number | null
+          impegnato_clienti?: number | null
+          importazione_id?: string | null
+          ordinato_fornitori?: number | null
+        }
+        Update: {
+          aggiornato_gamma?: string | null
+          articolo_codice?: string
+          deposito_codice?: string
+          disponibilita?: number | null
+          giacenza?: number | null
+          impegnato_clienti?: number | null
+          importazione_id?: string | null
+          ordinato_fornitori?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "giacenze_gamma_deposito_codice_fkey"
+            columns: ["deposito_codice"]
+            isOneToOne: false
+            referencedRelation: "depositi"
+            referencedColumns: ["codice"]
+          },
+        ]
       }
       importazioni: {
         Row: {
@@ -7541,6 +7661,14 @@ export type Database = {
           tipo: string
         }[]
       }
+      chiudi_articoli_fornitori_gamma: {
+        Args: { _importazione: string }
+        Returns: number
+      }
+      chiudi_giacenze_gamma: {
+        Args: { _importazione: string }
+        Returns: number
+      }
       classifica_iscritti_whatsapp_batch: {
         Args: { _ids: string[] }
         Returns: Json
@@ -7793,6 +7921,20 @@ export type Database = {
       disattiva_fornitori_gamma_assenti: {
         Args: { _codici: number[] }
         Returns: number
+      }
+      disponibilita_articolo: {
+        Args: { _codice: string }
+        Returns: {
+          conta_disponibilita: string
+          deposito_codice: string
+          disponibilita: number
+          giacenza: number
+          impegnato_clienti: number
+          livello: string
+          nome: string
+          ordinato_fornitori: number
+          store_id: string
+        }[]
       }
       effective_store_filter: { Args: { _requested: string }; Returns: string }
       elenco_persone_whatsapp_segmento: {
@@ -8961,8 +9103,17 @@ export type Database = {
         Returns: boolean
       }
       ignora_iscritto_whatsapp: { Args: { _id: string }; Returns: Json }
+      import_articoli_fornitori_gamma_lotto: {
+        Args: { _importazione: string; _righe: Json }
+        Returns: Json
+      }
       import_articoli_gamma_lotto: { Args: { _righe: Json }; Returns: Json }
+      import_depositi_gamma: { Args: { _righe: Json }; Returns: Json }
       import_fornitori_gamma_lotto: { Args: { _righe: Json }; Returns: Json }
+      import_giacenze_gamma_lotto: {
+        Args: { _importazione: string; _righe: Json }
+        Returns: Json
+      }
       import_marche_gamma: { Args: { _righe: Json }; Returns: number }
       imposta_iscrizioni_evento: {
         Args: { _aperte: boolean; _evento_id: string }
