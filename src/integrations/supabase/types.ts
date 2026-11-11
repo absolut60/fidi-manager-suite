@@ -793,6 +793,13 @@ export type Database = {
             referencedRelation: "articoli_gamma"
             referencedColumns: ["codice"]
           },
+          {
+            foreignKeyName: "articoli_gamma_listini_listino_fkey"
+            columns: ["listino"]
+            isOneToOne: false
+            referencedRelation: "listini_gamma"
+            referencedColumns: ["codice"]
+          },
         ]
       }
       assicurazioni_credito: {
@@ -2641,6 +2648,66 @@ export type Database = {
           },
         ]
       }
+      clienti_condizioni_gamma: {
+        Row: {
+          categoria: string | null
+          cliente_codice: number
+          cliente_id: string | null
+          importazione_id: string | null
+          listino: number | null
+          listino_piu_articoli: string | null
+          macrocategoria: string | null
+          sc1_cliente: number | null
+          sc2_cliente: number | null
+          sc3_cliente: number | null
+          sconto_piede: number | null
+          sottocategoria: string | null
+        }
+        Insert: {
+          categoria?: string | null
+          cliente_codice: number
+          cliente_id?: string | null
+          importazione_id?: string | null
+          listino?: number | null
+          listino_piu_articoli?: string | null
+          macrocategoria?: string | null
+          sc1_cliente?: number | null
+          sc2_cliente?: number | null
+          sc3_cliente?: number | null
+          sconto_piede?: number | null
+          sottocategoria?: string | null
+        }
+        Update: {
+          categoria?: string | null
+          cliente_codice?: number
+          cliente_id?: string | null
+          importazione_id?: string | null
+          listino?: number | null
+          listino_piu_articoli?: string | null
+          macrocategoria?: string | null
+          sc1_cliente?: number | null
+          sc2_cliente?: number | null
+          sc3_cliente?: number | null
+          sconto_piede?: number | null
+          sottocategoria?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clienti_condizioni_gamma_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clienti_condizioni_gamma_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+        ]
+      }
       clienti_scaduto60_ingressi: {
         Row: {
           azione_id: string | null
@@ -4480,6 +4547,78 @@ export type Database = {
           },
         ]
       }
+      listini_gamma: {
+        Row: {
+          codice: number
+          descrizione: string
+          note: string | null
+        }
+        Insert: {
+          codice: number
+          descrizione: string
+          note?: string | null
+        }
+        Update: {
+          codice?: number
+          descrizione?: string
+          note?: string | null
+        }
+        Relationships: []
+      }
+      listini_priorita_gamma: {
+        Row: {
+          gestione_prezzo: number | null
+          importazione_id: string | null
+          livello: string | null
+          mag1: number | null
+          mag2: number | null
+          magg_importo: number | null
+          priorita: number
+          sc1: number | null
+          sc2: number | null
+          sc3: number | null
+          sc4: number | null
+          sc5: number | null
+          sc6: number | null
+          sconto_importo: number | null
+          tipo_listino: string | null
+        }
+        Insert: {
+          gestione_prezzo?: number | null
+          importazione_id?: string | null
+          livello?: string | null
+          mag1?: number | null
+          mag2?: number | null
+          magg_importo?: number | null
+          priorita: number
+          sc1?: number | null
+          sc2?: number | null
+          sc3?: number | null
+          sc4?: number | null
+          sc5?: number | null
+          sc6?: number | null
+          sconto_importo?: number | null
+          tipo_listino?: string | null
+        }
+        Update: {
+          gestione_prezzo?: number | null
+          importazione_id?: string | null
+          livello?: string | null
+          mag1?: number | null
+          mag2?: number | null
+          magg_importo?: number | null
+          priorita?: number
+          sc1?: number | null
+          sc2?: number | null
+          sc3?: number | null
+          sc4?: number | null
+          sc5?: number | null
+          sc6?: number | null
+          sconto_importo?: number | null
+          tipo_listino?: string | null
+        }
+        Relationships: []
+      }
       listini_vendita: {
         Row: {
           articolo_id: string
@@ -4520,6 +4659,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      listino_piu_articoli_gamma: {
+        Row: {
+          articolo_codice: string | null
+          codice_listino: string | null
+          id: number
+          importazione_id: string | null
+          prezzo: number | null
+          sc1: number | null
+          valido_al: string | null
+          valido_dal: string | null
+        }
+        Insert: {
+          articolo_codice?: string | null
+          codice_listino?: string | null
+          id: number
+          importazione_id?: string | null
+          prezzo?: number | null
+          sc1?: number | null
+          valido_al?: string | null
+          valido_dal?: string | null
+        }
+        Update: {
+          articolo_codice?: string | null
+          codice_listino?: string | null
+          id?: number
+          importazione_id?: string | null
+          prezzo?: number | null
+          sc1?: number | null
+          valido_al?: string | null
+          valido_dal?: string | null
+        }
+        Relationships: []
       }
       macrocategorie: {
         Row: {
@@ -5463,6 +5635,131 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "preventivi"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      prezzi_cliente_articolo_gamma: {
+        Row: {
+          articolo_codice: string | null
+          cliente_codice: number | null
+          cliente_id: string | null
+          id: number
+          importazione_id: string | null
+          mag1: number | null
+          prezzo: number | null
+          sc1: number | null
+          sc2: number | null
+          sc3: number | null
+          sc4: number | null
+          sc5: number | null
+          sc6: number | null
+          sconto_importo: number | null
+          valido_al: string | null
+          valido_dal: string | null
+        }
+        Insert: {
+          articolo_codice?: string | null
+          cliente_codice?: number | null
+          cliente_id?: string | null
+          id: number
+          importazione_id?: string | null
+          mag1?: number | null
+          prezzo?: number | null
+          sc1?: number | null
+          sc2?: number | null
+          sc3?: number | null
+          sc4?: number | null
+          sc5?: number | null
+          sc6?: number | null
+          sconto_importo?: number | null
+          valido_al?: string | null
+          valido_dal?: string | null
+        }
+        Update: {
+          articolo_codice?: string | null
+          cliente_codice?: number | null
+          cliente_id?: string | null
+          id?: number
+          importazione_id?: string | null
+          mag1?: number | null
+          prezzo?: number | null
+          sc1?: number | null
+          sc2?: number | null
+          sc3?: number | null
+          sc4?: number | null
+          sc5?: number | null
+          sc6?: number | null
+          sconto_importo?: number | null
+          valido_al?: string | null
+          valido_dal?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prezzi_cliente_articolo_gamma_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prezzi_cliente_articolo_gamma_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+        ]
+      }
+      prezzi_deposito_gamma: {
+        Row: {
+          articolo_codice: string | null
+          deposito_codice: string | null
+          id: number
+          importazione_id: string | null
+          listino: number | null
+          mag1: number | null
+          prezzo: number | null
+          prezzo_netto: number | null
+          sc1: number | null
+          sc2: number | null
+          sc3: number | null
+          valido_dal: string | null
+        }
+        Insert: {
+          articolo_codice?: string | null
+          deposito_codice?: string | null
+          id: number
+          importazione_id?: string | null
+          listino?: number | null
+          mag1?: number | null
+          prezzo?: number | null
+          prezzo_netto?: number | null
+          sc1?: number | null
+          sc2?: number | null
+          sc3?: number | null
+          valido_dal?: string | null
+        }
+        Update: {
+          articolo_codice?: string | null
+          deposito_codice?: string | null
+          id?: number
+          importazione_id?: string | null
+          listino?: number | null
+          mag1?: number | null
+          prezzo?: number | null
+          prezzo_netto?: number | null
+          sc1?: number | null
+          sc2?: number | null
+          sc3?: number | null
+          valido_dal?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prezzi_deposito_gamma_deposito_codice_fkey"
+            columns: ["deposito_codice"]
+            isOneToOne: false
+            referencedRelation: "depositi"
+            referencedColumns: ["codice"]
           },
         ]
       }
@@ -6458,6 +6755,144 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "importazioni"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      sconti_categoria_gamma: {
+        Row: {
+          categoria: string | null
+          id: number
+          importazione_id: string | null
+          listino: number | null
+          macrocategoria: string | null
+          mag1: number | null
+          mag2: number | null
+          magg_importo: number | null
+          sc1: number | null
+          sc2: number | null
+          sc4: number | null
+          sconto_importo: number | null
+          sottocategoria: string
+          valido_al: string | null
+          valido_dal: string | null
+        }
+        Insert: {
+          categoria?: string | null
+          id: number
+          importazione_id?: string | null
+          listino?: number | null
+          macrocategoria?: string | null
+          mag1?: number | null
+          mag2?: number | null
+          magg_importo?: number | null
+          sc1?: number | null
+          sc2?: number | null
+          sc4?: number | null
+          sconto_importo?: number | null
+          sottocategoria?: string
+          valido_al?: string | null
+          valido_dal?: string | null
+        }
+        Update: {
+          categoria?: string | null
+          id?: number
+          importazione_id?: string | null
+          listino?: number | null
+          macrocategoria?: string | null
+          mag1?: number | null
+          mag2?: number | null
+          magg_importo?: number | null
+          sc1?: number | null
+          sc2?: number | null
+          sc4?: number | null
+          sconto_importo?: number | null
+          sottocategoria?: string
+          valido_al?: string | null
+          valido_dal?: string | null
+        }
+        Relationships: []
+      }
+      sconti_cliente_famiglia_gamma: {
+        Row: {
+          a_famiglia: string | null
+          a_gruppo: string | null
+          a_sottofamiglia: string | null
+          a_sottogruppo: string | null
+          cliente_codice: number | null
+          cliente_id: string | null
+          da_famiglia: string | null
+          da_gruppo: string | null
+          da_sottofamiglia: string | null
+          da_sottogruppo: string | null
+          id: number
+          importazione_id: string | null
+          sc1: number | null
+          sc2: number | null
+          sc3: number | null
+          sc4: number | null
+          sc5: number | null
+          sc6: number | null
+          valido_al: string | null
+          valido_dal: string | null
+        }
+        Insert: {
+          a_famiglia?: string | null
+          a_gruppo?: string | null
+          a_sottofamiglia?: string | null
+          a_sottogruppo?: string | null
+          cliente_codice?: number | null
+          cliente_id?: string | null
+          da_famiglia?: string | null
+          da_gruppo?: string | null
+          da_sottofamiglia?: string | null
+          da_sottogruppo?: string | null
+          id: number
+          importazione_id?: string | null
+          sc1?: number | null
+          sc2?: number | null
+          sc3?: number | null
+          sc4?: number | null
+          sc5?: number | null
+          sc6?: number | null
+          valido_al?: string | null
+          valido_dal?: string | null
+        }
+        Update: {
+          a_famiglia?: string | null
+          a_gruppo?: string | null
+          a_sottofamiglia?: string | null
+          a_sottogruppo?: string | null
+          cliente_codice?: number | null
+          cliente_id?: string | null
+          da_famiglia?: string | null
+          da_gruppo?: string | null
+          da_sottofamiglia?: string | null
+          da_sottogruppo?: string | null
+          id?: number
+          importazione_id?: string | null
+          sc1?: number | null
+          sc2?: number | null
+          sc3?: number | null
+          sc4?: number | null
+          sc5?: number | null
+          sc6?: number | null
+          valido_al?: string | null
+          valido_dal?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sconti_cliente_famiglia_gamma_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sconti_cliente_famiglia_gamma_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
           },
         ]
       }
@@ -9587,6 +10022,10 @@ export type Database = {
         Returns: boolean
       }
       showroom_lead_della_sede: { Args: { _lead_id: string }; Returns: boolean }
+      sostituisci_regole_prezzo_gamma: {
+        Args: { _importazione: string; _righe: Json; _tabella: string }
+        Returns: Json
+      }
       sposta_lead_ambito: {
         Args: { _ambito: string; _lead_ids: string[] }
         Returns: number

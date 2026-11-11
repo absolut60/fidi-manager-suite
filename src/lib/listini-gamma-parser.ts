@@ -580,6 +580,126 @@ export function parseArticoliFornitoriGammaSheet(sheet: XLSX.WorkSheet) {
 }
 
 /* ============================================================================
+ * REGOLE PREZZO GAMMA — FM61 fetta 3B (import fedele, nessun calcolo)
+ * ============================================================================ */
+
+/** testo: trim, '' → null · testo_vuoto: trim, '' resta '' · int/num · data (AAAA-MM-GG, senza ora). */
+type TipoCampoRegola = "testo" | "testo_vuoto" | "int" | "num" | "data";
+
+export type FoglioRegolaPrezzo = {
+  /** Chiave del gestore e nome della tabella di destinazione. */
+  chiave: string;
+  tabella: string;
+  foglio: string;
+  etichetta: string;
+  /** Intestazione normalizzata → [colonna, tipo]. */
+  campi: Record<string, [string, TipoCampoRegola]>;
+  /** Colonna chiave obbligatoria (e unica). */
+  pk: string;
+};
+
+const sc = (n: number, tipo: TipoCampoRegola = "num"): Record<string, [string, TipoCampoRegola]> =>
+  Object.fromEntries(Array.from({ length: n }, (_, i) => [`sc${i + 1}`, [`sc${i + 1}`, tipo]]));
+const validita = { "valido dal": ["valido_dal", "data"], "valido al": ["valido_al", "data"] } as Record<string, [string, TipoCampoRegola]>;
+
+export const FOGLI_REGOLE_PREZZO: FoglioRegolaPrezzo[] = [
+  {
+    chiave: "listini_priorita", tabella: "listini_priorita_gamma", foglio: "PRIORITA_LISTINI", etichetta: "Priorità listini", pk: "priorita",
+    campi: {
+      priorita: ["priorita", "int"], "priorità": ["priorita", "int"], "tipo listino": ["tipo_listino", "testo"], livello: ["livello", "testo"],
+      "gestione prezzo": ["gestione_prezzo", "int"], ...sc(6, "int"), "sconto importo": ["sconto_importo", "int"],
+      mag1: ["mag1", "int"], mag2: ["mag2", "int"], "magg importo": ["magg_importo", "int"],
+    },
+  },
+  {
+    chiave: "clienti_condizioni", tabella: "clienti_condizioni_gamma", foglio: "CLIENTI_LISTINO", etichetta: "Condizioni clienti", pk: "cliente_codice",
+    campi: {
+      cliente: ["cliente_codice", "int"], listino: ["listino", "int"], macrocategoria: ["macrocategoria", "testo"],
+      categoria: ["categoria", "testo"], sottocategoria: ["sottocategoria", "testo"],
+      "listino piu articoli": ["listino_piu_articoli", "testo"], "listino più articoli": ["listino_piu_articoli", "testo"],
+      "sc1 cliente": ["sc1_cliente", "num"], "sc2 cliente": ["sc2_cliente", "num"], "sc3 cliente": ["sc3_cliente", "num"],
+      "sconto piede": ["sconto_piede", "num"],
+    },
+  },
+  {
+    chiave: "sconti_categoria", tabella: "sconti_categoria_gamma", foglio: "SCONTI_CATEGORIA", etichetta: "Sconti per categoria", pk: "id",
+    campi: {
+      id: ["id", "int"], macrocategoria: ["macrocategoria", "testo"], categoria: ["categoria", "testo"],
+      sottocategoria: ["sottocategoria", "testo_vuoto"], listino: ["listino", "int"], ...validita,
+      sc1: ["sc1", "num"], sc2: ["sc2", "num"], sc4: ["sc4", "num"], "sconto importo": ["sconto_importo", "num"],
+      mag1: ["mag1", "num"], mag2: ["mag2", "num"], "magg importo": ["magg_importo", "num"],
+    },
+  },
+  {
+    chiave: "sconti_cliente_famiglia", tabella: "sconti_cliente_famiglia_gamma", foglio: "SCONTI_CLIENTE_FAMIGLIA", etichetta: "Sconti cliente per famiglia", pk: "id",
+    campi: {
+      id: ["id", "int"], cliente: ["cliente_codice", "int"],
+      ...Object.fromEntries(["da", "a"].flatMap((p) => ["famiglia", "sottofamiglia", "gruppo", "sottogruppo"].map((x) => [`${p} ${x}`, [`${p}_${x}`, "testo"]]))),
+      ...validita, ...sc(6),
+    },
+  },
+  {
+    chiave: "listino_piu_articoli", tabella: "listino_piu_articoli_gamma", foglio: "LISTINO_PIU_ARTICOLI", etichetta: "Listino più articoli", pk: "id",
+    campi: {
+      id: ["id", "int"], "codice listino": ["codice_listino", "testo"], codice: ["articolo_codice", "testo"], ...validita,
+      prezzo: ["prezzo", "num"], sc1: ["sc1", "num"],
+    },
+  },
+  {
+    chiave: "prezzi_cliente_articolo", tabella: "prezzi_cliente_articolo_gamma", foglio: "PREZZI_CLIENTE_ARTICOLO", etichetta: "Prezzi cliente-articolo", pk: "id",
+    campi: {
+      id: ["id", "int"], cliente: ["cliente_codice", "int"], codice: ["articolo_codice", "testo"], ...validita,
+      prezzo: ["prezzo", "num"], ...sc(6), "sconto importo": ["sconto_importo", "num"], mag1: ["mag1", "num"],
+    },
+  },
+  {
+    chiave: "prezzi_deposito", tabella: "prezzi_deposito_gamma", foglio: "PREZZI_DEPOSITO", etichetta: "Prezzi per deposito", pk: "id",
+    campi: {
+      id: ["id", "int"], codice: ["articolo_codice", "testo"], listino: ["listino", "int"], deposito: ["deposito_codice", "testo"],
+      "valido dal": ["valido_dal", "data"], prezzo: ["prezzo", "num"], sc1: ["sc1", "num"], sc2: ["sc2", "num"], sc3: ["sc3", "num"],
+      mag1: ["mag1", "num"], "prezzo netto": ["prezzo_netto", "num"],
+    },
+  },
+];
+
+function valoreRegola(v: unknown, tipo: TipoCampoRegola): unknown {
+  switch (tipo) {
+    case "testo": return toStr(v);
+    case "testo_vuoto": return v == null ? "" : String(v).trim();
+    case "int": return intGamma(typeof v === "string" ? v.trim() : v);
+    case "num": return numeroGamma(v);
+    case "data": return dataOraGamma(v)?.slice(0, 10) ?? null;
+  }
+}
+
+/** Righe di un foglio regole: whitelist delle colonne, chiave obbligatoria; chiave ripetuta → tenuta l'ultima (anomalia). */
+export function parseRegolaPrezzoSheet(def: FoglioRegolaPrezzo, sheet: XLSX.WorkSheet) {
+  const intestazionePk = Object.entries(def.campi).find(([, [c]]) => c === def.pk)![0];
+  const whitelist = Object.fromEntries(Object.keys(def.campi).map((h) => [h, h]));
+  const grezze = righeFoglioConIntestazione(sheet, intestazionePk, whitelist);
+  const anomalie: AnomaliaChiaveFile[] = [];
+  const perChiave = new Map<string, Record<string, unknown> & { riga: number }>();
+  for (const g of grezze) {
+    const riga: Record<string, unknown> & { riga: number } = { riga: g.__row };
+    // Ordine fisso delle colonne (prima occorrenza), così il JSON è stabile.
+    for (const [h, [col, tipo]] of Object.entries(def.campi)) {
+      if (h in g) riga[col] = valoreRegola(g[h], tipo);
+      else if (!(col in riga)) riga[col] = tipo === "testo_vuoto" ? "" : null;
+    }
+    const k = riga[def.pk];
+    if (k == null) {
+      anomalie.push({ riga: g.__row, tipo: "codice_mancante", codice: null, dettaglio: `${def.foglio}: ${def.pk} mancante` });
+      continue;
+    }
+    const chiave = String(k);
+    const prec = perChiave.get(chiave);
+    if (prec) { anomalie.push({ riga: prec.riga, tipo: "chiave_duplicata", codice: chiave, dettaglio: `${def.foglio}: ${def.pk} ripetuto` }); perChiave.delete(chiave); }
+    perChiave.set(chiave, riga);
+  }
+  return { rows: [...perChiave.values()], anomalie, righeLette: grezze.length };
+}
+
+/* ============================================================================
  * Preparazione dello staging (browser): un preparatore per foglio gestito
  * ============================================================================ */
 
@@ -665,6 +785,14 @@ export const PREPARATORI_LISTINI_GAMMA: PreparatoreFoglio[] = [
         codici: chiave === "depositi" ? (r.rows as Array<{ codice: string }>).map((x) => x.codice) : [],
         meta: {},
       };
+    },
+  })),
+  // Regole prezzo (3B): un solo pacchetto per foglio, sostituzione completa sul server.
+  ...FOGLI_REGOLE_PREZZO.map((def): PreparatoreFoglio => ({
+    chiave: def.chiave, etichetta: def.etichetta, lotto: 1_000_000, trovaNome: foglioPerNome(def.foglio),
+    prepara: (sheet) => {
+      const r = parseRegolaPrezzoSheet(def, sheet);
+      return { righe: r.rows.map(({ riga: _riga, ...resto }) => resto), righeLette: r.righeLette, anomalie: r.anomalie, codici: [], meta: {} };
     },
   })),
 ];

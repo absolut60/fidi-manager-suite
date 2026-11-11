@@ -7,6 +7,7 @@ import type {
   AnomaliaChiaveFile,
   DepositoGammaRow,
 } from "@/lib/listini-gamma-parser";
+import { FOGLI_REGOLE_PREZZO } from "@/lib/listini-gamma-parser";
 
 /** Solo i metodi dell'API step usati dai gestori (step.run memoizzato). */
 export type StepApi = {
@@ -314,6 +315,31 @@ const gestoreArticoliFornitori = gestoreFotografia({
   extra: ["non_in_catalogo", "fornitore_sconosciuto"],
 });
 
+/**
+ * Regole prezzo (3B): un solo step per foglio, sostituzione completa in una transazione
+ * (sostituisci_regole_prezzo_gamma). Foglio vuoto → nessuna cancellazione.
+ */
+const gestoriRegolePrezzo: GestoreFoglio[] = FOGLI_REGOLE_PREZZO.map((def) => ({
+  chiave: def.chiave,
+  esegui: async ({ step, importazioneId, lotti, leggiLotto, leggiAnomalie }) =>
+    step.run(`${def.chiave}-sostituisci`, async () => {
+      const prefisso = `${def.chiave}_`;
+      await scriviAnomalie(importazioneId, prefisso, anomalieChiave(prefisso, def.pk, await leggiAnomalie<AnomaliaChiaveFile>()));
+      const righe: Record<string, unknown>[] = [];
+      for (let i = 0; i < lotti; i++) righe.push(...(await leggiLotto<Record<string, unknown>>(i)));
+      if (!righe.length) return { righe: 0, clienti_non_trovati: 0, non_in_catalogo: 0, deposito_inesistente: 0 };
+      const { data, error } = await supabaseAdmin.rpc("sostituisci_regole_prezzo_gamma", {
+        _tabella: def.tabella, _righe: righe as never, _importazione: importazioneId,
+      });
+      if (error) throw new Error(`${def.etichetta}: ${error.message}`);
+      const d = (data ?? {}) as Record<string, number>;
+      return {
+        righe: d.righe ?? 0, clienti_non_trovati: d.clienti_non_trovati ?? 0,
+        non_in_catalogo: d.non_in_catalogo ?? 0, deposito_inesistente: d.deposito_inesistente ?? 0,
+      };
+    }),
+}));
+
 /** Esecutori per chiave; l'ordine fisso è quello di PREPARATORI_LISTINI_GAMMA. */
 export const GESTORI_LISTINI_GAMMA: GestoreFoglio[] = [
   gestoreFornitori,
@@ -321,4 +347,5 @@ export const GESTORI_LISTINI_GAMMA: GestoreFoglio[] = [
   gestoreDepositi,
   gestoreGiacenze,
   gestoreArticoliFornitori,
+  ...gestoriRegolePrezzo,
 ];
