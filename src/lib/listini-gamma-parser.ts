@@ -123,6 +123,10 @@ function intStretto(v: unknown): number | null {
 export function dataOraGamma(v: unknown): string | null {
   if (v == null || v === "") return null;
   const p2 = (n: number | string) => String(n).padStart(2, "0");
+  if (v instanceof Date) {
+    if (Number.isNaN(v.getTime())) return null;
+    return `${v.getFullYear()}-${p2(v.getMonth() + 1)}-${p2(v.getDate())}T${p2(v.getHours())}:${p2(v.getMinutes())}:${p2(v.getSeconds())}`;
+  }
   if (typeof v === "number") {
     const d = XLSX.SSF?.parse_date_code?.(v);
     if (!d) return null;
@@ -596,6 +600,12 @@ export type FoglioRegolaPrezzo = {
   campi: Record<string, [string, TipoCampoRegola]>;
   /** Colonna chiave obbligatoria (e unica). */
   pk: string;
+  /**
+   * Intestazione (normalizzata) che individua la riga di intestazione. Se assente si usa
+   * quella della pk. I fogli senza colonna Id nel file hanno `pkRiga`: id = numero di riga.
+   */
+  intestazione?: string;
+  pkRiga?: boolean;
 };
 
 const sc = (n: number, tipo: TipoCampoRegola = "num"): Record<string, [string, TipoCampoRegola]> =>
@@ -622,40 +632,40 @@ export const FOGLI_REGOLE_PREZZO: FoglioRegolaPrezzo[] = [
     },
   },
   {
-    chiave: "sconti_categoria", tabella: "sconti_categoria_gamma", foglio: "SCONTI_CATEGORIA", etichetta: "Sconti per categoria", pk: "id",
+    chiave: "sconti_categoria", tabella: "sconti_categoria_gamma", foglio: "SCONTI_CATEGORIA", etichetta: "Sconti per categoria", pk: "id", intestazione: "macrocategoria", pkRiga: true,
     campi: {
-      id: ["id", "int"], macrocategoria: ["macrocategoria", "testo"], categoria: ["categoria", "testo"],
+      macrocategoria: ["macrocategoria", "testo"], categoria: ["categoria", "testo"],
       sottocategoria: ["sottocategoria", "testo_vuoto"], listino: ["listino", "int"], ...validita,
       sc1: ["sc1", "num"], sc2: ["sc2", "num"], sc4: ["sc4", "num"], "sconto importo": ["sconto_importo", "num"],
       mag1: ["mag1", "num"], mag2: ["mag2", "num"], "magg importo": ["magg_importo", "num"],
     },
   },
   {
-    chiave: "sconti_cliente_famiglia", tabella: "sconti_cliente_famiglia_gamma", foglio: "SCONTI_CLIENTE_FAMIGLIA", etichetta: "Sconti cliente per famiglia", pk: "id",
+    chiave: "sconti_cliente_famiglia", tabella: "sconti_cliente_famiglia_gamma", foglio: "SCONTI_CLIENTE_FAMIGLIA", etichetta: "Sconti cliente per famiglia", pk: "id", intestazione: "cliente", pkRiga: true,
     campi: {
-      id: ["id", "int"], cliente: ["cliente_codice", "int"],
+      cliente: ["cliente_codice", "int"],
       ...Object.fromEntries(["da", "a"].flatMap((p) => ["famiglia", "sottofamiglia", "gruppo", "sottogruppo"].map((x) => [`${p} ${x}`, [`${p}_${x}`, "testo"]]))),
       ...validita, ...sc(6),
     },
   },
   {
-    chiave: "listino_piu_articoli", tabella: "listino_piu_articoli_gamma", foglio: "LISTINO_PIU_ARTICOLI", etichetta: "Listino più articoli", pk: "id",
+    chiave: "listino_piu_articoli", tabella: "listino_piu_articoli_gamma", foglio: "LISTINO_PIU_ARTICOLI", etichetta: "Listino più articoli", pk: "id", intestazione: "codice listino", pkRiga: true,
     campi: {
-      id: ["id", "int"], "codice listino": ["codice_listino", "testo"], codice: ["articolo_codice", "testo"], ...validita,
+      "codice listino": ["codice_listino", "testo"], codice: ["articolo_codice", "testo"], ...validita,
       prezzo: ["prezzo", "num"], sc1: ["sc1", "num"],
     },
   },
   {
-    chiave: "prezzi_cliente_articolo", tabella: "prezzi_cliente_articolo_gamma", foglio: "PREZZI_CLIENTE_ARTICOLO", etichetta: "Prezzi cliente-articolo", pk: "id",
+    chiave: "prezzi_cliente_articolo", tabella: "prezzi_cliente_articolo_gamma", foglio: "PREZZI_CLIENTE_ARTICOLO", etichetta: "Prezzi cliente-articolo", pk: "id", intestazione: "cliente", pkRiga: true,
     campi: {
-      id: ["id", "int"], cliente: ["cliente_codice", "int"], codice: ["articolo_codice", "testo"], ...validita,
+      cliente: ["cliente_codice", "int"], codice: ["articolo_codice", "testo"], ...validita,
       prezzo: ["prezzo", "num"], ...sc(6), "sconto importo": ["sconto_importo", "num"], mag1: ["mag1", "num"],
     },
   },
   {
-    chiave: "prezzi_deposito", tabella: "prezzi_deposito_gamma", foglio: "PREZZI_DEPOSITO", etichetta: "Prezzi per deposito", pk: "id",
+    chiave: "prezzi_deposito", tabella: "prezzi_deposito_gamma", foglio: "PREZZI_DEPOSITO", etichetta: "Prezzi per deposito", pk: "id", intestazione: "codice", pkRiga: true,
     campi: {
-      id: ["id", "int"], codice: ["articolo_codice", "testo"], listino: ["listino", "int"], deposito: ["deposito_codice", "testo"],
+      codice: ["articolo_codice", "testo"], listino: ["listino", "int"], deposito: ["deposito_codice", "testo"],
       "valido dal": ["valido_dal", "data"], prezzo: ["prezzo", "num"], sc1: ["sc1", "num"], sc2: ["sc2", "num"], sc3: ["sc3", "num"],
       mag1: ["mag1", "num"], "prezzo netto": ["prezzo_netto", "num"],
     },
@@ -674,13 +684,21 @@ function valoreRegola(v: unknown, tipo: TipoCampoRegola): unknown {
 
 /** Righe di un foglio regole: whitelist delle colonne, chiave obbligatoria; chiave ripetuta → tenuta l'ultima (anomalia). */
 export function parseRegolaPrezzoSheet(def: FoglioRegolaPrezzo, sheet: XLSX.WorkSheet) {
-  const intestazionePk = Object.entries(def.campi).find(([, [c]]) => c === def.pk)![0];
+  const intestazione = def.intestazione ?? Object.entries(def.campi).find(([, [c]]) => c === def.pk)![0];
   const whitelist = Object.fromEntries(Object.keys(def.campi).map((h) => [h, h]));
-  const grezze = righeFoglioConIntestazione(sheet, intestazionePk, whitelist);
+  const grezze = righeFoglioConIntestazione(sheet, intestazione, whitelist);
   const anomalie: AnomaliaChiaveFile[] = [];
+  // Mai scarti silenziosi: foglio con righe ma senza intestazione riconosciuta → anomalia.
+  if (!grezze.length) {
+    const m = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", blankrows: false });
+    if (m.some((r) => (r ?? []).some((c) => String(c ?? "").trim() !== ""))) {
+      anomalie.push({ riga: 0, tipo: "valore_non_valido", codice: null, dettaglio: `${def.foglio}: intestazione "${intestazione}" non trovata, nessuna riga letta` });
+    }
+  }
   const perChiave = new Map<string, Record<string, unknown> & { riga: number }>();
   for (const g of grezze) {
     const riga: Record<string, unknown> & { riga: number } = { riga: g.__row };
+    if (def.pkRiga) riga[def.pk] = g.__row;
     // Ordine fisso delle colonne (prima occorrenza), così il JSON è stabile.
     for (const [h, [col, tipo]] of Object.entries(def.campi)) {
       if (h in g) riga[col] = valoreRegola(g[h], tipo);
@@ -787,9 +805,9 @@ export const PREPARATORI_LISTINI_GAMMA: PreparatoreFoglio[] = [
       };
     },
   })),
-  // Regole prezzo (3B): un solo pacchetto per foglio, sostituzione completa sul server.
+  // Regole prezzo (3B): lotti ≤ 5000 + chiusura finale sul server (come le giacenze).
   ...FOGLI_REGOLE_PREZZO.map((def): PreparatoreFoglio => ({
-    chiave: def.chiave, etichetta: def.etichetta, lotto: 1_000_000, trovaNome: foglioPerNome(def.foglio),
+    chiave: def.chiave, etichetta: def.etichetta, lotto: 5000, trovaNome: foglioPerNome(def.foglio),
     prepara: (sheet) => {
       const r = parseRegolaPrezzoSheet(def, sheet);
       return { righe: r.rows.map(({ riga: _riga, ...resto }) => resto), righeLette: r.righeLette, anomalie: r.anomalie, codici: [], meta: {} };
