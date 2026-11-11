@@ -1,4 +1,5 @@
 import { assertSessioneAal2 } from "@/lib/sessione-aal2.server";
+import { chiaveNomeFornitore } from "@/lib/fornitori-manuali";
 import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
@@ -262,8 +263,24 @@ export const migrazioneRichiesteDati = createServerFn({ method: "POST" })
       .filter((r) => r.nome && !FORNITORI_ESCLUSI.has(String(r.nome).trim().toLowerCase()))
       .map((r) => ({ nome: String(r.nome).trim() }));
     if (fornRows.length > 0) {
-      const { error } = await supabaseAdmin.from("fornitori").upsert(fornRows, { onConflict: "nome", ignoreDuplicates: true });
-      if (error) throw new Error(`fornitori upsert: ${error.message}`);
+      // Cerca tra i manuali per nome (lower/trim); inserisce come manuali solo i mancanti.
+      const esistenti = new Set<string>();
+      for (let da = 0; ; da += 1000) {
+        const { data, error } = await supabaseAdmin.from("fornitori").select("nome").eq("origine", "manuale").order("id").range(da, da + 999);
+        if (error) throw new Error(`fornitori lettura: ${error.message}`);
+        for (const f of data ?? []) esistenti.add(chiaveNomeFornitore(f.nome));
+        if ((data?.length ?? 0) < 1000) break;
+      }
+      const nuovi = fornRows.filter((r) => {
+        const k = chiaveNomeFornitore(r.nome);
+        if (esistenti.has(k)) return false;
+        esistenti.add(k);
+        return true;
+      }).map((r) => ({ ...r, origine: "manuale" }));
+      if (nuovi.length > 0) {
+        const { error } = await supabaseAdmin.from("fornitori").insert(nuovi);
+        if (error) throw new Error(`fornitori inserimento: ${error.message}`);
+      }
     }
     log.push(`fornitori migrati: ${fornRows.length} (esclusi ${(fornSrc?.length ?? 0) - fornRows.length})`);
 

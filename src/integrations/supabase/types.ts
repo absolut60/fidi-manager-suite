@@ -3434,33 +3434,160 @@ export type Database = {
           },
         ]
       }
-      fornitori: {
+      fornitore_cliente: {
         Row: {
-          categoria_fornitore: string
+          cliente_id: string
+          coincide_su: string | null
           created_at: string
+          fornitore_id: string
           id: string
-          nome: string
-          note: string | null
-          ragione_sociale: string | null
-          updated_at: string | null
+          origine: string
         }
         Insert: {
-          categoria_fornitore?: string
+          cliente_id: string
+          coincide_su?: string | null
           created_at?: string
+          fornitore_id: string
           id?: string
-          nome: string
-          note?: string | null
-          ragione_sociale?: string | null
-          updated_at?: string | null
+          origine: string
         }
         Update: {
-          categoria_fornitore?: string
+          cliente_id?: string
+          coincide_su?: string | null
           created_at?: string
+          fornitore_id?: string
           id?: string
+          origine?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fornitore_cliente_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fornitore_cliente_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "fornitore_cliente_fornitore_id_fkey"
+            columns: ["fornitore_id"]
+            isOneToOne: false
+            referencedRelation: "fornitori"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fornitori: {
+        Row: {
+          alias: string | null
+          attivo: boolean
+          cap: string | null
+          categoria_fornitore: string
+          cellulare: string | null
+          citta: string | null
+          codice_anagrafica_generale: number | null
+          codice_cliente_gamma: number | null
+          codice_fiscale: string | null
+          codice_gestionale: number | null
+          condizione_pagamento_cod: string | null
+          condizione_pagamento_desc: string | null
+          created_at: string
+          email: string | null
+          fax: string | null
+          id: string
+          indirizzo: string | null
+          nome: string
+          note: string | null
+          origine: string
+          partita_iva: string | null
+          pec: string | null
+          persona_fisica: boolean | null
+          provincia: string | null
+          ragione_sociale: string | null
+          sito: string | null
+          stato: string | null
+          telefono: string | null
+          telefono_2: string | null
+          ultima_modifica_gamma: string | null
+          ultima_sincronizzazione: string | null
+          updated_at: string | null
+          valida: boolean | null
+        }
+        Insert: {
+          alias?: string | null
+          attivo?: boolean
+          cap?: string | null
+          categoria_fornitore?: string
+          cellulare?: string | null
+          citta?: string | null
+          codice_anagrafica_generale?: number | null
+          codice_cliente_gamma?: number | null
+          codice_fiscale?: string | null
+          codice_gestionale?: number | null
+          condizione_pagamento_cod?: string | null
+          condizione_pagamento_desc?: string | null
+          created_at?: string
+          email?: string | null
+          fax?: string | null
+          id?: string
+          indirizzo?: string | null
+          nome: string
+          note?: string | null
+          origine?: string
+          partita_iva?: string | null
+          pec?: string | null
+          persona_fisica?: boolean | null
+          provincia?: string | null
+          ragione_sociale?: string | null
+          sito?: string | null
+          stato?: string | null
+          telefono?: string | null
+          telefono_2?: string | null
+          ultima_modifica_gamma?: string | null
+          ultima_sincronizzazione?: string | null
+          updated_at?: string | null
+          valida?: boolean | null
+        }
+        Update: {
+          alias?: string | null
+          attivo?: boolean
+          cap?: string | null
+          categoria_fornitore?: string
+          cellulare?: string | null
+          citta?: string | null
+          codice_anagrafica_generale?: number | null
+          codice_cliente_gamma?: number | null
+          codice_fiscale?: string | null
+          codice_gestionale?: number | null
+          condizione_pagamento_cod?: string | null
+          condizione_pagamento_desc?: string | null
+          created_at?: string
+          email?: string | null
+          fax?: string | null
+          id?: string
+          indirizzo?: string | null
           nome?: string
           note?: string | null
+          origine?: string
+          partita_iva?: string | null
+          pec?: string | null
+          persona_fisica?: boolean | null
+          provincia?: string | null
           ragione_sociale?: string | null
+          sito?: string | null
+          stato?: string | null
+          telefono?: string | null
+          telefono_2?: string | null
+          ultima_modifica_gamma?: string | null
+          ultima_sincronizzazione?: string | null
           updated_at?: string | null
+          valida?: boolean | null
         }
         Relationships: []
       }
@@ -8959,6 +9086,7 @@ export type Database = {
         Returns: number
       }
       riattiva_marketing: { Args: { _email: string }; Returns: boolean }
+      ricalcola_collegamenti_fornitori_clienti: { Args: never; Returns: Json }
       ricalcola_fido_teorico: { Args: never; Returns: string }
       ricalcola_fido_teorico_avvia: { Args: never; Returns: undefined }
       ricalcola_fido_teorico_blocco: {

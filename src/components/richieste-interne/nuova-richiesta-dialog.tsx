@@ -19,6 +19,9 @@ import { STILE_TIPO, STILE_ACCONTO, STILE_ALLEGATI } from "@/components/richiest
 import { notifyRichiestaEvento } from "@/lib/richieste-email.functions";
 import { RICHIESTE_ALLEGATI_BUCKET as BUCKET, sanitizeFileName } from "@/components/richieste-interne/utils";
 import { SchedaFileLocale } from "@/components/allegati/anteprima-allegato";
+import { assicuraFornitoreManualeCon } from "@/lib/fornitori-manuali";
+
+const assicuraFornitoreManuale = (nome: string) => assicuraFornitoreManualeCon(supabase, nome);
 
 
 type Tipo = "preventivo" | "attivita" | "acquisto";
@@ -116,7 +119,7 @@ export function NuovaRichiestaDialog({
     queryKey: ["fornitori", "select"],
     enabled: open,
     queryFn: async () => {
-      const { data, error } = await supabase.from("fornitori").select("id,nome").order("nome");
+      const { data, error } = await supabase.from("fornitori").select("id,nome").eq("origine", "manuale").order("nome");
       if (error) throw error;
       return data ?? [];
     },
@@ -212,10 +215,8 @@ export function NuovaRichiestaDialog({
         if (updErr) throw updErr;
 
         if (fornitoreTrim.length > 1) {
-          const { error: fErr } = await supabase
-            .from("fornitori")
-            .upsert({ nome: fornitoreTrim }, { onConflict: "nome", ignoreDuplicates: true });
-          if (fErr) console.warn("Upsert fornitore fallito:", fErr.message);
+          const fErr = await assicuraFornitoreManuale(fornitoreTrim);
+          if (fErr) console.warn("Inserimento fornitore fallito:", fErr);
         }
 
         toast.success("Richiesta aggiornata");
@@ -252,10 +253,8 @@ export function NuovaRichiestaDialog({
       const richiestaId = inserted.id;
 
       if (fornitoreTrim.length > 1) {
-        const { error: fErr } = await supabase
-          .from("fornitori")
-          .upsert({ nome: fornitoreTrim }, { onConflict: "nome", ignoreDuplicates: true });
-        if (fErr) console.warn("Upsert fornitore fallito:", fErr.message);
+        const fErr = await assicuraFornitoreManuale(fornitoreTrim);
+        if (fErr) console.warn("Inserimento fornitore fallito:", fErr);
       }
 
       let failed = 0;

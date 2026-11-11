@@ -46,6 +46,7 @@ export function ArticoloPicker({
       const { data, error } = await supabase
         .from("fornitori")
         .select("id, ragione_sociale")
+        .eq("origine", "manuale")
         .order("ragione_sociale");
       if (error) throw error;
       return data ?? [];
