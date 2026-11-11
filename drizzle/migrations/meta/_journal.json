@@ -1149,6 +1149,13 @@
       "when": 1794431441004,
       "tag": "0163_fm61_articoli_fornitori_chiave_depositi_assenti",
       "breakpoints": true
+    },
+    {
+      "idx": 164,
+      "version": "7",
+      "when": 1794432008561,
+      "tag": "0164_fm61_import_listini_hash_riga",
+      "breakpoints": true
     }
   ]
 }
