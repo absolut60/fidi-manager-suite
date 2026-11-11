@@ -1121,6 +1121,13 @@
       "when": 1794424994607,
       "tag": "0159_fm61_fornitori_gamma_db",
       "breakpoints": true
+    },
+    {
+      "idx": 160,
+      "version": "7",
+      "when": 1794425512657,
+      "tag": "0160_fm61_import_fornitori_gamma",
+      "breakpoints": true
     }
   ]
 }

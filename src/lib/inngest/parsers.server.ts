@@ -563,3 +563,182 @@ export function parseAssicurazioneSheet(sheet: XLSX.WorkSheet): AssicRow[] {
   return out;
 }
 
+
+/* ============================================================================
+ * FORNITORI (Gamma) — FM61
+ * ============================================================================ */
+
+/** Whitelist intestazioni (normalizzate) → campo di `fornitori`. Le altre colonne si ignorano. */
+export const FORNITORI_HEADERS: Record<string, string> = {
+  "codice fornitore": "codice_gestionale",
+  "ragione sociale": "ragione_sociale",
+  alias: "alias",
+  valida: "valida",
+  indirizzo: "indirizzo",
+  cap: "cap",
+  citta: "citta",
+  provincia: "provincia",
+  stato: "stato",
+  "partita iva": "partita_iva",
+  "codice fiscale": "codice_fiscale",
+  "persona fisica": "persona_fisica",
+  telefono: "telefono",
+  "telefono 2": "telefono_2",
+  cellulare: "cellulare",
+  fax: "fax",
+  email: "email",
+  sito: "sito",
+  pec: "pec",
+  "codice pagamento": "condizione_pagamento_cod",
+  pagamento: "condizione_pagamento_desc",
+  "ultima modifica": "ultima_modifica_gamma",
+  "codice anagrafica generale": "codice_anagrafica_generale",
+  "codice cliente collegato": "codice_cliente_gamma",
+};
+
+export type FornitoreGammaRow = {
+  riga: number;
+  codice_gestionale: number;
+  ragione_sociale: string | null;
+  alias: string | null;
+  valida: boolean | null;
+  indirizzo: string | null;
+  cap: string | null;
+  citta: string | null;
+  provincia: string | null;
+  stato: string | null;
+  partita_iva: string | null;
+  codice_fiscale: string | null;
+  persona_fisica: boolean | null;
+  telefono: string | null;
+  telefono_2: string | null;
+  cellulare: string | null;
+  fax: string | null;
+  email: string | null;
+  sito: string | null;
+  pec: string | null;
+  condizione_pagamento_cod: string | null;
+  condizione_pagamento_desc: string | null;
+  ultima_modifica_gamma: string | null;
+  codice_anagrafica_generale: number | null;
+  codice_cliente_gamma: number | null;
+};
+
+export type AnomaliaFornitoreFile = {
+  riga: number;
+  tipo: "codice_mancante" | "codice_duplicato";
+  codice: string | null;
+  ragione_sociale: string | null;
+};
+
+/** Righe del foglio fornitori: intestazione = prima riga con "Codice fornitore", dati subito sotto. */
+function righeFoglioFornitori(sheet: XLSX.WorkSheet): Array<Record<string, unknown> & { __row: number }> {
+  const m = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", blankrows: true });
+  const hi = m.findIndex((r) => (r ?? []).some((c) => normalize(String(c ?? "")) === "codice fornitore"));
+  if (hi < 0) return [];
+  const headers = (m[hi] ?? []).map((c) => String(c ?? "").trim());
+  const out: Array<Record<string, unknown> & { __row: number }> = [];
+  for (let i = hi + 1; i < m.length; i++) {
+    const row = m[i] ?? [];
+    if (!row.some((c) => String(c ?? "").trim() !== "")) continue;
+    const o: Record<string, unknown> = {};
+    headers.forEach((h, j) => { if (h) o[h] = row[j] ?? ""; });
+    out.push(Object.assign(o, { __row: i + 1 }));
+  }
+  return out;
+}
+
+/** Foglio "SYNC_ANAGRAFICA_FORNITORI" o "FORNITORI", altrimenti il primo con "Codice fornitore". */
+export function trovaFoglioFornitori(wb: XLSX.WorkBook): XLSX.WorkSheet | null {
+  for (const nome of ["SYNC_ANAGRAFICA_FORNITORI", "FORNITORI"]) {
+    const s = findSheetByName(wb, nome);
+    if (s) return s;
+  }
+  for (const nome of wb.SheetNames) {
+    const s = wb.Sheets[nome];
+    if (s && righeFoglioFornitori(s).length > 0) return s;
+  }
+  return null;
+}
+
+function intStretto(v: unknown): number | null {
+  if (v == null || v === "") return null;
+  if (typeof v === "number") return Number.isInteger(v) ? v : null;
+  const s = String(v).trim();
+  return /^\d+$/.test(s) ? Number(s) : null;
+}
+
+/** Data/ora di Gamma → "AAAA-MM-GGTHH:MM:SS" (ora locale del file). */
+export function dataOraGamma(v: unknown): string | null {
+  if (v == null || v === "") return null;
+  const p2 = (n: number | string) => String(n).padStart(2, "0");
+  if (typeof v === "number") {
+    const d = XLSX.SSF?.parse_date_code?.(v);
+    if (!d) return null;
+    return `${d.y}-${p2(d.m)}-${p2(d.d)}T${p2(d.H)}:${p2(d.M)}:${p2(Math.floor(d.S))}`;
+  }
+  const s = String(v).trim();
+  const m = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+  if (m) return `${m[3]}-${p2(m[2])}-${p2(m[1])}T${p2(m[4] ?? 0)}:${p2(m[5] ?? 0)}:${p2(m[6] ?? 0)}`;
+  const iso = s.match(/^(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}:\d{2}(?::\d{2})?))?/);
+  if (iso) return `${iso[1]}T${iso[2] ? (iso[2].length === 5 ? iso[2] + ":00" : iso[2]) : "00:00:00"}`;
+  return null;
+}
+
+export function parseFornitoriGammaSheet(sheet: XLSX.WorkSheet): {
+  rows: FornitoreGammaRow[];
+  anomalie: AnomaliaFornitoreFile[];
+  righeLette: number;
+} {
+  const grezze = righeFoglioFornitori(sheet);
+  const anomalie: AnomaliaFornitoreFile[] = [];
+  const perCodice = new Map<number, FornitoreGammaRow>();
+  for (const g of grezze) {
+    const r: Record<string, unknown> = {};
+    for (const [h, v] of Object.entries(g)) {
+      if (h === "__row") continue;
+      const campo = FORNITORI_HEADERS[normalize(h)];
+      if (campo) r[campo] = v;
+    }
+    const ragione = toStr(r.ragione_sociale);
+    const codice = intStretto(r.codice_gestionale);
+    if (codice == null) {
+      anomalie.push({ riga: g.__row, tipo: "codice_mancante", codice: toStr(r.codice_gestionale), ragione_sociale: ragione });
+      continue;
+    }
+    const riga: FornitoreGammaRow = {
+      riga: g.__row,
+      codice_gestionale: codice,
+      ragione_sociale: ragione,
+      alias: toStr(r.alias),
+      valida: r.valida == null || toStr(r.valida) == null ? null : toStr(r.valida)!.toLowerCase() === "valida",
+      indirizzo: toStr(r.indirizzo),
+      cap: toStr(r.cap),
+      citta: toStr(r.citta),
+      provincia: toStr(r.provincia),
+      stato: toStr(r.stato),
+      partita_iva: toStr(r.partita_iva),
+      codice_fiscale: toStr(r.codice_fiscale),
+      persona_fisica: toStr(r.persona_fisica) == null ? null : toStr(r.persona_fisica)!.toLowerCase() === "si",
+      telefono: toStr(r.telefono),
+      telefono_2: toStr(r.telefono_2),
+      cellulare: toStr(r.cellulare),
+      fax: toStr(r.fax),
+      email: toStr(r.email),
+      sito: toStr(r.sito),
+      pec: toStr(r.pec),
+      condizione_pagamento_cod: toStr(r.condizione_pagamento_cod),
+      condizione_pagamento_desc: toStr(r.condizione_pagamento_desc),
+      ultima_modifica_gamma: dataOraGamma(r.ultima_modifica_gamma),
+      codice_anagrafica_generale: intStretto(r.codice_anagrafica_generale),
+      codice_cliente_gamma: intStretto(r.codice_cliente_gamma),
+    };
+    const prec = perCodice.get(codice);
+    if (prec) {
+      anomalie.push({ riga: prec.riga, tipo: "codice_duplicato", codice: String(codice), ragione_sociale: prec.ragione_sociale });
+      perCodice.delete(codice); // tieni l'ultima, in ordine di file
+    }
+    perCodice.set(codice, riga);
+  }
+  return { rows: [...perCodice.values()], anomalie, righeLette: grezze.length };
+}

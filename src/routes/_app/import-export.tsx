@@ -17,6 +17,7 @@ import {
   TrendingUp,
   CalendarClock,
   ShieldCheck,
+  Truck,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -407,9 +408,13 @@ function ImportExportPage() {
         <FidoTeoricoPrecalcoloCard />
       </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <FornitoriGammaImportCard />
+      </div>
+
 
       <div className="grid grid-cols-1 gap-6">
-        <RiepilogoAnomalieCard />
+        <div id="anomalie-import" className="scroll-mt-20"><RiepilogoAnomalieCard /></div>
       </div>
 
       <div className="grid grid-cols-1 gap-6">
@@ -977,6 +982,112 @@ function RischioImportCard() {
           >
             {(bg.isPending || bg.inProgress) && <Loader2 className="size-4 animate-spin" />}
             {bg.inProgress ? "Elaborazione in background..." : "Avvia import rischio"}
+          </Button>
+        }
+      />
+    </Card>
+  );
+}
+
+
+/* ============================================================================
+ * FM61 — Fornitori (Gamma)
+ * ============================================================================ */
+type RiepilogoFornitoriGamma = {
+  righe_file: number; inseriti: number; aggiornati: number; disattivati: number;
+  anomalie: number; collegamenti_gamma: number; collegamenti_piva_cf: number;
+};
+
+function FornitoriGammaImportCard() {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const bg = useBackgroundImport({ fonte: "fornitori_gamma", invalidateKeys: [["fornitori"]] });
+
+  function reset() {
+    setFileName(null);
+    setFile(null);
+    bg.reset();
+    if (fileRef.current) fileRef.current.value = "";
+  }
+  function handleFile(f: File) {
+    setFileName(f.name);
+    setFile(f);
+    bg.reset();
+    toast.success(`File pronto: ${f.name}`);
+  }
+
+  const p = bg.progress;
+  const totale = Number(p?.righe_totali ?? 0);
+  const lotti = Math.ceil(totale / 500);
+  const lottoCorrente = Math.min(lotti, Math.ceil(Number(p?.righe_elaborate ?? 0) / 500));
+  const riep = (p?.report_saltati as { fornitori_gamma?: RiepilogoFornitoriGamma } | null | undefined)?.fornitori_gamma;
+  const n = (x: number) => x.toLocaleString("it-IT");
+
+  return (
+    <Card className="p-5">
+      <h2 className="font-semibold flex items-center gap-2 mb-1">
+        <Truck className="size-4" /> Fornitori (Gamma)
+      </h2>
+      <p className="text-xs text-muted-foreground mb-4">
+        Carica <span className="font-medium">MADE_ARTICOLI_LISTINI_PQ.xlsx</span> (foglio SYNC_ANAGRAFICA_FORNITORI):
+        aggiorna l'anagrafica fornitori di Gamma a pacchetti da 500. I fornitori inseriti a mano non vengono toccati.
+        Puoi chiudere la pagina: l'import prosegue da solo.
+      </p>
+      {bg.inProgress && p ? (
+        <>
+          <BgProgressBlock progress={p} fallbackTotal={0} />
+          {lotti > 0 ? (
+            <p className="-mt-2 mb-4 text-xs text-muted-foreground">Pacchetto {n(lottoCorrente)} di {n(lotti)}</p>
+          ) : null}
+        </>
+      ) : null}
+      {bg.done && riep ? (
+        <div className="mb-4 rounded-md border bg-muted/30 p-3 text-sm">
+          <div className="mb-2 flex items-center gap-2 font-medium">
+            <CheckCircle2 className="size-4 text-success" /> Import fornitori completato
+          </div>
+          <dl className="grid grid-cols-1 gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
+            {([
+              ["Righe nel file", riep.righe_file], ["Inseriti", riep.inseriti],
+              ["Aggiornati", riep.aggiornati], ["Disattivati (assenti dal file)", riep.disattivati],
+              ["Anomalie", riep.anomalie], ["Collegamenti Gamma", riep.collegamenti_gamma],
+              ["Collegamenti P.IVA / CF", riep.collegamenti_piva_cf],
+            ] as Array<[string, number]>).map(([k, v]) => (
+              <div key={k} className="flex justify-between gap-2">
+                <dt className="text-muted-foreground">{k}</dt>
+                <dd className="font-medium tabular-nums">{n(v)}</dd>
+              </div>
+            ))}
+          </dl>
+          {riep.anomalie > 0 ? (
+            <a href="#anomalie-import" className="mt-2 inline-block text-xs font-medium text-primary underline-offset-2 hover:underline">
+              Vedi le anomalie
+            </a>
+          ) : null}
+        </div>
+      ) : null}
+      <ImportZone
+        fileName={fileName}
+        avviato={bg.isPending || !!bg.importazioneId}
+        parsing={false}
+        dragOver={dragOver}
+        setDragOver={setDragOver}
+        fileRef={fileRef}
+        onFile={handleFile}
+        onReset={reset}
+        valid={file ? 1 : 0}
+        invalid={[]}
+        result={null}
+        action={
+          <Button
+            className="w-full gap-1.5"
+            disabled={!file || bg.isPending || bg.inProgress}
+            onClick={() => file && bg.start({ file, rowsTotali: 0 })}
+          >
+            {(bg.isPending || bg.inProgress) && <Loader2 className="size-4 animate-spin" />}
+            {bg.inProgress ? "Elaborazione in background..." : "Avvia import fornitori"}
           </Button>
         }
       />

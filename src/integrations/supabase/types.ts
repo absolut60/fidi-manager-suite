@@ -7625,6 +7625,10 @@ export type Database = {
         Args: { _candidati: Json; _ragione_sociale_dichiarata: string }
         Returns: Json
       }
+      disattiva_fornitori_gamma_assenti: {
+        Args: { _codici: number[] }
+        Returns: number
+      }
       effective_store_filter: { Args: { _requested: string }; Returns: string }
       elenco_persone_whatsapp_segmento: {
         Args: { _filtri: Json; _solo_contattabili?: boolean }
@@ -8792,6 +8796,7 @@ export type Database = {
         Returns: boolean
       }
       ignora_iscritto_whatsapp: { Args: { _id: string }; Returns: Json }
+      import_fornitori_gamma_lotto: { Args: { _righe: Json }; Returns: Json }
       imposta_iscrizioni_evento: {
         Args: { _aperte: boolean; _evento_id: string }
         Returns: {
