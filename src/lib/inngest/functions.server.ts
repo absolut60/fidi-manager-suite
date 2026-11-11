@@ -2,6 +2,7 @@ import * as XLSX from "xlsx";
 import { Unzip, UnzipInflate, unzipSync, strFromU8 } from "fflate";
 import { inngest } from "./client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { isFonteImportFidoTeorico } from "@/lib/fido-teorico-import-completi";
 import {
   ANAG_HEADERS,
   parseRischioSheet,
@@ -110,13 +111,16 @@ export async function chiudiImportazione(
     .update(campi as never)
     .eq("id", importazioneId);
   if (opzioni?.soloSeStato) q = q.eq("stato", opzioni.soloSeStato as never);
-  await q;
+  const { data: chiuse, error } = await q.select("fonte");
+  if (error) throw new Error(`chiusura import: ${error.message}`);
+  if (!chiuse?.length) return;
   try {
     await sendInngestEvents([
       { name: "import/esito.notifica", data: { importazioneId } },
-      // Verifica se ora sono arrivati tutti gli import del giro: in caso
-      // positivo parte da solo il ricalcolo del fido teorico.
-      { name: "fido-teorico/verifica-import-completi", data: { importazioneId } },
+      // Mai per articoli/listini o altre fonti estranee al giro fidi.
+      ...(chiuse.some((r) => isFonteImportFidoTeorico(r.fonte))
+        ? [{ name: "fido-teorico/verifica-import-completi", data: { importazioneId } }]
+        : []),
     ]);
   } catch (e) {
     console.error(

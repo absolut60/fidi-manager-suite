@@ -30,15 +30,15 @@ export type ContestoGestore = {
   avanzamento: (lotto: number, lotti: number, conteggi: Record<string, number>) => Promise<void>;
 };
 
-/** Lotti dello stesso foglio eseguiti in parallelo (sono indipendenti); i fogli restano in sequenza. */
-export const LOTTI_PARALLELI = 3;
+/** Un solo lotto alla volta per tutti i fogli: protegge la memoria del database Mini. */
+export const LOTTI_PARALLELI = 1;
 
 /**
  * Esegue i lotti di un foglio a gruppi di LOTTI_PARALLELI step (Promise.all di step.run).
  * Ogni step scrive l'avanzamento con i totali dei gruppi precedenti più il proprio lotto.
  * Gli id degli step restano `<prefisso>-lotto-NNN`.
  */
-async function eseguiLotti(
+export async function eseguiLotti(
   ctx: ContestoGestore,
   prefisso: string,
   iniziali: Record<string, number>,

@@ -772,7 +772,7 @@ export const PREPARATORI_LISTINI_GAMMA: PreparatoreFoglio[] = [
   {
     chiave: "articoli",
     etichetta: "Articoli",
-    lotto: 3000,
+    lotto: 1000,
     trovaNome: nomeFoglioArticoli,
     prepara: (sheet) => {
       const r = parseArticoliGammaSheet(sheet);
