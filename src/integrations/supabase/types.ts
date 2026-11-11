@@ -728,7 +728,7 @@ export type Database = {
       articoli_gamma_fornitori: {
         Row: {
           articolo_codice: string
-          codice_articolo_fornitore: string | null
+          codice_articolo_fornitore: string
           fornitore_codice: number
           fornitore_id: string | null
           importazione_id: string | null
@@ -736,7 +736,7 @@ export type Database = {
         }
         Insert: {
           articolo_codice: string
-          codice_articolo_fornitore?: string | null
+          codice_articolo_fornitore?: string
           fornitore_codice: number
           fornitore_id?: string | null
           importazione_id?: string | null
@@ -744,7 +744,7 @@ export type Database = {
         }
         Update: {
           articolo_codice?: string
-          codice_articolo_fornitore?: string | null
+          codice_articolo_fornitore?: string
           fornitore_codice?: number
           fornitore_id?: string | null
           importazione_id?: string | null
@@ -7915,6 +7915,10 @@ export type Database = {
         Returns: Json
       }
       disattiva_articoli_gamma_assenti: {
+        Args: { _codici: string[] }
+        Returns: number
+      }
+      disattiva_depositi_gamma_assenti: {
         Args: { _codici: string[] }
         Returns: number
       }

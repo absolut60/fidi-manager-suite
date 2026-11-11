@@ -53,6 +53,21 @@ describe("ARTICOLI_FORNITORI", () => {
     ]);
     expect(r.anomalie).toHaveLength(1);
   });
+
+  it("codici articolo fornitore diversi non sono doppioni; doppione vero tiene la preferenziale", () => {
+    const r = parseArticoliFornitoriGammaSheet(foglio([
+      ["Codice", "Codice fornitore", "Fornitore", "Preferenziale", "Codice articolo fornitore"],
+      ["ACER3015PG", 886, "X", 0, "RPIG03"],
+      ["ACER3015PG", 886, "X", 1, "3015PG"],
+      ["ADD09779", 811, "Y", 1, "96351"],
+      ["ADD09779", 811, "Y", 0, "96351"],
+    ]));
+    expect(r.rows.map((x) => [x.articolo_codice, x.codice_articolo_fornitore, x.preferenziale])).toEqual([
+      ["ACER3015PG", "RPIG03", false], ["ACER3015PG", "3015PG", true], ["ADD09779", "96351", true],
+    ]);
+    expect(r.anomalie).toHaveLength(1);
+    expect(r.anomalie[0].riga).toBe(5);
+  });
 });
 
 describe("riconoscimento solo per nome", () => {

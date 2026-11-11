@@ -195,9 +195,9 @@ function anomalieChiave(prefisso: string, campo: string, a: AnomaliaChiaveFile[]
 
 const gestoreDepositi: GestoreFoglio = {
   chiave: "depositi",
-  esegui: async ({ step, importazioneId, lotti, leggiLotto, leggiAnomalie }) => {
+  esegui: async ({ step, importazioneId, lotti, leggiLotto, leggiAnomalie, leggiCodici }) => {
     // Un solo step: anomalie + upsert (89 righe, retry-safe).
-    return step.run("depositi-import", async () => {
+    const r = await step.run("depositi-import", async () => {
       await scriviAnomalie(importazioneId, "deposito_", anomalieChiave("deposito_", "deposito", await leggiAnomalie<AnomaliaChiaveFile>()));
       const righe: Omit<DepositoGammaRow, "riga">[] = [];
       for (let i = 0; i < lotti; i++) righe.push(...(await leggiLotto<Omit<DepositoGammaRow, "riga">>(i)));
@@ -207,6 +207,15 @@ const gestoreDepositi: GestoreFoglio = {
       const d = (data ?? {}) as Record<string, number>;
       return { inseriti: d.inseriti ?? 0, aggiornati: d.aggiornati ?? 0, sede_senza_negozio: d.sede_senza_negozio ?? 0 };
     });
+    // Assenti dal file → attivo=false (mai cancellati), come fornitori e articoli.
+    const disattivati = await step.run("depositi-disattiva-assenti", async () => {
+      const codici = await leggiCodici<string>();
+      if (!codici.length) return 0; // foglio vuoto: mai disattivare tutto
+      const { data, error } = await supabaseAdmin.rpc("disattiva_depositi_gamma_assenti", { _codici: codici });
+      if (error) throw new Error(`disattiva depositi assenti: ${error.message}`);
+      return (data as number | null) ?? 0;
+    });
+    return { ...r, disattivati };
   },
 };
 
