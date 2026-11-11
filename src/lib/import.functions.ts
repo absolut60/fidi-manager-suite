@@ -18,6 +18,25 @@ const FonteEnum = z.enum([
  * Il file deve essere già stato caricato sullo storage e una riga in
  * `importazioni` deve essere già stata creata (stato in_elaborazione).
  */
+/** Import unico listini Gamma: fogli e pacchetti già caricati dal browser in _staging/<id>/. */
+const ManifestListiniSchema = z.object({
+  fogli: z
+    .array(
+      z.object({
+        chiave: z.string().regex(/^[a-z_]{1,40}$/),
+        foglio: z.string().max(200),
+        righe: z.number().int().min(0),
+        righeLette: z.number().int().min(0),
+        anomalie: z.number().int().min(0),
+        lotti: z.number().int().min(0).max(1000),
+        lotto: z.number().int().min(1).max(5000),
+        errore: z.string().max(1000).optional(),
+      }),
+    )
+    .max(50),
+  nonGestiti: z.array(z.string().max(200)).max(200),
+});
+
 export const triggerImport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
@@ -25,6 +44,7 @@ export const triggerImport = createServerFn({ method: "POST" })
       fonte: FonteEnum,
       importazioneId: z.string().uuid(),
       filePath: z.string().min(1).max(500),
+      listini: ManifestListiniSchema.optional(),
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
@@ -58,10 +78,14 @@ export const triggerImport = createServerFn({ method: "POST" })
         throw new Error(messaggio);
       }
     }
+    if (data.fonte === "articoli_listini_gamma" && !data.listini) {
+      throw new Error("File non preparato: ricarica il file dalla pagina Import/Export");
+    }
     await sendInngestEvent(`import/${data.fonte}.requested`, {
       importazioneId: data.importazioneId,
       filePath: data.filePath,
       userId: context.userId,
+      ...(data.listini ? { listini: data.listini } : {}),
     });
     return { ok: true };
   });
