@@ -28,6 +28,8 @@ export const processArticoliListiniGammaImport = inngest.createFunction(
     name: "Process articoli, fornitori e listini Gamma import",
     retries: 3,
     timeouts: { finish: "30m" },
+    // Un solo import alla volta: le chiusure delle fotografie cancellano le righe di altri import.
+    concurrency: { limit: 1 },
     triggers: [{ event: `import/${FONTE}.requested` }],
     onFailure: async ({ event, error }) => {
       const d = (event.data as { event?: { data?: EventData } }).event?.data;

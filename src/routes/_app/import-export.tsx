@@ -1021,6 +1021,23 @@ function ArticoliListiniGammaImportCard() {
     invalidateKeys: [["fornitori"], ["articoli"]],
     onError: (m) => setErroreLocale(m),
   });
+  // Un solo import articoli/listini alla volta (stessa regola del server: in corso da meno di 3 ore).
+  const { data: altroInCorso = false } = useQuery({
+    queryKey: ["importazioni", "articoli_listini_gamma", "in-corso"],
+    queryFn: async () => {
+      const soglia = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from("importazioni")
+        .select("id")
+        .eq("fonte", "articoli_listini_gamma")
+        .eq("stato", "in_elaborazione")
+        .gte("created_at", soglia)
+        .limit(1);
+      if (error) throw error;
+      return (data?.length ?? 0) > 0;
+    },
+    refetchInterval: 5000,
+  });
 
   function reset() {
     letturaCorrente.current++;
@@ -1168,7 +1185,7 @@ function ArticoliListiniGammaImportCard() {
         action={
           <Button
             className="w-full gap-1.5"
-            disabled={!file || !preparato || !preparato.manifest.fogli.length || lettura !== "pronto" || bg.isPending || bg.inProgress}
+            disabled={!file || !preparato || !preparato.manifest.fogli.length || lettura !== "pronto" || bg.isPending || bg.inProgress || altroInCorso}
             onClick={() => {
               if (!file || !preparato) return;
               setErroreLocale(null);
@@ -1178,6 +1195,11 @@ function ArticoliListiniGammaImportCard() {
             {(bg.isPending || bg.inProgress || lettura === "in_corso") && <Loader2 className="size-4 animate-spin" />}
             {lettura === "in_corso" ? "Lettura file…" : bg.isPending ? "Caricamento…" : bg.inProgress ? "Elaborazione in background..." : "Avvia import"}
           </Button>
+          {altroInCorso && !bg.inProgress && !bg.isPending && (
+            <p className="text-xs text-muted-foreground mt-2 break-words">
+              C'è già un import articoli/listini in corso: attendi che finisca.
+            </p>
+          )}
         }
       />
     </Card>
