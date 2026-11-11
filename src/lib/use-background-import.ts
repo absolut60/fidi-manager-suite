@@ -192,7 +192,7 @@ export function useBackgroundImport(opts: {
       const { data } = await supabase
         .from("importazioni")
         .select(
-          "stato, righe_totali, righe_elaborate, righe_create, righe_aggiornate, righe_errore, righe_saltate, codici_mancanti, log_errori, report_saltati, completata_at",
+          "stato, righe_totali, righe_elaborate, righe_create, righe_aggiornate, righe_errore, righe_saltate, codici_mancanti, log_errori, report_saltati, completata_at, problemi",
         )
         .eq("id", importazioneId)
         .single();
@@ -205,12 +205,15 @@ export function useBackgroundImport(opts: {
   if (
     progress &&
     !done &&
-    (progress.stato === "completata" || progress.stato === "completata_con_errori")
+    (progress.stato === "completata" ||
+      progress.stato === "completata_con_errori" ||
+      progress.stato === "fallita")
   ) {
     setDone(true);
     (opts.invalidateKeys ?? []).forEach((k) => qc.invalidateQueries({ queryKey: k }));
     qc.invalidateQueries({ queryKey: ["storico-import-export"] });
-    toast.success("Import completato");
+    if (progress.stato === "fallita") toast.error(`Import non riuscito: ${erroreImport(progress) ?? "errore sconosciuto"}`);
+    else toast.success("Import completato");
     opts.onDone?.(progress);
   }
 
@@ -226,6 +229,23 @@ export function useBackgroundImport(opts: {
     inProgress: !!importazioneId && !done,
     done,
     progress: progress ?? null,
+    /** Messaggio d'errore quando l'import è fallito o completato con errori (null altrimenti). */
+    errore:
+      done && progress && (progress.stato === "fallita" || progress.stato === "completata_con_errori")
+        ? erroreImport(progress)
+        : null,
+    fallito: done && progress?.stato === "fallita",
     reset,
   };
+}
+
+/** Primo messaggio utile da problemi/log_errori dell'importazione. */
+export function erroreImport(p: BackgroundImportProgress): string | null {
+  const probl = (p as { problemi?: unknown }).problemi;
+  if (Array.isArray(probl) && probl.length) return probl.map(String).join(" · ");
+  if (Array.isArray(p.log_errori)) {
+    const e = (p.log_errori as Array<{ errore?: unknown }>).find((x) => x && x.errore);
+    if (e) return String(e.errore);
+  }
+  return null;
 }
