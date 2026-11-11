@@ -1156,6 +1156,13 @@
       "when": 1794432008561,
       "tag": "0164_fm61_import_listini_hash_riga",
       "breakpoints": true
+    },
+    {
+      "idx": 165,
+      "version": "7",
+      "when": 1794432240790,
+      "tag": "0165_fm61_regole_prezzo_gamma",
+      "breakpoints": true
     }
   ]
 }
