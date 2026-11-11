@@ -1000,6 +1000,8 @@ const ETICHETTE_CONTEGGI_LISTINI: Record<string, string> = {
   disattivati: "Disattivati (assenti dal file)",
   collegamenti_gamma: "Collegamenti Gamma",
   collegamenti_piva_cf: "Collegamenti P.IVA / CF",
+  marche: "Marche",
+  righe_listino: "Righe listino",
 };
 
 function ArticoliListiniGammaImportCard() {
@@ -1037,7 +1039,7 @@ function ArticoliListiniGammaImportCard() {
       </h2>
       <p className="text-xs text-muted-foreground mb-4">
         Carica <span className="font-medium">MADE_ARTICOLI_LISTINI_PQ.xlsx</span>: un solo file aggiorna tutti i fogli
-        riconosciuti (oggi: fornitori). I fornitori inseriti a mano non vengono toccati. Puoi chiudere la pagina:
+        riconosciuti (oggi: fornitori e articoli con listini). I fornitori inseriti a mano non vengono toccati. Puoi chiudere la pagina:
         l'import prosegue da solo.
       </p>
       {bg.inProgress && p ? <BgProgressBlock progress={p} fallbackTotal={0} /> : null}
