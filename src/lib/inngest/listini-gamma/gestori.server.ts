@@ -38,7 +38,7 @@ export const LOTTI_PARALLELI = 1;
  * Ogni step scrive l'avanzamento con i totali dei gruppi precedenti più il proprio lotto.
  * Gli id degli step restano `<prefisso>-lotto-NNN`.
  */
-async function eseguiLotti(
+export async function eseguiLotti(
   ctx: ContestoGestore,
   prefisso: string,
   iniziali: Record<string, number>,
