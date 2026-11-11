@@ -500,8 +500,8 @@ const CATEGORIA_COLORS: Record<string, string> = {
 
 /**
  * Unico punto da chiamare dopo un'operazione riuscita che può cambiare lo stato
- * legale del cliente: aggiorna i dati del cliente (banner in_gestione_legale) e
- * chiede l'avviso immediato. Un errore dell'avviso non annulla l'operazione.
+ * legale del cliente: aggiorna i dati del cliente (banner in_gestione_legale).
+ * Gli avvisi partono soltanto dal job a orario fisso; un errore qui non annulla l'operazione.
  */
 function useDopoVariazioneLegale(clienteId: string) {
   const qc = useQueryClient();
@@ -515,7 +515,7 @@ function useDopoVariazioneLegale(clienteId: string) {
     try {
       await avvisa();
     } catch {
-      toast.warning("Operazione salvata, avviso non inviato");
+      toast.warning("Operazione salvata, aggiornamento avvisi non riuscito");
     }
   };
 }

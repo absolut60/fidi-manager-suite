@@ -7,10 +7,10 @@ ON CONFLICT (tipo) DO UPDATE SET raggruppa=EXCLUDED.raggruppa,chiave_metadata=EX
 INSERT INTO public.configurazioni(chiave,valore) VALUES ('alert_fidi_notifiche_attive','true')
 ON CONFLICT (chiave) DO UPDATE SET valore=EXCLUDED.valore;
 DO $test$
-DECLARE v_id uuid; v_dest integer; v_n integer;
+DECLARE v_id uuid; v_n integer;
 BEGIN
   SELECT a.id INTO v_id FROM public.alert_fidi a JOIN public.clienti c ON c.id=a.cliente_id
-  WHERE a.tipo='consumo' AND a.stato='aperto' AND EXISTS (
+  WHERE a.tipo='consumo' AND a.stato='aperto' AND NOT public.alert_fido_gia_deciso(a.cliente_id) AND EXISTS (
     SELECT 1 FROM public.profili p JOIN public.user_roles r ON r.user_id=p.id
     WHERE p.attivo AND p.store_id=c.store_id AND r.role='store_manager'
   ) ORDER BY a.id LIMIT 1;
