@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { puoVedereFornitori } from "@/lib/permessi-preventivi";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -7,9 +8,9 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { badgeMacrocategoria, badgeTipoFornitore, type TonoMacrocategoria } from "@/lib/scheda-fornitore";
 
 export function AccessoFornitori({ children }: { children: ReactNode }) {
-  const { hasAnyRole, loading } = useAuth();
+  const { roles, loading } = useAuth();
   if (loading) return <p role="status">Caricamento…</p>;
-  if (!hasAnyRole("amministratore", "amministrazione", "preventivi_read", "preventivi_write", "preventivi_manage")) return <p role="alert" className="p-4 text-destructive">Accesso non consentito: non hai accesso ai fornitori.</p>;
+  if (!puoVedereFornitori(roles as string[])) return <p role="alert" className="p-4 text-destructive">Accesso non consentito: non hai accesso ai fornitori.</p>;
   return children;
 }
 export function useRicercaDifferita(value: string, aggiorna: (value: string) => void) {

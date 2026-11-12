@@ -102,13 +102,13 @@ const NAV: NavItem[] = [
   { to: "/calendario-commerciale", label: "Calendario", icon: CalendarDays, roles: ["admin", "agente", "direzione", "marketing", "responsabile_agenti"], group: "commerciale" },
   { to: "/cantieri", label: "Cantieri", icon: Building2, roles: ["admin", "agente", "direzione", "marketing", "responsabile_agenti"], group: "commerciale" },
   // PREVENTIVI
-  { to: "/preventivatore/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
-  { to: "/preventivatore", label: "Preventivi", icon: Calculator, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi", exact: true },
-  { to: "/ordini", label: "Ordini", icon: ShoppingCart, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
-  { to: "/articoli", label: "Articoli", icon: FileSpreadsheet, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
-  { to: "/fornitori", label: "Fornitori", icon: Building2, roles: ["admin", "amministrazione", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
-  { to: "/listini", label: "Listini", icon: LineChart, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
-  { to: "/kit", label: "Kit / Lavorazioni", icon: Wrench, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
+  { to: "/preventivatore/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi", consultabile: true },
+  { to: "/preventivatore", label: "Preventivi", icon: Calculator, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi", consultabile: true, exact: true },
+  { to: "/ordini", label: "Ordini", icon: ShoppingCart, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi", consultabile: true },
+  { to: "/articoli", label: "Articoli", icon: FileSpreadsheet, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi", consultabile: true },
+  { to: "/fornitori", label: "Fornitori", icon: Building2, roles: ["admin", "amministrazione", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi", consultabile: true },
+  { to: "/listini", label: "Listini", icon: LineChart, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi", consultabile: true },
+  { to: "/kit", label: "Kit / Lavorazioni", icon: Wrench, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi", consultabile: true },
   { id: "cantieri-preventivi", to: "/cantieri", label: "Cantieri", icon: Building2, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
   // FIDI
   { to: "/fidi-dashboard", label: "Dashboard fidi", icon: LayoutDashboard, group: "fidi", permessoAreaFidi: true },
@@ -285,7 +285,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isPrevRead = hasUserRole("preventivi_read");
   const isPrevWrite = hasUserRole("preventivi_write");
   const isPrevManage = hasUserRole("preventivi_manage");
-  const hasAccessoPreventivi = isAdmin || isPrevRead || isPrevWrite || isPrevManage;
+  const hasAccessoPreventivi = haAccessoPreventivi(userRoles);
+  // FM63: lo store manager consulta (sola lettura) le voci "consultabile" del gruppo Preventivi.
+  const consultaPreventivi = puoConsultarePreventivi(userRoles);
   const soloShowroom = isSoloShowroom(userRoles);
   const isOnlyAgente =
     isAgente && !isAdmin && !isApprovatore && !isStoreManager && !isAmministrazione && !isMarketing && !hasUserRole("direzione") && !hasAccessoPreventivi;
@@ -357,7 +359,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (item.roles.includes("marketing_eventi") && isMarketingEventi) return true;
     if (item.roles.includes("recupero_crediti") && hasUserRole("recupero_crediti")) return true;
     if (item.roles.includes("responsabile_agenti") && isResponsabileAgenti) return true;
-    if (item.roles.includes("preventivi_read") && hasAccessoPreventivi) return true;
+    if (item.roles.includes("preventivi_read") && (hasAccessoPreventivi || (item.consultabile && consultaPreventivi))) return true;
     return false;
   });
   // Evita il doppione "Cantieri": se è visibile la voce commerciale, nascondi quella del gruppo preventivi.
