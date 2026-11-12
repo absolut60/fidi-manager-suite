@@ -16,7 +16,7 @@ export const elencoFornitori = createServerFn({ method: "POST" })
       _testo: data.testo ?? undefined, _anche_cliente: data.ancheCliente ?? undefined,
       _con_articoli: data.conArticoli ?? undefined, _includi_manuali: data.includiManuali,
       _macrocategorie: data.macrocategorie?.length ? data.macrocategorie : undefined,
-      _con_email: data.conEmail ?? undefined, _tipi: data.tipi?.length ? data.tipi : undefined, _stati_convenzione: data.statiConvenzione?.length ? data.statiConvenzione : undefined, _limite: data.limite, _offset: data.offset,
+      _con_email: data.conEmail ?? undefined, _tipi: data.tipi?.length ? data.tipi : undefined, _stati_convenzione: data.statiConvenzione?.length ? data.statiConvenzione : undefined, _ordina: data.ordina, _direzione: data.direzione, _limite: data.limite, _offset: data.offset,
     });
     if (result.error) throw new Error(result.error.message);
     const rows = result.data ?? [];

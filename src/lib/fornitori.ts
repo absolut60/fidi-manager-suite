@@ -19,6 +19,13 @@ export const classificaFornitoriInput = z.object({
   tipo: z.enum(["merci", "servizi"]),
 });
 
+/** FM62: colonne ordinabili dell'elenco fornitori (gemello SQL: whitelist in cerca_fornitori). */
+export const ORDINAMENTI_FORNITORI = ["codice", "ragione_sociale", "citta", "partita_iva", "tipo", "email"] as const;
+export type OrdinamentoFornitori = (typeof ORDINAMENTI_FORNITORI)[number];
+export function ordinamentoFornitoriValido(ordina: string, direzione: string): { ordina: OrdinamentoFornitori; direzione: "asc" | "desc" } {
+  return { ordina: (ORDINAMENTI_FORNITORI as readonly string[]).includes(ordina) ? ordina as OrdinamentoFornitori : "ragione_sociale", direzione: direzione === "desc" ? "desc" : "asc" };
+}
+
 const paginazione = {
   limite: z.number().int().min(1).max(200),
   offset: z.number().int().min(0).default(0),
@@ -34,10 +41,13 @@ export const elencoFornitoriInput = z.object({
   tipi: z.array(z.enum(TIPI_FORNITORE)).max(3).nullable().optional(),
   /** FM62 F7: null = tutti. */
   statiConvenzione: z.array(z.enum(STATI_CONVENZIONE)).max(10).nullable().optional(),
+  /** FM62: ordinamento lato server (whitelist gemella del CASE in cerca_fornitori). */
+  ordina: z.enum(ORDINAMENTI_FORNITORI).default("ragione_sociale"),
+  direzione: z.enum(["asc", "desc"]).default("asc"),
   limite: paginazione.limite.default(100), offset: paginazione.offset,
 });
-/** Stessi filtri dell'elenco, senza paginazione: per "seleziona tutti i filtrati". */
-export const idsFornitoriInput = elencoFornitoriInput.omit({ limite: true, offset: true });
+/** Stessi filtri dell'elenco, senza paginazione né ordinamento: per "seleziona tutti i filtrati". */
+export const idsFornitoriInput = elencoFornitoriInput.omit({ limite: true, offset: true, ordina: true, direzione: true });
 export const dettaglioFornitoreInput = z.object({ id: z.string().uuid() });
 export const articoliFornitoreInput = z.object({
   fornitoreId: z.string().uuid(), testo: z.string().trim().nullable().optional(),
