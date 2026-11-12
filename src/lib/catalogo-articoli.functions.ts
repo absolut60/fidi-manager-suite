@@ -9,6 +9,11 @@ export const elencoArticoliGamma = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: rows, error } = await context.supabase.rpc("cerca_articoli", parametriArticoli(data));
     if (error) throw new Error(error.message);
+    if (!rows?.length && data.page > 1) {
+      const first = await context.supabase.rpc("cerca_articoli", { ...parametriArticoli(data), offset: 0, limite: 1 });
+      if (first.error) throw new Error(first.error.message);
+      return { rows: rows ?? [], total: Number(first.data?.[0]?.totale ?? 0) };
+    }
     return { rows: rows ?? [], total: Number(rows?.[0]?.totale ?? 0) };
   });
 
