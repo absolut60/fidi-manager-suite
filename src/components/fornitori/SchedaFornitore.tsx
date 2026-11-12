@@ -13,7 +13,10 @@ import { AllegatiSection } from "@/components/allegati-section";
 import { Sezione, Dato } from "@/components/articoli/SchedaArticoloGamma";
 import { salvaNoteFornitore, type DettaglioFornitore } from "@/lib/fornitori.functions";
 import { tabVisibiliFornitore, sottotitoloFornitore, sitoFornitore, origineLegameFornitore, type TabSchedaFornitore } from "@/lib/scheda-fornitore";
-import { BadgeFornitore, BadgeMacrocategoria } from "./controlli-fornitori";
+import { BadgeFornitore, BadgeTipoFornitore } from "./controlli-fornitori";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { classificaFornitori } from "@/lib/fornitori.functions";
+import { tipoModificabile } from "@/lib/scheda-fornitore";
 import { ArticoliFornitore } from "./ArticoliFornitore";
 import { AttivitaFornitoreTab, useUltimaAttivita, dataOraIt } from "./AttivitaFornitore";
 import { tipoAttivita } from "@/lib/attivita-fornitore";
@@ -57,7 +60,7 @@ export function SchedaFornitore({ fornitore: f, tab, onTabChange, statoArticoli 
         <h1 className="break-words text-2xl font-bold tracking-tight sm:text-3xl">{f.ragione_sociale || "Fornitore"}</h1>
         <p className="mt-1 break-words text-sm text-muted-foreground">{sottotitolo || "Codice e partita IVA non presenti"}</p>
         {f.alias && <p className="mt-0.5 break-words text-xs text-muted-foreground">Alias: {f.alias}</p>}
-        <div className="mt-2 flex flex-wrap gap-1.5"><BadgeMacrocategoria cod={f.macrocategoria_cod} desc={f.macrocategoria_desc} /><BadgeFornitore fornitore={f} />{f.clienti.length > 0 && <Badge variant="outline" className="border-success/30 bg-success/10 text-success">Anche cliente</Badge>}</div>
+        <div className="mt-2 flex flex-wrap gap-1.5"><BadgeTipoFornitore tipo={f.tipo_effettivo} fonte={f.tipo_fonte} /><BadgeFornitore fornitore={f} />{f.clienti.length > 0 && <Badge variant="outline" className="border-success/30 bg-success/10 text-success">Anche cliente</Badge>}</div>
       </div>
       <div className="flex flex-wrap items-center gap-2" data-azioni-fornitore>
         {f.puo_modificare_note && <Button className="min-h-10 gap-1.5" onClick={() => { setAllegatiEmail({ file: [] }); setEmailAperta(true); }}><Send className="size-4" />Invia email</Button>}
@@ -71,7 +74,7 @@ export function SchedaFornitore({ fornitore: f, tab, onTabChange, statoArticoli 
         <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-2">
           <Sezione titolo="Anagrafica" icon={Building2}><dl className="grid grid-cols-1 gap-x-5 sm:grid-cols-2"><Dato label="Ragione sociale" value={f.ragione_sociale} /><Dato label="Alias" value={f.alias} /><Dato label="P.IVA" value={f.partita_iva} /><Dato label="Codice fiscale" value={f.codice_fiscale} /><Dato label="Indirizzo" value={[f.indirizzo, [f.cap, f.citta, f.provincia ? `(${f.provincia})` : null].filter(Boolean).join(" ")].filter(Boolean).join(", ")} /><Dato label="Stato" value={f.stato} /></dl></Sezione>
           <Sezione titolo="Contatti Gamma" icon={Phone}><ContattiFornitore fornitore={f} /></Sezione>
-          <Sezione titolo="Gamma" icon={Calendar}><dl className="grid grid-cols-1 gap-x-5 sm:grid-cols-2"><Dato label="Codice fornitore" value={f.codice_gestionale} /><Dato label="Macrocategoria" value={f.macrocategoria_cod ? `${f.macrocategoria_desc ?? "—"} (${f.macrocategoria_cod})` : "Da classificare"} /><Dato label="Anagrafica generale" value={f.codice_anagrafica_generale} /><Dato label="Codice cliente Gamma" value={f.codice_cliente_gamma} /><Dato label="Condizione di pagamento" value={f.condizione_pagamento_desc ? `${f.condizione_pagamento_desc}${f.condizione_pagamento_cod ? ` (${f.condizione_pagamento_cod})` : ""}` : f.condizione_pagamento_cod} /><Dato label="Ultima modifica Gamma" value={dataGamma(f.ultima_modifica_gamma)} /><Dato label="Ultima sincronizzazione" value={dataGamma(f.ultima_sincronizzazione)} /></dl></Sezione>
+          <Sezione titolo="Gamma" icon={Calendar}><dl className="grid grid-cols-1 gap-x-5 sm:grid-cols-2"><Dato label="Codice fornitore" value={f.codice_gestionale} /><Dato label="Macrocategoria Gamma" value={f.macrocategoria_cod ? `${f.macrocategoria_desc ?? "—"} (${f.macrocategoria_cod})` : "Non indicata"} /><Dato label="Anagrafica generale" value={f.codice_anagrafica_generale} /><Dato label="Codice cliente Gamma" value={f.codice_cliente_gamma} /><Dato label="Condizione di pagamento" value={f.condizione_pagamento_desc ? `${f.condizione_pagamento_desc}${f.condizione_pagamento_cod ? ` (${f.condizione_pagamento_cod})` : ""}` : f.condizione_pagamento_cod} /><Dato label="Ultima modifica Gamma" value={dataGamma(f.ultima_modifica_gamma)} /><Dato label="Ultima sincronizzazione" value={dataGamma(f.ultima_sincronizzazione)} /></dl></Sezione>
         </div>
         <p className="text-xs text-muted-foreground">I dati anagrafici arrivano da Gamma e si aggiornano con l’import.</p>
       </TabsContent>
@@ -90,7 +93,7 @@ function RiepilogoFornitore({ fornitore: f, vaiAlTab, persone }: { fornitore: De
     <section className="space-y-2">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Colpo d'occhio</h3>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <CardOcchio label="Macrocategoria"><BadgeMacrocategoria cod={f.macrocategoria_cod} desc={f.macrocategoria_desc} /></CardOcchio>
+        <CardOcchio label="Tipo fornitore"><TipoFornitoreModifica fornitore={f} /></CardOcchio>
         <CardOcchio label="Condizione di pagamento fornitore"><span className="font-semibold">{f.condizione_pagamento_desc || f.condizione_pagamento_cod || "—"}</span>{f.condizione_pagamento_desc && f.condizione_pagamento_cod && <span className="ml-1 text-xs text-muted-foreground">({f.condizione_pagamento_cod})</span>}</CardOcchio>
         {f.puo_vedere_articoli && <CardOcchio label="Articoli forniti"><button type="button" onClick={() => vaiAlTab("articoli")} className="text-left font-semibold tabular-nums text-primary hover:underline">{numero(f.n_articoli)}</button><span className="block text-xs text-muted-foreground tabular-nums">di cui {numero(f.n_preferenziale)} preferenziale</span></CardOcchio>}
         <CardOcchio label="È anche cliente">{f.clienti.length ? <span className="flex flex-col gap-0.5">{f.clienti.map(c => <Link key={c.cliente_id} to="/clienti/$clienteId" params={{ clienteId: c.cliente_id }} className="font-semibold text-success hover:underline">Sì{c.codice_gestionale ? ` — cod. ${c.codice_gestionale}` : ""}</Link>)}</span> : <span className="font-semibold text-muted-foreground">No</span>}</CardOcchio>
@@ -103,6 +106,22 @@ function RiepilogoFornitore({ fornitore: f, vaiAlTab, persone }: { fornitore: De
     </div>
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"><UltimaAttivitaCard fornitoreId={f.id} vai={() => vaiAlTab("attivita")} /></div>
   </>;
+}
+/** Merci/Servizi: modificabile solo se non decide Gamma e solo da chi gestisce i fornitori. */
+function TipoFornitoreModifica({ fornitore: f }: { fornitore: DettaglioFornitore }) {
+  const qc = useQueryClient();
+  const classifica = useServerFn(classificaFornitori);
+  const m = useMutation({
+    mutationFn: (tipo: "merci" | "servizi") => classifica({ data: { ids: [f.id], tipo } }),
+    onSuccess: async () => { toast.success("Tipo fornitore salvato"); await qc.invalidateQueries({ queryKey: ["fornitore", f.id] }); void qc.invalidateQueries({ queryKey: ["fornitori"] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  if (!tipoModificabile(f.tipo_fonte)) return <div className="space-y-1"><BadgeTipoFornitore tipo={f.tipo_effettivo} fonte={f.tipo_fonte} /><p className="text-xs text-muted-foreground">Deciso in Gamma</p></div>;
+  if (!f.puo_modificare_note) return <BadgeTipoFornitore tipo={f.tipo_effettivo} fonte={f.tipo_fonte} />;
+  return <Select value={f.tipo_effettivo === "da_classificare" ? "" : f.tipo_effettivo} disabled={m.isPending} onValueChange={v => m.mutate(v as "merci" | "servizi")}>
+    <SelectTrigger aria-label="Tipo fornitore" className={`min-h-10 w-full ${f.tipo_effettivo === "da_classificare" ? "border-warning/50 text-muted-foreground" : ""}`}><SelectValue placeholder="Da classificare" /></SelectTrigger>
+    <SelectContent><SelectItem value="merci">Merci</SelectItem><SelectItem value="servizi">Servizi</SelectItem></SelectContent>
+  </Select>;
 }
 /** Fino a 3 referenti (principali prima) sotto telefono/email Gamma. */
 function PersoneRiepilogo({ persone, vai }: { persone: ContattoFornitore[]; vai: () => void }) {
