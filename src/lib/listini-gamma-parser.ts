@@ -237,9 +237,43 @@ export const ARTICOLI_GAMMA_HEADERS: Record<string, string> = {
   "costo listino acq l20": "c20",
   "costo listino acq l30": "c30",
   "costo listino acq l9": "c9",
+  "acq l10 prezzo": "acq10_prezzo",
+  "acq l10 sc1 %": "acq10_sc1",
+  "acq l10 sc2 %": "acq10_sc2",
+  "acq l10 sc3 %": "acq10_sc3",
+  "acq l10 trasporto %": "acq10_trasporto_perc",
+  "acq l10 trasporto euro": "acq10_trasporto_euro",
+  "acq l20 prezzo": "acq20_prezzo",
+  "acq l20 sc1 %": "acq20_sc1",
+  "acq l20 sc2 %": "acq20_sc2",
+  "acq l20 sc3 %": "acq20_sc3",
+  "acq l20 trasporto %": "acq20_trasporto_perc",
+  "acq l20 trasporto euro": "acq20_trasporto_euro",
+  "acq l30 prezzo": "acq30_prezzo",
+  "acq l30 sc1 %": "acq30_sc1",
+  "acq l30 sc2 %": "acq30_sc2",
+  "acq l30 sc3 %": "acq30_sc3",
+  "acq l30 trasporto %": "acq30_trasporto_perc",
+  "acq l30 trasporto euro": "acq30_trasporto_euro",
+  "acq l9 prezzo": "acq9_prezzo",
+  "acq l9 sc1 %": "acq9_sc1",
+  "acq l9 sc2 %": "acq9_sc2",
+  "acq l9 sc3 %": "acq9_sc3",
+  "acq l9 trasporto %": "acq9_trasporto_perc",
+  "acq l9 trasporto euro": "acq9_trasporto_euro",
 };
 
-export type ListinoArticoloGamma = { listino: 9 | 10 | 20 | 30; prezzo_vendita: number | null; costo_acquisto: number | null };
+export type ListinoArticoloGamma = {
+  listino: 9 | 10 | 20 | 30;
+  prezzo_vendita: number | null;
+  costo_acquisto: number | null;
+  acq_prezzo: number | null;
+  acq_sc1: number | null;
+  acq_sc2: number | null;
+  acq_sc3: number | null;
+  acq_trasporto_perc: number | null;
+  acq_trasporto_euro: number | null;
+};
 
 export type ArticoloGammaRow = {
   riga: number;
@@ -350,7 +384,16 @@ export function parseArticoliGammaSheet(sheet: XLSX.WorkSheet): {
     for (const l of [10, 20, 30, 9] as const) {
       const prezzo = numeroGamma(r[`p${l}`]);
       const costo = numeroGamma(r[`c${l}`]);
-      if (prezzo != null || costo != null) listini.push({ listino: l, prezzo_vendita: prezzo, costo_acquisto: costo });
+      const acqPrezzo = numeroGamma(r[`acq${l}_prezzo`]);
+      if (prezzo != null || costo != null || acqPrezzo != null) listini.push({
+        listino: l, prezzo_vendita: prezzo, costo_acquisto: costo,
+        acq_prezzo: acqPrezzo,
+        acq_sc1: numeroGamma(r[`acq${l}_sc1`]),
+        acq_sc2: numeroGamma(r[`acq${l}_sc2`]),
+        acq_sc3: numeroGamma(r[`acq${l}_sc3`]),
+        acq_trasporto_perc: numeroGamma(r[`acq${l}_trasporto_perc`]),
+        acq_trasporto_euro: numeroGamma(r[`acq${l}_trasporto_euro`]),
+      });
     }
     const forn = toStr(r.fornitore_pref_codice);
     const riga: ArticoloGammaRow = {

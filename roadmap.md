@@ -1,3 +1,8 @@
+# FM61 — Articoli fetta A2
+- [ ] Colonne acquisto nullable e sole due RPC richieste, senza modificare dati o flusso import.
+- [ ] Parser con intestazioni reali e compatibilità file precedente; test.
+- [ ] Confronto count/impronte prima-dopo, freno in transazione annullata e tipi rigenerati; nessun import.
+
 # FM61 — Articoli fetta A
 - [x] SQL elenco/facets e disponibilità condivisa; tre EXPLAIN finali 944,262 / 586,202 / 181,310 ms e impronte disponibilità invariate.
 - [x] Elenco Gamma, filtri e intestazione dettaglio; 392 test, immagini 320/375/390/768/1280/1920 con dati sintetici e selezione famiglia; pagina temporanea rimossa.
