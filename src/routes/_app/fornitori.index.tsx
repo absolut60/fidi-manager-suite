@@ -148,7 +148,7 @@ function ContenutoFornitori() {
     if (azione === "email") setEmailAperta(true); else setLettereAperte(true);
   };
 
-  return <div className={`mx-auto w-full max-w-7xl space-y-4 p-3 lg:p-6 ${sel.size ? "pb-28" : ""}`}>
+  return <div className={`w-full min-w-0 space-y-4 p-3 lg:p-6 ${sel.size ? "pb-28" : ""}`}>
     <header className="space-y-3">
       <h1 className="text-2xl font-bold text-navy">Fornitori</h1>
       <div className="relative"><Search className="absolute left-3 top-3 size-4 text-muted-foreground" /><Input aria-label="Cerca fornitori" className="min-h-10 pl-9" placeholder="Nome, alias, codice, P.IVA/CF, città…" value={testo} onChange={e => setTesto(e.target.value)} /></div>
