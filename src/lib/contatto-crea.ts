@@ -9,6 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 export type CreaContattoPersonaInput = {
   cliente_id?: string | null;
   lead_id?: string | null;
+  /** FM62 G6: referente del fornitore. */
+  fornitore_id?: string | null;
   nome: string;
   cognome?: string | null;
   email?: string | null;
@@ -28,8 +30,8 @@ export async function creaContattoPersona(
 ): Promise<{ id: string }> {
   const nome = input.nome.trim();
   if (!nome) throw new Error("Il nome del contatto è obbligatorio");
-  if (!input.cliente_id && !input.lead_id) {
-    throw new Error("Il contatto deve appartenere a un cliente o a un lead");
+  if (!input.cliente_id && !input.lead_id && !input.fornitore_id) {
+    throw new Error("Il contatto deve appartenere a un cliente, a un lead o a un fornitore");
   }
 
   const { data, error } = await supabase
@@ -37,6 +39,7 @@ export async function creaContattoPersona(
     .insert({
       cliente_id: input.cliente_id ?? null,
       lead_id: input.lead_id ?? null,
+      ...(input.fornitore_id ? { fornitore_id: input.fornitore_id } : {}),
       nome,
       cognome: t(input.cognome),
       email: t(input.email),
