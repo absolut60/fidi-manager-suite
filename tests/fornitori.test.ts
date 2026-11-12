@@ -42,3 +42,9 @@ describe("validazione input funzioni fornitore", () => {
     expect(salvaNoteFornitoreInput.safeParse({ id, note: "😀".repeat(4001) }).success).toBe(false);
   });
 });
+describe("filtro macrocategorie (FM62 F1)", () => {
+  test("accetta elenco codici, rifiuta valori vuoti", () => {
+    expect(elencoFornitoriInput.parse({ macrocategorie: ["01", "nd"] }).macrocategorie).toEqual(["01", "nd"]);
+    expect(() => elencoFornitoriInput.parse({ macrocategorie: [""] })).toThrow();
+  });
+});

@@ -52,3 +52,21 @@ describe("parser fornitori Gamma (FM61)", () => {
     expect(dataOraGamma(46331.5)).toBe("2026-11-05T12:00:00");
   });
 });
+
+describe("parser fornitori Gamma — macrocategoria (FM62 F1)", () => {
+  function wbMacro(righe: unknown[][]) {
+    const w = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(w, XLSX.utils.aoa_to_sheet([["Codice fornitore", "Ragione sociale", "Codice macrocategoria", "Macrocategoria"], ...righe]), "FORNITORI");
+    return w;
+  }
+  test("legge codice e descrizione macrocategoria", () => {
+    const { rows } = parseFornitoriGammaSheet(trovaFoglioFornitori(wbMacro([[1, "A", "01", "FORNITORI MERCI"], [2, "B", "03", "FORNITORI SERVIZI"], [3, "C", "", ""]]))!.sheet);
+    expect(rows.map((r) => [r.macrocategoria_cod, r.macrocategoria_desc])).toEqual([["01", "FORNITORI MERCI"], ["03", "FORNITORI SERVIZI"], [null, null]]);
+  });
+  test("colonne assenti → null senza anomalie", () => {
+    const { rows, anomalie } = parseFornitoriGammaSheet(trovaFoglioFornitori(wb([[5, "X"]]))!.sheet);
+    expect(anomalie).toHaveLength(0);
+    expect(rows[0].macrocategoria_cod).toBeNull();
+    expect(rows[0].macrocategoria_desc).toBeNull();
+  });
+});

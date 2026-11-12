@@ -10,6 +10,7 @@ export const elencoFornitoriInput = z.object({
   ancheCliente: z.boolean().nullable().optional(),
   conArticoli: z.boolean().nullable().optional(),
   includiManuali: z.boolean().default(false),
+  macrocategorie: z.array(z.string().trim().min(1).max(20)).max(10).nullable().optional(),
   limite: paginazione.limite.default(100), offset: paginazione.offset,
 });
 export const dettaglioFornitoreInput = z.object({ id: z.string().uuid() });
@@ -38,12 +39,12 @@ export const dettaglioFornitoreSchema = z.object({
   telefono: testo, telefono_2: testo, cellulare: testo, fax: testo,
   email: testo, sito: testo, pec: testo, persona_fisica: booleano, valida: booleano,
   condizione_pagamento_cod: testo, condizione_pagamento_desc: testo,
-  attivo: booleano, note: testo, ultima_modifica_gamma: testo, ultima_sincronizzazione: testo,
+  attivo: booleano, note: testo, macrocategoria_cod: testo, macrocategoria_desc: testo, ultima_modifica_gamma: testo, ultima_sincronizzazione: testo,
   clienti: z.array(z.object({
     cliente_id: z.string().uuid(), codice_gestionale: testo, ragione_sociale: testo,
     store_nome: testo, bloccato: booleano, in_gestione_legale: booleano,
     origine_legame: z.string(), coincide_su: testo,
   })),
-  n_articoli: z.number().int(), n_preferenziale: z.number().int(), puo_modificare_note: z.boolean(),
+  n_articoli: z.number().int(), n_preferenziale: z.number().int(), puo_modificare_note: z.boolean(), puo_vedere_articoli: z.boolean(),
 });
 export type DettaglioFornitore = z.infer<typeof dettaglioFornitoreSchema>;

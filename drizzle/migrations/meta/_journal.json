@@ -1219,6 +1219,13 @@
       "when": 1794477446031,
       "tag": "0173_fm62_schede_fornitore",
       "breakpoints": true
+    },
+    {
+      "idx": 174,
+      "version": "7",
+      "when": 1794480679270,
+      "tag": "0174_fm62_fornitori_macrocategoria",
+      "breakpoints": true
     }
   ]
 }

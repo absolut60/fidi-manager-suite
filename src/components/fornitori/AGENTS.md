@@ -1,0 +1,1 @@
+- Supplier read/write gates: only auth_ha_accesso_fornitori/auth_puo_gestire_fornitori; articles/costs stay behind auth_ha_accesso_preventivi (UI uses puo_vedere_articoli), so menu, pages and RPCs cannot diverge.
