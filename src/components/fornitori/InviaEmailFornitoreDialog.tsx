@@ -84,10 +84,12 @@ function CampoIndirizzi({ id, label, valori, onChange, max, suggerimenti, usati 
   </div>;
 }
 
-export function InviaEmailFornitoreDialog({ fornitore, open, onOpenChange, onInviata, fileIniziali, oggettoIniziale }: {
+export function InviaEmailFornitoreDialog({ fornitore, open, onOpenChange, onInviata, fileIniziali, oggettoIniziale, contatti = [] }: {
   fornitore: FornitoreEmail; open: boolean; onOpenChange: (v: boolean) => void; onInviata: (e: EsitoInvioFornitore) => void;
   /** File già pronti (es. la lettera PDF da "Allega a un'email"). */
   fileIniziali?: File[]; oggettoIniziale?: string;
+  /** FM62 G6: referenti del fornitore con email valida ("+ Nome" in A e CC). */
+  contatti?: { etichetta: string; valore: string }[];
 }) {
   const { user } = useAuth();
   const emailIo = user?.email ?? null;
@@ -158,10 +160,10 @@ export function InviaEmailFornitoreDialog({ fornitore, open, onOpenChange, onInv
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
         <Sezione titolo="Destinatari">
           <CampoIndirizzi id="email-a" label="A" usati={usati} valori={a} onChange={setA} max={MAX_DESTINATARI_A}
-            suggerimenti={[...(emailForn ? [{ etichetta: "Email", valore: emailForn }] : []), ...(pecForn ? [{ etichetta: "PEC", valore: pecForn, nota: "parte come email normale, non come PEC certificata" }] : [])]} />
+            suggerimenti={[...(emailForn ? [{ etichetta: "Email", valore: emailForn }] : []), ...(pecForn ? [{ etichetta: "PEC", valore: pecForn, nota: "parte come email normale, non come PEC certificata" }] : []), ...contatti]} />
           {!emailForn && <div className="flex items-start gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning"><AlertTriangle className="mt-0.5 size-4 shrink-0" /><span>Il fornitore non ha un indirizzo email in anagrafica: inseriscilo a mano.</span></div>}
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <CampoIndirizzi id="email-cc" label="CC" usati={usati} valori={cc} onChange={setCc} suggerimenti={emailIo ? [{ etichetta: "Io", valore: emailIo }] : []} />
+            <CampoIndirizzi id="email-cc" label="CC" usati={usati} valori={cc} onChange={setCc} suggerimenti={[...(emailIo ? [{ etichetta: "Io", valore: emailIo }] : []), ...contatti]} />
             <CampoIndirizzi id="email-ccn" label="CCN" usati={usati} valori={ccn} onChange={setCcn} suggerimenti={emailIo ? [{ etichetta: "Io", valore: emailIo }] : []} />
           </div>
           {(totaleIndirizzi > MAX_INDIRIZZI_FORNITORE || doppioni) && <p className="text-xs text-destructive">{doppioni ? "Lo stesso indirizzo compare in più campi: toglilo da uno." : `Massimo ${MAX_INDIRIZZI_FORNITORE} indirizzi in totale tra A, CC e CCN.`}</p>}

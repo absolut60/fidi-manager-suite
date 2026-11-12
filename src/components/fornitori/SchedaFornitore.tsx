@@ -20,6 +20,8 @@ import { tipoAttivita } from "@/lib/attivita-fornitore";
 import { InviaEmailFornitoreDialog } from "./InviaEmailFornitoreDialog";
 import { LetteraFornitoreDialog } from "./LetteraFornitoreDialog";
 import { chiaveAttivita } from "./AttivitaFornitore";
+import { ContattiFornitoreTab } from "./ContattiFornitore";
+import { useContattiFornitore, personePrincipali, nomeContatto, suggerimentiContattiEmail, type ContattoFornitore } from "@/lib/contatti-fornitore";
 
 function dataGamma(value: string | null) {
   if (!value) return "—";
@@ -32,7 +34,9 @@ function CardOcchio({ label, children, className }: { label: string; children: R
   return <Card className={`min-w-0 rounded-xl border-[0.5px] p-3.5 ${className ?? ""}`}><p className="truncate text-[11px] font-medium uppercase text-muted-foreground">{label}</p><div className="mt-1.5 min-w-0 break-words text-sm">{children}</div></Card>;
 }
 export function SchedaFornitore({ fornitore: f, tab, onTabChange, statoArticoli }: { fornitore: DettaglioFornitore; tab: TabSchedaFornitore; onTabChange: (value: TabSchedaFornitore) => void; statoArticoli: StatoArticoliFornitore }) {
-  const titoli: Record<TabSchedaFornitore, string> = { riepilogo: "Riepilogo", anagrafica: "Anagrafica", articoli: `Articoli forniti (${numero(f.n_articoli)})`, clienti: "Cliente collegato", attivita: "Attività", allegati: "Allegati" };
+  const contatti = useContattiFornitore(f.id);
+  const persone = contatti.data ?? [];
+  const titoli: Record<TabSchedaFornitore, string> = { riepilogo: "Riepilogo", anagrafica: "Anagrafica", contatti: `Contatti (${contatti.data ? numero(persone.length) : "…"})`, articoli: `Articoli forniti (${numero(f.n_articoli)})`, clienti: "Cliente collegato", attivita: "Attività", allegati: "Allegati" };
   const tabVisibili = tabVisibiliFornitore(f.puo_vedere_articoli);
   const tabAttiva = tabVisibili.includes(tab) ? tab : "riepilogo";
   const sottotitolo = sottotitoloFornitore(f);
@@ -43,7 +47,7 @@ export function SchedaFornitore({ fornitore: f, tab, onTabChange, statoArticoli 
   const aggiornaAttivita = () => void qc.invalidateQueries({ queryKey: chiaveAttivita(f.id) });
   return <div className="min-w-0 space-y-6">
     {f.puo_modificare_note && <InviaEmailFornitoreDialog fornitore={f} open={emailAperta} onOpenChange={v => { setEmailAperta(v); if (!v) setAllegatiEmail({ file: [] }); }}
-      fileIniziali={allegatiEmail.file} oggettoIniziale={allegatiEmail.oggetto}
+      fileIniziali={allegatiEmail.file} oggettoIniziale={allegatiEmail.oggetto} contatti={suggerimentiContattiEmail(persone)}
       onInviata={() => { aggiornaAttivita(); onTabChange("attivita"); }} />}
     {f.puo_modificare_note && <LetteraFornitoreDialog open={letteraAperta} onOpenChange={setLetteraAperta} fornitore={f}
       onRegistrata={aggiornaAttivita}
@@ -62,7 +66,7 @@ export function SchedaFornitore({ fornitore: f, tab, onTabChange, statoArticoli 
     </div>
     <Tabs value={tabAttiva} onValueChange={value => { const next = tabVisibili.find(t => t === value); if (next) onTabChange(next); }}>
       <TabsList aria-label="Sezioni della scheda fornitore" className="md:flex-wrap">{tabVisibili.map(t => <TabsTrigger key={t} value={t}>{titoli[t]}</TabsTrigger>)}</TabsList>
-      <TabsContent value="riepilogo" className="max-w-7xl space-y-4"><RiepilogoFornitore fornitore={f} vaiAlTab={onTabChange} /></TabsContent>
+      <TabsContent value="riepilogo" className="max-w-7xl space-y-4"><RiepilogoFornitore fornitore={f} vaiAlTab={onTabChange} persone={persone} /></TabsContent>
       <TabsContent value="anagrafica" className="max-w-7xl space-y-3">
         <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-2">
           <Sezione titolo="Anagrafica" icon={Building2}><dl className="grid grid-cols-1 gap-x-5 sm:grid-cols-2"><Dato label="Ragione sociale" value={f.ragione_sociale} /><Dato label="Alias" value={f.alias} /><Dato label="P.IVA" value={f.partita_iva} /><Dato label="Codice fiscale" value={f.codice_fiscale} /><Dato label="Indirizzo" value={[f.indirizzo, [f.cap, f.citta, f.provincia ? `(${f.provincia})` : null].filter(Boolean).join(" ")].filter(Boolean).join(", ")} /><Dato label="Stato" value={f.stato} /></dl></Sezione>
@@ -71,14 +75,15 @@ export function SchedaFornitore({ fornitore: f, tab, onTabChange, statoArticoli 
         </div>
         <p className="text-xs text-muted-foreground">I dati anagrafici arrivano da Gamma e si aggiornano con l’import.</p>
       </TabsContent>
+      <TabsContent value="contatti" className="max-w-7xl"><ContattiFornitoreTab fornitore={f} puoGestire={f.puo_modificare_note} /></TabsContent>
       {f.puo_vedere_articoli && <TabsContent value="articoli"><ArticoliFornitore id={f.id} {...statoArticoli} /></TabsContent>}
       <TabsContent value="clienti" className="max-w-7xl"><ClientiFornitore clienti={f.clienti} /></TabsContent>
-      <TabsContent value="attivita" className="max-w-5xl"><AttivitaFornitoreTab fornitoreId={f.id} puoScrivere={f.puo_modificare_note} /></TabsContent>
+      <TabsContent value="attivita" className="max-w-5xl"><AttivitaFornitoreTab fornitoreId={f.id} puoScrivere={f.puo_modificare_note} contatti={persone} /></TabsContent>
       <TabsContent value="allegati" className="max-w-7xl"><Card className="p-3 sm:p-4"><AllegatiSection entitaTipo="fornitore" entitaId={f.id} clienteId={null} canEdit={f.puo_modificare_note} eliminaTutti={f.puo_modificare_note} /></Card></TabsContent>
     </Tabs>
   </div>;
 }
-function RiepilogoFornitore({ fornitore: f, vaiAlTab }: { fornitore: DettaglioFornitore; vaiAlTab: (t: TabSchedaFornitore) => void }) {
+function RiepilogoFornitore({ fornitore: f, vaiAlTab, persone }: { fornitore: DettaglioFornitore; vaiAlTab: (t: TabSchedaFornitore) => void; persone: ContattoFornitore[] }) {
   const link = "inline-flex min-h-8 items-center break-all text-primary hover:underline";
   const principali = [{ l: "Tel.", v: f.telefono || f.cellulare, p: "tel:" }, { l: "Email", v: f.email, p: "mailto:" }, { l: "PEC", v: f.pec, p: "mailto:" }].filter(c => c.v?.trim());
   return <>
@@ -92,11 +97,26 @@ function RiepilogoFornitore({ fornitore: f, vaiAlTab }: { fornitore: DettaglioFo
       </div>
     </section>
     <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-2">
-      <Sezione titolo="Contatti principali" icon={Phone}>{principali.length ? <dl className="space-y-1">{principali.map(c => <div key={c.l} className="flex min-w-0 items-baseline gap-2"><dt className="w-12 shrink-0 text-xs font-medium uppercase text-muted-foreground">{c.l}</dt><dd className="min-w-0"><a className={link} href={`${c.p}${c.v!.trim()}`}>{c.v}</a></dd></div>)}</dl> : <p className="text-sm text-muted-foreground">Nessun contatto in Gamma</p>}</Sezione>
+      <Sezione titolo="Contatti principali" icon={Phone}>{principali.length ? <dl className="space-y-1">{principali.map(c => <div key={c.l} className="flex min-w-0 items-baseline gap-2"><dt className="w-12 shrink-0 text-xs font-medium uppercase text-muted-foreground">{c.l}</dt><dd className="min-w-0"><a className={link} href={`${c.p}${c.v!.trim()}`}>{c.v}</a></dd></div>)}</dl> : <p className="text-sm text-muted-foreground">Nessun contatto in Gamma</p>}
+        <PersoneRiepilogo persone={persone} vai={() => vaiAlTab("contatti")} /></Sezione>
       <Sezione titolo="Note interne" icon={FileText}><NoteFornitore fornitore={f} /></Sezione>
     </div>
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"><UltimaAttivitaCard fornitoreId={f.id} vai={() => vaiAlTab("attivita")} /></div>
   </>;
+}
+/** Fino a 3 referenti (principali prima) sotto telefono/email Gamma. */
+function PersoneRiepilogo({ persone, vai }: { persone: ContattoFornitore[]; vai: () => void }) {
+  const link = "break-all text-primary hover:underline";
+  const lista = personePrincipali(persone, 3);
+  return <div className="mt-3 border-t pt-3">
+    <p className="mb-1.5 text-xs font-medium uppercase text-muted-foreground">Persone</p>
+    {!lista.length ? <button type="button" onClick={vai} className="min-h-8 text-left text-sm text-muted-foreground hover:underline">Nessun referente — aggiungine uno</button>
+      : <ul className="space-y-2">{lista.map(c => { const tel = c.cellulare || c.telefono; return <li key={c.id} className="min-w-0 text-sm">
+        <p className="break-words font-medium">{nomeContatto(c)}{c.ruolo && <span className="font-normal text-muted-foreground"> · {c.ruolo}</span>}</p>
+        <p className="flex min-w-0 flex-wrap gap-x-3 text-xs">{tel && <a className={link} href={`tel:${tel}`}>{tel}</a>}{c.email && <a className={link} href={`mailto:${c.email}`}>{c.email}</a>}</p>
+      </li>; })}</ul>}
+    {persone.length > 3 && <button type="button" onClick={vai} className="mt-1 min-h-8 text-sm text-primary hover:underline">Tutti i contatti ({persone.length.toLocaleString("it-IT")})</button>}
+  </div>;
 }
 function ContattiFornitore({ fornitore: f }: { fornitore: DettaglioFornitore }) {
   const contatti = [{ label: "Telefono", value: f.telefono, prefisso: "tel:" }, { label: "Telefono 2", value: f.telefono_2, prefisso: "tel:" }, { label: "Cellulare", value: f.cellulare, prefisso: "tel:" }, { label: "Fax", value: f.fax, prefisso: null }, { label: "Email", value: f.email, prefisso: "mailto:" }, { label: "PEC", value: f.pec, prefisso: "mailto:" }].filter(c => c.value?.trim());

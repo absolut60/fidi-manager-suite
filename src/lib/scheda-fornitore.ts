@@ -2,7 +2,7 @@ import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 
 /** Elenco ordinato delle tab: per aggiungere Contatti/Attività (G2/G3) basta inserirle qui con titolo e permesso. */
-export const TAB_SCHEDA_FORNITORE = ["riepilogo", "anagrafica", "articoli", "clienti", "attivita", "allegati"] as const;
+export const TAB_SCHEDA_FORNITORE = ["riepilogo", "anagrafica", "contatti", "articoli", "clienti", "attivita", "allegati"] as const;
 export type TabSchedaFornitore = typeof TAB_SCHEDA_FORNITORE[number];
 export function tabSchedaFornitore(value: string): TabSchedaFornitore {
   if (value === "panoramica") return "riepilogo"; // link salvati prima di G1
