@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IscrizioneWhatsappRouteImport } from './routes/iscrizione-whatsapp'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as ProvaFornitoriTmpRouteImport } from './routes/prova-fornitori-tmp'
 import { Route as VerificaCodiceRouteImport } from './routes/verifica-codice'
 import { Route as AppAlertFidiRouteImport } from './routes/_app/alert-fidi'
 import { Route as AppApprovazioniRouteImport } from './routes/_app/approvazioni'
@@ -120,6 +121,11 @@ const IscrizioneWhatsappRoute = IscrizioneWhatsappRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProvaFornitoriTmpRoute = ProvaFornitoriTmpRouteImport.update({
+  id: '/prova-fornitori-tmp',
+  path: '/prova-fornitori-tmp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VerificaCodiceRoute = VerificaCodiceRouteImport.update({
@@ -591,6 +597,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
+  '/prova-fornitori-tmp': typeof ProvaFornitoriTmpRoute
   '/verifica-codice': typeof VerificaCodiceRoute
   '/alert-fidi': typeof AppAlertFidiRoute
   '/approvazioni': typeof AppApprovazioniRoute
@@ -685,6 +692,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
+  '/prova-fornitori-tmp': typeof ProvaFornitoriTmpRoute
   '/verifica-codice': typeof VerificaCodiceRoute
   '/alert-fidi': typeof AppAlertFidiRoute
   '/approvazioni': typeof AppApprovazioniRoute
@@ -778,6 +786,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
+  '/prova-fornitori-tmp': typeof ProvaFornitoriTmpRoute
   '/verifica-codice': typeof VerificaCodiceRoute
   '/_app/alert-fidi': typeof AppAlertFidiRoute
   '/_app/approvazioni': typeof AppApprovazioniRoute
@@ -874,6 +883,7 @@ export interface FileRouteTypes {
     | '/'
     | '/iscrizione-whatsapp'
     | '/login'
+    | '/prova-fornitori-tmp'
     | '/verifica-codice'
     | '/alert-fidi'
     | '/approvazioni'
@@ -968,6 +978,7 @@ export interface FileRouteTypes {
     | '/'
     | '/iscrizione-whatsapp'
     | '/login'
+    | '/prova-fornitori-tmp'
     | '/verifica-codice'
     | '/alert-fidi'
     | '/approvazioni'
@@ -1060,6 +1071,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/iscrizione-whatsapp'
     | '/login'
+    | '/prova-fornitori-tmp'
     | '/verifica-codice'
     | '/_app/alert-fidi'
     | '/_app/approvazioni'
@@ -1156,6 +1168,7 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   IscrizioneWhatsappRoute: typeof IscrizioneWhatsappRoute
   LoginRoute: typeof LoginRoute
+  ProvaFornitoriTmpRoute: typeof ProvaFornitoriTmpRoute
   VerificaCodiceRoute: typeof VerificaCodiceRoute
   ConsensiTokenRoute: typeof ConsensiTokenRoute
   FirmaPrivacyTokenRoute: typeof FirmaPrivacyTokenRoute
@@ -1198,6 +1211,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prova-fornitori-tmp': {
+      id: '/prova-fornitori-tmp'
+      path: '/prova-fornitori-tmp'
+      fullPath: '/prova-fornitori-tmp'
+      preLoaderRoute: typeof ProvaFornitoriTmpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/verifica-codice': {
@@ -2041,6 +2061,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   IscrizioneWhatsappRoute: IscrizioneWhatsappRoute,
   LoginRoute: LoginRoute,
+  ProvaFornitoriTmpRoute: ProvaFornitoriTmpRoute,
   VerificaCodiceRoute: VerificaCodiceRoute,
   ConsensiTokenRoute: ConsensiTokenRoute,
   FirmaPrivacyTokenRoute: FirmaPrivacyTokenRoute,
