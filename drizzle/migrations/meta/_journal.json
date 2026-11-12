@@ -1303,6 +1303,20 @@
       "when": 1794507584536,
       "tag": "0185_fm62_fornitori_marca_sottocategoria_obsoleti",
       "breakpoints": true
+    },
+    {
+      "idx": 186,
+      "version": "7",
+      "when": 1794517061529,
+      "tag": "0186_fm63_listini_sede",
+      "breakpoints": true
+    },
+    {
+      "idx": 187,
+      "version": "7",
+      "when": 1794517093660,
+      "tag": "0187_fm63_listini_sede_funzioni",
+      "breakpoints": true
     }
   ]
 }

@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_app/articoli/codice/$codice")({
 });
 function SchedaGamma() {
   const { codice } = Route.useParams();
-  return <div className="mx-auto w-full max-w-7xl p-3 lg:p-6">
+  return <div className="min-w-0 w-full">
     <BackButton fallbackTo="/articoli" fallbackLabel="Articoli" />
     <Suspense fallback={<p className="py-6 text-muted-foreground">Caricamento articolo…</p>}><Intestazione codice={codice} /></Suspense>
   </div>;

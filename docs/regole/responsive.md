@@ -17,3 +17,8 @@ Regola permanente del proprietario. Si aggiunge alla sezione 1 del knowledge.
 - Sotto 640px: niente scroll orizzontale, nessun testo sotto i 12px, nomi sempre interi (vanno a capo), target touch ≥ 40px (caselle importo ≥ 44px, `inputMode="numeric"`).
 - Dialog grandi (es. proposta fido massiva) sotto 640px: a tutto schermo, intestazione fissa in alto, barra azioni fissa in basso, impostazioni chiuse in "▸ Impostazioni e riepilogo"; righe come schede verticali con numeri in griglia 2×2.
 - Restano valide le regole della sezione 1 del knowledge (320–1920px) e quella delle tabelle da PC a 1280px (AGENTS.md).
+
+## Larghezza delle pagine e prezzi (FM63)
+
+- Ogni pagina usa tutta la larghezza disponibile come la scheda cliente (niente max-w fissi sulle schede) e si restringe in modo progressivo da 360 px a 1920 px; nessuna pagina con riquadri stirati o spazio sprecato su monitor larghi.
+- Prezzi unitari in euro sempre a 4 decimali.

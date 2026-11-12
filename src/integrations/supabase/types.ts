@@ -7536,6 +7536,7 @@ export type Database = {
           indirizzo: string | null
           insegna: string | null
           lat: number | null
+          listino_riferimento: number | null
           lng: number | null
           nome: string
           pec_sede: string | null
@@ -7558,6 +7559,7 @@ export type Database = {
           indirizzo?: string | null
           insegna?: string | null
           lat?: number | null
+          listino_riferimento?: number | null
           lng?: number | null
           nome: string
           pec_sede?: string | null
@@ -7580,6 +7582,7 @@ export type Database = {
           indirizzo?: string | null
           insegna?: string | null
           lat?: number | null
+          listino_riferimento?: number | null
           lng?: number | null
           nome?: string
           pec_sede?: string | null
@@ -7589,7 +7592,15 @@ export type Database = {
           telefono?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "stores_listino_riferimento_fkey"
+            columns: ["listino_riferimento"]
+            isOneToOne: false
+            referencedRelation: "listini_gamma"
+            referencedColumns: ["codice"]
+          },
+        ]
       }
       storico_fido: {
         Row: {
@@ -8358,6 +8369,14 @@ export type Database = {
       auth_ha_accesso_fornitori: { Args: never; Returns: boolean }
       auth_ha_accesso_preventivi: { Args: never; Returns: boolean }
       auth_ha_ruolo_globale_clienti: { Args: never; Returns: boolean }
+      auth_listini_sede: {
+        Args: never
+        Returns: {
+          globale: boolean
+          listino: number
+          store_id: string
+        }[]
+      }
       auth_mfa_ok: { Args: never; Returns: boolean }
       auth_puo_accedere_marketing: { Args: never; Returns: boolean }
       auth_puo_aggiornare_cerved: { Args: never; Returns: boolean }
@@ -10177,6 +10196,27 @@ export type Database = {
         }
       }
       lead_evento_provvisorio: { Args: { _lead_id: string }; Returns: boolean }
+      listini_articolo_visibili: {
+        Args: { _codice: string }
+        Returns: {
+          acq_prezzo: number
+          acq_sc1: number
+          acq_sc2: number
+          acq_sc3: number
+          acq_trasporto_euro: number
+          acq_trasporto_perc: number
+          costo_acquisto: number
+          deposito_codice: string
+          fonte: string
+          listino: number
+          listino_descrizione: string
+          prezzo: number
+          prezzo_deposito: number
+          prezzo_listino: number
+          sede_nome: string
+          store_id: string
+        }[]
+      }
       livello_approvatore: { Args: { _user_id: string }; Returns: number }
       marca_comunicazioni_lette: {
         Args: { _richiesta_id: string }
