@@ -274,6 +274,7 @@ function ArticoloDetailPage() {
                 </Field>
               </div>
             </div>
+      </div>
     </div>
   );
 }
