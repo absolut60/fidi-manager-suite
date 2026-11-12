@@ -105,7 +105,8 @@ export const inviaEmailFornitore = createServerFn({ method: "POST" })
       },
       leggiEsistente,
       invia: () => sendEmailViaEdge({
-        to: data.a.join(", "), cc: data.cc, bcc: data.ccn, subject: data.oggetto, html,
+        // La edge invia un messaggio per ogni "to": un solo messaggio, gli altri "A" vanno in copia.
+        to: data.a[0], cc: [...data.a.slice(1), ...data.cc], bcc: data.ccn, subject: data.oggetto, html,
         fromName: "MADE Distribuzione", replyTo: emailOperatore ?? undefined, inlineLogo: true,
         attachments: files.map(f => ({ filename: f.filename, content: bytesToB64(f.bytes), contentType: f.contentType })),
       }),
