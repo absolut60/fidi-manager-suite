@@ -1345,6 +1345,13 @@
       "when": 1794522722094,
       "tag": "0191_fm63_elenco_articoli_veloce",
       "breakpoints": true
+    },
+    {
+      "idx": 192,
+      "version": "7",
+      "when": 1794522886139,
+      "tag": "0192_fm63_elenco_articoli_veloce_indici",
+      "breakpoints": true
     }
   ]
 }
