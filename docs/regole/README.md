@@ -8,4 +8,5 @@ Queste regole sono parte delle istruzioni permanenti del progetto: valgono quant
 - `fonti-uniche.md` — leggere prima di toccare: richiesta fido e decisione, lead ed eventi, import scadenziario e anagrafica, audit clienti, email solleciti, policy RLS, limiti di tempo dei ruoli database (statement_timeout), semaforo di affidabilità e «come paga» (FM58).
 - `sicurezza-permessi.md` — leggere prima di toccare: invio comunicazioni di recupero al cliente, fido teorico, porte verso l'esterno, correzioni della scansione Security.
 - `responsive.md` — leggere prima di toccare qualsiasi pagina: responsive su ogni larghezza (anche desktop), contenitori, due colonne nei dettagli, card compatte.
+- `unita-di-misura.md` — leggere prima di mostrare quantità o prezzi di articoli: UM1/UM2 Gamma, fattore di conversione (quantità ÷, prezzo ×), unità sempre visibile.
 - `lingua-italiana.md` — leggere prima di toccare qualsiasi pagina: app sempre in italiano, niente traduzione automatica, niente controlli nativi con testo del browser, locale it-IT.

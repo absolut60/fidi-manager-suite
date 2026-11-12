@@ -14,7 +14,6 @@ import { NumberInputIt } from "@/components/ui/number-input-it";
 import { updateArticolo } from "@/lib/articoli-api";
 import { dettaglioArticoloGamma, disponibilitaSchedaArticolo } from "@/lib/catalogo-articoli.functions";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { prezzoArticolo } from "@/lib/catalogo-articoli";
 import { unitaArticolo, inUnita, quantitaConUnita, prezzoConUnita, type UnitaScelta, patchTecniciArticolo, giacenzeArticolo, listiniVisibiliArticolo, venditaInEvidenza, TAB_SCHEDA_ARTICOLO, type TabSchedaArticolo, type RigaDisponibilitaArticolo, type TecniciArticolo } from "@/lib/scheda-articolo";
 
 export type DettaglioGamma = NonNullable<Awaited<ReturnType<typeof dettaglioArticoloGamma>>>;
