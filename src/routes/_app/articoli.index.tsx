@@ -17,6 +17,7 @@ import { elencoArticoliGamma, facetsArticoliGamma, fornitoriArticoliGamma } from
 export const Route = createFileRoute("/_app/articoli/")({
   head: () => ({ meta: [{ title: "Articoli Gamma — FidiManager" }, { name: "description", content: "Catalogo articoli MADE con prezzi Gamma, disponibilità e filtri di famiglia, marca e fornitore." }, { property: "og:title", content: "Articoli Gamma — FidiManager" }, { property: "og:description", content: "Catalogo, prezzi e disponibilità degli articoli MADE." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: ArticoliListPage,
+  errorComponent: ({ error }) => <div role="alert" className="p-6 text-destructive">{error.message}</div>,
 });
 function useDebounce(value: string) {
   const [v, set] = useState(value);
@@ -46,7 +47,11 @@ function ArticoliListPage() {
 function Filtri({ f, cambia, aperti, testoFornitore, cercaFornitore }: { f: FiltriArticoli; cambia: (p: Partial<FiltriArticoli>) => void; aperti: boolean; testoFornitore: string; cercaFornitore: (s: string) => void }) {
   const { data: facets } = useSuspenseQuery({ queryKey: ["catalogo-articoli-facets"], queryFn: () => facetsArticoliGamma(), staleTime: 60000 });
   const { data: fornitori = [], error: erroreFornitori } = useQuery({ queryKey: ["catalogo-articoli-fornitori", testoFornitore, f.fornitori], queryFn: () => fornitoriArticoliGamma({ data: { testo: testoFornitore, selezionati: f.fornitori } }) });
-  const opzioni = (items: { codice: string; descrizione: string | null; conteggio: number }[]) => items.map(x => ({ valore: x.codice, label: `${x.descrizione || x.codice} (${x.conteggio.toLocaleString("it-IT")})` }));
+  const opzioni = (items: { codice: string; descrizione: string | null; conteggio: number }[]) => Array.from(items.reduce((map, x) => {
+    const previous = map.get(x.codice);
+    map.set(x.codice, { ...x, conteggio: x.conteggio + (previous?.conteggio ?? 0) });
+    return map;
+  }, new Map<string, { codice: string; descrizione: string | null; conteggio: number }>()).values()).map(x => ({ valore: x.codice, label: `${x.descrizione || x.codice} (${x.conteggio.toLocaleString("it-IT")})` }));
   return <div className={`${aperti ? "grid" : "hidden"} mt-3 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid lg:grid-cols-4 xl:grid-cols-6`}>
     <FiltroMultiplo etichetta="Famiglia" testoTutti="Tutte le famiglie" cercabile opzioni={opzioni(facets.famiglie)} selezionati={f.famiglie} onChange={famiglie => cambia({ famiglie, sottofamiglie: [] })} />
     <FiltroMultiplo etichetta="Sottofamiglia" testoTutti="Tutte le sottofamiglie" cercabile opzioni={opzioni(facets.sottofamiglie.filter(s => !f.famiglie.length || f.famiglie.includes(s.famiglia ?? "")))} selezionati={f.sottofamiglie} onChange={sottofamiglie => cambia({ sottofamiglie })} />
