@@ -32,8 +32,8 @@ export function parametriArticoli(f: FiltriArticoli) {
 export function prezzoArticolo(prezzo: number | null) {
   return prezzo === null ? "—" : prezzo.toLocaleString("it-IT", { style: "currency", currency: "EUR", minimumFractionDigits: 4, maximumFractionDigits: 4 });
 }
-export function quantitaArticolo(q: number | null) {
-  return q === null ? "—" : q.toLocaleString("it-IT", { maximumFractionDigits: 3 });
+export function quantitaArticolo(q: number | null, um?: string | null) {
+  return q === null ? "—" : q.toLocaleString("it-IT", { maximumFractionDigits: 3 }) + (um ? ` ${um}` : "");
 }
 export const STATI_ARTICOLI = [
   { valore: "in_uso", label: "In uso" }, { valore: "in_esaurimento", label: "In esaurimento" },

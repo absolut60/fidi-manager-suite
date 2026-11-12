@@ -59,3 +59,33 @@ export function numeroAcquistoArticolo(value: number | null | undefined, euro = 
   if (value == null || value === 0) return "—";
   return value.toLocaleString("it-IT", { minimumFractionDigits: euro ? 4 : 0, maximumFractionDigits: euro ? 4 : 6 }) + (euro ? " €" : "");
 }
+/**
+ * FM63 Fetta 4 — unità di misura Gamma (regola in docs/regole/unita-di-misura.md).
+ * Giacenze, ordini, disponibilità e prezzi/costi Gamma sono nell'unità PRIMARIA (um).
+ * fattore_conversione = quante UM1 stanno in 1 UM2: quantità UM2 = UM1 ÷ fattore, prezzo UM2 = prezzo UM1 × fattore.
+ * Unico punto del codice che converte.
+ */
+export type UnitaScelta = "primaria" | "secondaria";
+export function unitaArticolo(a: { um: string | null; um2: string | null; fattore_conversione: number | null }) {
+  const um1 = a.um?.trim() || null;
+  const um2 = a.um2?.trim() || null;
+  const fattore = Number(a.fattore_conversione ?? 0);
+  const convertibile = !!um2 && um2 !== um1 && Number.isFinite(fattore) && fattore > 0 && fattore !== 1;
+  return { um1, um2, fattore, convertibile, um2Diversa: !!um2 && um2 !== um1 };
+}
+export function inUnita(valore: number | null | undefined, tipo: "quantita" | "prezzo", unita: UnitaScelta, fattore: number): number | null {
+  if (valore == null) return null;
+  if (unita === "primaria" || !(fattore > 0)) return valore;
+  return tipo === "quantita" ? valore / fattore : valore * fattore;
+}
+/** Quantità con unità: massimo 3 decimali. */
+export function quantitaConUnita(v: number | null | undefined, um: string | null) {
+  if (v == null) return "—";
+  return v.toLocaleString("it-IT", { maximumFractionDigits: 3, useGrouping: "always" } as unknown as Intl.NumberFormatOptions) + (um ? ` ${um}` : "");
+}
+/** Prezzo/costo con unità: sempre 4 decimali (regola FM63). */
+export function prezzoConUnita(v: number | null | undefined, um: string | null) {
+  if (v == null) return "—";
+  return v.toLocaleString("it-IT", { minimumFractionDigits: 4, maximumFractionDigits: 4, useGrouping: "always" } as unknown as Intl.NumberFormatOptions) + (um ? ` €/${um}` : " €");
+}
+export function unitaSceltaDaUrl(um: unknown): UnitaScelta { return um === 2 || um === "2" ? "secondaria" : "primaria"; }
