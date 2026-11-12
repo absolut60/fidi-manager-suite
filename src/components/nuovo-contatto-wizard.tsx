@@ -144,7 +144,8 @@ export function NuovoContattoWizard({
   async function insertContatto(): Promise<string | null> {
     if (!selectedCliente) return null;
     const payload = {
-      ...(fornitore ? { fornitore_id: selectedCliente.id } : { cliente_id: selectedCliente.id }),
+      cliente_id: fornitore ? null : selectedCliente.id,
+      fornitore_id: fornitore ? selectedCliente.id : null,
       nome: contatto.nome,
       cognome: contatto.cognome || null,
       ruolo: contatto.ruolo || null,
