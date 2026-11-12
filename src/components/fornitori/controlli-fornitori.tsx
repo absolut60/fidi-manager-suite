@@ -22,8 +22,12 @@ export function useRicercaDifferita(value: string, aggiorna: (value: string) => 
   }, [testo, value, aggiorna]);
   return [testo, setTesto] as const;
 }
-export function BadgeFornitore({ fornitore: f }: { fornitore: { origine: string; persona_fisica: boolean | null; valida: boolean | null } }) {
-  return <div className="flex flex-wrap gap-1">{f.origine === "manuale" && <Badge variant="secondary">Manuale</Badge>}{f.persona_fisica && <Badge variant="outline">Persona fisica</Badge>}{f.valida === false && <Badge variant="outline" className="border-warning/30 bg-warning/15 text-warning">Non valido in Gamma</Badge>}</div>;
+export function BadgeFornitore({ fornitore: f }: { fornitore: { origine: string; valida: boolean | null } }) {
+  return <div className="flex flex-wrap gap-1">{f.origine === "manuale" && <Badge variant="secondary">Manuale</Badge>}{f.valida === false && <Badge variant="outline" className="border-warning/30 bg-warning/15 text-warning">Non valido in Gamma</Badge>}</div>;
+}
+/** FM62: obsoleto deciso solo da public.fornitore_obsoleto (campo "obsoleto" restituito dal DB). */
+export function BadgeObsoleto({ testo = "Obsoleto" }: { testo?: string }) {
+  return <Badge variant="outline" className="mt-1 border-border bg-muted text-muted-foreground">{testo}</Badge>;
 }
 const CLASSI_MACRO: Record<TonoMacrocategoria, string> = {
   merci: "border-info/30 bg-info/10 text-info",
