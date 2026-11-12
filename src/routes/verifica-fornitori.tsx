@@ -20,6 +20,10 @@ function Verifica() {
   const [preferenziali, setPreferenziali] = useState(false);
   const [pagina, setPagina] = useState(1);
   useEffect(() => {
+    const filtri = { fornitoreId: fixture.fornitori[indice].id, testo: ricerca, soloPreferenziali: preferenziali, limite: 50, offset: (pagina - 1) * 50 };
+    qc.setQueryData(["fornitore-articoli", filtri], { rows: fixture.articoli.map(a => ({ ...a, costo_ultimo: a.costo_ultimo === null ? null : Number(a.costo_ultimo) })), total: 5419 });
+  }, [qc, indice, ricerca, preferenziali, pagina]);
+  useEffect(() => {
     qc.setQueryDefaults(["fornitore-articoli"], { staleTime: Infinity, queryFn: async () => ({ rows: fixture.articoli.map(a => ({ ...a, costo_ultimo: Number(a.costo_ultimo) })) satisfies ArticoloFornitore[], total: 5419 }) });
     qc.setQueryDefaults(["catalogo-articolo"], { staleTime: Infinity });
     qc.setQueryData(["catalogo-articolo", "VGUAEA"], fixture.articolo);
