@@ -106,7 +106,7 @@ const NAV: NavItem[] = [
   { to: "/preventivatore", label: "Preventivi", icon: Calculator, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi", exact: true },
   { to: "/ordini", label: "Ordini", icon: ShoppingCart, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
   { to: "/articoli", label: "Articoli", icon: FileSpreadsheet, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
-  { to: "/fornitori", label: "Fornitori", icon: Building2, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
+  { to: "/fornitori", label: "Fornitori", icon: Building2, roles: ["admin", "amministrazione", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
   { to: "/listini", label: "Listini", icon: LineChart, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
   { to: "/kit", label: "Kit / Lavorazioni", icon: Wrench, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
   { id: "cantieri-preventivi", to: "/cantieri", label: "Cantieri", icon: Building2, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },

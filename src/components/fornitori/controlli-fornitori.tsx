@@ -4,11 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { badgeMacrocategoria, type TonoMacrocategoria } from "@/lib/scheda-fornitore";
 
 export function AccessoFornitori({ children }: { children: ReactNode }) {
   const { hasAnyRole, loading } = useAuth();
   if (loading) return <p role="status">Caricamento…</p>;
-  if (!hasAnyRole("amministratore", "preventivi_read", "preventivi_write", "preventivi_manage")) return <p role="alert" className="p-4 text-destructive">Accesso non consentito: non hai accesso all’area Preventivi.</p>;
+  if (!hasAnyRole("amministratore", "amministrazione", "preventivi_read", "preventivi_write", "preventivi_manage")) return <p role="alert" className="p-4 text-destructive">Accesso non consentito: non hai accesso ai fornitori.</p>;
   return children;
 }
 export function useRicercaDifferita(value: string, aggiorna: (value: string) => void) {
@@ -23,6 +24,15 @@ export function useRicercaDifferita(value: string, aggiorna: (value: string) => 
 }
 export function BadgeFornitore({ fornitore: f }: { fornitore: { origine: string; persona_fisica: boolean | null; valida: boolean | null } }) {
   return <div className="flex flex-wrap gap-1">{f.origine === "manuale" && <Badge variant="secondary">Manuale</Badge>}{f.persona_fisica && <Badge variant="outline">Persona fisica</Badge>}{f.valida === false && <Badge variant="outline" className="border-warning/30 bg-warning/15 text-warning">Non valido in Gamma</Badge>}</div>;
+}
+const CLASSI_MACRO: Record<TonoMacrocategoria, string> = {
+  merci: "border-info/30 bg-info/10 text-info",
+  servizi: "border-motivo-autorizzare/30 bg-motivo-autorizzare-bg text-motivo-autorizzare",
+  nd: "border-border bg-muted text-muted-foreground",
+};
+export function BadgeMacrocategoria({ cod, desc }: { cod: string | null | undefined; desc: string | null | undefined }) {
+  const b = badgeMacrocategoria(cod, desc);
+  return <Badge variant="outline" className={CLASSI_MACRO[b.tono]}>{b.testo}</Badge>;
 }
 export function FiltroSiNo({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return <label className="min-w-0 space-y-1 text-xs text-muted-foreground"><span>{label}</span><Select value={["si", "no"].includes(value) ? value : "tutti"} onValueChange={onChange}><SelectTrigger aria-label={label} className="min-h-10 w-full text-foreground"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="tutti">Tutti</SelectItem><SelectItem value="si">Sì</SelectItem><SelectItem value="no">No</SelectItem></SelectContent></Select></label>;

@@ -14,6 +14,7 @@ export const elencoFornitori = createServerFn({ method: "POST" })
     const result = await context.supabase.rpc("cerca_fornitori", {
       _testo: data.testo ?? undefined, _anche_cliente: data.ancheCliente ?? undefined,
       _con_articoli: data.conArticoli ?? undefined, _includi_manuali: data.includiManuali,
+      _macrocategorie: data.macrocategorie?.length ? data.macrocategorie : undefined,
       _limite: data.limite, _offset: data.offset,
     });
     if (result.error) throw new Error(result.error.message);
@@ -22,6 +23,7 @@ export const elencoFornitori = createServerFn({ method: "POST" })
       const first = await context.supabase.rpc("cerca_fornitori", {
         _testo: data.testo ?? undefined, _anche_cliente: data.ancheCliente ?? undefined,
         _con_articoli: data.conArticoli ?? undefined, _includi_manuali: data.includiManuali,
+        _macrocategorie: data.macrocategorie?.length ? data.macrocategorie : undefined,
         _limite: 1, _offset: 0,
       });
       if (first.error) throw new Error(first.error.message);

@@ -39,6 +39,8 @@ export const FORNITORI_HEADERS: Record<string, string> = {
   "ultima modifica": "ultima_modifica_gamma",
   "codice anagrafica generale": "codice_anagrafica_generale",
   "codice cliente collegato": "codice_cliente_gamma",
+  "codice macrocategoria": "macrocategoria_cod",
+  macrocategoria: "macrocategoria_desc",
 };
 
 export type FornitoreGammaRow = {
@@ -67,6 +69,8 @@ export type FornitoreGammaRow = {
   ultima_modifica_gamma: string | null;
   codice_anagrafica_generale: number | null;
   codice_cliente_gamma: number | null;
+  macrocategoria_cod: string | null;
+  macrocategoria_desc: string | null;
 };
 
 export type AnomaliaFornitoreFile = {
@@ -187,6 +191,8 @@ export function parseFornitoriGammaSheet(sheet: XLSX.WorkSheet): {
       ultima_modifica_gamma: dataOraGamma(r.ultima_modifica_gamma),
       codice_anagrafica_generale: intStretto(r.codice_anagrafica_generale),
       codice_cliente_gamma: intStretto(r.codice_cliente_gamma),
+      macrocategoria_cod: toStr(r.macrocategoria_cod),
+      macrocategoria_desc: toStr(r.macrocategoria_desc),
     };
     const prec = perCodice.get(codice);
     if (prec) {
