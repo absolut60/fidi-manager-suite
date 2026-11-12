@@ -1289,6 +1289,13 @@
       "when": 1794501214204,
       "tag": "0183_fm62_stato_convenzione_fornitori",
       "breakpoints": true
+    },
+    {
+      "idx": 184,
+      "version": "7",
+      "when": 1794501697346,
+      "tag": "0184_fm62_fornitori_ordinamento",
+      "breakpoints": true
     }
   ]
 }
