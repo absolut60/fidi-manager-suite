@@ -15,6 +15,8 @@ import { salvaNoteFornitore, type DettaglioFornitore } from "@/lib/fornitori.fun
 import { tabVisibiliFornitore, sottotitoloFornitore, sitoFornitore, origineLegameFornitore, type TabSchedaFornitore } from "@/lib/scheda-fornitore";
 import { BadgeFornitore, BadgeMacrocategoria } from "./controlli-fornitori";
 import { ArticoliFornitore } from "./ArticoliFornitore";
+import { AttivitaFornitoreTab, useUltimaAttivita, dataOraIt } from "./AttivitaFornitore";
+import { tipoAttivita } from "@/lib/attivita-fornitore";
 
 function dataGamma(value: string | null) {
   if (!value) return "—";
@@ -27,7 +29,7 @@ function CardOcchio({ label, children, className }: { label: string; children: R
   return <Card className={`min-w-0 rounded-xl border-[0.5px] p-3.5 ${className ?? ""}`}><p className="truncate text-[11px] font-medium uppercase text-muted-foreground">{label}</p><div className="mt-1.5 min-w-0 break-words text-sm">{children}</div></Card>;
 }
 export function SchedaFornitore({ fornitore: f, tab, onTabChange, statoArticoli }: { fornitore: DettaglioFornitore; tab: TabSchedaFornitore; onTabChange: (value: TabSchedaFornitore) => void; statoArticoli: StatoArticoliFornitore }) {
-  const titoli: Record<TabSchedaFornitore, string> = { riepilogo: "Riepilogo", anagrafica: "Anagrafica", articoli: `Articoli forniti (${numero(f.n_articoli)})`, clienti: "Cliente collegato", allegati: "Allegati" };
+  const titoli: Record<TabSchedaFornitore, string> = { riepilogo: "Riepilogo", anagrafica: "Anagrafica", articoli: `Articoli forniti (${numero(f.n_articoli)})`, clienti: "Cliente collegato", attivita: "Attività", allegati: "Allegati" };
   const tabVisibili = tabVisibiliFornitore(f.puo_vedere_articoli);
   const tabAttiva = tabVisibili.includes(tab) ? tab : "riepilogo";
   const sottotitolo = sottotitoloFornitore(f);
@@ -55,6 +57,7 @@ export function SchedaFornitore({ fornitore: f, tab, onTabChange, statoArticoli 
       </TabsContent>
       {f.puo_vedere_articoli && <TabsContent value="articoli"><ArticoliFornitore id={f.id} {...statoArticoli} /></TabsContent>}
       <TabsContent value="clienti" className="max-w-7xl"><ClientiFornitore clienti={f.clienti} /></TabsContent>
+      <TabsContent value="attivita" className="max-w-5xl"><AttivitaFornitoreTab fornitoreId={f.id} puoScrivere={f.puo_modificare_note} /></TabsContent>
       <TabsContent value="allegati" className="max-w-7xl"><Card className="p-3 sm:p-4"><AllegatiSection entitaTipo="fornitore" entitaId={f.id} clienteId={null} canEdit={f.puo_modificare_note} eliminaTutti={f.puo_modificare_note} /></Card></TabsContent>
     </Tabs>
   </div>;
@@ -65,10 +68,11 @@ function RiepilogoFornitore({ fornitore: f, vaiAlTab }: { fornitore: DettaglioFo
   return <>
     <section className="space-y-2">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Colpo d'occhio</h3>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <CardOcchio label="Macrocategoria"><BadgeMacrocategoria cod={f.macrocategoria_cod} desc={f.macrocategoria_desc} /></CardOcchio>
         <CardOcchio label="Condizione di pagamento fornitore"><span className="font-semibold">{f.condizione_pagamento_desc || f.condizione_pagamento_cod || "—"}</span>{f.condizione_pagamento_desc && f.condizione_pagamento_cod && <span className="ml-1 text-xs text-muted-foreground">({f.condizione_pagamento_cod})</span>}</CardOcchio>
         {f.puo_vedere_articoli && <CardOcchio label="Articoli forniti"><button type="button" onClick={() => vaiAlTab("articoli")} className="text-left font-semibold tabular-nums text-primary hover:underline">{numero(f.n_articoli)}</button><span className="block text-xs text-muted-foreground tabular-nums">di cui {numero(f.n_preferenziale)} preferenziale</span></CardOcchio>}
+        <UltimaAttivitaCard fornitoreId={f.id} vai={() => vaiAlTab("attivita")} />
         <CardOcchio label="È anche cliente">{f.clienti.length ? <span className="flex flex-col gap-0.5">{f.clienti.map(c => <Link key={c.cliente_id} to="/clienti/$clienteId" params={{ clienteId: c.cliente_id }} className="font-semibold text-success hover:underline">Sì{c.codice_gestionale ? ` — cod. ${c.codice_gestionale}` : ""}</Link>)}</span> : <span className="font-semibold text-muted-foreground">No</span>}</CardOcchio>
       </div>
     </section>
@@ -97,4 +101,9 @@ function NoteFornitore({ fornitore: f }: { fornitore: DettaglioFornitore }) {
 export function ClientiFornitore({ clienti }: { clienti: DettaglioFornitore["clienti"] }) {
   if (!clienti.length) return <p className="py-6 text-muted-foreground">Questo fornitore non risulta cliente</p>;
   return <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{clienti.map(c => <Sezione key={c.cliente_id} titolo={c.ragione_sociale || "Cliente"} icon={Users}><dl><Dato label="Codice cliente" value={c.codice_gestionale} /><Dato label="Negozio" value={c.store_nome} /></dl><div className="mt-3 flex flex-wrap gap-2">{c.bloccato && <Badge variant="outline" className="border-destructive/30 bg-destructive/10 text-destructive">Bloccato</Badge>}{c.in_gestione_legale && <Badge variant="outline" className="border-warning/30 bg-warning/10 text-warning">In gestione legale</Badge>}</div><p className="mt-3 break-words text-sm text-muted-foreground">{origineLegameFornitore(c.origine_legame, c.coincide_su)}</p><Button variant="outline" className="mt-3 min-h-10" asChild><Link to="/clienti/$clienteId" params={{ clienteId: c.cliente_id }}>Apri scheda cliente</Link></Button></Sezione>)}</div>;
+}
+function UltimaAttivitaCard({ fornitoreId, vai }: { fornitoreId: string; vai: () => void }) {
+  const q = useUltimaAttivita(fornitoreId);
+  const a = q.data?.pages[0]?.rows[0];
+  return <CardOcchio label="Ultima attività">{q.isPending ? <span className="text-muted-foreground">…</span> : !a ? <button type="button" onClick={vai} className="text-left text-muted-foreground hover:underline">Nessuna</button> : <button type="button" onClick={vai} className="block min-w-0 text-left hover:underline"><span className="font-semibold text-primary">{tipoAttivita(a.tipo).label}</span><span className="block text-xs tabular-nums text-muted-foreground">{dataOraIt(a.data_attivita)}</span>{a.oggetto && <span className="block line-clamp-2 break-words text-xs">{a.oggetto}</span>}</button>}</CardOcchio>;
 }
