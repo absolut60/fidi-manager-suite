@@ -149,6 +149,13 @@ export const processArticoliListiniGammaImport = inngest.createFunction(
       if (!fs.some((f) => f.stato === "errore")) await pulisciFileTemporaneiImport(importazioneId).catch(() => undefined);
     });
 
+    // FM62: ultimo step, marca prevalente dei fornitori (public.ricalcola_marche_fornitori; mai le marche manuali).
+    await step.run("ricalcola-marche-fornitori", async () => {
+      const { data, error } = await supabaseAdmin.rpc("ricalcola_marche_fornitori");
+      if (error) logger.warn(`ricalcolo marche fornitori: ${error.message}`);
+      return data ?? null;
+    });
+
     return stato;
   },
 );
