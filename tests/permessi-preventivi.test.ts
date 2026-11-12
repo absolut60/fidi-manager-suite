@@ -27,3 +27,17 @@ describe("FM63 consultazione preventivi per store manager", () => {
     expect(puoConsultarePreventivi(["agente"])).toBe(false);
   });
 });
+
+describe("FM63 2 bis consultazione per showroom", () => {
+  const sh = ["showroom"];
+  it("lo showroom consulta preventivi, articoli e fornitori", () => {
+    expect(puoConsultarePreventivi(sh)).toBe(true);
+    expect(puoVedereFornitori(sh)).toBe(true);
+  });
+  it("lo showroom non ha accesso pieno né scrittura", () => {
+    expect(haAccessoPreventivi(sh)).toBe(false);
+    expect(puoScriverePreventivi(sh)).toBe(false);
+    expect(puoGestireAnagrafichePreventivi(sh)).toBe(false);
+    expect(puoGestireFornitori(sh)).toBe(false);
+  });
+});
