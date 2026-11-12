@@ -768,18 +768,36 @@ export type Database = {
       }
       articoli_gamma_listini: {
         Row: {
+          acq_prezzo: number | null
+          acq_sc1: number | null
+          acq_sc2: number | null
+          acq_sc3: number | null
+          acq_trasporto_euro: number | null
+          acq_trasporto_perc: number | null
           articolo_codice: string
           costo_acquisto: number | null
           listino: number
           prezzo_vendita: number | null
         }
         Insert: {
+          acq_prezzo?: number | null
+          acq_sc1?: number | null
+          acq_sc2?: number | null
+          acq_sc3?: number | null
+          acq_trasporto_euro?: number | null
+          acq_trasporto_perc?: number | null
           articolo_codice: string
           costo_acquisto?: number | null
           listino: number
           prezzo_vendita?: number | null
         }
         Update: {
+          acq_prezzo?: number | null
+          acq_sc1?: number | null
+          acq_sc2?: number | null
+          acq_sc3?: number | null
+          acq_trasporto_euro?: number | null
+          acq_trasporto_perc?: number | null
           articolo_codice?: string
           costo_acquisto?: number | null
           listino?: number
