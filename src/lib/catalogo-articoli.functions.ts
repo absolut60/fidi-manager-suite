@@ -53,6 +53,15 @@ export const dettaglioArticoloGamma = createServerFn({ method: "POST" }).middlew
       context.supabase.from("articoli_gamma_fornitori").select("fornitore_codice,codice_articolo_fornitore,preferenziale,fornitore:fornitori(id,ragione_sociale)").eq("articolo_codice", data.codice),
     ]);
     for (const result of [prezzi, listini, tecnici, permesso, fornitori]) if (result.error) throw new Error(result.error.message);
+    // FM62: "fornitore obsoleto" deciso solo da public.fornitore_obsoleto (campo calcolato PostgREST).
+    const idsFornitori = [...new Set([articolo.fornitore?.id, ...(fornitori.data ?? []).map((r) => r.fornitore?.id)].filter((v): v is string => !!v))];
+    const obsoleti = new Set<string>();
+    if (idsFornitori.length) {
+      const o = await context.supabase.from("fornitori").select("id,fornitore_obsoleto" as "id").in("id", idsFornitori);
+      if (o.error) throw new Error(o.error.message);
+      for (const r of (o.data ?? []) as unknown as { id: string; fornitore_obsoleto: boolean | null }[]) if (r.fornitore_obsoleto) obsoleti.add(r.id);
+    }
+    const conObsoleto = <T extends { id: string; ragione_sociale: string | null } | null>(x: T) => x ? { ...x, fornitore_obsoleto: obsoleti.has(x.id) } : null;
     const tecnico = tecnici.data?.find((a) => a.cod_gamma?.trim() === data.codice) ?? null;
     const utilizzo = tecnico ? await (async () => {
       const [kit, preventivi] = await Promise.all([
@@ -72,8 +81,8 @@ export const dettaglioArticoloGamma = createServerFn({ method: "POST" }).middlew
       if (kit.error) throw new Error(kit.error.message);
       return { kit: (kit.data ?? []).sort((a, b) => (a.kit?.nome ?? "").localeCompare(b.kit?.nome ?? "", "it-IT")), preventivi };
     })() : null;
-    return { ...articolo, prezzi: prezzi.data ?? [], listini: listini.data ?? [],
-      tecnico, fornitori: ordinaFornitoriArticolo(fornitori.data ?? []), utilizzo,
+    return { ...articolo, fornitore: conObsoleto(articolo.fornitore), prezzi: prezzi.data ?? [], listini: listini.data ?? [],
+      tecnico, fornitori: ordinaFornitoriArticolo((fornitori.data ?? []).map((r) => ({ ...r, fornitore: conObsoleto(r.fornitore) }))), utilizzo,
       puoModificareTecnici: permesso.data === true };
   });
 

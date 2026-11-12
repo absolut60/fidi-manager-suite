@@ -14,13 +14,25 @@ export const impostaStatoConvenzioneInput = z.object({
   ids: z.array(z.string().uuid()).min(1, "Nessun fornitore selezionato").max(MAX_CLASSIFICA_FORNITORI, `Massimo ${MAX_CLASSIFICA_FORNITORI} fornitori per volta`),
   stato: z.enum(STATI_CONVENZIONE),
 });
+/** Valore speciale dei filtri marca/sottocategoria (gemello SQL in _fornitori_filtrati). */
+export const VALORE_NESSUNA = "__nessuna__";
+const idsSelezione = z.array(z.string().uuid()).min(1, "Nessun fornitore selezionato").max(MAX_CLASSIFICA_FORNITORI, `Massimo ${MAX_CLASSIFICA_FORNITORI} fornitori per volta`);
+/** Solo amministratore (imposta_marca_fornitori); null = nessuna marca. */
+export const impostaMarcaInput = z.object({ ids: idsSelezione, marca: z.string().trim().min(1).max(60).nullable() });
+/** Solo amministratore e solo fornitori di servizi (imposta_sottocategoria_fornitori); null = togli. */
+export const impostaSottocategoriaInput = z.object({ ids: idsSelezione, codice: z.string().trim().min(1).max(60).nullable() });
+export const opzioniFornitoriSchema = z.object({
+  marche: z.array(z.object({ codice: z.string(), descrizione: z.string().nullable() })),
+  sottocategorie: z.array(z.object({ codice: z.string(), descrizione: z.string() })),
+});
+export type OpzioniFornitori = z.infer<typeof opzioniFornitoriSchema>;
 export const classificaFornitoriInput = z.object({
   ids: z.array(z.string().uuid()).min(1, "Nessun fornitore selezionato").max(MAX_CLASSIFICA_FORNITORI, `Massimo ${MAX_CLASSIFICA_FORNITORI} fornitori per volta`),
   tipo: z.enum(["merci", "servizi"]),
 });
 
 /** FM62: colonne ordinabili dell'elenco fornitori (gemello SQL: whitelist in cerca_fornitori). */
-export const ORDINAMENTI_FORNITORI = ["codice", "ragione_sociale", "citta", "partita_iva", "tipo", "email"] as const;
+export const ORDINAMENTI_FORNITORI = ["codice", "ragione_sociale", "citta", "partita_iva", "tipo", "marca", "sottocategoria", "email"] as const;
 export type OrdinamentoFornitori = (typeof ORDINAMENTI_FORNITORI)[number];
 export function ordinamentoFornitoriValido(ordina: string, direzione: string): { ordina: OrdinamentoFornitori; direzione: "asc" | "desc" } {
   return { ordina: (ORDINAMENTI_FORNITORI as readonly string[]).includes(ordina) ? ordina as OrdinamentoFornitori : "ragione_sociale", direzione: direzione === "desc" ? "desc" : "asc" };
@@ -41,6 +53,12 @@ export const elencoFornitoriInput = z.object({
   tipi: z.array(z.enum(TIPI_FORNITORE)).max(3).nullable().optional(),
   /** FM62 F7: null = tutti. */
   statiConvenzione: z.array(z.enum(STATI_CONVENZIONE)).max(10).nullable().optional(),
+  /** FM62: obsoleti (public.fornitore_obsoleto) esclusi salvo richiesta. */
+  includiObsoleti: z.boolean().default(false),
+  /** Codici marca; "__nessuna__" = senza marca. */
+  marche: z.array(z.string().trim().min(1).max(60)).max(200).nullable().optional(),
+  /** Codici sottocategoria servizi; "__nessuna__" = senza sottocategoria. */
+  sottocategorie: z.array(z.string().trim().min(1).max(60)).max(50).nullable().optional(),
   /** FM62: ordinamento lato server (whitelist gemella del CASE in cerca_fornitori). */
   ordina: z.enum(ORDINAMENTI_FORNITORI).default("ragione_sociale"),
   direzione: z.enum(["asc", "desc"]).default("asc"),
@@ -80,6 +98,9 @@ export const dettaglioFornitoreSchema = z.object({
   stato_convenzione: z.enum(STATI_CONVENZIONE).catch("non_convenzionato"), stato_convenzione_fonte: z.enum(["app", "gamma"]).nullable().catch(null),
   stato_convenzione_il: testo.optional(), stato_convenzione_da_nome: testo.optional(), tipo_conflitto_convenzione: z.boolean().nullable().optional(),
   puo_cambiare_convenzione: z.boolean().catch(false),
+  obsoleto: z.boolean().catch(false),
+  marca_codice: testo.catch(null), marca_descrizione: testo.catch(null), marca_fonte: z.enum(["automatica", "manuale"]).nullable().catch(null), marca_il: testo.optional(),
+  sottocategoria_codice: testo.catch(null), sottocategoria_descrizione: testo.catch(null), sottocategoria_fonte: z.enum(["gamma", "app"]).nullable().catch(null),
   ultima_modifica_gamma: testo, ultima_sincronizzazione: testo,
   clienti: z.array(z.object({
     cliente_id: z.string().uuid(), codice_gestionale: testo, ragione_sociale: testo,
