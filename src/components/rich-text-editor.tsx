@@ -344,7 +344,7 @@ export function RichTextEditor({
             <SelectContent>{CARATTERI.map((f) => <SelectItem key={f} value={f}><span style={{ fontFamily: f }}>{f}</span></SelectItem>)}</SelectContent>
           </Select>
           <Select onValueChange={(v) => { focusEditor(); cmd("fontSize", v, true); emitSoon(); }}>
-            <SelectTrigger className={`${sel} w-[96px]`} aria-label="Dimensione"><SelectValue placeholder="Dimensione" /></SelectTrigger>
+            <SelectTrigger className={`${sel} w-[108px]`} aria-label="Dimensione"><SelectValue placeholder="Dimensione" /></SelectTrigger>
             <SelectContent>{DIMENSIONI.map((d) => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}</SelectContent>
           </Select>
         </> : (
