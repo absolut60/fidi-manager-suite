@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Building2, Calendar, Phone, FileText, Save, Users } from "lucide-react";
+import { Building2, Calendar, Phone, FileText, Save, Send, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,8 @@ import { BadgeFornitore, BadgeMacrocategoria } from "./controlli-fornitori";
 import { ArticoliFornitore } from "./ArticoliFornitore";
 import { AttivitaFornitoreTab, useUltimaAttivita, dataOraIt } from "./AttivitaFornitore";
 import { tipoAttivita } from "@/lib/attivita-fornitore";
+import { InviaEmailFornitoreDialog } from "./InviaEmailFornitoreDialog";
+import { chiaveAttivita } from "./AttivitaFornitore";
 
 function dataGamma(value: string | null) {
   if (!value) return "—";
@@ -33,7 +35,11 @@ export function SchedaFornitore({ fornitore: f, tab, onTabChange, statoArticoli 
   const tabVisibili = tabVisibiliFornitore(f.puo_vedere_articoli);
   const tabAttiva = tabVisibili.includes(tab) ? tab : "riepilogo";
   const sottotitolo = sottotitoloFornitore(f);
+  const [emailAperta, setEmailAperta] = useState(false);
+  const qc = useQueryClient();
   return <div className="min-w-0 space-y-6">
+    {f.puo_modificare_note && <InviaEmailFornitoreDialog fornitore={f} open={emailAperta} onOpenChange={setEmailAperta}
+      onInviata={() => { void qc.invalidateQueries({ queryKey: chiaveAttivita(f.id) }); onTabChange("attivita"); }} />}
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0 flex-1">
         <h1 className="break-words text-2xl font-bold tracking-tight sm:text-3xl">{f.ragione_sociale || "Fornitore"}</h1>
@@ -41,8 +47,9 @@ export function SchedaFornitore({ fornitore: f, tab, onTabChange, statoArticoli 
         {f.alias && <p className="mt-0.5 break-words text-xs text-muted-foreground">Alias: {f.alias}</p>}
         <div className="mt-2 flex flex-wrap gap-1.5"><BadgeMacrocategoria cod={f.macrocategoria_cod} desc={f.macrocategoria_desc} /><BadgeFornitore fornitore={f} />{f.clienti.length > 0 && <Badge variant="outline" className="border-success/30 bg-success/10 text-success">Anche cliente</Badge>}</div>
       </div>
-      {/* Spazio azioni (G3: "Invia email") */}
-      <div className="flex flex-wrap items-center gap-2" data-azioni-fornitore />
+      <div className="flex flex-wrap items-center gap-2" data-azioni-fornitore>
+        {f.puo_modificare_note && <Button className="min-h-10 gap-1.5" onClick={() => setEmailAperta(true)}><Send className="size-4" />Invia email</Button>}
+      </div>
     </div>
     <Tabs value={tabAttiva} onValueChange={value => { const next = tabVisibili.find(t => t === value); if (next) onTabChange(next); }}>
       <TabsList aria-label="Sezioni della scheda fornitore" className="md:flex-wrap">{tabVisibili.map(t => <TabsTrigger key={t} value={t}>{titoli[t]}</TabsTrigger>)}</TabsList>
