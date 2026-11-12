@@ -41,7 +41,7 @@ export const fornitoriArticoliGamma = createServerFn({ method: "POST" }).middlew
 export const dettaglioArticoloGamma = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
   .inputValidator((input: { codice: string }) => z.object({ codice: z.string() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { data: articolo, error } = await context.supabase.from("articoli_gamma").select("*,marche(descrizione),fornitore:fornitori!articoli_gamma_fornitore_pref_id_fkey(id,ragione_sociale)").eq("codice", data.codice).maybeSingle();
+    const { data: articolo, error } = await context.supabase.from("articoli_gamma").select("*,marche(descrizione),fornitore:fornitori!articoli_gamma_fornitore_pref_id_fkey(id,ragione_sociale,stato_convenzione)").eq("codice", data.codice).maybeSingle();
     if (error) throw new Error(error.message);
     if (!articolo) return null;
     const escaped = data.codice.replace(/[\\%_]/g, "\\$&");
