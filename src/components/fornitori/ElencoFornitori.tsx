@@ -4,6 +4,7 @@
 import { Link } from "@tanstack/react-router";
 import { ChevronDown, ChevronUp, ChevronsUpDown, Mail } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SchedaLista, ElencoSchede, type SelezioneTutti } from "@/components/lista-responsive/scheda-lista";
 import type { FornitoreElenco } from "@/lib/fornitori.functions";
 import type { OrdinamentoFornitori } from "@/lib/fornitori";
@@ -31,6 +32,13 @@ export function ElencoFornitori({ rows, apri, selezione, evidenzia, ordinamento 
   const stato = s?.tutti.tutti ? true : s?.tutti.alcuni ? "indeterminate" : false;
   const o = ordinamento;
   return <>
+    {o && <div className="mb-2 flex items-center gap-2 md:hidden">
+      <span className="shrink-0 text-xs text-muted-foreground">Ordina per</span>
+      <Select value={`${o.ordina}:${o.direzione}`} onValueChange={v => { const [c, d] = v.split(":") as [OrdinamentoFornitori, string]; if (c !== o.ordina) o.cambia(c); if (d !== (c !== o.ordina ? "asc" : o.direzione)) o.cambia(c); }}>
+        <SelectTrigger aria-label="Ordina fornitori" className="min-h-10 min-w-0 flex-1"><SelectValue /></SelectTrigger>
+        <SelectContent>{COLONNE.flatMap(c => [<SelectItem key={`${c.col}:asc`} value={`${c.col}:asc`}>{c.label} ↑</SelectItem>, <SelectItem key={`${c.col}:desc`} value={`${c.col}:desc`}>{c.label} ↓</SelectItem>])}</SelectContent>
+      </Select>
+    </div>}
     <ElencoSchede selezioneTutti={s?.tutti}>{rows.map(f => <SchedaLista key={f.id} onClick={() => apri(f.id)}
       selezione={s ? { checked: s.selezionati.has(f.id), onChange: v => s.cambia(f.id, v) } : undefined}
       titolo={<><span className="block font-mono text-xs text-muted-foreground">{f.codice_gestionale ?? "Senza codice Gamma"}</span><span className="line-clamp-2">{f.ragione_sociale}{f.stato_convenzione === "convenzionato" && <BandierinaConvenzionato className="ml-0.5" />}</span>{f.alias && <span className="block text-xs text-muted-foreground">{f.alias}</span>}</>}
