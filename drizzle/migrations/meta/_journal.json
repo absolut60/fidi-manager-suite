@@ -1324,6 +1324,13 @@
       "when": 1794518671293,
       "tag": "0188_fm63_consultazione_store_manager",
       "breakpoints": true
+    },
+    {
+      "idx": 189,
+      "version": "7",
+      "when": 1794519320530,
+      "tag": "0189_fm63_consultazione_showroom",
+      "breakpoints": true
     }
   ]
 }
