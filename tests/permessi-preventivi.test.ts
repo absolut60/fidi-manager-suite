@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { haAccessoPreventivi, puoConsultarePreventivi, puoGestireAnagrafichePreventivi, puoScriverePreventivi, puoVedereFornitori } from "@/lib/permessi-preventivi";
 import { puoGestireFornitori, puoVedereArticoliFornitori } from "@/lib/permessi-fornitori";
 
