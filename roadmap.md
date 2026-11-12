@@ -133,3 +133,8 @@
 ## FM62 G1 — scheda fornitore come scheda cliente + Allegati
 - [x] Migrazione 0175 allegati fornitore (check, policy tabella e storage)
 - [x] Testata, tab Riepilogo/Anagrafica/Articoli/Cliente collegato/Allegati, screenshot 375-1920
+
+## FM62 G2 — Attività fornitore
+- [x] Indietro: tab/filtri/pagina in replace (scheda fornitore e articolo)
+- [x] Tabella attivita_fornitore + tab Attività + card Ultima attività
+- [ ] Prova autenticata live (sessione non disponibile)
