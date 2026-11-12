@@ -3941,6 +3941,9 @@ export type Database = {
           stato: string | null
           telefono: string | null
           telefono_2: string | null
+          tipo_app: string | null
+          tipo_app_da: string | null
+          tipo_app_il: string | null
           ultima_modifica_gamma: string | null
           ultima_sincronizzazione: string | null
           updated_at: string | null
@@ -3979,6 +3982,9 @@ export type Database = {
           stato?: string | null
           telefono?: string | null
           telefono_2?: string | null
+          tipo_app?: string | null
+          tipo_app_da?: string | null
+          tipo_app_il?: string | null
           ultima_modifica_gamma?: string | null
           ultima_sincronizzazione?: string | null
           updated_at?: string | null
@@ -4017,6 +4023,9 @@ export type Database = {
           stato?: string | null
           telefono?: string | null
           telefono_2?: string | null
+          tipo_app?: string | null
+          tipo_app_da?: string | null
+          tipo_app_il?: string | null
           ultima_modifica_gamma?: string | null
           ultima_sincronizzazione?: string | null
           updated_at?: string | null
@@ -8113,6 +8122,7 @@ export type Database = {
           _includi_manuali: boolean
           _macrocategorie: string[]
           _testo: string
+          _tipi: string[]
         }
         Returns: {
           alias: string
@@ -8132,6 +8142,8 @@ export type Database = {
           persona_fisica: boolean
           provincia: string
           ragione_sociale: string
+          tipo_effettivo: string
+          tipo_fonte: string
           valida: boolean
         }[]
       }
@@ -8422,6 +8434,7 @@ export type Database = {
           _macrocategorie?: string[]
           _offset?: number
           _testo?: string
+          _tipi?: string[]
         }
         Returns: {
           alias: string
@@ -8441,6 +8454,8 @@ export type Database = {
           persona_fisica: boolean
           provincia: string
           ragione_sociale: string
+          tipo_effettivo: string
+          tipo_fonte: string
           totale: number
           valida: boolean
         }[]
@@ -8460,6 +8475,7 @@ export type Database = {
           _includi_manuali?: boolean
           _macrocategorie?: string[]
           _testo?: string
+          _tipi?: string[]
         }
         Returns: string[]
       }
@@ -8473,6 +8489,10 @@ export type Database = {
       }
       chiudi_regole_prezzo_gamma: {
         Args: { _importazione: string; _tabella: string }
+        Returns: Json
+      }
+      classifica_fornitori: {
+        Args: { _ids: string[]; _tipo: string }
         Returns: Json
       }
       classifica_iscritti_whatsapp_batch: {
@@ -10425,6 +10445,13 @@ export type Database = {
           _scaduto: number
         }
         Returns: string
+      }
+      tipo_fornitore_effettivo: {
+        Args: { f: Database["public"]["Tables"]["fornitori"]["Row"] }
+        Returns: {
+          fonte: string
+          tipo: string
+        }[]
       }
       trasferisci_allegati_lead_a_cliente: {
         Args: { _cliente_id: string; _lead_id: string }
