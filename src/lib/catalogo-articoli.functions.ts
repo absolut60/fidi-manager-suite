@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { parametriArticoli, type FiltriArticoli } from "./catalogo-articoli";
 import { z } from "zod";
+import { contaPreventiviArticolo, ordinaFornitoriArticolo } from "./scheda-articolo";
 
 export const elencoArticoliGamma = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -44,14 +45,42 @@ export const dettaglioArticoloGamma = createServerFn({ method: "POST" }).middlew
     if (error) throw new Error(error.message);
     if (!articolo) return null;
     const escaped = data.codice.replace(/[\\%_]/g, "\\$&");
-    const [prezzi, listini, tecnici, permesso] = await Promise.all([
+    const [prezzi, listini, tecnici, permesso, fornitori] = await Promise.all([
       context.supabase.from("articoli_gamma_listini").select("*").eq("articolo_codice", data.codice),
       context.supabase.from("listini_gamma").select("codice,descrizione"),
       context.supabase.from("articoli").select("id,cod_gamma,categoria,tipologia,componente,qta_cliente,qta_fornitore,peso_unit,note,note_acquisto").like("cod_gamma", `%${escaped}%`),
       context.supabase.rpc("auth_puo_gestire_anagrafiche_prev"),
+      context.supabase.from("articoli_gamma_fornitori").select("fornitore_codice,codice_articolo_fornitore,preferenziale,fornitore:fornitori(ragione_sociale)").eq("articolo_codice", data.codice),
     ]);
-    for (const result of [prezzi, listini, tecnici, permesso]) if (result.error) throw new Error(result.error.message);
+    for (const result of [prezzi, listini, tecnici, permesso, fornitori]) if (result.error) throw new Error(result.error.message);
+    const tecnico = tecnici.data?.find((a) => a.cod_gamma?.trim() === data.codice) ?? null;
+    const utilizzo = tecnico ? await (async () => {
+      const [kit, preventivi] = await Promise.all([
+        context.supabase.from("kit_componenti").select("id,ruolo,kit:kit(id,nome)").eq("articolo_id", tecnico.id),
+        (async () => {
+          const rows: { blocchi_preventivo: { preventivo_id: string } | null }[] = [];
+          // PostgREST caps pages at 1,000 rows: count distinct documents over all pages.
+          for (let offset = 0; ; offset += 1000) {
+            const page = await context.supabase.from("righe_preventivo").select("id,blocchi_preventivo!inner(preventivo_id)").eq("articolo_id", tecnico.id).order("id").range(offset, offset + 999);
+            if (page.error) throw new Error(page.error.message);
+            rows.push(...(page.data ?? []));
+            if ((page.data?.length ?? 0) < 1000) break;
+          }
+          return contaPreventiviArticolo(rows);
+        })(),
+      ]);
+      if (kit.error) throw new Error(kit.error.message);
+      return { kit: (kit.data ?? []).sort((a, b) => (a.kit?.nome ?? "").localeCompare(b.kit?.nome ?? "", "it-IT")), preventivi };
+    })() : null;
     return { ...articolo, prezzi: prezzi.data ?? [], listini: listini.data ?? [],
-      tecnico: tecnici.data?.find((a) => a.cod_gamma?.trim() === data.codice) ?? null,
+      tecnico, fornitori: ordinaFornitoriArticolo(fornitori.data ?? []), utilizzo,
       puoModificareTecnici: permesso.data === true };
+  });
+
+export const disponibilitaSchedaArticolo = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
+  .inputValidator((input: { codice: string }) => z.object({ codice: z.string() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("disponibilita_articolo", { _codice: data.codice });
+    if (result.error) throw new Error(result.error.message);
+    return result.data ?? [];
   });

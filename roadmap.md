@@ -1,3 +1,8 @@
+# FM61 — Articoli fetta C
+- [ ] Disponibilità tramite RPC esistente in query indipendente; sedi, logistica, totale e depositi espandibili.
+- [ ] Fornitori completi, kit con route esistente e conteggio distinto preventivi con RLS.
+- [ ] Verifiche dati reali, test e screenshot 375/1280; nessuna scrittura o modifica SQL.
+
 # FM61 — Articoli fetta B
 - [x] Scheda Gamma completa, prezzi in sola lettura e dati tecnici con RPC permesso esistente; updateArticolo riceve soltanto gli otto campi tecnici.
 - [x] Vecchia scheda: redirect replace dei collegati, rimozione tab listini e parametro tab; adeguati quattro link dalle viste listini senza alterare le viste.
