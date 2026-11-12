@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 import {
   elencoAttivitaFornitoreInput, creaAttivitaFornitoreInput, aggiornaAttivitaFornitoreInput, eliminaAttivitaFornitoreInput,
   type FiltriAttivitaFornitore, type AttivitaFornitore,
@@ -11,7 +13,7 @@ type Aggiorna = import("zod").input<typeof aggiornaAttivitaFornitoreInput>;
 const COLONNE = "id,fornitore_id,tipo,origine,data_attivita,oggetto,corpo,corpo_html,esito,destinatari,cc,ccn,stato,errore,creato_da,contatto_id";
 
 /** "Con chi" deve essere un referente di QUESTO fornitore (letto con i permessi dell'utente). */
-async function verificaContatto(sb: { from: (t: "contatti") => any }, contattoId: string | null | undefined, fornitoreId: string) {
+async function verificaContatto(sb: SupabaseClient<Database>, contattoId: string | null | undefined, fornitoreId: string) {
   if (!contattoId) return null;
   const r = await sb.from("contatti").select("id").eq("id", contattoId).eq("fornitore_id", fornitoreId).maybeSingle();
   if (r.error) throw new Error(r.error.message);
