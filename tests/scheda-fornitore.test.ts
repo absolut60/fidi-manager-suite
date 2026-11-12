@@ -15,8 +15,9 @@ describe("scheda fornitore", () => {
   test("tab previste e fallback", () => {
     expect(tabSchedaFornitore("articoli")).toBe("articoli");
     expect(tabSchedaFornitore("clienti")).toBe("clienti");
-    expect(tabSchedaFornitore("panoramica")).toBe("panoramica");
-    expect(tabSchedaFornitore("altro")).toBe("panoramica");
+    expect(tabSchedaFornitore("panoramica")).toBe("riepilogo");
+    expect(tabSchedaFornitore("allegati")).toBe("allegati");
+    expect(tabSchedaFornitore("altro")).toBe("riepilogo");
   });
   test("origine Gamma distinta dalla coincidenza fiscale", () => {
     expect(origineLegameFornitore("gamma", "partita_iva")).toBe("Collegato in Gamma");
@@ -42,5 +43,17 @@ describe("macrocategoria fornitore (FM62 F1)", () => {
   test("filtro in URL accetta solo 01, 03, nd", () => {
     expect(macrocategorieValide(["01", "nd", "99", 3])).toEqual(["01", "nd"]);
     expect(macrocategorieValide("01")).toEqual([]);
+  });
+});
+
+import { tabVisibiliFornitore, sottotitoloFornitore } from "@/lib/scheda-fornitore";
+describe("scheda fornitore G1", () => {
+  it("nasconde Articoli forniti a chi non vede i costi", () => {
+    expect(tabVisibiliFornitore(false)).toEqual(["riepilogo", "anagrafica", "clienti", "allegati"]);
+    expect(tabVisibiliFornitore(true)).toContain("articoli");
+  });
+  it("compone il sottotitolo come la scheda cliente", () => {
+    expect(sottotitoloFornitore({ codice_gestionale: 1273, partita_iva: "01234567890", citta: "Milano", provincia: "MI" })).toBe("Cod. 1273 — P.IVA 01234567890 — Milano (MI)");
+    expect(sottotitoloFornitore({ codice_gestionale: null, partita_iva: null, citta: null, provincia: null })).toBe("");
   });
 });

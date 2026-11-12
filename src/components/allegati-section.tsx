@@ -28,7 +28,9 @@ export type AllegatoEntitaTipo =
   | "richiesta_fido"
   | "piano_rientro"
   | "campagna_email"
-  | "lead";
+  | "lead"
+  | "fornitore"
+  | "attivita_fornitore";
 
 export const ALLEGATI_BUCKET = "allegati";
 export const ALLEGATI_MAX_BYTES = 20 * 1024 * 1024; // 20 MB
