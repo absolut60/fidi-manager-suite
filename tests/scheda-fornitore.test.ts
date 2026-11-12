@@ -49,7 +49,7 @@ describe("macrocategoria fornitore (FM62 F1)", () => {
 import { tabVisibiliFornitore, sottotitoloFornitore } from "../src/lib/scheda-fornitore";
 describe("scheda fornitore G1", () => {
   test("nasconde Articoli forniti a chi non vede i costi", () => {
-    expect(tabVisibiliFornitore(false)).toEqual(["riepilogo", "anagrafica", "clienti", "allegati"]);
+    expect(tabVisibiliFornitore(false)).toEqual(["riepilogo", "anagrafica", "clienti", "attivita", "allegati"]);
     expect(tabVisibiliFornitore(true)).toContain("articoli");
   });
   test("compone il sottotitolo come la scheda cliente", () => {
