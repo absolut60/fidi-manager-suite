@@ -35,7 +35,7 @@ function ArticoliListPage() {
   const search = useDebounce(f.search);
   const testoFornitore = useDebounce(cercaFornitore);
   const cambia = (patch: Partial<FiltriArticoli>) => setParziale({ ...patch, page: 1 });
-  return <div className="flex h-full min-h-0 flex-col">
+  return <div className="flex h-screen min-h-0 flex-col">
     <header className="shrink-0 border-b bg-card px-3 py-3 lg:px-6">
       <h1 className="text-xl font-bold text-navy">Articoli</h1>
       <div className="mt-3 flex gap-2">
