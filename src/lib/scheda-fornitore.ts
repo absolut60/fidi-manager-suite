@@ -42,7 +42,11 @@ export const ricercaFornitori = zodValidator(z.object({
   convenzione: fallback(z.array(z.string()), []).default([]),
   manuali: fallback(z.boolean(), false).default(false),
   macro: fallback(z.array(z.string()), []).default([]),
-  tipo: fallback(z.array(z.string()), []).default([]),
+  /** FM62: alla prima apertura solo Merci; resta modificabile e nell'URL. */
+  tipo: fallback(z.array(z.string()), ["merci"]).default(["merci"]),
+  marca: fallback(z.array(z.string()), []).default([]),
+  sottocat: fallback(z.array(z.string()), []).default([]),
+  obsoleti: fallback(z.boolean(), false).default(false),
   pagina: fallback(z.number(), 1).default(1),
   ordina: fallback(z.string(), "ragione_sociale").default("ragione_sociale"),
   dir: fallback(z.string(), "asc").default("asc"),
