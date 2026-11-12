@@ -1,7 +1,9 @@
 # FM61 — Articoli fetta B
-- [ ] Scheda Gamma completa, prezzi in sola lettura e dati tecnici con il permesso esistente.
-- [ ] Vecchia scheda: redirect dei collegati, rimozione tab listini dei soli preventivatore.
-- [ ] Test e screenshot 375/1280, valori reali AKINAF01007 e navigazioni; nessuna modifica di dati.
+- [x] Scheda Gamma completa, prezzi in sola lettura e dati tecnici con RPC permesso esistente; updateArticolo riceve soltanto gli otto campi tecnici.
+- [x] Vecchia scheda: redirect replace dei collegati, rimozione tab listini e parametro tab; adeguati quattro link dalle viste listini senza alterare le viste.
+- [x] 398 test superati e build automatico OK. Screenshot componente reale a 320/375/390/768/1280/1920: nessun overflow pagina; form e sola lettura a 375/1280, nessun errore browser. Pagina temporanea rimossa; nessuna scrittura dati.
+- [x] Prezzi AKINAF01007 letti dal DB: fornitore 1,03593, trasporto 3%, netto 1,067008 su quattro listini; vendita 2,017/2,017/2,049/2,006. Screenshot con questi valori e anagrafica di prova, non sessione autenticata.
+- [ ] Prova autenticata redirect 00b28602-5038-42ff-bee6-66413b555ec9 → KNA58186, scheda solo preventivatore 005b25cb-486c-4b2b-bcf7-7802e8da2bfa e salvataggio: --self non trova account Andrea; occorre sessione personale nell’anteprima. Nessun bypass o modifica dati.
 
 # FM61 — Articoli fetta A2
 - [x] Migrazione 0172: sei numeric nullable senza default/backfill, sole due RPC richieste; corpi applicati identici al file ed EXECUTE solo service_role, senza modificare flusso import.
