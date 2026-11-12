@@ -1,18 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { ORDINE_LISTINI_ARTICOLO, patchTecniciArticolo, margineArticolo } from "../src/lib/scheda-articolo";
-import { totaleDisponibilitaArticolo, ordinaFornitoriArticolo, contaPreventiviArticolo, type RigaDisponibilitaArticolo } from "../src/lib/scheda-articolo";
+import { patchTecniciArticolo, numeroAcquistoArticolo, listiniVisibiliArticolo, venditaInEvidenza, type RigaListinoArticolo } from "../src/lib/scheda-articolo";
+import { prezzoArticolo } from "../src/lib/catalogo-articoli";
+import { giacenzeArticolo, ordinaFornitoriArticolo, contaPreventiviArticolo, type RigaDisponibilitaArticolo } from "../src/lib/scheda-articolo";
 
 describe("scheda articolo — confine dati tecnici", () => {
-  test("margine percentuale su costo ultimo, non ricarico", () => {
-    expect(margineArticolo(100, 60)).toBe(40);
-    expect(margineArticolo(100, 120)).toBe(-20);
-  });
-  test("margine assente se manca prezzo o costo; prezzo zero non divide", () => {
-    expect(margineArticolo(null, 60)).toBeNull();
-    expect(margineArticolo(100, null)).toBeNull();
-    expect(margineArticolo(0, 60)).toBeNull();
-    expect(margineArticolo(100, 0)).toBe(100);
-  });
   test("salva soltanto gli otto campi Sistema MADE, mai Gamma o prezzi", () => {
     const input = { categoria: "Parete", tipologia: "Lastra", componente: "Gesso", qta_cliente: 2, qta_fornitore: 3, peso_unit: 4, note_acquisto: "Ordine", note: "Posa", descrizione: "Non scrivere", cod_gamma: "AKINAF01007", stato: "potenziale" };
     expect(patchTecniciArticolo(input)).toEqual({ categoria: "Parete", tipologia: "Lastra", componente: "Gesso", qta_cliente: 2, qta_fornitore: 3, peso_unit: 4, note_acquisto: "Ordine", note: "Posa" });
@@ -20,19 +11,27 @@ describe("scheda articolo — confine dati tecnici", () => {
   test("campi vuoti restano null e quantità zero resta zero", () => {
     expect(patchTecniciArticolo({ qta_cliente: 0 })).toEqual({ categoria: null, tipologia: null, componente: null, qta_cliente: 0, qta_fornitore: null, peso_unit: null, note_acquisto: null, note: null });
   });
-  test("ordine sedi Gamma: 10, 20, 30, 9", () => {
-    expect([...ORDINE_LISTINI_ARTICOLO]).toEqual([10, 20, 30, 9]);
+  test("prezzi in euro sempre a 4 decimali; quantità invariate", () => {
+    expect(prezzoArticolo(5.565)).toBe("5,5650\u00a0€");
+    expect(prezzoArticolo(4.8)).toBe("4,8000\u00a0€");
+    expect(numeroAcquistoArticolo(3.975, true)).toBe("3,9750 €");
+    expect(numeroAcquistoArticolo(12.5)).toBe("12,5");
   });
 });
 
 describe("scheda articolo — letture fetta C", () => {
   const riga = (livello: string, disponibilita: number): RigaDisponibilitaArticolo => ({ livello, disponibilita, nome: "Prova", store_id: "", deposito_codice: "", conta_disponibilita: "si", giacenza: disponibilita, impegnato_clienti: 0, ordinato_fornitori: 0 });
-  test("ALP46142 totale 3612, logistica 936 separata; depositi mai contati due volte", () => {
-    const sedi = [198, 1164, 52, 156, 519, 462, 125];
-    expect(totaleDisponibilitaArticolo([...sedi.map((n) => riga("sede", n)), riga("logistica_comune", 936), ...sedi.map((n) => riga("deposito", n)), riga("deposito", 936), riga("deposito", 999)])).toBe(3612);
+  const conGiacenza = (livello: string, giacenza: number, store_id = ""): RigaDisponibilitaArticolo => ({ ...riga(livello, 0), giacenza, store_id });
+  test("giacenza: utente globale somma le sedi, logistica separata e depositi mai contati", () => {
+    const g = giacenzeArticolo([conGiacenza("sede", 10, "a"), conGiacenza("sede", 5, "b"), conGiacenza("logistica_comune", 15), conGiacenza("deposito", 999, "a")], null);
+    expect(g.sede).toBe(15);
+    expect(g.logistica).toBe(15);
   });
-  test("FASL00H003300A0 conserva disponibilità negativa e totale 3358,8", () => {
-    expect(totaleDisponibilitaArticolo([-118.8, 212.4, 3265.2].map((n) => riga("sede", n)))).toBeCloseTo(3358.8, 6);
+  test("giacenza: utente di sede vede la sua sede, elencata per prima", () => {
+    const g = giacenzeArticolo([conGiacenza("sede", 50, "a"), conGiacenza("sede", 3, "b"), conGiacenza("logistica_comune", 15)], "b");
+    expect(g.sede).toBe(3);
+    expect(g.sedi.map((r) => r.store_id)).toEqual(["b", "a"]);
+    expect(g.logistica).toBe(15);
   });
   test("fornitori: preferenziale prima, poi nome; conserva codici diversi dello stesso fornitore", () => {
     const rows = [ { preferenziale: false, fornitore: { ragione_sociale: "Zeta" }, codice_articolo_fornitore: "2" }, { preferenziale: false, fornitore: { ragione_sociale: "Alfa" }, codice_articolo_fornitore: "3" }, { preferenziale: true, fornitore: { ragione_sociale: "Zeta" }, codice_articolo_fornitore: "1" } ];
@@ -41,5 +40,19 @@ describe("scheda articolo — letture fetta C", () => {
   });
   test("preventivi distinti attraverso blocchi, non numero di righe", () => {
     expect(contaPreventiviArticolo([{ blocchi_preventivo: { preventivo_id: "uno" } }, { blocchi_preventivo: { preventivo_id: "uno" } }, { blocchi_preventivo: { preventivo_id: "due" } }, { blocchi_preventivo: null }])).toBe(2);
+  });
+});
+describe("scheda articolo — listini per sede (FM63)", () => {
+  const r = (listino: number, store_id: string | null, fonte: string, prezzo: number) => ({ listino, listino_descrizione: "L", store_id, sede_nome: store_id, deposito_codice: store_id ? "CA" : null, prezzo_listino: 5.565, prezzo_deposito: fonte === "deposito" ? prezzo : null, prezzo, fonte } as unknown as RigaListinoArticolo);
+  test("utente globale: in evidenza la base L10, depositi elencati a parte", () => {
+    const g = listiniVisibiliArticolo([r(10, null, "listino", 5.565), r(10, "cambiago", "deposito", 4.8), r(20, null, "listino", 5.565)], true);
+    expect(g.map((x) => x.listino)).toEqual([10, 20]);
+    expect(venditaInEvidenza(g, true)?.principale.prezzo).toBe(5.565);
+    expect(g[0].depositi.map((d) => d.prezzo)).toEqual([4.8]);
+  });
+  test("utente di sede: una sola riga, prezzo per deposito già scelto dal database", () => {
+    const g = listiniVisibiliArticolo([r(10, "cambiago", "deposito", 4.8)], false);
+    expect(venditaInEvidenza(g, false)?.principale.prezzo).toBe(4.8);
+    expect(g[0].depositi).toEqual([]);
   });
 });
