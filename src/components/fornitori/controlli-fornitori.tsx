@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { badgeMacrocategoria, type TonoMacrocategoria } from "@/lib/scheda-fornitore";
+import { badgeMacrocategoria, badgeTipoFornitore, type TonoMacrocategoria } from "@/lib/scheda-fornitore";
 
 export function AccessoFornitori({ children }: { children: ReactNode }) {
   const { hasAnyRole, loading } = useAuth();
@@ -33,6 +33,11 @@ const CLASSI_MACRO: Record<TonoMacrocategoria, string> = {
 export function BadgeMacrocategoria({ cod, desc }: { cod: string | null | undefined; desc: string | null | undefined }) {
   const b = badgeMacrocategoria(cod, desc);
   return <Badge variant="outline" className={CLASSI_MACRO[b.tono]}>{b.testo}</Badge>;
+}
+/** FM62 F6: Merci / Servizi / Da classificare, con "da Gamma" quando decide Gamma. */
+export function BadgeTipoFornitore({ tipo, fonte }: { tipo: string | null | undefined; fonte: string | null | undefined }) {
+  const b = badgeTipoFornitore(tipo, fonte);
+  return <Badge variant="outline" className={`whitespace-normal ${CLASSI_MACRO[b.tono]}`}>{b.testo}{b.daGamma && <span className="ml-1 text-[10px] font-normal opacity-80">da Gamma</span>}</Badge>;
 }
 export function FiltroSiNo({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return <label className="min-w-0 space-y-1 text-xs text-muted-foreground"><span>{label}</span><Select value={["si", "no"].includes(value) ? value : "tutti"} onValueChange={onChange}><SelectTrigger aria-label={label} className="min-h-10 w-full text-foreground"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="tutti">Tutti</SelectItem><SelectItem value="si">Sì</SelectItem><SelectItem value="no">No</SelectItem></SelectContent></Select></label>;

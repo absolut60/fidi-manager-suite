@@ -1,6 +1,15 @@
 import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 
+/** FM62 F6: valori di public.tipo_fornitore_effettivo. */
+export const TIPI_FORNITORE = ["merci", "servizi", "da_classificare"] as const;
+export type TipoFornitore = typeof TIPI_FORNITORE[number];
+export const MAX_CLASSIFICA_FORNITORI = 5000;
+export const classificaFornitoriInput = z.object({
+  ids: z.array(z.string().uuid()).min(1, "Nessun fornitore selezionato").max(MAX_CLASSIFICA_FORNITORI, `Massimo ${MAX_CLASSIFICA_FORNITORI} fornitori per volta`),
+  tipo: z.enum(["merci", "servizi"]),
+});
+
 const paginazione = {
   limite: z.number().int().min(1).max(200),
   offset: z.number().int().min(0).default(0),
@@ -12,6 +21,8 @@ export const elencoFornitoriInput = z.object({
   includiManuali: z.boolean().default(false),
   macrocategorie: z.array(z.string().trim().min(1).max(20)).max(10).nullable().optional(),
   conEmail: z.boolean().nullable().optional(),
+  /** FM62 F6: tipo effettivo (Gamma 01/03, altrimenti app). */
+  tipi: z.array(z.enum(TIPI_FORNITORE)).max(3).nullable().optional(),
   limite: paginazione.limite.default(100), offset: paginazione.offset,
 });
 /** Stessi filtri dell'elenco, senza paginazione: per "seleziona tutti i filtrati". */
@@ -43,7 +54,9 @@ export const dettaglioFornitoreSchema = z.object({
   telefono: testo, telefono_2: testo, cellulare: testo, fax: testo,
   email: testo, sito: testo, pec: testo, persona_fisica: booleano, valida: booleano,
   condizione_pagamento_cod: testo, condizione_pagamento_desc: testo,
-  attivo: booleano, note: testo, macrocategoria_cod: testo, macrocategoria_desc: testo, ultima_modifica_gamma: testo, ultima_sincronizzazione: testo,
+  attivo: booleano, note: testo, macrocategoria_cod: testo, macrocategoria_desc: testo,
+  tipo_effettivo: z.enum(TIPI_FORNITORE).catch("da_classificare"), tipo_fonte: z.enum(["gamma", "app", "nessuna"]).catch("nessuna"), tipo_app_il: testo.optional(),
+  ultima_modifica_gamma: testo, ultima_sincronizzazione: testo,
   clienti: z.array(z.object({
     cliente_id: z.string().uuid(), codice_gestionale: testo, ragione_sociale: testo,
     store_nome: testo, bloccato: booleano, in_gestione_legale: booleano,

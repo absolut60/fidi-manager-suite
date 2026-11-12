@@ -40,6 +40,7 @@ export const ricercaFornitori = zodValidator(z.object({
   conEmail: fallback(z.string(), "tutti").default("tutti"),
   manuali: fallback(z.boolean(), false).default(false),
   macro: fallback(z.array(z.string()), []).default([]),
+  tipo: fallback(z.array(z.string()), []).default([]),
   pagina: fallback(z.number(), 1).default(1),
 }));
 export const ricercaSchedaFornitore = zodValidator(z.object({
@@ -68,3 +69,26 @@ export function badgeMacrocategoria(cod: string | null | undefined, desc: string
 export function filtroSiNo(value: string): boolean | null {
   return value === "si" ? true : value === "no" ? false : null;
 }
+/** FM62 F6: filtro "Tipo fornitore" sul tipo effettivo (Gamma 01/03, altrimenti app). */
+export const OPZIONI_TIPO_FORNITORE = [
+  { valore: "merci", label: "Merci" }, { valore: "servizi", label: "Servizi" }, { valore: "da_classificare", label: "Da classificare" },
+] as const;
+export type TipoFornitoreFiltro = typeof OPZIONI_TIPO_FORNITORE[number]["valore"];
+/** Valori validi dall'URL; i link vecchi con `macro` (01/03/nd) diventano il tipo corrispondente. */
+export function tipiFornitoreValidi(tipo: unknown, macroVecchio?: unknown): TipoFornitoreFiltro[] {
+  const ammessi: string[] = OPZIONI_TIPO_FORNITORE.map(o => o.valore);
+  const da = Array.isArray(tipo) ? tipo.filter((v): v is TipoFornitoreFiltro => typeof v === "string" && ammessi.includes(v)) : [];
+  if (da.length || !Array.isArray(macroVecchio)) return da;
+  const mappa: Record<string, TipoFornitoreFiltro> = { "01": "merci", "03": "servizi", nd: "da_classificare" };
+  return [...new Set(macrocategorieValide(macroVecchio).map(m => mappa[m]))];
+}
+export function badgeTipoFornitore(tipo: string | null | undefined, fonte: string | null | undefined): { tono: TonoMacrocategoria; testo: string; daGamma: boolean } {
+  const daGamma = fonte === "gamma";
+  if (tipo === "merci") return { tono: "merci", testo: "Merci", daGamma };
+  if (tipo === "servizi") return { tono: "servizi", testo: "Servizi", daGamma };
+  return { tono: "nd", testo: "Da classificare", daGamma: false };
+}
+/** Il tipo si cambia nell'app solo se non lo decide Gamma. */
+export const tipoModificabile = (fonte: string | null | undefined) => fonte !== "gamma";
+/** Proposta di classificazione (regola di Andrea): da classificare CON articoli → Merci; senza articoli si guarda a mano. */
+export const daControllareInProposta = (f: { tipo_effettivo: string | null; n_articoli: number }) => f.tipo_effettivo === "da_classificare" && f.n_articoli === 0;
