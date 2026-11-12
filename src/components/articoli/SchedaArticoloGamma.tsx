@@ -22,7 +22,7 @@ function Dato({ label, value }: { label: string; value: ReactNode }) {
 }
 function dataGamma(value: string | null, ora = false) {
   if (!value) return "—";
-  return new Date(value).toLocaleString("it-IT", ora ? { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Rome" } : { dateStyle: "short" });
+  return new Date(value).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", ...(ora ? { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" } : {}) });
 }
 
 export function SchedaArticoloGamma({ articolo: a }: { articolo: DettaglioGamma }) {
