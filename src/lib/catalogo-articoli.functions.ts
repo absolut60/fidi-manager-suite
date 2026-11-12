@@ -40,7 +40,18 @@ export const fornitoriArticoliGamma = createServerFn({ method: "POST" }).middlew
 export const dettaglioArticoloGamma = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
   .inputValidator((input: { codice: string }) => z.object({ codice: z.string() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { data: articolo, error } = await context.supabase.from("articoli_gamma").select("codice,descrizione,marche(descrizione)").eq("codice", data.codice).maybeSingle();
+    const { data: articolo, error } = await context.supabase.from("articoli_gamma").select("*,marche(descrizione),fornitore:fornitori!articoli_gamma_fornitore_pref_id_fkey(ragione_sociale)").eq("codice", data.codice).maybeSingle();
     if (error) throw new Error(error.message);
-    return articolo;
+    if (!articolo) return null;
+    const escaped = data.codice.replace(/[\\%_]/g, "\\$&");
+    const [prezzi, listini, tecnici, permesso] = await Promise.all([
+      context.supabase.from("articoli_gamma_listini").select("*").eq("articolo_codice", data.codice),
+      context.supabase.from("listini_gamma").select("codice,descrizione"),
+      context.supabase.from("articoli").select("id,cod_gamma,categoria,tipologia,componente,qta_cliente,qta_fornitore,peso_unit,note,note_acquisto").like("cod_gamma", `%${escaped}%`),
+      context.supabase.rpc("auth_puo_gestire_anagrafiche_prev"),
+    ]);
+    for (const result of [prezzi, listini, tecnici, permesso]) if (result.error) throw new Error(result.error.message);
+    return { ...articolo, prezzi: prezzi.data ?? [], listini: listini.data ?? [],
+      tecnico: tecnici.data?.find((a) => a.cod_gamma?.trim() === data.codice) ?? null,
+      puoModificareTecnici: permesso.data === true };
   });

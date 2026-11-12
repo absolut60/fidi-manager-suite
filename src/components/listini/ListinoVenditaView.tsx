@@ -322,14 +322,14 @@ export function ListinoVenditaView() {
                   <td
                     className="px-2 py-1 font-mono truncate cursor-pointer"
                     title={a.cod_gamma ?? ""}
-                    onClick={() => navigate({ to: "/articoli/$id", params: { id: a.id }, search: { tab: "vendita" } })}
+                    onClick={() => navigate({ to: "/articoli/$id", params: { id: a.id } })}
                   >
                     {a.cod_gamma ?? "—"}
                   </td>
                   <td
                     className="px-3 py-1 truncate cursor-pointer"
                     title={a.descrizione}
-                    onClick={() => navigate({ to: "/articoli/$id", params: { id: a.id }, search: { tab: "vendita" } })}
+                    onClick={() => navigate({ to: "/articoli/$id", params: { id: a.id } })}
                   >
                     {a.descrizione}
                   </td>
