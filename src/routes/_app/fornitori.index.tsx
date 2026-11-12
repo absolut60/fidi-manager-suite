@@ -14,7 +14,7 @@ export const Route = createFileRoute("/_app/fornitori/")({
   validateSearch: ricercaFornitori,
   head: () => ({ meta: [{ title: "Fornitori — FidiManager" }, { name: "description", content: "Elenco fornitori MADE: anagrafiche Gamma, articoli e clienti collegati." }, { property: "og:title", content: "Fornitori — FidiManager" }, { property: "og:description", content: "Fornitori Gamma e manuali, articoli e collegamenti clienti." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: PaginaFornitori,
-  errorComponent: ({ error }) => <p role="alert" className="p-6 text-destructive">{error.message}</p>,
+  errorComponent: ({ error }) => <p role="alert" className="p-6 text-destructive">{error instanceof Error ? error.message : "Impossibile caricare i fornitori."}</p>,
 });
 function PaginaFornitori() { return <AccessoFornitori><ContenutoFornitori /></AccessoFornitori>; }
 function ContenutoFornitori() {

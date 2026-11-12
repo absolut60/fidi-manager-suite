@@ -12,7 +12,7 @@ export const Route = createFileRoute("/_app/fornitori/$id")({
   validateSearch: ricercaSchedaFornitore,
   head: () => ({ meta: [{ title: "Scheda fornitore — FidiManager" }, { name: "description", content: "Anagrafica, contatti, note interne, articoli e clienti collegati al fornitore MADE." }, { property: "og:title", content: "Scheda fornitore — FidiManager" }, { property: "og:description", content: "Dati Gamma, articoli forniti e clienti collegati." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: PaginaSchedaFornitore,
-  errorComponent: ({ error }) => <div className="p-6"><BackButton fallbackTo="/fornitori" fallbackLabel="Fornitori" /><p role="alert" className="mt-3 text-destructive">{error.message}</p></div>,
+  errorComponent: ({ error }) => <div className="p-6"><BackButton fallbackTo="/fornitori" fallbackLabel="Fornitori" /><p role="alert" className="mt-3 text-destructive">{error instanceof Error ? error.message : "Impossibile caricare il fornitore."}</p></div>,
 });
 function PaginaSchedaFornitore() { return <AccessoFornitori><ContenutoSchedaFornitore /></AccessoFornitori>; }
 function ContenutoSchedaFornitore() {

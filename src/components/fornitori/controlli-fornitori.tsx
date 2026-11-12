@@ -8,7 +8,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 export function AccessoFornitori({ children }: { children: ReactNode }) {
   const { hasAnyRole, loading } = useAuth();
   if (loading) return <p role="status">Caricamento…</p>;
-  if (!hasAnyRole(["amministratore", "preventivi_read", "preventivi_write", "preventivi_manage"])) return <p role="alert" className="p-4 text-destructive">Accesso non consentito: non hai accesso all’area Preventivi.</p>;
+  if (!hasAnyRole("amministratore", "preventivi_read", "preventivi_write", "preventivi_manage")) return <p role="alert" className="p-4 text-destructive">Accesso non consentito: non hai accesso all’area Preventivi.</p>;
   return children;
 }
 export function useRicercaDifferita(value: string, aggiorna: (value: string) => void) {
