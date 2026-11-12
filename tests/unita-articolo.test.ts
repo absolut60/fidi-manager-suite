@@ -4,9 +4,10 @@ const close = (a: number | null, b: number) => expect(Math.abs((a ?? NaN) - b)).
 describe("unità di misura Gamma", () => {
   test("MQ/NR fattore 3,6: 5.223,6 MQ = 1.451 NR; 4,1670 €/MQ = 15,0012 €/NR", () => {
     close(inUnita(5223.6, "quantita", "secondaria", 3.6), 1451);
+    expect(quantitaConUnita(5223.6, "MQ")).toBe("5.223,6 MQ");
     close(inUnita(4.167, "prezzo", "secondaria", 3.6), 15.0012);
     close(inUnita(3.01, "prezzo", "secondaria", 3.6), 10.836);
-    expect(quantitaConUnita(inUnita(5223.6, "quantita", "secondaria", 3.6), "NR")).toBe("1451 NR");
+    expect(quantitaConUnita(inUnita(5223.6, "quantita", "secondaria", 3.6), "NR")).toBe("1.451 NR");
     expect(prezzoConUnita(inUnita(4.167, "prezzo", "secondaria", 3.6), "NR")).toBe("15,0012 €/NR");
   });
   test("KG/NR 25: 100 KG = 4 NR, prezzo × 25", () => {
