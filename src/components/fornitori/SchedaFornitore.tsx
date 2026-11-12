@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -23,7 +23,7 @@ function dataGamma(value: string | null) {
 export type StatoArticoliFornitore = { ricerca: string; preferenziali: boolean; pagina: number; cambiaRicerca: (value: string) => void; cambiaPreferenziali: (value: boolean) => void; cambiaPagina: (value: number) => void };
 const numero = (n: number) => n.toLocaleString("it-IT", { useGrouping: true });
 /** Card compatta del "colpo d'occhio", stesso stile della scheda cliente. */
-function CardOcchio({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
+function CardOcchio({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
   return <Card className={`min-w-0 rounded-xl border-[0.5px] p-3.5 ${className ?? ""}`}><p className="truncate text-[11px] font-medium uppercase text-muted-foreground">{label}</p><div className="mt-1.5 min-w-0 break-words text-sm">{children}</div></Card>;
 }
 export function SchedaFornitore({ fornitore: f, tab, onTabChange, statoArticoli }: { fornitore: DettaglioFornitore; tab: TabSchedaFornitore; onTabChange: (value: TabSchedaFornitore) => void; statoArticoli: StatoArticoliFornitore }) {
