@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Suspense, useEffect, useState } from "react";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { FiltroMultiplo } from "@/components/filtro-multiplo";
@@ -24,12 +24,26 @@ function useDebounce(value: string) {
   useEffect(() => { const t = setTimeout(() => set(value), 300); return () => clearTimeout(t); }, [value]);
   return v;
 }
+/** Filtri a scelta multipla e ordinamento applicati 400 ms dopo l'ultima modifica; il cambio pagina subito. */
+function useFiltriApplicati(f: FiltriArticoli) {
+  const [applicati, setApplicati] = useState(f);
+  const chiave = JSON.stringify({ ...f, search: "" });
+  useEffect(() => {
+    const soloPagina = JSON.stringify({ ...applicati, search: "", page: f.page }) === chiave;
+    if (soloPagina) { setApplicati(f); return; }
+    const t = setTimeout(() => setApplicati(f), 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chiave]);
+  return applicati;
+}
 function ArticoliListPage() {
   const { user } = useAuth();
   const { filtri: f, setParziale } = useFiltriPagina("articoli-gamma", FILTRI_ARTICOLI, { userId: user?.id, valida: { famiglie: Array.isArray, sottofamiglie: Array.isArray, marche: Array.isArray, fornitori: Array.isArray, stati: Array.isArray, disponibileIn: Array.isArray } });
   const [aperti, setAperti] = useState(false);
   const [cercaFornitore, setCercaFornitore] = useState("");
   const search = useDebounce(f.search);
+  const applicati = useFiltriApplicati(f);
   const testoFornitore = useDebounce(cercaFornitore);
   const cambia = (patch: Partial<FiltriArticoli>) => setParziale({ ...patch, page: 1 });
   return <div className="flex h-full min-h-0 flex-col">
@@ -41,7 +55,7 @@ function ArticoliListPage() {
       </div>
       <Suspense fallback={<p className="py-2 text-sm text-muted-foreground">Caricamento filtri…</p>}><Filtri f={f} cambia={cambia} aperti={aperti} testoFornitore={testoFornitore} cercaFornitore={setCercaFornitore} /></Suspense>
     </header>
-    <Suspense fallback={<p className="p-6 text-muted-foreground">Caricamento articoli…</p>}><Risultati f={{ ...f, search }} setPage={page => setParziale({ page })} ordina={(ordina, dir) => setParziale({ ordina, dir, page: 1 })} /></Suspense>
+    <Suspense fallback={<p className="p-6 text-muted-foreground">Caricamento articoli…</p>}><Risultati f={{ ...applicati, search }} setPage={page => setParziale({ page })} ordina={(ordina, dir) => setParziale({ ordina, dir, page: 1 })} /></Suspense>
   </div>;
 }
 function Filtri({ f, cambia, aperti, testoFornitore, cercaFornitore }: { f: FiltriArticoli; cambia: (p: Partial<FiltriArticoli>) => void; aperti: boolean; testoFornitore: string; cercaFornitore: (s: string) => void }) {
@@ -65,7 +79,12 @@ function Filtri({ f, cambia, aperti, testoFornitore, cercaFornitore }: { f: Filt
 function Risultati({ f, setPage, ordina }: { f: FiltriArticoli; setPage: (p: number) => void; ordina: (col: OrdinamentoArticoli, dir: "asc" | "desc") => void }) {
   const navigate = useNavigate();
   const { data: facets } = useSuspenseQuery({ queryKey: ["catalogo-articoli-facets"], queryFn: () => facetsArticoliGamma(), staleTime: 60000 });
-  const { data } = useSuspenseQuery({ queryKey: ["catalogo-articoli", f], queryFn: () => elencoArticoliGamma({ data: f }) });
+  const { data: risposta, isFetching, isPlaceholderData, error } = useQuery({ queryKey: ["catalogo-articoli", f], queryFn: () => elencoArticoliGamma({ data: f }), placeholderData: keepPreviousData });
+  useEffect(() => { if (risposta?.fuoriPagina && !isPlaceholderData) setPage(1); }, [risposta?.fuoriPagina, isPlaceholderData, setPage]);
+  if (error && !risposta) return <div role="alert" className="p-6 text-destructive">{error instanceof Error ? error.message : String(error)}</div>;
+  if (!risposta) return <p className="p-6 text-muted-foreground">Caricamento articoli…</p>;
+  const data = risposta;
+  const aggiornamento = isFetching && isPlaceholderData;
   const pages = Math.max(1, Math.ceil(data.total / 100));
   type Riga = (typeof data.rows)[number];
   const ord: StatoOrdinamento<OrdinamentoArticoli> = { ...ordinamentoArticoliValido(f.ordina, f.dir), imposta: ordina };
@@ -79,8 +98,9 @@ function Risultati({ f, setPage, ordina }: { f: FiltriArticoli; setPage: (p: num
   const stato = (a: Riga) => <Badge variant="secondary" className="max-w-full whitespace-normal text-center">{STATI_ARTICOLI.find(s => s.valore === a.stato_gamma)?.label ?? a.stato_gamma}</Badge>;
   const prezzo = (a: Riga) => <span className="tabular-nums">{prezzoArticolo(a.prezzo)}{a.prezzo != null && a.um ? `/${a.um}` : ""}{a.fonte_prezzo === "deposito" && <span className="block text-[11px] font-medium text-primary">per deposito</span>}</span>;
   const intestazione = (c: (typeof colonne)[number]) => <IntestazioneOrdinabile key={c.col} col={c.col} ordinamento={ord} allinea={c.destra ? "right" : "left"} className="break-words">{c.label}</IntestazioneOrdinabile>;
-  return <><div className="min-h-0 flex-1 overflow-auto p-3 lg:p-0">
-    {!data.rows.length && <p className="p-6 text-center text-muted-foreground">Nessun articolo trovato.</p>}
+  return <><div aria-busy={aggiornamento} className={`relative min-h-0 flex-1 overflow-auto p-3 lg:p-0 transition-opacity ${aggiornamento ? "opacity-60" : ""}`}>
+    {aggiornamento && <p role="status" className="sticky top-0 z-10 mx-auto w-fit rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground shadow-sm">Aggiornamento…</p>}
+    {!data.rows.length && !data.fuoriPagina && <p className="p-6 text-center text-muted-foreground">Nessun articolo trovato.</p>}
     <MenuOrdinamento ordinamento={ord} colonne={colonne} etichetta="Ordina articoli" className="mb-2 lg:hidden" />
     <div className="space-y-2 lg:hidden">{data.rows.map(a => <SchedaLista key={a.origine + (a.codice ?? a.preventivatore_id)} onClick={() => apri(a)} titolo={<><span className="block font-mono text-xs text-muted-foreground">{a.codice ?? "Senza codice Gamma"}</span><span className="line-clamp-2">{a.descrizione}</span></>} badge={stato(a)} campi={[{ etichetta: "Marca", valore: a.marca ?? "—" }, { etichetta: "Famiglia / Sottofamiglia", valore: [a.famiglia,a.sottofamiglia].filter(Boolean).join(" / ") || "—" }, { etichetta: "U.M.", valore: a.um ?? "—" }, { etichetta: "Prezzo", valore: prezzo(a) }, { etichetta: etichettaGiacenza, valore: quantitaArticolo(a.giacenza_sede, a.um) }, { etichetta: "Logistica", valore: quantitaArticolo(a.giacenza_logistica, a.um) }]} />)}</div>
     <table className="hidden w-full table-fixed text-xs lg:table"><colgroup>{colonne.slice(0, 4).map(c => <col key={c.col} style={{ width: c.w }} />)}<col style={{ width: "5%" }} />{colonne.slice(4).map(c => <col key={c.col} style={{ width: c.w }} />)}</colgroup><thead className="sticky top-0 bg-navy text-navy-foreground"><tr>{colonne.slice(0, 4).map(intestazione)}<th scope="col" className="px-2 py-3 text-left font-medium">U.M.</th>{colonne.slice(4).map(intestazione)}</tr></thead><tbody>{data.rows.map(a => <tr key={a.origine + (a.codice ?? a.preventivatore_id)} tabIndex={0} onKeyDown={e => { if (e.key === "Enter") apri(a); }} onClick={() => apri(a)} className="cursor-pointer border-b hover:bg-muted/50"><td className="break-words px-2 py-3 font-mono">{a.codice ?? "—"}</td><td className="break-words px-2 py-3 font-medium">{a.descrizione}</td><td className="break-words px-2 py-3">{a.marca ?? "—"}</td><td className="break-words px-2 py-3">{a.famiglia ?? "—"}<span className="block text-muted-foreground">{a.sottofamiglia}</span></td><td className="px-2 py-3">{a.um ?? "—"}</td><td className="px-2 py-3 text-right">{prezzo(a)}</td><td className="px-2 py-3 text-right tabular-nums">{quantitaArticolo(a.giacenza_sede, a.um)}</td><td className="px-2 py-3 text-right tabular-nums">{quantitaArticolo(a.giacenza_logistica, a.um)}</td><td className="px-2 py-3">{stato(a)}</td></tr>)}</tbody></table>
