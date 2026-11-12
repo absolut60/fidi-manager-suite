@@ -1205,6 +1205,13 @@
       "when": 1794442061491,
       "tag": "0171_fm61_catalogo_ricerca_trigram",
       "breakpoints": true
+    },
+    {
+      "idx": 172,
+      "version": "7",
+      "when": 1794444793942,
+      "tag": "0172_fm61_acquisto_scomposto_dismessi",
+      "breakpoints": true
     }
   ]
 }

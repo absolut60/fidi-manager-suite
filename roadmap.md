@@ -1,3 +1,9 @@
+# FM61 — Articoli fetta A2
+- [x] Migrazione 0172: sei numeric nullable senza default/backfill, sole due RPC richieste; corpi applicati identici al file ed EXECUTE solo service_role, senza modificare flusso import.
+- [x] Parser: normalize conserva % ed euro, whitelist con 24 intestazioni reali, sei valori numerici per listino; file vecchio supportato con null, netto non ricalcolato. 395 test superati, build automatico OK.
+- [x] Prima/dopo migrazione e prova: 231538 listini, MD5 deebbf5e198a24aa67741bf8b288adfa, 64556 articoli attivi. Sei colonne nullable senza default e nessun valore valorizzato; tipi rigenerati.
+- [x] tests/sql/fm61-articoli-a2-freno.sql eseguito tramite strumento database in BEGIN/ROLLBACK: chiamata con 10 codici intercettata con messaggio esatto «Disattivazione bloccata: 64546 articoli assenti su 64556 attivi, oltre il 5%: controllare il file»; asserzioni su count e MD5 delle righe complete passate. Nessun import avviato.
+
 # FM61 — Articoli fetta A
 - [x] SQL elenco/facets e disponibilità condivisa; tre EXPLAIN finali 944,262 / 586,202 / 181,310 ms e impronte disponibilità invariate.
 - [x] Elenco Gamma, filtri e intestazione dettaglio; 392 test, immagini 320/375/390/768/1280/1920 con dati sintetici e selezione famiglia; pagina temporanea rimossa.
