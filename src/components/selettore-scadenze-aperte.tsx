@@ -1,7 +1,19 @@
 // Selettore condiviso di scadenze aperte di un cliente.
 // Fonte unica per il piano di rientro e (in futuro) la promessa di pagamento.
-// Definizione canonica di "scadenza aperta": data_pagamento_effettiva IS NULL
-// e importo_scadenza > 0.
+//
+// Definizione canonica di "scadenza selezionabile" (collegabile a promesse di
+// pagamento e piani di rientro): una riga lo è se
+//   importo_scadenza > 0
+//   E NON è una rata chiusa in anticipo da Gamma (scadenzaChiusaAnticipata)
+//   E vale ALMENO UNA delle due:
+//     a) data_pagamento_effettiva IS NULL            (nessun pagamento registrato)
+//     b) stato_contabile = 'Aperta'                  (pagamento parziale: Gamma
+//                                                     valorizza la data di pagamento
+//                                                     anche sugli acconti, ma il
+//                                                     residuo è ancora dovuto)
+// L'importo mostrato e sommato resta importo_scadenza (per le righe del caso b)
+// è già il residuo). La regola vive SOLO in scadenzaSelezionabile qui sotto, che
+// è la stessa usata dal filtro della query.
 import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,7 +31,46 @@ export type ScadenzaAperta = {
   data_scadenza: string | null;
   importo_scadenza: number | null;
   giorni_ritardo: number | null;
+  // Servono alla regola di selezionabilità e al badge "Acconto pagato".
+  stato_contabile?: string | null;
+  data_pagamento_effettiva?: string | null;
+  tempi_scadenza_key?: string | null;
+  importo_pagato?: number | string | null;
 };
+
+/**
+ * Definizione canonica di "scadenza selezionabile": vedi commento in testa al file.
+ * Gemella del filtro `.or(...)` della query qui sotto: se cambia una, cambia l'altra.
+ */
+export function scadenzaSelezionabile(s: {
+  importo_scadenza?: number | string | null;
+  stato_contabile?: string | null;
+  data_pagamento_effettiva?: string | null;
+  tempi_scadenza_key?: string | null;
+  importo_pagato?: number | string | null;
+}): boolean {
+  if (Number(s.importo_scadenza ?? 0) <= 0) return false;
+  // Le rate chiuse in anticipo da Gamma sono pagate: non sono scadenze aperte.
+  if (scadenzaChiusaAnticipata(s)) return false;
+  // a) nessun pagamento registrato, oppure b) partita ancora Aperta con acconto.
+  return s.data_pagamento_effettiva == null || s.stato_contabile === "Aperta";
+}
+
+/**
+ * Acconto registrato su una partita ancora Aperta (caso b della regola):
+ * data di pagamento valorizzata da Gamma + stato Aperta + quota pagata > 0.
+ * Rende visibile il badge "Acconto pagato" accanto al documento.
+ */
+export function accontoSuScadenzaAperta(s: {
+  stato_contabile?: string | null;
+  data_pagamento_effettiva?: string | null;
+  importo_pagato?: number | string | null;
+}): { importo: number; data: string } | null {
+  if (s.data_pagamento_effettiva == null || s.stato_contabile !== "Aperta") return null;
+  const importo = Number(s.importo_pagato ?? 0);
+  if (importo <= 0) return null;
+  return { importo, data: String(s.data_pagamento_effettiva) };
+}
 
 type Props = {
   clienteId: string;
@@ -49,11 +100,14 @@ export function SelettoreScadenzeAperte({
         .from("scadenze")
         .select("id, numero_documento, data_scadenza, importo_scadenza, giorni_ritardo, stato_contabile, data_pagamento_effettiva, tempi_scadenza_key, importo_pagato")
         .eq("cliente_id", clienteId)
-        .is("data_pagamento_effettiva", null)
+        // a) nessun pagamento registrato, oppure b) partita Aperta con acconto:
+        //    Gamma valorizza data_pagamento_effettiva anche sui pagamenti parziali.
+        .or("data_pagamento_effettiva.is.null,stato_contabile.eq.Aperta")
         .order("data_scadenza", { ascending: true, nullsFirst: false });
       if (error) throw error;
-      // Le rate chiuse in anticipo da Gamma sono pagate: non sono scadenze aperte.
-      return (data ?? []).filter((s) => (s.importo_scadenza ?? 0) > 0 && !scadenzaChiusaAnticipata(s)) as ScadenzaAperta[];
+      // Regola canonica (importo > 0 + esclusi i chiusi in anticipo): vedi
+      // scadenzaSelezionabile, gemella del .or(...) qui sopra.
+      return (data ?? []).filter((s) => scadenzaSelezionabile(s)) as ScadenzaAperta[];
     },
   });
 
