@@ -3037,6 +3037,7 @@ export type Database = {
           cliente_id: string | null
           contatto_id: string | null
           created_at: string
+          fornitore_id: string | null
           id: string
           informativa_hash: string | null
           informativa_versione: string | null
@@ -3056,6 +3057,7 @@ export type Database = {
           cliente_id?: string | null
           contatto_id?: string | null
           created_at?: string
+          fornitore_id?: string | null
           id?: string
           informativa_hash?: string | null
           informativa_versione?: string | null
@@ -3075,6 +3077,7 @@ export type Database = {
           cliente_id?: string | null
           contatto_id?: string | null
           created_at?: string
+          fornitore_id?: string | null
           id?: string
           informativa_hash?: string | null
           informativa_versione?: string | null
@@ -3110,6 +3113,13 @@ export type Database = {
             columns: ["contatto_id"]
             isOneToOne: false
             referencedRelation: "contatti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consensi_log_fornitore_id_fkey"
+            columns: ["fornitore_id"]
+            isOneToOne: false
+            referencedRelation: "fornitori"
             referencedColumns: ["id"]
           },
           {
@@ -3164,6 +3174,7 @@ export type Database = {
           email: string | null
           firma_nome_dichiarato: string | null
           firma_url: string | null
+          fornitore_id: string | null
           id: string
           lead_id: string | null
           luogo_nascita: string | null
@@ -3201,6 +3212,7 @@ export type Database = {
           email?: string | null
           firma_nome_dichiarato?: string | null
           firma_url?: string | null
+          fornitore_id?: string | null
           id?: string
           lead_id?: string | null
           luogo_nascita?: string | null
@@ -3238,6 +3250,7 @@ export type Database = {
           email?: string | null
           firma_nome_dichiarato?: string | null
           firma_url?: string | null
+          fornitore_id?: string | null
           id?: string
           lead_id?: string | null
           luogo_nascita?: string | null
@@ -3272,6 +3285,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "contatti_fornitore_id_fkey"
+            columns: ["fornitore_id"]
+            isOneToOne: false
+            referencedRelation: "fornitori"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "contatti_lead_id_fkey"
@@ -8378,6 +8398,20 @@ export type Database = {
           tipo: string
         }[]
       }
+      cerca_contatti_collegabili_fornitore: {
+        Args: { _fornitore_id: string; _testo?: string }
+        Returns: {
+          azienda: string
+          cellulare: string
+          cognome: string
+          del_cliente_collegato: boolean
+          email: string
+          id: string
+          nome: string
+          ruolo: string
+          telefono: string
+        }[]
+      }
       cerca_fornitori: {
         Args: {
           _anche_cliente?: boolean
@@ -8479,6 +8513,10 @@ export type Database = {
           _patologico: boolean
         }
         Returns: number
+      }
+      collega_contatto_fornitore: {
+        Args: { _contatto_id: string; _fornitore_id: string }
+        Returns: undefined
       }
       collega_lead_a_cliente: {
         Args: { _cliente_id: string; _lead_id: string }
@@ -10318,6 +10356,10 @@ export type Database = {
         Returns: {
           scartate: number
         }[]
+      }
+      scollega_contatto_fornitore: {
+        Args: { _contatto_id: string; _fornitore_id: string }
+        Returns: string
       }
       segna_canale_letto: { Args: { _canale_id: string }; Returns: undefined }
       segnalazioni_fido:
