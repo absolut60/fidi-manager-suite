@@ -119,7 +119,8 @@ export function NuovaRichiestaDialog({
     queryKey: ["fornitori", "select"],
     enabled: open,
     queryFn: async () => {
-      const { data, error } = await supabase.from("fornitori").select("id,nome").eq("origine", "manuale").order("nome");
+      // FM64: i richiedenti non leggono la tabella fornitori; solo id e nome dei manuali.
+      const { data, error } = await supabase.rpc("fornitori_manuali_suggeriti");
       if (error) throw error;
       return data ?? [];
     },

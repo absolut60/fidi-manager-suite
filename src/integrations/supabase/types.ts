@@ -8410,6 +8410,7 @@ export type Database = {
           totale: number
         }[]
       }
+      assicura_fornitore_manuale: { Args: { _nome: string }; Returns: string }
       auth_consulta_preventivi: { Args: never; Returns: boolean }
       auth_e_showroom: { Args: never; Returns: boolean }
       auth_gestisce_contatti_clienti: { Args: never; Returns: boolean }
@@ -9096,6 +9097,13 @@ export type Database = {
       fornitore_obsoleto: {
         Args: { f: Database["public"]["Tables"]["fornitori"]["Row"] }
         Returns: boolean
+      }
+      fornitori_manuali_suggeriti: {
+        Args: never
+        Returns: {
+          id: string
+          nome: string
+        }[]
       }
       genera_snapshot: { Args: { _data: string }; Returns: string }
       get_campagne_entita: {

@@ -1380,6 +1380,13 @@
       "when": 1794525905843,
       "tag": "0196_fm64_rls_listini_sede",
       "breakpoints": true
+    },
+    {
+      "idx": 197,
+      "version": "7",
+      "when": 1794527709338,
+      "tag": "0197_fm64_fornitori_manuali_richieste",
+      "breakpoints": true
     }
   ]
 }
