@@ -65,7 +65,8 @@ function CampoIndirizzi({ id, label, valori, onChange, max, suggerimenti, usati 
     onChange(out); setTesto(""); setErrore(null);
   };
   const giaUsati = new Set(usati.map(normIndirizzo));
-  const libere = (suggerimenti ?? []).filter(s => !giaUsati.has(normIndirizzo(s.valore)));
+  const visti = new Set<string>();
+  const libere = (suggerimenti ?? []).filter(s => { const k = normIndirizzo(s.valore); if (giaUsati.has(k) || visti.has(k)) return false; visti.add(k); return true; });
   return <div className="min-w-0 space-y-1.5">
     <Label htmlFor={id}>{label}</Label>
     {valori.length > 0 && <ul className="flex flex-wrap gap-1.5">{valori.map(v => <li key={v} className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border bg-muted/40 py-0.5 pl-2.5 pr-1 text-sm"><span className="min-w-0 break-all">{v}</span><button type="button" className="inline-flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-destructive" aria-label={`Togli ${v}`} onClick={() => onChange(valori.filter(x => x !== v))}><X className="size-3.5" /></button></li>)}</ul>}
@@ -76,7 +77,7 @@ function CampoIndirizzi({ id, label, valori, onChange, max, suggerimenti, usati 
         onBlur={() => { if (testo.trim()) aggiungi(testo); }} />
       <Button type="button" variant="outline" className="min-h-10 shrink-0" onClick={() => aggiungi(testo)} disabled={!testo.trim()}><Plus className="size-4" /><span className="sr-only sm:not-sr-only">Aggiungi</span></Button>
     </div>
-    {libere.length > 0 && <div className="flex flex-wrap items-center gap-1.5 text-xs">{libere.map(s => <span key={s.etichetta} className="inline-flex flex-wrap items-center gap-1">
+    {libere.length > 0 && <div className="flex flex-wrap items-center gap-1.5 text-xs">{libere.map(s => <span key={`${s.etichetta}-${s.valore}`} className="inline-flex flex-wrap items-center gap-1">
       <button type="button" className="inline-flex min-h-8 items-center rounded-full border border-dashed px-2.5 text-primary hover:bg-primary/5" onClick={() => aggiungi(s.valore)}>+ {s.etichetta}: <span className="ml-1 break-all">{s.valore}</span></button>
       {s.nota && <span className="text-[11px] text-muted-foreground">{s.nota}</span>}
     </span>)}</div>}
