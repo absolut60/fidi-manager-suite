@@ -1,6 +1,7 @@
 # FM61 — Articoli fetta A
-- [ ] SQL elenco/facets e disponibilità condivisa; verifica invarianti e tre EXPLAIN.
-- [ ] Elenco Gamma, filtri e intestazione dettaglio; test e verifiche visive.
+- [x] SQL elenco/facets e disponibilità condivisa; tre EXPLAIN finali 944,262 / 586,202 / 181,310 ms e impronte disponibilità invariate.
+- [x] Elenco Gamma, filtri e intestazione dettaglio; 392 test, immagini 320/375/390/768/1280/1920 con dati sintetici e selezione famiglia; pagina temporanea rimossa.
+- [ ] Verifica autenticata elenco → dettaglio → Indietro su dati reali: sessione personale non disponibile (--self non trova account). Nessun dato modificato.
 
 # FM61 — Sicurezza dopo il blocco database
 - [x] Chiusa solo l'importazione 1b1cd18d come fallita con il problema richiesto, riletta dal database.
