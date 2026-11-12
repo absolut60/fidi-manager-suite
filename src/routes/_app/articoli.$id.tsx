@@ -3,6 +3,8 @@ import { BackButton } from "@/components/back-button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
+import { puoGestireAnagrafichePreventivi } from "@/lib/permessi-preventivi";
 import { Input } from "@/components/ui/input";
 import { NumberInputIt } from "@/components/ui/number-input-it";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,6 +41,9 @@ export const Route = createFileRoute("/_app/articoli/$id")({
 });
 
 function ArticoloDetailPage() {
+  const { roles } = useAuth();
+  // FM63: in sola consultazione (es. store manager) i campi restano bloccati; il DB resta il controllo vero.
+  const gestisce = puoGestireAnagrafichePreventivi(roles as string[]);
   const { id } = Route.useParams();
   const qc = useQueryClient();
 
@@ -136,19 +141,20 @@ function ArticoloDetailPage() {
             </div>
           </div>
           <div className="flex gap-2">
-            {(form.stato ?? articolo.stato) === "potenziale" && (
+            {gestisce && (form.stato ?? articolo.stato) === "potenziale" && (
               <Button variant="outline" size="sm" onClick={promuovi}>
                 <CheckCircle2 className="mr-1 h-4 w-4" /> Promuovi ad attivo
               </Button>
             )}
-            <Button size="sm" onClick={handleSave} disabled={saveMut.isPending}>
+            {gestisce && <Button size="sm" onClick={handleSave} disabled={saveMut.isPending}>
               <Save className="mr-1 h-4 w-4" />
               {saveMut.isPending ? "Salvataggio…" : "Salva anagrafica"}
-            </Button>
+            </Button>}
           </div>
         </div>
       </div>
 
+      <fieldset disabled={!gestisce} className="contents">
       <div className="flex-1 overflow-auto p-3 md:p-4 lg:p-6">
             <div className="grid grid-cols-1 gap-4 rounded-lg border bg-card p-6 md:grid-cols-3">
               <Field label="Cod. GAMMA">
@@ -276,6 +282,7 @@ function ArticoloDetailPage() {
               </div>
             </div>
       </div>
+      </fieldset>
     </div>
   );
 }

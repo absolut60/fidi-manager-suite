@@ -3,6 +3,8 @@ import { BackButton } from "@/components/back-button";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
+import { puoGestireAnagrafichePreventivi } from "@/lib/permessi-preventivi";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -61,6 +63,9 @@ export const Route = createFileRoute("/_app/kit/$id")({
 });
 
 function KitEditorPage() {
+  const { roles } = useAuth();
+  // FM63: in sola consultazione (es. store manager) i campi restano bloccati; il DB resta il controllo vero.
+  const gestisce = puoGestireAnagrafichePreventivi(roles as string[]);
   const { id } = Route.useParams();
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -156,6 +161,7 @@ function KitEditorPage() {
               </SelectContent>
             </Select>
           </div>
+          {gestisce && <>
           <Button variant="outline" size="sm" onClick={() => dupKit.mutate()}>
             <Copy className="mr-1 h-4 w-4" /> Duplica
           </Button>
@@ -178,9 +184,11 @@ function KitEditorPage() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+          </>}
         </div>
       </div>
 
+      <fieldset disabled={!gestisce} className="contents">
       {/* Intestazione kit */}
       <Card>
         <CardContent className="grid grid-cols-1 gap-3 p-4 md:grid-cols-3">
@@ -343,6 +351,7 @@ function KitEditorPage() {
           </div>
         )}
       </div>
+      </fieldset>
     </div>
   );
 }

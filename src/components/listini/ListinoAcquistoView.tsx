@@ -9,6 +9,8 @@ import { EditableNumberCell } from "@/components/preventivatore/EditableNumberCe
 import { toast } from "sonner";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
+import { puoGestireAnagrafichePreventivi } from "@/lib/permessi-preventivi";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
@@ -23,6 +25,9 @@ interface ListinoRow extends ListinoAcquisto {}
 
 
 export function ListinoAcquistoView() {
+  const { roles } = useAuth();
+  // FM63: in sola consultazione (es. store manager) i campi restano bloccati; il DB resta il controllo vero.
+  const gestisce = puoGestireAnagrafichePreventivi(roles as string[]);
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
@@ -218,6 +223,7 @@ export function ListinoAcquistoView() {
 
       {/* Table */}
       <div className="flex-1 overflow-auto">
+        <fieldset disabled={!gestisce} className="contents">
         <table className="w-full text-xs table-fixed">
           <colgroup>
             <col style={{ width: "104px" }} />
@@ -328,6 +334,7 @@ export function ListinoAcquistoView() {
             )}
           </tbody>
         </table>
+        </fieldset>
       </div>
     </div>
   );
