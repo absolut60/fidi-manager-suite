@@ -1,3 +1,4 @@
+import { STATI_CONVENZIONE, ETICHETTE_CONVENZIONE, type StatoConvenzione } from "./fornitori";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 
@@ -38,7 +39,7 @@ export const ricercaFornitori = zodValidator(z.object({
   ancheCliente: fallback(z.string(), "tutti").default("tutti"),
   conArticoli: fallback(z.string(), "tutti").default("tutti"),
   conEmail: fallback(z.string(), "tutti").default("tutti"),
-  convenzionato: fallback(z.string(), "tutti").default("tutti"),
+  convenzione: fallback(z.array(z.string()), []).default([]),
   manuali: fallback(z.boolean(), false).default(false),
   macro: fallback(z.array(z.string()), []).default([]),
   tipo: fallback(z.array(z.string()), []).default([]),
@@ -90,10 +91,13 @@ export function badgeTipoFornitore(tipo: string | null | undefined, fonte: strin
   return { tono: "nd", testo: "Da classificare", daGamma: false };
 }
 /** Il tipo si cambia nell'app solo se non lo decide Gamma. */
+/** FM62 F7: valori ammessi del filtro "Convenzione" nell'URL. */
+export const statiConvenzioneValidi = (v: readonly string[]) => v.filter((x): x is StatoConvenzione => (STATI_CONVENZIONE as readonly string[]).includes(x));
+export const OPZIONI_CONVENZIONE = STATI_CONVENZIONE.map(value => ({ value, label: ETICHETTE_CONVENZIONE[value] }));
 /** FM62 F7: testo del toast dopo "Segna convenzionati"/"Togli convenzione" (conteggi dall'RPC). */
-export function messaggioConvenzione(valore: boolean, r: { aggiornati: number; impostatiMerci: number; inConflitto: number }) {
+export function messaggioConvenzione(stato: string, r: { aggiornati: number; impostatiMerci: number; inConflitto: number }) {
   const n = (x: number) => x.toLocaleString("it-IT");
-  if (!valore) return `${n(r.aggiornati)} ${r.aggiornati === 1 ? "fornitore non più convenzionato" : "fornitori non più convenzionati"}`;
+  if (stato !== "convenzionato") return `${n(r.aggiornati)} ${r.aggiornati === 1 ? "fornitore non più convenzionato" : "fornitori non più convenzionati"}`;
   const parti = [`${n(r.aggiornati)} ${r.aggiornati === 1 ? "segnato convenzionato" : "segnati convenzionati"}`];
   if (r.impostatiMerci) parti.push(`${n(r.impostatiMerci)} impostati come Merci`);
   if (r.inConflitto) parti.push(`${n(r.inConflitto)} in Gamma risultano di servizi: verificare`);

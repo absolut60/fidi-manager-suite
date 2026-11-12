@@ -13,7 +13,8 @@ import { AllegatiSection } from "@/components/allegati-section";
 import { Sezione, Dato } from "@/components/articoli/SchedaArticoloGamma";
 import { salvaNoteFornitore, type DettaglioFornitore } from "@/lib/fornitori.functions";
 import { tabVisibiliFornitore, sottotitoloFornitore, sitoFornitore, origineLegameFornitore, type TabSchedaFornitore } from "@/lib/scheda-fornitore";
-import { BadgeFornitore, BadgeTipoFornitore, BadgeConvenzionato } from "./controlli-fornitori";
+import { BadgeFornitore, BadgeTipoFornitore } from "./controlli-fornitori";
+import { BandierinaConvenzionato } from "./BandierinaConvenzionato";
 import { ConvenzioneCard } from "./ConvenzioneFornitore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { classificaFornitori } from "@/lib/fornitori.functions";
@@ -61,7 +62,7 @@ export function SchedaFornitore({ fornitore: f, tab, onTabChange, statoArticoli 
         <h1 className="break-words text-2xl font-bold tracking-tight sm:text-3xl">{f.ragione_sociale || "Fornitore"}</h1>
         <p className="mt-1 break-words text-sm text-muted-foreground">{sottotitolo || "Codice e partita IVA non presenti"}</p>
         {f.alias && <p className="mt-0.5 break-words text-xs text-muted-foreground">Alias: {f.alias}</p>}
-        <div className="mt-2 flex flex-wrap gap-1.5">{f.convenzionato && <BadgeConvenzionato />}<BadgeTipoFornitore tipo={f.tipo_effettivo} fonte={f.tipo_fonte} /><BadgeFornitore fornitore={f} />{f.clienti.length > 0 && <Badge variant="outline" className="border-success/30 bg-success/10 text-success">Anche cliente</Badge>}</div>
+        <div className="mt-2 flex flex-wrap gap-1.5">{f.stato_convenzione === "convenzionato" && <span className="inline-flex items-center text-sm font-medium"><BandierinaConvenzionato className="-ml-1" />Convenzionato</span>}<BadgeTipoFornitore tipo={f.tipo_effettivo} fonte={f.tipo_fonte} /><BadgeFornitore fornitore={f} />{f.clienti.length > 0 && <Badge variant="outline" className="border-success/30 bg-success/10 text-success">Anche cliente</Badge>}</div>
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-2" data-azioni-fornitore>
         {f.puo_modificare_note && <Button className="min-h-10 gap-1.5" onClick={() => { setAllegatiEmail({ file: [] }); setEmailAperta(true); }}><Send className="size-4" />Invia email</Button>}
