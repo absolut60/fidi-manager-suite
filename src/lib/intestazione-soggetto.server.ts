@@ -3,7 +3,8 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 /**
  * Intestazione del soggetto titolare del rapporto per pagine pubbliche e PDF di prova.
  * Un contatto può appartenere a un CLIENTE (cliente_id valorizzato) oppure a un
- * LEAD non ancora convertito (cliente_id NULL, lead_id valorizzato).
+ * LEAD non ancora convertito (cliente_id NULL, lead_id valorizzato) oppure,
+ * solo in mancanza di entrambi, a un FORNITORE (fornitore_id, FM62 G6).
  * Fonte unica per getContattoPerConsensi, salvaConsensiMarketing e getContattoPerRecesso.
  */
 export type IntestazioneSoggetto = {
@@ -12,7 +13,7 @@ export type IntestazioneSoggetto = {
   codice_fiscale: string | null;
   indirizzo: string | null;
   citta: string | null;
-  origine: "cliente" | "lead" | "nessuna";
+  origine: "cliente" | "lead" | "fornitore" | "nessuna";
 };
 
 const VUOTA: IntestazioneSoggetto = {
@@ -27,6 +28,8 @@ const VUOTA: IntestazioneSoggetto = {
 export async function risolviIntestazioneSoggetto(contatto: {
   cliente_id: string | null;
   lead_id?: string | null;
+  /** FM62 G6: referente di un fornitore (usato solo se mancano cliente e lead). */
+  fornitore_id?: string | null;
 }): Promise<IntestazioneSoggetto> {
   if (contatto.cliente_id) {
     const { data } = await supabaseAdmin
@@ -64,6 +67,24 @@ export async function risolviIntestazioneSoggetto(contatto: {
         indirizzo: data.indirizzo ?? null,
         citta: data.citta ?? null,
         origine: "lead",
+      };
+    }
+  }
+
+  if (contatto.fornitore_id) {
+    const { data } = await supabaseAdmin
+      .from("fornitori")
+      .select("ragione_sociale, nome, partita_iva, codice_fiscale, indirizzo, citta")
+      .eq("id", contatto.fornitore_id)
+      .maybeSingle();
+    if (data) {
+      return {
+        ragione_sociale: (data.ragione_sociale ?? data.nome ?? "").trim(),
+        partita_iva: data.partita_iva ?? null,
+        codice_fiscale: data.codice_fiscale ?? null,
+        indirizzo: data.indirizzo ?? null,
+        citta: data.citta ?? null,
+        origine: "fornitore",
       };
     }
   }

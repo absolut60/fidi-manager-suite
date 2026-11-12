@@ -54,7 +54,7 @@ export const getContattoPerConsensi = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const { data: ct, error } = await supabaseAdmin
       .from("contatti")
-      .select("id, cliente_id, lead_id, nome, cognome, email, firma_nome_dichiarato, consenso_profilazione, consenso_marketing_media, consenso_marketing_diretto, consensi_token_expires_at")
+      .select("id, cliente_id, lead_id, fornitore_id, nome, cognome, email, firma_nome_dichiarato, consenso_profilazione, consenso_marketing_media, consenso_marketing_diretto, consensi_token_expires_at")
       .eq("consensi_token", data.token)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -113,7 +113,7 @@ export const salvaConsensiMarketing = createServerFn({ method: "POST" })
 
     const { data: ct, error } = await supabaseAdmin
       .from("contatti")
-      .select("id, cliente_id, lead_id, nome, cognome, email, consensi_token_expires_at")
+      .select("id, cliente_id, lead_id, fornitore_id, nome, cognome, email, consensi_token_expires_at")
       .eq("consensi_token", data.token)
       .maybeSingle();
     if (error) throw new Error(error.message);

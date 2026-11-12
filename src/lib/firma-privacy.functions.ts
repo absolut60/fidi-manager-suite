@@ -47,7 +47,7 @@ export const inviaRichiestaFirmaPrivacy = createServerFn({ method: "POST" })
     const { supabase } = context;
     const { data: ct, error: e1 } = await supabase
       .from("contatti")
-      .select("id, cliente_id, lead_id, nome, cognome, email")
+      .select("id, cliente_id, lead_id, fornitore_id, nome, cognome, email")
       .eq("id", data.contattoId)
       .maybeSingle();
     if (e1) throw new Error(e1.message);
@@ -98,7 +98,7 @@ export const getContattoPerFirma = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const { data: ct, error } = await supabaseAdmin
       .from("contatti")
-      .select("id, cliente_id, lead_id, nome, cognome, email, cellulare, luogo_nascita, data_nascita, codice_fiscale, residenza, privacy_firmata, privacy_token_expires_at, richiesta_privacy_aperta_il")
+      .select("id, cliente_id, lead_id, fornitore_id, nome, cognome, email, cellulare, luogo_nascita, data_nascita, codice_fiscale, residenza, privacy_firmata, privacy_token_expires_at, richiesta_privacy_aperta_il")
       .eq("privacy_token", data.token)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -184,7 +184,7 @@ export const firmaPrivacyConToken = createServerFn({ method: "POST" })
 
     const { data: ct, error } = await supabaseAdmin
       .from("contatti")
-      .select("id, cliente_id, lead_id, nome, cognome, email, privacy_firmata, privacy_token_expires_at")
+      .select("id, cliente_id, lead_id, fornitore_id, nome, cognome, email, privacy_firmata, privacy_token_expires_at")
       .eq("privacy_token", data.token)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -251,7 +251,7 @@ export const registraConsensoDiPersona = createServerFn({ method: "POST" })
     // L'accesso al contatto è verificato dalle RLS con il client dell'utente
     const { data: ct, error } = await supabase
       .from("contatti")
-      .select("id, cliente_id, lead_id, nome, cognome, email, privacy_firmata")
+      .select("id, cliente_id, lead_id, fornitore_id, nome, cognome, email, privacy_firmata")
       .eq("id", data.contattoId)
       .maybeSingle();
     if (error) throw new Error(error.message);
