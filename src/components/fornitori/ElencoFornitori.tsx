@@ -12,7 +12,7 @@ import { BadgeFornitore, BadgeTipoFornitore } from "./controlli-fornitori";
 import { BandierinaConvenzionato } from "./BandierinaConvenzionato";
 
 export type SelezioneFornitori = { selezionati: Set<string>; cambia: (id: string, v: boolean) => void; tutti: SelezioneTutti };
-export type OrdinamentoElenco = { ordina: OrdinamentoFornitori; direzione: "asc" | "desc"; cambia: (col: OrdinamentoFornitori) => void };
+export type OrdinamentoElenco = { ordina: OrdinamentoFornitori; direzione: "asc" | "desc"; imposta: (col: OrdinamentoFornitori, direzione: "asc" | "desc") => void };
 
 const COLONNE: { col: OrdinamentoFornitori; label: string; w: string }[] = [
   { col: "codice", label: "Codice", w: "9%" }, { col: "ragione_sociale", label: "Ragione sociale", w: "35%" },
@@ -34,7 +34,7 @@ export function ElencoFornitori({ rows, apri, selezione, evidenzia, ordinamento 
   return <>
     {o && <div className="mb-2 flex items-center gap-2 md:hidden">
       <span className="shrink-0 text-xs text-muted-foreground">Ordina per</span>
-      <Select value={`${o.ordina}:${o.direzione}`} onValueChange={v => { const [c, d] = v.split(":") as [OrdinamentoFornitori, string]; if (c !== o.ordina) o.cambia(c); if (d !== (c !== o.ordina ? "asc" : o.direzione)) o.cambia(c); }}>
+      <Select value={`${o.ordina}:${o.direzione}`} onValueChange={v => { const [c, d] = v.split(":"); o.imposta(c as OrdinamentoFornitori, d === "desc" ? "desc" : "asc"); }}>
         <SelectTrigger aria-label="Ordina fornitori" className="min-h-10 min-w-0 flex-1"><SelectValue /></SelectTrigger>
         <SelectContent>{COLONNE.flatMap(c => [<SelectItem key={`${c.col}:asc`} value={`${c.col}:asc`}>{c.label} ↑</SelectItem>, <SelectItem key={`${c.col}:desc`} value={`${c.col}:desc`}>{c.label} ↓</SelectItem>])}</SelectContent>
       </Select>
@@ -52,7 +52,7 @@ export function ElencoFornitori({ rows, apri, selezione, evidenzia, ordinamento 
           {s && <th scope="col" className="px-2 py-3"><Checkbox aria-label={s.tutti.etichetta ?? "Seleziona tutti"} className="border-navy-foreground" checked={stato} disabled={s.tutti.disabled} onCheckedChange={() => s.tutti.onChange(!s.tutti.tutti)} /></th>}
           {COLONNE.map(c => { const attiva = o?.ordina === c.col;
             return <th scope="col" key={c.col} aria-sort={attiva ? (o!.direzione === "asc" ? "ascending" : "descending") : "none"} className="px-2 py-3 text-left font-semibold">
-              {o ? <button type="button" onClick={() => o.cambia(c.col)} className="flex items-center gap-1 text-left transition-colors hover:text-primary-foreground/80">
+              {o ? <button type="button" onClick={() => o.imposta(c.col, attiva && o.direzione === "asc" ? "desc" : "asc")} className="flex items-center gap-1 text-left transition-colors hover:text-primary-foreground/80">
                 <span className="break-words">{c.label}</span>
                 {attiva ? (o.direzione === "asc" ? <ChevronUp className="size-4 shrink-0" /> : <ChevronDown className="size-4 shrink-0" />) : <ChevronsUpDown className="size-4 shrink-0 opacity-60" />}
               </button> : c.label}</th>; })}

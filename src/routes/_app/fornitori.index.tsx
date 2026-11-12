@@ -46,7 +46,7 @@ function ContenutoFornitori() {
   const caricaIds = useServerFn(idsFornitoriFiltrati);
   const filtriBase = { testo: f.q, ancheCliente: filtroSiNo(f.ancheCliente), conArticoli: filtroSiNo(f.conArticoli), conEmail: filtroSiNo(f.conEmail), statiConvenzione: statiConv, includiManuali: f.manuali, tipi };
   const ord = ordinamentoFornitoriValido(f.ordina, f.dir);
-  const cambiaOrdine = (col: OrdinamentoFornitori) => void navigate({ search: prev => ({ ...prev, ordina: col, dir: ord.ordina === col && ord.direzione === "asc" ? "desc" : "asc", pagina: 1 }), replace: true, resetScroll: false });
+  const imposta = (col: OrdinamentoFornitori, dir: "asc" | "desc") => void navigate({ search: prev => ({ ...prev, ordina: col, dir, pagina: 1 }), replace: true, resetScroll: false });
   const filtri = { ...filtriBase, ordina: ord.ordina, direzione: ord.direzione, limite: 100, offset: (pagina - 1) * 100 };
   const query = useQuery({ queryKey: ["fornitori", filtri], queryFn: () => carica({ data: filtri }) });
   const cambia = (patch: Partial<typeof f>) => void navigate({ search: prev => ({ ...prev, ...patch, pagina: 1 }), resetScroll: false });
@@ -148,7 +148,7 @@ function ContenutoFornitori() {
     {invioId && <AvanzamentoInvioFornitori invioId={invioId} onChiudi={() => setInvioId(null)} />}
     {query.isPending ? <p role="status" className="py-6 text-muted-foreground">Caricamento fornitori…</p>
       : query.error ? <ErroreFornitori error={query.error} riprova={() => void query.refetch()} />
-      : <><ElencoFornitori rows={query.data.rows} ordinamento={{ ...ord, cambia: cambiaOrdine }} selezione={selezione} evidenzia={proposta ? daControllareInProposta : undefined} apri={id => void navigate({ to: "/fornitori/$id", params: { id } })} />
+      : <><ElencoFornitori rows={query.data.rows} ordinamento={{ ...ord, imposta }} selezione={selezione} evidenzia={proposta ? daControllareInProposta : undefined} apri={id => void navigate({ to: "/fornitori/$id", params: { id } })} />
         <PaginazioneFornitori totale={query.data.total} pagina={pagina} dimensione={100} nome="fornitori" onChange={pagina => void navigate({ search: prev => ({ ...prev, pagina }), resetScroll: true })} /></>}
     {gestisce && sel.size > 0 && <div role="region" aria-label="Azioni sui fornitori selezionati" className="fixed bottom-3 left-1/2 z-40 w-[calc(100%-1.5rem)] max-w-2xl -translate-x-1/2 rounded-lg border bg-background px-3 py-2.5 shadow-lg sm:bottom-4 sm:px-4">
       <div className="flex flex-wrap items-center gap-2">
