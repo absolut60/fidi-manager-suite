@@ -18,6 +18,7 @@ import { ArticoliFornitore } from "./ArticoliFornitore";
 import { AttivitaFornitoreTab, useUltimaAttivita, dataOraIt } from "./AttivitaFornitore";
 import { tipoAttivita } from "@/lib/attivita-fornitore";
 import { InviaEmailFornitoreDialog } from "./InviaEmailFornitoreDialog";
+import { LetteraFornitoreDialog } from "./LetteraFornitoreDialog";
 import { chiaveAttivita } from "./AttivitaFornitore";
 
 function dataGamma(value: string | null) {
@@ -36,10 +37,17 @@ export function SchedaFornitore({ fornitore: f, tab, onTabChange, statoArticoli 
   const tabAttiva = tabVisibili.includes(tab) ? tab : "riepilogo";
   const sottotitolo = sottotitoloFornitore(f);
   const [emailAperta, setEmailAperta] = useState(false);
+  const [letteraAperta, setLetteraAperta] = useState(false);
+  const [allegatiEmail, setAllegatiEmail] = useState<{ file: File[]; oggetto?: string }>({ file: [] });
   const qc = useQueryClient();
+  const aggiornaAttivita = () => void qc.invalidateQueries({ queryKey: chiaveAttivita(f.id) });
   return <div className="min-w-0 space-y-6">
-    {f.puo_modificare_note && <InviaEmailFornitoreDialog fornitore={f} open={emailAperta} onOpenChange={setEmailAperta}
-      onInviata={() => { void qc.invalidateQueries({ queryKey: chiaveAttivita(f.id) }); onTabChange("attivita"); }} />}
+    {f.puo_modificare_note && <InviaEmailFornitoreDialog fornitore={f} open={emailAperta} onOpenChange={v => { setEmailAperta(v); if (!v) setAllegatiEmail({ file: [] }); }}
+      fileIniziali={allegatiEmail.file} oggettoIniziale={allegatiEmail.oggetto}
+      onInviata={() => { aggiornaAttivita(); onTabChange("attivita"); }} />}
+    {f.puo_modificare_note && <LetteraFornitoreDialog open={letteraAperta} onOpenChange={setLetteraAperta} fornitore={f}
+      onRegistrata={aggiornaAttivita}
+      onAllegaEmail={(pdf, oggetto) => { setAllegatiEmail({ file: [pdf], oggetto }); setEmailAperta(true); }} />}
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0 flex-1">
         <h1 className="break-words text-2xl font-bold tracking-tight sm:text-3xl">{f.ragione_sociale || "Fornitore"}</h1>
@@ -48,7 +56,8 @@ export function SchedaFornitore({ fornitore: f, tab, onTabChange, statoArticoli 
         <div className="mt-2 flex flex-wrap gap-1.5"><BadgeMacrocategoria cod={f.macrocategoria_cod} desc={f.macrocategoria_desc} /><BadgeFornitore fornitore={f} />{f.clienti.length > 0 && <Badge variant="outline" className="border-success/30 bg-success/10 text-success">Anche cliente</Badge>}</div>
       </div>
       <div className="flex flex-wrap items-center gap-2" data-azioni-fornitore>
-        {f.puo_modificare_note && <Button className="min-h-10 gap-1.5" onClick={() => setEmailAperta(true)}><Send className="size-4" />Invia email</Button>}
+        {f.puo_modificare_note && <Button className="min-h-10 gap-1.5" onClick={() => { setAllegatiEmail({ file: [] }); setEmailAperta(true); }}><Send className="size-4" />Invia email</Button>}
+        {f.puo_modificare_note && <Button variant="outline" className="min-h-10 gap-1.5" onClick={() => setLetteraAperta(true)}><FileText className="size-4" />Lettera</Button>}
       </div>
     </div>
     <Tabs value={tabAttiva} onValueChange={value => { const next = tabVisibili.find(t => t === value); if (next) onTabChange(next); }}>
