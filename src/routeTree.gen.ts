@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
+import { Route as AnteprimaFornitoriTmpRouteImport } from './routes/anteprima-fornitori-tmp'
 import { Route as IscrizioneWhatsappRouteImport } from './routes/iscrizione-whatsapp'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as VerificaCodiceRouteImport } from './routes/verifica-codice'
@@ -110,6 +111,11 @@ const IndexRoute = IndexRouteImport.update({
 } as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnteprimaFornitoriTmpRoute = AnteprimaFornitoriTmpRouteImport.update({
+  id: '/anteprima-fornitori-tmp',
+  path: '/anteprima-fornitori-tmp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IscrizioneWhatsappRoute = IscrizioneWhatsappRouteImport.update({
@@ -589,6 +595,7 @@ const ApiWebhooksD360TokenRoute = ApiWebhooksD360TokenRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/anteprima-fornitori-tmp': typeof AnteprimaFornitoriTmpRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
   '/verifica-codice': typeof VerificaCodiceRoute
@@ -683,6 +690,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/anteprima-fornitori-tmp': typeof AnteprimaFornitoriTmpRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
   '/verifica-codice': typeof VerificaCodiceRoute
@@ -776,6 +784,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
+  '/anteprima-fornitori-tmp': typeof AnteprimaFornitoriTmpRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
   '/verifica-codice': typeof VerificaCodiceRoute
@@ -872,6 +881,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/anteprima-fornitori-tmp'
     | '/iscrizione-whatsapp'
     | '/login'
     | '/verifica-codice'
@@ -966,6 +976,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/anteprima-fornitori-tmp'
     | '/iscrizione-whatsapp'
     | '/login'
     | '/verifica-codice'
@@ -1058,6 +1069,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_app'
+    | '/anteprima-fornitori-tmp'
     | '/iscrizione-whatsapp'
     | '/login'
     | '/verifica-codice'
@@ -1154,6 +1166,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
+  AnteprimaFornitoriTmpRoute: typeof AnteprimaFornitoriTmpRoute
   IscrizioneWhatsappRoute: typeof IscrizioneWhatsappRoute
   LoginRoute: typeof LoginRoute
   VerificaCodiceRoute: typeof VerificaCodiceRoute
@@ -1184,6 +1197,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/anteprima-fornitori-tmp': {
+      id: '/anteprima-fornitori-tmp'
+      path: '/anteprima-fornitori-tmp'
+      fullPath: '/anteprima-fornitori-tmp'
+      preLoaderRoute: typeof AnteprimaFornitoriTmpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/iscrizione-whatsapp': {
@@ -2039,6 +2059,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
+  AnteprimaFornitoriTmpRoute: AnteprimaFornitoriTmpRoute,
   IscrizioneWhatsappRoute: IscrizioneWhatsappRoute,
   LoginRoute: LoginRoute,
   VerificaCodiceRoute: VerificaCodiceRoute,
