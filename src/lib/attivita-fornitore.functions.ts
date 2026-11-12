@@ -8,7 +8,7 @@ export type { AttivitaFornitore, FiltriAttivitaFornitore } from "./attivita-forn
 
 type Crea = import("zod").input<typeof creaAttivitaFornitoreInput>;
 type Aggiorna = import("zod").input<typeof aggiornaAttivitaFornitoreInput>;
-const COLONNE = "id,fornitore_id,tipo,origine,data_attivita,oggetto,corpo,esito,destinatari,stato,errore,creato_da";
+const COLONNE = "id,fornitore_id,tipo,origine,data_attivita,oggetto,corpo,esito,destinatari,cc,ccn,stato,errore,creato_da";
 
 export const elencoAttivitaFornitore = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

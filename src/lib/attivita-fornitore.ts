@@ -36,7 +36,7 @@ export type FiltriAttivitaFornitore = z.input<typeof elencoAttivitaFornitoreInpu
 export type DatiAttivitaFornitore = z.input<typeof datiAttivitaFornitore>;
 export type AttivitaFornitore = {
   id: string; fornitore_id: string; tipo: string; origine: "manuale" | "invio"; data_attivita: string;
-  oggetto: string | null; corpo: string | null; esito: string | null; destinatari: string[] | null;
+  oggetto: string | null; corpo: string | null; esito: string | null; destinatari: string[] | null; cc?: string[] | null; ccn?: string[] | null;
   stato: string; errore: string | null; creato_da: string | null; operatore: string | null; n_allegati: number;
 };
 /** Valore per <input type="datetime-local"> nell'ora locale. */
