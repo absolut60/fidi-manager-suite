@@ -6,7 +6,7 @@ import { contaPreventiviArticolo, ordinaFornitoriArticolo } from "./scheda-artic
 
 export const elencoArticoliGamma = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: FiltriArticoli) => z.object({ search: z.string(), famiglie: z.array(z.string()), sottofamiglie: z.array(z.string()), marche: z.array(z.string()), fornitori: z.array(z.string().uuid()), stati: z.array(z.string()), soloDisponibili: z.boolean(), listino: z.number(), page: z.number().finite() }).parse(input))
+  .inputValidator((input: FiltriArticoli) => z.object({ search: z.string(), famiglie: z.array(z.string()), sottofamiglie: z.array(z.string()), marche: z.array(z.string()), fornitori: z.array(z.string().uuid()), stati: z.array(z.string()), disponibileIn: z.array(z.string()), listino: z.number(), ordina: z.string(), dir: z.string(), page: z.number().finite() }).parse(input))
   .handler(async ({ data, context }) => {
     const { data: rows, error } = await context.supabase.rpc("cerca_articoli", parametriArticoli(data));
     if (error) throw new Error(error.message);
@@ -27,7 +27,10 @@ export const facetsArticoliGamma = createServerFn({ method: "POST" }).middleware
     ]);
     if (facets.error) throw new Error(facets.error.message);
     if (listini.error) throw new Error(listini.error.message);
-    return { ...z.object({ famiglie: z.array(facetSchema), sottofamiglie: z.array(facetSchema.extend({ famiglia: z.string().nullable() })), marche: z.array(facetSchema) }).parse(facets.data), listini: listini.data };
+    // FM63: sedi per "Disponibile in" (propria in cima) e contesto listino della sede da facets_articoli.
+    const parsed = z.object({ famiglie: z.array(facetSchema), sottofamiglie: z.array(facetSchema.extend({ famiglia: z.string().nullable() })), marche: z.array(facetSchema),
+      sedi: z.array(z.object({ id: z.string(), nome: z.string().nullable(), propria: z.boolean() })), globale: z.boolean().nullable(), listino_sede: z.number().nullable() }).parse(facets.data);
+    return { ...parsed, globale: parsed.globale !== false, listini: (listini.data ?? []).filter(l => [10, 20, 30].includes(l.codice)) };
   });
 
 export const fornitoriArticoliGamma = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
