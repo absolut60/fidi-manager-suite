@@ -46,13 +46,13 @@ describe("macrocategoria fornitore (FM62 F1)", () => {
   });
 });
 
-import { tabVisibiliFornitore, sottotitoloFornitore } from "@/lib/scheda-fornitore";
+import { tabVisibiliFornitore, sottotitoloFornitore } from "../src/lib/scheda-fornitore";
 describe("scheda fornitore G1", () => {
-  it("nasconde Articoli forniti a chi non vede i costi", () => {
+  test("nasconde Articoli forniti a chi non vede i costi", () => {
     expect(tabVisibiliFornitore(false)).toEqual(["riepilogo", "anagrafica", "clienti", "allegati"]);
     expect(tabVisibiliFornitore(true)).toContain("articoli");
   });
-  it("compone il sottotitolo come la scheda cliente", () => {
+  test("compone il sottotitolo come la scheda cliente", () => {
     expect(sottotitoloFornitore({ codice_gestionale: 1273, partita_iva: "01234567890", citta: "Milano", provincia: "MI" })).toBe("Cod. 1273 — P.IVA 01234567890 — Milano (MI)");
     expect(sottotitoloFornitore({ codice_gestionale: null, partita_iva: null, citta: null, provincia: null })).toBe("");
   });
