@@ -3813,6 +3813,8 @@ export type Database = {
           hash_riga: string | null
           id: string
           indirizzo: string | null
+          macrocategoria_cod: string | null
+          macrocategoria_desc: string | null
           nome: string
           note: string | null
           origine: string
@@ -3849,6 +3851,8 @@ export type Database = {
           hash_riga?: string | null
           id?: string
           indirizzo?: string | null
+          macrocategoria_cod?: string | null
+          macrocategoria_desc?: string | null
           nome: string
           note?: string | null
           origine?: string
@@ -3885,6 +3889,8 @@ export type Database = {
           hash_riga?: string | null
           id?: string
           indirizzo?: string | null
+          macrocategoria_cod?: string | null
+          macrocategoria_desc?: string | null
           nome?: string
           note?: string | null
           origine?: string
@@ -8042,6 +8048,7 @@ export type Database = {
       }
       auth_e_showroom: { Args: never; Returns: boolean }
       auth_gestisce_contatti_clienti: { Args: never; Returns: boolean }
+      auth_ha_accesso_fornitori: { Args: never; Returns: boolean }
       auth_ha_accesso_preventivi: { Args: never; Returns: boolean }
       auth_ha_ruolo_globale_clienti: { Args: never; Returns: boolean }
       auth_mfa_ok: { Args: never; Returns: boolean }
@@ -8049,6 +8056,7 @@ export type Database = {
       auth_puo_aggiornare_cerved: { Args: never; Returns: boolean }
       auth_puo_eliminare_contatti_clienti: { Args: never; Returns: boolean }
       auth_puo_gestire_anagrafiche_prev: { Args: never; Returns: boolean }
+      auth_puo_gestire_fornitori: { Args: never; Returns: boolean }
       auth_puo_gestire_legale: { Args: never; Returns: boolean }
       auth_puo_gestire_tesoreria: { Args: never; Returns: boolean }
       auth_puo_inviare_recupero: { Args: never; Returns: boolean }
@@ -8201,6 +8209,7 @@ export type Database = {
           _con_articoli?: boolean
           _includi_manuali?: boolean
           _limite?: number
+          _macrocategorie?: string[]
           _offset?: number
           _testo?: string
         }
@@ -8212,6 +8221,8 @@ export type Database = {
           codice_gestionale: number
           condizione_pagamento_desc: string
           id: string
+          macrocategoria_cod: string
+          macrocategoria_desc: string
           n_articoli: number
           n_preferenziale: number
           origine: string
