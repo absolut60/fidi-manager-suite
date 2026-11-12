@@ -10,7 +10,7 @@ export function totaleDisponibilitaArticolo(rows: RigaDisponibilitaArticolo[]) {
 export function contaPreventiviArticolo(rows: { blocchi_preventivo: { preventivo_id: string } | null }[]) {
   return new Set(rows.flatMap((r) => r.blocchi_preventivo?.preventivo_id ? [r.blocchi_preventivo.preventivo_id] : [])).size;
 }
-export function ordinaFornitoriArticolo<T extends { preferenziale: boolean; fornitore: { ragione_sociale: string } | null; codice_articolo_fornitore: string }>(rows: T[]): T[] {
+export function ordinaFornitoriArticolo<T extends { preferenziale: boolean; fornitore: { ragione_sociale: string | null } | null; codice_articolo_fornitore: string }>(rows: T[]): T[] {
   return [...rows].sort((a, b) => Number(b.preferenziale) - Number(a.preferenziale)
     || (a.fornitore?.ragione_sociale ?? "").localeCompare(b.fornitore?.ragione_sociale ?? "", "it-IT")
     || a.codice_articolo_fornitore.localeCompare(b.codice_articolo_fornitore, "it-IT"));

@@ -43,7 +43,7 @@ export function SchedaArticoloGamma({ articolo: a }: { articolo: DettaglioGamma 
     </header>
     <div className="grid min-w-0 grid-cols-1 gap-x-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
       <div className="min-w-0">
-        <Sezione titolo="Disponibilité"><DisponibilitaArticolo codice={a.codice} /></Sezione>
+        <Sezione titolo="Disponibilità"><DisponibilitaArticolo codice={a.codice} /></Sezione>
         <Sezione titolo="Anagrafica Gamma"><dl className="grid grid-cols-1 gap-x-5 md:grid-cols-2">
           <Dato label="Famiglia" value={a.famiglia} /><Dato label="Sottofamiglia" value={a.sottofamiglia} />
           <Dato label="U.M." value={a.um} /><Dato label="U.M. 2" value={a.um2} />
