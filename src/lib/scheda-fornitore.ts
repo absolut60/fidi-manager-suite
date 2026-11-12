@@ -50,7 +50,7 @@ export function badgeMacrocategoria(cod: string | null | undefined, desc: string
   const c = cod?.trim();
   if (!c) return { tono: "nd", testo: "Da classificare" };
   const d = desc?.trim();
-  const testo = d ? d.charAt(0).toUpperCase() + d.slice(1).toLowerCase().replace(/^fornitori\b/, "fornitore") : `Macrocategoria ${c}`;
+  const testo = d ? d.charAt(0).toUpperCase() + d.slice(1).toLowerCase() : `Macrocategoria ${c}`;
   return { tono: c === "01" ? "merci" : c === "03" ? "servizi" : "nd", testo: testo.replace(/^Fornitori\b/, "Fornitore") };
 }
 export function filtroSiNo(value: string): boolean | null {
