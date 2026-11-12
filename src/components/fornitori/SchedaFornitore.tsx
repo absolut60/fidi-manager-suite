@@ -55,14 +55,14 @@ export function SchedaFornitore({ fornitore: f, tab, onTabChange, statoArticoli 
     {f.puo_modificare_note && <LetteraFornitoreDialog open={letteraAperta} onOpenChange={setLetteraAperta} fornitore={f}
       onRegistrata={aggiornaAttivita}
       onAllegaEmail={(pdf, oggetto) => { setAllegatiEmail({ file: [pdf], oggetto }); setEmailAperta(true); }} />}
-    <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0 flex-1">
         <h1 className="break-words text-2xl font-bold tracking-tight sm:text-3xl">{f.ragione_sociale || "Fornitore"}</h1>
         <p className="mt-1 break-words text-sm text-muted-foreground">{sottotitolo || "Codice e partita IVA non presenti"}</p>
         {f.alias && <p className="mt-0.5 break-words text-xs text-muted-foreground">Alias: {f.alias}</p>}
         <div className="mt-2 flex flex-wrap gap-1.5"><BadgeTipoFornitore tipo={f.tipo_effettivo} fonte={f.tipo_fonte} /><BadgeFornitore fornitore={f} />{f.clienti.length > 0 && <Badge variant="outline" className="border-success/30 bg-success/10 text-success">Anche cliente</Badge>}</div>
       </div>
-      <div className="flex flex-wrap items-center gap-2" data-azioni-fornitore>
+      <div className="flex shrink-0 flex-wrap items-center gap-2" data-azioni-fornitore>
         {f.puo_modificare_note && <Button className="min-h-10 gap-1.5" onClick={() => { setAllegatiEmail({ file: [] }); setEmailAperta(true); }}><Send className="size-4" />Invia email</Button>}
         {f.puo_modificare_note && <Button variant="outline" className="min-h-10 gap-1.5" onClick={() => setLetteraAperta(true)}><FileText className="size-4" />Lettera</Button>}
       </div>
