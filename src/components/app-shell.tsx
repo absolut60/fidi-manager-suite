@@ -60,6 +60,7 @@ import { NotificationsBell } from "@/components/notifications-bell";
 import { contaNonLette, notificheNonLetteQueryKey } from "@/lib/notifiche";
 import { useBadgeNotifiche } from "@/hooks/use-badge-notifiche";
 import { toast } from "sonner";
+import { haAccessoPreventivi, puoConsultarePreventivi } from "@/lib/permessi-preventivi";
 
 type NavGroupKey =
   | "generale"
@@ -80,6 +81,8 @@ type NavItem = {
   to: string;
   label: string;
   icon: typeof LayoutDashboard;
+  /** FM63: visibile anche in sola consultazione (auth_consulta_preventivi, es. store manager). */
+  consultabile?: boolean;
   roles?: Array<"admin" | "agente" | "approvatore" | "store_manager" | "responsabile_agenti" | "amministrazione" | "amministrazione_strumenti" | "direzione" | "marketing" | "marketing_eventi" | "preventivi_read" | "preventivi_write" | "preventivi_manage" | "recupero_crediti">;
   group: NavGroupKey;
   richiesteScope?: RichiesteScope;
@@ -282,9 +285,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isMarketingEventi = hasUserRole("marketing_eventi");
   const isResponsabileAgenti = hasUserRole("responsabile_agenti");
   const isAgente = hasUserRole("agente");
-  const isPrevRead = hasUserRole("preventivi_read");
-  const isPrevWrite = hasUserRole("preventivi_write");
-  const isPrevManage = hasUserRole("preventivi_manage");
   const hasAccessoPreventivi = haAccessoPreventivi(userRoles);
   // FM63: lo store manager consulta (sola lettura) le voci "consultabile" del gruppo Preventivi.
   const consultaPreventivi = puoConsultarePreventivi(userRoles);
