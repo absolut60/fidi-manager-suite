@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/rich-text-editor";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -18,7 +18,7 @@ import { ScegliFile } from "@/components/ui/scegli-file";
 import { SchedaFileLocale } from "@/components/allegati/anteprima-allegato";
 import { isEmailValida } from "@/lib/email-validazione";
 import { inviaEmailFornitore } from "@/lib/comunicazioni-fornitore.functions";
-import { MAX_ALLEGATI_FORNITORE_BYTES, MAX_DESTINATARI_A, MAX_INDIRIZZI_FORNITORE, type EsitoInvioFornitore } from "@/lib/comunicazioni-fornitore";
+import { sanificaHtmlEmailFornitore, htmlInTesto, MAX_TESTO_FORNITORE, MAX_ALLEGATI_FORNITORE_BYTES, MAX_DESTINATARI_A, MAX_INDIRIZZI_FORNITORE, type EsitoInvioFornitore } from "@/lib/comunicazioni-fornitore";
 
 export type FornitoreEmail = { id: string; ragione_sociale: string | null; email: string | null; pec: string | null };
 type AllegatoFornitore = { id: string; nome_file: string; dimensione_bytes: number | null; created_at: string };
@@ -83,7 +83,8 @@ export function InviaEmailFornitoreDialog({ fornitore, open, onOpenChange, onInv
   const [cc, setCc] = useState<string[]>([]);
   const [ccn, setCcn] = useState<string[]>([]);
   const [oggetto, setOggetto] = useState("");
-  const [testo, setTesto] = useState("");
+  const [html, setHtml] = useState("");
+  const testo = useMemo(() => htmlInTesto(sanificaHtmlEmailFornitore(html)), [html]);
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [file, setFile] = useState<File[]>([]);
   const [chiave, setChiave] = useState(() => crypto.randomUUID());
@@ -93,7 +94,7 @@ export function InviaEmailFornitoreDialog({ fornitore, open, onOpenChange, onInv
 
   useEffect(() => {
     if (!open) return;
-    setA(emailForn ? [emailForn] : []); setCc([]); setCcn([]); setOggetto(""); setTesto(""); setSel(new Set()); setFile([]);
+    setA(emailForn ? [emailForn] : []); setCc([]); setCcn([]); setOggetto(""); setHtml(""); setSel(new Set()); setFile([]);
     setChiave(crypto.randomUUID()); setConferma(false);
   }, [open, fornitore.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -111,13 +112,13 @@ export function InviaEmailFornitoreDialog({ fornitore, open, onOpenChange, onInv
   const oltre = byte > MAX_ALLEGATI_FORNITORE_BYTES;
   const totaleIndirizzi = a.length + cc.length + ccn.length;
   const doppioni = (() => { const t = [...a, ...cc, ...ccn].map(x => x.toLowerCase()); return t.length !== new Set(t).size; })();
-  const pronto = a.length > 0 && oggetto.trim().length > 0 && oggetto.trim().length <= 200 && testo.trim().length > 0 && !oltre && totaleIndirizzi <= MAX_INDIRIZZI_FORNITORE && !doppioni && !invio;
+  const pronto = a.length > 0 && oggetto.trim().length > 0 && oggetto.trim().length <= 200 && testo.trim().length > 0 && testo.length <= MAX_TESTO_FORNITORE && html.length <= 100000 && !oltre && totaleIndirizzi <= MAX_INDIRIZZI_FORNITORE && !doppioni && !invio;
 
   async function esegui() {
     setInvio(true);
     try {
       const nuoviAllegati = await Promise.all(file.map(async f => ({ filename: f.name, contentType: f.type || "application/octet-stream", base64: await leggiBase64(f) })));
-      const r = await invia({ data: { fornitoreId: fornitore.id, chiaveInvio: chiave, a, cc, ccn, oggetto, testo, allegatiIds: [...sel], nuoviAllegati } });
+      const r = await invia({ data: { fornitoreId: fornitore.id, chiaveInvio: chiave, a, cc, ccn, oggetto, html, allegatiIds: [...sel], nuoviAllegati } });
       if (r.stato === "inviata") toast.success(r.giaInviata ? "Email già inviata in precedenza: nessun nuovo invio" : "Email inviata e registrata nelle Attività");
       else if (r.stato === "errore") toast.error(`Invio non riuscito: ${r.errore ?? "errore sconosciuto"}. Registrato nelle Attività.`, { duration: 12000 });
       else toast.message("Invio ancora in corso: controlla le Attività tra poco");
@@ -150,8 +151,8 @@ export function InviaEmailFornitoreDialog({ fornitore, open, onOpenChange, onInv
         </Sezione>
         <Sezione titolo="Messaggio">
           <div className="space-y-1.5"><Label htmlFor="email-oggetto">Oggetto</Label><Input id="email-oggetto" className="min-h-10" maxLength={200} value={oggetto} onChange={e => setOggetto(e.target.value)} /></div>
-          <div className="space-y-1.5"><Label htmlFor="email-testo">Testo</Label><Textarea id="email-testo" rows={10} maxLength={20000} value={testo} onChange={e => setTesto(e.target.value)} placeholder="Scrivi il messaggio: gli a capo vengono rispettati." />
-            <p className="text-right text-xs tabular-nums text-muted-foreground">{testo.length.toLocaleString("it-IT")}/20.000</p></div>
+          <div className="space-y-1.5"><Label>Testo</Label><RichTextEditor value={html} onChange={setHtml} caratteri compatto minHeight={240} maxHeight={420} ariaLabel="Testo dell'email" pulisciIncolla={sanificaHtmlEmailFornitore} />
+            <p className={`text-right text-xs tabular-nums ${testo.length > MAX_TESTO_FORNITORE ? "text-destructive" : "text-muted-foreground"}`}>{testo.length.toLocaleString("it-IT")}/20.000</p></div>
         </Sezione>
         <Sezione titolo="Allegati">
           <div className="space-y-2">

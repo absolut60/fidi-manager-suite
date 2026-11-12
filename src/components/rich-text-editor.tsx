@@ -358,7 +358,7 @@ export function RichTextEditor({
         </Select>)}
 
         <Select onValueChange={(v) => { focusEditor(); cmd("foreColor", v, true); emitSoon(); }}>
-          <SelectTrigger className={`${sel} w-[96px]`} aria-label="Colore testo"><SelectValue placeholder="Colore" /></SelectTrigger>
+          <SelectTrigger className={`${sel} ${compatto ? "w-[96px]" : "w-[110px]"}`} aria-label="Colore testo"><SelectValue placeholder="Colore" /></SelectTrigger>
           <SelectContent>
             {COLORI.map((c) => (
               <SelectItem key={c.value} value={c.value}>
