@@ -4,7 +4,7 @@ import { elencoFornitoriInput, dettaglioFornitoreInput, articoliFornitoreInput, 
 const id = "00000000-0000-4000-8000-000000000001";
 describe("validazione input funzioni fornitore", () => {
   test("elenco: 100 righe, offset zero e manuali esclusi per default", () => {
-    expect(elencoFornitoriInput.parse({})).toEqual({ limite: 100, offset: 0, includiManuali: false });
+    expect(elencoFornitoriInput.parse({})).toEqual({ limite: 100, offset: 0, includiManuali: false, ordina: "ragione_sociale", direzione: "asc" });
   });
   test("ricerca trim e filtri tri-stato conservati", () => {
     expect(elencoFornitoriInput.parse({ testo: "  MADE  ", ancheCliente: false, conArticoli: null, includiManuali: true }))
