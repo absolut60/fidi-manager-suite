@@ -1184,6 +1184,27 @@
       "when": 1794438561961,
       "tag": "0168_fm61_articoli_marche_solo_step",
       "breakpoints": true
+    },
+    {
+      "idx": 169,
+      "version": "7",
+      "when": 1794441333579,
+      "tag": "0169_fm61_catalogo_articoli_ricerca",
+      "breakpoints": true
+    },
+    {
+      "idx": 170,
+      "version": "7",
+      "when": 1794441530547,
+      "tag": "0170_fm61_catalogo_articoli_pagina_efficiente",
+      "breakpoints": true
+    },
+    {
+      "idx": 171,
+      "version": "7",
+      "when": 1794442061491,
+      "tag": "0171_fm61_catalogo_ricerca_trigram",
+      "breakpoints": true
     }
   ]
 }

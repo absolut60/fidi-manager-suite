@@ -19,6 +19,7 @@ export function FiltroMultiplo({
   selezionaTutte = false,
   testoMolti,
   className,
+  onCercaChange,
 }: {
   etichetta: string;
   opzioni: OpzioneFiltro[];
@@ -31,6 +32,8 @@ export function FiltroMultiplo({
   /** Opt-in: testo riassuntivo per più selezioni (es. n => `${n} codici`). */
   testoMolti?: (n: number) => string;
   className?: string;
+  /** Opt-in: ricerca remota, senza filtrare nuovamente le opzioni ricevute. */
+  onCercaChange?: (testo: string) => void;
 }) {
   const [cerca, setCerca] = useState("");
   const set = useMemo(() => new Set(selezionati), [selezionati]);
@@ -44,15 +47,15 @@ export function FiltroMultiplo({
 
   const visibili = useMemo(() => {
     const s = cerca.trim().toLowerCase();
-    return s ? opzioni.filter((o) => o.label.toLowerCase().includes(s)) : opzioni;
-  }, [opzioni, cerca]);
+    return s && !onCercaChange ? opzioni.filter((o) => o.label.toLowerCase().includes(s)) : opzioni;
+  }, [opzioni, cerca, onCercaChange]);
 
   function toggle(v: string) {
     onChange(set.has(v) ? selezionati.filter((x) => x !== v) : [...selezionati, v]);
   }
 
   return (
-    <Popover onOpenChange={(o) => { if (!o) setCerca(""); }}>
+    <Popover onOpenChange={(o) => { if (!o) { setCerca(""); onCercaChange?.(""); } }}>
       <PopoverTrigger asChild>
         <Button
           type="button"
@@ -78,7 +81,7 @@ export function FiltroMultiplo({
               className="h-9 pl-8"
               placeholder="Cerca…"
               value={cerca}
-              onChange={(e) => setCerca(e.target.value)}
+              onChange={(e) => { setCerca(e.target.value); onCercaChange?.(e.target.value); }}
               aria-label={`Cerca in ${etichetta}`}
             />
           </div>

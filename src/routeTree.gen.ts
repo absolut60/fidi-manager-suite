@@ -95,6 +95,7 @@ import { Route as AppTaskIndexRouteImport } from './routes/_app/task.index'
 import { Route as AppTaskIdRouteImport } from './routes/_app/task.$id'
 import { Route as ApiPublicInngestRouteImport } from './routes/api/public/inngest'
 import { Route as ApiPublicInviaPushRouteImport } from './routes/api/public/invia-push'
+import { Route as AppArticoliCodiceCodiceRouteImport } from './routes/_app/articoli.codice.$codice'
 import { Route as ApiPublicEmailImgSplatRouteImport } from './routes/api/public/email-img/$'
 import { Route as ApiPublicHooksCheckReminderRitardiRouteImport } from './routes/api/public/hooks/check-reminder-ritardi'
 import { Route as ApiPublicHooksCheckScadenzeRouteImport } from './routes/api/public/hooks/check-scadenze'
@@ -546,6 +547,11 @@ const ApiPublicInviaPushRoute = ApiPublicInviaPushRouteImport.update({
   path: '/api/public/invia-push',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppArticoliCodiceCodiceRoute = AppArticoliCodiceCodiceRouteImport.update({
+  id: '/articoli/codice/$codice',
+  path: '/articoli/codice/$codice',
+  getParentRoute: () => AppRoute,
+} as any)
 const ApiPublicEmailImgSplatRoute = ApiPublicEmailImgSplatRouteImport.update({
   id: '/api/public/email-img/$',
   path: '/api/public/email-img/$',
@@ -655,6 +661,7 @@ export interface FileRoutesByFullPath {
   '/preventivatore/': typeof AppPreventivatoreIndexRoute
   '/richieste-interne/': typeof AppRichiesteInterneIndexRoute
   '/task/': typeof AppTaskIndexRoute
+  '/articoli/codice/$codice': typeof AppArticoliCodiceCodiceRoute
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
@@ -743,6 +750,7 @@ export interface FileRoutesByTo {
   '/preventivatore': typeof AppPreventivatoreIndexRoute
   '/richieste-interne': typeof AppRichiesteInterneIndexRoute
   '/task': typeof AppTaskIndexRoute
+  '/articoli/codice/$codice': typeof AppArticoliCodiceCodiceRoute
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
@@ -836,6 +844,7 @@ export interface FileRoutesById {
   '/_app/preventivatore/': typeof AppPreventivatoreIndexRoute
   '/_app/richieste-interne/': typeof AppRichiesteInterneIndexRoute
   '/_app/task/': typeof AppTaskIndexRoute
+  '/_app/articoli/codice/$codice': typeof AppArticoliCodiceCodiceRoute
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
@@ -929,6 +938,7 @@ export interface FileRouteTypes {
     | '/preventivatore/'
     | '/richieste-interne/'
     | '/task/'
+    | '/articoli/codice/$codice'
     | '/api/public/email-img/$'
     | '/api/public/hooks/check-reminder-ritardi'
     | '/api/public/hooks/check-scadenze'
@@ -1017,6 +1027,7 @@ export interface FileRouteTypes {
     | '/preventivatore'
     | '/richieste-interne'
     | '/task'
+    | '/articoli/codice/$codice'
     | '/api/public/email-img/$'
     | '/api/public/hooks/check-reminder-ritardi'
     | '/api/public/hooks/check-scadenze'
@@ -1109,6 +1120,7 @@ export interface FileRouteTypes {
     | '/_app/preventivatore/'
     | '/_app/richieste-interne/'
     | '/_app/task/'
+    | '/_app/articoli/codice/$codice'
     | '/api/public/email-img/$'
     | '/api/public/hooks/check-reminder-ritardi'
     | '/api/public/hooks/check-scadenze'
@@ -1738,6 +1750,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicInviaPushRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/articoli/codice/$codice': {
+      id: '/_app/articoli/codice/$codice'
+      path: '/articoli/codice/$codice'
+      fullPath: '/articoli/codice/$codice'
+      preLoaderRoute: typeof AppArticoliCodiceCodiceRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/public/email-img/$': {
       id: '/api/public/email-img/$'
       path: '/api/public/email-img/$'
@@ -1900,6 +1919,7 @@ interface AppRouteChildren {
   AppOrdiniIndexRoute: typeof AppOrdiniIndexRoute
   AppPreventivatoreIndexRoute: typeof AppPreventivatoreIndexRoute
   AppRichiesteInterneIndexRoute: typeof AppRichiesteInterneIndexRoute
+  AppArticoliCodiceCodiceRoute: typeof AppArticoliCodiceCodiceRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -1969,6 +1989,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppOrdiniIndexRoute: AppOrdiniIndexRoute,
   AppPreventivatoreIndexRoute: AppPreventivatoreIndexRoute,
   AppRichiesteInterneIndexRoute: AppRichiesteInterneIndexRoute,
+  AppArticoliCodiceCodiceRoute: AppArticoliCodiceCodiceRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

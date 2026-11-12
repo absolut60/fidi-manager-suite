@@ -1,352 +1,78 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState, useEffect, useRef } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
-import { useQuery } from "@tanstack/react-query";
-import * as XLSX from "xlsx";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { FiltroMultiplo } from "@/components/filtro-multiplo";
-import {
-  fetchArticoli,
-  fetchFornitori,
-  fetchArticoliFacets,
-  type StatoArticolo,
-} from "@/lib/articoli-api";
-import { StatoBadge } from "@/components/articoli/StatoBadge";
-import { ImportArticoliDialog } from "@/components/articoli/ImportDialog";
+import { SchedaLista } from "@/components/lista-responsive/scheda-lista";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Download, Upload, Search, SlidersHorizontal } from "lucide-react";
-import { toast } from "sonner";
-import { cn } from "@/lib/utils";
-import { salvaFile } from "@/lib/salva-file";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ChevronLeft, ChevronRight, Search, SlidersHorizontal } from "lucide-react";
+import { FILTRI_ARTICOLI, STATI_ARTICOLI, prezzoArticolo, type FiltriArticoli } from "@/lib/catalogo-articoli";
+import { elencoArticoliGamma, facetsArticoliGamma, fornitoriArticoliGamma } from "@/lib/catalogo-articoli.functions";
 
 export const Route = createFileRoute("/_app/articoli/")({
-  head: () => ({ meta: [{ title: "Articoli — Sistema MADE" }] }),
+  head: () => ({ meta: [{ title: "Articoli Gamma — FidiManager" }, { name: "description", content: "Catalogo articoli MADE con prezzi Gamma, disponibilità e filtri di famiglia, marca e fornitore." }, { property: "og:title", content: "Articoli Gamma — FidiManager" }, { property: "og:description", content: "Catalogo, prezzi e disponibilità degli articoli MADE." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: ArticoliListPage,
+  errorComponent: ({ error }) => <div role="alert" className="p-6 text-destructive">{error instanceof Error ? error.message : String(error)}</div>,
 });
-
-
-function ArticoliListPage() {
-  const navigate = useNavigate();
-  // Filtri e pagina conservati (useFiltriPagina); elenco vuoto = tutti.
-  const { user } = useAuth();
-  const { filtri: FA, setCampo } = useFiltriPagina("articoli", {
-    search: "", categoria: [] as string[], tipologia: [] as string[], fornitoreId: [] as string[], stato: [] as string[], page: 1,
-  }, { userId: user?.id, valida: { categoria: Array.isArray, tipologia: Array.isArray, fornitoreId: Array.isArray, stato: Array.isArray } });
-  const search = FA.search;
-  const categoria = FA.categoria;
-  const tipologia = FA.tipologia;
-  const fornitoreId = FA.fornitoreId;
-  const stato = FA.stato as StatoArticolo[];
-  const setSearch = (v: string) => setCampo("search", v);
-  const setCategoria = (v: string[]) => setCampo("categoria", v);
-  const setTipologia = (v: string[]) => setCampo("tipologia", v);
-  const setFornitoreId = (v: string[]) => setCampo("fornitoreId", v);
-  const setStato = (v: string[]) => setCampo("stato", v);
-  const [debouncedSearch, setDebouncedSearch] = useState(() => FA.search);
-  const [importOpen, setImportOpen] = useState(false);
-  const [mostraFiltri, setMostraFiltri] = useState(false);
-  const nFiltriAttivi = [categoria, tipologia, fornitoreId, stato].filter((l) => l.length > 0).length;
-
-  // Debounce search 300ms
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search), 300);
-    return () => clearTimeout(t);
-  }, [search]);
-
-  const filters = useMemo(
-    () => ({
-      search: debouncedSearch,
-      categoria,
-      tipologia,
-      fornitore_id: fornitoreId,
-      stato,
-    }),
-    [debouncedSearch, categoria, tipologia, fornitoreId, stato],
-  );
-
-  const page = FA.page;
-  const setPage = (v: number | ((p: number) => number)) => setCampo("page", v);
-  const pageSize = 100;
-
-  // Reset a pagina 1 SOLO ai cambi veri dei filtri dopo il montaggio (firma precedente).
-  const firmaFiltri = JSON.stringify([debouncedSearch, categoria, tipologia, fornitoreId, stato]);
-  const firmaPrecedente = useRef(firmaFiltri);
-  useEffect(() => {
-    if (firmaPrecedente.current === firmaFiltri) return;
-    firmaPrecedente.current = firmaFiltri;
-    setPage(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [firmaFiltri]);
-
-  const { data: result, isLoading, refetch } = useQuery({
-    queryKey: ["articoli", filters, page, pageSize],
-    queryFn: () => fetchArticoli(filters, { page, pageSize }),
-  });
-
-  const articoli = result?.rows ?? [];
-  const total = result?.total ?? 0;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-
-  const { data: fornitori = [] } = useQuery({
-    queryKey: ["fornitori"],
-    queryFn: fetchFornitori,
-  });
-
-  const { data: facets } = useQuery({
-    queryKey: ["articoli-facets"],
-    queryFn: fetchArticoliFacets,
-  });
-
-  async function exportCsv(onlyPotenziali: boolean) {
-    // Fetch ALL matching records for export, not just the current page
-    const exportFilters = onlyPotenziali
-      ? { ...filters, stato: ["potenziale"] as StatoArticolo[] }
-      : filters;
-    const { rows } = await fetchArticoli(exportFilters, { page: 1, pageSize: 10000 });
-    if (!rows.length) {
-      toast.error("Nessun articolo da esportare con i filtri correnti");
-      return;
-    }
-    const data = rows.map((a) => ({
-      cod_gamma: a.cod_gamma ?? "",
-      cod_fornitore: a.cod_fornitore ?? "",
-      descrizione: a.descrizione,
-      um: a.um ?? "",
-      categoria: a.categoria ?? "",
-      tipologia: a.tipologia ?? "",
-      componente: a.componente ?? "",
-      peso_unit: a.peso_unit ?? "",
-      qta_cliente: a.qta_cliente ?? "",
-      qta_fornitore: a.qta_fornitore ?? "",
-      stato: a.stato,
-      note: a.note ?? "",
-    }));
-    const ws = XLSX.utils.json_to_sheet(data);
-    const csv = XLSX.utils.sheet_to_csv(ws, { FS: ";" });
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
-    void salvaFile(blob, `articoli_gamma${onlyPotenziali ? "_potenziali" : ""}_${new Date().toISOString().slice(0, 10)}.csv`);
-    toast.success(`Esportati ${rows.length} articoli`);
-  }
-
-  return (
-    <div className="flex h-full flex-col">
-      {/* Header */}
-      <div className="border-b bg-card px-3 py-3 lg:px-6 lg:py-4">
-        <div className="flex flex-wrap items-center justify-between gap-2 lg:gap-3">
-          <div>
-            <h1 className="text-lg font-bold text-navy lg:text-xl">Articoli</h1>
-            <p className="text-xs text-muted-foreground lg:text-xs">
-              {isLoading
-                ? "Caricamento…"
-                : `${total.toLocaleString("it-IT")} record · pag. ${page}/${totalPages}`}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-1.5 lg:gap-2">
-            <Button variant="outline" size="sm" onClick={() => exportCsv(true)}>
-              <Download className="h-4 w-4 lg:mr-1" />
-              <span className="hidden lg:inline">Esporta potenziali</span>
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => exportCsv(false)}>
-              <Download className="h-4 w-4 lg:mr-1" />
-              <span className="hidden lg:inline">Esporta tutti</span>
-            </Button>
-            <Button size="sm" onClick={() => setImportOpen(true)}>
-              <Upload className="h-4 w-4 lg:mr-1" />
-              <span className="hidden sm:inline">Importa da GAMMA</span>
-            </Button>
-          </div>
-        </div>
-
-        {/* Search row (always visible) + Filtri toggle (mobile) */}
-        <div className="mt-3 flex items-center gap-2 lg:hidden">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Cerca cod. o descrizione…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-9 pl-8 font-mono text-sm"
-            />
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="shrink-0"
-            onClick={() => setMostraFiltri((v) => !v)}
-          >
-            <SlidersHorizontal className="mr-1 h-4 w-4" /> Filtri
-            {nFiltriAttivi > 0 && (
-              <Badge className="ml-1 h-4 px-1.5 text-[10px]">{nFiltriAttivi}</Badge>
-            )}
-          </Button>
-        </div>
-
-        {/* Filters: desktop = original 12-col grid with search, mobile = collapsible 2-col grid */}
-        <div
-          className={cn(
-            "mt-2 gap-2 lg:mt-4 lg:grid lg:grid-cols-12",
-            mostraFiltri ? "grid grid-cols-2" : "hidden",
-          )}
-        >
-          <div className="relative hidden lg:col-span-4 lg:block">
-            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Cerca cod. GAMMA, cod. fornitore o descrizione…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-9 pl-8 font-mono text-sm"
-            />
-          </div>
-          <FacetSelect
-            label="Categoria"
-            value={categoria}
-            options={facets?.categorie ?? []}
-            onChange={setCategoria}
-            className="lg:col-span-2"
-          />
-          <FacetSelect
-            label="Tipologia"
-            value={tipologia}
-            options={facets?.tipologie ?? []}
-            onChange={setTipologia}
-            className="lg:col-span-2"
-          />
-          <div className="lg:col-span-2">
-            <FiltroMultiplo
-              etichetta="Fornitore" testoTutti="Tutti i fornitori" cercabile
-              className="text-sm"
-              opzioni={fornitori.map((f) => ({ valore: f.id, label: f.ragione_sociale ?? "" }))}
-              selezionati={fornitoreId} onChange={setFornitoreId}
-            />
-          </div>
-          <div className="lg:col-span-2">
-            <FiltroMultiplo
-              etichetta="Stato" testoTutti="Tutti gli stati"
-              className="text-sm"
-              opzioni={[
-                { valore: "attivo", label: "Attivo" },
-                { valore: "potenziale", label: "Potenziale" },
-              ]}
-              selezionati={stato} onChange={setStato}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="flex-1 overflow-auto">
-        <table className="w-full text-xs">
-          <thead className="sticky top-0 z-10 bg-navy text-navy-foreground">
-            <tr className="text-left text-[11px] uppercase tracking-wide">
-              <th className="px-3 py-2 font-semibold">Cod. GAMMA</th>
-              <th className="px-3 py-2 font-semibold">Cod. Fornitore</th>
-              <th className="px-3 py-2 font-semibold">Fornitore</th>
-              <th className="px-3 py-2 font-semibold">Descrizione</th>
-              <th className="px-3 py-2 font-semibold">U.M.</th>
-              <th className="px-3 py-2 font-semibold">Categoria</th>
-              <th className="px-3 py-2 font-semibold">Tipologia</th>
-              <th className="px-3 py-2 font-semibold">Stato</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr>
-                <td colSpan={8} className="px-3 py-12 text-center text-muted-foreground">
-                  Caricamento…
-                </td>
-              </tr>
-            ) : articoli.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="px-3 py-12 text-center text-muted-foreground">
-                  Nessun articolo trovato.
-                </td>
-              </tr>
-            ) : (
-              articoli.map((a) => {
-                const forn = (
-                  a as typeof a & { fornitore?: { ragione_sociale: string } | null }
-                ).fornitore;
-                return (
-                  <tr
-                    key={a.id}
-                    onClick={() => navigate({ to: "/articoli/$id", params: { id: a.id } })}
-                    className="cursor-pointer border-b hover:bg-muted/50"
-                  >
-                    <td className="px-3 py-1.5 font-mono">{a.cod_gamma ?? "—"}</td>
-                    <td className="px-3 py-1.5 font-mono">{a.cod_fornitore ?? "—"}</td>
-                    <td className="px-3 py-1.5">{forn?.ragione_sociale ?? "—"}</td>
-                    <td className="px-3 py-1.5">{a.descrizione}</td>
-                    <td className="px-3 py-1.5 font-mono">{a.um ?? "—"}</td>
-                    <td className="px-3 py-1.5">{a.categoria ?? "—"}</td>
-                    <td className="px-3 py-1.5">{a.tipologia ?? "—"}</td>
-                    <td className="px-3 py-1.5">
-                      <StatoBadge stato={a.stato} />
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Pagination */}
-      <div className="flex items-center justify-between border-t bg-card px-6 py-3 text-xs">
-        <div className="text-muted-foreground">
-          {total > 0
-            ? `Mostro ${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)} di ${total.toLocaleString("it-IT")}`
-            : "0 risultati"}
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page <= 1 || isLoading}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-          >
-            ← Precedente
-          </Button>
-          <span className="font-mono">
-            {page} / {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page >= totalPages || isLoading}
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-          >
-            Successiva →
-          </Button>
-        </div>
-      </div>
-
-      <ImportArticoliDialog open={importOpen} onOpenChange={setImportOpen} onDone={refetch} />
-    </div>
-  );
+function useDebounce(value: string) {
+  const [v, set] = useState(value);
+  useEffect(() => { const t = setTimeout(() => set(value), 300); return () => clearTimeout(t); }, [value]);
+  return v;
 }
-
-function FacetSelect({
-  label,
-  value,
-  options,
-  onChange,
-  className,
-}: {
-  label: string;
-  value: string[];
-  options: string[];
-  onChange: (v: string[]) => void;
-  className?: string;
-}) {
-  return (
-    <div className={className}>
-      <FiltroMultiplo
-        etichetta={label} testoTutti={`Tutte — ${label}`} cercabile
-        opzioni={options.map((o) => ({ valore: o, label: o }))}
-        selezionati={value} onChange={onChange}
-      />
-    </div>
-  );
+function ArticoliListPage() {
+  const { user } = useAuth();
+  const { filtri: f, setParziale } = useFiltriPagina("articoli-gamma", FILTRI_ARTICOLI, { userId: user?.id, valida: { famiglie: Array.isArray, sottofamiglie: Array.isArray, marche: Array.isArray, fornitori: Array.isArray, stati: Array.isArray } });
+  const [aperti, setAperti] = useState(false);
+  const [cercaFornitore, setCercaFornitore] = useState("");
+  const search = useDebounce(f.search);
+  const testoFornitore = useDebounce(cercaFornitore);
+  const cambia = (patch: Partial<FiltriArticoli>) => setParziale({ ...patch, page: 1 });
+  return <div className="flex h-full min-h-0 flex-col">
+    <header className="max-h-[65dvh] shrink-0 overflow-y-auto border-b bg-card px-3 py-3 lg:px-6">
+      <h1 className="text-xl font-bold text-navy">Articoli</h1>
+      <div className="mt-3 flex gap-2">
+        <div className="relative min-w-0 flex-1"><Search className="absolute left-3 top-3 size-4 text-muted-foreground" /><Input aria-label="Cerca articoli" className="h-10 pl-9" placeholder="Codice, descrizione, codice a barre o fornitore…" value={f.search} onChange={e => cambia({ search: e.target.value })} /></div>
+        <Button variant="outline" className="h-10 lg:hidden" aria-expanded={aperti} onClick={() => setAperti(!aperti)}><SlidersHorizontal className="mr-2 size-4" />Filtri</Button>
+      </div>
+      <Suspense fallback={<p className="py-2 text-sm text-muted-foreground">Caricamento filtri…</p>}><Filtri f={f} cambia={cambia} aperti={aperti} testoFornitore={testoFornitore} cercaFornitore={setCercaFornitore} /></Suspense>
+    </header>
+    <Suspense fallback={<p className="p-6 text-muted-foreground">Caricamento articoli…</p>}><Risultati f={{ ...f, search }} setPage={page => setParziale({ page })} /></Suspense>
+  </div>;
+}
+function Filtri({ f, cambia, aperti, testoFornitore, cercaFornitore }: { f: FiltriArticoli; cambia: (p: Partial<FiltriArticoli>) => void; aperti: boolean; testoFornitore: string; cercaFornitore: (s: string) => void }) {
+  const { data: facets } = useSuspenseQuery({ queryKey: ["catalogo-articoli-facets"], queryFn: () => facetsArticoliGamma(), staleTime: 60000 });
+  const { data: fornitori = [], error: erroreFornitori } = useQuery({ queryKey: ["catalogo-articoli-fornitori", testoFornitore, f.fornitori], queryFn: () => fornitoriArticoliGamma({ data: { testo: testoFornitore, selezionati: f.fornitori } }) });
+  const opzioni = (items: { codice: string; descrizione: string | null; conteggio: number }[]) => Array.from(items.reduce((map, x) => {
+    const previous = map.get(x.codice);
+    map.set(x.codice, { ...x, conteggio: x.conteggio + (previous?.conteggio ?? 0) });
+    return map;
+  }, new Map<string, { codice: string; descrizione: string | null; conteggio: number }>()).values()).map(x => ({ valore: x.codice, label: `${x.descrizione || x.codice} (${x.conteggio.toLocaleString("it-IT")})` }));
+  return <div className={`${aperti ? "grid" : "hidden"} mt-3 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid lg:grid-cols-4 xl:grid-cols-6`}>
+    <FiltroMultiplo etichetta="Famiglia" testoTutti="Tutte le famiglie" cercabile opzioni={opzioni(facets.famiglie)} selezionati={f.famiglie} onChange={famiglie => cambia({ famiglie, sottofamiglie: [] })} />
+    <FiltroMultiplo etichetta="Sottofamiglia" testoTutti="Tutte le sottofamiglie" cercabile opzioni={opzioni(facets.sottofamiglie.filter(s => !f.famiglie.length || f.famiglie.includes(s.famiglia ?? "")))} selezionati={f.sottofamiglie} onChange={sottofamiglie => cambia({ sottofamiglie })} />
+    <FiltroMultiplo etichetta="Marca" testoTutti="Tutte le marche" cercabile opzioni={opzioni(facets.marche)} selezionati={f.marche} onChange={marche => cambia({ marche })} />
+    <div className="min-w-0"><FiltroMultiplo etichetta="Fornitore" testoTutti="Tutti i fornitori" cercabile onCercaChange={cercaFornitore} opzioni={fornitori.map(x => ({ valore: x.id, label: x.ragione_sociale }))} selezionati={f.fornitori} onChange={fornitori => cambia({ fornitori })} />{erroreFornitori && <p role="alert" className="text-xs text-destructive">Ricerca fornitori non disponibile</p>}</div>
+    <FiltroMultiplo etichetta="Stato" testoTutti="Tutti gli stati" opzioni={STATI_ARTICOLI} selezionati={f.stati} onChange={stati => cambia({ stati })} />
+    <Select value={String(f.listino)} onValueChange={v => cambia({ listino: Number(v) })}><SelectTrigger aria-label="Listino" className="w-full"><SelectValue /></SelectTrigger><SelectContent>{facets.listini.map(l => <SelectItem key={l.codice} value={String(l.codice)}>{l.codice} {l.descrizione}</SelectItem>)}</SelectContent></Select>
+    <label className="flex min-h-10 items-center gap-2 text-sm lg:col-span-2"><Switch checked={f.soloDisponibili} onCheckedChange={soloDisponibili => cambia({ soloDisponibili })} />Solo con disponibilità</label>
+  </div>;
+}
+function Risultati({ f, setPage }: { f: FiltriArticoli; setPage: (p: number) => void }) {
+  const navigate = useNavigate();
+  const { data } = useSuspenseQuery({ queryKey: ["catalogo-articoli", f], queryFn: () => elencoArticoliGamma({ data: f }) });
+  const pages = Math.max(1, Math.ceil(data.total / 100));
+  type Riga = (typeof data.rows)[number];
+  const apri = (a: Riga) => { if (a.origine === "gamma" && a.codice) void navigate({ to: "/articoli/codice/$codice", params: { codice: a.codice } }); else if (a.preventivatore_id) void navigate({ to: "/articoli/$id", params: { id: a.preventivatore_id } }); };
+  const stato = (a: Riga) => <Badge variant="secondary" className="max-w-full whitespace-normal text-center">{STATI_ARTICOLI.find(s => s.valore === a.stato_gamma)?.label ?? a.stato_gamma}</Badge>;
+  const disponibile = (a: Riga) => a.disponibilita_totale === null ? "—" : a.disponibilita_totale.toLocaleString("it-IT", { maximumFractionDigits: 3 });
+  return <><div className="min-h-0 flex-1 overflow-auto p-3 lg:p-0">
+    {!data.rows.length && <p className="p-6 text-center text-muted-foreground">Nessun articolo trovato.</p>}
+    <div className="space-y-2 lg:hidden">{data.rows.map(a => <SchedaLista key={a.origine + (a.codice ?? a.preventivatore_id)} onClick={() => apri(a)} titolo={<><span className="block font-mono text-xs text-muted-foreground">{a.codice ?? "Senza codice Gamma"}</span><span className="line-clamp-2">{a.descrizione}</span></>} badge={stato(a)} campi={[{ etichetta: "Marca", valore: a.marca ?? "—" }, { etichetta: "Famiglia / Sottofamiglia", valore: [a.famiglia,a.sottofamiglia].filter(Boolean).join(" / ") || "—" }, { etichetta: "U.M.", valore: a.um ?? "—" }, { etichetta: "Prezzo", valore: prezzoArticolo(a.prezzo) }, { etichetta: "Disponibilità", valore: disponibile(a) }]} />)}</div>
+    <table className="hidden w-full table-fixed text-xs lg:table"><colgroup><col className="w-[13%]"/><col className="w-[26%]"/><col className="w-[12%]"/><col className="w-[15%]"/><col className="w-[4%]"/><col className="w-[10%]"/><col className="w-[9%]"/><col className="w-[11%]"/></colgroup><thead className="sticky top-0 bg-navy text-navy-foreground"><tr>{["Codice","Descrizione","Marca","Famiglia / Sottofamiglia","U.M.","Prezzo","Disponibilità","Stato"].map(t => <th key={t} className="break-words px-2 py-3 text-left">{t}</th>)}</tr></thead><tbody>{data.rows.map(a => <tr key={a.origine + (a.codice ?? a.preventivatore_id)} tabIndex={0} onKeyDown={e => { if (e.key === "Enter") apri(a); }} onClick={() => apri(a)} className="cursor-pointer border-b hover:bg-muted/50"><td className="break-words px-2 py-3 font-mono">{a.codice ?? "—"}</td><td className="break-words px-2 py-3 font-medium">{a.descrizione}</td><td className="break-words px-2 py-3">{a.marca ?? "—"}</td><td className="break-words px-2 py-3">{a.famiglia ?? "—"}<span className="block text-muted-foreground">{a.sottofamiglia}</span></td><td className="px-2 py-3">{a.um ?? "—"}</td><td className="px-2 py-3 text-right tabular-nums">{prezzoArticolo(a.prezzo)}</td><td className="px-2 py-3 text-right tabular-nums">{disponibile(a)}</td><td className="px-2 py-3">{stato(a)}</td></tr>)}</tbody></table>
+  </div><footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t bg-card px-3 py-3 text-xs lg:px-6"><span>{data.total.toLocaleString("it-IT")} articoli · {f.page}/{pages}</span><div className="flex gap-2"><Button size="icon" variant="outline" aria-label="Pagina precedente" disabled={f.page <= 1} onClick={() => setPage(f.page - 1)}><ChevronLeft className="size-4"/></Button><Button size="icon" variant="outline" aria-label="Pagina successiva" disabled={f.page >= pages} onClick={() => setPage(f.page + 1)}><ChevronRight className="size-4"/></Button></div></footer></>;
 }
