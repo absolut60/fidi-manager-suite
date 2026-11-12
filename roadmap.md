@@ -125,3 +125,7 @@
 
 - [x] FM61 ottimizzazione tempi import unico (step stato, lotti, hash_riga, parallelismo 3, upload 8)
 - [x] FM61 fetta 3B regole prezzo Gamma (8 tabelle, import fedele, sostituzione completa per foglio)
+
+## FM62 Fetta F1 — macrocategoria fornitori + accesso amministrazione
+- [x] Migrazione 0174, parser, filtri/badge, permessi
+- [ ] Prova autenticata live (sessione non disponibile)
