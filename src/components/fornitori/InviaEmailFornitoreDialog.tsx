@@ -79,8 +79,10 @@ function CampoIndirizzi({ id, label, valori, onChange, max, suggerimenti, usati 
   </div>;
 }
 
-export function InviaEmailFornitoreDialog({ fornitore, open, onOpenChange, onInviata }: {
+export function InviaEmailFornitoreDialog({ fornitore, open, onOpenChange, onInviata, fileIniziali, oggettoIniziale }: {
   fornitore: FornitoreEmail; open: boolean; onOpenChange: (v: boolean) => void; onInviata: (e: EsitoInvioFornitore) => void;
+  /** File già pronti (es. la lettera PDF da "Allega a un'email"). */
+  fileIniziali?: File[]; oggettoIniziale?: string;
 }) {
   const { user } = useAuth();
   const emailIo = user?.email ?? null;
@@ -102,7 +104,7 @@ export function InviaEmailFornitoreDialog({ fornitore, open, onOpenChange, onInv
 
   useEffect(() => {
     if (!open) return;
-    setA(emailForn ? [emailForn] : []); setCc([]); setCcn([]); setOggetto(""); setHtml(""); setSel(new Set()); setFile([]); setPannello(false);
+    setA(emailForn ? [emailForn] : []); setCc([]); setCcn([]); setOggetto(oggettoIniziale ?? ""); setHtml(""); setSel(new Set()); setFile(fileIniziali ?? []); setPannello(false);
     setChiave(crypto.randomUUID()); setConferma(false);
   }, [open, fornitore.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
