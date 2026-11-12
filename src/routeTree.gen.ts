@@ -68,6 +68,7 @@ import { Route as AppClientiClienteIdRouteImport } from './routes/_app/clienti.$
 import { Route as AppEventiIndexRouteImport } from './routes/_app/eventi.index'
 import { Route as AppEventiEventoIdRouteImport } from './routes/_app/eventi.$eventoId'
 import { Route as AppFornitoriIndexRouteImport } from './routes/_app/fornitori.index'
+import { Route as AppFornitoriIdRouteImport } from './routes/_app/fornitori.$id'
 import { Route as AppKitIndexRouteImport } from './routes/_app/kit.index'
 import { Route as AppKitIdRouteImport } from './routes/_app/kit.$id'
 import { Route as AppLeadIndexRouteImport } from './routes/_app/lead.index'
@@ -403,6 +404,11 @@ const AppFornitoriIndexRoute = AppFornitoriIndexRouteImport.update({
   path: '/fornitori/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppFornitoriIdRoute = AppFornitoriIdRouteImport.update({
+  id: '/fornitori/$id',
+  path: '/fornitori/$id',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppKitIndexRoute = AppKitIndexRouteImport.update({
   id: '/kit/',
   path: '/kit/',
@@ -637,6 +643,7 @@ export interface FileRoutesByFullPath {
   '/articoli/$id': typeof AppArticoliIdRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/eventi/$eventoId': typeof AppEventiEventoIdRoute
+  '/fornitori/$id': typeof AppFornitoriIdRoute
   '/kit/$id': typeof AppKitIdRoute
   '/lead/$leadId': typeof AppLeadLeadIdRoute
   '/marketing/campagne': typeof AppMarketingCampagneRoute
@@ -727,6 +734,7 @@ export interface FileRoutesByTo {
   '/articoli/$id': typeof AppArticoliIdRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/eventi/$eventoId': typeof AppEventiEventoIdRoute
+  '/fornitori/$id': typeof AppFornitoriIdRoute
   '/kit/$id': typeof AppKitIdRoute
   '/lead/$leadId': typeof AppLeadLeadIdRoute
   '/marketing/campagne': typeof AppMarketingCampagneRoute
@@ -822,6 +830,7 @@ export interface FileRoutesById {
   '/_app/articoli/$id': typeof AppArticoliIdRoute
   '/_app/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/_app/eventi/$eventoId': typeof AppEventiEventoIdRoute
+  '/_app/fornitori/$id': typeof AppFornitoriIdRoute
   '/_app/kit/$id': typeof AppKitIdRoute
   '/_app/lead/$leadId': typeof AppLeadLeadIdRoute
   '/_app/marketing/campagne': typeof AppMarketingCampagneRoute
@@ -917,6 +926,7 @@ export interface FileRouteTypes {
     | '/articoli/$id'
     | '/clienti/$clienteId'
     | '/eventi/$eventoId'
+    | '/fornitori/$id'
     | '/kit/$id'
     | '/lead/$leadId'
     | '/marketing/campagne'
@@ -1007,6 +1017,7 @@ export interface FileRouteTypes {
     | '/articoli/$id'
     | '/clienti/$clienteId'
     | '/eventi/$eventoId'
+    | '/fornitori/$id'
     | '/kit/$id'
     | '/lead/$leadId'
     | '/marketing/campagne'
@@ -1101,6 +1112,7 @@ export interface FileRouteTypes {
     | '/_app/articoli/$id'
     | '/_app/clienti/$clienteId'
     | '/_app/eventi/$eventoId'
+    | '/_app/fornitori/$id'
     | '/_app/kit/$id'
     | '/_app/lead/$leadId'
     | '/_app/marketing/campagne'
@@ -1573,6 +1585,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppFornitoriIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/fornitori/$id': {
+      id: '/_app/fornitori/$id'
+      path: '/fornitori/$id'
+      fullPath: '/fornitori/$id'
+      preLoaderRoute: typeof AppFornitoriIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/kit/': {
       id: '/_app/kit/'
       path: '/kit'
@@ -1917,6 +1936,7 @@ interface AppRouteChildren {
   AppWhatsappRoute: typeof AppWhatsappRoute
   AppArticoliIdRoute: typeof AppArticoliIdRoute
   AppEventiEventoIdRoute: typeof AppEventiEventoIdRoute
+  AppFornitoriIdRoute: typeof AppFornitoriIdRoute
   AppKitIdRoute: typeof AppKitIdRoute
   AppMarketingCampagneRoute: typeof AppMarketingCampagneRoute
   AppMarketingDisiscrizioniRoute: typeof AppMarketingDisiscrizioniRoute
@@ -1988,6 +2008,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppWhatsappRoute: AppWhatsappRoute,
   AppArticoliIdRoute: AppArticoliIdRoute,
   AppEventiEventoIdRoute: AppEventiEventoIdRoute,
+  AppFornitoriIdRoute: AppFornitoriIdRoute,
   AppKitIdRoute: AppKitIdRoute,
   AppMarketingCampagneRoute: AppMarketingCampagneRoute,
   AppMarketingDisiscrizioniRoute: AppMarketingDisiscrizioniRoute,
