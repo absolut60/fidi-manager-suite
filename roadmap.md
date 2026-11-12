@@ -1,3 +1,7 @@
+# FM62 — Schede fornitore, fetta D
+- [x] Migrazione 0173 applicata: quattro funzioni SQL protette, wrapper con client utente e schemi condivisi per la validazione; nessuna UI o modifica dati.
+- [x] Tutte SECURITY DEFINER, search_path public, EXECUTE authenticated soltanto (oltre al proprietario); anon e service_role esclusi. Zero funzioni applicative eseguibili da anon. 7 test nuovi, 411 totali superati e compilazione automatica OK.
+
 # FM61 — Articoli fetta B2
 - [x] Ridisegno con Card/Tabs/Progress esistenti, tab nell'URL, margine condiviso; nessuna modifica ai dati o funzioni server.
 - [x] 404 test superati, compilazione automatica OK; screenshot componente AKINAF01007 Panoramica/Vendita/Acquisto e ALP46142 Disponibilità a 390/1280/375, controllo 320/768/1920 senza overflow né errori. Campioni temporanei rimossi; prezzi AKI riletti nel DB, disponibilità ALP campionata dai valori confermati 2676 + 936 = 3612.

@@ -1212,6 +1212,13 @@
       "when": 1794444793942,
       "tag": "0172_fm61_acquisto_scomposto_dismessi",
       "breakpoints": true
+    },
+    {
+      "idx": 173,
+      "version": "7",
+      "when": 1794477446031,
+      "tag": "0173_fm62_schede_fornitore",
+      "breakpoints": true
     }
   ]
 }
