@@ -8,7 +8,7 @@ export const Route = createFileRoute('/verifica-articolo-b2')({ validateSearch: 
 function Prova() {
  const qc = useQueryClient();
  const alp = Route.useSearch().codice === 'ALP46142';
- const a = { ...fixture, ...(alp ? { codice:'ALP46142',descrizione:'PELLET ENERGY ALPIN EN PLUS A1 SACCO KG.15 (72)',famiglia:'EDILIZIA',sottofamiglia:'PELLET',marche:{descrizione:'ALPIN PELLET'},fornitore:{ragione_sociale:'ALPIN PELLET SAS'},costo_ultimo:5.67 } : {}),fornitori:[],tecnico:null,utilizzo:null } as DettaglioGamma;
+ const a = { ...fixture, ...(alp ? { codice:'ALP46142',descrizione:'PELLET ENERGY ALPIN EN PLUS A1 SACCO KG.15 (72)',famiglia:'EDILIZIA',sottofamiglia:'PELLET',marche:{descrizione:'ALPIN PELLET'},fornitore:{ragione_sociale:'ALPIN PELLET SAS'},costo_ultimo:5.67, prezzi: [10,20,30,9].map((listino,i)=>({...fixture.prezzi[i],listino,prezzo_vendita:[7.35,7.266,7.35,6.066][i]})) } : {}),fornitori:[],tecnico:null,utilizzo:null } as DettaglioGamma;
  const riga=(nome:string,disponibilita:number,livello='sede'): RigaDisponibilitaArticolo => ({nome,disponibilita,livello,store_id:nome,deposito_codice:livello==='logistica_comune'?'ZM':nome,conta_disponibilita:livello==='logistica_comune'?'logistica_comune':'si',giacenza:disponibilita,impegnato_clienti:0,ordinato_fornitori:0});
  const rows = alp ? [['Cambiago',198],['Casorezzo',1164],['Ceriano Laghetto',52],['Lissone',156],['Pianezza',519],['Savigliano',462],['Vercelli',125]].map(([n,v])=>riga(String(n),Number(v))).concat([riga('Logistica comune',936,'logistica_comune'),riga('ZM · Moncalieri',936,'deposito')]) : [];
  useEffect(()=> { qc.setQueryData(['catalogo-articolo-disponibilita',a.codice],rows); qc.setQueryDefaults(['catalogo-articolo-disponibilita',a.codice],{staleTime:Infinity}); },[a.codice]);
