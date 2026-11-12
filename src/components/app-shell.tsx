@@ -343,8 +343,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       if (item.richiesteScope === "gestione") return canGestioneRich;
       return true;
     }
-    // FM56: menu dello showroom da fonte unica (permessi-showroom.ts); preventivi solo con ruolo preventivi_*.
-    if (soloShowroom) return voceMenuVisibileShowroom(item, hasAccessoPreventivi);
+    // FM56: menu dello showroom da fonte unica (permessi-showroom.ts); preventivi: accesso pieno, o voci consultabili (FM63 2 bis).
+    if (soloShowroom) return voceMenuVisibileShowroom(item, hasAccessoPreventivi || (!!item.consultabile && consultaPreventivi));
     if (isOnlyMarketingEventi) return item.to === "/eventi";
     if (isOnlyAgente) return AGENTE_WHITELIST.has(item.to);
     if (!item.roles) return true;
