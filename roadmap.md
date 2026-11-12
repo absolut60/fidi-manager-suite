@@ -1,3 +1,11 @@
+# FM61 — Articoli fetta C
+- [x] Disponibilità tramite RPC esistente in query indipendente; sedi, logistica separata, totale aggregati e depositi espandibili chiusi di default. Errori locali con Riprova senza bloccare scheda.
+- [x] Fornitori completi ordinati, kit con route /kit/$id esistente e conteggio distinto preventivi tramite blocchi; paginazione completa delle righe con RLS.
+- [x] Dati reali: ALP46142 sedi 2676 + ZM logistica 936 = 3612; FASL00H003300A0 sedi 3358,8 senza logistica. Confronto col criterio SQL dell’elenco sulle righe reali, funzioni invariate; RPC protette non eseguibili con strumento di lettura.
+- [x] ABBGEB109.790.00.1: ABBATTISTA 469 preferenziale e PRESSIANI 2316. KNA68367 usato fra gli altri in PARETE 100/50 LASTRE 2+2, ruolo LASTRE 1, quattro preventivi distinti.
+- [x] 402 test superati; screenshot 375/1280 e controllo 320/390/768/1920 su componente reale con campioni misti e riga aggiuntiva di prova, nessun overflow o errore browser; pannello aperto/chiuso e link kit controllati. Pagina temporanea rimossa.
+- [ ] Verifica autenticata scheda → kit e RPC disponibilità → elenco: --self non trova account Andrea; serve sessione personale nell’anteprima. Nessun bypass, scrittura o modifica SQL.
+
 # FM61 — Articoli fetta B
 - [x] Scheda Gamma completa, prezzi in sola lettura e dati tecnici con RPC permesso esistente; updateArticolo riceve soltanto gli otto campi tecnici.
 - [x] Vecchia scheda: redirect replace dei collegati, rimozione tab listini e parametro tab; adeguati quattro link dalle viste listini senza alterare le viste.
