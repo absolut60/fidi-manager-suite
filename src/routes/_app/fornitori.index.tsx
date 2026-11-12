@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Check, FileText, Handshake, Search, Send, Sparkles, X } from "lucide-react";
+import { Check, FileText, Handshake, Search, Send, Sparkles, Tag, Layers, X } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useQueryClient } from "@tanstack/react-query";
@@ -11,9 +11,11 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { elencoFornitori, idsFornitoriFiltrati, classificaFornitori, impostaStatoConvenzioneFornitori } from "@/lib/fornitori.functions";
+import { elencoFornitori, idsFornitoriFiltrati, classificaFornitori, impostaStatoConvenzioneFornitori, impostaMarcaFornitori, impostaSottocategoriaFornitori } from "@/lib/fornitori.functions";
+import { SceltaMarca, SceltaSottocategoria, useOpzioniFornitori } from "@/components/fornitori/MarcaSottocategoriaFornitore";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ricercaFornitori, paginaFornitore, filtroSiNo, OPZIONI_TIPO_FORNITORE, tipiFornitoreValidi, daControllareInProposta, messaggioConvenzione, statiConvenzioneValidi, OPZIONI_CONVENZIONE } from "@/lib/scheda-fornitore";
-import { MAX_CLASSIFICA_FORNITORI, ordinamentoFornitoriValido, type OrdinamentoFornitori } from "@/lib/fornitori";
+import { MAX_CLASSIFICA_FORNITORI, ordinamentoFornitoriValido, VALORE_NESSUNA, type OrdinamentoFornitori } from "@/lib/fornitori";
 import { puoCambiareConvenzione, puoGestireFornitori } from "@/lib/permessi-fornitori";
 import { MAX_FORNITORI_INVIO, MAX_FORNITORI_LETTERE } from "@/lib/invio-multiplo-fornitori";
 import { FiltroMultiplo } from "@/components/filtro-multiplo";
@@ -44,13 +46,15 @@ function ContenutoFornitori() {
   const [testo, setTesto] = useRicercaDifferita(f.q, aggiornaRicerca);
   const carica = useServerFn(elencoFornitori);
   const caricaIds = useServerFn(idsFornitoriFiltrati);
-  const filtriBase = { testo: f.q, ancheCliente: filtroSiNo(f.ancheCliente), conArticoli: filtroSiNo(f.conArticoli), conEmail: filtroSiNo(f.conEmail), statiConvenzione: statiConv, includiManuali: f.manuali, tipi };
+  const opzioni = useOpzioniFornitori();
+  const obsoleti = admin && f.obsoleti;
+  const filtriBase = { testo: f.q, ancheCliente: filtroSiNo(f.ancheCliente), conArticoli: filtroSiNo(f.conArticoli), conEmail: filtroSiNo(f.conEmail), statiConvenzione: statiConv, includiManuali: f.manuali, tipi, includiObsoleti: obsoleti, marche: f.marca, sottocategorie: f.sottocat };
   const ord = ordinamentoFornitoriValido(f.ordina, f.dir);
   const imposta = (col: OrdinamentoFornitori, dir: "asc" | "desc") => void navigate({ search: prev => ({ ...prev, ordina: col, dir, pagina: 1 }), replace: true, resetScroll: false });
   const filtri = { ...filtriBase, ordina: ord.ordina, direzione: ord.direzione, limite: 100, offset: (pagina - 1) * 100 };
   const query = useQuery({ queryKey: ["fornitori", filtri], queryFn: () => carica({ data: filtri }) });
-  const cambia = (patch: Partial<typeof f>) => void navigate({ search: prev => ({ ...prev, ...patch, pagina: 1 }), resetScroll: false });
-  const attivi = [f.ancheCliente !== "tutti", f.conArticoli !== "tutti", f.conEmail !== "tutti", statiConv.length > 0, tipi.length > 0, f.manuali].filter(Boolean).length;
+  const cambia = (patch: Partial<typeof f>) => void navigate({ search: prev => ({ ...prev, ...patch, pagina: 1 }), replace: true, resetScroll: false });
+  const attivi = [f.ancheCliente !== "tutti", f.conArticoli !== "tutti", f.conEmail !== "tutti", statiConv.length > 0, tipi.length > 0, f.manuali, f.marca.length > 0, f.sottocat.length > 0, obsoleti].filter(Boolean).length;
 
   // Selezione multipla: solo per chi gestisce i fornitori; si azzera se cambiano i filtri.
   const [sel, setSel] = useState<Set<string>>(new Set());
@@ -114,6 +118,27 @@ function ContenutoFornitori() {
     } catch (e) { toast.error(e instanceof Error ? e.message : "Operazione non riuscita"); }
     finally { setLavoro(false); setConfermaConv(null); }
   };
+  // FM62: marca e sottocategoria in blocco (solo amministratore).
+  const impostaMarca = useServerFn(impostaMarcaFornitori);
+  const impostaSotto = useServerFn(impostaSottocategoriaFornitori);
+  const [sceltaBlocco, setSceltaBlocco] = useState<"marca" | "sottocategoria" | null>(null);
+  const [valoreBlocco, setValoreBlocco] = useState<string | null>(null);
+  const righe = query.data?.rows ?? [];
+  // Attiva solo se tutti i selezionati sono servizi: filtro solo Servizi oppure tutti visibili in pagina e di servizi.
+  const tuttiServizi = sel.size > 0 && ((tipi.length === 1 && tipi[0] === "servizi") || ids.every(id => righe.find(r => r.id === id)?.tipo_effettivo === "servizi"));
+  const confermaBlocco = async () => {
+    if (!sceltaBlocco) return;
+    setLavoro(true);
+    try {
+      const r = sceltaBlocco === "marca" ? await impostaMarca({ data: { ids, marca: valoreBlocco } }) : await impostaSotto({ data: { ids, codice: valoreBlocco } });
+      toast.success(`${r.aggiornati.toLocaleString("it-IT")} ${r.aggiornati === 1 ? "fornitore aggiornato" : "fornitori aggiornati"}`);
+      setSel(new Set()); setSceltaBlocco(null);
+      await qc.invalidateQueries({ queryKey: ["fornitori"] });
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Operazione non riuscita"); }
+    finally { setLavoro(false); }
+  };
+  const opzioniMarca = [{ valore: VALORE_NESSUNA, label: "Senza marca" }, ...(opzioni.data?.marche ?? []).map(m => ({ valore: m.codice, label: `${m.descrizione ?? m.codice} · ${m.codice}` }))];
+  const opzioniSotto = [{ valore: VALORE_NESSUNA, label: "Senza sottocategoria" }, ...(opzioni.data?.sottocategorie ?? []).map(s => ({ valore: s.codice, label: s.descrizione }))];
   const [emailAperta, setEmailAperta] = useState(false);
   const [lettereAperte, setLettereAperte] = useState(false);
   const [invioId, setInvioId] = useState<string | null>(null);
@@ -127,14 +152,17 @@ function ContenutoFornitori() {
     <header className="space-y-3">
       <h1 className="text-2xl font-bold text-navy">Fornitori</h1>
       <div className="relative"><Search className="absolute left-3 top-3 size-4 text-muted-foreground" /><Input aria-label="Cerca fornitori" className="min-h-10 pl-9" placeholder="Nome, alias, codice, P.IVA/CF, città…" value={testo} onChange={e => setTesto(e.target.value)} /></div>
-      <FiltriCollassabili attivi={attivi} azioni={<Button variant="ghost" size="sm" className="min-h-9" onClick={() => cambia({ ancheCliente: "tutti", conArticoli: "tutti", conEmail: "tutti", convenzione: [], macro: [], tipo: [], manuali: false })}>Azzera filtri</Button>}>
-        <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(4,minmax(0,10rem))_minmax(0,14rem)_minmax(0,1fr)]">
+      <FiltriCollassabili attivi={attivi} azioni={<Button variant="ghost" size="sm" className="min-h-9" onClick={() => cambia({ ancheCliente: "tutti", conArticoli: "tutti", conEmail: "tutti", convenzione: [], macro: [], tipo: [], manuali: false, marca: [], sottocat: [], obsoleti: false })}>Azzera filtri</Button>}>
+        <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-[repeat(4,minmax(0,10rem))_repeat(3,minmax(0,13rem))]">
           <FiltroSiNo label="Anche cliente" value={f.ancheCliente} onChange={ancheCliente => cambia({ ancheCliente })} />
           <FiltroSiNo label="Con articoli" value={f.conArticoli} onChange={conArticoli => cambia({ conArticoli })} />
           <FiltroSiNo label="Con email" value={f.conEmail} onChange={conEmail => cambia({ conEmail })} />
           <div className="min-w-0 space-y-1 text-xs text-muted-foreground"><span>Convenzione</span><FiltroMultiplo etichetta="Convenzione" testoTutti="Tutti" opzioni={OPZIONI_CONVENZIONE.map(o => ({ ...o }))} selezionati={statiConv} onChange={v => cambia({ convenzione: v })} className="min-h-10 w-full text-foreground" /></div>
           <div className="min-w-0 space-y-1 text-xs text-muted-foreground"><span>Tipo fornitore</span><FiltroMultiplo etichetta="Tipo fornitore" testoTutti="Tutti" opzioni={OPZIONI_TIPO_FORNITORE.map(o => ({ ...o }))} selezionati={tipi} onChange={v => cambia({ tipo: v, macro: [] })} className="min-h-10 w-full text-foreground" /></div>
+          <div className="min-w-0 space-y-1 text-xs text-muted-foreground"><span>Marca</span><FiltroMultiplo etichetta="Marca" testoTutti="Tutte" cercabile opzioni={opzioniMarca} selezionati={f.marca} onChange={v => cambia({ marca: v })} testoMolti={n => `${n} marche`} className="min-h-10 w-full text-foreground" /></div>
+          <div className="min-w-0 space-y-1 text-xs text-muted-foreground"><span>Sottocategoria</span><FiltroMultiplo etichetta="Sottocategoria" testoTutti="Tutte" opzioni={opzioniSotto} selezionati={f.sottocat} onChange={v => cambia({ sottocat: v })} className="min-h-10 w-full text-foreground" /></div>
           <label className="flex min-h-10 items-center gap-2 text-sm"><Switch checked={f.manuali} onCheckedChange={manuali => cambia({ manuali })} />Mostra fornitori manuali</label>
+          {admin && <label className="flex min-h-10 items-center gap-2 text-sm"><Switch checked={f.obsoleti} onCheckedChange={obsoleti => cambia({ obsoleti })} />Mostra obsoleti</label>}
         </div>
       </FiltriCollassabili>
     </header>
@@ -149,7 +177,7 @@ function ContenutoFornitori() {
     {query.isPending ? <p role="status" className="py-6 text-muted-foreground">Caricamento fornitori…</p>
       : query.error ? <ErroreFornitori error={query.error} riprova={() => void query.refetch()} />
       : <><ElencoFornitori rows={query.data.rows} ordinamento={{ ...ord, imposta }} selezione={selezione} evidenzia={proposta ? daControllareInProposta : undefined} apri={id => void navigate({ to: "/fornitori/$id", params: { id } })} />
-        <PaginazioneFornitori totale={query.data.total} pagina={pagina} dimensione={100} nome="fornitori" onChange={pagina => void navigate({ search: prev => ({ ...prev, pagina }), resetScroll: true })} /></>}
+        <PaginazioneFornitori totale={query.data.total} pagina={pagina} dimensione={100} nome="fornitori" onChange={pagina => void navigate({ search: prev => ({ ...prev, pagina }), replace: true, resetScroll: true })} /></>}
     {gestisce && sel.size > 0 && <div role="region" aria-label="Azioni sui fornitori selezionati" className="fixed bottom-3 left-1/2 z-40 w-[calc(100%-1.5rem)] max-w-2xl -translate-x-1/2 rounded-lg border bg-background px-3 py-2.5 shadow-lg sm:bottom-4 sm:px-4">
       <div className="flex flex-wrap items-center gap-2">
         <span className="mr-auto min-w-0 text-sm font-medium tabular-nums">{sel.size.toLocaleString("it-IT")} {sel.size === 1 ? "selezionato" : "selezionati"}</span>
@@ -157,6 +185,8 @@ function ContenutoFornitori() {
         <Button variant="outline" className="min-h-10 flex-1 gap-1.5 sm:flex-none" onClick={() => apri("lettere")}><FileText className="size-4" />Scarica lettere</Button>
         {admin && <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="min-h-10 flex-1 gap-1.5 sm:flex-none" disabled={lavoro}><Handshake className="size-4" />Convenzione…</Button></DropdownMenuTrigger>
           <DropdownMenuContent align="end"><DropdownMenuItem className="min-h-10" onSelect={() => setConfermaConv("convenzionato")}>Segna convenzionati</DropdownMenuItem><DropdownMenuItem className="min-h-10" onSelect={() => setConfermaConv("non_convenzionato")}>Togli convenzione</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}
+        {admin && <Button variant="outline" className="min-h-10 flex-1 gap-1.5 sm:flex-none" disabled={lavoro} onClick={() => { setValoreBlocco(null); setSceltaBlocco("marca"); }}><Tag className="size-4" />Imposta marca</Button>}
+        {admin && <Button variant="outline" className="min-h-10 flex-1 gap-1.5 sm:flex-none" disabled={lavoro || !tuttiServizi} title={tuttiServizi ? undefined : "Solo se i selezionati sono tutti fornitori di servizi"} onClick={() => { setValoreBlocco(null); setSceltaBlocco("sottocategoria"); }}><Layers className="size-4" />Imposta sottocategoria</Button>}
         <Button variant="ghost" className="min-h-10 gap-1.5" onClick={() => setSel(new Set())}><X className="size-4" />Deseleziona</Button>
       </div>
     </div>}
@@ -175,6 +205,19 @@ function ContenutoFornitori() {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>}
+    {admin && <Dialog open={sceltaBlocco !== null} onOpenChange={v => { if (!v && !lavoro) setSceltaBlocco(null); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{sceltaBlocco === "marca" ? "Imposta marca" : "Imposta sottocategoria"}</DialogTitle>
+          <DialogDescription>{`${ids.length.toLocaleString("it-IT")} ${ids.length === 1 ? "fornitore selezionato" : "fornitori selezionati"}.`}{sceltaBlocco === "marca" ? " La marca resta impostata a mano: il calcolo automatico dagli articoli non la cambierà più." : ""}</DialogDescription>
+        </DialogHeader>
+        {sceltaBlocco === "marca" ? <SceltaMarca valore={valoreBlocco} onChange={setValoreBlocco} disabled={lavoro} /> : <SceltaSottocategoria valore={valoreBlocco} onChange={setValoreBlocco} disabled={lavoro} />}
+        <DialogFooter className="gap-2">
+          <Button variant="outline" className="min-h-10" disabled={lavoro} onClick={() => setSceltaBlocco(null)}>Annulla</Button>
+          <Button className="min-h-10" disabled={lavoro} onClick={() => void confermaBlocco()}>Applica</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>}
     {gestisce && <LetteraFornitoreDialog open={lettereAperte} onOpenChange={setLettereAperte} fornitoriIds={ids} />}
   </div>;
 }
