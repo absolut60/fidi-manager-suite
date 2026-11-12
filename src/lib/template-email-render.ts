@@ -425,6 +425,8 @@ export function wrapEmailHtml(
     sottotitolo?: string;
     /** true SOLO per email a destinatari esterni (v. email-piede-riservatezza.ts). */
     piedeRiservatezza?: boolean;
+    /** Testo del piè di pagina: default "cliente" (invariato). */
+    destinatarioPiede?: "cliente" | "fornitore";
   },
 ): string {
   const sedeBlock = formatSedeBlock(datiSede);
@@ -512,7 +514,7 @@ export function wrapEmailHtml(
           </div>
         </td>
       </tr>
-      ${opts?.piedeRiservatezza ? `<tr><td style="padding:0;background:#ffffff;">${buildPiedeRiservatezzaHtml()}</td></tr>` : ""}
+      ${opts?.piedeRiservatezza ? `<tr><td style="padding:0;background:#ffffff;">${buildPiedeRiservatezzaHtml(opts?.destinatarioPiede)}</td></tr>` : ""}
     </table>
   </td></tr>
 </table>

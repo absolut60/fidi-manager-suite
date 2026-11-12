@@ -9,6 +9,13 @@
 export const TESTO_RISERVATEZZA_EMAIL =
   "In ottemperanza del regolamento UE 2016/679 (RGPD) si precisa che la presente comunicazione contiene informazioni riservate e confidenziali ed è indirizzata esclusivamente ai destinatari della medesima qui indicati. Le opinioni, le conclusioni e le altre informazioni qui contenute, che non siano relative alla nostra attività caratteristica, devono essere considerate come non inviate né avvalorate da noi. Tutte le informazioni qui contenute sono soggette ai termini e alle condizioni previste dagli accordi che regolano il rapporto con il cliente. Nel caso in cui abbiate ricevuto per errore la presente comunicazione, vogliate cortesemente darcene immediata notizia, e poi procedere alla cancellazione di questo messaggio dal Vostro sistema. È strettamente proibito e potrebbe essere fonte di violazione di legge qualsiasi uso, comunicazione, copia o diffusione dei contenuti di questa comunicazione da parte di chi la abbia ricevuta per errore o in violazione degli scopi della presente.";
 
+/** Variante per i fornitori (FM62 G3): stesso testo, rapporto neutro invece di "con il cliente". */
+export const TESTO_RISERVATEZZA_EMAIL_FORNITORE = TESTO_RISERVATEZZA_EMAIL.replace(
+  "che regolano il rapporto con il cliente",
+  "che regolano il rapporto commerciale con MADE Distribuzione",
+);
+export type DestinatarioPiede = "cliente" | "fornitore";
+
 /** Le due righe del messaggio ambiente, come nell'originale. */
 export const TESTO_AMBIENTE_EMAIL: readonly [string, string] = [
   "Per favore, prima di stampare questa email",
@@ -25,11 +32,12 @@ function esc(s: string): string {
 }
 
 /** Blocco HTML (una tabella al 100%) da porre come ULTIMO elemento della mail. */
-export function buildPiedeRiservatezzaHtml(): string {
+export function buildPiedeRiservatezzaHtml(destinatario: DestinatarioPiede = "cliente"): string {
+  const testo = destinatario === "fornitore" ? TESTO_RISERVATEZZA_EMAIL_FORNITORE : TESTO_RISERVATEZZA_EMAIL;
   const font = "font-family:Arial,Helvetica,sans-serif;";
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;">
   <tr>
-    <td style="padding:16px 24px 8px 24px;${font}font-size:10px;line-height:1.5;color:#808080;font-style:italic;text-align:justify;">${esc(TESTO_RISERVATEZZA_EMAIL)}</td>
+    <td style="padding:16px 24px 8px 24px;${font}font-size:10px;line-height:1.5;color:#808080;font-style:italic;text-align:justify;">${esc(testo)}</td>
   </tr>
   <tr>
     <td style="padding:0 24px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr><td style="border-top:1px solid #d1d5db;font-size:1px;line-height:1px;height:1px;">&nbsp;</td></tr></table></td>
