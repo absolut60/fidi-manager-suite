@@ -1373,6 +1373,13 @@
       "when": 1794523066917,
       "tag": "0195_fm63_cerca_articoli_righe_strette",
       "breakpoints": true
+    },
+    {
+      "idx": 196,
+      "version": "7",
+      "when": 1794525905843,
+      "tag": "0196_fm64_rls_listini_sede",
+      "breakpoints": true
     }
   ]
 }

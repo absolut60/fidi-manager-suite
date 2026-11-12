@@ -1,3 +1,8 @@
+# FM64 — Fetta 1: RLS listini per sede
+- [x] Ricerca completa src/supabase/tests: nessuna lettura diretta dei due listini con client utente.
+- [x] Migrazione 0196 applicata: solo due policy SELECT e commenti; regola documentata nel README delle regole.
+- [x] Impersonazioni aal2 e test SQL superati: admin L10 63364/L20 62284/L30 62954, 776 depositi; Cambiago L10 63364, 35 prezzi CA e zero fuori sede; Cinisello L30 62954, zero prezzi deposito. Impronte delle due RPC identiche prima/dopo per admin e Cambiago.
+
 # FM62 — Schede fornitore, fetta E
 - [x] Menu, elenco con filtri URL, scheda e note interne tramite sole funzioni fornitore esistenti; nessuna migrazione o scrittura dati.
 - [x] Finestra articolo senza cambio pagina e link articolo → fornitore; 416 test verdi, screenshot componenti con campioni reali a 390/1280/375 e controlli 320/768/1920, nessun overflow o errore browser; campioni rimossi.
