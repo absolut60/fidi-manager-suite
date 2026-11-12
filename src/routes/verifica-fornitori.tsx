@@ -20,7 +20,7 @@ function Verifica() {
   const [preferenziali, setPreferenziali] = useState(false);
   const [pagina, setPagina] = useState(1);
   useEffect(() => {
-    qc.setQueryDefaults(["fornitore-articoli"], { staleTime: Infinity, queryFn: async () => ({ rows: fixture.articoli as ArticoloFornitore[], total: 5419 }) });
+    qc.setQueryDefaults(["fornitore-articoli"], { staleTime: Infinity, queryFn: async () => ({ rows: fixture.articoli.map(a => ({ ...a, costo_ultimo: Number(a.costo_ultimo) })) satisfies ArticoloFornitore[], total: 5419 }) });
     qc.setQueryDefaults(["catalogo-articolo"], { staleTime: Infinity });
     qc.setQueryData(["catalogo-articolo", "VGUAEA"], fixture.articolo);
     qc.setQueryDefaults(["catalogo-articolo-disponibilita"], { staleTime: Infinity });
