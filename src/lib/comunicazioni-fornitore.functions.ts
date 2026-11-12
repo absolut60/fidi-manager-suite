@@ -6,7 +6,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { sendEmailViaEdge } from "@/lib/inngest/send-email.server";
 import { wrapEmailHtml, SEDE_FALLBACK, formatDateIt } from "@/lib/template-email-render";
 import {
-  inviaEmailFornitoreInput, eseguiInvioFornitore, testoInHtml, corpoAttivitaInvio, byteBase64,
+  inviaEmailFornitoreInput, eseguiInvioFornitore, corpoAttivitaInvio, byteBase64,
   MAX_ALLEGATI_FORNITORE_BYTES, type EsitoInvioFornitore,
 } from "@/lib/comunicazioni-fornitore";
 
@@ -88,7 +88,7 @@ export const inviaEmailFornitore = createServerFn({ method: "POST" })
     if (totale > MAX_ALLEGATI_FORNITORE_BYTES) throw new Error(limiteMsg(totale));
 
     const mittente = { nome: nomeOperatore, email: emailOperatore };
-    const html = wrapEmailHtml(testoInHtml(data.testo), SEDE_FALLBACK, mittente, {
+    const html = wrapEmailHtml(data.html.html, SEDE_FALLBACK, mittente, {
       senzaBande: true, piedeRiservatezza: true, destinatarioPiede: "fornitore", sottotitolo: "MADE Distribuzione", useCid: true,
     });
 
@@ -96,7 +96,7 @@ export const inviaEmailFornitore = createServerFn({ method: "POST" })
       inserisci: async () => {
         const { data: ins, error } = await admin.from("attivita_fornitore").insert({
           fornitore_id: data.fornitoreId, tipo: "email", origine: "invio", stato: "in_invio", chiave_invio: data.chiaveInvio,
-          oggetto: data.oggetto, corpo: corpoAttivitaInvio(data.testo, nomiEsistenti),
+          oggetto: data.oggetto, corpo: corpoAttivitaInvio(data.html.testo, nomiEsistenti), corpo_html: data.html.html,
           destinatari: data.a, cc: data.cc, ccn: data.ccn, creato_da: userId, data_attivita: new Date().toISOString(),
         }).select("id").single();
         if (error?.code === "23505") return { duplicato: true as const };
