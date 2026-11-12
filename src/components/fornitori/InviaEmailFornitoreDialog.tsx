@@ -1,6 +1,6 @@
 // FM62 G3: finestra "Invia email" al fornitore (stile InviaEmailRecuperoDialog,
 // telefono a tutto schermo). Invio solo via inviaEmailFornitore.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, ChevronDown, Paperclip, Plus, Send, X } from "lucide-react";
@@ -46,6 +46,7 @@ function CampoIndirizzi({ id, label, valori, onChange, max, suggerimenti, usati 
   id: string; label: string; valori: string[]; onChange: (v: string[]) => void; max?: number; usati: string[];
   suggerimenti?: { etichetta: string; valore: string; nota?: string }[];
 }) {
+  const uid = useId().replace(/:/g, "");
   const [testo, setTesto] = useState("");
   const [errore, setErrore] = useState<string | null>(null);
   const aggiungi = (raw: string) => {
@@ -64,7 +65,7 @@ function CampoIndirizzi({ id, label, valori, onChange, max, suggerimenti, usati 
     <Label htmlFor={id}>{label}</Label>
     {valori.length > 0 && <ul className="flex flex-wrap gap-1.5">{valori.map(v => <li key={v} className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border bg-muted/40 py-0.5 pl-2.5 pr-1 text-sm"><span className="min-w-0 break-all">{v}</span><button type="button" className="inline-flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-destructive" aria-label={`Togli ${v}`} onClick={() => onChange(valori.filter(x => x !== v))}><X className="size-3.5" /></button></li>)}</ul>}
     <div className="flex min-w-0 gap-2">
-      <Input id={id} name={`fm-dest-${id}-${Math.random().toString(36).slice(2, 8)}`} type="email" inputMode="email" {...NO_AUTOFILL} autoComplete="new-password" className="min-h-10 min-w-0 flex-1" placeholder="nome@esempio.it" value={testo}
+      <Input id={id} name={`fm-dest-${id}-${uid}`} type="email" inputMode="email" {...NO_AUTOFILL} autoComplete="new-password" className="min-h-10 min-w-0 flex-1" placeholder="nome@esempio.it" value={testo}
         onChange={e => { setTesto(e.target.value); setErrore(null); }}
         onKeyDown={e => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); aggiungi(testo); } }}
         onBlur={() => { if (testo.trim()) aggiungi(testo); }} />
