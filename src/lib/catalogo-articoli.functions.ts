@@ -41,7 +41,7 @@ export const fornitoriArticoliGamma = createServerFn({ method: "POST" }).middlew
 export const dettaglioArticoloGamma = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
   .inputValidator((input: { codice: string }) => z.object({ codice: z.string() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { data: articolo, error } = await context.supabase.from("articoli_gamma").select("*,marche(descrizione),fornitore:fornitori!articoli_gamma_fornitore_pref_id_fkey(id,ragione_sociale)").eq("codice", data.codice).maybeSingle();
+    const { data: articolo, error } = await context.supabase.from("articoli_gamma").select("*,marche(descrizione),fornitore:fornitori!articoli_gamma_fornitore_pref_id_fkey(id,ragione_sociale,fornitore_obsoleto)").eq("codice", data.codice).maybeSingle();
     if (error) throw new Error(error.message);
     if (!articolo) return null;
     const escaped = data.codice.replace(/[\\%_]/g, "\\$&");
@@ -50,7 +50,7 @@ export const dettaglioArticoloGamma = createServerFn({ method: "POST" }).middlew
       context.supabase.from("listini_gamma").select("codice,descrizione"),
       context.supabase.from("articoli").select("id,cod_gamma,categoria,tipologia,componente,qta_cliente,qta_fornitore,peso_unit,note,note_acquisto").like("cod_gamma", `%${escaped}%`),
       context.supabase.rpc("auth_puo_gestire_anagrafiche_prev"),
-      context.supabase.from("articoli_gamma_fornitori").select("fornitore_codice,codice_articolo_fornitore,preferenziale,fornitore:fornitori(id,ragione_sociale)").eq("articolo_codice", data.codice),
+      context.supabase.from("articoli_gamma_fornitori").select("fornitore_codice,codice_articolo_fornitore,preferenziale,fornitore:fornitori(id,ragione_sociale,fornitore_obsoleto)").eq("articolo_codice", data.codice),
     ]);
     for (const result of [prezzi, listini, tecnici, permesso, fornitori]) if (result.error) throw new Error(result.error.message);
     const tecnico = tecnici.data?.find((a) => a.cod_gamma?.trim() === data.codice) ?? null;
