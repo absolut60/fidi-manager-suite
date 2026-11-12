@@ -26,6 +26,7 @@ import { InviaEmailFornitoreDialog } from "./InviaEmailFornitoreDialog";
 import { LetteraFornitoreDialog } from "./LetteraFornitoreDialog";
 import { chiaveAttivita } from "./AttivitaFornitore";
 import { ContattiFornitoreTab } from "./ContattiFornitore";
+import { MarcaFornitoreCampo, SottocategoriaFornitoreCampo } from "./CampiMarcaSottocategoria";
 import { useContattiFornitore, personePrincipali, nomeContatto, suggerimentiContattiEmail, type ContattoFornitore } from "@/lib/contatti-fornitore";
 
 function dataGamma(value: string | null) {
@@ -57,11 +58,11 @@ export function SchedaFornitore({ fornitore: f, tab, onTabChange, statoArticoli 
     {f.puo_modificare_note && <LetteraFornitoreDialog open={letteraAperta} onOpenChange={setLetteraAperta} fornitore={f}
       onRegistrata={aggiornaAttivita}
       onAllegaEmail={(pdf, oggetto) => { setAllegatiEmail({ file: [pdf], oggetto }); setEmailAperta(true); }} />}
+    {f.obsoleto && <p role="status" className="rounded-md border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">Fornitore obsoleto in Gamma (nome con asterischi o non valido)</p>}
     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0 flex-1">
         <h1 className="break-words text-2xl font-bold tracking-tight sm:text-3xl">{f.ragione_sociale || "Fornitore"}</h1>
         <p className="mt-1 break-words text-sm text-muted-foreground">{sottotitolo || "Codice e partita IVA non presenti"}</p>
-        {f.alias && <p className="mt-0.5 break-words text-xs text-muted-foreground">Alias: {f.alias}</p>}
         <div className="mt-2 flex flex-wrap gap-1.5">{f.stato_convenzione === "convenzionato" && <span className="inline-flex items-center text-sm font-medium"><BandierinaConvenzionato className="-ml-1" />Convenzionato</span>}<BadgeTipoFornitore tipo={f.tipo_effettivo} fonte={f.tipo_fonte} /><BadgeFornitore fornitore={f} />{f.clienti.length > 0 && <Badge variant="outline" className="border-success/30 bg-success/10 text-success">Anche cliente</Badge>}</div>
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-2" data-azioni-fornitore>
@@ -74,7 +75,7 @@ export function SchedaFornitore({ fornitore: f, tab, onTabChange, statoArticoli 
       <TabsContent value="riepilogo" className="max-w-7xl space-y-4"><RiepilogoFornitore fornitore={f} vaiAlTab={onTabChange} persone={persone} /></TabsContent>
       <TabsContent value="anagrafica" className="max-w-7xl space-y-3">
         <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-2">
-          <Sezione titolo="Anagrafica" icon={Building2}><dl className="grid grid-cols-1 gap-x-5 sm:grid-cols-2"><Dato label="Ragione sociale" value={f.ragione_sociale} /><Dato label="Alias" value={f.alias} /><Dato label="P.IVA" value={f.partita_iva} /><Dato label="Codice fiscale" value={f.codice_fiscale} /><Dato label="Indirizzo" value={[f.indirizzo, [f.cap, f.citta, f.provincia ? `(${f.provincia})` : null].filter(Boolean).join(" ")].filter(Boolean).join(", ")} /><Dato label="Stato" value={f.stato} /></dl></Sezione>
+          <Sezione titolo="Anagrafica" icon={Building2}><dl className="grid grid-cols-1 gap-x-5 sm:grid-cols-2"><Dato label="Ragione sociale" value={f.ragione_sociale} /><Dato label="P.IVA" value={f.partita_iva} /><Dato label="Codice fiscale" value={f.codice_fiscale} /><Dato label="Indirizzo" value={[f.indirizzo, [f.cap, f.citta, f.provincia ? `(${f.provincia})` : null].filter(Boolean).join(" ")].filter(Boolean).join(", ")} /><Dato label="Stato" value={f.stato} /></dl></Sezione>
           <Sezione titolo="Contatti Gamma" icon={Phone}><ContattiFornitore fornitore={f} /></Sezione>
           <Sezione titolo="Gamma" icon={Calendar}><dl className="grid grid-cols-1 gap-x-5 sm:grid-cols-2"><Dato label="Codice fornitore" value={f.codice_gestionale} /><Dato label="Macrocategoria Gamma" value={f.macrocategoria_cod ? `${f.macrocategoria_desc ?? "—"} (${f.macrocategoria_cod})` : "Non indicata"} /><Dato label="Anagrafica generale" value={f.codice_anagrafica_generale} /><Dato label="Codice cliente Gamma" value={f.codice_cliente_gamma} /><Dato label="Condizione di pagamento" value={f.condizione_pagamento_desc ? `${f.condizione_pagamento_desc}${f.condizione_pagamento_cod ? ` (${f.condizione_pagamento_cod})` : ""}` : f.condizione_pagamento_cod} /><Dato label="Ultima modifica Gamma" value={dataGamma(f.ultima_modifica_gamma)} /><Dato label="Ultima sincronizzazione" value={dataGamma(f.ultima_sincronizzazione)} /></dl></Sezione>
         </div>
@@ -96,6 +97,8 @@ function RiepilogoFornitore({ fornitore: f, vaiAlTab, persone }: { fornitore: De
       <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Colpo d'occhio</h3>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <CardOcchio label="Tipo fornitore"><TipoFornitoreModifica fornitore={f} /></CardOcchio>
+        <CardOcchio label="Marca"><MarcaFornitoreCampo fornitore={f} /></CardOcchio>
+        {f.tipo_effettivo === "servizi" && <CardOcchio label="Sottocategoria"><SottocategoriaFornitoreCampo fornitore={f} /></CardOcchio>}
         <CardOcchio label="Condizione di pagamento fornitore"><span className="font-semibold">{f.condizione_pagamento_desc || f.condizione_pagamento_cod || "—"}</span>{f.condizione_pagamento_desc && f.condizione_pagamento_cod && <span className="ml-1 text-xs text-muted-foreground">({f.condizione_pagamento_cod})</span>}</CardOcchio>
         {f.puo_vedere_articoli && <CardOcchio label="Articoli forniti"><button type="button" onClick={() => vaiAlTab("articoli")} className="text-left font-semibold tabular-nums text-primary hover:underline">{numero(f.n_articoli)}</button><span className="block text-xs text-muted-foreground tabular-nums">di cui {numero(f.n_preferenziale)} preferenziale</span></CardOcchio>}
         <CardOcchio label="È anche cliente">{f.clienti.length ? <span className="flex flex-col gap-0.5">{f.clienti.map(c => <Link key={c.cliente_id} to="/clienti/$clienteId" params={{ clienteId: c.cliente_id }} className="font-semibold text-success hover:underline">Sì{c.codice_gestionale ? ` — cod. ${c.codice_gestionale}` : ""}</Link>)}</span> : <span className="font-semibold text-muted-foreground">No</span>}</CardOcchio>
