@@ -2,7 +2,6 @@ import { ruoliEffettivi } from "@/lib/sessione-aal2.server";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { isEmailValida } from "@/lib/email-validazione";
 
 const MARKETING_ROLES = ["amministratore", "amministrazione", "direzione", "marketing"] as const;
 
