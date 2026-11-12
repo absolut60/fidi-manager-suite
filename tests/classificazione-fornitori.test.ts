@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { badgeTipoFornitore, tipiFornitoreValidi, tipoModificabile, daControllareInProposta } from "../src/lib/scheda-fornitore";
 import { elencoFornitoriInput, classificaFornitoriInput, dettaglioFornitoreSchema } from "../src/lib/fornitori";
 

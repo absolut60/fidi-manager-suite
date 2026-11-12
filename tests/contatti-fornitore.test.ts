@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { personePrincipali, suggerimentiContattiEmail, testoConfermaScollega, nomeContatto } from "../src/lib/contatti-fornitore";
 import { TAB_SCHEDA_FORNITORE } from "../src/lib/scheda-fornitore";
 import { datiAttivitaFornitore } from "../src/lib/attivita-fornitore";
