@@ -94,8 +94,8 @@ function ContenutoFornitori() {
       : query.error ? <ErroreFornitori error={query.error} riprova={() => void query.refetch()} />
       : <><ElencoFornitori rows={query.data.rows} mostraArticoli={vedeArticoli} selezione={selezione} apri={id => void navigate({ to: "/fornitori/$id", params: { id } })} />
         <PaginazioneFornitori totale={query.data.total} pagina={pagina} dimensione={100} nome="fornitori" onChange={pagina => void navigate({ search: prev => ({ ...prev, pagina }), resetScroll: true })} /></>}
-    {gestisce && sel.size > 0 && <div role="region" aria-label="Azioni sui fornitori selezionati" className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 px-3 py-2 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-card/80 md:left-[var(--sidebar-width,0px)]">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2">
+    {gestisce && sel.size > 0 && <div role="region" aria-label="Azioni sui fornitori selezionati" className="fixed bottom-3 left-1/2 z-40 w-[calc(100%-1.5rem)] max-w-2xl -translate-x-1/2 rounded-lg border bg-background px-3 py-2.5 shadow-lg sm:bottom-4 sm:px-4">
+      <div className="flex flex-wrap items-center gap-2">
         <span className="mr-auto min-w-0 text-sm font-medium tabular-nums">{sel.size.toLocaleString("it-IT")} {sel.size === 1 ? "selezionato" : "selezionati"}</span>
         <Button className="min-h-10 flex-1 gap-1.5 sm:flex-none" onClick={() => apri("email")}><Send className="size-4" />Invia email</Button>
         <Button variant="outline" className="min-h-10 flex-1 gap-1.5 sm:flex-none" onClick={() => apri("lettere")}><FileText className="size-4" />Scarica lettere</Button>
