@@ -1,10 +1,21 @@
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 
-export const TAB_SCHEDA_FORNITORE = ["panoramica", "articoli", "clienti"] as const;
+/** Elenco ordinato delle tab: per aggiungere Contatti/Attività (G2/G3) basta inserirle qui con titolo e permesso. */
+export const TAB_SCHEDA_FORNITORE = ["riepilogo", "anagrafica", "articoli", "clienti", "allegati"] as const;
 export type TabSchedaFornitore = typeof TAB_SCHEDA_FORNITORE[number];
 export function tabSchedaFornitore(value: string): TabSchedaFornitore {
-  return TAB_SCHEDA_FORNITORE.find(tab => tab === value) ?? "panoramica";
+  if (value === "panoramica") return "riepilogo"; // link salvati prima di G1
+  return TAB_SCHEDA_FORNITORE.find(tab => tab === value) ?? "riepilogo";
+}
+/** Tab visibili: "articoli" solo a chi vede articoli e costi (puo_vedere_articoli). */
+export function tabVisibiliFornitore(puoVedereArticoli: boolean): TabSchedaFornitore[] {
+  return TAB_SCHEDA_FORNITORE.filter(t => t !== "articoli" || puoVedereArticoli);
+}
+/** Riga sotto il titolo, come la scheda cliente: "Cod. … — P.IVA … — Città (PR)". */
+export function sottotitoloFornitore(f: { codice_gestionale: number | string | null; partita_iva: string | null; citta: string | null; provincia: string | null }): string {
+  const luogo = [f.citta?.trim(), f.provincia?.trim() ? `(${f.provincia.trim()})` : null].filter(Boolean).join(" ");
+  return [f.codice_gestionale != null && f.codice_gestionale !== "" ? `Cod. ${f.codice_gestionale}` : null, f.partita_iva?.trim() ? `P.IVA ${f.partita_iva.trim()}` : null, luogo || null].filter(Boolean).join(" — ");
 }
 export function sitoFornitore(value: string | null | undefined): string | null {
   const testo = value?.trim();
@@ -31,7 +42,7 @@ export const ricercaFornitori = zodValidator(z.object({
   pagina: fallback(z.number(), 1).default(1),
 }));
 export const ricercaSchedaFornitore = zodValidator(z.object({
-  tab: fallback(z.string(), "panoramica").default("panoramica"),
+  tab: fallback(z.string(), "riepilogo").default("riepilogo"),
   qArticoli: fallback(z.string(), "").default(""),
   preferenziali: fallback(z.boolean(), false).default(false),
   paginaArticoli: fallback(z.number(), 1).default(1),

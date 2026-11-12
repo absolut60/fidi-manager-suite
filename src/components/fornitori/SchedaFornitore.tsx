@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -9,9 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Sezione, Dato, Indicatore } from "@/components/articoli/SchedaArticoloGamma";
+import { AllegatiSection } from "@/components/allegati-section";
+import { Sezione, Dato } from "@/components/articoli/SchedaArticoloGamma";
 import { salvaNoteFornitore, type DettaglioFornitore } from "@/lib/fornitori.functions";
-import { TAB_SCHEDA_FORNITORE, sitoFornitore, origineLegameFornitore, type TabSchedaFornitore } from "@/lib/scheda-fornitore";
+import { tabVisibiliFornitore, sottotitoloFornitore, sitoFornitore, origineLegameFornitore, type TabSchedaFornitore } from "@/lib/scheda-fornitore";
 import { BadgeFornitore, BadgeMacrocategoria } from "./controlli-fornitori";
 import { ArticoliFornitore } from "./ArticoliFornitore";
 
@@ -20,12 +21,62 @@ function dataGamma(value: string | null) {
   return new Date(value).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
 }
 export type StatoArticoliFornitore = { ricerca: string; preferenziali: boolean; pagina: number; cambiaRicerca: (value: string) => void; cambiaPreferenziali: (value: boolean) => void; cambiaPagina: (value: number) => void };
+const numero = (n: number) => n.toLocaleString("it-IT", { useGrouping: true });
+/** Card compatta del "colpo d'occhio", stesso stile della scheda cliente. */
+function CardOcchio({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
+  return <Card className={`min-w-0 rounded-xl border-[0.5px] p-3.5 ${className ?? ""}`}><p className="truncate text-[11px] font-medium uppercase text-muted-foreground">{label}</p><div className="mt-1.5 min-w-0 break-words text-sm">{children}</div></Card>;
+}
 export function SchedaFornitore({ fornitore: f, tab, onTabChange, statoArticoli }: { fornitore: DettaglioFornitore; tab: TabSchedaFornitore; onTabChange: (value: TabSchedaFornitore) => void; statoArticoli: StatoArticoliFornitore }) {
-  const titoli = { panoramica: "Panoramica", articoli: `Articoli forniti (${f.n_articoli.toLocaleString("it-IT", { useGrouping: true })})`, clienti: "Cliente collegato" };
-  const tabVisibili = TAB_SCHEDA_FORNITORE.filter(t => t !== "articoli" || f.puo_vedere_articoli);
-  const tabAttiva = tabVisibili.includes(tab) ? tab : "panoramica";
-  const codiciCliente = f.clienti.map(c => c.codice_gestionale).filter(Boolean).join(", ");
-  return <div className="mt-3 min-w-0 space-y-4"><Card className="border-t-4 border-t-primary p-3 sm:p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0 flex-1"><p className="mb-2 text-sm font-semibold text-primary">Scheda fornitore</p><span className="font-mono text-sm text-muted-foreground">{f.codice_gestionale ?? "Senza codice Gamma"}</span><h1 className="mt-1 break-words text-2xl font-bold sm:text-3xl">{f.ragione_sociale || "Fornitore"}</h1>{f.alias && <p className="mt-2 break-words text-sm text-muted-foreground">{f.alias}</p>}</div><div className="flex flex-wrap gap-1"><BadgeMacrocategoria cod={f.macrocategoria_cod} desc={f.macrocategoria_desc} /><BadgeFornitore fornitore={f} /></div></div><div className={`mt-5 grid grid-cols-2 gap-2 ${f.puo_vedere_articoli ? "lg:grid-cols-4" : "lg:grid-cols-2"}`}>{f.puo_vedere_articoli && <><Indicatore label="Articoli forniti" value={f.n_articoli.toLocaleString("it-IT", { useGrouping: true })} /><Indicatore label="Fornitore preferenziale di" value={f.n_preferenziale.toLocaleString("it-IT", { useGrouping: true })} sotto="articoli" tono="success" /></>}<Indicatore label="Condizione di pagamento fornitore" value={f.condizione_pagamento_desc || "—"} sotto={f.condizione_pagamento_cod ?? undefined} testo /><Indicatore label="È anche cliente" value={f.clienti.length ? "Sì" : "No"} sotto={codiciCliente ? `Codice cliente ${codiciCliente}` : undefined} tono={f.clienti.length ? "success" : "primary"} testo /></div></Card><Tabs value={tabAttiva} onValueChange={value => { const next = tabVisibili.find(t => t === value); if (next) onTabChange(next); }}><TabsList aria-label="Sezioni della scheda fornitore" className="max-w-full md:justify-start">{tabVisibili.map(t => <TabsTrigger key={t} value={t} className="min-h-10">{titoli[t]}</TabsTrigger>)}</TabsList><TabsContent value="panoramica" className="mt-4"><div className="grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"><div className="min-w-0 space-y-3"><Sezione titolo="Anagrafica" icon={Building2}><dl className="grid grid-cols-1 gap-x-5 sm:grid-cols-2"><Dato label="P.IVA" value={f.partita_iva} /><Dato label="Codice fiscale" value={f.codice_fiscale} /><Dato label="Indirizzo" value={[f.indirizzo, [f.cap, f.citta, f.provincia ? `(${f.provincia})` : null].filter(Boolean).join(" ")].filter(Boolean).join(", ")} /><Dato label="Stato" value={f.stato} /></dl></Sezione><Sezione titolo="Gamma" icon={Calendar}><dl className="grid grid-cols-1 gap-x-5 sm:grid-cols-2"><Dato label="Codice fornitore" value={f.codice_gestionale} /><Dato label="Macrocategoria" value={f.macrocategoria_cod ? `${f.macrocategoria_desc ?? "—"} (${f.macrocategoria_cod})` : "Da classificare"} /><Dato label="Anagrafica generale" value={f.codice_anagrafica_generale} /><Dato label="Codice cliente Gamma" value={f.codice_cliente_gamma} /><Dato label="Ultima modifica Gamma" value={dataGamma(f.ultima_modifica_gamma)} /><Dato label="Ultima sincronizzazione" value={dataGamma(f.ultima_sincronizzazione)} /></dl></Sezione></div><div className="min-w-0 space-y-3"><Sezione titolo="Contatti" icon={Phone}><ContattiFornitore fornitore={f} /></Sezione><Sezione titolo="Note interne" icon={FileText}><NoteFornitore fornitore={f} /></Sezione></div></div><p className="mt-3 text-xs text-muted-foreground">I dati anagrafici arrivano da Gamma e si aggiornano con l’import.</p></TabsContent>{f.puo_vedere_articoli && <TabsContent value="articoli" className="mt-4"><ArticoliFornitore id={f.id} {...statoArticoli} /></TabsContent>}<TabsContent value="clienti" className="mt-4"><ClientiFornitore clienti={f.clienti} /></TabsContent></Tabs></div>;
+  const titoli: Record<TabSchedaFornitore, string> = { riepilogo: "Riepilogo", anagrafica: "Anagrafica", articoli: `Articoli forniti (${numero(f.n_articoli)})`, clienti: "Cliente collegato", allegati: "Allegati" };
+  const tabVisibili = tabVisibiliFornitore(f.puo_vedere_articoli);
+  const tabAttiva = tabVisibili.includes(tab) ? tab : "riepilogo";
+  const sottotitolo = sottotitoloFornitore(f);
+  return <div className="min-w-0 space-y-6">
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="min-w-0 flex-1">
+        <h1 className="break-words text-2xl font-bold tracking-tight sm:text-3xl">{f.ragione_sociale || "Fornitore"}</h1>
+        <p className="mt-1 break-words text-sm text-muted-foreground">{sottotitolo || "Codice e partita IVA non presenti"}</p>
+        {f.alias && <p className="mt-0.5 break-words text-xs text-muted-foreground">Alias: {f.alias}</p>}
+        <div className="mt-2 flex flex-wrap gap-1.5"><BadgeMacrocategoria cod={f.macrocategoria_cod} desc={f.macrocategoria_desc} /><BadgeFornitore fornitore={f} />{f.clienti.length > 0 && <Badge variant="outline" className="border-success/30 bg-success/10 text-success">Anche cliente</Badge>}</div>
+      </div>
+      {/* Spazio azioni (G3: "Invia email") */}
+      <div className="flex flex-wrap items-center gap-2" data-azioni-fornitore />
+    </div>
+    <Tabs value={tabAttiva} onValueChange={value => { const next = tabVisibili.find(t => t === value); if (next) onTabChange(next); }}>
+      <TabsList aria-label="Sezioni della scheda fornitore" className="md:flex-wrap">{tabVisibili.map(t => <TabsTrigger key={t} value={t}>{titoli[t]}</TabsTrigger>)}</TabsList>
+      <TabsContent value="riepilogo" className="max-w-7xl space-y-4"><RiepilogoFornitore fornitore={f} vaiAlTab={onTabChange} /></TabsContent>
+      <TabsContent value="anagrafica" className="max-w-7xl space-y-3">
+        <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-2">
+          <Sezione titolo="Anagrafica" icon={Building2}><dl className="grid grid-cols-1 gap-x-5 sm:grid-cols-2"><Dato label="Ragione sociale" value={f.ragione_sociale} /><Dato label="Alias" value={f.alias} /><Dato label="P.IVA" value={f.partita_iva} /><Dato label="Codice fiscale" value={f.codice_fiscale} /><Dato label="Indirizzo" value={[f.indirizzo, [f.cap, f.citta, f.provincia ? `(${f.provincia})` : null].filter(Boolean).join(" ")].filter(Boolean).join(", ")} /><Dato label="Stato" value={f.stato} /></dl></Sezione>
+          <Sezione titolo="Contatti Gamma" icon={Phone}><ContattiFornitore fornitore={f} /></Sezione>
+          <Sezione titolo="Gamma" icon={Calendar}><dl className="grid grid-cols-1 gap-x-5 sm:grid-cols-2"><Dato label="Codice fornitore" value={f.codice_gestionale} /><Dato label="Macrocategoria" value={f.macrocategoria_cod ? `${f.macrocategoria_desc ?? "—"} (${f.macrocategoria_cod})` : "Da classificare"} /><Dato label="Anagrafica generale" value={f.codice_anagrafica_generale} /><Dato label="Codice cliente Gamma" value={f.codice_cliente_gamma} /><Dato label="Condizione di pagamento" value={f.condizione_pagamento_desc ? `${f.condizione_pagamento_desc}${f.condizione_pagamento_cod ? ` (${f.condizione_pagamento_cod})` : ""}` : f.condizione_pagamento_cod} /><Dato label="Ultima modifica Gamma" value={dataGamma(f.ultima_modifica_gamma)} /><Dato label="Ultima sincronizzazione" value={dataGamma(f.ultima_sincronizzazione)} /></dl></Sezione>
+        </div>
+        <p className="text-xs text-muted-foreground">I dati anagrafici arrivano da Gamma e si aggiornano con l’import.</p>
+      </TabsContent>
+      {f.puo_vedere_articoli && <TabsContent value="articoli"><ArticoliFornitore id={f.id} {...statoArticoli} /></TabsContent>}
+      <TabsContent value="clienti" className="max-w-7xl"><ClientiFornitore clienti={f.clienti} /></TabsContent>
+      <TabsContent value="allegati" className="max-w-7xl"><Card className="p-3 sm:p-4"><AllegatiSection entitaTipo="fornitore" entitaId={f.id} clienteId={null} canEdit={f.puo_modificare_note} eliminaTutti={f.puo_modificare_note} /></Card></TabsContent>
+    </Tabs>
+  </div>;
+}
+function RiepilogoFornitore({ fornitore: f, vaiAlTab }: { fornitore: DettaglioFornitore; vaiAlTab: (t: TabSchedaFornitore) => void }) {
+  const link = "inline-flex min-h-8 items-center break-all text-primary hover:underline";
+  const principali = [{ l: "Tel.", v: f.telefono || f.cellulare, p: "tel:" }, { l: "Email", v: f.email, p: "mailto:" }, { l: "PEC", v: f.pec, p: "mailto:" }].filter(c => c.v?.trim());
+  return <>
+    <section className="space-y-2">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Colpo d'occhio</h3>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <CardOcchio label="Macrocategoria"><BadgeMacrocategoria cod={f.macrocategoria_cod} desc={f.macrocategoria_desc} /></CardOcchio>
+        <CardOcchio label="Condizione di pagamento fornitore"><span className="font-semibold">{f.condizione_pagamento_desc || f.condizione_pagamento_cod || "—"}</span>{f.condizione_pagamento_desc && f.condizione_pagamento_cod && <span className="ml-1 text-xs text-muted-foreground">({f.condizione_pagamento_cod})</span>}</CardOcchio>
+        {f.puo_vedere_articoli && <CardOcchio label="Articoli forniti"><button type="button" onClick={() => vaiAlTab("articoli")} className="text-left font-semibold tabular-nums text-primary hover:underline">{numero(f.n_articoli)}</button><span className="block text-xs text-muted-foreground tabular-nums">di cui {numero(f.n_preferenziale)} preferenziale</span></CardOcchio>}
+        <CardOcchio label="È anche cliente">{f.clienti.length ? <span className="flex flex-col gap-0.5">{f.clienti.map(c => <Link key={c.cliente_id} to="/clienti/$clienteId" params={{ clienteId: c.cliente_id }} className="font-semibold text-success hover:underline">Sì{c.codice_gestionale ? ` — cod. ${c.codice_gestionale}` : ""}</Link>)}</span> : <span className="font-semibold text-muted-foreground">No</span>}</CardOcchio>
+      </div>
+    </section>
+    <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-2">
+      <Sezione titolo="Contatti principali" icon={Phone}>{principali.length ? <dl className="space-y-1">{principali.map(c => <div key={c.l} className="flex min-w-0 items-baseline gap-2"><dt className="w-12 shrink-0 text-xs font-medium uppercase text-muted-foreground">{c.l}</dt><dd className="min-w-0"><a className={link} href={`${c.p}${c.v!.trim()}`}>{c.v}</a></dd></div>)}</dl> : <p className="text-sm text-muted-foreground">Nessun contatto in Gamma</p>}</Sezione>
+      <Sezione titolo="Note interne" icon={FileText}><NoteFornitore fornitore={f} /></Sezione>
+    </div>
+  </>;
 }
 function ContattiFornitore({ fornitore: f }: { fornitore: DettaglioFornitore }) {
   const contatti = [{ label: "Telefono", value: f.telefono, prefisso: "tel:" }, { label: "Telefono 2", value: f.telefono_2, prefisso: "tel:" }, { label: "Cellulare", value: f.cellulare, prefisso: "tel:" }, { label: "Fax", value: f.fax, prefisso: null }, { label: "Email", value: f.email, prefisso: "mailto:" }, { label: "PEC", value: f.pec, prefisso: "mailto:" }].filter(c => c.value?.trim());
@@ -41,7 +92,7 @@ function NoteFornitore({ fornitore: f }: { fornitore: DettaglioFornitore }) {
   const mutation = useMutation({ mutationFn: () => salva({ data: { id: f.id, note } }), onSuccess: async () => { toast.success("Note interne salvate"); await qc.invalidateQueries({ queryKey: ["fornitore", f.id] }); }, onError: error => toast.error(error.message) });
   if (!f.puo_modificare_note) return <p className="whitespace-pre-wrap break-words text-sm">{f.note || "Nessuna nota"}</p>;
   const n = Array.from(note).length;
-  return <form onSubmit={e => { e.preventDefault(); if (n <= 4000 && !mutation.isPending) mutation.mutate(); }} className="space-y-2"><Textarea aria-label="Note interne" rows={5} value={note} disabled={mutation.isPending} onChange={e => { if (Array.from(e.target.value).length <= 4000) setNote(e.target.value); }} /><p className="text-right text-xs text-muted-foreground tabular-nums">{n.toLocaleString("it-IT", { useGrouping: true })}/4000</p><Button type="submit" disabled={mutation.isPending || note === (f.note ?? "")} className="min-h-10 w-full"><Save className="mr-2 size-4" />{mutation.isPending ? "Salvataggio…" : "Salva note"}</Button>{mutation.error && <p role="alert" className="break-words text-sm text-destructive">{mutation.error.message}</p>}</form>;
+  return <form onSubmit={e => { e.preventDefault(); if (n <= 4000 && !mutation.isPending) mutation.mutate(); }} className="space-y-2"><Textarea aria-label="Note interne" rows={5} value={note} disabled={mutation.isPending} onChange={e => { if (Array.from(e.target.value).length <= 4000) setNote(e.target.value); }} /><p className="text-right text-xs text-muted-foreground tabular-nums">{n.toLocaleString("it-IT", { useGrouping: true })}/4000</p><Button type="submit" disabled={mutation.isPending || note === (f.note ?? "")} className="min-h-10 w-full sm:w-auto"><Save className="mr-2 size-4" />{mutation.isPending ? "Salvataggio…" : "Salva note"}</Button>{mutation.error && <p role="alert" className="break-words text-sm text-destructive">{mutation.error.message}</p>}</form>;
 }
 export function ClientiFornitore({ clienti }: { clienti: DettaglioFornitore["clienti"] }) {
   if (!clienti.length) return <p className="py-6 text-muted-foreground">Questo fornitore non risulta cliente</p>;
