@@ -127,6 +127,14 @@ export function htmlInTesto(html: string): string {
   return decodificaEntita(t).replace(/\u00a0/g, " ").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 
+/** Corpo dall'editor (email e lettere ai fornitori): sanificato con l'allowlist prima di ogni uso. */
+export const corpoHtmlFornitore = z.string().max(MAX_HTML_FORNITORE, "Testo formattato troppo lungo (massimo 100.000 caratteri di HTML).")
+  .transform(v => { const html = sanificaHtmlEmailFornitore(v); return { html, testo: htmlInTesto(html) }; })
+  .refine(v => v.testo.trim().length > 0, "Il testo è obbligatorio.")
+  .refine(v => v.testo.length <= MAX_TESTO_FORNITORE, "Testo: massimo 20.000 caratteri.");
+export const oggettoFornitore = z.string().transform(v => v.trim()).pipe(z.string().min(1, "L'oggetto è obbligatorio.").max(200, "Oggetto: massimo 200 caratteri."));
+export const nuovoAllegatoFornitore = z.object({ filename: z.string().min(1).max(200), contentType: z.string().max(200), base64: z.string() });
+
 const indirizzi = z.array(z.string().transform(v => v.trim()));
 
 export const inviaEmailFornitoreInput = z.object({
@@ -137,10 +145,7 @@ export const inviaEmailFornitoreInput = z.object({
   ccn: indirizzi,
   oggetto: z.string().transform(v => v.trim()).pipe(z.string().min(1, "L'oggetto è obbligatorio.").max(200, "Oggetto: massimo 200 caratteri.")),
   // Corpo HTML dall'editor: sanificato qui (allowlist) prima di ogni uso.
-  html: z.string().max(MAX_HTML_FORNITORE, "Testo formattato troppo lungo (massimo 100.000 caratteri di HTML).")
-    .transform(v => { const html = sanificaHtmlEmailFornitore(v); return { html, testo: htmlInTesto(html) }; })
-    .refine(v => v.testo.trim().length > 0, "Il testo è obbligatorio.")
-    .refine(v => v.testo.length <= MAX_TESTO_FORNITORE, "Testo: massimo 20.000 caratteri."),
+  html: corpoHtmlFornitore,
   allegatiIds: z.array(z.string().uuid()).max(20),
   nuoviAllegati: z.array(z.object({ filename: z.string().min(1).max(200), contentType: z.string().max(200), base64: z.string() })).max(20),
 }).superRefine((d, ctx) => {
