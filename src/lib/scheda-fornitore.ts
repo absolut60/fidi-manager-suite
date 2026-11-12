@@ -93,7 +93,7 @@ export function badgeTipoFornitore(tipo: string | null | undefined, fonte: strin
 /** Il tipo si cambia nell'app solo se non lo decide Gamma. */
 /** FM62 F7: valori ammessi del filtro "Convenzione" nell'URL. */
 export const statiConvenzioneValidi = (v: readonly string[]) => v.filter((x): x is StatoConvenzione => (STATI_CONVENZIONE as readonly string[]).includes(x));
-export const OPZIONI_CONVENZIONE = STATI_CONVENZIONE.map(value => ({ value, label: ETICHETTE_CONVENZIONE[value] }));
+export const OPZIONI_CONVENZIONE = STATI_CONVENZIONE.map(valore => ({ valore, label: ETICHETTE_CONVENZIONE[valore] }));
 /** FM62 F7: testo del toast dopo "Segna convenzionati"/"Togli convenzione" (conteggi dall'RPC). */
 export function messaggioConvenzione(stato: string, r: { aggiornati: number; impostatiMerci: number; inConflitto: number }) {
   const n = (x: number) => x.toLocaleString("it-IT");
