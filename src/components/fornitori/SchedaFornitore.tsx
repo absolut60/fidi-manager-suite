@@ -72,7 +72,6 @@ function RiepilogoFornitore({ fornitore: f, vaiAlTab }: { fornitore: DettaglioFo
         <CardOcchio label="Macrocategoria"><BadgeMacrocategoria cod={f.macrocategoria_cod} desc={f.macrocategoria_desc} /></CardOcchio>
         <CardOcchio label="Condizione di pagamento fornitore"><span className="font-semibold">{f.condizione_pagamento_desc || f.condizione_pagamento_cod || "—"}</span>{f.condizione_pagamento_desc && f.condizione_pagamento_cod && <span className="ml-1 text-xs text-muted-foreground">({f.condizione_pagamento_cod})</span>}</CardOcchio>
         {f.puo_vedere_articoli && <CardOcchio label="Articoli forniti"><button type="button" onClick={() => vaiAlTab("articoli")} className="text-left font-semibold tabular-nums text-primary hover:underline">{numero(f.n_articoli)}</button><span className="block text-xs text-muted-foreground tabular-nums">di cui {numero(f.n_preferenziale)} preferenziale</span></CardOcchio>}
-        <UltimaAttivitaCard fornitoreId={f.id} vai={() => vaiAlTab("attivita")} />
         <CardOcchio label="È anche cliente">{f.clienti.length ? <span className="flex flex-col gap-0.5">{f.clienti.map(c => <Link key={c.cliente_id} to="/clienti/$clienteId" params={{ clienteId: c.cliente_id }} className="font-semibold text-success hover:underline">Sì{c.codice_gestionale ? ` — cod. ${c.codice_gestionale}` : ""}</Link>)}</span> : <span className="font-semibold text-muted-foreground">No</span>}</CardOcchio>
       </div>
     </section>
@@ -80,6 +79,7 @@ function RiepilogoFornitore({ fornitore: f, vaiAlTab }: { fornitore: DettaglioFo
       <Sezione titolo="Contatti principali" icon={Phone}>{principali.length ? <dl className="space-y-1">{principali.map(c => <div key={c.l} className="flex min-w-0 items-baseline gap-2"><dt className="w-12 shrink-0 text-xs font-medium uppercase text-muted-foreground">{c.l}</dt><dd className="min-w-0"><a className={link} href={`${c.p}${c.v!.trim()}`}>{c.v}</a></dd></div>)}</dl> : <p className="text-sm text-muted-foreground">Nessun contatto in Gamma</p>}</Sezione>
       <Sezione titolo="Note interne" icon={FileText}><NoteFornitore fornitore={f} /></Sezione>
     </div>
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"><UltimaAttivitaCard fornitoreId={f.id} vai={() => vaiAlTab("attivita")} /></div>
   </>;
 }
 function ContattiFornitore({ fornitore: f }: { fornitore: DettaglioFornitore }) {

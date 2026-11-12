@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Paperclip, Pencil, Plus, Trash2 } from "lucide-react";
+import { Paperclip, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,13 +33,6 @@ export function AttivitaFornitoreTab({ fornitoreId, puoScrivere }: { fornitoreId
     getNextPageParam: (last, pages) => { const n = pages.reduce((s, p) => s + p.rows.length, 0); return n < last.total ? n : undefined; },
   });
   const [modulo, setModulo] = useState<{ attivita: AttivitaFornitore | null } | null>(null);
-  const [daEliminare, setDaEliminare] = useState<AttivitaFornitore | null>(null);
-  const elimina = useServerFn(eliminaAttivitaFornitore);
-  const mElimina = useMutation({
-    mutationFn: (id: string) => elimina({ data: { id } }),
-    onSuccess: () => { toast.success("Attività eliminata"); void qc.invalidateQueries({ queryKey: chiaveAttivita(fornitoreId) }); setDaEliminare(null); },
-    onError: (e: Error) => toast.error(e.message),
-  });
   const righe = query.data?.pages.flatMap(p => p.rows) ?? [];
   const totale = query.data?.pages[0]?.total ?? 0;
   return <div className="space-y-3">
@@ -52,47 +45,80 @@ export function AttivitaFornitoreTab({ fornitoreId, puoScrivere }: { fornitoreId
       : !righe.length ? <p className="py-6 text-muted-foreground">{tipi.length ? "Nessuna attività di questo tipo." : "Nessuna attività registrata per questo fornitore."}</p>
       : <>
         <p className="text-xs text-muted-foreground tabular-nums">{totale.toLocaleString("it-IT", { useGrouping: true })} attività</p>
-        <ol className="space-y-2">{righe.map(a => <RigaAttivita key={a.id} a={a} puoScrivere={puoScrivere} modifica={() => setModulo({ attivita: a })} elimina={() => setDaEliminare(a)} />)}</ol>
+        <ol className="space-y-2">{righe.map(a => <RigaAttivita key={a.id} a={a} apri={() => setModulo({ attivita: a })} />)}</ol>
         {query.hasNextPage && <Button variant="outline" className="min-h-10 w-full sm:w-auto" disabled={query.isFetchingNextPage} onClick={() => void query.fetchNextPage()}>{query.isFetchingNextPage ? "Caricamento…" : "Mostra altri"}</Button>}
       </>}
-    {modulo && <ModuloAttivita fornitoreId={fornitoreId} iniziale={modulo.attivita} chiudi={() => setModulo(null)} />}
-    <AlertDialog open={!!daEliminare} onOpenChange={o => { if (!o) setDaEliminare(null); }}>
-      <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Eliminare questa attività?</AlertDialogTitle><AlertDialogDescription>L’attività verrà eliminata definitivamente. Gli allegati collegati vanno eliminati a parte.</AlertDialogDescription></AlertDialogHeader>
-        <AlertDialogFooter><AlertDialogCancel>Annulla</AlertDialogCancel><AlertDialogAction disabled={mElimina.isPending} onClick={e => { e.preventDefault(); if (daEliminare) mElimina.mutate(daEliminare.id); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Elimina</AlertDialogAction></AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    {modulo && <ModuloAttivita fornitoreId={fornitoreId} iniziale={modulo.attivita} solaLettura={!puoScrivere || modulo.attivita?.origine === "invio"} chiudi={() => setModulo(null)} />}
   </div>;
 }
 
-function RigaAttivita({ a, puoScrivere, modifica, elimina }: { a: AttivitaFornitore; puoScrivere: boolean; modifica: () => void; elimina: () => void }) {
+function RigaAttivita({ a, apri }: { a: AttivitaFornitore; apri: () => void }) {
   const t = tipoAttivita(a.tipo);
   const Icona = t.icona;
-  const [aperto, setAperto] = useState(false);
-  const lungo = (a.corpo?.length ?? 0) > 220;
-  return <li><Card className="flex min-w-0 gap-3 p-3">
+  return <li><Card role="button" tabIndex={0} aria-label={`Apri attività: ${t.label} del ${dataOraIt(a.data_attivita)}`} onClick={apri} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); apri(); } }}
+    className="flex min-w-0 cursor-pointer gap-3 p-3 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
     <span className={`flex size-9 shrink-0 items-center justify-center rounded-full ${t.classe}`} aria-hidden><Icona className="size-4" /></span>
     <div className="min-w-0 flex-1 space-y-1">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
         <span className="font-semibold text-foreground">{t.label}</span><span className="tabular-nums">{dataOraIt(a.data_attivita)}</span>{a.operatore && <span>· {a.operatore}</span>}
-        {a.origine === "invio" && <Badge variant="outline" className={a.stato === "errore" ? "border-destructive/30 bg-destructive/10 text-destructive" : a.stato === "inviata" ? "border-success/30 bg-success/10 text-success" : ""}>{a.stato === "errore" ? "Errore invio" : a.stato === "inviata" ? "Inviata" : "In invio"}</Badge>}
+        {a.origine === "invio" && <BadgeStato a={a} />}
         {a.n_allegati > 0 && <span className="inline-flex items-center gap-0.5"><Paperclip className="size-3" />{a.n_allegati}</span>}
       </div>
       {a.oggetto && <p className="break-words text-sm font-medium">{a.oggetto}</p>}
       {a.origine === "invio" && a.destinatari?.length ? <p className="break-all text-xs text-muted-foreground">A: {a.destinatari.join(", ")}</p> : null}
-      {a.corpo && <p className={`whitespace-pre-line break-words text-sm ${lungo && !aperto ? "line-clamp-3" : ""}`}>{a.corpo}</p>}
-      {lungo && <button type="button" className="min-h-8 text-xs text-primary hover:underline" onClick={() => setAperto(v => !v)}>{aperto ? "Mostra meno" : "Mostra tutto"}</button>}
+      {a.corpo && <p className="line-clamp-3 whitespace-pre-line break-words text-sm">{a.corpo}</p>}
       {a.esito && <p className="break-words text-xs"><span className="font-medium text-muted-foreground">Esito: </span>{a.esito}</p>}
-      {a.errore && <p className="break-words text-xs text-destructive">{a.errore}</p>}
+      {a.errore && <p className="line-clamp-2 break-words text-xs text-destructive">{a.errore}</p>}
     </div>
-    {puoScrivere && a.origine === "manuale" && <div className="flex shrink-0 flex-col gap-1 sm:flex-row">
-      <Button variant="ghost" size="icon" className="size-9" aria-label="Modifica attività" onClick={modifica}><Pencil className="size-4" /></Button>
-      <Button variant="ghost" size="icon" className="size-9 text-destructive" aria-label="Elimina attività" onClick={elimina}><Trash2 className="size-4" /></Button>
-    </div>}
   </Card></li>;
 }
+function BadgeStato({ a }: { a: AttivitaFornitore }) {
+  return <Badge variant="outline" className={a.stato === "errore" ? "border-destructive/30 bg-destructive/10 text-destructive" : a.stato === "inviata" ? "border-success/30 bg-success/10 text-success" : ""}>{a.stato === "errore" ? "Errore invio" : a.stato === "inviata" ? "Inviata" : "In invio"}</Badge>;
+}
+function Voce({ label, children }: { label: string; children: ReactNode }) {
+  return <div className="grid min-w-0 grid-cols-1 gap-0.5 border-b py-2 last:border-0 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-3"><dt className="text-xs font-medium uppercase text-muted-foreground">{label}</dt><dd className="min-w-0 break-words text-sm">{children}</dd></div>;
+}
+function elenco(v: unknown): string[] { return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && !!x.trim()) : []; }
 
-function ModuloAttivita({ fornitoreId, iniziale, chiudi }: { fornitoreId: string; iniziale: AttivitaFornitore | null; chiudi: () => void }) {
+function DettaglioAttivita({ a, chiudi }: { a: AttivitaFornitore; chiudi: () => void }) {
+  const t = tipoAttivita(a.tipo);
+  const x = a as AttivitaFornitore & { cc?: unknown; ccn?: unknown };
+  const cc = elenco(x.cc), ccn = elenco(x.ccn), dest = elenco(a.destinatari);
+  return <Dialog open onOpenChange={o => { if (!o) chiudi(); }}>
+    <DialogContent className="flex h-dvh max-h-dvh w-full max-w-full flex-col gap-3 overflow-y-auto rounded-none sm:h-auto sm:max-h-[90vh] sm:max-w-xl sm:rounded-lg">
+      <DialogHeader><DialogTitle className="break-words pr-6">{a.oggetto || t.label}</DialogTitle><DialogDescription>{a.origine === "invio" ? "Comunicazione inviata: non modificabile." : "Dettaglio attività (sola lettura)."}</DialogDescription></DialogHeader>
+      <dl>
+        <Voce label="Tipo">{t.label}</Voce>
+        <Voce label="Data e ora"><span className="tabular-nums">{dataOraIt(a.data_attivita)}</span></Voce>
+        {a.operatore && <Voce label="Operatore">{a.operatore}</Voce>}
+        {a.origine === "invio" && <Voce label="Stato"><BadgeStato a={a} /></Voce>}
+        {a.origine === "invio" && <Voce label="Destinatari"><span className="break-all">{dest.length ? dest.join(", ") : "—"}</span></Voce>}
+        {a.origine === "invio" && <Voce label="CC"><span className="break-all">{cc.length ? cc.join(", ") : "—"}</span></Voce>}
+        {a.origine === "invio" && <Voce label="CCN"><span className="break-all">{ccn.length ? ccn.join(", ") : "—"}</span></Voce>}
+        {a.errore && <Voce label="Errore"><span className="text-destructive">{a.errore}</span></Voce>}
+        {a.oggetto && <Voce label="Oggetto">{a.oggetto}</Voce>}
+        <Voce label={a.origine === "invio" ? "Testo" : "Note"}><span className="whitespace-pre-line">{a.corpo || "—"}</span></Voce>
+        {a.esito && <Voce label="Esito">{a.esito}</Voce>}
+      </dl>
+      <div className="border-t pt-3"><AllegatiSection entitaTipo="attivita_fornitore" entitaId={a.id} clienteId={null} canEdit={false} compact /></div>
+      <div className="flex justify-end"><Button type="button" variant="outline" className="min-h-10 w-full sm:w-auto" onClick={chiudi}>Chiudi</Button></div>
+    </DialogContent>
+  </Dialog>;
+}
+
+function ModuloAttivita(props: { fornitoreId: string; iniziale: AttivitaFornitore | null; solaLettura?: boolean; chiudi: () => void }) {
+  if (props.solaLettura && props.iniziale) return <DettaglioAttivita a={props.iniziale} chiudi={props.chiudi} />;
+  return <ModuloModifica {...props} />;
+}
+function ModuloModifica({ fornitoreId, iniziale, chiudi }: { fornitoreId: string; iniziale: AttivitaFornitore | null; chiudi: () => void }) {
   const qc = useQueryClient();
+  const [conferma, setConferma] = useState(false);
+  const elimina = useServerFn(eliminaAttivitaFornitore);
+  const mElimina = useMutation({
+    mutationFn: (idAtt: string) => elimina({ data: { id: idAtt } }),
+    onSuccess: () => { toast.success("Attività eliminata"); void qc.invalidateQueries({ queryKey: chiaveAttivita(fornitoreId) }); setConferma(false); chiudi(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const [id, setId] = useState<string | null>(iniziale?.id ?? null);
   const [tipo, setTipo] = useState<TipoAttivitaFornitore>((iniziale ? tipoAttivitaChiave(iniziale.tipo) : "telefonata"));
   const [data, setData] = useState(dataLocaleInput(iniziale ? new Date(iniziale.data_attivita) : new Date()));
@@ -127,11 +153,19 @@ function ModuloAttivita({ fornitoreId, iniziale, chiudi }: { fornitoreId: string
         <div className="space-y-1"><Label htmlFor="att-oggetto">Oggetto</Label><Input id="att-oggetto" maxLength={300} className="min-h-10" value={oggetto} onChange={e => setOggetto(e.target.value)} /></div>
         <div className="space-y-1"><Label htmlFor="att-corpo">Note</Label><Textarea id="att-corpo" maxLength={8000} rows={5} value={corpo} onChange={e => setCorpo(e.target.value)} /></div>
         <div className="space-y-1"><Label htmlFor="att-esito">Esito</Label><Input id="att-esito" maxLength={1000} className="min-h-10" value={esito} onChange={e => setEsito(e.target.value)} /></div>
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><Button type="button" variant="outline" className="min-h-10" onClick={chiudi}>{id && !iniziale ? "Chiudi" : "Annulla"}</Button><Button type="submit" className="min-h-10" disabled={salva.isPending}>{salva.isPending ? "Salvataggio…" : "Salva"}</Button></div>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
+          {iniziale && <Button type="button" variant="outline" className="min-h-10 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setConferma(true)}><Trash2 className="size-4" />Elimina</Button>}
+          <div className="flex flex-col-reverse gap-2 sm:ml-auto sm:flex-row"><Button type="button" variant="outline" className="min-h-10" onClick={chiudi}>{id && !iniziale ? "Chiudi" : "Annulla"}</Button><Button type="submit" className="min-h-10" disabled={salva.isPending}>{salva.isPending ? "Salvataggio…" : "Salva"}</Button></div>
+        </div>
       </form>
       {id ? <div className="border-t pt-3"><AllegatiSection entitaTipo="attivita_fornitore" entitaId={id} clienteId={null} canEdit eliminaTutti compact /></div>
         : <p className="text-xs text-muted-foreground">Gli allegati si aggiungono subito dopo il primo salvataggio.</p>}
       <DialogFooter className="hidden" />
+      <AlertDialog open={conferma} onOpenChange={setConferma}>
+        <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Eliminare questa attività?</AlertDialogTitle><AlertDialogDescription>L’attività verrà eliminata definitivamente. Gli allegati collegati vanno eliminati a parte.</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter><AlertDialogCancel>Annulla</AlertDialogCancel><AlertDialogAction disabled={mElimina.isPending} onClick={e => { e.preventDefault(); if (iniziale) mElimina.mutate(iniziale.id); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Elimina</AlertDialogAction></AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DialogContent>
   </Dialog>;
 }
