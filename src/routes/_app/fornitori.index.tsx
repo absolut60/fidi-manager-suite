@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { FileText, Handshake, Search, Send, Sparkles, Tags, X } from "lucide-react";
+import { Check, FileText, Handshake, Search, Send, Sparkles, X } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useQueryClient } from "@tanstack/react-query";
@@ -13,8 +13,8 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { elencoFornitori, idsFornitoriFiltrati, classificaFornitori, impostaStatoConvenzioneFornitori } from "@/lib/fornitori.functions";
 import { ricercaFornitori, paginaFornitore, filtroSiNo, OPZIONI_TIPO_FORNITORE, tipiFornitoreValidi, daControllareInProposta, messaggioConvenzione, statiConvenzioneValidi, OPZIONI_CONVENZIONE } from "@/lib/scheda-fornitore";
-import { MAX_CLASSIFICA_FORNITORI } from "@/lib/fornitori";
-import { puoCambiareConvenzione, puoGestireFornitori, puoVedereArticoliFornitori } from "@/lib/permessi-fornitori";
+import { MAX_CLASSIFICA_FORNITORI, ordinamentoFornitoriValido, type OrdinamentoFornitori } from "@/lib/fornitori";
+import { puoCambiareConvenzione, puoGestireFornitori } from "@/lib/permessi-fornitori";
 import { MAX_FORNITORI_INVIO, MAX_FORNITORI_LETTERE } from "@/lib/invio-multiplo-fornitori";
 import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { FiltriCollassabili } from "@/components/lista-responsive/filtri-collassabili";
@@ -36,7 +36,6 @@ function ContenutoFornitori() {
   const navigate = Route.useNavigate();
   const { roles } = useAuth();
   const gestisce = puoGestireFornitori(roles);
-  const vedeArticoli = puoVedereArticoliFornitori(roles);
   const pagina = paginaFornitore(f.pagina);
   const tipi = tipiFornitoreValidi(f.tipo, f.macro);
   const statiConv = statiConvenzioneValidi(f.convenzione);
@@ -46,7 +45,9 @@ function ContenutoFornitori() {
   const carica = useServerFn(elencoFornitori);
   const caricaIds = useServerFn(idsFornitoriFiltrati);
   const filtriBase = { testo: f.q, ancheCliente: filtroSiNo(f.ancheCliente), conArticoli: filtroSiNo(f.conArticoli), conEmail: filtroSiNo(f.conEmail), statiConvenzione: statiConv, includiManuali: f.manuali, tipi };
-  const filtri = { ...filtriBase, limite: 100, offset: (pagina - 1) * 100 };
+  const ord = ordinamentoFornitoriValido(f.ordina, f.dir);
+  const cambiaOrdine = (col: OrdinamentoFornitori) => void navigate({ search: prev => ({ ...prev, ordina: col, dir: ord.ordina === col && ord.direzione === "asc" ? "desc" : "asc", pagina: 1 }), replace: true, resetScroll: false });
+  const filtri = { ...filtriBase, ordina: ord.ordina, direzione: ord.direzione, limite: 100, offset: (pagina - 1) * 100 };
   const query = useQuery({ queryKey: ["fornitori", filtri], queryFn: () => carica({ data: filtri }) });
   const cambia = (patch: Partial<typeof f>) => void navigate({ search: prev => ({ ...prev, ...patch, pagina: 1 }), resetScroll: false });
   const attivi = [f.ancheCliente !== "tutti", f.conArticoli !== "tutti", f.conEmail !== "tutti", statiConv.length > 0, tipi.length > 0, f.manuali].filter(Boolean).length;
@@ -139,22 +140,21 @@ function ContenutoFornitori() {
     </header>
     {gestisce && soloDaClassificare && <div className="flex flex-col gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm sm:flex-row sm:items-center">
       <p className="min-w-0 flex-1">{proposta
-        ? <>Proposta attiva: i fornitori <b>con articoli</b> sono spuntati come <b>Merci</b>. Togli la spunta dove non sei d’accordo, poi usa “Classifica come… Merci”. Le righe evidenziate non hanno articoli: guardale a mano.</>
+        ? <>Proposta attiva: i fornitori <b>con articoli</b> sono spuntati come <b>Merci</b>. Togli la spunta dove non sei d’accordo, poi conferma con “Classifica i selezionati come Merci”. Le righe evidenziate non hanno articoli: guardale a mano.</>
         : <>Questi fornitori non hanno il tipo in Gamma. Con la proposta, chi ha articoli a catalogo viene suggerito come Merci.</>}</p>
       <Button variant="outline" className="min-h-10 shrink-0 gap-1.5" disabled={lavoro} onClick={() => void avviaProposta()}><Sparkles className="size-4" />{proposta ? "Rifai la proposta" : "Proposta di classificazione"}</Button>
+      {proposta && <Button className="min-h-10 shrink-0 gap-1.5" disabled={lavoro || sel.size === 0} onClick={() => void classificaSelezionati("merci")}><Check className="size-4" />Classifica i selezionati come Merci</Button>}
     </div>}
     {invioId && <AvanzamentoInvioFornitori invioId={invioId} onChiudi={() => setInvioId(null)} />}
     {query.isPending ? <p role="status" className="py-6 text-muted-foreground">Caricamento fornitori…</p>
       : query.error ? <ErroreFornitori error={query.error} riprova={() => void query.refetch()} />
-      : <><ElencoFornitori rows={query.data.rows} mostraArticoli={vedeArticoli} selezione={selezione} evidenzia={proposta ? daControllareInProposta : undefined} apri={id => void navigate({ to: "/fornitori/$id", params: { id } })} />
+      : <><ElencoFornitori rows={query.data.rows} ordinamento={{ ...ord, cambia: cambiaOrdine }} selezione={selezione} evidenzia={proposta ? daControllareInProposta : undefined} apri={id => void navigate({ to: "/fornitori/$id", params: { id } })} />
         <PaginazioneFornitori totale={query.data.total} pagina={pagina} dimensione={100} nome="fornitori" onChange={pagina => void navigate({ search: prev => ({ ...prev, pagina }), resetScroll: true })} /></>}
     {gestisce && sel.size > 0 && <div role="region" aria-label="Azioni sui fornitori selezionati" className="fixed bottom-3 left-1/2 z-40 w-[calc(100%-1.5rem)] max-w-2xl -translate-x-1/2 rounded-lg border bg-background px-3 py-2.5 shadow-lg sm:bottom-4 sm:px-4">
       <div className="flex flex-wrap items-center gap-2">
         <span className="mr-auto min-w-0 text-sm font-medium tabular-nums">{sel.size.toLocaleString("it-IT")} {sel.size === 1 ? "selezionato" : "selezionati"}</span>
         <Button className="min-h-10 flex-1 gap-1.5 sm:flex-none" onClick={() => apri("email")}><Send className="size-4" />Invia email</Button>
         <Button variant="outline" className="min-h-10 flex-1 gap-1.5 sm:flex-none" onClick={() => apri("lettere")}><FileText className="size-4" />Scarica lettere</Button>
-        <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="min-h-10 flex-1 gap-1.5 sm:flex-none" disabled={lavoro}><Tags className="size-4" />Classifica come…</Button></DropdownMenuTrigger>
-          <DropdownMenuContent align="end"><DropdownMenuItem className="min-h-10" onSelect={() => void classificaSelezionati("merci")}>Merci</DropdownMenuItem><DropdownMenuItem className="min-h-10" onSelect={() => void classificaSelezionati("servizi")}>Servizi</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
         {admin && <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="min-h-10 flex-1 gap-1.5 sm:flex-none" disabled={lavoro}><Handshake className="size-4" />Convenzione…</Button></DropdownMenuTrigger>
           <DropdownMenuContent align="end"><DropdownMenuItem className="min-h-10" onSelect={() => setConfermaConv("convenzionato")}>Segna convenzionati</DropdownMenuItem><DropdownMenuItem className="min-h-10" onSelect={() => setConfermaConv("non_convenzionato")}>Togli convenzione</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}
         <Button variant="ghost" className="min-h-10 gap-1.5" onClick={() => setSel(new Set())}><X className="size-4" />Deseleziona</Button>
