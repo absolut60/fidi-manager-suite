@@ -8,6 +8,7 @@ export function BandierinaConvenzionato({ className }: { className?: string }) {
   return <TooltipProvider delayDuration={150}><Tooltip open={aperto} onOpenChange={setAperto}>
     <TooltipTrigger asChild>
       <button type="button" aria-label="Convenzionato" title="Convenzionato"
+        onPointerDown={e => { e.preventDefault(); e.stopPropagation(); }}
         onClick={e => { e.stopPropagation(); e.preventDefault(); setAperto(v => !v); }}
         className={`inline-flex shrink-0 items-center justify-center p-1 align-middle ${className ?? ""}`}>
         <span aria-hidden className="inline-flex h-[11px] w-4 overflow-hidden rounded-[2px] ring-1 ring-border">
@@ -17,6 +18,6 @@ export function BandierinaConvenzionato({ className }: { className?: string }) {
         </span>
       </button>
     </TooltipTrigger>
-    <TooltipContent>Convenzionato</TooltipContent>
+    <TooltipContent onPointerDownOutside={() => setAperto(false)}>Convenzionato</TooltipContent>
   </Tooltip></TooltipProvider>;
 }
