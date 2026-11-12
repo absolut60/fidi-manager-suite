@@ -195,6 +195,7 @@ export function SelettoreScadenzeAperte({
             <TableBody>
               {rows.map((s) => {
                 const sel = selectedIds.has(s.id);
+                const acconto = accontoSuScadenzaAperta(s);
                 const altriPiani = mostraBadgePiani ? (scadenzeInAltriPiani.get(s.id) ?? []) : [];
                 return (
                   <TableRow key={s.id} className="cursor-pointer" onClick={() => toggleScadenza(s.id)}>
@@ -204,6 +205,15 @@ export function SelettoreScadenzeAperte({
                     <TableCell className="font-mono text-xs">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span>{s.numero_documento ?? "—"}</span>
+                        {acconto && (
+                          <Badge
+                            variant="outline"
+                            className="border-info/40 bg-info/10 text-[10px] font-normal text-info"
+                            title={`Pagati ${fmtEuro(acconto.importo)} il ${fmtDate(acconto.data)}`}
+                          >
+                            Acconto pagato
+                          </Badge>
+                        )}
                         {altriPiani.length > 0 && (
                           <Badge
                             variant="outline"
