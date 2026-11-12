@@ -44,8 +44,8 @@ export function SchedaFornitore({ fornitore: f, tab, onTabChange, statoArticoli 
     </div>
     <Tabs value={tabAttiva} onValueChange={value => { const next = tabVisibili.find(t => t === value); if (next) onTabChange(next); }}>
       <TabsList aria-label="Sezioni della scheda fornitore" className="md:flex-wrap">{tabVisibili.map(t => <TabsTrigger key={t} value={t}>{titoli[t]}</TabsTrigger>)}</TabsList>
-      <TabsContent value="riepilogo" className="space-y-4"><RiepilogoFornitore fornitore={f} vaiAlTab={onTabChange} /></TabsContent>
-      <TabsContent value="anagrafica" className="space-y-3">
+      <TabsContent value="riepilogo" className="max-w-7xl space-y-4"><RiepilogoFornitore fornitore={f} vaiAlTab={onTabChange} /></TabsContent>
+      <TabsContent value="anagrafica" className="max-w-7xl space-y-3">
         <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-2">
           <Sezione titolo="Anagrafica" icon={Building2}><dl className="grid grid-cols-1 gap-x-5 sm:grid-cols-2"><Dato label="Ragione sociale" value={f.ragione_sociale} /><Dato label="Alias" value={f.alias} /><Dato label="P.IVA" value={f.partita_iva} /><Dato label="Codice fiscale" value={f.codice_fiscale} /><Dato label="Indirizzo" value={[f.indirizzo, [f.cap, f.citta, f.provincia ? `(${f.provincia})` : null].filter(Boolean).join(" ")].filter(Boolean).join(", ")} /><Dato label="Stato" value={f.stato} /></dl></Sezione>
           <Sezione titolo="Contatti Gamma" icon={Phone}><ContattiFornitore fornitore={f} /></Sezione>
@@ -54,8 +54,8 @@ export function SchedaFornitore({ fornitore: f, tab, onTabChange, statoArticoli 
         <p className="text-xs text-muted-foreground">I dati anagrafici arrivano da Gamma e si aggiornano con l’import.</p>
       </TabsContent>
       {f.puo_vedere_articoli && <TabsContent value="articoli"><ArticoliFornitore id={f.id} {...statoArticoli} /></TabsContent>}
-      <TabsContent value="clienti"><ClientiFornitore clienti={f.clienti} /></TabsContent>
-      <TabsContent value="allegati"><Card className="p-3 sm:p-4"><AllegatiSection entitaTipo="fornitore" entitaId={f.id} clienteId={null} canEdit={f.puo_modificare_note} eliminaTutti={f.puo_modificare_note} /></Card></TabsContent>
+      <TabsContent value="clienti" className="max-w-7xl"><ClientiFornitore clienti={f.clienti} /></TabsContent>
+      <TabsContent value="allegati" className="max-w-7xl"><Card className="p-3 sm:p-4"><AllegatiSection entitaTipo="fornitore" entitaId={f.id} clienteId={null} canEdit={f.puo_modificare_note} eliminaTutti={f.puo_modificare_note} /></Card></TabsContent>
     </Tabs>
   </div>;
 }
