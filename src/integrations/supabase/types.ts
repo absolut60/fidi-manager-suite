@@ -8273,6 +8273,17 @@ export type Database = {
           store_id: string
         }[]
       }
+      _prezzo_vendita_articoli: {
+        Args: { _codice?: string; _listino: number; _store_id: string }
+        Returns: {
+          articolo_codice: string
+          deposito_codice: string
+          fonte: string
+          prezzo: number
+          prezzo_deposito: number
+          prezzo_listino: number
+        }[]
+      }
       _segmento_filtro_elenco: { Args: { _v: Json }; Returns: string[] }
       agente_codice_corrente: { Args: never; Returns: string }
       agente_vede_record: {
@@ -8475,13 +8486,16 @@ export type Database = {
       }
       cerca_articoli: {
         Args: {
+          _direzione?: string
+          _ordina?: string
+          disponibile_in?: string[]
+          disponibile_logistica?: boolean
           famiglie?: string[]
           fornitori?: string[]
           limite?: number
           listino?: number
           marche?: string[]
           offset?: number
-          solo_disponibili?: boolean
           sottofamiglie?: string[]
           stati?: string[]
           testo?: string
@@ -8489,9 +8503,11 @@ export type Database = {
         Returns: {
           codice: string
           descrizione: string
-          disponibilita_totale: number
           famiglia: string
           fattore_conversione: number
+          fonte_prezzo: string
+          giacenza_logistica: number
+          giacenza_sede: number
           marca: string
           origine: string
           preventivatore_id: string
