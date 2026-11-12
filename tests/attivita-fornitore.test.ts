@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { creaAttivitaFornitoreInput, elencoAttivitaFornitoreInput, tipoAttivita } from "@/lib/attivita-fornitore";
 const id = "00000000-0000-4000-8000-000000000001";
 describe("attività fornitore", () => {
