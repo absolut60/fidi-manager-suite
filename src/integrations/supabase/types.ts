@@ -3943,6 +3943,10 @@ export type Database = {
           ragione_sociale: string | null
           sito: string | null
           stato: string | null
+          stato_convenzione: string
+          stato_convenzione_da: string | null
+          stato_convenzione_fonte: string | null
+          stato_convenzione_il: string | null
           telefono: string | null
           telefono_2: string | null
           tipo_app: string | null
@@ -3988,6 +3992,10 @@ export type Database = {
           ragione_sociale?: string | null
           sito?: string | null
           stato?: string | null
+          stato_convenzione?: string
+          stato_convenzione_da?: string | null
+          stato_convenzione_fonte?: string | null
+          stato_convenzione_il?: string | null
           telefono?: string | null
           telefono_2?: string | null
           tipo_app?: string | null
@@ -4033,6 +4041,10 @@ export type Database = {
           ragione_sociale?: string | null
           sito?: string | null
           stato?: string | null
+          stato_convenzione?: string
+          stato_convenzione_da?: string | null
+          stato_convenzione_fonte?: string | null
+          stato_convenzione_il?: string | null
           telefono?: string | null
           telefono_2?: string | null
           tipo_app?: string | null
@@ -8131,9 +8143,9 @@ export type Database = {
           _anche_cliente: boolean
           _con_articoli: boolean
           _con_email: boolean
-          _convenzionato: boolean
           _includi_manuali: boolean
           _macrocategorie: string[]
+          _stati_convenzione: string[]
           _testo: string
           _tipi: string[]
         }
@@ -8144,8 +8156,6 @@ export type Database = {
           codice_fiscale: string
           codice_gestionale: number
           condizione_pagamento_desc: string
-          convenzionato: boolean
-          convenzionato_fonte: string
           email: string
           id: string
           macrocategoria_cod: string
@@ -8157,6 +8167,8 @@ export type Database = {
           persona_fisica: boolean
           provincia: string
           ragione_sociale: string
+          stato_convenzione: string
+          stato_convenzione_fonte: string
           tipo_effettivo: string
           tipo_fonte: string
           valida: boolean
@@ -8444,11 +8456,11 @@ export type Database = {
           _anche_cliente?: boolean
           _con_articoli?: boolean
           _con_email?: boolean
-          _convenzionato?: boolean
           _includi_manuali?: boolean
           _limite?: number
           _macrocategorie?: string[]
           _offset?: number
+          _stati_convenzione?: string[]
           _testo?: string
           _tipi?: string[]
         }
@@ -8459,8 +8471,6 @@ export type Database = {
           codice_fiscale: string
           codice_gestionale: number
           condizione_pagamento_desc: string
-          convenzionato: boolean
-          convenzionato_fonte: string
           email: string
           id: string
           macrocategoria_cod: string
@@ -8472,6 +8482,8 @@ export type Database = {
           persona_fisica: boolean
           provincia: string
           ragione_sociale: string
+          stato_convenzione: string
+          stato_convenzione_fonte: string
           tipo_effettivo: string
           tipo_fonte: string
           totale: number
@@ -8490,9 +8502,9 @@ export type Database = {
           _anche_cliente?: boolean
           _con_articoli?: boolean
           _con_email?: boolean
-          _convenzionato?: boolean
           _includi_manuali?: boolean
           _macrocategorie?: string[]
+          _stati_convenzione?: string[]
           _testo?: string
           _tipi?: string[]
         }
@@ -9974,16 +9986,16 @@ export type Database = {
         Args: { _importazione: string; _righe: Json; _tabella: string }
         Returns: Json
       }
-      imposta_convenzionato_fornitori: {
-        Args: { _ids: string[]; _valore: boolean }
-        Returns: Json
-      }
       imposta_iscrizioni_evento: {
         Args: { _aperte: boolean; _evento_id: string }
         Returns: {
           codice_pubblico: string
           iscrizioni_aperte: boolean
         }[]
+      }
+      imposta_stato_convenzione_fornitori: {
+        Args: { _ids: string[]; _stato: string }
+        Returns: Json
       }
       increment_importazione_counters:
         | {
