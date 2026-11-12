@@ -45,14 +45,15 @@ export const dettaglioArticoloGamma = createServerFn({ method: "POST" }).middlew
     if (error) throw new Error(error.message);
     if (!articolo) return null;
     const escaped = data.codice.replace(/[\\%_]/g, "\\$&");
-    const [prezzi, listini, tecnici, permesso, fornitori] = await Promise.all([
-      context.supabase.from("articoli_gamma_listini").select("*").eq("articolo_codice", data.codice),
-      context.supabase.from("listini_gamma").select("codice,descrizione"),
+    // FM63: prices only from listini_articolo_visibili (site visibility rule lives in SQL).
+    const [prezzi, sede, tecnici, permesso, fornitori] = await Promise.all([
+      context.supabase.rpc("listini_articolo_visibili", { _codice: data.codice }),
+      context.supabase.rpc("auth_listini_sede"),
       context.supabase.from("articoli").select("id,cod_gamma,categoria,tipologia,componente,qta_cliente,qta_fornitore,peso_unit,note,note_acquisto").like("cod_gamma", `%${escaped}%`),
       context.supabase.rpc("auth_puo_gestire_anagrafiche_prev"),
       context.supabase.from("articoli_gamma_fornitori").select("fornitore_codice,codice_articolo_fornitore,preferenziale,fornitore:fornitori(id,ragione_sociale)").eq("articolo_codice", data.codice),
     ]);
-    for (const result of [prezzi, listini, tecnici, permesso, fornitori]) if (result.error) throw new Error(result.error.message);
+    for (const result of [prezzi, sede, tecnici, permesso, fornitori]) if (result.error) throw new Error(result.error.message);
     // FM62: "fornitore obsoleto" deciso solo da public.fornitore_obsoleto (campo calcolato PostgREST).
     const idsFornitori = [...new Set([articolo.fornitore?.id, ...(fornitori.data ?? []).map((r) => r.fornitore?.id)].filter((v): v is string => !!v))];
     const obsoleti = new Set<string>();
@@ -81,7 +82,8 @@ export const dettaglioArticoloGamma = createServerFn({ method: "POST" }).middlew
       if (kit.error) throw new Error(kit.error.message);
       return { kit: (kit.data ?? []).sort((a, b) => (a.kit?.nome ?? "").localeCompare(b.kit?.nome ?? "", "it-IT")), preventivi };
     })() : null;
-    return { ...articolo, fornitore: conObsoleto(articolo.fornitore), prezzi: prezzi.data ?? [], listini: listini.data ?? [],
+    return { ...articolo, fornitore: conObsoleto(articolo.fornitore), listiniVisibili: prezzi.data ?? [],
+      globale: sede.data?.[0]?.globale ?? true, storeIdUtente: sede.data?.[0]?.globale === false ? sede.data[0].store_id : null,
       tecnico, fornitori: ordinaFornitoriArticolo((fornitori.data ?? []).map((r) => ({ ...r, fornitore: conObsoleto(r.fornitore) }))), utilizzo,
       puoModificareTecnici: permesso.data === true };
   });

@@ -10,7 +10,7 @@ export function parametriArticoli(f: FiltriArticoli) {
     limite: 100, offset: (Math.max(1, Math.floor(f.page)) - 1) * 100 };
 }
 export function prezzoArticolo(prezzo: number | null) {
-  return prezzo === null ? "—" : prezzo.toLocaleString("it-IT", { style: "currency", currency: "EUR", minimumFractionDigits: 2, maximumFractionDigits: 3 });
+  return prezzo === null ? "—" : prezzo.toLocaleString("it-IT", { style: "currency", currency: "EUR", minimumFractionDigits: 4, maximumFractionDigits: 4 });
 }
 export const STATI_ARTICOLI = [
   { valore: "in_uso", label: "In uso" }, { valore: "in_esaurimento", label: "In esaurimento" },
