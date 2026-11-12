@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { sitoFornitore, origineLegameFornitore, tabSchedaFornitore, paginaFornitore, filtroSiNo } from "../src/lib/scheda-fornitore";
+import { sitoFornitore, origineLegameFornitore, tabSchedaFornitore, paginaFornitore, filtroSiNo, badgeMacrocategoria, macrocategorieValide } from "../src/lib/scheda-fornitore";
 
 describe("scheda fornitore", () => {
   test("sito senza protocollo diventa https, http e https conservati", () => {
