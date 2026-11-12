@@ -20,7 +20,7 @@ const fornitoriArticoliGamma = async (_input: unknown) => [{id:"00000000-0000-40
 export const Route = createFileRoute("/verifica-articoli")({
   head: () => ({ meta: [{ title: "Articoli Gamma — FidiManager" }, { name: "description", content: "Catalogo articoli MADE con prezzi Gamma, disponibilità e filtri di famiglia, marca e fornitore." }, { property: "og:title", content: "Articoli Gamma — FidiManager" }, { property: "og:description", content: "Catalogo, prezzi e disponibilità degli articoli MADE." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: ArticoliListPage,
-  errorComponent: ({ error }) => <div role="alert" className="p-6 text-destructive">{error.message}</div>,
+  errorComponent: ({ error }) => <div role="alert" className="p-6 text-destructive">{error instanceof Error ? error.message : String(error)}</div>,
 });
 function useDebounce(value: string) {
   const [v, set] = useState(value);

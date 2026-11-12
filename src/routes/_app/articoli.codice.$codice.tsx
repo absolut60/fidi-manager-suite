@@ -13,7 +13,7 @@ export const Route = createFileRoute("/_app/articoli/codice/$codice")({
     { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
   ] }),
   component: SchedaGamma,
-  errorComponent: ({ error }) => <div className="p-6"><BackButton fallbackTo="/articoli" fallbackLabel="Articoli" /><p role="alert" className="mt-4 text-destructive">{error.message}</p></div>,
+  errorComponent: ({ error }) => <div className="p-6"><BackButton fallbackTo="/articoli" fallbackLabel="Articoli" /><p role="alert" className="mt-4 text-destructive">{error instanceof Error ? error.message : String(error)}</p></div>,
 });
 function SchedaGamma() {
   const { codice } = Route.useParams();
