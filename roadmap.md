@@ -1,6 +1,6 @@
 # FM62 — Schede fornitore, fetta D
-- [ ] Quattro funzioni SQL protette, wrapper con client utente e test validazione; nessuna UI o modifica dati.
-- [ ] Verifica definizioni, grant e assenza EXECUTE anon; suite esistente e compilazione automatica.
+- [x] Migrazione 0173 applicata: quattro funzioni SQL protette, wrapper con client utente e schemi condivisi per la validazione; nessuna UI o modifica dati.
+- [x] Tutte SECURITY DEFINER, search_path public, EXECUTE authenticated soltanto (oltre al proprietario); anon e service_role esclusi. Zero funzioni applicative eseguibili da anon. 7 test nuovi, 411 totali superati e compilazione automatica OK.
 
 # FM61 — Articoli fetta B2
 - [x] Ridisegno con Card/Tabs/Progress esistenti, tab nell'URL, margine condiviso; nessuna modifica ai dati o funzioni server.
