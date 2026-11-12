@@ -4,8 +4,12 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { BackButton } from "@/components/back-button";
 import { dettaglioArticoloGamma } from "@/lib/catalogo-articoli.functions";
 import { SchedaArticoloGamma } from "@/components/articoli/SchedaArticoloGamma";
+import { z } from "zod";
+import { fallback, zodValidator } from "@tanstack/zod-adapter";
+import { tabSchedaArticolo } from "@/lib/scheda-articolo";
 
 export const Route = createFileRoute("/_app/articoli/codice/$codice")({
+  validateSearch: zodValidator(z.object({ tab: fallback(z.string(), "panoramica").default("panoramica") })),
   head: ({ params }) => ({ meta: [
     { title: `${params.codice} — Scheda articolo — FidiManager` },
     { name: "description", content: `Anagrafica, prezzi e dati tecnici dell’articolo ${params.codice}.` },
@@ -24,7 +28,9 @@ function SchedaGamma() {
   </div>;
 }
 function Intestazione({ codice }: { codice: string }) {
+  const { tab } = Route.useSearch();
+  const navigate = Route.useNavigate();
   const { data: a } = useSuspenseQuery({ queryKey: ["catalogo-articolo", codice], queryFn: () => dettaglioArticoloGamma({ data: { codice } }) });
   if (!a) return <p className="py-6 text-muted-foreground">Articolo non trovato.</p>;
-  return <SchedaArticoloGamma articolo={a} />;
+  return <SchedaArticoloGamma articolo={a} tab={tabSchedaArticolo(tab)} onTabChange={(value) => void navigate({ search: (prev) => ({ ...prev, tab: value }), resetScroll: false })} />;
 }

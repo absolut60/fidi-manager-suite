@@ -17,6 +17,16 @@ export function ordinaFornitoriArticolo<T extends { preferenziale: boolean; forn
 }
 
 export const ORDINE_LISTINI_ARTICOLO = [10, 20, 30, 9] as const;
+export const TAB_SCHEDA_ARTICOLO = ["panoramica", "vendita", "acquisto", "disponibilita", "fornitori", "sistema-made"] as const;
+export type TabSchedaArticolo = typeof TAB_SCHEDA_ARTICOLO[number];
+export function tabSchedaArticolo(value: string): TabSchedaArticolo {
+  return TAB_SCHEDA_ARTICOLO.find((tab) => tab === value) ?? "panoramica";
+}
+// One percentage calculation for both the header and every sales list.
+export function margineArticolo(prezzo: number | null | undefined, costoUltimo: number | null | undefined) {
+  if (prezzo == null || costoUltimo == null || prezzo === 0) return null;
+  return (prezzo - costoUltimo) / prezzo * 100;
+}
 export const CAMPI_TECNICI_ARTICOLO = ["categoria", "tipologia", "componente", "qta_cliente", "qta_fornitore", "peso_unit", "note_acquisto", "note"] as const;
 export type TecniciArticolo = Pick<ArticoloUpdate, typeof CAMPI_TECNICI_ARTICOLO[number]>;
 

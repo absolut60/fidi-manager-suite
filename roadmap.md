@@ -1,3 +1,8 @@
+# FM61 — Articoli fetta B2
+- [x] Ridisegno con Card/Tabs/Progress esistenti, tab nell'URL, margine condiviso; nessuna modifica ai dati o funzioni server.
+- [x] 404 test superati, compilazione automatica OK; screenshot componente AKINAF01007 Panoramica/Vendita/Acquisto e ALP46142 Disponibilità a 390/1280/375, controllo 320/768/1920 senza overflow né errori. Campioni temporanei rimossi; prezzi AKI riletti nel DB, disponibilità ALP campionata dai valori confermati 2676 + 936 = 3612.
+- [ ] Verifica autenticata delle tab su dati live: --self non trova l'account Andrea; serve sessione personale nell'anteprima. Nessun bypass né modifica dati.
+
 # FM61 — Articoli fetta C
 - [x] Disponibilità tramite RPC esistente in query indipendente; sedi, logistica separata, totale aggregati e depositi espandibili chiusi di default. Errori locali con Riprova senza bloccare scheda.
 - [x] Fornitori completi ordinati, kit con route /kit/$id esistente e conteggio distinto preventivi tramite blocchi; paginazione completa delle righe con RLS.

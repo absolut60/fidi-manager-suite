@@ -1,8 +1,18 @@
 import { describe, expect, test } from "bun:test";
-import { ORDINE_LISTINI_ARTICOLO, patchTecniciArticolo } from "../src/lib/scheda-articolo";
+import { ORDINE_LISTINI_ARTICOLO, patchTecniciArticolo, margineArticolo } from "../src/lib/scheda-articolo";
 import { totaleDisponibilitaArticolo, ordinaFornitoriArticolo, contaPreventiviArticolo, type RigaDisponibilitaArticolo } from "../src/lib/scheda-articolo";
 
 describe("scheda articolo — confine dati tecnici", () => {
+  test("margine percentuale su costo ultimo, non ricarico", () => {
+    expect(margineArticolo(100, 60)).toBe(40);
+    expect(margineArticolo(100, 120)).toBe(-20);
+  });
+  test("margine assente se manca prezzo o costo; prezzo zero non divide", () => {
+    expect(margineArticolo(null, 60)).toBeNull();
+    expect(margineArticolo(100, null)).toBeNull();
+    expect(margineArticolo(0, 60)).toBeNull();
+    expect(margineArticolo(100, 0)).toBe(100);
+  });
   test("salva soltanto gli otto campi Sistema MADE, mai Gamma o prezzi", () => {
     const input = { categoria: "Parete", tipologia: "Lastra", componente: "Gesso", qta_cliente: 2, qta_fornitore: 3, peso_unit: 4, note_acquisto: "Ordine", note: "Posa", descrizione: "Non scrivere", cod_gamma: "AKINAF01007", stato: "potenziale" };
     expect(patchTecniciArticolo(input)).toEqual({ categoria: "Parete", tipologia: "Lastra", componente: "Gesso", qta_cliente: 2, qta_fornitore: 3, peso_unit: 4, note_acquisto: "Ordine", note: "Posa" });
