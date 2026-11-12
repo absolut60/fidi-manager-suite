@@ -1,3 +1,8 @@
+# FM62 — Schede fornitore, fetta E
+- [x] Menu, elenco con filtri URL, scheda e note interne tramite sole funzioni fornitore esistenti; nessuna migrazione o scrittura dati.
+- [x] Finestra articolo senza cambio pagina e link articolo → fornitore; 416 test verdi, screenshot componenti con campioni reali a 390/1280/375 e controlli 320/768/1920, nessun overflow o errore browser; campioni rimossi.
+- [ ] Verifica autenticata completa e salvataggio note: --self non trova l'account Andrea; occorre sessione personale nell'anteprima. Screenshot eseguiti su campioni reali, nessun bypass né salvataggio reale.
+
 # FM62 — Schede fornitore, fetta D
 - [x] Migrazione 0173 applicata: quattro funzioni SQL protette, wrapper con client utente e schemi condivisi per la validazione; nessuna UI o modifica dati.
 - [x] Tutte SECURITY DEFINER, search_path public, EXECUTE authenticated soltanto (oltre al proprietario); anon e service_role esclusi. Zero funzioni applicative eseguibili da anon. 7 test nuovi, 411 totali superati e compilazione automatica OK.

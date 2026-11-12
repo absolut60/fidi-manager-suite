@@ -67,6 +67,8 @@ import { Route as AppArticoliIdRouteImport } from './routes/_app/articoli.$id'
 import { Route as AppClientiClienteIdRouteImport } from './routes/_app/clienti.$clienteId'
 import { Route as AppEventiIndexRouteImport } from './routes/_app/eventi.index'
 import { Route as AppEventiEventoIdRouteImport } from './routes/_app/eventi.$eventoId'
+import { Route as AppFornitoriIndexRouteImport } from './routes/_app/fornitori.index'
+import { Route as AppFornitoriIdRouteImport } from './routes/_app/fornitori.$id'
 import { Route as AppKitIndexRouteImport } from './routes/_app/kit.index'
 import { Route as AppKitIdRouteImport } from './routes/_app/kit.$id'
 import { Route as AppLeadIndexRouteImport } from './routes/_app/lead.index'
@@ -397,6 +399,16 @@ const AppEventiEventoIdRoute = AppEventiEventoIdRouteImport.update({
   path: '/eventi/$eventoId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppFornitoriIndexRoute = AppFornitoriIndexRouteImport.update({
+  id: '/fornitori/',
+  path: '/fornitori/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFornitoriIdRoute = AppFornitoriIdRouteImport.update({
+  id: '/fornitori/$id',
+  path: '/fornitori/$id',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppKitIndexRoute = AppKitIndexRouteImport.update({
   id: '/kit/',
   path: '/kit/',
@@ -631,6 +643,7 @@ export interface FileRoutesByFullPath {
   '/articoli/$id': typeof AppArticoliIdRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/eventi/$eventoId': typeof AppEventiEventoIdRoute
+  '/fornitori/$id': typeof AppFornitoriIdRoute
   '/kit/$id': typeof AppKitIdRoute
   '/lead/$leadId': typeof AppLeadLeadIdRoute
   '/marketing/campagne': typeof AppMarketingCampagneRoute
@@ -654,6 +667,7 @@ export interface FileRoutesByFullPath {
   '/api/public/invia-push': typeof ApiPublicInviaPushRoute
   '/articoli/': typeof AppArticoliIndexRoute
   '/eventi/': typeof AppEventiIndexRoute
+  '/fornitori/': typeof AppFornitoriIndexRoute
   '/kit/': typeof AppKitIndexRoute
   '/lead/': typeof AppLeadIndexRoute
   '/opportunita/': typeof AppOpportunitaIndexRoute
@@ -720,6 +734,7 @@ export interface FileRoutesByTo {
   '/articoli/$id': typeof AppArticoliIdRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/eventi/$eventoId': typeof AppEventiEventoIdRoute
+  '/fornitori/$id': typeof AppFornitoriIdRoute
   '/kit/$id': typeof AppKitIdRoute
   '/lead/$leadId': typeof AppLeadLeadIdRoute
   '/marketing/campagne': typeof AppMarketingCampagneRoute
@@ -743,6 +758,7 @@ export interface FileRoutesByTo {
   '/api/public/invia-push': typeof ApiPublicInviaPushRoute
   '/articoli': typeof AppArticoliIndexRoute
   '/eventi': typeof AppEventiIndexRoute
+  '/fornitori': typeof AppFornitoriIndexRoute
   '/kit': typeof AppKitIndexRoute
   '/lead': typeof AppLeadIndexRoute
   '/opportunita': typeof AppOpportunitaIndexRoute
@@ -814,6 +830,7 @@ export interface FileRoutesById {
   '/_app/articoli/$id': typeof AppArticoliIdRoute
   '/_app/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/_app/eventi/$eventoId': typeof AppEventiEventoIdRoute
+  '/_app/fornitori/$id': typeof AppFornitoriIdRoute
   '/_app/kit/$id': typeof AppKitIdRoute
   '/_app/lead/$leadId': typeof AppLeadLeadIdRoute
   '/_app/marketing/campagne': typeof AppMarketingCampagneRoute
@@ -837,6 +854,7 @@ export interface FileRoutesById {
   '/api/public/invia-push': typeof ApiPublicInviaPushRoute
   '/_app/articoli/': typeof AppArticoliIndexRoute
   '/_app/eventi/': typeof AppEventiIndexRoute
+  '/_app/fornitori/': typeof AppFornitoriIndexRoute
   '/_app/kit/': typeof AppKitIndexRoute
   '/_app/lead/': typeof AppLeadIndexRoute
   '/_app/opportunita/': typeof AppOpportunitaIndexRoute
@@ -908,6 +926,7 @@ export interface FileRouteTypes {
     | '/articoli/$id'
     | '/clienti/$clienteId'
     | '/eventi/$eventoId'
+    | '/fornitori/$id'
     | '/kit/$id'
     | '/lead/$leadId'
     | '/marketing/campagne'
@@ -931,6 +950,7 @@ export interface FileRouteTypes {
     | '/api/public/invia-push'
     | '/articoli/'
     | '/eventi/'
+    | '/fornitori/'
     | '/kit/'
     | '/lead/'
     | '/opportunita/'
@@ -997,6 +1017,7 @@ export interface FileRouteTypes {
     | '/articoli/$id'
     | '/clienti/$clienteId'
     | '/eventi/$eventoId'
+    | '/fornitori/$id'
     | '/kit/$id'
     | '/lead/$leadId'
     | '/marketing/campagne'
@@ -1020,6 +1041,7 @@ export interface FileRouteTypes {
     | '/api/public/invia-push'
     | '/articoli'
     | '/eventi'
+    | '/fornitori'
     | '/kit'
     | '/lead'
     | '/opportunita'
@@ -1090,6 +1112,7 @@ export interface FileRouteTypes {
     | '/_app/articoli/$id'
     | '/_app/clienti/$clienteId'
     | '/_app/eventi/$eventoId'
+    | '/_app/fornitori/$id'
     | '/_app/kit/$id'
     | '/_app/lead/$leadId'
     | '/_app/marketing/campagne'
@@ -1113,6 +1136,7 @@ export interface FileRouteTypes {
     | '/api/public/invia-push'
     | '/_app/articoli/'
     | '/_app/eventi/'
+    | '/_app/fornitori/'
     | '/_app/kit/'
     | '/_app/lead/'
     | '/_app/opportunita/'
@@ -1554,6 +1578,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEventiEventoIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/fornitori/': {
+      id: '/_app/fornitori/'
+      path: '/fornitori'
+      fullPath: '/fornitori/'
+      preLoaderRoute: typeof AppFornitoriIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/fornitori/$id': {
+      id: '/_app/fornitori/$id'
+      path: '/fornitori/$id'
+      fullPath: '/fornitori/$id'
+      preLoaderRoute: typeof AppFornitoriIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/kit/': {
       id: '/_app/kit/'
       path: '/kit'
@@ -1898,6 +1936,7 @@ interface AppRouteChildren {
   AppWhatsappRoute: typeof AppWhatsappRoute
   AppArticoliIdRoute: typeof AppArticoliIdRoute
   AppEventiEventoIdRoute: typeof AppEventiEventoIdRoute
+  AppFornitoriIdRoute: typeof AppFornitoriIdRoute
   AppKitIdRoute: typeof AppKitIdRoute
   AppMarketingCampagneRoute: typeof AppMarketingCampagneRoute
   AppMarketingDisiscrizioniRoute: typeof AppMarketingDisiscrizioniRoute
@@ -1915,6 +1954,7 @@ interface AppRouteChildren {
   AppRichiesteInterneTutteRoute: typeof AppRichiesteInterneTutteRoute
   AppArticoliIndexRoute: typeof AppArticoliIndexRoute
   AppEventiIndexRoute: typeof AppEventiIndexRoute
+  AppFornitoriIndexRoute: typeof AppFornitoriIndexRoute
   AppKitIndexRoute: typeof AppKitIndexRoute
   AppOrdiniIndexRoute: typeof AppOrdiniIndexRoute
   AppPreventivatoreIndexRoute: typeof AppPreventivatoreIndexRoute
@@ -1968,6 +2008,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppWhatsappRoute: AppWhatsappRoute,
   AppArticoliIdRoute: AppArticoliIdRoute,
   AppEventiEventoIdRoute: AppEventiEventoIdRoute,
+  AppFornitoriIdRoute: AppFornitoriIdRoute,
   AppKitIdRoute: AppKitIdRoute,
   AppMarketingCampagneRoute: AppMarketingCampagneRoute,
   AppMarketingDisiscrizioniRoute: AppMarketingDisiscrizioniRoute,
@@ -1985,6 +2026,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppRichiesteInterneTutteRoute: AppRichiesteInterneTutteRoute,
   AppArticoliIndexRoute: AppArticoliIndexRoute,
   AppEventiIndexRoute: AppEventiIndexRoute,
+  AppFornitoriIndexRoute: AppFornitoriIndexRoute,
   AppKitIndexRoute: AppKitIndexRoute,
   AppOrdiniIndexRoute: AppOrdiniIndexRoute,
   AppPreventivatoreIndexRoute: AppPreventivatoreIndexRoute,
