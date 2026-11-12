@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { elencoFornitoriInput, idsFornitoriInput, ordinamentoFornitoriValido } from "../src/lib/fornitori";
 
 describe("ordinamento elenco fornitori", () => {
