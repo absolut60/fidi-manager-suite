@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SchedaLista, ElencoSchede, type SelezioneTutti } from "@/components/lista-responsive/scheda-lista";
 import type { FornitoreElenco } from "@/lib/fornitori.functions";
-import { BadgeFornitore, BadgeTipoFornitore, BadgeConvenzionato } from "./controlli-fornitori";
+import { BadgeFornitore, BadgeTipoFornitore } from "./controlli-fornitori";
+import { BandierinaConvenzionato } from "./BandierinaConvenzionato";
 
 export type SelezioneFornitori = { selezionati: Set<string>; cambia: (id: string, v: boolean) => void; tutti: SelezioneTutti };
 
@@ -30,7 +31,7 @@ export function ElencoFornitori({ rows, apri, mostraArticoli = true, selezione, 
   return <>
     <ElencoSchede selezioneTutti={s?.tutti}>{rows.map(f => <SchedaLista key={f.id} onClick={() => apri(f.id)}
       selezione={s ? { checked: s.selezionati.has(f.id), onChange: v => s.cambia(f.id, v) } : undefined}
-      titolo={<><span className="block font-mono text-xs text-muted-foreground">{f.codice_gestionale ?? "Senza codice Gamma"}</span><span className="line-clamp-2">{f.ragione_sociale}</span>{f.convenzionato && <span className="mt-1 block"><BadgeConvenzionato /></span>}{f.alias && <span className="block text-xs text-muted-foreground">{f.alias}</span>}</>}
+      titolo={<><span className="block font-mono text-xs text-muted-foreground">{f.codice_gestionale ?? "Senza codice Gamma"}</span><span className="line-clamp-2">{f.ragione_sociale}{f.stato_convenzione === "convenzionato" && <BandierinaConvenzionato className="ml-0.5" />}</span>{f.alias && <span className="block text-xs text-muted-foreground">{f.alias}</span>}</>}
       campi={[{ etichetta: "Città", valore: citta(f) }, { etichetta: "P.IVA", valore: f.partita_iva || "—" }, { etichetta: "Pagamento", valore: f.condizione_pagamento_desc || "—" }, { etichetta: "Email", valore: f.email ? <span className="break-all">{f.email}</span> : "—" }, ...(mostraArticoli ? [{ etichetta: "Articoli", valore: articoli(f) }] : [])]}
       className={evidenzia?.(f) ? "border-warning/50 bg-warning/10" : undefined}
       footer={<><BadgeTipoFornitore tipo={f.tipo_effettivo} fonte={f.tipo_fonte} />{evidenzia?.(f) && <span className="text-xs font-medium text-warning">Da controllare: senza articoli</span>}<BadgeFornitore fornitore={f} />{badgeCliente(f)}</>} />)}</ElencoSchede>
@@ -44,7 +45,7 @@ export function ElencoFornitori({ rows, apri, mostraArticoli = true, selezione, 
         <tbody>{rows.map(f => <tr key={f.id} className={`cursor-pointer border-b hover:bg-muted/50 ${evidenzia?.(f) ? "bg-warning/10" : s?.selezionati.has(f.id) ? "bg-primary/5" : ""}`} onClick={() => apri(f.id)}>
           {s && <td className="px-2 py-3" onClick={e => e.stopPropagation()}><Checkbox aria-label={`Seleziona ${f.ragione_sociale ?? "fornitore"}`} checked={s.selezionati.has(f.id)} onCheckedChange={v => s.cambia(f.id, v === true)} /></td>}
           <td className="break-words px-2 py-3 font-mono">{f.codice_gestionale ?? "—"}</td>
-          <td className="break-words px-2 py-3"><Link to="/fornitori/$id" params={{ id: f.id }} className="font-semibold text-primary hover:underline" onClick={e => e.stopPropagation()}>{f.ragione_sociale}</Link>{f.convenzionato && <span className="ml-1.5 inline-block align-middle"><BadgeConvenzionato /></span>}{f.alias && <p className="mt-1 text-muted-foreground">{f.alias}</p>}<BadgeFornitore fornitore={f} /></td>
+          <td className="break-words px-2 py-3"><Link to="/fornitori/$id" params={{ id: f.id }} className="font-semibold text-primary hover:underline" onClick={e => e.stopPropagation()}>{f.ragione_sociale}</Link>{f.stato_convenzione === "convenzionato" && <BandierinaConvenzionato className="ml-0.5" />}{f.alias && <p className="mt-1 text-muted-foreground">{f.alias}</p>}<BadgeFornitore fornitore={f} /></td>
           <td className="break-words px-2 py-3">{citta(f)}</td>
           <td className="break-words px-2 py-3 tabular-nums">{f.partita_iva || "—"}</td>
           <td className="px-2 py-3"><BadgeTipoFornitore tipo={f.tipo_effettivo} fonte={f.tipo_fonte} />{evidenzia?.(f) && <span className="mt-1 block text-[11px] font-medium text-warning">Da controllare</span>}</td>

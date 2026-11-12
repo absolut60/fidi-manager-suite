@@ -5,10 +5,14 @@ import type { Database } from "@/integrations/supabase/types";
 export const TIPI_FORNITORE = ["merci", "servizi", "da_classificare"] as const;
 export type TipoFornitore = typeof TIPI_FORNITORE[number];
 export const MAX_CLASSIFICA_FORNITORI = 5000;
-/** FM62 F7: segna/togli convenzione in blocco (stesso limite della classificazione). */
-export const impostaConvenzionatoInput = z.object({
+/** FM62 F7: stati convenzione (estendibile: aggiungere qui e nel CHECK fornitori_stato_convenzione_chk). */
+export const STATI_CONVENZIONE = ["convenzionato", "non_convenzionato"] as const;
+export type StatoConvenzione = typeof STATI_CONVENZIONE[number];
+export const ETICHETTE_CONVENZIONE: Record<StatoConvenzione, string> = { convenzionato: "Convenzionato", non_convenzionato: "Non convenzionato" };
+/** Imposta lo stato convenzione in blocco (solo amministratore; stesso limite della classificazione). */
+export const impostaStatoConvenzioneInput = z.object({
   ids: z.array(z.string().uuid()).min(1, "Nessun fornitore selezionato").max(MAX_CLASSIFICA_FORNITORI, `Massimo ${MAX_CLASSIFICA_FORNITORI} fornitori per volta`),
-  valore: z.boolean(),
+  stato: z.enum(STATI_CONVENZIONE),
 });
 export const classificaFornitoriInput = z.object({
   ids: z.array(z.string().uuid()).min(1, "Nessun fornitore selezionato").max(MAX_CLASSIFICA_FORNITORI, `Massimo ${MAX_CLASSIFICA_FORNITORI} fornitori per volta`),
@@ -29,7 +33,7 @@ export const elencoFornitoriInput = z.object({
   /** FM62 F6: tipo effettivo (Gamma 01/03, altrimenti app). */
   tipi: z.array(z.enum(TIPI_FORNITORE)).max(3).nullable().optional(),
   /** FM62 F7: null = tutti. */
-  convenzionato: z.boolean().nullable().optional(),
+  statiConvenzione: z.array(z.enum(STATI_CONVENZIONE)).max(10).nullable().optional(),
   limite: paginazione.limite.default(100), offset: paginazione.offset,
 });
 /** Stessi filtri dell'elenco, senza paginazione: per "seleziona tutti i filtrati". */
@@ -63,8 +67,9 @@ export const dettaglioFornitoreSchema = z.object({
   condizione_pagamento_cod: testo, condizione_pagamento_desc: testo,
   attivo: booleano, note: testo, macrocategoria_cod: testo, macrocategoria_desc: testo,
   tipo_effettivo: z.enum(TIPI_FORNITORE).catch("da_classificare"), tipo_fonte: z.enum(["gamma", "convenzionato", "app", "nessuna"]).catch("nessuna"), tipo_app_il: testo.optional(),
-  convenzionato: z.boolean().catch(false), convenzionato_fonte: z.enum(["app", "gamma"]).nullable().catch(null),
-  convenzionato_il: testo.optional(), convenzionato_da_nome: testo.optional(), tipo_conflitto_convenzione: z.boolean().nullable().optional(),
+  stato_convenzione: z.enum(STATI_CONVENZIONE).catch("non_convenzionato"), stato_convenzione_fonte: z.enum(["app", "gamma"]).nullable().catch(null),
+  stato_convenzione_il: testo.optional(), stato_convenzione_da_nome: testo.optional(), tipo_conflitto_convenzione: z.boolean().nullable().optional(),
+  puo_cambiare_convenzione: z.boolean().catch(false),
   ultima_modifica_gamma: testo, ultima_sincronizzazione: testo,
   clienti: z.array(z.object({
     cliente_id: z.string().uuid(), codice_gestionale: testo, ragione_sociale: testo,

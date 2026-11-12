@@ -11,10 +11,10 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { elencoFornitori, idsFornitoriFiltrati, classificaFornitori, impostaConvenzionatoFornitori } from "@/lib/fornitori.functions";
-import { ricercaFornitori, paginaFornitore, filtroSiNo, OPZIONI_TIPO_FORNITORE, tipiFornitoreValidi, daControllareInProposta, messaggioConvenzione } from "@/lib/scheda-fornitore";
+import { elencoFornitori, idsFornitoriFiltrati, classificaFornitori, impostaStatoConvenzioneFornitori } from "@/lib/fornitori.functions";
+import { ricercaFornitori, paginaFornitore, filtroSiNo, OPZIONI_TIPO_FORNITORE, tipiFornitoreValidi, daControllareInProposta, messaggioConvenzione, statiConvenzioneValidi, OPZIONI_CONVENZIONE } from "@/lib/scheda-fornitore";
 import { MAX_CLASSIFICA_FORNITORI } from "@/lib/fornitori";
-import { puoGestireFornitori, puoVedereArticoliFornitori } from "@/lib/permessi-fornitori";
+import { puoCambiareConvenzione, puoGestireFornitori, puoVedereArticoliFornitori } from "@/lib/permessi-fornitori";
 import { MAX_FORNITORI_INVIO, MAX_FORNITORI_LETTERE } from "@/lib/invio-multiplo-fornitori";
 import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { FiltriCollassabili } from "@/components/lista-responsive/filtri-collassabili";
@@ -39,15 +39,17 @@ function ContenutoFornitori() {
   const vedeArticoli = puoVedereArticoliFornitori(roles);
   const pagina = paginaFornitore(f.pagina);
   const tipi = tipiFornitoreValidi(f.tipo, f.macro);
+  const statiConv = statiConvenzioneValidi(f.convenzione);
+  const admin = puoCambiareConvenzione(roles);
   const aggiornaRicerca = useCallback((q: string) => { void navigate({ search: prev => ({ ...prev, q, pagina: 1 }), replace: true, resetScroll: false }); }, [navigate]);
   const [testo, setTesto] = useRicercaDifferita(f.q, aggiornaRicerca);
   const carica = useServerFn(elencoFornitori);
   const caricaIds = useServerFn(idsFornitoriFiltrati);
-  const filtriBase = { testo: f.q, ancheCliente: filtroSiNo(f.ancheCliente), conArticoli: filtroSiNo(f.conArticoli), conEmail: filtroSiNo(f.conEmail), convenzionato: filtroSiNo(f.convenzionato), includiManuali: f.manuali, tipi };
+  const filtriBase = { testo: f.q, ancheCliente: filtroSiNo(f.ancheCliente), conArticoli: filtroSiNo(f.conArticoli), conEmail: filtroSiNo(f.conEmail), statiConvenzione: statiConv, includiManuali: f.manuali, tipi };
   const filtri = { ...filtriBase, limite: 100, offset: (pagina - 1) * 100 };
   const query = useQuery({ queryKey: ["fornitori", filtri], queryFn: () => carica({ data: filtri }) });
   const cambia = (patch: Partial<typeof f>) => void navigate({ search: prev => ({ ...prev, ...patch, pagina: 1 }), resetScroll: false });
-  const attivi = [f.ancheCliente !== "tutti", f.conArticoli !== "tutti", f.conEmail !== "tutti", f.convenzionato !== "tutti", tipi.length > 0, f.manuali].filter(Boolean).length;
+  const attivi = [f.ancheCliente !== "tutti", f.conArticoli !== "tutti", f.conEmail !== "tutti", statiConv.length > 0, tipi.length > 0, f.manuali].filter(Boolean).length;
 
   // Selezione multipla: solo per chi gestisce i fornitori; si azzera se cambiano i filtri.
   const [sel, setSel] = useState<Set<string>>(new Set());
@@ -98,14 +100,14 @@ function ContenutoFornitori() {
     finally { setLavoro(false); }
   };
   // FM62 F7: segna/togli convenzione in blocco, con conferma.
-  const convenziona = useServerFn(impostaConvenzionatoFornitori);
-  const [confermaConv, setConfermaConv] = useState<boolean | null>(null);
-  const impostaConvenzione = async (valore: boolean) => {
+  const convenziona = useServerFn(impostaStatoConvenzioneFornitori);
+  const [confermaConv, setConfermaConv] = useState<"convenzionato" | "non_convenzionato" | null>(null);
+  const impostaConvenzione = async (stato: "convenzionato" | "non_convenzionato") => {
     if (ids.length > MAX_CLASSIFICA_FORNITORI) { toast.error(`Massimo ${MAX_CLASSIFICA_FORNITORI.toLocaleString("it-IT")} fornitori per volta.`); return; }
     setLavoro(true);
     try {
-      const r = await convenziona({ data: { ids, valore } });
-      (r.inConflitto ? toast.warning : toast.success)(messaggioConvenzione(valore, r));
+      const r = await convenziona({ data: { ids, stato } });
+      (r.inConflitto ? toast.warning : toast.success)(messaggioConvenzione(stato, r));
       setSel(new Set());
       await qc.invalidateQueries({ queryKey: ["fornitori"] });
     } catch (e) { toast.error(e instanceof Error ? e.message : "Operazione non riuscita"); }
@@ -124,12 +126,12 @@ function ContenutoFornitori() {
     <header className="space-y-3">
       <h1 className="text-2xl font-bold text-navy">Fornitori</h1>
       <div className="relative"><Search className="absolute left-3 top-3 size-4 text-muted-foreground" /><Input aria-label="Cerca fornitori" className="min-h-10 pl-9" placeholder="Nome, alias, codice, P.IVA/CF, città…" value={testo} onChange={e => setTesto(e.target.value)} /></div>
-      <FiltriCollassabili attivi={attivi} azioni={<Button variant="ghost" size="sm" className="min-h-9" onClick={() => cambia({ ancheCliente: "tutti", conArticoli: "tutti", conEmail: "tutti", convenzionato: "tutti", macro: [], tipo: [], manuali: false })}>Azzera filtri</Button>}>
+      <FiltriCollassabili attivi={attivi} azioni={<Button variant="ghost" size="sm" className="min-h-9" onClick={() => cambia({ ancheCliente: "tutti", conArticoli: "tutti", conEmail: "tutti", convenzione: [], macro: [], tipo: [], manuali: false })}>Azzera filtri</Button>}>
         <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(4,minmax(0,10rem))_minmax(0,14rem)_minmax(0,1fr)]">
           <FiltroSiNo label="Anche cliente" value={f.ancheCliente} onChange={ancheCliente => cambia({ ancheCliente })} />
           <FiltroSiNo label="Con articoli" value={f.conArticoli} onChange={conArticoli => cambia({ conArticoli })} />
           <FiltroSiNo label="Con email" value={f.conEmail} onChange={conEmail => cambia({ conEmail })} />
-          <FiltroSiNo label="Convenzionato" value={f.convenzionato} onChange={convenzionato => cambia({ convenzionato })} />
+          <div className="min-w-0 space-y-1 text-xs text-muted-foreground"><span>Convenzione</span><FiltroMultiplo etichetta="Convenzione" testoTutti="Tutti" opzioni={OPZIONI_CONVENZIONE.map(o => ({ ...o }))} selezionati={statiConv} onChange={v => cambia({ convenzione: v })} className="min-h-10 w-full text-foreground" /></div>
           <div className="min-w-0 space-y-1 text-xs text-muted-foreground"><span>Tipo fornitore</span><FiltroMultiplo etichetta="Tipo fornitore" testoTutti="Tutti" opzioni={OPZIONI_TIPO_FORNITORE.map(o => ({ ...o }))} selezionati={tipi} onChange={v => cambia({ tipo: v, macro: [] })} className="min-h-10 w-full text-foreground" /></div>
           <label className="flex min-h-10 items-center gap-2 text-sm"><Switch checked={f.manuali} onCheckedChange={manuali => cambia({ manuali })} />Mostra fornitori manuali</label>
         </div>
@@ -153,23 +155,23 @@ function ContenutoFornitori() {
         <Button variant="outline" className="min-h-10 flex-1 gap-1.5 sm:flex-none" onClick={() => apri("lettere")}><FileText className="size-4" />Scarica lettere</Button>
         <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="min-h-10 flex-1 gap-1.5 sm:flex-none" disabled={lavoro}><Tags className="size-4" />Classifica come…</Button></DropdownMenuTrigger>
           <DropdownMenuContent align="end"><DropdownMenuItem className="min-h-10" onSelect={() => void classificaSelezionati("merci")}>Merci</DropdownMenuItem><DropdownMenuItem className="min-h-10" onSelect={() => void classificaSelezionati("servizi")}>Servizi</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
-        <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="min-h-10 flex-1 gap-1.5 sm:flex-none" disabled={lavoro}><Handshake className="size-4" />Convenzione…</Button></DropdownMenuTrigger>
-          <DropdownMenuContent align="end"><DropdownMenuItem className="min-h-10" onSelect={() => setConfermaConv(true)}>Segna convenzionati</DropdownMenuItem><DropdownMenuItem className="min-h-10" onSelect={() => setConfermaConv(false)}>Togli convenzione</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
+        {admin && <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="min-h-10 flex-1 gap-1.5 sm:flex-none" disabled={lavoro}><Handshake className="size-4" />Convenzione…</Button></DropdownMenuTrigger>
+          <DropdownMenuContent align="end"><DropdownMenuItem className="min-h-10" onSelect={() => setConfermaConv("convenzionato")}>Segna convenzionati</DropdownMenuItem><DropdownMenuItem className="min-h-10" onSelect={() => setConfermaConv("non_convenzionato")}>Togli convenzione</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}
         <Button variant="ghost" className="min-h-10 gap-1.5" onClick={() => setSel(new Set())}><X className="size-4" />Deseleziona</Button>
       </div>
     </div>}
     {gestisce && <InviaEmailMultiplaDialog open={emailAperta} onOpenChange={setEmailAperta} fornitoriIds={ids} onAvviato={id => { setInvioId(id); setSel(new Set()); }} />}
-    {gestisce && <AlertDialog open={confermaConv !== null} onOpenChange={v => { if (!v && !lavoro) setConfermaConv(null); }}>
+    {admin && <AlertDialog open={confermaConv !== null} onOpenChange={v => { if (!v && !lavoro) setConfermaConv(null); }}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{confermaConv ? "Segnare come convenzionati?" : "Togliere la convenzione?"}</AlertDialogTitle>
-          <AlertDialogDescription>{confermaConv
+          <AlertDialogTitle>{confermaConv === "convenzionato" ? "Segnare come convenzionati?" : "Togliere la convenzione?"}</AlertDialogTitle>
+          <AlertDialogDescription>{confermaConv === "convenzionato"
             ? `${ids.length.toLocaleString("it-IT")} ${ids.length === 1 ? "fornitore verrà segnato" : "fornitori verranno segnati"} come convenzionati e, dove Gamma non decide il tipo, come fornitori di Merci.`
             : `${ids.length.toLocaleString("it-IT")} ${ids.length === 1 ? "fornitore non sarà più" : "fornitori non saranno più"} convenzionati. Il tipo Merci/Servizi già impostato resta com'è.`}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={lavoro}>Annulla</AlertDialogCancel>
-          <AlertDialogAction disabled={lavoro} onClick={e => { e.preventDefault(); if (confermaConv !== null) void impostaConvenzione(confermaConv); }}>{confermaConv ? "Segna convenzionati" : "Togli convenzione"}</AlertDialogAction>
+          <AlertDialogAction disabled={lavoro} onClick={e => { e.preventDefault(); if (confermaConv !== null) void impostaConvenzione(confermaConv); }}>{confermaConv === "convenzionato" ? "Segna convenzionati" : "Togli convenzione"}</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>}
