@@ -176,6 +176,9 @@ export const ANAG_HEADERS: Record<string, string> = {
   "punto vendita": "store_codice",
   // note
   note: "note",
+  // FM62 F7 (futuro): quando Gamma avrà il campo "convenzionato", mapparlo qui
+  // (es. convenzionato: "convenzionato") e scriverlo con convenzionato_fonte = 'gamma'.
+  // Oggi il campo non esiste: la convenzione si gestisce solo nell'app (fonte 'app').
   // macrocategoria
   "codice macrocategoria": "codice_macrocategoria",
   codice_macrocategoria: "codice_macrocategoria",

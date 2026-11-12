@@ -99,6 +99,7 @@ export function messaggioConvenzione(valore: boolean, r: { aggiornati: number; i
   if (r.inConflitto) parti.push(`${n(r.inConflitto)} in Gamma risultano di servizi: verificare`);
   return parti.join(" · ");
 }
-export const tipoModificabile = (fonte: string | null | undefined) => fonte !== "gamma";
+/** Il tipo si cambia nell'app solo se non lo decide Gamma né la convenzione (convenzionato = Merci). */
+export const tipoModificabile = (fonte: string | null | undefined) => fonte !== "gamma" && fonte !== "convenzionato";
 /** Proposta di classificazione (regola di Andrea): da classificare CON articoli → Merci; senza articoli si guarda a mano. */
 export const daControllareInProposta = (f: { tipo_effettivo: string | null; n_articoli: number }) => f.tipo_effettivo === "da_classificare" && f.n_articoli === 0;

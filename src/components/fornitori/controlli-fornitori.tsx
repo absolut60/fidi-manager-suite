@@ -39,6 +39,10 @@ export function BadgeTipoFornitore({ tipo, fonte }: { tipo: string | null | unde
   const b = badgeTipoFornitore(tipo, fonte);
   return <Badge variant="outline" className={`whitespace-normal ${CLASSI_MACRO[b.tono]}`}>{b.testo}{b.daGamma && <span className="ml-1 text-[10px] font-normal opacity-80">da Gamma</span>}</Badge>;
 }
+/** FM62 F7: badge blu "Convenzionato" (token info = blu della palette). */
+export function BadgeConvenzionato() {
+  return <Badge variant="outline" className="whitespace-normal border-info/40 bg-info/10 font-semibold text-info">Convenzionato</Badge>;
+}
 export function FiltroSiNo({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return <label className="min-w-0 space-y-1 text-xs text-muted-foreground"><span>{label}</span><Select value={["si", "no"].includes(value) ? value : "tutti"} onValueChange={onChange}><SelectTrigger aria-label={label} className="min-h-10 w-full text-foreground"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="tutti">Tutti</SelectItem><SelectItem value="si">Sì</SelectItem><SelectItem value="no">No</SelectItem></SelectContent></Select></label>;
 }
