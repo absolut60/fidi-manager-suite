@@ -1338,6 +1338,13 @@
       "when": 1794520195294,
       "tag": "0190_fm63_elenco_articoli_sede",
       "breakpoints": true
+    },
+    {
+      "idx": 191,
+      "version": "7",
+      "when": 1794522722094,
+      "tag": "0191_fm63_elenco_articoli_veloce",
+      "breakpoints": true
     }
   ]
 }
