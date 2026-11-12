@@ -4099,6 +4099,36 @@ export type Database = {
           },
         ]
       }
+      giacenze_articoli_sede: {
+        Row: {
+          articolo_codice: string
+          chiave_sede: string
+          disponibilita: number
+          giacenza: number
+          importazione_id: string | null
+          logistica: boolean
+          store_id: string | null
+        }
+        Insert: {
+          articolo_codice: string
+          chiave_sede: string
+          disponibilita?: number
+          giacenza?: number
+          importazione_id?: string | null
+          logistica: boolean
+          store_id?: string | null
+        }
+        Update: {
+          articolo_codice?: string
+          chiave_sede?: string
+          disponibilita?: number
+          giacenza?: number
+          importazione_id?: string | null
+          logistica?: boolean
+          store_id?: string | null
+        }
+        Relationships: []
+      }
       giacenze_gamma: {
         Row: {
           aggiornato_gamma: string | null
@@ -8274,7 +8304,12 @@ export type Database = {
         }[]
       }
       _prezzo_vendita_articoli: {
-        Args: { _codice?: string; _listino: number; _store_id: string }
+        Args: {
+          _codice?: string
+          _codici?: string[]
+          _listino: number
+          _store_id: string
+        }
         Returns: {
           articolo_codice: string
           deposito_codice: string
@@ -10454,6 +10489,10 @@ export type Database = {
         Returns: string
       }
       ricalcola_fido_teorico_finalizza: { Args: never; Returns: string }
+      ricalcola_giacenze_articoli_sede: {
+        Args: { _importazione_id?: string }
+        Returns: number
+      }
       ricalcola_in_gestione_legale: {
         Args: { _cliente_id: string }
         Returns: undefined

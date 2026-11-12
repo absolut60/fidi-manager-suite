@@ -1,0 +1,2 @@
+-- FM63 Fetta 5: ordinamenti sull'intero catalogo (prezzo/giacenze) senza ordinamenti su disco.
+ALTER FUNCTION public.cerca_articoli(text,text[],text[],text[],uuid[],text[],uuid[],boolean,smallint,text,text,integer,integer) SET work_mem = '24MB';

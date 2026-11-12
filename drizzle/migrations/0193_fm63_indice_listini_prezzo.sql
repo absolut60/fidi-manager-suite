@@ -1,0 +1,2 @@
+-- FM63 Fetta 5: ordinamento per prezzo sull'intero catalogo legge il listino tramite indice dedicato.
+CREATE INDEX IF NOT EXISTS articoli_gamma_listini_listino_idx ON public.articoli_gamma_listini (listino, articolo_codice) INCLUDE (prezzo_vendita);

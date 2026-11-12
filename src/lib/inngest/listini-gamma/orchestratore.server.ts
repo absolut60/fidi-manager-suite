@@ -125,10 +125,25 @@ export const processArticoliListiniGammaImport = inngest.createFunction(
       await scrivi(`stato-${p.chiave}-fine`);
     }
 
+    // FM63: sintesi giacenze per sede/logistica usata dall'elenco articoli (copia di _giacenze_articoli_catalogo).
+    // Se fallisce l'import va segnalato: l'elenco mostrerebbe giacenze non allineate.
+    let erroreSintesi: string | null = null;
+    try {
+      await step.run("ricalcola-giacenze-sintesi", async () => {
+        const { data, error } = await supabaseAdmin.rpc("ricalcola_giacenze_articoli_sede", { _importazione_id: importazioneId });
+        if (error) throw new Error(error.message);
+        return data ?? 0;
+      });
+    } catch (e) {
+      erroreSintesi = e instanceof Error ? e.message : String(e);
+      logger.error(`ricalcolo sintesi giacenze fallito: ${erroreSintesi}`);
+    }
+
     await step.run("finalize", async () => {
       const fs = Object.values(stato.fogli);
       const n = (x: number) => x.toLocaleString("it-IT");
       const problemi: string[] = [];
+      if (erroreSintesi) problemi.push(`Giacenze dell'elenco articoli non aggiornate (${erroreSintesi}): riavvia l'import`);
       if (!fs.length) problemi.push("Nessun foglio riconosciuto nel file");
       for (const f of fs) {
         if (f.stato === "errore") problemi.push(`${f.etichetta}: non completato (${f.errore ?? "errore"})`);
@@ -138,6 +153,7 @@ export const processArticoliListiniGammaImport = inngest.createFunction(
         riga: 0,
         errore: `${f.etichetta} (${f.foglio}): ${f.stato === "completato" ? "completato" : "errore"} · ${Object.entries(f.conteggi).map(([k, v]) => `${k.replace(/_/g, " ")} ${n(v)}`).join(" · ")}`,
       }));
+      if (erroreSintesi) log.push({ riga: 0, errore: `Sintesi giacenze elenco articoli: errore (${erroreSintesi})` });
       if (stato.non_gestiti.length) log.push({ riga: 0, errore: `Fogli non ancora gestiti: ${stato.non_gestiti.join(", ")}` });
       await chiudiImportazione(importazioneId, {
         stato: problemi.length ? "completata_con_errori" : "completata",

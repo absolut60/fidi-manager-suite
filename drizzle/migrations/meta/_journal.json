@@ -1338,6 +1338,41 @@
       "when": 1794520195294,
       "tag": "0190_fm63_elenco_articoli_sede",
       "breakpoints": true
+    },
+    {
+      "idx": 191,
+      "version": "7",
+      "when": 1794522722094,
+      "tag": "0191_fm63_elenco_articoli_veloce",
+      "breakpoints": true
+    },
+    {
+      "idx": 192,
+      "version": "7",
+      "when": 1794522886139,
+      "tag": "0192_fm63_elenco_articoli_veloce_indici",
+      "breakpoints": true
+    },
+    {
+      "idx": 193,
+      "version": "7",
+      "when": 1794522923533,
+      "tag": "0193_fm63_indice_listini_prezzo",
+      "breakpoints": true
+    },
+    {
+      "idx": 194,
+      "version": "7",
+      "when": 1794522970827,
+      "tag": "0194_fm63_cerca_articoli_work_mem",
+      "breakpoints": true
+    },
+    {
+      "idx": 195,
+      "version": "7",
+      "when": 1794523066917,
+      "tag": "0195_fm63_cerca_articoli_righe_strette",
+      "breakpoints": true
     }
   ]
 }
