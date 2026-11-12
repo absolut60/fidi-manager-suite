@@ -8364,6 +8364,7 @@ export type Database = {
           totale: number
         }[]
       }
+      auth_consulta_preventivi: { Args: never; Returns: boolean }
       auth_e_showroom: { Args: never; Returns: boolean }
       auth_gestisce_contatti_clienti: { Args: never; Returns: boolean }
       auth_ha_accesso_fornitori: { Args: never; Returns: boolean }
