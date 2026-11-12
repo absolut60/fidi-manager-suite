@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
+import { puoGestireAnagrafichePreventivi } from "@/lib/permessi-preventivi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -30,6 +32,9 @@ export const Route = createFileRoute("/_app/kit/")({
 });
 
 function KitListPage() {
+  const { roles } = useAuth();
+  // FM63: in sola consultazione (es. store manager) i campi restano bloccati; il DB resta il controllo vero.
+  const gestisce = puoGestireAnagrafichePreventivi(roles as string[]);
   const qc = useQueryClient();
   const [fascia, setFascia] = useState<FasciaListino>("A");
   const [openNew, setOpenNew] = useState(false);
@@ -82,9 +87,9 @@ function KitListPage() {
               </SelectContent>
             </Select>
           </div>
-          <Button onClick={() => setOpenNew(true)}>
+          {gestisce && <Button onClick={() => setOpenNew(true)}>
             <Plus className="mr-1 h-4 w-4" /> Nuovo kit
-          </Button>
+          </Button>}
         </div>
       </div>
 
@@ -95,11 +100,11 @@ function KitListPage() {
           <CardContent className="flex flex-col items-center gap-2 p-12 text-center">
             <Layers className="h-8 w-8 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">
-              Nessun kit ancora. Inizia creandone uno.
+              {gestisce ? "Nessun kit ancora. Inizia creandone uno." : "Nessun kit ancora."}
             </p>
-            <Button onClick={() => setOpenNew(true)}>
+            {gestisce && <Button onClick={() => setOpenNew(true)}>
               <Plus className="mr-1 h-4 w-4" /> Nuovo kit
-            </Button>
+            </Button>}
           </CardContent>
         </Card>
       ) : (
@@ -159,14 +164,14 @@ function KitListPage() {
                                 <Eye className="mr-1 h-3 w-3" /> Apri
                               </Link>
                             </Button>
-                            <Button
+                            {gestisce && <Button
                               size="sm"
                               variant="ghost"
                               onClick={() => dupMut.mutate(k.id)}
                               disabled={dupMut.isPending}
                             >
                               <Copy className="mr-1 h-3 w-3" /> Duplica
-                            </Button>
+                            </Button>}
                           </div>
                         </CardContent>
                       </Card>

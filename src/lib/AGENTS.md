@@ -1,0 +1,1 @@
+- Read-only quote/catalog/supplier access: only auth_consulta_preventivi (TS twin in src/lib/permessi-preventivi.ts, adds store_manager); client search/numbering stay on auth_ha_accesso_preventivi, so reading never grants writes.

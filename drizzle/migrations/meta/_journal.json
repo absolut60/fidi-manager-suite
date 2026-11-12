@@ -1317,6 +1317,13 @@
       "when": 1794517093660,
       "tag": "0187_fm63_listini_sede_funzioni",
       "breakpoints": true
+    },
+    {
+      "idx": 188,
+      "version": "7",
+      "when": 1794518671293,
+      "tag": "0188_fm63_consultazione_store_manager",
+      "breakpoints": true
     }
   ]
 }

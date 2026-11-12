@@ -4,6 +4,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
+import { puoGestireAnagrafichePreventivi } from "@/lib/permessi-preventivi";
 import {
   Select,
   SelectContent,
@@ -52,6 +54,9 @@ interface ArticoloLite {
 
 
 export function ListinoVenditaView() {
+  const { roles } = useAuth();
+  // FM63: in sola consultazione (es. store manager) i campi restano bloccati; il DB resta il controllo vero.
+  const gestisce = puoGestireAnagrafichePreventivi(roles as string[]);
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [fascia, setFascia] = useState<FasciaListino>("A");
@@ -276,7 +281,7 @@ export function ListinoVenditaView() {
             <span className="hidden text-xs text-muted-foreground lg:inline">
               {isLoading ? "Caricamento…" : `${articoli.length} articoli`}
             </span>
-            <Button
+            {gestisce && <Button
               size="sm"
               variant="outline"
               onClick={() => setBulkOpen(true)}
@@ -284,7 +289,7 @@ export function ListinoVenditaView() {
               className="w-full lg:w-auto"
             >
               <Wand2 className="mr-1 h-4 w-4" /> Modifica massiva
-            </Button>
+            </Button>}
           </div>
         </div>
       </div>
@@ -292,6 +297,7 @@ export function ListinoVenditaView() {
 
       {/* Table */}
       <div className="flex-1 overflow-auto">
+        <fieldset disabled={!gestisce} className="contents">
         <table className="w-full text-xs table-fixed">
           <colgroup>
             <col style={{ width: "104px" }} />
@@ -374,6 +380,7 @@ export function ListinoVenditaView() {
             )}
           </tbody>
         </table>
+        </fieldset>
       </div>
 
       <BulkVenditaDialog

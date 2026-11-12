@@ -1,6 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { puoScriverePreventivi } from "@/lib/permessi-preventivi";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
@@ -40,7 +41,8 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
 
   // Filtri conservati (useFiltriPagina), chiave distinta per preventivi e ordini.
   // Elenco vuoto = tutti.
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
+  const puoScrivere = puoScriverePreventivi(roles as string[]);
   const { filtri: FV, setCampo: setCampoLista } = useFiltriPagina(isOrdine ? "ordini" : "preventivatore", {
     search: "", clienteId: [] as string[], stato: [] as string[], tipoDoc: [] as string[],
   }, { userId: user?.id, valida: { clienteId: Array.isArray, stato: Array.isArray, tipoDoc: Array.isArray } });
@@ -85,9 +87,11 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
             <h1 className="text-lg font-semibold lg:text-2xl">{titolo}</h1>
             <p className="text-xs text-muted-foreground lg:text-sm">{sottotitolo}</p>
           </div>
-          <Button size="sm" onClick={() => setOpenNew(true)} className="lg:h-10">
-            <Plus className="mr-1 h-4 w-4" /> {labelNuovo}
-          </Button>
+          {puoScrivere && (
+            <Button size="sm" onClick={() => setOpenNew(true)} className="lg:h-10">
+              <Plus className="mr-1 h-4 w-4" /> {labelNuovo}
+            </Button>
+          )}
         </div>
 
         {/* Search + Filtri toggle (mobile) */}
