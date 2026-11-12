@@ -1359,6 +1359,13 @@
       "when": 1794522923533,
       "tag": "0193_fm63_indice_listini_prezzo",
       "breakpoints": true
+    },
+    {
+      "idx": 194,
+      "version": "7",
+      "when": 1794522970827,
+      "tag": "0194_fm63_cerca_articoli_work_mem",
+      "breakpoints": true
     }
   ]
 }
