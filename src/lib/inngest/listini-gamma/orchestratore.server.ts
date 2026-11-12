@@ -153,6 +153,7 @@ export const processArticoliListiniGammaImport = inngest.createFunction(
         riga: 0,
         errore: `${f.etichetta} (${f.foglio}): ${f.stato === "completato" ? "completato" : "errore"} · ${Object.entries(f.conteggi).map(([k, v]) => `${k.replace(/_/g, " ")} ${n(v)}`).join(" · ")}`,
       }));
+      if (erroreSintesi) log.push({ riga: 0, errore: `Sintesi giacenze elenco articoli: errore (${erroreSintesi})` });
       if (stato.non_gestiti.length) log.push({ riga: 0, errore: `Fogli non ancora gestiti: ${stato.non_gestiti.join(", ")}` });
       await chiudiImportazione(importazioneId, {
         stato: problemi.length ? "completata_con_errori" : "completata",
@@ -161,7 +162,6 @@ export const processArticoliListiniGammaImport = inngest.createFunction(
         log_errori: log,
         problemi,
       });
-      if (erroreSintesi) log.push({ riga: 0, errore: `Sintesi giacenze elenco articoli: errore (${erroreSintesi})` });
       if (!fs.some((f) => f.stato === "errore")) await pulisciFileTemporaneiImport(importazioneId).catch(() => undefined);
     });
 
