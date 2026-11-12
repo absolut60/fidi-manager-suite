@@ -1,3 +1,8 @@
+# FM61 — Articoli fetta B
+- [ ] Scheda Gamma completa, prezzi in sola lettura e dati tecnici con il permesso esistente.
+- [ ] Vecchia scheda: redirect dei collegati, rimozione tab listini dei soli preventivatore.
+- [ ] Test e screenshot 375/1280, valori reali AKINAF01007 e navigazioni; nessuna modifica di dati.
+
 # FM61 — Articoli fetta A2
 - [x] Migrazione 0172: sei numeric nullable senza default/backfill, sole due RPC richieste; corpi applicati identici al file ed EXECUTE solo service_role, senza modificare flusso import.
 - [x] Parser: normalize conserva % ed euro, whitelist con 24 intestazioni reali, sei valori numerici per listino; file vecchio supportato con null, netto non ricalcolato. 395 test superati, build automatico OK.
