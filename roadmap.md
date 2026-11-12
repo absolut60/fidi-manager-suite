@@ -129,3 +129,7 @@
 ## FM62 Fetta F1 — macrocategoria fornitori + accesso amministrazione
 - [x] Migrazione 0174, parser, filtri/badge, permessi
 - [ ] Prova autenticata live (sessione non disponibile)
+
+## FM62 G1 — scheda fornitore come scheda cliente + Allegati
+- [x] Migrazione 0175 allegati fornitore (check, policy tabella e storage)
+- [x] Testata, tab Riepilogo/Anagrafica/Articoli/Cliente collegato/Allegati, screenshot 375-1920
