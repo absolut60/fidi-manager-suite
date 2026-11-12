@@ -81,7 +81,7 @@ function ArticoloDetailPage() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Errore"),
   });
 
-  if (collegamento.error) return <div className="p-6"><BackButton fallbackTo="/articoli" /><p role="alert" className="mt-4 text-destructive">{collegamento.error.message}</p></div>;
+  if (collegamento.error) return <div className="p-6"><BackButton fallbackTo="/articoli" fallbackLabel="Articoli" /><p role="alert" className="mt-4 text-destructive">{collegamento.error.message}</p></div>;
   if (collegamento.data) return <Navigate to="/articoli/codice/$codice" params={{ codice: collegamento.data.codice }} replace />;
   if (isLoading || !articolo || (!!codiceGamma && collegamento.isPending)) {
     return <div className="p-8 text-muted-foreground">Caricamento…</div>;
@@ -92,6 +92,7 @@ function ArticoloDetailPage() {
   }
 
   function handleSave() {
+    if (!articolo) return;
     saveMut.mutate({
       cod_gamma: form.cod_gamma ?? null,
       cod_fornitore: form.cod_fornitore ?? null,
