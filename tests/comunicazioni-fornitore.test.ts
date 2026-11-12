@@ -1,11 +1,11 @@
 import { describe, it, expect } from "bun:test";
-import { inviaEmailFornitoreInput, eseguiInvioFornitore, corpoAttivitaInvio, testoInHtml } from "@/lib/comunicazioni-fornitore";
+import { inviaEmailFornitoreInput, eseguiInvioFornitore, corpoAttivitaInvio, testoInHtml, sanificaHtmlEmailFornitore as san, htmlInTesto } from "@/lib/comunicazioni-fornitore";
 import { buildPiedeRiservatezzaHtml, TESTO_RISERVATEZZA_EMAIL_FORNITORE } from "@/lib/email-piede-riservatezza";
 import { wrapEmailHtml, SEDE_FALLBACK } from "@/lib/template-email-render";
 
 const sha = (s: string) => new Bun.CryptoHasher("sha256").update(s).digest("hex");
 const id = "00000000-0000-4000-8000-000000000001";
-const base = { fornitoreId: id, chiaveInvio: id, a: ["a@made.it"], cc: [], ccn: [], oggetto: "Ordine", testo: "Ciao", allegatiIds: [], nuoviAllegati: [] };
+const base = { fornitoreId: id, chiaveInvio: id, a: ["a@made.it"], cc: [], ccn: [], oggetto: "Ordine", html: "<p>Ciao</p>", allegatiIds: [], nuoviAllegati: [] };
 const errori = (d: object) => { const r = inviaEmailFornitoreInput.safeParse({ ...base, ...d }); return r.success ? [] : r.error.issues.map(i => i.message); };
 
 describe("invio email fornitore: validazione", () => {
@@ -24,8 +24,8 @@ describe("invio email fornitore: validazione", () => {
   it("oggetto 1..200 e testo 1..20000", () => {
     expect(errori({ oggetto: "  " }).length).toBeGreaterThan(0);
     expect(errori({ oggetto: "x".repeat(201) }).length).toBeGreaterThan(0);
-    expect(errori({ testo: "x".repeat(20001) }).length).toBeGreaterThan(0);
-    expect(errori({ testo: "x".repeat(20000) })).toEqual([]);
+    expect(errori({ html: "x".repeat(20001) }).length).toBeGreaterThan(0);
+    expect(errori({ html: "x".repeat(20000) })).toEqual([]);
   });
   it("chiave di invio obbligatoria e uuid", () => { expect(errori({ chiaveInvio: "abc" }).length).toBeGreaterThan(0); });
 });
@@ -89,4 +89,44 @@ describe("piè di pagina riservatezza", () => {
 describe("corpo e testo", () => {
   it("a capo rispettati e HTML neutralizzato", () => { expect(testoInHtml("a<b>\nc")).toContain("a&lt;b&gt;<br/>c"); });
   it("elenca gli allegati presi dalla scheda", () => { expect(corpoAttivitaInvio("T", ["a.pdf", "b.pdf"])).toBe("T\n\n— Allegati dalla scheda fornitore: a.pdf, b.pdf"); });
+});
+
+describe("sanificazione HTML fornitore", () => {
+  it("elimina script, style, iframe e img col contenuto", () => {
+    expect(san('<p>a</p><script>alert(1)</script><style>p{}</style><iframe src="x"></iframe><img src="http://x/y.png" onerror="z">b')).toBe("<p>a</p>b");
+  });
+  it("toglie gli attributi on* e i tag sconosciuti mantenendo il testo", () => {
+    expect(san('<p onclick="x()" class="Mso">ciao <o:p>Word</o:p><table><tr><td>t</td></tr></table></p>')).toBe("<p>ciao Wordt</p>");
+  });
+  it("link: solo http, https, mailto", () => {
+    expect(san('<a href="javascript:alert(1)">x</a>')).toBe("<a>x</a>");
+    expect(san('<a href="jav&#x09;ascript&colon;alert(1)">x</a>')).toBe("<a>x</a>");
+    expect(san('<a href=" JaVaScRiPt:alert(1)">x</a>')).toBe("<a>x</a>");
+    expect(san('<a href="data:text/html,x">x</a>')).toBe("<a>x</a>");
+    expect(san('<a href="https://made.it/?a=1&b=2">x</a>')).toBe('<a href="https://made.it/?a=1&amp;b=2" target="_blank" rel="noopener noreferrer">x</a>');
+    expect(san('<a href="mailto:a@made.it">m</a>')).toContain('href="mailto:a@made.it"');
+  });
+  it("stili ammessi tenuti, gli altri scartati", () => {
+    expect(san('<span style="font-family: Arial; font-size: 14px; color: #c00; text-align: center; background: red; position:fixed">x</span>'))
+      .toBe('<span style="font-family:Arial;font-size:14px;color:#c00;text-align:center">x</span>');
+    expect(san('<span style="color: expression(alert(1)); font-size: url(x)">x</span>')).toBe("<span>x</span>");
+    expect(san('<span style="color: rgb(10, 20, 30)">x</span>')).toBe('<span style="color:rgb(10, 20, 30)">x</span>');
+    expect(san('<font face="Georgia" size="5" color="red" onmouseover="x">x</font>')).toBe('<font face="Georgia" size="5" color="red">x</font>');
+  });
+  it("chiude i tag aperti e ignora quelli chiusi a vuoto", () => {
+    expect(san("<b>a<i>b</b>c</u>")).toBe("<b>a<i>b</i></b>c");
+  });
+  it("testo con < > e commenti neutralizzati", () => {
+    expect(san("a < b <!-- <script>x</script> --> &lt;img&gt;")).toBe("a &lt; b  &lt;img&gt;");
+  });
+  it("testo semplice per la riga della cronologia", () => {
+    expect(htmlInTesto(san("<p>Buongiorno,</p><ul><li>uno</li><li>due</li></ul><p>A&amp;B<br>fine</p>"))).toBe("Buongiorno,\n• uno\n• due\n\nA&B\nfine");
+  });
+  it("limiti: 20.000 caratteri visibili e 100.000 di HTML", () => {
+    const e = (html: string) => { const r = inviaEmailFornitoreInput.safeParse({ ...base, html }); return r.success ? [] : r.error.issues; };
+    expect(e("<b>" + "x".repeat(20000) + "</b>")).toEqual([]);
+    expect(e("<b>" + "x".repeat(20001) + "</b>").length).toBeGreaterThan(0);
+    expect(e("<span>a</span>".repeat(8000)).length).toBeGreaterThan(0);
+    expect(e("<script>x</script>").length).toBeGreaterThan(0);
+  });
 });
