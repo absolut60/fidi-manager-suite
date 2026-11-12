@@ -1,7 +1,7 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Mail, Plus, Pencil, Trash2, Copy, Save, CheckCircle2, Users, X, Send, StopCircle, FlaskConical, Search } from "lucide-react";
+import { Mail, Plus, Pencil, Trash2, Copy, Save, CheckCircle2, Users, X, Send, StopCircle, Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -33,7 +33,7 @@ import {
   buildEmailCampagna, DATI_ESEMPIO, PLACEHOLDER_MARKETING,
 } from "@/lib/campagna-marketing-email";
 import {
-  avviaInvioCampagnaMarketing, annullaInvioCampagnaMarketing, inviaEmailProvaCampagna,
+  avviaInvioCampagnaMarketing, annullaInvioCampagnaMarketing,
 } from "@/lib/campagna-marketing.functions";
 
 export const Route = createFileRoute("/_app/marketing/campagne")({
@@ -132,7 +132,6 @@ function MarketingCampagnePage() {
   const [deleting, setDeleting] = useState<Campagna | null>(null);
   const [destinatariDi, setDestinatariDi] = useState<Campagna | null>(null);
   const [inviando, setInviando] = useState<Campagna | null>(null);
-  const [provaDi, setProvaDi] = useState<Campagna | null>(null);
 
   const canSee = useMemo(() => (roles as string[]).some((r) => MARKETING_ROLES.has(r)), [roles]);
 
@@ -347,9 +346,6 @@ function MarketingCampagnePage() {
                         <Send className="size-4 mr-1" /> Invia campagna
                       </Button>
                     ) : null}
-                    <Button variant="ghost" size="icon" onClick={() => setProvaDi(c)} title="Invia email di prova">
-                      <FlaskConical className="size-4" />
-                    </Button>
                     <Button variant="ghost" size="icon" onClick={() => setDestinatariDi(c)} title="Destinatari">
                       <Users className="size-4" />
                     </Button>
@@ -400,13 +396,6 @@ function MarketingCampagnePage() {
         />
       )}
 
-      {provaDi && (
-        <InviaProvaDialog
-          campagna={provaDi}
-          emailDefault={user?.email ?? ""}
-          onClose={() => setProvaDi(null)}
-        />
-      )}
 
 
       <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
@@ -1018,47 +1007,3 @@ function ConfermaInvioDialog({
     </Dialog>
   );
 }
-
-/** Invio di prova a un singolo indirizzo: nessuna scrittura di stato. */
-function InviaProvaDialog({
-  campagna, emailDefault, onClose,
-}: { campagna: Campagna; emailDefault: string; onClose: () => void }) {
-  const [dest, setDest] = useState(emailDefault);
-
-  const prova = useMutation({
-    mutationFn: async () =>
-      inviaEmailProvaCampagna({ data: { campagnaId: campagna.id, destinatario: dest.trim() } }),
-    onSuccess: () => {
-      toast.success(`Email di prova inviata a ${dest.trim()}`);
-      onClose();
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Errore invio di prova"),
-  });
-
-  return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Invia email di prova</DialogTitle>
-          <DialogDescription>
-            Stessa composizione dell'invio reale (allegati e footer di recesso inclusi), con dati di
-            esempio. Non modifica la campagna né i destinatari.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-2">
-          <Label>Indirizzo destinatario</Label>
-          <Input value={dest} onChange={(e) => setDest(e.target.value)} placeholder="nome@azienda.it" />
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Annulla</Button>
-          <Button onClick={() => prova.mutate()} disabled={!dest.trim() || prova.isPending}>
-            <FlaskConical className="size-4 mr-2" /> Invia prova
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
