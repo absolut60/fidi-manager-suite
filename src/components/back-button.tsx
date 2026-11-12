@@ -10,7 +10,7 @@ export function BackButton({
   className,
 }: {
   className?: string;
-  fallbackTo: "/" | "/richieste-interne" | "/clienti" | "/lead" | "/richieste" | "/task" | "/articoli" | "/kit" | "/preventivatore" | "/eventi";
+  fallbackTo: "/" | "/richieste-interne" | "/clienti" | "/lead" | "/richieste" | "/task" | "/articoli" | "/fornitori" | "/kit" | "/preventivatore" | "/eventi";
   fallbackLabel: string;
   iconOnly?: boolean;
 }) {

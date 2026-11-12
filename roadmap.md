@@ -1,3 +1,8 @@
+# FM62 — Schede fornitore, fetta E
+- [ ] Menu, elenco con filtri URL, scheda e note interne tramite sole funzioni fornitore esistenti.
+- [ ] Finestra articolo senza cambio pagina e link articolo → fornitore; test e screenshot telefono/desktop.
+- [ ] Verifica autenticata: la sessione personale non è disponibile (--self non trova l'account); verificare su campioni senza aggirare i permessi.
+
 # FM62 — Schede fornitore, fetta D
 - [x] Migrazione 0173 applicata: quattro funzioni SQL protette, wrapper con client utente e schemi condivisi per la validazione; nessuna UI o modifica dati.
 - [x] Tutte SECURITY DEFINER, search_path public, EXECUTE authenticated soltanto (oltre al proprietario); anon e service_role esclusi. Zero funzioni applicative eseguibili da anon. 7 test nuovi, 411 totali superati e compilazione automatica OK.
