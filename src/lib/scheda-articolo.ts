@@ -20,6 +20,11 @@ export function giacenzeArticolo(rows: RigaDisponibilitaArticolo[], storeId: str
     logistica: log.length ? log.reduce((t, r) => t + Number(r.giacenza ?? 0), 0) : null,
   };
 }
+/** FM63 F6bis: stock value = giacenza (UM1) × costo ultimo (€/UM1), rounded to cents; always in UM1 so it is unit-independent. Null when cost missing or 0. */
+export function valoreGiacenzaArticolo(giacenza: number | null | undefined, costoUltimo: number | null | undefined): number | null {
+  if (giacenza == null || costoUltimo == null || !Number(costoUltimo)) return null;
+  return Math.round(Number(giacenza) * Number(costoUltimo) * 100) / 100;
+}
 /** FM63: groups the rows of listini_articolo_visibili (the only price source) by price list; no price is recomputed here. */
 export function listiniVisibiliArticolo(rows: RigaListinoArticolo[], globale: boolean) {
   const codici = [...new Set(rows.map((r) => r.listino))].sort((a, b) => a - b);

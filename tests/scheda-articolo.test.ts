@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { patchTecniciArticolo, numeroAcquistoArticolo, listiniVisibiliArticolo, venditaInEvidenza, type RigaListinoArticolo } from "../src/lib/scheda-articolo";
 import { prezzoArticolo } from "../src/lib/catalogo-articoli";
-import { giacenzeArticolo, ordinaFornitoriArticolo, contaPreventiviArticolo, type RigaDisponibilitaArticolo } from "../src/lib/scheda-articolo";
+import { giacenzeArticolo, valoreGiacenzaArticolo, ordinaFornitoriArticolo, contaPreventiviArticolo, type RigaDisponibilitaArticolo } from "../src/lib/scheda-articolo";
 
 describe("scheda articolo — confine dati tecnici", () => {
   test("salva soltanto gli otto campi Sistema MADE, mai Gamma o prezzi", () => {
@@ -55,4 +55,11 @@ describe("scheda articolo — listini per sede (FM63)", () => {
     expect(venditaInEvidenza(g, false)?.principale.prezzo).toBe(4.8);
     expect(g[0].depositi).toEqual([]);
   });
+});
+
+describe("valoreGiacenzaArticolo (FM63 F6bis)", () => {
+  test("FASL00H003300A0: 5.223,6 MQ × 3,01 = 15.723,04 €", () => expect(valoreGiacenzaArticolo(5223.6, 3.01)).toBe(15723.04));
+  test("ITA1000108 Cambiago: 927 × 3,975 = 3.684,83 €", () => expect(valoreGiacenzaArticolo(927, 3.975)).toBe(3684.83));
+  test("costo mancante o zero → null", () => { expect(valoreGiacenzaArticolo(10, null)).toBeNull(); expect(valoreGiacenzaArticolo(10, 0)).toBeNull(); });
+  test("giacenza negativa → valore negativo", () => expect(valoreGiacenzaArticolo(-4, 2.5)).toBe(-10));
 });
