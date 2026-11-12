@@ -3933,6 +3933,10 @@ export type Database = {
           indirizzo: string | null
           macrocategoria_cod: string | null
           macrocategoria_desc: string | null
+          marca_codice: string | null
+          marca_da: string | null
+          marca_fonte: string | null
+          marca_il: string | null
           nome: string
           note: string | null
           origine: string
@@ -3942,6 +3946,11 @@ export type Database = {
           provincia: string | null
           ragione_sociale: string | null
           sito: string | null
+          sottocategoria_app: string | null
+          sottocategoria_app_da: string | null
+          sottocategoria_app_il: string | null
+          sottocategoria_gamma_cod: string | null
+          sottocategoria_gamma_desc: string | null
           stato: string | null
           stato_convenzione: string
           stato_convenzione_da: string | null
@@ -3982,6 +3991,10 @@ export type Database = {
           indirizzo?: string | null
           macrocategoria_cod?: string | null
           macrocategoria_desc?: string | null
+          marca_codice?: string | null
+          marca_da?: string | null
+          marca_fonte?: string | null
+          marca_il?: string | null
           nome: string
           note?: string | null
           origine?: string
@@ -3991,6 +4004,11 @@ export type Database = {
           provincia?: string | null
           ragione_sociale?: string | null
           sito?: string | null
+          sottocategoria_app?: string | null
+          sottocategoria_app_da?: string | null
+          sottocategoria_app_il?: string | null
+          sottocategoria_gamma_cod?: string | null
+          sottocategoria_gamma_desc?: string | null
           stato?: string | null
           stato_convenzione?: string
           stato_convenzione_da?: string | null
@@ -4031,6 +4049,10 @@ export type Database = {
           indirizzo?: string | null
           macrocategoria_cod?: string | null
           macrocategoria_desc?: string | null
+          marca_codice?: string | null
+          marca_da?: string | null
+          marca_fonte?: string | null
+          marca_il?: string | null
           nome?: string
           note?: string | null
           origine?: string
@@ -4040,6 +4062,11 @@ export type Database = {
           provincia?: string | null
           ragione_sociale?: string | null
           sito?: string | null
+          sottocategoria_app?: string | null
+          sottocategoria_app_da?: string | null
+          sottocategoria_app_il?: string | null
+          sottocategoria_gamma_cod?: string | null
+          sottocategoria_gamma_desc?: string | null
           stato?: string | null
           stato_convenzione?: string
           stato_convenzione_da?: string | null
@@ -4055,7 +4082,22 @@ export type Database = {
           updated_at?: string | null
           valida?: boolean | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fornitori_marca_codice_fkey"
+            columns: ["marca_codice"]
+            isOneToOne: false
+            referencedRelation: "marche"
+            referencedColumns: ["codice"]
+          },
+          {
+            foreignKeyName: "fornitori_sottocategoria_app_fkey"
+            columns: ["sottocategoria_app"]
+            isOneToOne: false
+            referencedRelation: "sottocategorie_servizi_fornitore"
+            referencedColumns: ["codice"]
+          },
+        ]
       }
       giacenze_gamma: {
         Row: {
@@ -7459,6 +7501,27 @@ export type Database = {
           },
         ]
       }
+      sottocategorie_servizi_fornitore: {
+        Row: {
+          attiva: boolean
+          codice: string
+          descrizione: string
+          ordine: number
+        }
+        Insert: {
+          attiva?: boolean
+          codice: string
+          descrizione: string
+          ordine?: number
+        }
+        Update: {
+          attiva?: boolean
+          codice?: string
+          descrizione?: string
+          ordine?: number
+        }
+        Relationships: []
+      }
       stores: {
         Row: {
           attivo: boolean
@@ -8144,7 +8207,10 @@ export type Database = {
           _con_articoli: boolean
           _con_email: boolean
           _includi_manuali: boolean
+          _includi_obsoleti: boolean
           _macrocategorie: string[]
+          _marche: string[]
+          _sottocategorie: string[]
           _stati_convenzione: string[]
           _testo: string
           _tipi: string[]
@@ -8160,13 +8226,20 @@ export type Database = {
           id: string
           macrocategoria_cod: string
           macrocategoria_desc: string
+          marca_codice: string
+          marca_descrizione: string
+          marca_fonte: string
           n_articoli: number
           n_preferenziale: number
+          obsoleto: boolean
           origine: string
           partita_iva: string
           persona_fisica: boolean
           provincia: string
           ragione_sociale: string
+          sottocategoria_codice: string
+          sottocategoria_descrizione: string
+          sottocategoria_fonte: string
           stato_convenzione: string
           stato_convenzione_fonte: string
           tipo_effettivo: string
@@ -8458,10 +8531,13 @@ export type Database = {
           _con_email?: boolean
           _direzione?: string
           _includi_manuali?: boolean
+          _includi_obsoleti?: boolean
           _limite?: number
           _macrocategorie?: string[]
+          _marche?: string[]
           _offset?: number
           _ordina?: string
+          _sottocategorie?: string[]
           _stati_convenzione?: string[]
           _testo?: string
           _tipi?: string[]
@@ -8477,13 +8553,20 @@ export type Database = {
           id: string
           macrocategoria_cod: string
           macrocategoria_desc: string
+          marca_codice: string
+          marca_descrizione: string
+          marca_fonte: string
           n_articoli: number
           n_preferenziale: number
+          obsoleto: boolean
           origine: string
           partita_iva: string
           persona_fisica: boolean
           provincia: string
           ragione_sociale: string
+          sottocategoria_codice: string
+          sottocategoria_descrizione: string
+          sottocategoria_fonte: string
           stato_convenzione: string
           stato_convenzione_fonte: string
           tipo_effettivo: string
@@ -8505,7 +8588,10 @@ export type Database = {
           _con_articoli?: boolean
           _con_email?: boolean
           _includi_manuali?: boolean
+          _includi_obsoleti?: boolean
           _macrocategorie?: string[]
+          _marche?: string[]
+          _sottocategorie?: string[]
           _stati_convenzione?: string[]
           _testo?: string
           _tipi?: string[]
@@ -8936,6 +9022,10 @@ export type Database = {
       }
       fn_email_valida: { Args: { _raw: string }; Returns: boolean }
       fn_telefono_valido: { Args: { _raw: string }; Returns: boolean }
+      fornitore_obsoleto: {
+        Args: { f: Database["public"]["Tables"]["fornitori"]["Row"] }
+        Returns: boolean
+      }
       genera_snapshot: { Args: { _data: string }; Returns: string }
       get_campagne_entita: {
         Args: { _cliente_id?: string; _lead_id?: string }
@@ -9995,6 +10085,14 @@ export type Database = {
           iscrizioni_aperte: boolean
         }[]
       }
+      imposta_marca_fornitori: {
+        Args: { _ids: string[]; _marca_codice: string }
+        Returns: Json
+      }
+      imposta_sottocategoria_fornitori: {
+        Args: { _codice: string; _ids: string[] }
+        Returns: Json
+      }
       imposta_stato_convenzione_fornitori: {
         Args: { _ids: string[]; _stato: string }
         Returns: Json
@@ -10085,8 +10183,13 @@ export type Database = {
         Returns: undefined
       }
       marca_messaggi_letti: { Args: { _richiesta_id: string }; Returns: number }
+      marca_prevalente_fornitore: {
+        Args: { _fornitore_id: string }
+        Returns: string
+      }
       normalizza_numero_it: { Args: { _raw: string }; Returns: string }
       normalizza_ragione_sociale: { Args: { _s: string }; Returns: string }
+      opzioni_fornitori: { Args: never; Returns: Json }
       osserva_ricollegamento_scadenze: {
         Args: { _importazione_id: string }
         Returns: number
@@ -10298,6 +10401,7 @@ export type Database = {
         Args: { _cliente_id: string }
         Returns: undefined
       }
+      ricalcola_marche_fornitori: { Args: never; Returns: Json }
       richiesta_fido_attiva: {
         Args: { _stato: string; _stato_export: string }
         Returns: boolean
@@ -10455,6 +10559,14 @@ export type Database = {
       sostituisci_regole_prezzo_gamma: {
         Args: { _importazione: string; _righe: Json; _tabella: string }
         Returns: Json
+      }
+      sottocategoria_fornitore_effettiva: {
+        Args: { f: Database["public"]["Tables"]["fornitori"]["Row"] }
+        Returns: {
+          codice: string
+          descrizione: string
+          fonte: string
+        }[]
       }
       sposta_lead_ambito: {
         Args: { _ambito: string; _lead_ids: string[] }
