@@ -1010,6 +1010,87 @@ export type Database = {
           },
         ]
       }
+      attivita_fornitore: {
+        Row: {
+          cc: string[] | null
+          ccn: string[] | null
+          chiave_invio: string | null
+          contatto_id: string | null
+          corpo: string | null
+          created_at: string
+          creato_da: string | null
+          data_attivita: string
+          destinatari: string[] | null
+          errore: string | null
+          esito: string | null
+          fornitore_id: string
+          id: string
+          message_id: string | null
+          oggetto: string | null
+          origine: string
+          stato: string
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          cc?: string[] | null
+          ccn?: string[] | null
+          chiave_invio?: string | null
+          contatto_id?: string | null
+          corpo?: string | null
+          created_at?: string
+          creato_da?: string | null
+          data_attivita?: string
+          destinatari?: string[] | null
+          errore?: string | null
+          esito?: string | null
+          fornitore_id: string
+          id?: string
+          message_id?: string | null
+          oggetto?: string | null
+          origine?: string
+          stato?: string
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          cc?: string[] | null
+          ccn?: string[] | null
+          chiave_invio?: string | null
+          contatto_id?: string | null
+          corpo?: string | null
+          created_at?: string
+          creato_da?: string | null
+          data_attivita?: string
+          destinatari?: string[] | null
+          errore?: string | null
+          esito?: string | null
+          fornitore_id?: string
+          id?: string
+          message_id?: string | null
+          oggetto?: string | null
+          origine?: string
+          stato?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attivita_fornitore_contatto_id_fkey"
+            columns: ["contatto_id"]
+            isOneToOne: false
+            referencedRelation: "contatti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attivita_fornitore_fornitore_id_fkey"
+            columns: ["fornitore_id"]
+            isOneToOne: false
+            referencedRelation: "fornitori"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           azione: string

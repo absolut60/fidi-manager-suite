@@ -32,5 +32,5 @@ function Intestazione({ codice }: { codice: string }) {
   const navigate = Route.useNavigate();
   const { data: a } = useSuspenseQuery({ queryKey: ["catalogo-articolo", codice], queryFn: () => dettaglioArticoloGamma({ data: { codice } }) });
   if (!a) return <p className="py-6 text-muted-foreground">Articolo non trovato.</p>;
-  return <SchedaArticoloGamma articolo={a} tab={tabSchedaArticolo(tab)} onTabChange={(value) => void navigate({ search: (prev) => ({ ...prev, tab: value }), resetScroll: false })} />;
+  return <SchedaArticoloGamma articolo={a} tab={tabSchedaArticolo(tab)} onTabChange={(value) => void navigate({ search: (prev) => ({ ...prev, tab: value }), replace: true, resetScroll: false })} />;
 }
