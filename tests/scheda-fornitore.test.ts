@@ -32,3 +32,15 @@ describe("scheda fornitore", () => {
     expect(filtroSiNo("tutti")).toBeNull();
   });
 });
+describe("macrocategoria fornitore (FM62 F1)", () => {
+  test("badge dal dato Gamma", () => {
+    expect(badgeMacrocategoria("01", "FORNITORI MERCI")).toEqual({ tono: "merci", testo: "Fornitore merci" });
+    expect(badgeMacrocategoria("03", "FORNITORI SERVIZI")).toEqual({ tono: "servizi", testo: "Fornitore servizi" });
+    expect(badgeMacrocategoria(null, null)).toEqual({ tono: "nd", testo: "Da classificare" });
+    expect(badgeMacrocategoria(" ", "X").tono).toBe("nd");
+  });
+  test("filtro in URL accetta solo 01, 03, nd", () => {
+    expect(macrocategorieValide(["01", "nd", "99", 3])).toEqual(["01", "nd"]);
+    expect(macrocategorieValide("01")).toEqual([]);
+  });
+});
