@@ -44,6 +44,8 @@ export const ricercaFornitori = zodValidator(z.object({
   macro: fallback(z.array(z.string()), []).default([]),
   tipo: fallback(z.array(z.string()), []).default([]),
   pagina: fallback(z.number(), 1).default(1),
+  ordina: fallback(z.string(), "ragione_sociale").default("ragione_sociale"),
+  dir: fallback(z.string(), "asc").default("asc"),
 }));
 export const ricercaSchedaFornitore = zodValidator(z.object({
   tab: fallback(z.string(), "riepilogo").default("riepilogo"),

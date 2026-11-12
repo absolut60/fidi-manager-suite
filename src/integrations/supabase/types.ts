@@ -8456,10 +8456,12 @@ export type Database = {
           _anche_cliente?: boolean
           _con_articoli?: boolean
           _con_email?: boolean
+          _direzione?: string
           _includi_manuali?: boolean
           _limite?: number
           _macrocategorie?: string[]
           _offset?: number
+          _ordina?: string
           _stati_convenzione?: string[]
           _testo?: string
           _tipi?: string[]
