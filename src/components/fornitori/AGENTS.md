@@ -4,3 +4,5 @@
 - Supplier letters reuse the client letter engine (lettera-pdf.server creaDocumentoLettera/disegnaLettera) with the recipient passed in; editor HTML becomes PDF blocks only via lettera-blocchi, so client letters stay byte-identical (tests/fixtures copy).
 - The supplier list and "select all filtered" share public._fornitori_filtrati (cerca_fornitori / cerca_fornitori_ids), so counts and selections cannot diverge.
 - Multi-supplier email runs only in the Inngest job fornitori-invio-multiplo: one email per supplier from pre-created in_invio attivita_fornitore rows (unique invio_id+fornitore_id), so retries never resend; one notification at the end.
+- Supplier goods/services type comes only from public.tipo_fornitore_effettivo (Gamma macro 01/03 wins, then tipo_app, then legacy manual categoria_fornitore); list, ids, detail and classifica_fornitori all use it, and classifica_fornitori never overwrites Gamma-decided rows.
+- Supplier contacts share the single contatti row (fornitore_id beside cliente_id/lead_id); supplier-only contacts are excluded from marketing, WhatsApp and reconciliation in SQL, and unlinking deletes only contacts with no client/lead left.

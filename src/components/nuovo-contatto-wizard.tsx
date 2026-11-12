@@ -71,11 +71,14 @@ function emptyContatto(): ContattoState {
 export function NuovoContattoWizard({
   cliente,
   showClienteStep = false,
+  fornitore = false,
   onClose,
   onSuccess,
 }: {
   cliente?: ClienteInfoWizard;
   showClienteStep?: boolean;
+  /** FM62 G6: `cliente` contiene id e ragione sociale del FORNITORE; il contatto nasce con fornitore_id. */
+  fornitore?: boolean;
   onClose: () => void;
   onSuccess?: (clienteId: string) => void;
 }) {
@@ -141,7 +144,8 @@ export function NuovoContattoWizard({
   async function insertContatto(): Promise<string | null> {
     if (!selectedCliente) return null;
     const payload = {
-      cliente_id: selectedCliente.id,
+      cliente_id: fornitore ? null : selectedCliente.id,
+      fornitore_id: fornitore ? selectedCliente.id : null,
       nome: contatto.nome,
       cognome: contatto.cognome || null,
       ruolo: contatto.ruolo || null,
@@ -162,6 +166,7 @@ export function NuovoContattoWizard({
   }
 
   function invalidateAll(cid: string) {
+    if (fornitore) qc.invalidateQueries({ queryKey: ["contatti-fornitore", cid] });
     qc.invalidateQueries({ queryKey: ["contatti", cid] });
     qc.invalidateQueries({ queryKey: ["contatti-all"] });
     qc.invalidateQueries({ queryKey: ["permessi-contatti", "modificabili", cid] });

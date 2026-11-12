@@ -23,7 +23,9 @@ export const dataOraIt = (v: string) => new Date(v).toLocaleString("it-IT", { da
 const PAGINA = 50;
 export const chiaveAttivita = (id: string) => ["attivita-fornitore", id] as const;
 
-export function AttivitaFornitoreTab({ fornitoreId, puoScrivere }: { fornitoreId: string; puoScrivere: boolean }) {
+export type PersonaAttivita = { id: string; nome: string | null; cognome: string | null; ruolo?: string | null };
+const nomePersona = (c: PersonaAttivita) => [c.nome, c.cognome].map(v => v?.trim()).filter(Boolean).join(" ") || "Contatto";
+export function AttivitaFornitoreTab({ fornitoreId, puoScrivere, contatti = [] }: { fornitoreId: string; puoScrivere: boolean; contatti?: PersonaAttivita[] }) {
   const [tipi, setTipi] = useState<string[]>([]);
   const carica = useServerFn(elencoAttivitaFornitore);
   const qc = useQueryClient();
@@ -46,14 +48,19 @@ export function AttivitaFornitoreTab({ fornitoreId, puoScrivere }: { fornitoreId
       : !righe.length ? <p className="py-6 text-muted-foreground">{tipi.length ? "Nessuna attività di questo tipo." : "Nessuna attività registrata per questo fornitore."}</p>
       : <>
         <p className="text-xs text-muted-foreground tabular-nums">{totale.toLocaleString("it-IT", { useGrouping: true })} attività</p>
-        <ol className="space-y-2">{righe.map(a => <RigaAttivita key={a.id} a={a} apri={() => setModulo({ attivita: a })} />)}</ol>
+        <ol className="space-y-2">{righe.map(a => <RigaAttivita key={a.id} a={a} conChi={conChi(contatti, a.contatto_id)} apri={() => setModulo({ attivita: a })} />)}</ol>
         {query.hasNextPage && <Button variant="outline" className="min-h-10 w-full sm:w-auto" disabled={query.isFetchingNextPage} onClick={() => void query.fetchNextPage()}>{query.isFetchingNextPage ? "Caricamento…" : "Mostra altri"}</Button>}
       </>}
-    {modulo && <ModuloAttivita fornitoreId={fornitoreId} puoScrivere={puoScrivere} iniziale={modulo.attivita} solaLettura={!puoScrivere || modulo.attivita?.origine === "invio"} chiudi={() => setModulo(null)} />}
+    {modulo && <ModuloAttivita contatti={contatti} fornitoreId={fornitoreId} puoScrivere={puoScrivere} iniziale={modulo.attivita} solaLettura={!puoScrivere || modulo.attivita?.origine === "invio"} chiudi={() => setModulo(null)} />}
   </div>;
 }
 
-function RigaAttivita({ a, apri }: { a: AttivitaFornitore; apri: () => void }) {
+function conChi(contatti: PersonaAttivita[], id: string | null | undefined): string | null {
+  if (!id) return null;
+  const c = contatti.find(x => x.id === id);
+  return c ? nomePersona(c) : null;
+}
+function RigaAttivita({ a, apri, conChi: chi }: { a: AttivitaFornitore; apri: () => void; conChi: string | null }) {
   const t = tipoAttivita(a.tipo);
   const Icona = t.icona;
   return <li><Card role="button" tabIndex={0} aria-label={`Apri attività: ${t.label} del ${dataOraIt(a.data_attivita)}`} onClick={apri} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); apri(); } }}
@@ -61,7 +68,7 @@ function RigaAttivita({ a, apri }: { a: AttivitaFornitore; apri: () => void }) {
     <span className={`flex size-9 shrink-0 items-center justify-center rounded-full ${t.classe}`} aria-hidden><Icona className="size-4" /></span>
     <div className="min-w-0 flex-1 space-y-1">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-        <span className="font-semibold text-foreground">{t.label}</span><span className="tabular-nums">{dataOraIt(a.data_attivita)}</span>{a.operatore && <span>· {a.operatore}</span>}
+        <span className="font-semibold text-foreground">{t.label}</span><span className="tabular-nums">{dataOraIt(a.data_attivita)}</span>{a.operatore && <span>· {a.operatore}</span>}{chi && <span>· con {chi}</span>}
         {a.origine === "invio" && <BadgeStato a={a} />}
         {a.n_allegati > 0 && <span className="inline-flex items-center gap-0.5"><Paperclip className="size-3" />{a.n_allegati}</span>}
       </div>
@@ -87,7 +94,8 @@ function CorpoHtml({ html }: { html: string }) {
   return <div className="max-w-none break-words text-sm [&_a]:text-primary [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5" dangerouslySetInnerHTML={{ __html: pulito }} />;
 }
 
-function DettaglioAttivita({ a, fornitoreId, puoEliminare, chiudi }: { a: AttivitaFornitore; fornitoreId: string; puoEliminare: boolean; chiudi: () => void }) {
+function DettaglioAttivita({ a, fornitoreId, puoEliminare, chiudi, contatti }: { a: AttivitaFornitore; fornitoreId: string; puoEliminare: boolean; chiudi: () => void; contatti: PersonaAttivita[] }) {
+  const chi = conChi(contatti, a.contatto_id);
   const qc = useQueryClient();
   const [conferma, setConferma] = useState(false);
   const elimina = useServerFn(eliminaAttivitaFornitore);
@@ -106,6 +114,7 @@ function DettaglioAttivita({ a, fornitoreId, puoEliminare, chiudi }: { a: Attivi
         <Voce label="Tipo">{t.label}</Voce>
         <Voce label="Data e ora"><span className="tabular-nums">{dataOraIt(a.data_attivita)}</span></Voce>
         {a.operatore && <Voce label="Operatore">{a.operatore}</Voce>}
+        {chi && <Voce label="Con chi">{chi}</Voce>}
         {a.origine === "invio" && <Voce label="Stato"><BadgeStato a={a} /></Voce>}
         {a.origine === "invio" && <Voce label="Destinatari"><span className="break-all">{dest.length ? dest.join(", ") : "—"}</span></Voce>}
         {a.origine === "invio" && <Voce label="CC"><span className="break-all">{cc.length ? cc.join(", ") : "—"}</span></Voce>}
@@ -129,11 +138,12 @@ function DettaglioAttivita({ a, fornitoreId, puoEliminare, chiudi }: { a: Attivi
   </Dialog>;
 }
 
-function ModuloAttivita({ puoScrivere, ...props }: { fornitoreId: string; puoScrivere: boolean; iniziale: AttivitaFornitore | null; solaLettura?: boolean; chiudi: () => void }) {
-  if (props.solaLettura && props.iniziale) return <DettaglioAttivita a={props.iniziale} fornitoreId={props.fornitoreId} puoEliminare={puoScrivere} chiudi={props.chiudi} />;
+function ModuloAttivita({ puoScrivere, ...props }: { fornitoreId: string; puoScrivere: boolean; iniziale: AttivitaFornitore | null; solaLettura?: boolean; chiudi: () => void; contatti: PersonaAttivita[] }) {
+  if (props.solaLettura && props.iniziale) return <DettaglioAttivita a={props.iniziale} fornitoreId={props.fornitoreId} puoEliminare={puoScrivere} chiudi={props.chiudi} contatti={props.contatti} />;
   return <ModuloModifica {...props} />;
 }
-function ModuloModifica({ fornitoreId, iniziale, chiudi }: { fornitoreId: string; iniziale: AttivitaFornitore | null; chiudi: () => void }) {
+const NESSUNO = "__nessuno__";
+function ModuloModifica({ fornitoreId, iniziale, chiudi, contatti }: { fornitoreId: string; iniziale: AttivitaFornitore | null; chiudi: () => void; contatti: PersonaAttivita[] }) {
   const qc = useQueryClient();
   const [conferma, setConferma] = useState(false);
   const elimina = useServerFn(eliminaAttivitaFornitore);
@@ -148,13 +158,14 @@ function ModuloModifica({ fornitoreId, iniziale, chiudi }: { fornitoreId: string
   const [oggetto, setOggetto] = useState(iniziale?.oggetto ?? "");
   const [corpo, setCorpo] = useState(iniziale?.corpo ?? "");
   const [esito, setEsito] = useState(iniziale?.esito ?? "");
+  const [contattoId, setContattoId] = useState<string>(iniziale?.contatto_id ?? NESSUNO);
   const crea = useServerFn(creaAttivitaFornitore);
   const aggiorna = useServerFn(aggiornaAttivitaFornitore);
   const salva = useMutation({
     mutationFn: async () => {
       const d = new Date(data);
       if (Number.isNaN(d.getTime())) throw new Error("Data e ora non valide");
-      const campi = { tipo, dataAttivita: d.toISOString(), oggetto, corpo, esito };
+      const campi = { tipo, dataAttivita: d.toISOString(), oggetto, corpo, esito, contattoId: contattoId === NESSUNO ? null : contattoId };
       if (id) { await aggiorna({ data: { id, ...campi } }); return id; }
       return (await crea({ data: { fornitoreId, ...campi } })).id;
     },
@@ -173,6 +184,7 @@ function ModuloModifica({ fornitoreId, iniziale, chiudi }: { fornitoreId: string
           <div className="space-y-1"><Label htmlFor="att-tipo">Tipo</Label><Select value={tipo} onValueChange={v => setTipo(v as TipoAttivitaFornitore)}><SelectTrigger id="att-tipo" className="min-h-10"><SelectValue /></SelectTrigger><SelectContent>{TIPI_ATTIVITA_FORNITORE.map(t => <SelectItem key={t} value={t}>{TIPO_ATTIVITA_FORNITORE[t].label}</SelectItem>)}</SelectContent></Select></div>
           <div className="space-y-1"><Label htmlFor="att-data">Data e ora</Label><Input id="att-data" type="datetime-local" required className="min-h-10" value={data} onChange={e => setData(e.target.value)} /></div>
         </div>
+        {(contatti.length > 0 || iniziale?.contatto_id) && <div className="space-y-1"><Label htmlFor="att-conchi">Con chi <span className="font-normal text-muted-foreground">(facoltativo)</span></Label><Select value={contattoId} onValueChange={setContattoId}><SelectTrigger id="att-conchi" className="min-h-10"><SelectValue /></SelectTrigger><SelectContent><SelectItem value={NESSUNO}>Nessuno</SelectItem>{contatti.map(c => <SelectItem key={c.id} value={c.id}>{nomePersona(c)}{c.ruolo ? ` · ${c.ruolo}` : ""}</SelectItem>)}{iniziale?.contatto_id && !contatti.some(c => c.id === iniziale.contatto_id) && <SelectItem value={iniziale.contatto_id}>Contatto non più collegato</SelectItem>}</SelectContent></Select></div>}
         <div className="space-y-1"><Label htmlFor="att-oggetto">Oggetto</Label><Input id="att-oggetto" maxLength={300} className="min-h-10" value={oggetto} onChange={e => setOggetto(e.target.value)} /></div>
         <div className="space-y-1"><Label htmlFor="att-corpo">Note</Label><Textarea id="att-corpo" maxLength={8000} rows={5} value={corpo} onChange={e => setCorpo(e.target.value)} /></div>
         <div className="space-y-1"><Label htmlFor="att-esito">Esito</Label><Input id="att-esito" maxLength={1000} className="min-h-10" value={esito} onChange={e => setEsito(e.target.value)} /></div>

@@ -3037,6 +3037,7 @@ export type Database = {
           cliente_id: string | null
           contatto_id: string | null
           created_at: string
+          fornitore_id: string | null
           id: string
           informativa_hash: string | null
           informativa_versione: string | null
@@ -3056,6 +3057,7 @@ export type Database = {
           cliente_id?: string | null
           contatto_id?: string | null
           created_at?: string
+          fornitore_id?: string | null
           id?: string
           informativa_hash?: string | null
           informativa_versione?: string | null
@@ -3075,6 +3077,7 @@ export type Database = {
           cliente_id?: string | null
           contatto_id?: string | null
           created_at?: string
+          fornitore_id?: string | null
           id?: string
           informativa_hash?: string | null
           informativa_versione?: string | null
@@ -3110,6 +3113,13 @@ export type Database = {
             columns: ["contatto_id"]
             isOneToOne: false
             referencedRelation: "contatti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consensi_log_fornitore_id_fkey"
+            columns: ["fornitore_id"]
+            isOneToOne: false
+            referencedRelation: "fornitori"
             referencedColumns: ["id"]
           },
           {
@@ -3164,6 +3174,7 @@ export type Database = {
           email: string | null
           firma_nome_dichiarato: string | null
           firma_url: string | null
+          fornitore_id: string | null
           id: string
           lead_id: string | null
           luogo_nascita: string | null
@@ -3201,6 +3212,7 @@ export type Database = {
           email?: string | null
           firma_nome_dichiarato?: string | null
           firma_url?: string | null
+          fornitore_id?: string | null
           id?: string
           lead_id?: string | null
           luogo_nascita?: string | null
@@ -3238,6 +3250,7 @@ export type Database = {
           email?: string | null
           firma_nome_dichiarato?: string | null
           firma_url?: string | null
+          fornitore_id?: string | null
           id?: string
           lead_id?: string | null
           luogo_nascita?: string | null
@@ -3272,6 +3285,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "contatti_fornitore_id_fkey"
+            columns: ["fornitore_id"]
+            isOneToOne: false
+            referencedRelation: "fornitori"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "contatti_lead_id_fkey"
@@ -3921,6 +3941,9 @@ export type Database = {
           stato: string | null
           telefono: string | null
           telefono_2: string | null
+          tipo_app: string | null
+          tipo_app_da: string | null
+          tipo_app_il: string | null
           ultima_modifica_gamma: string | null
           ultima_sincronizzazione: string | null
           updated_at: string | null
@@ -3959,6 +3982,9 @@ export type Database = {
           stato?: string | null
           telefono?: string | null
           telefono_2?: string | null
+          tipo_app?: string | null
+          tipo_app_da?: string | null
+          tipo_app_il?: string | null
           ultima_modifica_gamma?: string | null
           ultima_sincronizzazione?: string | null
           updated_at?: string | null
@@ -3997,6 +4023,9 @@ export type Database = {
           stato?: string | null
           telefono?: string | null
           telefono_2?: string | null
+          tipo_app?: string | null
+          tipo_app_da?: string | null
+          tipo_app_il?: string | null
           ultima_modifica_gamma?: string | null
           ultima_sincronizzazione?: string | null
           updated_at?: string | null
@@ -8093,6 +8122,7 @@ export type Database = {
           _includi_manuali: boolean
           _macrocategorie: string[]
           _testo: string
+          _tipi: string[]
         }
         Returns: {
           alias: string
@@ -8112,6 +8142,8 @@ export type Database = {
           persona_fisica: boolean
           provincia: string
           ragione_sociale: string
+          tipo_effettivo: string
+          tipo_fonte: string
           valida: boolean
         }[]
       }
@@ -8378,6 +8410,20 @@ export type Database = {
           tipo: string
         }[]
       }
+      cerca_contatti_collegabili_fornitore: {
+        Args: { _fornitore_id: string; _testo?: string }
+        Returns: {
+          azienda: string
+          cellulare: string
+          cognome: string
+          del_cliente_collegato: boolean
+          email: string
+          id: string
+          nome: string
+          ruolo: string
+          telefono: string
+        }[]
+      }
       cerca_fornitori: {
         Args: {
           _anche_cliente?: boolean
@@ -8388,6 +8434,7 @@ export type Database = {
           _macrocategorie?: string[]
           _offset?: number
           _testo?: string
+          _tipi?: string[]
         }
         Returns: {
           alias: string
@@ -8407,6 +8454,8 @@ export type Database = {
           persona_fisica: boolean
           provincia: string
           ragione_sociale: string
+          tipo_effettivo: string
+          tipo_fonte: string
           totale: number
           valida: boolean
         }[]
@@ -8426,6 +8475,7 @@ export type Database = {
           _includi_manuali?: boolean
           _macrocategorie?: string[]
           _testo?: string
+          _tipi?: string[]
         }
         Returns: string[]
       }
@@ -8439,6 +8489,10 @@ export type Database = {
       }
       chiudi_regole_prezzo_gamma: {
         Args: { _importazione: string; _tabella: string }
+        Returns: Json
+      }
+      classifica_fornitori: {
+        Args: { _ids: string[]; _tipo: string }
         Returns: Json
       }
       classifica_iscritti_whatsapp_batch: {
@@ -8479,6 +8533,10 @@ export type Database = {
           _patologico: boolean
         }
         Returns: number
+      }
+      collega_contatto_fornitore: {
+        Args: { _contatto_id: string; _fornitore_id: string }
+        Returns: undefined
       }
       collega_lead_a_cliente: {
         Args: { _cliente_id: string; _lead_id: string }
@@ -10319,6 +10377,10 @@ export type Database = {
           scartate: number
         }[]
       }
+      scollega_contatto_fornitore: {
+        Args: { _contatto_id: string; _fornitore_id: string }
+        Returns: string
+      }
       segna_canale_letto: { Args: { _canale_id: string }; Returns: undefined }
       segnalazioni_fido:
         | {
@@ -10383,6 +10445,13 @@ export type Database = {
           _scaduto: number
         }
         Returns: string
+      }
+      tipo_fornitore_effettivo: {
+        Args: { f: Database["public"]["Tables"]["fornitori"]["Row"] }
+        Returns: {
+          fonte: string
+          tipo: string
+        }[]
       }
       trasferisci_allegati_lead_a_cliente: {
         Args: { _cliente_id: string; _lead_id: string }

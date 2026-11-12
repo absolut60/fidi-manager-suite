@@ -59,7 +59,7 @@ export const getContattoPerRecesso = createServerFn({ method: "GET" })
     const { data: ct, error } = await supabaseAdmin
       .from("contatti")
       .select(
-        "id, cliente_id, lead_id, nome, cognome, email, consenso_profilazione, consenso_marketing_media, consenso_marketing_diretto"
+        "id, cliente_id, lead_id, fornitore_id, nome, cognome, email, consenso_profilazione, consenso_marketing_media, consenso_marketing_diretto"
       )
       .eq("recesso_token", data.token)
       .maybeSingle();
@@ -112,7 +112,7 @@ export const revocaConsensi = createServerFn({ method: "POST" })
 
     const { data: ct, error } = await supabaseAdmin
       .from("contatti")
-      .select("id, cliente_id, lead_id, nome, cognome, email")
+      .select("id, cliente_id, lead_id, fornitore_id, nome, cognome, email")
       .eq("recesso_token", data.token)
       .maybeSingle();
     if (error) throw new Error(error.message);

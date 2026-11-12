@@ -28,6 +28,8 @@ export const datiAttivitaFornitore = z.object({
   oggetto: testo(300),
   corpo: testo(8000),
   esito: testo(1000),
+  /** FM62 G6: "Con chi" — referente del fornitore (facoltativo). */
+  contattoId: z.string().uuid().nullable().optional(),
 });
 export const creaAttivitaFornitoreInput = datiAttivitaFornitore.extend({ fornitoreId: z.string().uuid() });
 export const aggiornaAttivitaFornitoreInput = datiAttivitaFornitore.extend({ id: z.string().uuid() });
@@ -37,7 +39,7 @@ export type DatiAttivitaFornitore = z.input<typeof datiAttivitaFornitore>;
 export type AttivitaFornitore = {
   id: string; fornitore_id: string; tipo: string; origine: "manuale" | "invio"; data_attivita: string;
   oggetto: string | null; corpo: string | null; corpo_html?: string | null; esito: string | null; destinatari: string[] | null; cc?: string[] | null; ccn?: string[] | null;
-  stato: string; errore: string | null; creato_da: string | null; operatore: string | null; n_allegati: number;
+  stato: string; errore: string | null; creato_da: string | null; contatto_id?: string | null; operatore: string | null; n_allegati: number;
 };
 /** Valore per <input type="datetime-local"> nell'ora locale. */
 export function dataLocaleInput(d: Date): string {

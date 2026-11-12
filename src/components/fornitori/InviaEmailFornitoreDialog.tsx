@@ -65,7 +65,8 @@ function CampoIndirizzi({ id, label, valori, onChange, max, suggerimenti, usati 
     onChange(out); setTesto(""); setErrore(null);
   };
   const giaUsati = new Set(usati.map(normIndirizzo));
-  const libere = (suggerimenti ?? []).filter(s => !giaUsati.has(normIndirizzo(s.valore)));
+  const visti = new Set<string>();
+  const libere = (suggerimenti ?? []).filter(s => { const k = normIndirizzo(s.valore); if (giaUsati.has(k) || visti.has(k)) return false; visti.add(k); return true; });
   return <div className="min-w-0 space-y-1.5">
     <Label htmlFor={id}>{label}</Label>
     {valori.length > 0 && <ul className="flex flex-wrap gap-1.5">{valori.map(v => <li key={v} className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border bg-muted/40 py-0.5 pl-2.5 pr-1 text-sm"><span className="min-w-0 break-all">{v}</span><button type="button" className="inline-flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-destructive" aria-label={`Togli ${v}`} onClick={() => onChange(valori.filter(x => x !== v))}><X className="size-3.5" /></button></li>)}</ul>}
@@ -76,7 +77,7 @@ function CampoIndirizzi({ id, label, valori, onChange, max, suggerimenti, usati 
         onBlur={() => { if (testo.trim()) aggiungi(testo); }} />
       <Button type="button" variant="outline" className="min-h-10 shrink-0" onClick={() => aggiungi(testo)} disabled={!testo.trim()}><Plus className="size-4" /><span className="sr-only sm:not-sr-only">Aggiungi</span></Button>
     </div>
-    {libere.length > 0 && <div className="flex flex-wrap items-center gap-1.5 text-xs">{libere.map(s => <span key={s.etichetta} className="inline-flex flex-wrap items-center gap-1">
+    {libere.length > 0 && <div className="flex flex-wrap items-center gap-1.5 text-xs">{libere.map(s => <span key={`${s.etichetta}-${s.valore}`} className="inline-flex flex-wrap items-center gap-1">
       <button type="button" className="inline-flex min-h-8 items-center rounded-full border border-dashed px-2.5 text-primary hover:bg-primary/5" onClick={() => aggiungi(s.valore)}>+ {s.etichetta}: <span className="ml-1 break-all">{s.valore}</span></button>
       {s.nota && <span className="text-[11px] text-muted-foreground">{s.nota}</span>}
     </span>)}</div>}
@@ -84,10 +85,12 @@ function CampoIndirizzi({ id, label, valori, onChange, max, suggerimenti, usati 
   </div>;
 }
 
-export function InviaEmailFornitoreDialog({ fornitore, open, onOpenChange, onInviata, fileIniziali, oggettoIniziale }: {
+export function InviaEmailFornitoreDialog({ fornitore, open, onOpenChange, onInviata, fileIniziali, oggettoIniziale, contatti = [] }: {
   fornitore: FornitoreEmail; open: boolean; onOpenChange: (v: boolean) => void; onInviata: (e: EsitoInvioFornitore) => void;
   /** File già pronti (es. la lettera PDF da "Allega a un'email"). */
   fileIniziali?: File[]; oggettoIniziale?: string;
+  /** FM62 G6: referenti del fornitore con email valida ("+ Nome" in A e CC). */
+  contatti?: { etichetta: string; valore: string }[];
 }) {
   const { user } = useAuth();
   const emailIo = user?.email ?? null;
@@ -158,10 +161,10 @@ export function InviaEmailFornitoreDialog({ fornitore, open, onOpenChange, onInv
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
         <Sezione titolo="Destinatari">
           <CampoIndirizzi id="email-a" label="A" usati={usati} valori={a} onChange={setA} max={MAX_DESTINATARI_A}
-            suggerimenti={[...(emailForn ? [{ etichetta: "Email", valore: emailForn }] : []), ...(pecForn ? [{ etichetta: "PEC", valore: pecForn, nota: "parte come email normale, non come PEC certificata" }] : [])]} />
+            suggerimenti={[...(emailForn ? [{ etichetta: "Email", valore: emailForn }] : []), ...(pecForn ? [{ etichetta: "PEC", valore: pecForn, nota: "parte come email normale, non come PEC certificata" }] : []), ...contatti]} />
           {!emailForn && <div className="flex items-start gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning"><AlertTriangle className="mt-0.5 size-4 shrink-0" /><span>Il fornitore non ha un indirizzo email in anagrafica: inseriscilo a mano.</span></div>}
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <CampoIndirizzi id="email-cc" label="CC" usati={usati} valori={cc} onChange={setCc} suggerimenti={emailIo ? [{ etichetta: "Io", valore: emailIo }] : []} />
+            <CampoIndirizzi id="email-cc" label="CC" usati={usati} valori={cc} onChange={setCc} suggerimenti={[...(emailIo ? [{ etichetta: "Io", valore: emailIo }] : []), ...contatti]} />
             <CampoIndirizzi id="email-ccn" label="CCN" usati={usati} valori={ccn} onChange={setCcn} suggerimenti={emailIo ? [{ etichetta: "Io", valore: emailIo }] : []} />
           </div>
           {(totaleIndirizzi > MAX_INDIRIZZI_FORNITORE || doppioni) && <p className="text-xs text-destructive">{doppioni ? "Lo stesso indirizzo compare in più campi: toglilo da uno." : `Massimo ${MAX_INDIRIZZI_FORNITORE} indirizzi in totale tra A, CC e CCN.`}</p>}

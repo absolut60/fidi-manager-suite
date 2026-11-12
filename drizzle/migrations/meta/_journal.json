@@ -1261,6 +1261,20 @@
       "when": 1794492633750,
       "tag": "0179_fm62_invii_fornitori_grant",
       "breakpoints": true
+    },
+    {
+      "idx": 180,
+      "version": "7",
+      "when": 1794494330028,
+      "tag": "0180_fm62_contatti_fornitore",
+      "breakpoints": true
+    },
+    {
+      "idx": 181,
+      "version": "7",
+      "when": 1794494757623,
+      "tag": "0181_fm62_classificazione_fornitori",
+      "breakpoints": true
     }
   ]
 }

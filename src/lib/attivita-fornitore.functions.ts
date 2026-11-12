@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 import {
   elencoAttivitaFornitoreInput, creaAttivitaFornitoreInput, aggiornaAttivitaFornitoreInput, eliminaAttivitaFornitoreInput,
   type FiltriAttivitaFornitore, type AttivitaFornitore,
@@ -8,7 +10,16 @@ export type { AttivitaFornitore, FiltriAttivitaFornitore } from "./attivita-forn
 
 type Crea = import("zod").input<typeof creaAttivitaFornitoreInput>;
 type Aggiorna = import("zod").input<typeof aggiornaAttivitaFornitoreInput>;
-const COLONNE = "id,fornitore_id,tipo,origine,data_attivita,oggetto,corpo,corpo_html,esito,destinatari,cc,ccn,stato,errore,creato_da";
+const COLONNE = "id,fornitore_id,tipo,origine,data_attivita,oggetto,corpo,corpo_html,esito,destinatari,cc,ccn,stato,errore,creato_da,contatto_id";
+
+/** "Con chi" deve essere un referente di QUESTO fornitore (letto con i permessi dell'utente). */
+async function verificaContatto(sb: SupabaseClient<Database>, contattoId: string | null | undefined, fornitoreId: string) {
+  if (!contattoId) return null;
+  const r = await sb.from("contatti").select("id").eq("id", contattoId).eq("fornitore_id", fornitoreId).maybeSingle();
+  if (r.error) throw new Error(r.error.message);
+  if (!r.data) throw new Error("Il contatto scelto non è un referente di questo fornitore");
+  return contattoId;
+}
 
 export const elencoAttivitaFornitore = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -43,7 +54,9 @@ export const creaAttivitaFornitore = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: Crea) => creaAttivitaFornitoreInput.parse(input))
   .handler(async ({ data, context }) => {
+    const contattoId = await verificaContatto(context.supabase, data.contattoId, data.fornitoreId);
     const res = await context.supabase.from("attivita_fornitore").insert({
+      contatto_id: contattoId,
       fornitore_id: data.fornitoreId, tipo: data.tipo, data_attivita: data.dataAttivita,
       oggetto: data.oggetto ?? null, corpo: data.corpo ?? null, esito: data.esito ?? null,
       origine: "manuale", stato: "registrata", creato_da: context.userId,
@@ -56,7 +69,14 @@ export const aggiornaAttivitaFornitore = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: Aggiorna) => aggiornaAttivitaFornitoreInput.parse(input))
   .handler(async ({ data, context }) => {
+    const att = await context.supabase.from("attivita_fornitore").select("fornitore_id, contatto_id").eq("id", data.id).maybeSingle();
+    if (att.error) throw new Error(att.error.message);
+    if (!att.data) throw new Error("Attività non modificabile");
+    // Un referente già salvato e poi scollegato resta com'era; uno nuovo deve essere del fornitore.
+    const contattoId = data.contattoId && data.contattoId === att.data.contatto_id
+      ? data.contattoId : await verificaContatto(context.supabase, data.contattoId, att.data.fornitore_id);
     const res = await context.supabase.from("attivita_fornitore").update({
+      contatto_id: contattoId,
       tipo: data.tipo, data_attivita: data.dataAttivita, oggetto: data.oggetto ?? null, corpo: data.corpo ?? null, esito: data.esito ?? null,
     }).eq("id", data.id).eq("origine", "manuale").select("id");
     if (res.error) throw new Error(res.error.message);
