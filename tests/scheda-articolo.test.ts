@@ -56,3 +56,10 @@ describe("scheda articolo — listini per sede (FM63)", () => {
     expect(g[0].depositi).toEqual([]);
   });
 });
+
+describe("valoreGiacenzaArticolo (FM63 F6bis)", () => {
+  it("FASL00H003300A0: 5.223,6 MQ × 3,01 = 15.723,04 €", () => expect(valoreGiacenzaArticolo(5223.6, 3.01)).toBe(15723.04));
+  it("ITA1000108 Cambiago: 927 × 3,975 = 3.684,83 €", () => expect(valoreGiacenzaArticolo(927, 3.975)).toBe(3684.83));
+  it("costo mancante o zero → null", () => { expect(valoreGiacenzaArticolo(10, null)).toBeNull(); expect(valoreGiacenzaArticolo(10, 0)).toBeNull(); });
+  it("giacenza negativa → valore negativo", () => expect(valoreGiacenzaArticolo(-4, 2.5)).toBe(-10));
+});
