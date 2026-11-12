@@ -1,3 +1,7 @@
+# FM61 — Articoli fetta B2
+- [ ] Ridisegno con Card/Tabs/Progress esistenti, tab nell'URL, margine condiviso; nessuna modifica ai dati o funzioni server.
+- [ ] Test e screenshot AKINAF01007 Panoramica/Vendita/Acquisto e ALP46142 Disponibilità a 390/1280 e controllo 375–1920.
+
 # FM61 — Articoli fetta C
 - [x] Disponibilità tramite RPC esistente in query indipendente; sedi, logistica separata, totale aggregati e depositi espandibili chiusi di default. Errori locali con Riprova senza bloccare scheda.
 - [x] Fornitori completi ordinati, kit con route /kit/$id esistente e conteggio distinto preventivi tramite blocchi; paginazione completa delle righe con RLS.
