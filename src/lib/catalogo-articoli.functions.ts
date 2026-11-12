@@ -41,7 +41,7 @@ export const fornitoriArticoliGamma = createServerFn({ method: "POST" }).middlew
 export const dettaglioArticoloGamma = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
   .inputValidator((input: { codice: string }) => z.object({ codice: z.string() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { data: articolo, error } = await context.supabase.from("articoli_gamma").select("*,marche(descrizione),fornitore:fornitori!articoli_gamma_fornitore_pref_id_fkey(id,ragione_sociale,fornitore_obsoleto)").eq("codice", data.codice).maybeSingle();
+    const { data: articolo, error } = await context.supabase.from("articoli_gamma").select("*,marche(descrizione),fornitore:fornitori!articoli_gamma_fornitore_pref_id_fkey(id,ragione_sociale)").eq("codice", data.codice).maybeSingle();
     if (error) throw new Error(error.message);
     if (!articolo) return null;
     const escaped = data.codice.replace(/[\\%_]/g, "\\$&");
@@ -50,9 +50,18 @@ export const dettaglioArticoloGamma = createServerFn({ method: "POST" }).middlew
       context.supabase.from("listini_gamma").select("codice,descrizione"),
       context.supabase.from("articoli").select("id,cod_gamma,categoria,tipologia,componente,qta_cliente,qta_fornitore,peso_unit,note,note_acquisto").like("cod_gamma", `%${escaped}%`),
       context.supabase.rpc("auth_puo_gestire_anagrafiche_prev"),
-      context.supabase.from("articoli_gamma_fornitori").select("fornitore_codice,codice_articolo_fornitore,preferenziale,fornitore:fornitori(id,ragione_sociale,fornitore_obsoleto)").eq("articolo_codice", data.codice),
+      context.supabase.from("articoli_gamma_fornitori").select("fornitore_codice,codice_articolo_fornitore,preferenziale,fornitore:fornitori(id,ragione_sociale)").eq("articolo_codice", data.codice),
     ]);
     for (const result of [prezzi, listini, tecnici, permesso, fornitori]) if (result.error) throw new Error(result.error.message);
+    // FM62: "fornitore obsoleto" deciso solo da public.fornitore_obsoleto (campo calcolato PostgREST).
+    const idsFornitori = [...new Set([articolo.fornitore?.id, ...(fornitori.data ?? []).map((r) => r.fornitore?.id)].filter((v): v is string => !!v))];
+    const obsoleti = new Set<string>();
+    if (idsFornitori.length) {
+      const o = await context.supabase.from("fornitori").select("id,fornitore_obsoleto" as "id").in("id", idsFornitori);
+      if (o.error) throw new Error(o.error.message);
+      for (const r of (o.data ?? []) as unknown as { id: string; fornitore_obsoleto: boolean | null }[]) if (r.fornitore_obsoleto) obsoleti.add(r.id);
+    }
+    const conObsoleto = <T extends { id: string; ragione_sociale: string | null } | null>(x: T) => x ? { ...x, fornitore_obsoleto: obsoleti.has(x.id) } : null;
     const tecnico = tecnici.data?.find((a) => a.cod_gamma?.trim() === data.codice) ?? null;
     const utilizzo = tecnico ? await (async () => {
       const [kit, preventivi] = await Promise.all([
@@ -72,8 +81,8 @@ export const dettaglioArticoloGamma = createServerFn({ method: "POST" }).middlew
       if (kit.error) throw new Error(kit.error.message);
       return { kit: (kit.data ?? []).sort((a, b) => (a.kit?.nome ?? "").localeCompare(b.kit?.nome ?? "", "it-IT")), preventivi };
     })() : null;
-    return { ...articolo, prezzi: prezzi.data ?? [], listini: listini.data ?? [],
-      tecnico, fornitori: ordinaFornitoriArticolo(fornitori.data ?? []), utilizzo,
+    return { ...articolo, fornitore: conObsoleto(articolo.fornitore), prezzi: prezzi.data ?? [], listini: listini.data ?? [],
+      tecnico, fornitori: ordinaFornitoriArticolo((fornitori.data ?? []).map((r) => ({ ...r, fornitore: conObsoleto(r.fornitore) }))), utilizzo,
       puoModificareTecnici: permesso.data === true };
   });
 
