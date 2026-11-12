@@ -30,6 +30,7 @@ import { notificaVariazioniBlocco } from "@/lib/inngest/variazioni-blocco.server
 import { rilevaAgenziaRecupero } from "@/lib/inngest/agenzia-recupero.server";
 import { notificaEsitoImport } from "@/lib/inngest/esito-import.server";
 import { aggiornaCacheCruscotti } from "@/lib/inngest/cache-cruscotti.server";
+import { invioMultiploFornitori } from "@/lib/inngest/invio-fornitori.server";
 
 
 
@@ -65,6 +66,7 @@ const handler = serve({
     rilevaAgenziaRecupero,
     notificaEsitoImport,
     aggiornaCacheCruscotti,
+    invioMultiploFornitori,
 
 
 

@@ -20,6 +20,11 @@ import { isEmailValida } from "@/lib/email-validazione";
 import { inviaEmailFornitore } from "@/lib/comunicazioni-fornitore.functions";
 import { sanificaHtmlEmailFornitore, htmlInTesto, MAX_TESTO_FORNITORE, MAX_ALLEGATI_FORNITORE_BYTES, MAX_DESTINATARI_A, MAX_INDIRIZZI_FORNITORE, type EsitoInvioFornitore } from "@/lib/comunicazioni-fornitore";
 
+/** Finestra a tutto schermo su telefono, centrata da sm: condivisa dalle finestre email/lettera fornitori. */
+export const FINESTRA_FORNITORE = "flex flex-col gap-0 p-0 left-0 top-0 translate-x-0 translate-y-0 w-full max-w-none h-[100dvh] max-h-[100dvh] rounded-none overflow-hidden " +
+  "sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:w-[calc(100%-2rem)] sm:max-w-3xl sm:h-auto sm:max-h-[92dvh] sm:rounded-lg";
+export { NO_AUTOFILL, fmtMB, leggiBase64 };
+
 export type FornitoreEmail = { id: string; ragione_sociale: string | null; email: string | null; pec: string | null };
 type AllegatoFornitore = { id: string; nome_file: string; dimensione_bytes: number | null; created_at: string };
 
@@ -79,8 +84,10 @@ function CampoIndirizzi({ id, label, valori, onChange, max, suggerimenti, usati 
   </div>;
 }
 
-export function InviaEmailFornitoreDialog({ fornitore, open, onOpenChange, onInviata }: {
+export function InviaEmailFornitoreDialog({ fornitore, open, onOpenChange, onInviata, fileIniziali, oggettoIniziale }: {
   fornitore: FornitoreEmail; open: boolean; onOpenChange: (v: boolean) => void; onInviata: (e: EsitoInvioFornitore) => void;
+  /** File già pronti (es. la lettera PDF da "Allega a un'email"). */
+  fileIniziali?: File[]; oggettoIniziale?: string;
 }) {
   const { user } = useAuth();
   const emailIo = user?.email ?? null;
@@ -102,7 +109,7 @@ export function InviaEmailFornitoreDialog({ fornitore, open, onOpenChange, onInv
 
   useEffect(() => {
     if (!open) return;
-    setA(emailForn ? [emailForn] : []); setCc([]); setCcn([]); setOggetto(""); setHtml(""); setSel(new Set()); setFile([]); setPannello(false);
+    setA(emailForn ? [emailForn] : []); setCc([]); setCcn([]); setOggetto(oggettoIniziale ?? ""); setHtml(""); setSel(new Set()); setFile(fileIniziali ?? []); setPannello(false);
     setChiave(crypto.randomUUID()); setConferma(false);
   }, [open, fornitore.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -141,8 +148,7 @@ export function InviaEmailFornitoreDialog({ fornitore, open, onOpenChange, onInv
     } finally { setInvio(false); setConferma(false); }
   }
 
-  const contentCls = "flex flex-col gap-0 p-0 left-0 top-0 translate-x-0 translate-y-0 w-full max-w-none h-[100dvh] max-h-[100dvh] rounded-none overflow-hidden " +
-    "sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:w-[calc(100%-2rem)] sm:max-w-3xl sm:h-auto sm:max-h-[92dvh] sm:rounded-lg";
+  const contentCls = FINESTRA_FORNITORE;
   return <Dialog open={open} onOpenChange={v => !invio && onOpenChange(v)}>
     <DialogContent className={contentCls}>
       <DialogHeader className="shrink-0 border-b border-border px-4 pb-3 pt-4 text-left sm:px-6 sm:pt-6">

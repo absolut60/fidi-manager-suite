@@ -1026,6 +1026,7 @@ export type Database = {
           esito: string | null
           fornitore_id: string
           id: string
+          invio_id: string | null
           message_id: string | null
           oggetto: string | null
           origine: string
@@ -1048,6 +1049,7 @@ export type Database = {
           esito?: string | null
           fornitore_id: string
           id?: string
+          invio_id?: string | null
           message_id?: string | null
           oggetto?: string | null
           origine?: string
@@ -1070,6 +1072,7 @@ export type Database = {
           esito?: string | null
           fornitore_id?: string
           id?: string
+          invio_id?: string | null
           message_id?: string | null
           oggetto?: string | null
           origine?: string
@@ -1090,6 +1093,13 @@ export type Database = {
             columns: ["fornitore_id"]
             isOneToOne: false
             referencedRelation: "fornitori"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attivita_fornitore_invio_id_fkey"
+            columns: ["invio_id"]
+            isOneToOne: false
+            referencedRelation: "invii_fornitori"
             referencedColumns: ["id"]
           },
         ]
@@ -4126,6 +4136,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      invii_fornitori: {
+        Row: {
+          allegati: Json
+          chiave_invio: string
+          completato_il: string | null
+          corpo_html: string
+          creato_da: string | null
+          creato_il: string
+          errori: number
+          id: string
+          inviati: number
+          oggetto: string
+          saltati: number
+          stato: string
+          totale: number
+          updated_at: string
+        }
+        Insert: {
+          allegati?: Json
+          chiave_invio: string
+          completato_il?: string | null
+          corpo_html: string
+          creato_da?: string | null
+          creato_il?: string
+          errori?: number
+          id?: string
+          inviati?: number
+          oggetto: string
+          saltati?: number
+          stato?: string
+          totale?: number
+          updated_at?: string
+        }
+        Update: {
+          allegati?: Json
+          chiave_invio?: string
+          completato_il?: string | null
+          corpo_html?: string
+          creato_da?: string | null
+          creato_il?: string
+          errori?: number
+          id?: string
+          inviati?: number
+          oggetto?: string
+          saltati?: number
+          stato?: string
+          totale?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       iscritti_whatsapp: {
         Row: {
@@ -8024,6 +8085,36 @@ export type Database = {
         Args: { _isc_id: string; _lead_id: string }
         Returns: string
       }
+      _fornitori_filtrati: {
+        Args: {
+          _anche_cliente: boolean
+          _con_articoli: boolean
+          _con_email: boolean
+          _includi_manuali: boolean
+          _macrocategorie: string[]
+          _testo: string
+        }
+        Returns: {
+          alias: string
+          anche_cliente: boolean
+          citta: string
+          codice_fiscale: string
+          codice_gestionale: number
+          condizione_pagamento_desc: string
+          email: string
+          id: string
+          macrocategoria_cod: string
+          macrocategoria_desc: string
+          n_articoli: number
+          n_preferenziale: number
+          origine: string
+          partita_iva: string
+          persona_fisica: boolean
+          provincia: string
+          ragione_sociale: string
+          valida: boolean
+        }[]
+      }
       _giacenze_articoli_catalogo: {
         Args: { _codice?: string }
         Returns: {
@@ -8291,6 +8382,7 @@ export type Database = {
         Args: {
           _anche_cliente?: boolean
           _con_articoli?: boolean
+          _con_email?: boolean
           _includi_manuali?: boolean
           _limite?: number
           _macrocategorie?: string[]
@@ -8304,6 +8396,7 @@ export type Database = {
           codice_fiscale: string
           codice_gestionale: number
           condizione_pagamento_desc: string
+          email: string
           id: string
           macrocategoria_cod: string
           macrocategoria_desc: string
@@ -8324,6 +8417,17 @@ export type Database = {
           id: string
           ragione_sociale: string
         }[]
+      }
+      cerca_fornitori_ids: {
+        Args: {
+          _anche_cliente?: boolean
+          _con_articoli?: boolean
+          _con_email?: boolean
+          _includi_manuali?: boolean
+          _macrocategorie?: string[]
+          _testo?: string
+        }
+        Returns: string[]
       }
       chiudi_articoli_fornitori_gamma: {
         Args: { _importazione: string }

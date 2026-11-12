@@ -1,14 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { FileText, Search, Send, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Search } from "lucide-react";
-import { elencoFornitori } from "@/lib/fornitori.functions";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
+import { elencoFornitori, idsFornitoriFiltrati } from "@/lib/fornitori.functions";
 import { ricercaFornitori, paginaFornitore, filtroSiNo, OPZIONI_MACROCATEGORIA, macrocategorieValide } from "@/lib/scheda-fornitore";
+import { puoGestireFornitori, puoVedereArticoliFornitori } from "@/lib/permessi-fornitori";
+import { MAX_FORNITORI_INVIO, MAX_FORNITORI_LETTERE } from "@/lib/invio-multiplo-fornitori";
 import { FiltroMultiplo } from "@/components/filtro-multiplo";
+import { FiltriCollassabili } from "@/components/lista-responsive/filtri-collassabili";
 import { ElencoFornitori } from "@/components/fornitori/ElencoFornitori";
+import { InviaEmailMultiplaDialog } from "@/components/fornitori/InviaEmailMultiplaDialog";
+import { LetteraFornitoreDialog } from "@/components/fornitori/LetteraFornitoreDialog";
+import { AvanzamentoInvioFornitori } from "@/components/fornitori/AvanzamentoInvioFornitori";
 import { AccessoFornitori, FiltroSiNo, ErroreFornitori, PaginazioneFornitori, useRicercaDifferita } from "@/components/fornitori/controlli-fornitori";
 
 export const Route = createFileRoute("/_app/fornitori/")({
@@ -21,13 +30,79 @@ function PaginaFornitori() { return <AccessoFornitori><ContenutoFornitori /></Ac
 function ContenutoFornitori() {
   const f = Route.useSearch();
   const navigate = Route.useNavigate();
+  const { roles } = useAuth();
+  const gestisce = puoGestireFornitori(roles);
+  const vedeArticoli = puoVedereArticoliFornitori(roles);
   const pagina = paginaFornitore(f.pagina);
   const macro = macrocategorieValide(f.macro);
   const aggiornaRicerca = useCallback((q: string) => { void navigate({ search: prev => ({ ...prev, q, pagina: 1 }), replace: true, resetScroll: false }); }, [navigate]);
   const [testo, setTesto] = useRicercaDifferita(f.q, aggiornaRicerca);
   const carica = useServerFn(elencoFornitori);
-  const filtri = { testo: f.q, ancheCliente: filtroSiNo(f.ancheCliente), conArticoli: filtroSiNo(f.conArticoli), includiManuali: f.manuali, macrocategorie: macro, limite: 100, offset: (pagina - 1) * 100 };
+  const caricaIds = useServerFn(idsFornitoriFiltrati);
+  const filtriBase = { testo: f.q, ancheCliente: filtroSiNo(f.ancheCliente), conArticoli: filtroSiNo(f.conArticoli), conEmail: filtroSiNo(f.conEmail), includiManuali: f.manuali, macrocategorie: macro };
+  const filtri = { ...filtriBase, limite: 100, offset: (pagina - 1) * 100 };
   const query = useQuery({ queryKey: ["fornitori", filtri], queryFn: () => carica({ data: filtri }) });
   const cambia = (patch: Partial<typeof f>) => void navigate({ search: prev => ({ ...prev, ...patch, pagina: 1 }), resetScroll: false });
-  return <div className="mx-auto w-full max-w-7xl space-y-4 p-3 lg:p-6"><header><h1 className="text-2xl font-bold text-navy">Fornitori</h1><div className="relative mt-3"><Search className="absolute left-3 top-3 size-4 text-muted-foreground" /><Input aria-label="Cerca fornitori" className="min-h-10 pl-9" placeholder="Nome, alias, codice, P.IVA/CF, città…" value={testo} onChange={e => setTesto(e.target.value)} /></div><div className="mt-3 grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-[12rem_12rem_14rem_minmax(0,1fr)]"><FiltroSiNo label="Anche cliente" value={f.ancheCliente} onChange={ancheCliente => cambia({ ancheCliente })} /><FiltroSiNo label="Con articoli" value={f.conArticoli} onChange={conArticoli => cambia({ conArticoli })} /><div className="min-w-0 space-y-1 text-xs text-muted-foreground"><span>Macrocategoria</span><FiltroMultiplo etichetta="Macrocategoria" testoTutti="Tutte" opzioni={OPZIONI_MACROCATEGORIA.map(o => ({ ...o }))} selezionati={macro} onChange={v => cambia({ macro: v })} className="min-h-10 w-full text-foreground" /></div><label className="flex min-h-10 items-center gap-2 text-sm"><Switch checked={f.manuali} onCheckedChange={manuali => cambia({ manuali })} />Mostra fornitori manuali</label></div></header>{query.isPending ? <p role="status" className="py-6 text-muted-foreground">Caricamento fornitori…</p> : query.error ? <ErroreFornitori error={query.error} riprova={() => void query.refetch()} /> : <><ElencoFornitori rows={query.data.rows} apri={id => void navigate({ to: "/fornitori/$id", params: { id } })} /><PaginazioneFornitori totale={query.data.total} pagina={pagina} dimensione={100} nome="fornitori" onChange={pagina => void navigate({ search: prev => ({ ...prev, pagina }), resetScroll: true })} /></>}</div>;
+  const attivi = [f.ancheCliente !== "tutti", f.conArticoli !== "tutti", f.conEmail !== "tutti", macro.length > 0, f.manuali].filter(Boolean).length;
+
+  // Selezione multipla: solo per chi gestisce i fornitori; si azzera se cambiano i filtri.
+  const [sel, setSel] = useState<Set<string>>(new Set());
+  const [caricoTutti, setCaricoTutti] = useState(false);
+  const chiaveFiltri = JSON.stringify(filtriBase);
+  useEffect(() => setSel(new Set()), [chiaveFiltri]);
+  const totale = query.data?.total ?? 0;
+  const selezionaTutti = async (v: boolean) => {
+    if (!v) { setSel(new Set()); return; }
+    setCaricoTutti(true);
+    try { setSel(new Set(await caricaIds({ data: filtriBase }))); }
+    catch (e) { toast.error(e instanceof Error ? e.message : "Selezione non riuscita"); }
+    finally { setCaricoTutti(false); }
+  };
+  const tuttiSelezionati = totale > 0 && sel.size >= totale;
+  const selezione = gestisce ? {
+    selezionati: sel,
+    cambia: (id: string, v: boolean) => setSel(prev => { const n = new Set(prev); if (v) n.add(id); else n.delete(id); return n; }),
+    tutti: { tutti: tuttiSelezionati, alcuni: sel.size > 0, disabled: caricoTutti || totale === 0, onChange: (v: boolean) => void selezionaTutti(v),
+      etichetta: caricoTutti ? "Seleziono…" : tuttiSelezionati ? `Tutti i ${totale.toLocaleString("it-IT")} filtrati selezionati` : `Seleziona tutti i filtrati (${totale.toLocaleString("it-IT")})` },
+  } : undefined;
+  const ids = useMemo(() => [...sel], [sel]);
+  const [emailAperta, setEmailAperta] = useState(false);
+  const [lettereAperte, setLettereAperte] = useState(false);
+  const [invioId, setInvioId] = useState<string | null>(null);
+  const apri = (azione: "email" | "lettere") => {
+    const max = azione === "email" ? MAX_FORNITORI_INVIO : MAX_FORNITORI_LETTERE;
+    if (ids.length > max) { toast.error(`Massimo ${max} fornitori per ${azione === "email" ? "invio" : "stampa"}: ne hai selezionati ${ids.length.toLocaleString("it-IT")}.`); return; }
+    if (azione === "email") setEmailAperta(true); else setLettereAperte(true);
+  };
+
+  return <div className={`mx-auto w-full max-w-7xl space-y-4 p-3 lg:p-6 ${sel.size ? "pb-28" : ""}`}>
+    <header className="space-y-3">
+      <h1 className="text-2xl font-bold text-navy">Fornitori</h1>
+      <div className="relative"><Search className="absolute left-3 top-3 size-4 text-muted-foreground" /><Input aria-label="Cerca fornitori" className="min-h-10 pl-9" placeholder="Nome, alias, codice, P.IVA/CF, città…" value={testo} onChange={e => setTesto(e.target.value)} /></div>
+      <FiltriCollassabili attivi={attivi} azioni={<Button variant="ghost" size="sm" className="min-h-9" onClick={() => cambia({ ancheCliente: "tutti", conArticoli: "tutti", conEmail: "tutti", macro: [], manuali: false })}>Azzera filtri</Button>}>
+        <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(3,minmax(0,11rem))_minmax(0,14rem)_minmax(0,1fr)]">
+          <FiltroSiNo label="Anche cliente" value={f.ancheCliente} onChange={ancheCliente => cambia({ ancheCliente })} />
+          <FiltroSiNo label="Con articoli" value={f.conArticoli} onChange={conArticoli => cambia({ conArticoli })} />
+          <FiltroSiNo label="Con email" value={f.conEmail} onChange={conEmail => cambia({ conEmail })} />
+          <div className="min-w-0 space-y-1 text-xs text-muted-foreground"><span>Macrocategoria</span><FiltroMultiplo etichetta="Macrocategoria" testoTutti="Tutte" opzioni={OPZIONI_MACROCATEGORIA.map(o => ({ ...o }))} selezionati={macro} onChange={v => cambia({ macro: v })} className="min-h-10 w-full text-foreground" /></div>
+          <label className="flex min-h-10 items-center gap-2 text-sm"><Switch checked={f.manuali} onCheckedChange={manuali => cambia({ manuali })} />Mostra fornitori manuali</label>
+        </div>
+      </FiltriCollassabili>
+    </header>
+    {invioId && <AvanzamentoInvioFornitori invioId={invioId} onChiudi={() => setInvioId(null)} />}
+    {query.isPending ? <p role="status" className="py-6 text-muted-foreground">Caricamento fornitori…</p>
+      : query.error ? <ErroreFornitori error={query.error} riprova={() => void query.refetch()} />
+      : <><ElencoFornitori rows={query.data.rows} mostraArticoli={vedeArticoli} selezione={selezione} apri={id => void navigate({ to: "/fornitori/$id", params: { id } })} />
+        <PaginazioneFornitori totale={query.data.total} pagina={pagina} dimensione={100} nome="fornitori" onChange={pagina => void navigate({ search: prev => ({ ...prev, pagina }), resetScroll: true })} /></>}
+    {gestisce && sel.size > 0 && <div role="region" aria-label="Azioni sui fornitori selezionati" className="fixed bottom-3 left-1/2 z-40 w-[calc(100%-1.5rem)] max-w-2xl -translate-x-1/2 rounded-lg border bg-background px-3 py-2.5 shadow-lg sm:bottom-4 sm:px-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="mr-auto min-w-0 text-sm font-medium tabular-nums">{sel.size.toLocaleString("it-IT")} {sel.size === 1 ? "selezionato" : "selezionati"}</span>
+        <Button className="min-h-10 flex-1 gap-1.5 sm:flex-none" onClick={() => apri("email")}><Send className="size-4" />Invia email</Button>
+        <Button variant="outline" className="min-h-10 flex-1 gap-1.5 sm:flex-none" onClick={() => apri("lettere")}><FileText className="size-4" />Scarica lettere</Button>
+        <Button variant="ghost" className="min-h-10 gap-1.5" onClick={() => setSel(new Set())}><X className="size-4" />Deseleziona</Button>
+      </div>
+    </div>}
+    {gestisce && <InviaEmailMultiplaDialog open={emailAperta} onOpenChange={setEmailAperta} fornitoriIds={ids} onAvviato={id => { setInvioId(id); setSel(new Set()); }} />}
+    {gestisce && <LetteraFornitoreDialog open={lettereAperte} onOpenChange={setLettereAperte} fornitoriIds={ids} />}
+  </div>;
 }

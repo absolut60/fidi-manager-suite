@@ -16,6 +16,7 @@ import { classificaScadenza } from "@/lib/scadenze";
 import { buildElencoScadenzeTesto, renderLettera, type DatiTemplateLettera } from "@/lib/template-lettera";
 import { calcolaSpeseInsoluto } from "@/lib/spese-insoluto";
 import { LOGO_MADE_BASE64 } from "@/lib/logo-made-base64";
+import type { BloccoLettera, RunLettera } from "@/lib/lettera-blocchi";
 
 const LEGAL_FOOTER_LINES = [
   "MADE DISTRIBUZIONE S.p.A.",
@@ -304,27 +305,45 @@ export async function costruisciLetteraPdf(
     rendered.oggetto = stripOggettoPrefix(rendered.oggetto);
     rendered.corpo = stripLetterChrome(rendered.corpo, dati);
 
-    // 4) Costruisci PDF con pdf-lib
+
+    // 4) Costruisci PDF con pdf-lib (motore condiviso con le lettere ai fornitori)
+    const ctx = await creaDocumentoLettera();
+    await disegnaLettera(ctx, {
+      destinatario: dati.cliente, sede: sedeFinal, sedeExtra,
+      oggetto: rendered.oggetto, corpo: rendered.corpo ?? "", scadute, speseUnit, nomeOperatore,
+    });
+    const pdfBytes = await ctx.pdfDoc.save();
+    const fileName = `lettera-${sanitizeName(tplNome || "documento")}-${formatDateIt(new Date()).replace(/\//g, "-")}.pdf`;
+
+    return { pdfBytes, fileName, tplNome, tpl };
+}
+
+// ---- Motore di disegno (fonte unica per clienti e fornitori) -------------
+// A4 in punti
+const PAGE_W = 595.28;
+const PAGE_H = 841.89;
+const MARGIN_X = 64; // ~2.25cm margini ampi
+const MARGIN_TOP = 56;
+const MARGIN_BOTTOM = 150; // spazio footer a due blocchi
+const CONTENT_W = PAGE_W - 2 * MARGIN_X;
+
+// Palette brand MADE (sobria)
+const BRAND_NAVY: [number, number, number] = [0.12, 0.23, 0.37];   // #1F3A5F
+const BRAND_ACCENT: [number, number, number] = [0.78, 0.06, 0.18]; // #C8102E
+const INK: [number, number, number] = [0.10, 0.12, 0.16];
+const MUTED: [number, number, number] = [0.42, 0.46, 0.52];
+const HAIRLINE: [number, number, number] = [0.85, 0.87, 0.90];
+
+export type DestinatarioLettera = { ragione_sociale: string; indirizzo: string | null; cap: string | null; citta: string | null; provincia: string | null };
+export type SedeExtraLettera = { email: string | null; pec: string | null; ragSociale: string | null };
+export type ContestoLettera = { pdfDoc: PDFDocument; font: PDFFont; fontB: PDFFont; fontI: PDFFont; fontBI?: PDFFont; logoImg: { width: number; height: number; embed: any } | null };
+
+/** Crea il documento con i font e il logo (stesso ordine di incorporamento di sempre). */
+export async function creaDocumentoLettera(): Promise<ContestoLettera> {
     const pdfDoc = await PDFDocument.create();
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const fontB = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
     const fontI = await pdfDoc.embedFont(StandardFonts.HelveticaOblique);
-
-    // A4 in punti
-    const PAGE_W = 595.28;
-    const PAGE_H = 841.89;
-    const MARGIN_X = 64; // ~2.25cm margini ampi
-    const MARGIN_TOP = 56;
-    const MARGIN_BOTTOM = 150; // spazio footer a due blocchi
-    const CONTENT_W = PAGE_W - 2 * MARGIN_X;
-
-    // Palette brand MADE (sobria)
-    const BRAND_NAVY: [number, number, number] = [0.12, 0.23, 0.37];   // #1F3A5F
-    const BRAND_ACCENT: [number, number, number] = [0.78, 0.06, 0.18]; // #C8102E
-    const INK: [number, number, number] = [0.10, 0.12, 0.16];
-    const MUTED: [number, number, number] = [0.42, 0.46, 0.52];
-    const HAIRLINE: [number, number, number] = [0.85, 0.87, 0.90];
-
     // Logo ufficiale MADE: embed dal base64 in bundle (no fetch, sempre disponibile)
     let logoImg: { width: number; height: number; embed: any } | null = null;
     try {
@@ -335,305 +354,369 @@ export async function costruisciLetteraPdf(
     } catch {
       // logo opzionale
     }
+    return { pdfDoc, font, fontB, fontI, logoImg };
+}
 
-    let page: PDFPage = pdfDoc.addPage([PAGE_W, PAGE_H]);
-    let y = PAGE_H - MARGIN_TOP;
+/** Aggiunge una lettera completa (una o più pagine, footer sull'ultima) al documento. */
+export async function disegnaLettera(ctx: ContestoLettera, inp: {
+  destinatario: DestinatarioLettera; sede: DatiSede; sedeExtra: SedeExtraLettera;
+  oggetto: string; corpo: string | BloccoLettera[]; scadute: ScadenzaSollecito[]; speseUnit: number; nomeOperatore: string;
+}): Promise<void> {
+  const { pdfDoc, font, fontB, fontI, logoImg } = ctx;
+  const dest = inp.destinatario;
+  const sede = inp.sede;
+  const sedeExtra = inp.sedeExtra;
+  const scadute = inp.scadute;
+  const speseUnit = inp.speseUnit;
+  const nomeOperatore = inp.nomeOperatore;
+  let page: PDFPage = pdfDoc.addPage([PAGE_W, PAGE_H]);
+  let y = PAGE_H - MARGIN_TOP;
 
-    const drawText = (
-      text: string,
-      x: number,
-      yy: number,
-      opts?: { size?: number; bold?: boolean; italic?: boolean; color?: [number, number, number]; pageRef?: PDFPage },
-    ) => {
-      const size = opts?.size ?? 10.5;
-      const f = opts?.bold ? fontB : opts?.italic ? fontI : font;
-      const c = opts?.color ?? INK;
-      (opts?.pageRef ?? page).drawText(toWinAnsi(text), { x, y: yy, size, font: f, color: rgb(c[0], c[1], c[2]) });
-    };
+  const drawText = (
+    text: string,
+    x: number,
+    yy: number,
+    opts?: { size?: number; bold?: boolean; italic?: boolean; color?: [number, number, number]; pageRef?: PDFPage },
+  ) => {
+    const size = opts?.size ?? 10.5;
+    const f = opts?.bold ? fontB : opts?.italic ? fontI : font;
+    const c = opts?.color ?? INK;
+    (opts?.pageRef ?? page).drawText(toWinAnsi(text), { x, y: yy, size, font: f, color: rgb(c[0], c[1], c[2]) });
+  };
 
-    const textWidth = (text: string, size: number, bold = false) =>
-      (bold ? fontB : font).widthOfTextAtSize(toWinAnsi(text), size);
+  const textWidth = (text: string, size: number, bold = false) =>
+    (bold ? fontB : font).widthOfTextAtSize(toWinAnsi(text), size);
 
-    // === HEADER MITTENTE: logo ufficiale + sede operativa (NO nome operatore) ===
-    if (logoImg) {
-      page.drawImage(logoImg.embed, {
-        x: MARGIN_X,
-        y: y - logoImg.height,
-        width: logoImg.width,
-        height: logoImg.height,
-      });
-    }
-    const nomeSedeRaw = (sedeFinal.nome ?? "").trim();
-    const insegnaSede = formatInsegna(sedeFinal.insegna);
-    // Normalizza: rimuovi eventuale prefisso "Sede di " e Capitalize la citta
-    const cittaSedeNorm = titleCaseSede(nomeSedeRaw.replace(/^sede\s+(di\s+)?/i, ""));
-    const sedeLabel = cittaSedeNorm ? `Sede di ${cittaSedeNorm}` : "";
-    const sedeHeadLines: string[] = [];
-    if (sedeLabel) sedeHeadLines.push(sedeLabel);
-    const indirSede = (sedeFinal.indirizzo ?? "").trim();
-    if (indirSede) sedeHeadLines.push(indirSede);
-    const rigaCittaSede = [
-      (sedeFinal.cap ?? "").trim(),
-      (sedeFinal.citta ?? "").trim(),
-      sedeFinal.provincia ? `(${sedeFinal.provincia.trim()})` : "",
-    ].filter(Boolean).join(" ").trim();
-    if (rigaCittaSede) sedeHeadLines.push(rigaCittaSede);
-
-    const sedeX = MARGIN_X + (logoImg ? logoImg.width + 18 : 0);
-    let sedeY = y - 6;
-    // Insegna come riga principale (se presente), altrimenti fallback su sede o brand
-    const titoloMittente = insegnaSede || sedeLabel || "MADE DISTRIBUZIONE";
-    drawText(titoloMittente, sedeX, sedeY, { size: 12, bold: true, color: BRAND_NAVY });
-    sedeY -= 15;
-    // Se l'insegna era la riga principale, la "Sede di X" e' gia in sedeHeadLines.
-    // Altrimenti rimuoviamo il duplicato.
-    const subLines = insegnaSede ? sedeHeadLines : sedeHeadLines.filter((l) => l !== sedeLabel);
-    for (const ln of subLines) {
-      drawText(ln, sedeX, sedeY, { size: 9, color: MUTED });
-      sedeY -= 11;
-    }
-    const headerBottom = Math.min(sedeY, logoImg ? y - logoImg.height - 4 : sedeY);
-
-    // Filetto brand sotto l'intestazione
-    page.drawRectangle({
+  // === HEADER MITTENTE: logo ufficiale + sede operativa (NO nome operatore) ===
+  if (logoImg) {
+    page.drawImage(logoImg.embed, {
       x: MARGIN_X,
-      y: headerBottom - 10,
-      width: CONTENT_W,
-      height: 1.6,
-      color: rgb(BRAND_NAVY[0], BRAND_NAVY[1], BRAND_NAVY[2]),
+      y: y - logoImg.height,
+      width: logoImg.width,
+      height: logoImg.height,
     });
-    y = headerBottom - 36;
+  }
+  const nomeSedeRaw = (sede.nome ?? "").trim();
+  const insegnaSede = formatInsegna(sede.insegna);
+  // Normalizza: rimuovi eventuale prefisso "Sede di " e Capitalize la citta
+  const cittaSedeNorm = titleCaseSede(nomeSedeRaw.replace(/^sede\s+(di\s+)?/i, ""));
+  const sedeLabel = cittaSedeNorm ? `Sede di ${cittaSedeNorm}` : "";
+  const sedeHeadLines: string[] = [];
+  if (sedeLabel) sedeHeadLines.push(sedeLabel);
+  const indirSede = (sede.indirizzo ?? "").trim();
+  if (indirSede) sedeHeadLines.push(indirSede);
+  const rigaCittaSede = [
+    (sede.cap ?? "").trim(),
+    (sede.citta ?? "").trim(),
+    sede.provincia ? `(${sede.provincia.trim()})` : "",
+  ].filter(Boolean).join(" ").trim();
+  if (rigaCittaSede) sedeHeadLines.push(rigaCittaSede);
 
-    // === DESTINATARIO (in alto a destra) ===
-    const destBoxW = 240;
-    const destX = PAGE_W - MARGIN_X - destBoxW;
-    let destY = y;
-    drawText("Spett.le", destX, destY, { size: 9, color: MUTED, italic: true });
-    destY -= 13;
-    drawText(dati.cliente.ragione_sociale || "-", destX, destY, { size: 11, bold: true });
-    destY -= 13;
-    drawText(dati.cliente.indirizzo?.trim() || "-", destX, destY, { size: 10 });
-    destY -= 12;
-    const capCittaDest = [
-      (dati.cliente.cap ?? "").trim(),
-      (dati.cliente.citta ?? "").trim(),
-      dati.cliente.provincia ? `(${dati.cliente.provincia.trim()})` : "",
-    ].filter(Boolean).join(" ").trim() || "-";
-    drawText(capCittaDest, destX, destY, { size: 10 });
-    destY -= 22;
+  const sedeX = MARGIN_X + (logoImg ? logoImg.width + 18 : 0);
+  let sedeY = y - 6;
+  // Insegna come riga principale (se presente), altrimenti fallback su sede o brand
+  const titoloMittente = insegnaSede || sedeLabel || "MADE DISTRIBUZIONE";
+  drawText(titoloMittente, sedeX, sedeY, { size: 12, bold: true, color: BRAND_NAVY });
+  sedeY -= 15;
+  // Se l'insegna era la riga principale, la "Sede di X" e' gia in sedeHeadLines.
+  // Altrimenti rimuoviamo il duplicato.
+  const subLines = insegnaSede ? sedeHeadLines : sedeHeadLines.filter((l) => l !== sedeLabel);
+  for (const ln of subLines) {
+    drawText(ln, sedeX, sedeY, { size: 9, color: MUTED });
+    sedeY -= 11;
+  }
+  const headerBottom = Math.min(sedeY, logoImg ? y - logoImg.height - 4 : sedeY);
 
-    y = Math.min(y, destY) - 8;
+  // Filetto brand sotto l'intestazione
+  page.drawRectangle({
+    x: MARGIN_X,
+    y: headerBottom - 10,
+    width: CONTENT_W,
+    height: 1.6,
+    color: rgb(BRAND_NAVY[0], BRAND_NAVY[1], BRAND_NAVY[2]),
+  });
+  y = headerBottom - 36;
 
-    // === LUOGO E DATA ===
-    const luogoData = `${(sedeFinal.citta ?? "Casorezzo").trim()}, ${formatDateIt(new Date())}`;
-    drawText(luogoData, MARGIN_X, y, { size: 10, color: MUTED });
-    y -= 28;
+  // === DESTINATARIO (in alto a destra) ===
+  const destBoxW = 240;
+  const destX = PAGE_W - MARGIN_X - destBoxW;
+  let destY = y;
+  drawText("Spett.le", destX, destY, { size: 9, color: MUTED, italic: true });
+  destY -= 13;
+  drawText(dest.ragione_sociale || "-", destX, destY, { size: 11, bold: true });
+  destY -= 13;
+  drawText(dest.indirizzo?.trim() || "-", destX, destY, { size: 10 });
+  destY -= 12;
+  const capCittaDest = [
+    (dest.cap ?? "").trim(),
+    (dest.citta ?? "").trim(),
+    dest.provincia ? `(${dest.provincia.trim()})` : "",
+  ].filter(Boolean).join(" ").trim() || "-";
+  drawText(capCittaDest, destX, destY, { size: 10 });
+  destY -= 22;
 
-    const ensureSpace = (h: number) => {
-      if (y - h < MARGIN_BOTTOM) {
-        page = pdfDoc.addPage([PAGE_W, PAGE_H]);
-        y = PAGE_H - MARGIN_TOP;
-      }
-    };
+  y = Math.min(y, destY) - 8;
 
-    // === OGGETTO (in evidenza, accent brand) ===
-    if (rendered.oggetto?.trim()) {
-      ensureSpace(34);
-      drawText("OGGETTO", MARGIN_X, y, { size: 8.5, bold: true, color: BRAND_ACCENT });
-      y -= 13;
-      const oggLines = wrapText(rendered.oggetto.trim(), fontB, 12, CONTENT_W);
-      for (const l of oggLines) {
-        ensureSpace(15);
-        drawText(l, MARGIN_X, y, { size: 12, bold: true, color: BRAND_NAVY });
-        y -= 15;
-      }
-      y -= 14;
+  // === LUOGO E DATA ===
+  const luogoData = `${(sede.citta ?? "Casorezzo").trim()}, ${formatDateIt(new Date())}`;
+  drawText(luogoData, MARGIN_X, y, { size: 10, color: MUTED });
+  y -= 28;
+
+  const ensureSpace = (h: number) => {
+    if (y - h < MARGIN_BOTTOM) {
+      page = pdfDoc.addPage([PAGE_W, PAGE_H]);
+      y = PAGE_H - MARGIN_TOP;
     }
+  };
 
-    // === CORPO ===
-    let corpoFinale = rendered.corpo ?? "";
-    const corpoSize = 10.5;
-    const corpoLineH = 15; // interlinea piu arieggiata
+  // === OGGETTO (in evidenza, accent brand) ===
+  if (inp.oggetto?.trim()) {
+    ensureSpace(34);
+    drawText("OGGETTO", MARGIN_X, y, { size: 8.5, bold: true, color: BRAND_ACCENT });
+    y -= 13;
+    const oggLines = wrapText(inp.oggetto.trim(), fontB, 12, CONTENT_W);
+    for (const l of oggLines) {
+      ensureSpace(15);
+      drawText(l, MARGIN_X, y, { size: 12, bold: true, color: BRAND_NAVY });
+      y -= 15;
+    }
+    y -= 14;
+  }
 
+  // === CORPO ===
+  let corpoFinale = typeof inp.corpo === "string" ? inp.corpo : "";
+  const corpoSize = 10.5;
+  const corpoLineH = 15; // interlinea piu arieggiata
+
+  if (typeof inp.corpo === "string") {
     const corpoLines = wrapText(corpoFinale, font, corpoSize, CONTENT_W);
     for (const ln of corpoLines) {
       ensureSpace(corpoLineH);
       drawText(ln, MARGIN_X, y, { size: corpoSize });
       y -= corpoLineH;
     }
-
-    // === TABELLA SCADENZE (sostituisce l'elenco puntato) ===
-    if (scadute.length && !/TOTALE:/i.test(corpoFinale)) {
-      y -= 14;
-      ensureSpace(80);
-      drawText("Dettaglio scadenze scadute", MARGIN_X, y, { size: 10.5, bold: true, color: BRAND_NAVY });
-      y -= 14;
-
-      // Layout colonne: Documento | Data doc. | Scadenza | Importo
-      const colW = [CONTENT_W * 0.32, CONTENT_W * 0.20, CONTENT_W * 0.20, CONTENT_W * 0.28];
-      const colX = [
-        MARGIN_X,
-        MARGIN_X + colW[0],
-        MARGIN_X + colW[0] + colW[1],
-        MARGIN_X + colW[0] + colW[1] + colW[2],
-      ];
-      const rowH = 18;
-
-      // Header riga
-      page.drawRectangle({
-        x: MARGIN_X, y: y - rowH + 4, width: CONTENT_W, height: rowH,
-        color: rgb(BRAND_NAVY[0], BRAND_NAVY[1], BRAND_NAVY[2]),
-      });
-      const headers = ["Documento", "Data doc.", "Scadenza", "Importo"];
-      const headerY = y - rowH + 9;
-      drawText(headers[0], colX[0] + 8, headerY, { size: 9, bold: true, color: [1, 1, 1] });
-      drawText(headers[1], colX[1] + 8, headerY, { size: 9, bold: true, color: [1, 1, 1] });
-      drawText(headers[2], colX[2] + 8, headerY, { size: 9, bold: true, color: [1, 1, 1] });
-      // Importo allineato a destra
-      const hImpW = textWidth(headers[3], 9, true);
-      drawText(headers[3], colX[3] + colW[3] - 8 - hImpW, headerY, { size: 9, bold: true, color: [1, 1, 1] });
-      y -= rowH;
-
-      // Righe
-      for (let i = 0; i < scadute.length; i++) {
-        const s = scadute[i];
-        ensureSpace(rowH + 6);
-        // Zebra leggera
-        if (i % 2 === 1) {
-          page.drawRectangle({
-            x: MARGIN_X, y: y - rowH + 4, width: CONTENT_W, height: rowH,
-            color: rgb(0.97, 0.97, 0.98),
-          });
+  } else {
+    // FM62 G4: corpo formattato (grassetto, corsivo, sottolineato, elenchi, allineamento).
+    const fontBI = ctx.fontBI ?? (ctx.fontBI = await pdfDoc.embedFont(StandardFonts.HelveticaBoldOblique));
+    const scegli = (r: { b: boolean; i: boolean }) => (r.b && r.i ? fontBI : r.b ? fontB : r.i ? fontI : font);
+    for (const blocco of inp.corpo) {
+      if (blocco.vuoto) { y -= corpoLineH * 0.6; continue; }
+      const rientro = blocco.elenco ? 16 : 0;
+      const larghezza = CONTENT_W - rientro;
+      const righe = impaginaRuns(blocco.runs, scegli, corpoSize, larghezza);
+      righe.forEach((riga, ri) => {
+        ensureSpace(corpoLineH);
+        const w = riga.reduce((s, p) => s + p.w, 0);
+        let x = MARGIN_X + rientro;
+        if (blocco.allineamento === "center") x += (larghezza - w) / 2;
+        else if (blocco.allineamento === "right") x += larghezza - w;
+        if (ri === 0 && blocco.elenco) drawText(blocco.elenco, MARGIN_X, y, { size: corpoSize });
+        for (const p of riga) {
+          const f = scegli(p);
+          page.drawText(p.t, { x, y, size: corpoSize, font: f, color: rgb(INK[0], INK[1], INK[2]) });
+          if (p.u) page.drawLine({ start: { x, y: y - 1.5 }, end: { x: x + p.w, y: y - 1.5 }, thickness: 0.6, color: rgb(INK[0], INK[1], INK[2]) });
+          x += p.w;
         }
-        const rowY = y - rowH + 9;
-        const doc = s.numero_documento ?? "-";
-        const dataDoc = formatDateIt(s.data_documento);
-        const dataScad = formatDateIt(s.data_scadenza);
-        const importo = formatEuro(s.importo_scadenza);
+        y -= corpoLineH;
+      });
+      y -= 4;
+    }
+  }
 
-        drawText(doc, colX[0] + 8, rowY, { size: 9.5 });
-        drawText(dataDoc, colX[1] + 8, rowY, { size: 9.5 });
-        drawText(dataScad, colX[2] + 8, rowY, { size: 9.5 });
-        const impW = textWidth(importo, 9.5);
-        drawText(importo, colX[3] + colW[3] - 8 - impW, rowY, { size: 9.5 });
+  // === TABELLA SCADENZE (sostituisce l'elenco puntato) ===
+  if (scadute.length && !/TOTALE:/i.test(corpoFinale)) {
+    y -= 14;
+    ensureSpace(80);
+    drawText("Dettaglio scadenze scadute", MARGIN_X, y, { size: 10.5, bold: true, color: BRAND_NAVY });
+    y -= 14;
 
-        // Linea separatrice sottile
-        page.drawLine({
-          start: { x: MARGIN_X, y: y - rowH + 4 },
-          end: { x: PAGE_W - MARGIN_X, y: y - rowH + 4 },
-          thickness: 0.4,
-          color: rgb(HAIRLINE[0], HAIRLINE[1], HAIRLINE[2]),
-        });
-        y -= rowH;
-      }
+    // Layout colonne: Documento | Data doc. | Scadenza | Importo
+    const colW = [CONTENT_W * 0.32, CONTENT_W * 0.20, CONTENT_W * 0.20, CONTENT_W * 0.28];
+    const colX = [
+      MARGIN_X,
+      MARGIN_X + colW[0],
+      MARGIN_X + colW[0] + colW[1],
+      MARGIN_X + colW[0] + colW[1] + colW[2],
+    ];
+    const rowH = 18;
 
-      // Righe TOTALI (Totale scaduto — Spese di insoluto — Totale da pagare)
-      // Se non ci sono RiBa: solo "TOTALE SCADUTO" (comportamento invariato).
-      const totals = calcolaSpeseInsoluto(scadute, speseUnit);
-      const totalRowsData: { label: string; value: string; strong?: boolean; accent?: boolean }[] =
-        totals.nRiba === 0
-          ? [{ label: "TOTALE SCADUTO", value: formatEuro(totals.totaleScaduto), strong: true, accent: true }]
-          : [
-              { label: "Totale scaduto", value: formatEuro(totals.totaleScaduto) },
-              { label: `Spese di insoluto (${totals.nRiba} × ${formatEuro(totals.importoUnitario)})`, value: formatEuro(totals.speseInsoluto) },
-              { label: "TOTALE DA PAGARE", value: formatEuro(totals.totaleDaPagare), strong: true, accent: true },
-            ];
-      for (const tr of totalRowsData) {
-        ensureSpace(rowH + 4);
+    // Header riga
+    page.drawRectangle({
+      x: MARGIN_X, y: y - rowH + 4, width: CONTENT_W, height: rowH,
+      color: rgb(BRAND_NAVY[0], BRAND_NAVY[1], BRAND_NAVY[2]),
+    });
+    const headers = ["Documento", "Data doc.", "Scadenza", "Importo"];
+    const headerY = y - rowH + 9;
+    drawText(headers[0], colX[0] + 8, headerY, { size: 9, bold: true, color: [1, 1, 1] });
+    drawText(headers[1], colX[1] + 8, headerY, { size: 9, bold: true, color: [1, 1, 1] });
+    drawText(headers[2], colX[2] + 8, headerY, { size: 9, bold: true, color: [1, 1, 1] });
+    // Importo allineato a destra
+    const hImpW = textWidth(headers[3], 9, true);
+    drawText(headers[3], colX[3] + colW[3] - 8 - hImpW, headerY, { size: 9, bold: true, color: [1, 1, 1] });
+    y -= rowH;
+
+    // Righe
+    for (let i = 0; i < scadute.length; i++) {
+      const s = scadute[i];
+      ensureSpace(rowH + 6);
+      // Zebra leggera
+      if (i % 2 === 1) {
         page.drawRectangle({
           x: MARGIN_X, y: y - rowH + 4, width: CONTENT_W, height: rowH,
-          borderColor: rgb(BRAND_NAVY[0], BRAND_NAVY[1], BRAND_NAVY[2]),
-          borderWidth: 0,
-          color: rgb(0.94, 0.95, 0.97),
+          color: rgb(0.97, 0.97, 0.98),
         });
-        drawText(tr.label, colX[0] + 8, y - rowH + 9, { size: 10, bold: !!tr.strong, color: BRAND_NAVY });
-        const w = textWidth(tr.value, 10, !!tr.strong);
-        drawText(tr.value, colX[3] + colW[3] - 8 - w, y - rowH + 9, {
-          size: 10,
-          bold: !!tr.strong,
-          color: tr.accent ? BRAND_ACCENT : INK,
-        });
-        y -= rowH;
       }
-      y -= 6;
-    }
+      const rowY = y - rowH + 9;
+      const doc = s.numero_documento ?? "-";
+      const dataDoc = formatDateIt(s.data_documento);
+      const dataScad = formatDateIt(s.data_scadenza);
+      const importo = formatEuro(s.importo_scadenza);
 
-    // === FIRMA (unica) ===
-    y -= 22;
-    ensureSpace(58);
-    drawText("Distinti saluti,", MARGIN_X, y, { size: 10.5 });
-    y -= 34;
-    drawText(nomeOperatore, MARGIN_X, y, { size: 10.5, bold: true, color: BRAND_NAVY });
-    y -= 12;
-    drawText("MADE DISTRIBUZIONE S.p.A.", MARGIN_X, y, { size: 9.5, color: MUTED });
+      drawText(doc, colX[0] + 8, rowY, { size: 9.5 });
+      drawText(dataDoc, colX[1] + 8, rowY, { size: 9.5 });
+      drawText(dataScad, colX[2] + 8, rowY, { size: 9.5 });
+      const impW = textWidth(importo, 9.5);
+      drawText(importo, colX[3] + colW[3] - 8 - impW, rowY, { size: 9.5 });
 
-    // === FOOTER (solo ultima pagina): sede operativa + dati legali ===
-    {
-      const lastPage = pdfDoc.getPage(pdfDoc.getPageCount() - 1);
-
-      // Componi righe SEDE OPERATIVA del cliente (graceful: omette righe vuote)
-      const sedeFootLines: string[] = [];
-      // Titolo footer: "Insegna - Sede di X" se insegna presente, altrimenti solo "Sede di X"
-      const sedeFootBase = cittaSedeNorm ? `Sede di ${cittaSedeNorm}` : "Sede operativa";
-      const nomeSedeFoot = insegnaSede ? `${insegnaSede} - ${sedeFootBase}` : sedeFootBase;
-      const indirCompleto = [
-        (sedeFinal.indirizzo ?? "").trim(),
-        [
-          (sedeFinal.cap ?? "").trim(),
-          (sedeFinal.citta ?? "").trim(),
-          sedeFinal.provincia ? `(${sedeFinal.provincia.trim()})` : "",
-        ].filter(Boolean).join(" ").trim(),
-      ].filter(Boolean).join(" - ");
-      if (indirCompleto) sedeFootLines.push(indirCompleto);
-      const contatti: string[] = [];
-      if (sedeFinal.telefono) contatti.push(`Tel. ${sedeFinal.telefono}`);
-      if (sedeExtra.email) contatti.push(`Email: ${sedeExtra.email}`);
-      if (sedeExtra.pec) contatti.push(`PEC: ${sedeExtra.pec}`);
-      if (contatti.length) sedeFootLines.push(contatti.join("  -  "));
-
-      // Calcolo altezza footer
-      const footTopY = 130;
-      // Filetto brand
-      lastPage.drawRectangle({
-        x: MARGIN_X, y: footTopY, width: CONTENT_W, height: 1.2,
-        color: rgb(BRAND_NAVY[0], BRAND_NAVY[1], BRAND_NAVY[2]),
-      });
-
-      // Blocco SEDE OPERATIVA
-      let fy = footTopY - 12;
-      drawText(nomeSedeFoot, MARGIN_X, fy, { size: 8.5, bold: true, color: BRAND_NAVY, pageRef: lastPage });
-      fy -= 10;
-      for (const ln of sedeFootLines) {
-        drawText(ln, MARGIN_X, fy, { size: 7.5, color: MUTED, pageRef: lastPage });
-        fy -= 9;
-      }
-
-      // Separatore sottile
-      fy -= 4;
-      lastPage.drawLine({
-        start: { x: MARGIN_X, y: fy },
-        end: { x: PAGE_W - MARGIN_X, y: fy },
+      // Linea separatrice sottile
+      page.drawLine({
+        start: { x: MARGIN_X, y: y - rowH + 4 },
+        end: { x: PAGE_W - MARGIN_X, y: y - rowH + 4 },
         thickness: 0.4,
         color: rgb(HAIRLINE[0], HAIRLINE[1], HAIRLINE[2]),
       });
-      fy -= 11;
-
-      // Blocco DATI LEGALI MADE
-      for (let i = 0; i < LEGAL_FOOTER_LINES.length; i++) {
-        const isFirst = i === 0;
-        drawText(LEGAL_FOOTER_LINES[i], MARGIN_X, fy, {
-          size: isFirst ? 8 : 7,
-          bold: isFirst,
-          color: isFirst ? BRAND_NAVY : MUTED,
-          pageRef: lastPage,
-        });
-        fy -= isFirst ? 10 : 9;
-      }
+      y -= rowH;
     }
 
+    // Righe TOTALI (Totale scaduto — Spese di insoluto — Totale da pagare)
+    // Se non ci sono RiBa: solo "TOTALE SCADUTO" (comportamento invariato).
+    const totals = calcolaSpeseInsoluto(scadute, speseUnit);
+    const totalRowsData: { label: string; value: string; strong?: boolean; accent?: boolean }[] =
+      totals.nRiba === 0
+        ? [{ label: "TOTALE SCADUTO", value: formatEuro(totals.totaleScaduto), strong: true, accent: true }]
+        : [
+            { label: "Totale scaduto", value: formatEuro(totals.totaleScaduto) },
+            { label: `Spese di insoluto (${totals.nRiba} × ${formatEuro(totals.importoUnitario)})`, value: formatEuro(totals.speseInsoluto) },
+            { label: "TOTALE DA PAGARE", value: formatEuro(totals.totaleDaPagare), strong: true, accent: true },
+          ];
+    for (const tr of totalRowsData) {
+      ensureSpace(rowH + 4);
+      page.drawRectangle({
+        x: MARGIN_X, y: y - rowH + 4, width: CONTENT_W, height: rowH,
+        borderColor: rgb(BRAND_NAVY[0], BRAND_NAVY[1], BRAND_NAVY[2]),
+        borderWidth: 0,
+        color: rgb(0.94, 0.95, 0.97),
+      });
+      drawText(tr.label, colX[0] + 8, y - rowH + 9, { size: 10, bold: !!tr.strong, color: BRAND_NAVY });
+      const w = textWidth(tr.value, 10, !!tr.strong);
+      drawText(tr.value, colX[3] + colW[3] - 8 - w, y - rowH + 9, {
+        size: 10,
+        bold: !!tr.strong,
+        color: tr.accent ? BRAND_ACCENT : INK,
+      });
+      y -= rowH;
+    }
+    y -= 6;
+  }
 
-    const pdfBytes = await pdfDoc.save();
-    const fileName = `lettera-${sanitizeName(tplNome || "documento")}-${formatDateIt(new Date()).replace(/\//g, "-")}.pdf`;
+  // === FIRMA (unica) ===
+  y -= 22;
+  ensureSpace(58);
+  drawText("Distinti saluti,", MARGIN_X, y, { size: 10.5 });
+  y -= 34;
+  drawText(nomeOperatore, MARGIN_X, y, { size: 10.5, bold: true, color: BRAND_NAVY });
+  y -= 12;
+  drawText("MADE DISTRIBUZIONE S.p.A.", MARGIN_X, y, { size: 9.5, color: MUTED });
 
-    return { pdfBytes, fileName, tplNome, tpl };
+  // === FOOTER (solo ultima pagina): sede operativa + dati legali ===
+  {
+    const lastPage = pdfDoc.getPage(pdfDoc.getPageCount() - 1);
+
+    // Componi righe SEDE OPERATIVA del cliente (graceful: omette righe vuote)
+    const sedeFootLines: string[] = [];
+    // Titolo footer: "Insegna - Sede di X" se insegna presente, altrimenti solo "Sede di X"
+    const sedeFootBase = cittaSedeNorm ? `Sede di ${cittaSedeNorm}` : "Sede operativa";
+    const nomeSedeFoot = insegnaSede ? `${insegnaSede} - ${sedeFootBase}` : sedeFootBase;
+    const indirCompleto = [
+      (sede.indirizzo ?? "").trim(),
+      [
+        (sede.cap ?? "").trim(),
+        (sede.citta ?? "").trim(),
+        sede.provincia ? `(${sede.provincia.trim()})` : "",
+      ].filter(Boolean).join(" ").trim(),
+    ].filter(Boolean).join(" - ");
+    if (indirCompleto) sedeFootLines.push(indirCompleto);
+    const contatti: string[] = [];
+    if (sede.telefono) contatti.push(`Tel. ${sede.telefono}`);
+    if (sedeExtra.email) contatti.push(`Email: ${sedeExtra.email}`);
+    if (sedeExtra.pec) contatti.push(`PEC: ${sedeExtra.pec}`);
+    if (contatti.length) sedeFootLines.push(contatti.join("  -  "));
+
+    // Calcolo altezza footer
+    const footTopY = 130;
+    // Filetto brand
+    lastPage.drawRectangle({
+      x: MARGIN_X, y: footTopY, width: CONTENT_W, height: 1.2,
+      color: rgb(BRAND_NAVY[0], BRAND_NAVY[1], BRAND_NAVY[2]),
+    });
+
+    // Blocco SEDE OPERATIVA
+    let fy = footTopY - 12;
+    drawText(nomeSedeFoot, MARGIN_X, fy, { size: 8.5, bold: true, color: BRAND_NAVY, pageRef: lastPage });
+    fy -= 10;
+    for (const ln of sedeFootLines) {
+      drawText(ln, MARGIN_X, fy, { size: 7.5, color: MUTED, pageRef: lastPage });
+      fy -= 9;
+    }
+
+    // Separatore sottile
+    fy -= 4;
+    lastPage.drawLine({
+      start: { x: MARGIN_X, y: fy },
+      end: { x: PAGE_W - MARGIN_X, y: fy },
+      thickness: 0.4,
+      color: rgb(HAIRLINE[0], HAIRLINE[1], HAIRLINE[2]),
+    });
+    fy -= 11;
+
+    // Blocco DATI LEGALI MADE
+    for (let i = 0; i < LEGAL_FOOTER_LINES.length; i++) {
+      const isFirst = i === 0;
+      drawText(LEGAL_FOOTER_LINES[i], MARGIN_X, fy, {
+        size: isFirst ? 8 : 7,
+        bold: isFirst,
+        color: isFirst ? BRAND_NAVY : MUTED,
+        pageRef: lastPage,
+      });
+      fy -= isFirst ? 10 : 9;
+    }
+  }
+
+}
+
+/** Spezza i pezzi di testo formattato in righe che stanno nella larghezza. */
+function impaginaRuns(runs: RunLettera[], scegli: (r: { b: boolean; i: boolean }) => PDFFont, size: number, maxW: number) {
+  type Pezzo = { t: string; b: boolean; i: boolean; u: boolean; w: number };
+  const righe: Pezzo[][] = [];
+  let cur: Pezzo[] = []; let curW = 0;
+  const chiudi = () => { while (cur.length && !cur[cur.length - 1].t.trim()) { curW -= cur.pop()!.w; } righe.push(cur); cur = []; curW = 0; };
+  for (const r of runs) {
+    if (r.t === "\n") { chiudi(); continue; }
+    const f = scegli(r);
+    for (const tok of toWinAnsi(r.t).split(/(\s+)/)) {
+      if (!tok) continue;
+      const w = f.widthOfTextAtSize(tok, size);
+      if (/^\s+$/.test(tok)) { if (cur.length) { cur.push({ t: " ", b: r.b, i: r.i, u: r.u, w: f.widthOfTextAtSize(" ", size) }); curW += f.widthOfTextAtSize(" ", size); } continue; }
+      if (curW + w > maxW && cur.length) chiudi();
+      if (w > maxW) {
+        let pezzo = "";
+        for (const ch of tok) { if (f.widthOfTextAtSize(pezzo + ch, size) > maxW && pezzo) { cur.push({ t: pezzo, b: r.b, i: r.i, u: r.u, w: f.widthOfTextAtSize(pezzo, size) }); chiudi(); pezzo = ch; } else pezzo += ch; }
+        cur.push({ t: pezzo, b: r.b, i: r.i, u: r.u, w: f.widthOfTextAtSize(pezzo, size) }); curW += f.widthOfTextAtSize(pezzo, size);
+        continue;
+      }
+      cur.push({ t: tok, b: r.b, i: r.i, u: r.u, w }); curW += w;
+    }
+  }
+  if (cur.length || !righe.length) chiudi();
+  return righe;
 }

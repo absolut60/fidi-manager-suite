@@ -11,8 +11,11 @@ export const elencoFornitoriInput = z.object({
   conArticoli: z.boolean().nullable().optional(),
   includiManuali: z.boolean().default(false),
   macrocategorie: z.array(z.string().trim().min(1).max(20)).max(10).nullable().optional(),
+  conEmail: z.boolean().nullable().optional(),
   limite: paginazione.limite.default(100), offset: paginazione.offset,
 });
+/** Stessi filtri dell'elenco, senza paginazione: per "seleziona tutti i filtrati". */
+export const idsFornitoriInput = elencoFornitoriInput.omit({ limite: true, offset: true });
 export const dettaglioFornitoreInput = z.object({ id: z.string().uuid() });
 export const articoliFornitoreInput = z.object({
   fornitoreId: z.string().uuid(), testo: z.string().trim().nullable().optional(),
@@ -25,6 +28,7 @@ export const salvaNoteFornitoreInput = z.object({
     "Le note interne possono contenere al massimo 4000 caratteri").nullable(),
 });
 export type FiltriFornitori = z.input<typeof elencoFornitoriInput>;
+export type FiltriIdsFornitori = z.input<typeof idsFornitoriInput>;
 export type FiltriArticoliFornitore = z.input<typeof articoliFornitoreInput>;
 export type FornitoreElenco = Database["public"]["Functions"]["cerca_fornitori"]["Returns"][number];
 export type ArticoloFornitore = Database["public"]["Functions"]["articoli_fornitore"]["Returns"][number];

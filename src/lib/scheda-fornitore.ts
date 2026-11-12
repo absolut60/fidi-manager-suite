@@ -37,6 +37,7 @@ export const ricercaFornitori = zodValidator(z.object({
   q: fallback(z.string(), "").default(""),
   ancheCliente: fallback(z.string(), "tutti").default("tutti"),
   conArticoli: fallback(z.string(), "tutti").default("tutti"),
+  conEmail: fallback(z.string(), "tutti").default("tutti"),
   manuali: fallback(z.boolean(), false).default(false),
   macro: fallback(z.array(z.string()), []).default([]),
   pagina: fallback(z.number(), 1).default(1),

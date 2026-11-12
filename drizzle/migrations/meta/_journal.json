@@ -1247,6 +1247,13 @@
       "when": 1794489293731,
       "tag": "0177_fm62_attivita_corpo_html",
       "breakpoints": true
+    },
+    {
+      "idx": 178,
+      "version": "7",
+      "when": 1794491921727,
+      "tag": "0178_fm62_invii_fornitori",
+      "breakpoints": true
     }
   ]
 }
