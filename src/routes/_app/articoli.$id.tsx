@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { BackButton } from "@/components/back-button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
@@ -14,41 +14,33 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { supabase } from "@/integrations/supabase/client";
 import {
   fetchArticolo,
   fetchFornitori,
-  fetchListiniAcquisto,
   updateArticolo,
-  calcCostoNetto,
   type Articolo,
   type ArticoloUpdate,
 } from "@/lib/articoli-api";
 import { StatoBadge } from "@/components/articoli/StatoBadge";
-import { ListinoAcquistoSection } from "@/components/articoli/ListinoAcquistoSection";
-import { ListinoVenditaSection } from "@/components/articoli/ListinoVenditaSection";
 import { Save, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
 
 export const Route = createFileRoute("/_app/articoli/$id")({
-  head: () => ({ meta: [{ title: "Scheda articolo — Sistema MADE" }] }),
-  validateSearch: (
-    s: Record<string, unknown>,
-  ): { tab?: "acquisto" | "vendita" | "anagrafica" } => ({
-    tab:
-      s.tab === "acquisto" || s.tab === "vendita" || s.tab === "anagrafica"
-        ? (s.tab as "acquisto" | "vendita" | "anagrafica")
-        : undefined,
-  }),
+  head: () => ({ meta: [
+    { title: "Scheda articolo Sistema MADE — FidiManager" },
+    { name: "description", content: "Anagrafica e dati tecnici degli articoli Sistema MADE." },
+    { property: "og:title", content: "Scheda articolo Sistema MADE" },
+    { property: "og:description", content: "Dati tecnici dell’articolo Sistema MADE." },
+    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
+  ] }),
   component: ArticoloDetailPage,
 });
 
 function ArticoloDetailPage() {
   const { id } = Route.useParams();
-  const { tab: tabParam } = Route.useSearch();
   const qc = useQueryClient();
-  const navigate = useNavigate();
 
   const { data: articolo, isLoading } = useQuery({
     queryKey: ["articolo", id],
@@ -60,17 +52,19 @@ function ArticoloDetailPage() {
     queryFn: fetchFornitori,
   });
 
-  const { data: listiniAcq = [] } = useQuery({
-    queryKey: ["listini_acquisto", id],
-    queryFn: () => fetchListiniAcquisto(id),
+  const codiceGamma = articolo?.cod_gamma?.trim();
+  const collegamento = useQuery({
+    queryKey: ["articolo-collegamento-gamma", codiceGamma],
+    enabled: !!codiceGamma,
+    queryFn: async () => {
+      if (!codiceGamma) return null;
+      const { data, error } = await supabase.from("articoli_gamma").select("codice").eq("codice", codiceGamma).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
   });
 
   const [form, setForm] = useState<Partial<Articolo>>({});
-
-  const activeAcq = listiniAcq[0];
-  const costoNetto = activeAcq
-    ? Number(activeAcq.costo_netto ?? calcCostoNetto(activeAcq).costo_netto) || 0
-    : 0;
 
   useEffect(() => {
     if (articolo) setForm(articolo);
@@ -87,7 +81,9 @@ function ArticoloDetailPage() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Errore"),
   });
 
-  if (isLoading || !articolo) {
+  if (collegamento.error) return <div className="p-6"><BackButton fallbackTo="/articoli" /><p role="alert" className="mt-4 text-destructive">{collegamento.error.message}</p></div>;
+  if (collegamento.data) return <Navigate to="/articoli/codice/$codice" params={{ codice: collegamento.data.codice }} replace />;
+  if (isLoading || !articolo || (!!codiceGamma && collegamento.isPending)) {
     return <div className="p-8 text-muted-foreground">Caricamento…</div>;
   }
 
@@ -100,7 +96,7 @@ function ArticoloDetailPage() {
       cod_gamma: form.cod_gamma ?? null,
       cod_fornitore: form.cod_fornitore ?? null,
       fornitore_id: form.fornitore_id ?? null,
-      descrizione: form.descrizione ?? articolo!.descrizione,
+      descrizione: form.descrizione ?? articolo.descrizione,
       um: form.um ?? null,
       categoria: form.categoria ?? null,
       tipologia: form.tipologia ?? null,
@@ -110,7 +106,7 @@ function ArticoloDetailPage() {
       qta_fornitore: form.qta_fornitore ?? null,
       note: form.note ?? null,
       note_acquisto: form.note_acquisto ?? null,
-      stato: form.stato ?? articolo!.stato,
+      stato: form.stato ?? articolo.stato,
     });
   }
 
@@ -153,14 +149,6 @@ function ArticoloDetailPage() {
       </div>
 
       <div className="flex-1 overflow-auto p-3 md:p-4 lg:p-6">
-        <Tabs value={tabParam ?? "anagrafica"} onValueChange={(v) => navigate({ to: "/articoli/$id", params: { id }, search: { tab: v as "anagrafica" | "acquisto" | "vendita" }, replace: true })}>
-          <TabsList>
-            <TabsTrigger value="anagrafica">Anagrafica</TabsTrigger>
-            <TabsTrigger value="acquisto">Listino acquisto</TabsTrigger>
-            <TabsTrigger value="vendita">Listino vendita</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="anagrafica" className="mt-4">
             <div className="grid grid-cols-1 gap-4 rounded-lg border bg-card p-6 md:grid-cols-3">
               <Field label="Cod. GAMMA">
                 <Input
@@ -286,29 +274,6 @@ function ArticoloDetailPage() {
                 </Field>
               </div>
             </div>
-          </TabsContent>
-
-          <TabsContent value="acquisto" className="mt-4">
-            <ListinoAcquistoSection articoloId={id} />
-          </TabsContent>
-
-
-          <TabsContent value="vendita" className="mt-4">
-            <ListinoVenditaSection articoloId={id} costoNetto={costoNetto} />
-            <p className="mt-2 text-xs text-muted-foreground">
-              Suggerimento: apri prima "Listino acquisto" per agganciare il costo netto e
-              abilitare i calcoli automatici di prezzo e margine.
-            </p>
-            {!costoNetto && (
-              <div className="mt-2 text-xs">
-                <Link to="/articoli/$id" params={{ id }} className="text-navy underline">
-                  Vai al listino acquisto →
-                </Link>
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
-      </div>
     </div>
   );
 }
