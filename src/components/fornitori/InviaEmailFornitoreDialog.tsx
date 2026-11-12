@@ -1,9 +1,9 @@
 // FM62 G3: finestra "Invia email" al fornitore (stile InviaEmailRecuperoDialog,
 // telefono a tutto schermo). Invio solo via inviaEmailFornitore.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Plus, Send, X } from "lucide-react";
+import { AlertTriangle, ChevronDown, Paperclip, Plus, Send, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -37,10 +37,16 @@ function Sezione({ titolo, children }: { titolo: string; children: React.ReactNo
 }
 
 /** Campo con più indirizzi: Invio, virgola o "Aggiungi" li trasformano in etichette rimovibili. */
-function CampoIndirizzi({ id, label, valori, onChange, max, suggerimenti }: {
-  id: string; label: string; valori: string[]; onChange: (v: string[]) => void; max?: number;
+/** Normalizza un indirizzo per il confronto (senza maiuscole/spazi). */
+export const normIndirizzo = (s: string) => s.replace(/\s+/g, "").toLowerCase();
+/** Attributi che spengono l'autocompletamento del browser e dei gestori password. */
+const NO_AUTOFILL = { autoComplete: "off", "data-form-type": "other", "data-lpignore": "true", "data-1p-ignore": "true" } as const;
+
+function CampoIndirizzi({ id, label, valori, onChange, max, suggerimenti, usati }: {
+  id: string; label: string; valori: string[]; onChange: (v: string[]) => void; max?: number; usati: string[];
   suggerimenti?: { etichetta: string; valore: string; nota?: string }[];
 }) {
+  const uid = useId().replace(/:/g, "");
   const [testo, setTesto] = useState("");
   const [errore, setErrore] = useState<string | null>(null);
   const aggiungi = (raw: string) => {
@@ -53,12 +59,13 @@ function CampoIndirizzi({ id, label, valori, onChange, max, suggerimenti }: {
     if (max && out.length > max) { setErrore(`Massimo ${max} indirizzi in questo campo.`); return; }
     onChange(out); setTesto(""); setErrore(null);
   };
-  const libere = (suggerimenti ?? []).filter(s => !valori.some(v => v.toLowerCase() === s.valore.toLowerCase()));
+  const giaUsati = new Set(usati.map(normIndirizzo));
+  const libere = (suggerimenti ?? []).filter(s => !giaUsati.has(normIndirizzo(s.valore)));
   return <div className="min-w-0 space-y-1.5">
     <Label htmlFor={id}>{label}</Label>
     {valori.length > 0 && <ul className="flex flex-wrap gap-1.5">{valori.map(v => <li key={v} className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border bg-muted/40 py-0.5 pl-2.5 pr-1 text-sm"><span className="min-w-0 break-all">{v}</span><button type="button" className="inline-flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-destructive" aria-label={`Togli ${v}`} onClick={() => onChange(valori.filter(x => x !== v))}><X className="size-3.5" /></button></li>)}</ul>}
     <div className="flex min-w-0 gap-2">
-      <Input id={id} type="email" inputMode="email" autoComplete="off" className="min-h-10 min-w-0 flex-1" placeholder="nome@esempio.it" value={testo}
+      <Input id={id} name={`fm-dest-${id}-${uid}`} type="email" inputMode="email" {...NO_AUTOFILL} autoComplete="new-password" className="min-h-10 min-w-0 flex-1" placeholder="nome@esempio.it" value={testo}
         onChange={e => { setTesto(e.target.value); setErrore(null); }}
         onKeyDown={e => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); aggiungi(testo); } }}
         onBlur={() => { if (testo.trim()) aggiungi(testo); }} />
@@ -87,6 +94,7 @@ export function InviaEmailFornitoreDialog({ fornitore, open, onOpenChange, onInv
   const testo = useMemo(() => htmlInTesto(sanificaHtmlEmailFornitore(html)), [html]);
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [file, setFile] = useState<File[]>([]);
+  const [pannello, setPannello] = useState(false);
   const [chiave, setChiave] = useState(() => crypto.randomUUID());
   const [conferma, setConferma] = useState(false);
   const [invio, setInvio] = useState(false);
@@ -94,7 +102,7 @@ export function InviaEmailFornitoreDialog({ fornitore, open, onOpenChange, onInv
 
   useEffect(() => {
     if (!open) return;
-    setA(emailForn ? [emailForn] : []); setCc([]); setCcn([]); setOggetto(""); setHtml(""); setSel(new Set()); setFile([]);
+    setA(emailForn ? [emailForn] : []); setCc([]); setCcn([]); setOggetto(""); setHtml(""); setSel(new Set()); setFile([]); setPannello(false);
     setChiave(crypto.randomUUID()); setConferma(false);
   }, [open, fornitore.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -110,6 +118,9 @@ export function InviaEmailFornitoreDialog({ fornitore, open, onOpenChange, onInv
   });
   const byte = useMemo(() => file.reduce((s, f) => s + f.size, 0) + (allegati.data ?? []).filter(x => sel.has(x.id)).reduce((s, x) => s + Number(x.dimensione_bytes ?? 0), 0), [file, sel, allegati.data]);
   const oltre = byte > MAX_ALLEGATI_FORNITORE_BYTES;
+  const usati = [...a, ...cc, ...ccn];
+  const scelti = (allegati.data ?? []).filter(x => sel.has(x.id));
+  const nAllegati = scelti.length + file.length;
   const totaleIndirizzi = a.length + cc.length + ccn.length;
   const doppioni = (() => { const t = [...a, ...cc, ...ccn].map(x => x.toLowerCase()); return t.length !== new Set(t).size; })();
   const pronto = a.length > 0 && oggetto.trim().length > 0 && oggetto.trim().length <= 200 && testo.trim().length > 0 && testo.length <= MAX_TESTO_FORNITORE && html.length <= 100000 && !oltre && totaleIndirizzi <= MAX_INDIRIZZI_FORNITORE && !doppioni && !invio;
@@ -140,36 +151,55 @@ export function InviaEmailFornitoreDialog({ fornitore, open, onOpenChange, onInv
       </DialogHeader>
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
         <Sezione titolo="Destinatari">
-          <CampoIndirizzi id="email-a" label="A" valori={a} onChange={setA} max={MAX_DESTINATARI_A}
+          <CampoIndirizzi id="email-a" label="A" usati={usati} valori={a} onChange={setA} max={MAX_DESTINATARI_A}
             suggerimenti={[...(emailForn ? [{ etichetta: "Email", valore: emailForn }] : []), ...(pecForn ? [{ etichetta: "PEC", valore: pecForn, nota: "parte come email normale, non come PEC certificata" }] : [])]} />
           {!emailForn && <div className="flex items-start gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning"><AlertTriangle className="mt-0.5 size-4 shrink-0" /><span>Il fornitore non ha un indirizzo email in anagrafica: inseriscilo a mano.</span></div>}
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <CampoIndirizzi id="email-cc" label="CC" valori={cc} onChange={setCc} suggerimenti={emailIo ? [{ etichetta: "Io", valore: emailIo }] : []} />
-            <CampoIndirizzi id="email-ccn" label="CCN" valori={ccn} onChange={setCcn} suggerimenti={emailIo ? [{ etichetta: "Io", valore: emailIo }] : []} />
+            <CampoIndirizzi id="email-cc" label="CC" usati={usati} valori={cc} onChange={setCc} suggerimenti={emailIo ? [{ etichetta: "Io", valore: emailIo }] : []} />
+            <CampoIndirizzi id="email-ccn" label="CCN" usati={usati} valori={ccn} onChange={setCcn} suggerimenti={emailIo ? [{ etichetta: "Io", valore: emailIo }] : []} />
           </div>
           {(totaleIndirizzi > MAX_INDIRIZZI_FORNITORE || doppioni) && <p className="text-xs text-destructive">{doppioni ? "Lo stesso indirizzo compare in più campi: toglilo da uno." : `Massimo ${MAX_INDIRIZZI_FORNITORE} indirizzi in totale tra A, CC e CCN.`}</p>}
         </Sezione>
         <Sezione titolo="Messaggio">
-          <div className="space-y-1.5"><Label htmlFor="email-oggetto">Oggetto</Label><Input id="email-oggetto" className="min-h-10" maxLength={200} value={oggetto} onChange={e => setOggetto(e.target.value)} /></div>
+          <div className="min-w-0 space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="email-oggetto">Oggetto</Label>
+              <Button type="button" variant={pannello ? "secondary" : "ghost"} size="sm" aria-expanded={pannello} aria-controls="email-pannello-allegati"
+                className={`min-h-9 gap-1.5 ${oltre ? "text-destructive" : ""}`} onClick={() => setPannello(v => !v)}>
+                <Paperclip className="size-4" /><span>Allegati</span>
+                {nAllegati > 0 && <span className={`rounded-full px-1.5 text-xs tabular-nums ${oltre ? "bg-destructive text-destructive-foreground" : "bg-primary text-primary-foreground"}`}>{nAllegati}</span>}
+                <ChevronDown className={`size-3.5 transition-transform ${pannello ? "rotate-180" : ""}`} />
+              </Button>
+            </div>
+            <Input id="email-oggetto" name="fm-oggetto-email-fornitore" type="text" {...NO_AUTOFILL} className="min-h-10" maxLength={200} value={oggetto} onChange={e => setOggetto(e.target.value)} />
+            {nAllegati > 0 && <ul className="flex flex-wrap gap-1.5 pt-1" aria-label="Allegati scelti">
+              {scelti.map(x => <li key={x.id} className={`inline-flex min-w-0 max-w-full items-center gap-1 rounded-md border py-0.5 pl-2 pr-0.5 text-xs ${oltre ? "border-destructive/50 bg-destructive/5" : "bg-muted/40"}`}>
+                <Paperclip className="size-3 shrink-0 text-muted-foreground" /><span className="min-w-0 break-all">{x.nome_file}</span>{x.dimensione_bytes ? <span className="shrink-0 text-muted-foreground">({fmtMB(x.dimensione_bytes)})</span> : null}
+                <button type="button" className="inline-flex size-7 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-destructive" aria-label={`Togli ${x.nome_file}`} onClick={() => { const n = new Set(sel); n.delete(x.id); setSel(n); }}><X className="size-3.5" /></button></li>)}
+              {file.map((f, i) => <li key={`${f.name}-${i}`} className={`inline-flex min-w-0 max-w-full items-center gap-1 rounded-md border py-0.5 pl-2 pr-0.5 text-xs ${oltre ? "border-destructive/50 bg-destructive/5" : "bg-muted/40"}`}>
+                <Paperclip className="size-3 shrink-0 text-muted-foreground" /><span className="min-w-0 break-all">{f.name}</span><span className="shrink-0 text-muted-foreground">({fmtMB(f.size)})</span>
+                <button type="button" className="inline-flex size-7 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-destructive" aria-label={`Togli ${f.name}`} onClick={() => setFile(prev => prev.filter((_, j) => j !== i))}><X className="size-3.5" /></button></li>)}
+            </ul>}
+            {(nAllegati > 0 || pannello) && <p className={`text-xs ${oltre ? "font-medium text-destructive" : "text-muted-foreground"}`}>Totale allegati: {fmtMB(byte)} di 10 MB{oltre ? " — limite superato, togli qualche file." : ""}</p>}
+            {pannello && <div id="email-pannello-allegati" className={`min-w-0 space-y-3 rounded-md border p-3 ${oltre ? "border-destructive" : "border-border"}`}>
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Dalla scheda fornitore</p>
+                {allegati.isPending ? <p className="text-sm text-muted-foreground">Caricamento…</p>
+                  : !allegati.data?.length ? <p className="text-sm text-muted-foreground">Nessun allegato nella scheda fornitore.</p>
+                  : <div className="max-h-40 divide-y divide-border overflow-y-auto rounded-md border border-border">{allegati.data.map(x => <label key={x.id} className="flex min-h-10 cursor-pointer items-start gap-3 px-3 py-2 text-sm">
+                      <Checkbox className="mt-0.5" checked={sel.has(x.id)} onCheckedChange={v => { const n = new Set(sel); if (v) n.add(x.id); else n.delete(x.id); setSel(n); }} />
+                      <span className="min-w-0 flex-1"><span className="block break-all font-medium">{x.nome_file}</span><span className="block text-xs text-muted-foreground">{new Date(x.created_at).toLocaleDateString("it-IT", { timeZone: "Europe/Rome" })}{x.dimensione_bytes ? ` · ${fmtMB(x.dimensione_bytes)}` : ""}</span></span>
+                    </label>)}</div>}
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Dal dispositivo</p>
+                <ScegliFile multiple onFiles={fs => setFile(prev => [...prev, ...fs])} nomi={file.map(f => f.name)} etichetta="Carica file" />
+                {file.length > 0 && <ul className="space-y-1.5">{file.map((f, i) => <SchedaFileLocale key={`${f.name}-${i}`} file={f} onRimuovi={() => setFile(prev => prev.filter((_, j) => j !== i))} />)}</ul>}
+              </div>
+            </div>}
+          </div>
           <div className="space-y-1.5"><Label>Testo</Label><RichTextEditor value={html} onChange={setHtml} caratteri compatto minHeight={240} maxHeight={420} ariaLabel="Testo dell'email" pulisciIncolla={sanificaHtmlEmailFornitore} />
             <p className={`text-right text-xs tabular-nums ${testo.length > MAX_TESTO_FORNITORE ? "text-destructive" : "text-muted-foreground"}`}>{testo.length.toLocaleString("it-IT")}/20.000</p></div>
-        </Sezione>
-        <Sezione titolo="Allegati">
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Dalla scheda fornitore</p>
-            {allegati.isPending ? <p className="text-sm text-muted-foreground">Caricamento…</p>
-              : !allegati.data?.length ? <p className="text-sm text-muted-foreground">Nessun allegato nella scheda fornitore.</p>
-              : <div className="max-h-56 divide-y divide-border overflow-y-auto rounded-md border border-border">{allegati.data.map(x => <label key={x.id} className="flex min-h-11 cursor-pointer items-start gap-3 px-3 py-2 text-sm">
-                  <Checkbox className="mt-0.5" checked={sel.has(x.id)} onCheckedChange={v => { const n = new Set(sel); if (v) n.add(x.id); else n.delete(x.id); setSel(n); }} />
-                  <span className="min-w-0 flex-1"><span className="block break-all font-medium">{x.nome_file}</span><span className="block text-xs text-muted-foreground">{new Date(x.created_at).toLocaleDateString("it-IT", { timeZone: "Europe/Rome" })}{x.dimensione_bytes ? ` · ${fmtMB(x.dimensione_bytes)}` : ""}</span></span>
-                </label>)}</div>}
-          </div>
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Dal dispositivo</p>
-            <ScegliFile multiple onFiles={fs => setFile(prev => [...prev, ...fs])} nomi={file.map(f => f.name)} etichetta="Carica file" />
-            {file.length > 0 && <ul className="space-y-1.5">{file.map((f, i) => <SchedaFileLocale key={`${f.name}-${i}`} file={f} onRimuovi={() => setFile(prev => prev.filter((_, j) => j !== i))} />)}</ul>}
-          </div>
-          <p className={`text-sm ${oltre ? "font-medium text-destructive" : "text-muted-foreground"}`}>Totale allegati: {fmtMB(byte)} di 10 MB{oltre ? " — limite superato, togli qualche file." : ""}</p>
         </Sezione>
       </div>
       <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border px-4 py-3 sm:flex-row sm:px-6 [&>button]:w-full sm:[&>button]:w-auto">
