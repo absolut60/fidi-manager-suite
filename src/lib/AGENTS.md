@@ -1,1 +1,2 @@
 - Read-only quote/catalog/supplier access: only auth_consulta_preventivi (TS twin in src/lib/permessi-preventivi.ts, adds store_manager); client search/numbering stay on auth_ha_accesso_preventivi, so reading never grants writes.
+- Sale price (list or own-site depot) comes only from public._prezzo_vendita_articoli, used by listini_articolo_visibili and cerca_articoli, so sheet and list cannot diverge; list sorting uses the shared lista-responsive/ordinamento-colonne component.

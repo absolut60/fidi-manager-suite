@@ -8,10 +8,10 @@ import { SchedaLista } from "@/components/lista-responsive/scheda-lista";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+import { IntestazioneOrdinabile, MenuOrdinamento, type StatoOrdinamento } from "@/components/lista-responsive/ordinamento-colonne";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, Search, SlidersHorizontal } from "lucide-react";
-import { FILTRI_ARTICOLI, STATI_ARTICOLI, prezzoArticolo, type FiltriArticoli } from "@/lib/catalogo-articoli";
+import { FILTRI_ARTICOLI, STATI_ARTICOLI, VALORE_LOGISTICA, listinoValido, ordinamentoArticoliValido, prezzoArticolo, quantitaArticolo, type FiltriArticoli, type OrdinamentoArticoli } from "@/lib/catalogo-articoli";
 import { elencoArticoliGamma, facetsArticoliGamma, fornitoriArticoliGamma } from "@/lib/catalogo-articoli.functions";
 
 export const Route = createFileRoute("/_app/articoli/")({
@@ -26,7 +26,7 @@ function useDebounce(value: string) {
 }
 function ArticoliListPage() {
   const { user } = useAuth();
-  const { filtri: f, setParziale } = useFiltriPagina("articoli-gamma", FILTRI_ARTICOLI, { userId: user?.id, valida: { famiglie: Array.isArray, sottofamiglie: Array.isArray, marche: Array.isArray, fornitori: Array.isArray, stati: Array.isArray } });
+  const { filtri: f, setParziale } = useFiltriPagina("articoli-gamma", FILTRI_ARTICOLI, { userId: user?.id, valida: { famiglie: Array.isArray, sottofamiglie: Array.isArray, marche: Array.isArray, fornitori: Array.isArray, stati: Array.isArray, disponibileIn: Array.isArray } });
   const [aperti, setAperti] = useState(false);
   const [cercaFornitore, setCercaFornitore] = useState("");
   const search = useDebounce(f.search);
@@ -41,7 +41,7 @@ function ArticoliListPage() {
       </div>
       <Suspense fallback={<p className="py-2 text-sm text-muted-foreground">Caricamento filtri…</p>}><Filtri f={f} cambia={cambia} aperti={aperti} testoFornitore={testoFornitore} cercaFornitore={setCercaFornitore} /></Suspense>
     </header>
-    <Suspense fallback={<p className="p-6 text-muted-foreground">Caricamento articoli…</p>}><Risultati f={{ ...f, search }} setPage={page => setParziale({ page })} /></Suspense>
+    <Suspense fallback={<p className="p-6 text-muted-foreground">Caricamento articoli…</p>}><Risultati f={{ ...f, search }} setPage={page => setParziale({ page })} ordina={(ordina, dir) => setParziale({ ordina, dir, page: 1 })} /></Suspense>
   </div>;
 }
 function Filtri({ f, cambia, aperti, testoFornitore, cercaFornitore }: { f: FiltriArticoli; cambia: (p: Partial<FiltriArticoli>) => void; aperti: boolean; testoFornitore: string; cercaFornitore: (s: string) => void }) {
@@ -58,21 +58,31 @@ function Filtri({ f, cambia, aperti, testoFornitore, cercaFornitore }: { f: Filt
     <FiltroMultiplo etichetta="Marca" testoTutti="Tutte le marche" cercabile opzioni={opzioni(facets.marche)} selezionati={f.marche} onChange={marche => cambia({ marche })} />
     <div className="min-w-0"><FiltroMultiplo etichetta="Fornitore" testoTutti="Tutti i fornitori" cercabile onCercaChange={cercaFornitore} opzioni={fornitori.map(x => ({ valore: x.id, label: x.ragione_sociale }))} selezionati={f.fornitori} onChange={fornitori => cambia({ fornitori })} />{erroreFornitori && <p role="alert" className="text-xs text-destructive">Ricerca fornitori non disponibile</p>}</div>
     <FiltroMultiplo etichetta="Stato" testoTutti="Tutti gli stati" opzioni={STATI_ARTICOLI} selezionati={f.stati} onChange={stati => cambia({ stati })} />
-    <Select value={String(f.listino)} onValueChange={v => cambia({ listino: Number(v) })}><SelectTrigger aria-label="Listino" className="w-full"><SelectValue /></SelectTrigger><SelectContent>{facets.listini.map(l => <SelectItem key={l.codice} value={String(l.codice)}>{l.codice} {l.descrizione}</SelectItem>)}</SelectContent></Select>
-    <label className="flex min-h-10 items-center gap-2 text-sm lg:col-span-2"><Switch checked={f.soloDisponibili} onCheckedChange={soloDisponibili => cambia({ soloDisponibili })} />Solo con disponibilità</label>
+    <FiltroMultiplo etichetta="Disponibile in" testoTutti="Ovunque" selezionaTutte opzioni={[...facets.sedi.map(x => ({ valore: x.id, label: `${x.nome ?? "Sede"}${x.propria ? " (la tua sede)" : ""}` })), { valore: VALORE_LOGISTICA, label: "Logistica" }]} selezionati={f.disponibileIn} onChange={disponibileIn => cambia({ disponibileIn })} />
+    {facets.globale && <Select value={String(listinoValido(f.listino))} onValueChange={v => cambia({ listino: Number(v) })}><SelectTrigger aria-label="Listino" className="w-full"><SelectValue /></SelectTrigger><SelectContent>{facets.listini.map(l => <SelectItem key={l.codice} value={String(l.codice)}>Listino {l.codice} {l.descrizione}</SelectItem>)}</SelectContent></Select>}
   </div>;
 }
-function Risultati({ f, setPage }: { f: FiltriArticoli; setPage: (p: number) => void }) {
+function Risultati({ f, setPage, ordina }: { f: FiltriArticoli; setPage: (p: number) => void; ordina: (col: OrdinamentoArticoli, dir: "asc" | "desc") => void }) {
   const navigate = useNavigate();
+  const { data: facets } = useSuspenseQuery({ queryKey: ["catalogo-articoli-facets"], queryFn: () => facetsArticoliGamma(), staleTime: 60000 });
   const { data } = useSuspenseQuery({ queryKey: ["catalogo-articoli", f], queryFn: () => elencoArticoliGamma({ data: f }) });
   const pages = Math.max(1, Math.ceil(data.total / 100));
   type Riga = (typeof data.rows)[number];
+  const ord: StatoOrdinamento<OrdinamentoArticoli> = { ...ordinamentoArticoliValido(f.ordina, f.dir), imposta: ordina };
+  const etichettaGiacenza = facets.globale ? "Giacenza sedi" : "Giacenza sede";
+  const colonne: { col: OrdinamentoArticoli; label: string; w: string; destra?: boolean }[] = [
+    { col: "codice", label: "Codice", w: "11%" }, { col: "descrizione", label: "Descrizione", w: "24%" }, { col: "marca", label: "Marca", w: "11%" },
+    { col: "famiglia", label: "Famiglia / Sottofamiglia", w: "14%" }, { col: "prezzo", label: "Prezzo", w: "10%", destra: true },
+    { col: "giacenza_sede", label: etichettaGiacenza, w: "8%", destra: true }, { col: "giacenza_logistica", label: "Logistica", w: "8%", destra: true }, { col: "stato", label: "Stato", w: "9%" },
+  ];
   const apri = (a: Riga) => { if (a.origine === "gamma" && a.codice) void navigate({ to: "/articoli/codice/$codice", params: { codice: a.codice } }); else if (a.preventivatore_id) void navigate({ to: "/articoli/$id", params: { id: a.preventivatore_id } }); };
   const stato = (a: Riga) => <Badge variant="secondary" className="max-w-full whitespace-normal text-center">{STATI_ARTICOLI.find(s => s.valore === a.stato_gamma)?.label ?? a.stato_gamma}</Badge>;
-  const disponibile = (a: Riga) => a.disponibilita_totale === null ? "—" : a.disponibilita_totale.toLocaleString("it-IT", { maximumFractionDigits: 3 });
+  const prezzo = (a: Riga) => <span className="tabular-nums">{prezzoArticolo(a.prezzo)}{a.fonte_prezzo === "deposito" && <span className="block text-[11px] font-medium text-primary">per deposito</span>}</span>;
+  const intestazione = (c: (typeof colonne)[number]) => <IntestazioneOrdinabile key={c.col} col={c.col} ordinamento={ord} allinea={c.destra ? "right" : "left"} className="break-words">{c.label}</IntestazioneOrdinabile>;
   return <><div className="min-h-0 flex-1 overflow-auto p-3 lg:p-0">
     {!data.rows.length && <p className="p-6 text-center text-muted-foreground">Nessun articolo trovato.</p>}
-    <div className="space-y-2 lg:hidden">{data.rows.map(a => <SchedaLista key={a.origine + (a.codice ?? a.preventivatore_id)} onClick={() => apri(a)} titolo={<><span className="block font-mono text-xs text-muted-foreground">{a.codice ?? "Senza codice Gamma"}</span><span className="line-clamp-2">{a.descrizione}</span></>} badge={stato(a)} campi={[{ etichetta: "Marca", valore: a.marca ?? "—" }, { etichetta: "Famiglia / Sottofamiglia", valore: [a.famiglia,a.sottofamiglia].filter(Boolean).join(" / ") || "—" }, { etichetta: "U.M.", valore: a.um ?? "—" }, { etichetta: "Prezzo", valore: prezzoArticolo(a.prezzo) }, { etichetta: "Disponibilità", valore: disponibile(a) }]} />)}</div>
-    <table className="hidden w-full table-fixed text-xs lg:table"><colgroup><col className="w-[13%]"/><col className="w-[26%]"/><col className="w-[12%]"/><col className="w-[15%]"/><col className="w-[4%]"/><col className="w-[10%]"/><col className="w-[9%]"/><col className="w-[11%]"/></colgroup><thead className="sticky top-0 bg-navy text-navy-foreground"><tr>{["Codice","Descrizione","Marca","Famiglia / Sottofamiglia","U.M.","Prezzo","Disponibilità","Stato"].map(t => <th key={t} className="break-words px-2 py-3 text-left">{t}</th>)}</tr></thead><tbody>{data.rows.map(a => <tr key={a.origine + (a.codice ?? a.preventivatore_id)} tabIndex={0} onKeyDown={e => { if (e.key === "Enter") apri(a); }} onClick={() => apri(a)} className="cursor-pointer border-b hover:bg-muted/50"><td className="break-words px-2 py-3 font-mono">{a.codice ?? "—"}</td><td className="break-words px-2 py-3 font-medium">{a.descrizione}</td><td className="break-words px-2 py-3">{a.marca ?? "—"}</td><td className="break-words px-2 py-3">{a.famiglia ?? "—"}<span className="block text-muted-foreground">{a.sottofamiglia}</span></td><td className="px-2 py-3">{a.um ?? "—"}</td><td className="px-2 py-3 text-right tabular-nums">{prezzoArticolo(a.prezzo)}</td><td className="px-2 py-3 text-right tabular-nums">{disponibile(a)}</td><td className="px-2 py-3">{stato(a)}</td></tr>)}</tbody></table>
+    <MenuOrdinamento ordinamento={ord} colonne={colonne} etichetta="Ordina articoli" className="mb-2 lg:hidden" />
+    <div className="space-y-2 lg:hidden">{data.rows.map(a => <SchedaLista key={a.origine + (a.codice ?? a.preventivatore_id)} onClick={() => apri(a)} titolo={<><span className="block font-mono text-xs text-muted-foreground">{a.codice ?? "Senza codice Gamma"}</span><span className="line-clamp-2">{a.descrizione}</span></>} badge={stato(a)} campi={[{ etichetta: "Marca", valore: a.marca ?? "—" }, { etichetta: "Famiglia / Sottofamiglia", valore: [a.famiglia,a.sottofamiglia].filter(Boolean).join(" / ") || "—" }, { etichetta: "U.M.", valore: a.um ?? "—" }, { etichetta: "Prezzo", valore: prezzo(a) }, { etichetta: etichettaGiacenza, valore: quantitaArticolo(a.giacenza_sede) }, { etichetta: "Logistica", valore: quantitaArticolo(a.giacenza_logistica) }]} />)}</div>
+    <table className="hidden w-full table-fixed text-xs lg:table"><colgroup>{colonne.slice(0, 4).map(c => <col key={c.col} style={{ width: c.w }} />)}<col style={{ width: "5%" }} />{colonne.slice(4).map(c => <col key={c.col} style={{ width: c.w }} />)}</colgroup><thead className="sticky top-0 bg-navy text-navy-foreground"><tr>{colonne.slice(0, 4).map(intestazione)}<th scope="col" className="px-2 py-3 text-left font-medium">U.M.</th>{colonne.slice(4).map(intestazione)}</tr></thead><tbody>{data.rows.map(a => <tr key={a.origine + (a.codice ?? a.preventivatore_id)} tabIndex={0} onKeyDown={e => { if (e.key === "Enter") apri(a); }} onClick={() => apri(a)} className="cursor-pointer border-b hover:bg-muted/50"><td className="break-words px-2 py-3 font-mono">{a.codice ?? "—"}</td><td className="break-words px-2 py-3 font-medium">{a.descrizione}</td><td className="break-words px-2 py-3">{a.marca ?? "—"}</td><td className="break-words px-2 py-3">{a.famiglia ?? "—"}<span className="block text-muted-foreground">{a.sottofamiglia}</span></td><td className="px-2 py-3">{a.um ?? "—"}</td><td className="px-2 py-3 text-right">{prezzo(a)}</td><td className="px-2 py-3 text-right tabular-nums">{quantitaArticolo(a.giacenza_sede)}</td><td className="px-2 py-3 text-right tabular-nums">{quantitaArticolo(a.giacenza_logistica)}</td><td className="px-2 py-3">{stato(a)}</td></tr>)}</tbody></table>
   </div><footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t bg-card px-3 py-3 text-xs lg:px-6"><span>{data.total.toLocaleString("it-IT")} articoli · {f.page}/{pages}</span><div className="flex gap-2"><Button size="icon" variant="outline" aria-label="Pagina precedente" disabled={f.page <= 1} onClick={() => setPage(f.page - 1)}><ChevronLeft className="size-4"/></Button><Button size="icon" variant="outline" aria-label="Pagina successiva" disabled={f.page >= pages} onClick={() => setPage(f.page + 1)}><ChevronRight className="size-4"/></Button></div></footer></>;
 }

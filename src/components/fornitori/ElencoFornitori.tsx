@@ -2,9 +2,9 @@
 // SchedaLista con "seleziona tutti"), tabella fissa da md che sta a 1280 px.
 // Ordinamento: intestazioni cliccabili come /clienti, applicato lato server (cerca_fornitori).
 import { Link } from "@tanstack/react-router";
-import { ChevronDown, ChevronUp, ChevronsUpDown, Mail } from "lucide-react";
+import { Mail } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { IntestazioneOrdinabile, MenuOrdinamento } from "@/components/lista-responsive/ordinamento-colonne";
 import { SchedaLista, ElencoSchede, type SelezioneTutti } from "@/components/lista-responsive/scheda-lista";
 import type { FornitoreElenco } from "@/lib/fornitori.functions";
 import type { OrdinamentoFornitori } from "@/lib/fornitori";
@@ -34,13 +34,7 @@ export function ElencoFornitori({ rows, apri, selezione, evidenzia, ordinamento 
   const stato = s?.tutti.tutti ? true : s?.tutti.alcuni ? "indeterminate" : false;
   const o = ordinamento;
   return <>
-    {o && <div className="mb-2 flex items-center gap-2 md:hidden">
-      <span className="shrink-0 text-xs text-muted-foreground">Ordina per</span>
-      <Select value={`${o.ordina}:${o.direzione}`} onValueChange={v => { const [c, d] = v.split(":"); o.imposta(c as OrdinamentoFornitori, d === "desc" ? "desc" : "asc"); }}>
-        <SelectTrigger aria-label="Ordina fornitori" className="min-h-10 min-w-0 flex-1"><SelectValue /></SelectTrigger>
-        <SelectContent>{COLONNE.flatMap(c => [<SelectItem key={`${c.col}:asc`} value={`${c.col}:asc`}>{c.label} ↑</SelectItem>, <SelectItem key={`${c.col}:desc`} value={`${c.col}:desc`}>{c.label} ↓</SelectItem>])}</SelectContent>
-      </Select>
-    </div>}
+    {o && <MenuOrdinamento ordinamento={o} colonne={COLONNE} etichetta="Ordina fornitori" className="mb-2 md:hidden" />}
     <ElencoSchede selezioneTutti={s?.tutti}>{rows.map(f => <SchedaLista key={f.id} onClick={() => apri(f.id)}
       selezione={s ? { checked: s.selezionati.has(f.id), onChange: v => s.cambia(f.id, v) } : undefined}
       titolo={<><span className="block font-mono text-xs text-muted-foreground">{f.codice_gestionale ?? "Senza codice Gamma"}</span><span className="line-clamp-2">{f.ragione_sociale}{f.stato_convenzione === "convenzionato" && <BandierinaConvenzionato className="ml-0.5" />}</span></>}
@@ -52,12 +46,7 @@ export function ElencoFornitori({ rows, apri, selezione, evidenzia, ordinamento 
         <colgroup>{s && <col style={{ width: "44px" }} />}{COLONNE.map(c => <col key={c.col} style={{ width: c.w }} />)}</colgroup>
         <thead className="border-b text-muted-foreground"><tr>
           {s && <th scope="col" className="px-2 py-3"><Checkbox aria-label={s.tutti.etichetta ?? "Seleziona tutti"} checked={stato} disabled={s.tutti.disabled} onCheckedChange={() => s.tutti.onChange(!s.tutti.tutti)} /></th>}
-          {COLONNE.map(c => { const attiva = o?.ordina === c.col;
-            return <th scope="col" key={c.col} aria-sort={attiva ? (o!.direzione === "asc" ? "ascending" : "descending") : "none"} className="px-2 py-3 text-left font-medium">
-              {o ? <button type="button" onClick={() => o.imposta(c.col, attiva && o.direzione === "asc" ? "desc" : "asc")} className="flex items-center gap-1 text-left transition-colors hover:text-primary">
-                <span className="break-words">{c.label}</span>
-                {attiva ? (o.direzione === "asc" ? <ChevronUp className="size-4 shrink-0" /> : <ChevronDown className="size-4 shrink-0" />) : <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground/60" />}
-              </button> : c.label}</th>; })}
+          {COLONNE.map(c => <IntestazioneOrdinabile key={c.col} col={c.col} ordinamento={o}>{c.label}</IntestazioneOrdinabile>)}
         </tr></thead>
         <tbody>{rows.map(f => <tr key={f.id} className={`cursor-pointer border-b hover:bg-muted/50 ${evidenzia?.(f) ? "bg-warning/10" : s?.selezionati.has(f.id) ? "bg-primary/5" : ""}`} onClick={() => apri(f.id)}>
           {s && <td className="px-2 py-3" onClick={e => e.stopPropagation()}><Checkbox aria-label={`Seleziona ${f.ragione_sociale ?? "fornitore"}`} checked={s.selezionati.has(f.id)} onCheckedChange={v => s.cambia(f.id, v === true)} /></td>}

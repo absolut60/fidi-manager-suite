@@ -1331,6 +1331,13 @@
       "when": 1794519320530,
       "tag": "0189_fm63_consultazione_showroom",
       "breakpoints": true
+    },
+    {
+      "idx": 190,
+      "version": "7",
+      "when": 1794520195294,
+      "tag": "0190_fm63_elenco_articoli_sede",
+      "breakpoints": true
     }
   ]
 }
