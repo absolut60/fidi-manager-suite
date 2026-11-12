@@ -2,7 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   elencoFornitoriInput, dettaglioFornitoreInput, articoliFornitoreInput,
-  salvaNoteFornitoreInput, dettaglioFornitoreSchema,
+  salvaNoteFornitoreInput, dettaglioFornitoreSchema, idsFornitoriInput,
+  type FiltriIdsFornitori,
   type FiltriFornitori, type FiltriArticoliFornitore,
 } from "./fornitori";
 export type { FiltriFornitori, FiltriArticoliFornitore, FornitoreElenco, ArticoloFornitore, DettaglioFornitore } from "./fornitori";
@@ -15,7 +16,7 @@ export const elencoFornitori = createServerFn({ method: "POST" })
       _testo: data.testo ?? undefined, _anche_cliente: data.ancheCliente ?? undefined,
       _con_articoli: data.conArticoli ?? undefined, _includi_manuali: data.includiManuali,
       _macrocategorie: data.macrocategorie?.length ? data.macrocategorie : undefined,
-      _limite: data.limite, _offset: data.offset,
+      _con_email: data.conEmail ?? undefined, _limite: data.limite, _offset: data.offset,
     });
     if (result.error) throw new Error(result.error.message);
     const rows = result.data ?? [];
@@ -24,7 +25,7 @@ export const elencoFornitori = createServerFn({ method: "POST" })
         _testo: data.testo ?? undefined, _anche_cliente: data.ancheCliente ?? undefined,
         _con_articoli: data.conArticoli ?? undefined, _includi_manuali: data.includiManuali,
         _macrocategorie: data.macrocategorie?.length ? data.macrocategorie : undefined,
-        _limite: 1, _offset: 0,
+        _con_email: data.conEmail ?? undefined, _limite: 1, _offset: 0,
       });
       if (first.error) throw new Error(first.error.message);
       return { rows, total: Number(first.data?.[0]?.totale ?? 0) };
@@ -65,4 +66,18 @@ export const salvaNoteFornitore = createServerFn({ method: "POST" })
     const result = await context.supabase.rpc("aggiorna_note_fornitore", { _id: data.id, _note: data.note ?? "" });
     if (result.error) throw new Error(result.error.message);
     return { success: true };
+  });
+/** Id di tutti i fornitori filtrati (stessa base di cerca_fornitori, nessun ciclo a blocchi). */
+export const idsFornitoriFiltrati = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: FiltriIdsFornitori) => idsFornitoriInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("cerca_fornitori_ids", {
+      _testo: data.testo ?? undefined, _anche_cliente: data.ancheCliente ?? undefined,
+      _con_articoli: data.conArticoli ?? undefined, _includi_manuali: data.includiManuali,
+      _macrocategorie: data.macrocategorie?.length ? data.macrocategorie : undefined,
+      _con_email: data.conEmail ?? undefined,
+    });
+    if (result.error) throw new Error(result.error.message);
+    return (result.data ?? []) as string[];
   });
