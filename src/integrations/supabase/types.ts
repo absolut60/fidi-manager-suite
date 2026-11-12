@@ -7963,6 +7963,10 @@ export type Database = {
         Returns: boolean
       }
       aggiorna_alert_fidi: { Args: never; Returns: Json }
+      aggiorna_note_fornitore: {
+        Args: { _id: string; _note: string }
+        Returns: undefined
+      }
       aggiorna_stato_messaggio_whatsapp: {
         Args: {
           _errore?: string
@@ -8016,6 +8020,26 @@ export type Database = {
       }
       arrotonda_fido_proposto: { Args: { _fido_base: number }; Returns: number }
       arrotonda_fido_v2: { Args: { _x: number }; Returns: number }
+      articoli_fornitore: {
+        Args: {
+          _fornitore_id: string
+          _limite?: number
+          _offset?: number
+          _solo_preferenziali?: boolean
+          _testo?: string
+        }
+        Returns: {
+          codice: string
+          codice_articolo_fornitore: string
+          costo_ultimo: number
+          descrizione: string
+          famiglia: string
+          marca: string
+          preferenziale: boolean
+          stato_gamma: string
+          totale: number
+        }[]
+      }
       auth_e_showroom: { Args: never; Returns: boolean }
       auth_gestisce_contatti_clienti: { Args: never; Returns: boolean }
       auth_ha_accesso_preventivi: { Args: never; Returns: boolean }
@@ -8169,6 +8193,34 @@ export type Database = {
           id: string
           motivi: string[]
           tipo: string
+        }[]
+      }
+      cerca_fornitori: {
+        Args: {
+          _anche_cliente?: boolean
+          _con_articoli?: boolean
+          _includi_manuali?: boolean
+          _limite?: number
+          _offset?: number
+          _testo?: string
+        }
+        Returns: {
+          alias: string
+          anche_cliente: boolean
+          citta: string
+          codice_fiscale: string
+          codice_gestionale: number
+          condizione_pagamento_desc: string
+          id: string
+          n_articoli: number
+          n_preferenziale: number
+          origine: string
+          partita_iva: string
+          persona_fisica: boolean
+          provincia: string
+          ragione_sociale: string
+          totale: number
+          valida: boolean
         }[]
       }
       cerca_fornitori_articoli: {
@@ -8435,6 +8487,7 @@ export type Database = {
         Args: { _candidati: Json; _ragione_sociale_dichiarata: string }
         Returns: Json
       }
+      dettaglio_fornitore: { Args: { _id: string }; Returns: Json }
       disattiva_articoli_gamma_assenti: {
         Args: { _codici: string[] }
         Returns: number
