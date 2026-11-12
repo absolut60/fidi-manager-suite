@@ -3921,6 +3921,10 @@ export type Database = {
           codice_gestionale: number | null
           condizione_pagamento_cod: string | null
           condizione_pagamento_desc: string | null
+          convenzionato: boolean
+          convenzionato_da: string | null
+          convenzionato_fonte: string | null
+          convenzionato_il: string | null
           created_at: string
           email: string | null
           fax: string | null
@@ -3962,6 +3966,10 @@ export type Database = {
           codice_gestionale?: number | null
           condizione_pagamento_cod?: string | null
           condizione_pagamento_desc?: string | null
+          convenzionato?: boolean
+          convenzionato_da?: string | null
+          convenzionato_fonte?: string | null
+          convenzionato_il?: string | null
           created_at?: string
           email?: string | null
           fax?: string | null
@@ -4003,6 +4011,10 @@ export type Database = {
           codice_gestionale?: number | null
           condizione_pagamento_cod?: string | null
           condizione_pagamento_desc?: string | null
+          convenzionato?: boolean
+          convenzionato_da?: string | null
+          convenzionato_fonte?: string | null
+          convenzionato_il?: string | null
           created_at?: string
           email?: string | null
           fax?: string | null
@@ -8119,6 +8131,7 @@ export type Database = {
           _anche_cliente: boolean
           _con_articoli: boolean
           _con_email: boolean
+          _convenzionato: boolean
           _includi_manuali: boolean
           _macrocategorie: string[]
           _testo: string
@@ -8131,6 +8144,8 @@ export type Database = {
           codice_fiscale: string
           codice_gestionale: number
           condizione_pagamento_desc: string
+          convenzionato: boolean
+          convenzionato_fonte: string
           email: string
           id: string
           macrocategoria_cod: string
@@ -8429,6 +8444,7 @@ export type Database = {
           _anche_cliente?: boolean
           _con_articoli?: boolean
           _con_email?: boolean
+          _convenzionato?: boolean
           _includi_manuali?: boolean
           _limite?: number
           _macrocategorie?: string[]
@@ -8443,6 +8459,8 @@ export type Database = {
           codice_fiscale: string
           codice_gestionale: number
           condizione_pagamento_desc: string
+          convenzionato: boolean
+          convenzionato_fonte: string
           email: string
           id: string
           macrocategoria_cod: string
@@ -8472,6 +8490,7 @@ export type Database = {
           _anche_cliente?: boolean
           _con_articoli?: boolean
           _con_email?: boolean
+          _convenzionato?: boolean
           _includi_manuali?: boolean
           _macrocategorie?: string[]
           _testo?: string
@@ -9953,6 +9972,10 @@ export type Database = {
       import_marche_gamma: { Args: { _righe: Json }; Returns: number }
       import_regole_prezzo_gamma_lotto: {
         Args: { _importazione: string; _righe: Json; _tabella: string }
+        Returns: Json
+      }
+      imposta_convenzionato_fornitori: {
+        Args: { _ids: string[]; _valore: boolean }
         Returns: Json
       }
       imposta_iscrizioni_evento: {

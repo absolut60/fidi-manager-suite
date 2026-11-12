@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   elencoFornitoriInput, dettaglioFornitoreInput, articoliFornitoreInput,
-  salvaNoteFornitoreInput, dettaglioFornitoreSchema, idsFornitoriInput, classificaFornitoriInput,
+  salvaNoteFornitoreInput, dettaglioFornitoreSchema, idsFornitoriInput, classificaFornitoriInput, impostaConvenzionatoInput,
   type FiltriIdsFornitori,
   type FiltriFornitori, type FiltriArticoliFornitore,
 } from "./fornitori";
@@ -16,7 +16,7 @@ export const elencoFornitori = createServerFn({ method: "POST" })
       _testo: data.testo ?? undefined, _anche_cliente: data.ancheCliente ?? undefined,
       _con_articoli: data.conArticoli ?? undefined, _includi_manuali: data.includiManuali,
       _macrocategorie: data.macrocategorie?.length ? data.macrocategorie : undefined,
-      _con_email: data.conEmail ?? undefined, _tipi: data.tipi?.length ? data.tipi : undefined, _limite: data.limite, _offset: data.offset,
+      _con_email: data.conEmail ?? undefined, _tipi: data.tipi?.length ? data.tipi : undefined, _convenzionato: data.convenzionato ?? undefined, _limite: data.limite, _offset: data.offset,
     });
     if (result.error) throw new Error(result.error.message);
     const rows = result.data ?? [];
@@ -25,7 +25,7 @@ export const elencoFornitori = createServerFn({ method: "POST" })
         _testo: data.testo ?? undefined, _anche_cliente: data.ancheCliente ?? undefined,
         _con_articoli: data.conArticoli ?? undefined, _includi_manuali: data.includiManuali,
         _macrocategorie: data.macrocategorie?.length ? data.macrocategorie : undefined,
-        _con_email: data.conEmail ?? undefined, _tipi: data.tipi?.length ? data.tipi : undefined, _limite: 1, _offset: 0,
+        _con_email: data.conEmail ?? undefined, _tipi: data.tipi?.length ? data.tipi : undefined, _convenzionato: data.convenzionato ?? undefined, _limite: 1, _offset: 0,
       });
       if (first.error) throw new Error(first.error.message);
       return { rows, total: Number(first.data?.[0]?.totale ?? 0) };
@@ -76,7 +76,7 @@ export const idsFornitoriFiltrati = createServerFn({ method: "POST" })
       _testo: data.testo ?? undefined, _anche_cliente: data.ancheCliente ?? undefined,
       _con_articoli: data.conArticoli ?? undefined, _includi_manuali: data.includiManuali,
       _macrocategorie: data.macrocategorie?.length ? data.macrocategorie : undefined,
-      _con_email: data.conEmail ?? undefined, _tipi: data.tipi?.length ? data.tipi : undefined,
+      _con_email: data.conEmail ?? undefined, _tipi: data.tipi?.length ? data.tipi : undefined, _convenzionato: data.convenzionato ?? undefined,
     });
     if (result.error) throw new Error(result.error.message);
     return (result.data ?? []) as string[];
@@ -91,4 +91,15 @@ export const classificaFornitori = createServerFn({ method: "POST" })
     if (result.error) throw new Error(result.error.message.includes("Accesso non consentito") ? "Accesso non consentito" : result.error.message);
     const r = (result.data ?? {}) as { aggiornati?: number; saltati_gamma?: number; non_trovati?: number };
     return { aggiornati: r.aggiornati ?? 0, saltatiGamma: r.saltati_gamma ?? 0, nonTrovati: r.non_trovati ?? 0 };
+  });
+
+/** FM62 F7: Convenzionato / Non convenzionato; con "sì" anche tipo Merci dove Gamma non decide. */
+export const impostaConvenzionatoFornitori = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { ids: string[]; valore: boolean }) => impostaConvenzionatoInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const result = await context.supabase.rpc("imposta_convenzionato_fornitori", { _ids: data.ids, _valore: data.valore });
+    if (result.error) throw new Error(result.error.message.includes("Accesso non consentito") ? "Accesso non consentito" : result.error.message);
+    const r = (result.data ?? {}) as { aggiornati?: number; impostati_merci?: number; in_conflitto?: number };
+    return { aggiornati: r.aggiornati ?? 0, impostatiMerci: r.impostati_merci ?? 0, inConflitto: r.in_conflitto ?? 0 };
   });

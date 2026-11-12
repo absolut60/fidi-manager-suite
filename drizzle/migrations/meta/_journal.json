@@ -1275,6 +1275,13 @@
       "when": 1794494757623,
       "tag": "0181_fm62_classificazione_fornitori",
       "breakpoints": true
+    },
+    {
+      "idx": 182,
+      "version": "7",
+      "when": 1794500803836,
+      "tag": "0182_fm62_fornitori_convenzionati",
+      "breakpoints": true
     }
   ]
 }

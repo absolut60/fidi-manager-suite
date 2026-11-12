@@ -13,7 +13,8 @@ import { AllegatiSection } from "@/components/allegati-section";
 import { Sezione, Dato } from "@/components/articoli/SchedaArticoloGamma";
 import { salvaNoteFornitore, type DettaglioFornitore } from "@/lib/fornitori.functions";
 import { tabVisibiliFornitore, sottotitoloFornitore, sitoFornitore, origineLegameFornitore, type TabSchedaFornitore } from "@/lib/scheda-fornitore";
-import { BadgeFornitore, BadgeTipoFornitore } from "./controlli-fornitori";
+import { BadgeFornitore, BadgeTipoFornitore, BadgeConvenzionato } from "./controlli-fornitori";
+import { ConvenzioneCard } from "./ConvenzioneFornitore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { classificaFornitori } from "@/lib/fornitori.functions";
 import { tipoModificabile } from "@/lib/scheda-fornitore";
@@ -60,7 +61,7 @@ export function SchedaFornitore({ fornitore: f, tab, onTabChange, statoArticoli 
         <h1 className="break-words text-2xl font-bold tracking-tight sm:text-3xl">{f.ragione_sociale || "Fornitore"}</h1>
         <p className="mt-1 break-words text-sm text-muted-foreground">{sottotitolo || "Codice e partita IVA non presenti"}</p>
         {f.alias && <p className="mt-0.5 break-words text-xs text-muted-foreground">Alias: {f.alias}</p>}
-        <div className="mt-2 flex flex-wrap gap-1.5"><BadgeTipoFornitore tipo={f.tipo_effettivo} fonte={f.tipo_fonte} /><BadgeFornitore fornitore={f} />{f.clienti.length > 0 && <Badge variant="outline" className="border-success/30 bg-success/10 text-success">Anche cliente</Badge>}</div>
+        <div className="mt-2 flex flex-wrap gap-1.5">{f.convenzionato && <BadgeConvenzionato />}<BadgeTipoFornitore tipo={f.tipo_effettivo} fonte={f.tipo_fonte} /><BadgeFornitore fornitore={f} />{f.clienti.length > 0 && <Badge variant="outline" className="border-success/30 bg-success/10 text-success">Anche cliente</Badge>}</div>
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-2" data-azioni-fornitore>
         {f.puo_modificare_note && <Button className="min-h-10 gap-1.5" onClick={() => { setAllegatiEmail({ file: [] }); setEmailAperta(true); }}><Send className="size-4" />Invia email</Button>}
@@ -104,7 +105,7 @@ function RiepilogoFornitore({ fornitore: f, vaiAlTab, persone }: { fornitore: De
         <PersoneRiepilogo persone={persone} vai={() => vaiAlTab("contatti")} /></Sezione>
       <Sezione titolo="Note interne" icon={FileText}><NoteFornitore fornitore={f} /></Sezione>
     </div>
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"><UltimaAttivitaCard fornitoreId={f.id} vai={() => vaiAlTab("attivita")} /></div>
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"><ConvenzioneCard fornitore={f} /><UltimaAttivitaCard fornitoreId={f.id} vai={() => vaiAlTab("attivita")} /></div>
   </>;
 }
 /** Merci/Servizi: modificabile solo se non decide Gamma e solo da chi gestisce i fornitori. */
@@ -116,7 +117,7 @@ function TipoFornitoreModifica({ fornitore: f }: { fornitore: DettaglioFornitore
     onSuccess: async () => { toast.success("Tipo fornitore salvato"); await qc.invalidateQueries({ queryKey: ["fornitore", f.id] }); void qc.invalidateQueries({ queryKey: ["fornitori"] }); },
     onError: (e: Error) => toast.error(e.message),
   });
-  if (!tipoModificabile(f.tipo_fonte)) return <div className="space-y-1"><BadgeTipoFornitore tipo={f.tipo_effettivo} fonte={f.tipo_fonte} /><p className="text-xs text-muted-foreground">Deciso in Gamma</p></div>;
+  if (!tipoModificabile(f.tipo_fonte)) return <div className="space-y-1"><BadgeTipoFornitore tipo={f.tipo_effettivo} fonte={f.tipo_fonte} /><p className="text-xs text-muted-foreground">{f.tipo_fonte === "convenzionato" ? "Merci perché convenzionato" : "Deciso in Gamma"}</p></div>;
   if (!f.puo_modificare_note) return <BadgeTipoFornitore tipo={f.tipo_effettivo} fonte={f.tipo_fonte} />;
   return <Select value={f.tipo_effettivo === "da_classificare" ? "" : f.tipo_effettivo} disabled={m.isPending} onValueChange={v => m.mutate(v as "merci" | "servizi")}>
     <SelectTrigger aria-label="Tipo fornitore" className={`min-h-10 w-full ${f.tipo_effettivo === "da_classificare" ? "border-warning/50 text-muted-foreground" : ""}`}><SelectValue placeholder="Da classificare" /></SelectTrigger>

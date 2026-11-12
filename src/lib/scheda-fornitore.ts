@@ -38,6 +38,7 @@ export const ricercaFornitori = zodValidator(z.object({
   ancheCliente: fallback(z.string(), "tutti").default("tutti"),
   conArticoli: fallback(z.string(), "tutti").default("tutti"),
   conEmail: fallback(z.string(), "tutti").default("tutti"),
+  convenzionato: fallback(z.string(), "tutti").default("tutti"),
   manuali: fallback(z.boolean(), false).default(false),
   macro: fallback(z.array(z.string()), []).default([]),
   tipo: fallback(z.array(z.string()), []).default([]),
@@ -89,6 +90,16 @@ export function badgeTipoFornitore(tipo: string | null | undefined, fonte: strin
   return { tono: "nd", testo: "Da classificare", daGamma: false };
 }
 /** Il tipo si cambia nell'app solo se non lo decide Gamma. */
-export const tipoModificabile = (fonte: string | null | undefined) => fonte !== "gamma";
+/** FM62 F7: testo del toast dopo "Segna convenzionati"/"Togli convenzione" (conteggi dall'RPC). */
+export function messaggioConvenzione(valore: boolean, r: { aggiornati: number; impostatiMerci: number; inConflitto: number }) {
+  const n = (x: number) => x.toLocaleString("it-IT");
+  if (!valore) return `${n(r.aggiornati)} ${r.aggiornati === 1 ? "fornitore non più convenzionato" : "fornitori non più convenzionati"}`;
+  const parti = [`${n(r.aggiornati)} ${r.aggiornati === 1 ? "segnato convenzionato" : "segnati convenzionati"}`];
+  if (r.impostatiMerci) parti.push(`${n(r.impostatiMerci)} impostati come Merci`);
+  if (r.inConflitto) parti.push(`${n(r.inConflitto)} in Gamma risultano di servizi: verificare`);
+  return parti.join(" · ");
+}
+/** Il tipo si cambia nell'app solo se non lo decide Gamma né la convenzione (convenzionato = Merci). */
+export const tipoModificabile = (fonte: string | null | undefined) => fonte !== "gamma" && fonte !== "convenzionato";
 /** Proposta di classificazione (regola di Andrea): da classificare CON articoli → Merci; senza articoli si guarda a mano. */
 export const daControllareInProposta = (f: { tipo_effettivo: string | null; n_articoli: number }) => f.tipo_effettivo === "da_classificare" && f.n_articoli === 0;
