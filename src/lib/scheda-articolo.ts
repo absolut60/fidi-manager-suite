@@ -81,11 +81,11 @@ export function inUnita(valore: number | null | undefined, tipo: "quantita" | "p
 /** Quantità con unità: massimo 3 decimali. */
 export function quantitaConUnita(v: number | null | undefined, um: string | null) {
   if (v == null) return "—";
-  return v.toLocaleString("it-IT", { maximumFractionDigits: 3, useGrouping: "always" } as Intl.NumberFormatOptions) + (um ? ` ${um}` : "");
+  return v.toLocaleString("it-IT", { maximumFractionDigits: 3, useGrouping: "always" } as unknown as Intl.NumberFormatOptions) + (um ? ` ${um}` : "");
 }
 /** Prezzo/costo con unità: sempre 4 decimali (regola FM63). */
 export function prezzoConUnita(v: number | null | undefined, um: string | null) {
   if (v == null) return "—";
-  return v.toLocaleString("it-IT", { minimumFractionDigits: 4, maximumFractionDigits: 4, useGrouping: "always" } as Intl.NumberFormatOptions) + (um ? ` €/${um}` : " €");
+  return v.toLocaleString("it-IT", { minimumFractionDigits: 4, maximumFractionDigits: 4, useGrouping: "always" } as unknown as Intl.NumberFormatOptions) + (um ? ` €/${um}` : " €");
 }
 export function unitaSceltaDaUrl(um: unknown): UnitaScelta { return um === 2 || um === "2" ? "secondaria" : "primaria"; }
