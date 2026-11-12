@@ -10,6 +10,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
+import { puoScriverePreventivi } from "@/lib/permessi-preventivi";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -67,6 +69,9 @@ function PreventivoEditorPage() {
   const navigate = useNavigate();
   const [addBloccoOpen, setAddBloccoOpen] = useState(false);
   const [outputOpen, setOutputOpen] = useState(false);
+  const { roles } = useAuth();
+  // FM63: chi consulta soltanto (es. store manager) non vede comandi di modifica; il DB resta il controllo vero.
+  const puoScrivere = puoScriverePreventivi(roles as string[]);
   const [editMode, setEditMode] = useState(false);
   const [editModeInitialized, setEditModeInitialized] = useState(false);
   const [trasformaOpen, setTrasformaOpen] = useState(false);
@@ -260,7 +265,7 @@ function PreventivoEditorPage() {
   // Inizializza editMode: bozza vuota → modifica, altrimenti sola lettura
   useEffect(() => {
     if (!prev || editModeInitialized) return;
-    setEditMode(prev.stato === "bozza" && prev.blocchi.length === 0);
+    setEditMode(puoScrivere && prev.stato === "bozza" && prev.blocchi.length === 0);
     setEditModeInitialized(true);
   }, [prev, editModeInitialized]);
 
@@ -330,7 +335,7 @@ function PreventivoEditorPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Button
+            {puoScrivere && <Button
               size="sm"
               variant={editMode ? "default" : "outline"}
               onClick={() => setEditMode((v) => !v)}
@@ -340,7 +345,7 @@ function PreventivoEditorPage() {
               ) : (
                 <><Pencil className="mr-1 h-4 w-4" /> Modifica</>
               )}
-            </Button>
+            </Button>}
             {editMode && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -366,7 +371,7 @@ function PreventivoEditorPage() {
             <Button size="sm" variant="outline" onClick={() => setOutputOpen(true)}>
               <FileDown className="mr-1 h-4 w-4" /> Genera documento
             </Button>
-            {prev.tipo === "preventivo" && (
+            {puoScrivere && prev.tipo === "preventivo" && (
               <Dialog
                 open={duplicaOpen}
                 onOpenChange={(v) => {
@@ -439,12 +444,12 @@ function PreventivoEditorPage() {
             )}
 
 
-            {prev.tipo === "preventivo" && (
+            {puoScrivere && prev.tipo === "preventivo" && (
               <Button size="sm" onClick={() => setTrasformaOpen(true)}>
                 <ShoppingCart className="mr-1 h-4 w-4" /> Trasforma in ordine
               </Button>
             )}
-            <AlertDialog>
+            {puoScrivere && <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button size="sm" variant="ghost" className="text-destructive">
                   <Trash2 className="mr-1 h-4 w-4" /> {prev.tipo === "ordine" ? "Elimina ordine" : "Elimina preventivo"}
@@ -460,7 +465,7 @@ function PreventivoEditorPage() {
                   <AlertDialogAction onClick={() => delPrev.mutate()}>Elimina</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
-            </AlertDialog>
+            </AlertDialog>}
           </div>
         </div>
 
@@ -739,7 +744,7 @@ function PreventivoEditorPage() {
                     {prev.blocchi.length === 0 ? (
                       <Card>
                         <CardContent className="flex flex-col items-center gap-2 p-12 text-center">
-                          <p className="text-sm text-muted-foreground">Nessun blocco. {editMode ? "Aggiungine uno per iniziare." : "Premi Modifica per aggiungerne."}</p>
+                          <p className="text-sm text-muted-foreground">Nessun blocco. {editMode ? "Aggiungine uno per iniziare." : puoScrivere ? "Premi Modifica per aggiungerne." : ""}</p>
                           {editMode && (
                             <div className="flex items-center gap-2">
                               <Button size="sm" onClick={handleAddEmptyBlocco} disabled={addEmptyBlocco.isPending}>
