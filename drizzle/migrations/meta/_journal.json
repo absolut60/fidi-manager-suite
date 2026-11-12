@@ -1240,6 +1240,13 @@
       "when": 1794485645199,
       "tag": "0176_fm62_attivita_fornitore",
       "breakpoints": true
+    },
+    {
+      "idx": 177,
+      "version": "7",
+      "when": 1794489293731,
+      "tag": "0177_fm62_attivita_corpo_html",
+      "breakpoints": true
     }
   ]
 }

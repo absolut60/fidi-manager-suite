@@ -1017,6 +1017,7 @@ export type Database = {
           chiave_invio: string | null
           contatto_id: string | null
           corpo: string | null
+          corpo_html: string | null
           created_at: string
           creato_da: string | null
           data_attivita: string
@@ -1038,6 +1039,7 @@ export type Database = {
           chiave_invio?: string | null
           contatto_id?: string | null
           corpo?: string | null
+          corpo_html?: string | null
           created_at?: string
           creato_da?: string | null
           data_attivita?: string
@@ -1059,6 +1061,7 @@ export type Database = {
           chiave_invio?: string | null
           contatto_id?: string | null
           corpo?: string | null
+          corpo_html?: string | null
           created_at?: string
           creato_da?: string | null
           data_attivita?: string

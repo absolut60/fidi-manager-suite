@@ -87,14 +87,32 @@ export function pulisciHtmlEmail(html: string): string {
   return doc.body.innerHTML;
 }
 
+/** Caratteri e dimensioni offerti in modalità "caratteri" (stile Outlook). */
+const CARATTERI = ["Arial", "Calibri", "Verdana", "Times New Roman", "Georgia"];
+const DIMENSIONI: { label: string; value: string }[] = [
+  { label: "Piccolo", value: "2" }, { label: "Normale", value: "3" }, { label: "Grande", value: "5" }, { label: "Titolo", value: "6" },
+];
+
+/**
+ * Opzioni aggiuntive (FM62 G3): senza onUploadImage il pulsante immagine e
+ * l'incolla/trascina di immagini sono disattivati; `caratteri` sostituisce il
+ * menu Paragrafo/Titolo con carattere e dimensione; `compatto` riduce la barra;
+ * `pulisciIncolla` sostituisce la pulizia predefinita dell'HTML incollato.
+ */
 export function RichTextEditor({
-  value, onChange, onUploadImage, minHeight = 320, editorRef,
+  value, onChange, onUploadImage, minHeight = 320, maxHeight = 460, editorRef, caratteri = false, compatto = false,
+  pulisciIncolla, ariaLabel = "Corpo email",
 }: {
   value: string;
   onChange: (html: string) => void;
-  onUploadImage: (file: File) => Promise<string>;
+  onUploadImage?: (file: File) => Promise<string>;
   minHeight?: number;
+  maxHeight?: number;
   editorRef?: React.MutableRefObject<HTMLDivElement | null>;
+  caratteri?: boolean;
+  compatto?: boolean;
+  pulisciIncolla?: (html: string) => string;
+  ariaLabel?: string;
 }) {
   const innerRef = useRef<HTMLDivElement | null>(null);
   const ref = editorRef ?? innerRef;
@@ -159,7 +177,7 @@ export function RichTextEditor({
   }, [emitSoon]);
 
   const caricaEInserisci = useCallback(async (file: File) => {
-    if (!file.type.startsWith("image/")) return;
+    if (!file.type.startsWith("image/") || !onUploadImage) return;
     setUploading(true);
     try {
       const url = await onUploadImage(file);
@@ -177,7 +195,7 @@ export function RichTextEditor({
   const onPaste = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
     const items = Array.from(e.clipboardData?.items ?? []);
     const imgItem = items.find((i) => i.type.startsWith("image/"));
-    if (imgItem) {
+    if (imgItem && onUploadImage) {
       const file = imgItem.getAsFile();
       if (file) {
         e.preventDefault();
@@ -188,17 +206,17 @@ export function RichTextEditor({
     const html = e.clipboardData?.getData("text/html");
     if (html) {
       e.preventDefault();
-      insertHtml(pulisciHtmlEmail(html));
+      insertHtml((pulisciIncolla ?? pulisciHtmlEmail)(html));
     }
-  }, [caricaEInserisci, insertHtml]);
+  }, [caricaEInserisci, insertHtml, pulisciIncolla]);
 
   const onDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     const file = Array.from(e.dataTransfer?.files ?? []).find((f) => f.type.startsWith("image/"));
     if (file) {
       e.preventDefault();
-      void caricaEInserisci(file);
+      if (onUploadImage) void caricaEInserisci(file);
     }
-  }, [caricaEInserisci]);
+  }, [caricaEInserisci, onUploadImage]);
 
   const applica = (fn: () => void) => (e: React.MouseEvent) => {
     e.preventDefault();
@@ -308,16 +326,28 @@ export function RichTextEditor({
     if (imgSelRef.current && !imgSelRef.current.isConnected) deselezionaImmagine();
   }, [value, deselezionaImmagine]);
 
-  const btn = "h-8 w-8 p-0";
+  const btn = compatto ? "h-7 w-7 p-0 [&_svg]:size-3.5" : "h-8 w-8 p-0";
+  const sel = compatto ? "h-7 text-xs" : "h-8 text-xs";
+  const sep = compatto ? "mx-0.5 h-5" : "mx-1 h-6";
 
   return (
     <div className="rounded-md border bg-background">
-      <div className="flex flex-wrap items-center gap-1 border-b p-1">
+      <div className={`flex flex-wrap items-center border-b p-1 ${compatto ? "gap-0.5" : "gap-1"}`}>
         <Button type="button" variant="ghost" size="sm" className={btn} title="Grassetto" onMouseDown={applica(() => cmd("bold"))}><Bold className="size-4" /></Button>
         <Button type="button" variant="ghost" size="sm" className={btn} title="Corsivo" onMouseDown={applica(() => cmd("italic"))}><Italic className="size-4" /></Button>
         <Button type="button" variant="ghost" size="sm" className={btn} title="Sottolineato" onMouseDown={applica(() => cmd("underline"))}><Underline className="size-4" /></Button>
         <Separator orientation="vertical" className="mx-1 h-6" />
 
+        {caratteri ? <>
+          <Select onValueChange={(v) => { focusEditor(); cmd("fontName", v, true); emitSoon(); }}>
+            <SelectTrigger className={`${sel} w-[118px]`} aria-label="Carattere"><SelectValue placeholder="Carattere" /></SelectTrigger>
+            <SelectContent>{CARATTERI.map((f) => <SelectItem key={f} value={f}><span style={{ fontFamily: f }}>{f}</span></SelectItem>)}</SelectContent>
+          </Select>
+          <Select onValueChange={(v) => { focusEditor(); cmd("fontSize", v, true); emitSoon(); }}>
+            <SelectTrigger className={`${sel} w-[108px]`} aria-label="Dimensione"><SelectValue placeholder="Dimensione" /></SelectTrigger>
+            <SelectContent>{DIMENSIONI.map((d) => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}</SelectContent>
+          </Select>
+        </> : (
         <Select onValueChange={(v) => { focusEditor(); cmd("formatBlock", v); emitSoon(); }}>
           <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue placeholder="Testo" /></SelectTrigger>
           <SelectContent>
@@ -325,10 +355,10 @@ export function RichTextEditor({
             <SelectItem value="h2">Titolo grande</SelectItem>
             <SelectItem value="h3">Titolo piccolo</SelectItem>
           </SelectContent>
-        </Select>
+        </Select>)}
 
         <Select onValueChange={(v) => { focusEditor(); cmd("foreColor", v, true); emitSoon(); }}>
-          <SelectTrigger className="h-8 w-[110px] text-xs"><SelectValue placeholder="Colore" /></SelectTrigger>
+          <SelectTrigger className={`${sel} ${compatto ? "w-[96px]" : "w-[110px]"}`} aria-label="Colore testo"><SelectValue placeholder="Colore" /></SelectTrigger>
           <SelectContent>
             {COLORI.map((c) => (
               <SelectItem key={c.value} value={c.value}>
@@ -341,24 +371,24 @@ export function RichTextEditor({
           </SelectContent>
         </Select>
 
-        <Separator orientation="vertical" className="mx-1 h-6" />
+        <Separator orientation="vertical" className={sep} />
         <Button type="button" variant="ghost" size="sm" className={btn} title="Elenco puntato" onMouseDown={applica(() => cmd("insertUnorderedList"))}><List className="size-4" /></Button>
         <Button type="button" variant="ghost" size="sm" className={btn} title="Elenco numerato" onMouseDown={applica(() => cmd("insertOrderedList"))}><ListOrdered className="size-4" /></Button>
-        <Separator orientation="vertical" className="mx-1 h-6" />
+        <Separator orientation="vertical" className={sep} />
         <Button type="button" variant="ghost" size="sm" className={btn} title="Allinea a sinistra" onMouseDown={applica(() => cmd("justifyLeft", undefined, true))}><AlignLeft className="size-4" /></Button>
         <Button type="button" variant="ghost" size="sm" className={btn} title="Centra" onMouseDown={applica(() => cmd("justifyCenter", undefined, true))}><AlignCenter className="size-4" /></Button>
         <Button type="button" variant="ghost" size="sm" className={btn} title="Allinea a destra" onMouseDown={applica(() => cmd("justifyRight", undefined, true))}><AlignRight className="size-4" /></Button>
-        <Separator orientation="vertical" className="mx-1 h-6" />
+        <Separator orientation="vertical" className={sep} />
         <Button type="button" variant="ghost" size="sm" className={btn} title="Inserisci link" onMouseDown={applica(inserisciLink)}><Link2 className="size-4" /></Button>
         <Button type="button" variant="ghost" size="sm" className={btn} title="Rimuovi link" onMouseDown={applica(() => cmd("unlink"))}><Link2Off className="size-4" /></Button>
-        <Button
+        {onUploadImage && <Button
           type="button" variant="ghost" size="sm" className={btn} title="Inserisci immagine"
           disabled={uploading}
           onMouseDown={(e) => { e.preventDefault(); fileRef.current?.click(); }}
         >
           {uploading ? <Loader2 className="size-4 animate-spin" /> : <ImageIcon className="size-4" />}
-        </Button>
-        <Separator orientation="vertical" className="mx-1 h-6" />
+        </Button>}
+        <Separator orientation="vertical" className={sep} />
         <Button type="button" variant="ghost" size="sm" className={btn} title="Annulla" onMouseDown={applica(() => cmd("undo"))}><Undo2 className="size-4" /></Button>
         <Button type="button" variant="ghost" size="sm" className={btn} title="Ripristina" onMouseDown={applica(() => cmd("redo"))}><Redo2 className="size-4" /></Button>
         <Button type="button" variant="ghost" size="sm" className={btn} title="Rimuovi formattazione" onMouseDown={applica(() => cmd("removeFormat"))}><RemoveFormatting className="size-4" /></Button>
@@ -410,9 +440,9 @@ export function RichTextEditor({
           suppressContentEditableWarning
           role="textbox"
           aria-multiline="true"
-          aria-label="Corpo email"
+          aria-label={ariaLabel}
           className="prose prose-sm max-w-none overflow-y-auto p-3 text-sm outline-none"
-          style={{ minHeight, maxHeight: 460 }}
+          style={{ minHeight, maxHeight }}
           onInput={emit}
           onKeyUp={emit}
           onCut={emitSoon}

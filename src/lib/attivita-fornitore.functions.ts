@@ -8,7 +8,7 @@ export type { AttivitaFornitore, FiltriAttivitaFornitore } from "./attivita-forn
 
 type Crea = import("zod").input<typeof creaAttivitaFornitoreInput>;
 type Aggiorna = import("zod").input<typeof aggiornaAttivitaFornitoreInput>;
-const COLONNE = "id,fornitore_id,tipo,origine,data_attivita,oggetto,corpo,esito,destinatari,cc,ccn,stato,errore,creato_da";
+const COLONNE = "id,fornitore_id,tipo,origine,data_attivita,oggetto,corpo,corpo_html,esito,destinatari,cc,ccn,stato,errore,creato_da";
 
 export const elencoAttivitaFornitore = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -68,7 +68,22 @@ export const eliminaAttivitaFornitore = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { id: string }) => eliminaAttivitaFornitoreInput.parse(input))
   .handler(async ({ data, context }) => {
-    const res = await context.supabase.from("attivita_fornitore").delete().eq("id", data.id).eq("origine", "manuale").select("id");
+    const sb = context.supabase;
+    // Manuali e invii (FM62 G3): prima i file e le righe allegati, poi l'attività.
+    const all = await sb.from("allegati").select("id, storage_path").eq("entita_tipo", "attivita_fornitore").eq("entita_id", data.id);
+    if (all.error) throw new Error(`Lettura allegati fallita: ${all.error.message}. Nulla è stato eliminato.`);
+    const righe = all.data ?? [];
+    const percorsi = righe.map(r => r.storage_path).filter(Boolean);
+    if (percorsi.length) {
+      const rm = await sb.storage.from("allegati").remove(percorsi);
+      if (rm.error) throw new Error(`Eliminazione dei file allegati fallita: ${rm.error.message}. L'attività non è stata eliminata.`);
+    }
+    if (righe.length) {
+      const del = await sb.from("allegati").delete().in("id", righe.map(r => r.id)).select("id");
+      if (del.error) throw new Error(`Eliminazione degli allegati fallita: ${del.error.message}. L'attività non è stata eliminata.`);
+      if ((del.data?.length ?? 0) < righe.length) throw new Error("Non è stato possibile eliminare tutti gli allegati. L'attività non è stata eliminata.");
+    }
+    const res = await sb.from("attivita_fornitore").delete().eq("id", data.id).in("origine", ["manuale", "invio"]).select("id");
     if (res.error) throw new Error(res.error.message);
     if (!res.data?.length) throw new Error("Attività non eliminabile");
     return { ok: true };

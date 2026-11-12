@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Paperclip, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import DOMPurify from "dompurify";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,7 +49,7 @@ export function AttivitaFornitoreTab({ fornitoreId, puoScrivere }: { fornitoreId
         <ol className="space-y-2">{righe.map(a => <RigaAttivita key={a.id} a={a} apri={() => setModulo({ attivita: a })} />)}</ol>
         {query.hasNextPage && <Button variant="outline" className="min-h-10 w-full sm:w-auto" disabled={query.isFetchingNextPage} onClick={() => void query.fetchNextPage()}>{query.isFetchingNextPage ? "Caricamento…" : "Mostra altri"}</Button>}
       </>}
-    {modulo && <ModuloAttivita fornitoreId={fornitoreId} iniziale={modulo.attivita} solaLettura={!puoScrivere || modulo.attivita?.origine === "invio"} chiudi={() => setModulo(null)} />}
+    {modulo && <ModuloAttivita fornitoreId={fornitoreId} puoScrivere={puoScrivere} iniziale={modulo.attivita} solaLettura={!puoScrivere || modulo.attivita?.origine === "invio"} chiudi={() => setModulo(null)} />}
   </div>;
 }
 
@@ -80,7 +81,21 @@ function Voce({ label, children }: { label: string; children: ReactNode }) {
 }
 function elenco(v: unknown): string[] { return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && !!x.trim()) : []; }
 
-function DettaglioAttivita({ a, chiudi }: { a: AttivitaFornitore; chiudi: () => void }) {
+/** HTML già sanificato dal server: ripassa comunque da DOMPurify nel browser. */
+function CorpoHtml({ html }: { html: string }) {
+  const pulito = DOMPurify.sanitize(html, { ALLOWED_TAGS: ["p", "br", "div", "span", "b", "strong", "i", "em", "u", "ul", "ol", "li", "a", "font"], ALLOWED_ATTR: ["href", "target", "rel", "style", "face", "size", "color"], ALLOWED_URI_REGEXP: /^(https?:|mailto:)/i });
+  return <div className="max-w-none break-words text-sm [&_a]:text-primary [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5" dangerouslySetInnerHTML={{ __html: pulito }} />;
+}
+
+function DettaglioAttivita({ a, fornitoreId, puoEliminare, chiudi }: { a: AttivitaFornitore; fornitoreId: string; puoEliminare: boolean; chiudi: () => void }) {
+  const qc = useQueryClient();
+  const [conferma, setConferma] = useState(false);
+  const elimina = useServerFn(eliminaAttivitaFornitore);
+  const mElimina = useMutation({
+    mutationFn: () => elimina({ data: { id: a.id } }),
+    onSuccess: () => { toast.success("Registrazione eliminata dalle Attività"); void qc.invalidateQueries({ queryKey: chiaveAttivita(fornitoreId) }); setConferma(false); chiudi(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const t = tipoAttivita(a.tipo);
   const x = a as AttivitaFornitore & { cc?: unknown; ccn?: unknown };
   const cc = elenco(x.cc), ccn = elenco(x.ccn), dest = elenco(a.destinatari);
@@ -97,17 +112,25 @@ function DettaglioAttivita({ a, chiudi }: { a: AttivitaFornitore; chiudi: () => 
         {a.origine === "invio" && <Voce label="CCN"><span className="break-all">{ccn.length ? ccn.join(", ") : "—"}</span></Voce>}
         {a.errore && <Voce label="Errore"><span className="text-destructive">{a.errore}</span></Voce>}
         {a.oggetto && <Voce label="Oggetto">{a.oggetto}</Voce>}
-        <Voce label={a.origine === "invio" ? "Testo" : "Note"}><span className="whitespace-pre-line">{a.corpo || "—"}</span></Voce>
+        <Voce label={a.origine === "invio" ? "Testo" : "Note"}>{a.corpo_html ? <CorpoHtml html={a.corpo_html} /> : <span className="whitespace-pre-line">{a.corpo || "—"}</span>}</Voce>
         {a.esito && <Voce label="Esito">{a.esito}</Voce>}
       </dl>
       <div className="border-t pt-3"><AllegatiSection entitaTipo="attivita_fornitore" entitaId={a.id} clienteId={null} canEdit={false} compact /></div>
-      <div className="flex justify-end"><Button type="button" variant="outline" className="min-h-10 w-full sm:w-auto" onClick={chiudi}>Chiudi</Button></div>
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
+        {puoEliminare && <Button type="button" variant="outline" className="min-h-10 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setConferma(true)}><Trash2 className="size-4" />Elimina</Button>}
+        <Button type="button" variant="outline" className="min-h-10 w-full sm:ml-auto sm:w-auto" onClick={chiudi}>Chiudi</Button>
+      </div>
+      <AlertDialog open={conferma} onOpenChange={setConferma}>
+        <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Eliminare la registrazione?</AlertDialogTitle><AlertDialogDescription>{a.origine === "invio" ? "L'email è già stata inviata: elimini solo la registrazione nelle Attività. Continuare?" : "L’attività e i suoi allegati verranno eliminati definitivamente."}</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter><AlertDialogCancel>Annulla</AlertDialogCancel><AlertDialogAction disabled={mElimina.isPending} onClick={e => { e.preventDefault(); mElimina.mutate(); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Elimina</AlertDialogAction></AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DialogContent>
   </Dialog>;
 }
 
-function ModuloAttivita(props: { fornitoreId: string; iniziale: AttivitaFornitore | null; solaLettura?: boolean; chiudi: () => void }) {
-  if (props.solaLettura && props.iniziale) return <DettaglioAttivita a={props.iniziale} chiudi={props.chiudi} />;
+function ModuloAttivita({ puoScrivere, ...props }: { fornitoreId: string; puoScrivere: boolean; iniziale: AttivitaFornitore | null; solaLettura?: boolean; chiudi: () => void }) {
+  if (props.solaLettura && props.iniziale) return <DettaglioAttivita a={props.iniziale} fornitoreId={props.fornitoreId} puoEliminare={puoScrivere} chiudi={props.chiudi} />;
   return <ModuloModifica {...props} />;
 }
 function ModuloModifica({ fornitoreId, iniziale, chiudi }: { fornitoreId: string; iniziale: AttivitaFornitore | null; chiudi: () => void }) {
@@ -162,7 +185,7 @@ function ModuloModifica({ fornitoreId, iniziale, chiudi }: { fornitoreId: string
         : <p className="text-xs text-muted-foreground">Gli allegati si aggiungono subito dopo il primo salvataggio.</p>}
       <DialogFooter className="hidden" />
       <AlertDialog open={conferma} onOpenChange={setConferma}>
-        <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Eliminare questa attività?</AlertDialogTitle><AlertDialogDescription>L’attività verrà eliminata definitivamente. Gli allegati collegati vanno eliminati a parte.</AlertDialogDescription></AlertDialogHeader>
+        <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Eliminare questa attività?</AlertDialogTitle><AlertDialogDescription>L’attività e i suoi allegati verranno eliminati definitivamente.</AlertDialogDescription></AlertDialogHeader>
           <AlertDialogFooter><AlertDialogCancel>Annulla</AlertDialogCancel><AlertDialogAction disabled={mElimina.isPending} onClick={e => { e.preventDefault(); if (iniziale) mElimina.mutate(iniziale.id); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Elimina</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
