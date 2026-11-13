@@ -119,7 +119,7 @@ export function GeneraDocumentoDialog({
     }
   }
 
-  const modoCorrente = MODI.find((m) => m.id === sel)!;
+  const modoCorrente = MODI.find((m) => m.id === sel) ?? MODI[0];
 
   return (
     <>
