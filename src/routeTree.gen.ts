@@ -13,7 +13,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IscrizioneWhatsappRouteImport } from './routes/iscrizione-whatsapp'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as ProvaCorrezioniARouteImport } from './routes/prova-correzioni-a'
 import { Route as VerificaCodiceRouteImport } from './routes/verifica-codice'
 import { Route as AppAlertFidiRouteImport } from './routes/_app/alert-fidi'
 import { Route as AppApprovazioniRouteImport } from './routes/_app/approvazioni'
@@ -121,11 +120,6 @@ const IscrizioneWhatsappRoute = IscrizioneWhatsappRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProvaCorrezioniARoute = ProvaCorrezioniARouteImport.update({
-  id: '/prova-correzioni-a',
-  path: '/prova-correzioni-a',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VerificaCodiceRoute = VerificaCodiceRouteImport.update({
@@ -597,7 +591,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
-  '/prova-correzioni-a': typeof ProvaCorrezioniARoute
   '/verifica-codice': typeof VerificaCodiceRoute
   '/alert-fidi': typeof AppAlertFidiRoute
   '/approvazioni': typeof AppApprovazioniRoute
@@ -692,7 +685,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
-  '/prova-correzioni-a': typeof ProvaCorrezioniARoute
   '/verifica-codice': typeof VerificaCodiceRoute
   '/alert-fidi': typeof AppAlertFidiRoute
   '/approvazioni': typeof AppApprovazioniRoute
@@ -786,7 +778,6 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
-  '/prova-correzioni-a': typeof ProvaCorrezioniARoute
   '/verifica-codice': typeof VerificaCodiceRoute
   '/_app/alert-fidi': typeof AppAlertFidiRoute
   '/_app/approvazioni': typeof AppApprovazioniRoute
@@ -883,7 +874,6 @@ export interface FileRouteTypes {
     | '/'
     | '/iscrizione-whatsapp'
     | '/login'
-    | '/prova-correzioni-a'
     | '/verifica-codice'
     | '/alert-fidi'
     | '/approvazioni'
@@ -978,7 +968,6 @@ export interface FileRouteTypes {
     | '/'
     | '/iscrizione-whatsapp'
     | '/login'
-    | '/prova-correzioni-a'
     | '/verifica-codice'
     | '/alert-fidi'
     | '/approvazioni'
@@ -1071,7 +1060,6 @@ export interface FileRouteTypes {
     | '/_app'
     | '/iscrizione-whatsapp'
     | '/login'
-    | '/prova-correzioni-a'
     | '/verifica-codice'
     | '/_app/alert-fidi'
     | '/_app/approvazioni'
@@ -1168,7 +1156,6 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   IscrizioneWhatsappRoute: typeof IscrizioneWhatsappRoute
   LoginRoute: typeof LoginRoute
-  ProvaCorrezioniARoute: typeof ProvaCorrezioniARoute
   VerificaCodiceRoute: typeof VerificaCodiceRoute
   ConsensiTokenRoute: typeof ConsensiTokenRoute
   FirmaPrivacyTokenRoute: typeof FirmaPrivacyTokenRoute
@@ -1211,13 +1198,6 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/prova-correzioni-a': {
-      id: '/prova-correzioni-a'
-      path: '/prova-correzioni-a'
-      fullPath: '/prova-correzioni-a'
-      preLoaderRoute: typeof ProvaCorrezioniARouteImport
       parentRoute: typeof rootRouteImport
     }
     '/verifica-codice': {
@@ -2061,7 +2041,6 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   IscrizioneWhatsappRoute: IscrizioneWhatsappRoute,
   LoginRoute: LoginRoute,
-  ProvaCorrezioniARoute: ProvaCorrezioniARoute,
   VerificaCodiceRoute: VerificaCodiceRoute,
   ConsensiTokenRoute: ConsensiTokenRoute,
   FirmaPrivacyTokenRoute: FirmaPrivacyTokenRoute,
