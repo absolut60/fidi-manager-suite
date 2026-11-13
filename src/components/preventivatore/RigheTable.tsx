@@ -454,6 +454,32 @@ function ScontiCell({ value, onCommit }: { value: number[] | null | undefined; o
   );
 }
 
+/** FM65 R2b: cella U.M. a due livelli (UM1 blu, UM2 arancio); i valori restano salvati in UM1. */
+function CellaUm({ idx, um1, um2, fattore, secondaria, disabled, onChange }: {
+  idx: number; um1: string; um2: string | null; fattore: number | null; secondaria: boolean; disabled: boolean; onChange: (v: "um1" | "um2") => void;
+}) {
+  const inUm2 = secondaria && !!um2;
+  const box = cn("flex h-9 w-full items-center justify-between gap-1 rounded-md border px-2 text-left leading-none",
+    inUm2 ? "border-[#d97706] bg-[#fff7ed]" : "border-[#2b5ea7] bg-card");
+  const testo = (
+    <span className="flex min-w-0 flex-col gap-0.5">
+      <span className={cn("text-[9.5px] font-semibold uppercase", inUm2 ? "text-[#b45309]" : "text-[#2b5ea7]")}>{inUm2 ? "UM2" : "UM1"}</span>
+      <span className="whitespace-nowrap font-sans text-sm font-bold text-foreground">{inUm2 ? um2 : um1}</span>
+    </span>
+  );
+  const label = `Unità di misura riga ${idx + 1}`;
+  if (!um2) return <div className={box} aria-label={label} role="group">{testo}</div>;
+  return (
+    <Select value={inUm2 ? "um2" : "um1"} disabled={disabled} onValueChange={(v) => onChange(v as "um1" | "um2")}>
+      <SelectTrigger aria-label={label} className={cn(box, "focus:ring-1")}>{testo}</SelectTrigger>
+      <SelectContent>
+        <SelectItem value="um1">{`${um1} – unità 1 (primaria)`}</SelectItem>
+        <SelectItem value="um2">{`${um2} – unità 2 (secondaria)${fattore ? ` · 1 ${um2} = ${formatNumeroIt(fattore, { maxDecimals: 4 })} ${um1}` : ""}`}</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+}
+
 function useCelleRiga(p: RigaProps) {
   const { row, calc, readOnly, autoOpenPicker = false, onOpenArticolo, onPatch, onSceltaGamma, prezziSpecialiMap } = p;
   const tipo = row.tipo_riga;
@@ -493,12 +519,9 @@ function useCelleRiga(p: RigaProps) {
     tipo, isCompact, isSubtotal, valorizzata, segno, kitSenzaPrezzo,
     articolo,
     codice,
-    um: row.articolo_codice ? unita.convertibile ? (
-      <Select value={unita.secondaria ? "um2" : "um1"} disabled={readOnly} onValueChange={(um_scelta) => onPatch({ um_scelta })}>
-        <SelectTrigger aria-label="Unità di misura" className={cn("h-9 w-full whitespace-nowrap px-1.5 text-xs [&>span]:overflow-visible", unita.secondaria && "border-warning")}><SelectValue /></SelectTrigger>
-        <SelectContent><SelectItem value="um1">{unita.um1} · UM1</SelectItem><SelectItem value="um2">{unita.um2} · UM2</SelectItem></SelectContent>
-      </Select>
-    ) : <span className="block px-1 py-2">{unita.um ?? row.um ?? "—"}</span> : (
+    um: row.articolo_codice ? <CellaUm idx={p.idx} um1={unita.um1 ?? unita.um ?? row.um ?? "—"} um2={unita.convertibile ? unita.um2 ?? null : null}
+      fattore={row.unita_gamma?.fattore_conversione ?? null} secondaria={!!unita.secondaria} disabled={readOnly}
+      onChange={(um_scelta) => onPatch({ um_scelta })} /> : (
       <Input defaultValue={row.um ?? ""} aria-label="Unità di misura" disabled={readOnly}
         onBlur={(e) => { if ((e.target.value || null) !== row.um) onPatch({ um: e.target.value || null }); }}
         className="h-9 px-1 text-xs" />
