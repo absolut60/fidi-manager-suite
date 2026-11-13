@@ -1,3 +1,4 @@
+import { formatNumeroIt } from "@/lib/numero-it";
 import { useQuery } from "@tanstack/react-query";
 import {
   Dialog,
@@ -71,7 +72,7 @@ export function ArticoloDettaglioDialog({
                 <Info label="U.M." value={articolo.um} />
                 <Info
                   label="Peso unit."
-                  value={articolo.peso_unit != null ? `${Number(articolo.peso_unit)} kg` : null}
+                  value={articolo.peso_unit != null ? `${formatNumeroIt(articolo.peso_unit)} kg` : null}
                 />
                 <Info label="Fornitore" value={articolo.fornitore?.ragione_sociale} />
                 <Info
@@ -123,7 +124,7 @@ export function ArticoloDettaglioDialog({
                       <tr key={l.id} className="border-b">
                         <td className="px-2 py-1.5 font-medium">{l.fascia}</td>
                         <td className="px-2 py-1.5 text-right font-mono">
-                          € {Number(l.prezzo ?? 0).toFixed(2)}
+                          € {formatNumeroIt(l.prezzo ?? 0, { minDecimals: 2, maxDecimals: 2 })}
                         </td>
                       </tr>
                     ))}
@@ -159,13 +160,13 @@ export function ArticoloDettaglioDialog({
                               : "—"}
                           </td>
                           <td className="px-2 py-1.5 text-right font-mono">
-                            {l.listino_for ?? "—"}
+                            {l.listino_for == null ? "—" : formatNumeroIt(l.listino_for, { minDecimals: 4, maxDecimals: 4 })}
                           </td>
                           <td className="px-2 py-1.5 text-right font-mono">
-                            {l.prezzo_scontato != null ? `€ ${Number(l.prezzo_scontato).toFixed(4)}` : "—"}
+                            {l.prezzo_scontato != null ? `€ ${formatNumeroIt(l.prezzo_scontato, { minDecimals: 4, maxDecimals: 4 })}` : "—"}
                           </td>
                           <td className="px-2 py-1.5 text-right font-mono font-bold">
-                            {l.costo_netto != null ? `€ ${Number(l.costo_netto).toFixed(4)}` : "—"}
+                            {l.costo_netto != null ? `€ ${formatNumeroIt(l.costo_netto, { minDecimals: 4, maxDecimals: 4 })}` : "—"}
                           </td>
                           <td className="px-2 py-1.5 text-xs text-muted-foreground">
                             {l.condizioni ?? "—"}

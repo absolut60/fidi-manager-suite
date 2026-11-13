@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import { parseNumeroIt } from "@/lib/numero-it";
+import { formatNumeroIt, parseNumeroIt } from "@/lib/numero-it";
 
 /**
  * Cella numerica editabile in stile foglio di calcolo.
@@ -15,6 +15,7 @@ export function EditableNumberCell({
   placeholder,
   suffix,
   decimali,
+  ariaLabel,
 }: {
   value: number | null | undefined;
   onCommit: (v: number | null) => void | Promise<void>;
@@ -25,9 +26,10 @@ export function EditableNumberCell({
   suffix?: string;
   /** Decimali fissi in visualizzazione (es. 4 per i prezzi unitari). */
   decimali?: number;
+  ariaLabel?: string;
 }) {
   const toDisplay = (v: number | null | undefined) =>
-    v == null ? "" : (decimali != null ? Number(v).toFixed(decimali) : String(v)).replace(".", ",");
+    v == null ? "" : formatNumeroIt(v, { minDecimals: decimali ?? 2, maxDecimals: decimali ?? 4 });
 
   const [local, setLocal] = useState<string>(toDisplay(value));
   const [editing, setEditing] = useState(false);
@@ -72,6 +74,7 @@ export function EditableNumberCell({
     <input
       type="text"
       inputMode="decimal"
+      aria-label={ariaLabel}
       value={local}
       placeholder={placeholder ?? "—"}
       disabled={disabled || busy}

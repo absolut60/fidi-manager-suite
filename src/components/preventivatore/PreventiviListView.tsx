@@ -1,3 +1,4 @@
+import { formatNumeroIt } from "@/lib/numero-it";
 import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
@@ -182,7 +183,7 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
                       { etichetta: "Cantiere", valore: r.cantiere?.nome ?? "—" },
                       { etichetta: "Data", valore: r.data },
                       ...(!isOrdine ? [{ etichetta: "Tipo doc", valore: TIPI_DOC_LABEL[r.tipo_doc] }] : []),
-                      { etichetta: "Totale", valore: <span className="tabular-nums font-medium">€ {Number(r.totale ?? 0).toFixed(2)}</span> },
+                      { etichetta: "Totale", valore: <span className="tabular-nums font-medium">€ {formatNumeroIt(r.totale ?? 0, { minDecimals: 2, maxDecimals: 2 })}</span> },
                     ]}
                   />
                 ))}
@@ -230,7 +231,7 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
                           />
                         )}
                       </TableCell>
-                      <TableCell className="text-right font-mono">€ {Number(r.totale ?? 0).toFixed(2)}</TableCell>
+                      <TableCell className="text-right font-mono">€ {formatNumeroIt(r.totale ?? 0, { minDecimals: 2, maxDecimals: 2 })}</TableCell>
                     </TableRow>
                   ))
 

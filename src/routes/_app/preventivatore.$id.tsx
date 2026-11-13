@@ -52,7 +52,7 @@ import { AggiornaListiniDialog } from "@/components/preventivatore/AggiornaListi
 import { CondizioniClienteGamma } from "@/components/preventivatore/CondizioniClienteGamma";
 import { round2 } from "@/lib/pricing";
 import { margineTotaliRighe } from "@/lib/riga-preventivo";
-import { parseNumeroIt } from "@/lib/numero-it";
+import { formatNumeroIt, parseNumeroIt } from "@/lib/numero-it";
 import { cn } from "@/lib/utils";
 import { AggiungiBloccoDialog } from "@/components/preventivatore/AggiungiBloccoDialog";
 import { RigheTable } from "@/components/preventivatore/RigheTable";
@@ -318,7 +318,7 @@ function PreventivoEditorPage() {
     : 0;
 
   const fmt = (n: number) =>
-    n.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    formatNumeroIt(n, { minDecimals: 2, maxDecimals: 2 });
   const cliente = prev.cliente;
   const cantiere = prev.cantiere;
   const cantiereDescrizione =
@@ -947,7 +947,7 @@ function BloccoCard({
               <Label className="text-[10px] uppercase">Quantità</Label>
               <Input
                 type="text" inputMode="decimal"
-                defaultValue={String(blocco.quantita_base ?? 0).replace(".",",")}
+                defaultValue={formatNumeroIt(blocco.quantita_base ?? 0, { minDecimals: 2, maxDecimals: 2 })}
                 onBlur={(e) => {
                   const v = e.target.value === "" ? null : parseNumeroIt(e.target.value);
                   if (v !== (blocco.quantita_base == null ? null : Number(blocco.quantita_base)))
@@ -967,13 +967,13 @@ function BloccoCard({
             <div className="grid w-24 gap-1 text-right">
               <Label className="text-[10px] uppercase">Prezzo / {blocco.um_base}</Label>
               <div className="h-8 rounded border bg-card px-2 py-1 text-right font-mono text-sm">
-                € {prezzoUm.toFixed(2)}
+                € {formatNumeroIt(prezzoUm, { minDecimals: 2, maxDecimals: 2 })}
               </div>
             </div>
             <div className="grid w-28 gap-1 text-right">
               <Label className="text-[10px] uppercase">Importo</Label>
               <div className="h-8 rounded border bg-primary/10 px-2 py-1 text-right font-mono text-sm font-semibold">
-                € {totaleBlocco.toFixed(2)}
+                € {formatNumeroIt(totaleBlocco, { minDecimals: 2, maxDecimals: 2 })}
               </div>
             </div>
             {!readOnly && (

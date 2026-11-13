@@ -76,3 +76,9 @@ Altri avvisi: `articolo_senza_prezzo_su_listino`, `cliente_senza_listino`, `clie
 - Margine del blocco e del preventivo: stessa funzione `margineTotaliRighe`, (somma importi netti − somma costi) / somma importi netti × 100; solo righe articolo/kit/manuali, nessun uso della vecchia colonna `vendita`.
 - Le intestazioni kit si riconoscono dall'assenza di entrambi i collegamenti (`articolo_id` e `articolo_codice`); nel kit reale le due STRATI hanno `kit_componenti.articolo_id IS NULL`. Nuovi gruppi salvati come note; quelli esistenti presentati come testo ed esclusi dai calcoli, senza modificare dati storici. Un articolo tecnico senza codice o prezzo mantiene l'avviso rosso.
 - Peso delle righe con codice Gamma: `articoli_gamma.peso_netto × quantita` in UM1, lettura batch con RLS. Dato assente mostrato come «—», senza fallback al catalogo tecnico, senza influenza sul prezzo.
+
+## Incidenza e quantità del blocco (FM65 fetta 3a)
+- Righe valorizzate articolo/kit/manuali: quantità = incidenza × Qb (2 decimali); quando si cambia la quantità, incidenza = quantità / Qb (4 decimali), anche se prima assente. Note, separatori, sotto-totali e intestazioni kit non partecipano.
+- Fonte unica `quantitaDaIncidenza` / `incidenzaDaQuantita` / `patchConImporto` in `riga-preventivo.ts`; salvataggio riga, cambio Qb e aggiunta kit le riusano. Con Qb nullo o zero le funzioni restituiscono null: nessun ricalcolo incrociato. Togliere l'incidenza non azzera la quantità.
+- Il costo segue la quantità mantenendo il costo unitario a 4 decimali; il peso segue la quantità (Gamma quando disponibile). Importo e totali blocco/preventivo sono aggiornati dopo il salvataggio.
+- Formati delle schermate: `formatNumeroIt` (`numero-it.ts`), stessa resa italiana del piede: quantità/importi a 2 decimali, incidenze/prezzi unitari a 4, virgola decimale e migliaia con punto.

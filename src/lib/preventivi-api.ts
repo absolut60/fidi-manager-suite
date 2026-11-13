@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { campiPrezzoDaMotore, confrontoAggiornamento, costoRiga, importoRiga, isIntestazioneKit, isRigaValorizzata, marginePercRiga, pesoRigaGamma, segnoRiga, type PrezzoClienteGamma } from "./riga-preventivo";
+import { campiPrezzoDaMotore, confrontoAggiornamento, costoRiga, importoRiga, isIntestazioneKit, isRigaValorizzata, marginePercRiga, pesoRigaGamma, patchConImporto, quantitaDaIncidenza, segnoRiga, type PrezzoClienteGamma } from "./riga-preventivo";
 import type { Database } from "@/integrations/supabase/types";
 import { round2 } from "./pricing";
 import {
@@ -583,10 +583,11 @@ export async function applicaScontoPiedeARighe(
   for (const b of (blocchi ?? []) as unknown as { id: string; righe: Riga[] }[]) {
     for (const r of b.righe ?? []) {
       if (!isRigaValorizzata(r)) continue;
-      const importo = importoRiga({ ...r, sconto_perc: sc });
+      const patch = patchConImporto(r, { sconto_perc: sc });
+      const importo = patch.importo ?? n(r.importo);
       importiPiede.set(r.id, importo);
       updates.push(
-        supabase.from("righe_preventivo").update({ sconto_perc: sc, importo }).eq("id", r.id).then(),
+        supabase.from("righe_preventivo").update(patch).eq("id", r.id).then(),
       );
     }
   }
@@ -677,7 +678,7 @@ export async function applicaAggiornaListini(preventivo_id: string, scelte: Diff
     };
     const { error } = await supabase
       .from("righe_preventivo")
-      .update({ ...campi, importo: importoRiga({ ...r, ...campi }) })
+      .update(patchConImporto(r, campi))
       .eq("id", r.id);
     if (error) throw error;
     aggiornate++;
@@ -691,25 +692,26 @@ export async function applicaAggiornaListini(preventivo_id: string, scelte: Diff
 async function ricalcolaTotaliPreventivo(preventivo_id: string, iva: number): Promise<void> {
   const { data: blocchi, error: bErr } = await supabase
     .from("blocchi_preventivo")
-    .select("id, righe:righe_preventivo(*)")
+    .select("id, quantita_base, righe:righe_preventivo(*)")
     .eq("preventivo_id", preventivo_id);
   if (bErr) throw bErr;
   let tot = 0;
-  for (const bl of ((blocchi ?? []) as unknown as { id: string; righe: Riga[] }[])) {
+  for (const bl of ((blocchi ?? []) as unknown as { id: string; quantita_base: number | null; righe: Riga[] }[])) {
     let totale = 0;
     for (const r of bl.righe ?? []) {
       if (!isRigaValorizzata(r)) continue;
       totale += n(r.importo);
     }
     tot += round2(totale);
-    const { error } = await supabase.from("blocchi_preventivo").update({ importo: round2(totale) }).eq("id", bl.id);
+    const { error } = await supabase.from("blocchi_preventivo").update({ importo: round2(totale), prezzo_um: n(bl.quantita_base) > 0 ? round2(totale / n(bl.quantita_base)) : null }).eq("id", bl.id);
     if (error) throw error;
   }
-  await supabase.from("preventivi").update({
+  const { error: totaleErrore } = await supabase.from("preventivi").update({
     totale_imponibile: round2(tot),
     iva_importo: round2(tot * iva / 100),
     totale: round2(tot * (1 + iva / 100)),
   }).eq("id", preventivo_id);
+  if (totaleErrore) throw totaleErrore;
 }
 
 export async function riapplicaPrezziSpecialiCantiere(preventivo_id: string): Promise<{
@@ -738,12 +740,12 @@ export async function riapplicaPrezziSpecialiCantiere(preventivo_id: string): Pr
       const importo = importoRiga({ ...r, prezzo_unit: nuovoPrezzo });
       const { error } = await supabase
         .from("righe_preventivo")
-        .update({
+        .update(patchConImporto(r, {
           prezzo_unit: round2(nuovoPrezzo),
           costo: costoRiga(nuovoCostoUnit, q),
           vendita: round2(nuovoPrezzo * q),
           importo,
-        })
+        }))
         .eq("id", r.id);
       if (error) throw error;
       aggiornate++;
@@ -806,7 +808,7 @@ export async function addBloccoDaKit(args: {
   const righe = kit.componenti.map((c, idx) => {
     // FASCIA_KIT_SOLO_INCIDENZA: calcolaRigaKit serve qui solo per l'incidenza; il prezzo è del motore.
     const incidenza = calcolaRigaKit(c, c.articolo, "A").incidenza_effettiva;
-    const quantita = round2(incidenza * qBaseEff);
+    const quantita = quantitaDaIncidenza(incidenza, qBaseEff) ?? 0;
     const codice = c.articolo?.cod_gamma ?? null;
     const campi = campiPrezzoDaMotore(codice ? prezzi.get(codice) : null, quantita, args.sconto_piede);
     return {
@@ -855,13 +857,23 @@ export async function insertRiga(row: RigaInsert): Promise<Riga> {
 }
 
 export async function updateRiga(id: string, patch: RigaUpdate): Promise<Riga> {
-  const { data, error } = await supabase
-    .from("righe_preventivo")
-    .update(patch)
-    .eq("id", id)
-    .select()
-    .single();
+  const { data: corrente, error: letturaErrore } = await supabase.from("righe_preventivo")
+    .select("*, blocco:blocchi_preventivo(quantita_base,preventivo_id)").eq("id", id).single();
+  if (letturaErrore) throw letturaErrore;
+  const codice = patch.articolo_codice ?? corrente.articolo_codice;
+  const cambiaQuantita = "quantita" in patch || "incidenza" in patch;
+  const pesi = codice && cambiaQuantita ? await fetchPesiGamma([codice]) : null;
+  const riga = { ...corrente, ...(pesi && codice ? { peso_gamma_unit: pesi.get(codice) ?? null } : {}) };
+  const calcolata = patchConImporto(riga, patch, corrente.blocco?.quantita_base);
+  const { data, error } = await supabase.from("righe_preventivo")
+    .update(calcolata).eq("id", id).select().single();
   if (error) throw error;
+  if (corrente.blocco?.preventivo_id) {
+    const { data: prev, error: prevErrore } = await supabase.from("preventivi").select("iva_perc")
+      .eq("id", corrente.blocco.preventivo_id).single();
+    if (prevErrore) throw prevErrore;
+    await ricalcolaTotaliPreventivo(corrente.blocco.preventivo_id, n(prev.iva_perc));
+  }
   return data;
 }
 
@@ -877,29 +889,18 @@ export async function ricalcolaBloccoSuNuovaQuantita(
 ): Promise<void> {
   const qBase = n(nuovaQuantitaBase);
   const aggiornate: { id: string; importo: number }[] = [];
+  const pesi = qBase > 0 ? await fetchPesiGamma(righe.filter((r) => isRigaValorizzata(r) && r.incidenza != null).map((r) => r.articolo_codice ?? "")) : new Map<string, number | null>();
 
   await Promise.all(
     righe.map(async (r) => {
-      if (isIntestazioneKit(r) || (r.tipo_riga !== "da_kit" && r.tipo_riga !== "articolo_singolo")) return;
-      const inc = r.incidenza == null ? null : n(r.incidenza);
-      if (inc == null) return;
-      const oldQta = n(r.quantita) || 1;
-      const nuovaQta = round2(inc * qBase);
-      const nuovoImporto = importoRiga({ ...r, quantita: nuovaQta });
-      const nuovoCosto = costoRiga(n(r.costo) / oldQta, nuovaQta);
-      const nuovaVendita = round2((n(r.vendita) / oldQta) * nuovaQta);
-      const nuovoPeso = round2((n(r.peso) / oldQta) * nuovaQta);
-      const { error } = await supabase
-        .from("righe_preventivo")
-        .update({
-          quantita: nuovaQta,
-          importo: nuovoImporto,
-          costo: nuovoCosto,
-          vendita: nuovaVendita,
-          peso: nuovoPeso,
-        })
-        .eq("id", r.id);
+      if (!isRigaValorizzata(r)) return;
+      const nuovaQta = quantitaDaIncidenza(r.incidenza, qBase);
+      if (nuovaQta == null) return;
+      const corrente = r.articolo_codice ? { ...r, peso_gamma_unit: pesi.get(r.articolo_codice) ?? null } : r;
+      const patch = patchConImporto(corrente, { incidenza: r.incidenza }, qBase);
+      const { error } = await supabase.from("righe_preventivo").update(patch).eq("id", r.id);
       if (error) throw error;
+      const nuovoImporto = patch.importo ?? n(r.importo);
       aggiornate.push({ id: r.id, importo: nuovoImporto });
     }),
   );
@@ -907,13 +908,8 @@ export async function ricalcolaBloccoSuNuovaQuantita(
   let totale = 0;
   for (const r of righe) {
     if (!isRigaValorizzata(r)) continue;
-    if (r.tipo_riga === "da_kit" || r.tipo_riga === "articolo_singolo") {
-      const inc = r.incidenza == null ? null : n(r.incidenza);
-      if (inc != null) {
-        const a = aggiornate.find((x) => x.id === r.id);
-        if (a) { totale += a.importo; continue; }
-      }
-    }
+    const a = aggiornate.find((x) => x.id === r.id);
+    if (a) { totale += a.importo; continue; }
     totale += n(r.importo);
   }
   totale = round2(totale);
@@ -926,6 +922,10 @@ export async function ricalcolaBloccoSuNuovaQuantita(
   };
   const { error } = await supabase.from("blocchi_preventivo").update(patch).eq("id", blocco_id);
   if (error) throw error;
+  const { data: blocco, error: bloccoErrore } = await supabase.from("blocchi_preventivo")
+    .select("preventivo_id, preventivo:preventivi(iva_perc)").eq("id", blocco_id).single();
+  if (bloccoErrore) throw bloccoErrore;
+  await ricalcolaTotaliPreventivo(blocco.preventivo_id, n(blocco.preventivo?.iva_perc));
 }
 
 export async function reorderRighe(updates: { id: string; ordine: number }[]) {

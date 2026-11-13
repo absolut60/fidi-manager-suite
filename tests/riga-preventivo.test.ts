@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import righe from "./fixtures/fm65-righe-preventivo.json";
-import { importoRiga, isIntestazioneKit, isRigaValorizzata, margineTotaliRighe, pesoRigaGamma, prezzoNettoRiga } from "@/lib/riga-preventivo";
+import { importoRiga, isIntestazioneKit, isRigaValorizzata, margineTotaliRighe, pesoRigaGamma, prezzoNettoRiga, quantitaDaIncidenza, incidenzaDaQuantita } from "@/lib/riga-preventivo";
 
 const round2 = (x: number) => Math.round(x * 100) / 100;
 describe("FM65 2b-3 — margine, gruppi kit e peso", () => {
@@ -95,4 +95,48 @@ describe("FM65 2b-2 — costo di riga a 4 decimali", () => {
   it("guida kit 7,17 × 0,728 = 5,2198", () => {
     expect(costoRiga(0.728, 7.17)).toBe(5.2198);
   });
+});
+
+describe("FM65 3a — incidenza e quantità legate al blocco", () => {
+  const riga = { tipo_riga: "articolo_singolo", articolo_codice: "FASL00H003300A0", incidenza: 2, quantita: 40, prezzo_unit: 4.167, sconti_gamma: [10], costo: 120.4, peso_gamma_unit: 8.7 };
+  it("Qb 20 e incidenza 2 → 40", () => expect(quantitaDaIncidenza(2, 20)).toBe(40));
+  it("Qb 20 e incidenza 1,5 → 30", () => expect(quantitaDaIncidenza(1.5, 20)).toBe(30));
+  it("quantità 30 su Qb 20 → incidenza 1,5", () => expect(incidenzaDaQuantita(30, 20)).toBe(1.5));
+  it("quantità 10 su Qb 3 → 3,3333 → 10,00", () => {
+    const incidenza = incidenzaDaQuantita(10, 3);
+    expect(incidenza).toBe(3.3333);
+    expect(quantitaDaIncidenza(incidenza, 3)).toBe(10);
+  });
+  it("cambio incidenza: lastra 30 → importo 112,51, costo 90,30 e peso 261", () => {
+    expect(patchConImporto(riga, { incidenza: 1.5 }, 20)).toEqual({ incidenza: 1.5, quantita: 30, importo: 112.51, costo: 90.3, peso: 261 });
+  });
+  it("cambio quantità di una manuale senza incidenza la salva", () => {
+    expect(patchConImporto({ ...riga, tipo_riga: "manuale", incidenza: null }, { quantita: 30 }, 20).incidenza).toBe(1.5);
+  });
+  it("Qb zero: cambio incidenza non tocca quantità/importo/costo", () => {
+    expect(patchConImporto(riga, { incidenza: 1.5 }, 0)).toEqual({ incidenza: 1.5 });
+  });
+  it("Qb zero: cambio quantità non tocca incidenza ma ricalcola importo e costo", () => {
+    const patch = patchConImporto(riga, { quantita: 30 }, 0);
+    expect(patch.incidenza).toBeUndefined();
+    expect(patch.importo).toBe(112.51);
+    expect(patch.costo).toBe(90.3);
+  });
+  it("Qb vuota: nessun ricalcolo incrociato", () => {
+    expect(quantitaDaIncidenza(2, null)).toBeNull();
+    expect(incidenzaDaQuantita(30, null)).toBeNull();
+  });
+  it("ritorno incidenza 2 → 40, importo 150,01 e costo 120,40", () => {
+    const r = { ...riga, ...patchConImporto(riga, { incidenza: 1.5 }, 20) };
+    const patch = patchConImporto(r, { incidenza: 2 }, 20);
+    expect(patch.quantita).toBe(40);
+    expect(patch.importo).toBe(150.01);
+    expect(patch.costo).toBe(120.4);
+  });
+  for (const tipo_riga of ["nota", "separatore", "sotto_totale", "da_kit"]) {
+    it(`${tipo_riga} senza articoli: nessun incrocio`, () => {
+      expect(patchConImporto({ ...riga, tipo_riga, articolo_codice: null, articolo_id: null }, { incidenza: 1.5 }, 20)).toEqual({ incidenza: 1.5 });
+    });
+  }
+  it("peso Gamma assente resta null", () => expect(patchConImporto({ ...riga, peso_gamma_unit: null }, { quantita: 30 }, 20).peso).toBeNull());
 });

@@ -39,7 +39,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { EditableNumberCell } from "@/components/preventivatore/EditableNumberCell";
 import { ArticoloPicker } from "@/components/preventivatore/ArticoloPicker";
 import { ArticoloGammaPicker, type ArticoloGammaScelto } from "@/components/preventivatore/ArticoloGammaPicker";
-import { campiPrezzoDaMotore, costoRiga, formatScontiGamma, isIntestazioneKit, margineTotaliRighe, parseScontiGamma, patchConImporto, prezzoNettoRiga } from "@/lib/riga-preventivo";
+import { campiPrezzoDaMotore, costoRiga, formatScontiGamma, isIntestazioneKit, margineTotaliRighe, parseScontiGamma, prezzoNettoRiga } from "@/lib/riga-preventivo";
 import {
   calcolaBlocco, deleteRiga, fetchPrezzoClienteArticolo, fractionalOrder, insertRiga, reorderRighe,
   statoPrezzoSpecialeRiga,
@@ -47,6 +47,7 @@ import {
   type BloccoConRighe, type PrezziSpecialiMap, type Riga, type TipoRiga,
 } from "@/lib/preventivi-api";
 import type { FasciaListino } from "@/lib/articoli-api";
+import { formatNumeroIt } from "@/lib/numero-it";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -204,9 +205,9 @@ export function RigheTable({
     autoOpenPicker: r.id === pendingPickerId,
     onOpenArticolo: (aid: string) => setOpenArticoloId(aid),
     prezziSpecialiMap: prezziSpecialiMap ?? null,
-    calc: calcMap.get(r.id)!,
+    calc: calcMap.get(r.id) ?? { importo: 0, costo: 0, vendita: 0, margine_perc: 0, peso: 0, importoEffettivo: 0 },
     onPatch: (patch: Parameters<typeof updateRiga>[1]) =>
-      upd.mutate({ id: r.id, patch: patchConImporto(r, patch) }),
+      upd.mutate({ id: r.id, patch }),
     onSceltaGamma: (a: ArticoloGammaScelto) => scegliArticoloGamma(r, a),
     onDelete: () => del.mutate(r.id),
     onAddAbove: (tipo: TipoRiga) => {
@@ -221,6 +222,9 @@ export function RigheTable({
 
   return (
     <div>
+      {!readOnly && Number(blocco.quantita_base ?? 0) <= 0 && (
+        <p className="px-3 py-2 text-xs text-muted-foreground">Imposta la quantità del blocco per usare l’incidenza</p>
+      )}
       {/* Da 1024 px: tabella. Sotto: schede compatte con gli stessi campi. */}
       <div className="hidden overflow-x-auto lg:block">
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
@@ -264,10 +268,10 @@ export function RigheTable({
               <td colSpan={12} className="px-2 py-2">
                 <AddRowMenu readOnly={readOnly} onAddArticolo={addArticoloEmptyAndOpen} onPick={(tipo) => addRow(null, tipo)} />
               </td>
-              <td className="px-1 py-2 text-right font-mono font-semibold">€ {calcs.totale.toFixed(2)}</td>
-              <td className="px-1 py-2 text-right font-mono text-muted-foreground">€ {calcs.costo.toFixed(2)}</td>
+              <td className="px-1 py-2 text-right font-mono font-semibold">€ {fmt2(calcs.totale)}</td>
+              <td className="px-1 py-2 text-right font-mono text-muted-foreground">€ {fmt2(calcs.costo)}</td>
               <td className="px-1 py-2 text-right font-mono text-muted-foreground">{margineTot.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</td>
-              <td className="px-1 py-2 text-right font-mono text-muted-foreground">{calcs.peso.toFixed(2)}</td>
+              <td className="px-1 py-2 text-right font-mono text-muted-foreground">{fmt2(calcs.peso)}</td>
               <td></td>
             </tr>
           </tfoot>
@@ -283,8 +287,8 @@ export function RigheTable({
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/30 p-2 text-sm">
           <AddRowMenu readOnly={readOnly} onAddArticolo={addArticoloEmptyAndOpen} onPick={(tipo) => addRow(null, tipo)} />
           <div className="grid grid-cols-2 gap-x-4 font-mono text-xs">
-            <span className="text-muted-foreground">Totale</span><span className="text-right font-semibold">€ {calcs.totale.toFixed(2)}</span>
-            <span className="text-muted-foreground">Costo</span><span className="text-right">€ {calcs.costo.toFixed(2)}</span>
+            <span className="text-muted-foreground">Totale</span><span className="text-right font-semibold">€ {fmt2(calcs.totale)}</span>
+            <span className="text-muted-foreground">Costo</span><span className="text-right">€ {fmt2(calcs.costo)}</span>
             <span className="text-muted-foreground">Marg.</span><span className="text-right">{margineTot.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</span>
           </div>
         </div>
@@ -379,8 +383,8 @@ type RigaProps = {
   prezziSpecialiMap?: PrezziSpecialiMap | null;
 };
 
-const fmt4 = (v: number) => v.toLocaleString("it-IT", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
-const fmt2 = (v: number) => v.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt4 = (v: number) => formatNumeroIt(v, { minDecimals: 4, maxDecimals: 4 });
+const fmt2 = (v: number) => formatNumeroIt(v, { minDecimals: 2, maxDecimals: 2 });
 
 function ScontiCell({ value, onCommit }: { value: number[] | null | undefined; onCommit: (v: number[]) => void }) {
   const testo = formatScontiGamma(value);
@@ -521,12 +525,12 @@ function useCelleRiga(p: RigaProps) {
         className="h-8 px-1 text-xs" />
     ),
     incidenza: (
-      <EditableNumberCell value={row.incidenza == null ? null : Number(row.incidenza)} step={0.0001}
+      <EditableNumberCell value={row.incidenza == null ? null : Number(row.incidenza)} decimali={4} ariaLabel="Incidenza"
         onCommit={(v) => onPatch({ incidenza: v })} />
     ),
     quantita: (
       <div className="flex flex-col items-end gap-0.5">
-        <EditableNumberCell value={row.quantita == null ? null : Number(row.quantita)} step={0.01}
+        <EditableNumberCell value={row.quantita == null ? null : Number(row.quantita)} decimali={2} ariaLabel="Quantità riga"
           onCommit={(v) => onPatch({ quantita: v })} {...(evasa ? { disabled: true } : {})} />
         {(parziale || evasa) && (
           <span className={cn("text-[10px] font-semibold", evasa ? "text-[#009246]" : "text-amber-600")}
@@ -567,7 +571,7 @@ function useCelleRiga(p: RigaProps) {
     ),
     margine: `${calc.margine_perc.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`,
     peso: row.articolo_codice && row.peso_gamma_unit == null ? "—" : fmt2(calc.peso),
-    onRowClick: readOnly && vecchioCatalogo ? () => onOpenArticolo(row.articolo_id!) : undefined,
+    onRowClick: readOnly && vecchioCatalogo ? () => row.articolo_id && onOpenArticolo(row.articolo_id) : undefined,
   };
 }
 
