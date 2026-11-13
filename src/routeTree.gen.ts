@@ -43,7 +43,6 @@ import { Route as AppNotificheRouteImport } from './routes/_app/notifiche'
 import { Route as AppOpportunitaRouteImport } from './routes/_app/opportunita'
 import { Route as AppPianiRientroRouteImport } from './routes/_app/piani-rientro'
 import { Route as AppPrivacyRouteImport } from './routes/_app/privacy'
-import { Route as AppProvaFm67LinguetteRouteImport } from './routes/_app/prova-fm67-linguette'
 import { Route as AppRecuperoAgenziaRouteImport } from './routes/_app/recupero-agenzia'
 import { Route as AppRecuperoCreditiRouteImport } from './routes/_app/recupero-crediti'
 import { Route as AppRecuperoCreditiAndamentoRouteImport } from './routes/_app/recupero-crediti-andamento'
@@ -273,11 +272,6 @@ const AppPianiRientroRoute = AppPianiRientroRouteImport.update({
 const AppPrivacyRoute = AppPrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppProvaFm67LinguetteRoute = AppProvaFm67LinguetteRouteImport.update({
-  id: '/prova-fm67-linguette',
-  path: '/prova-fm67-linguette',
   getParentRoute: () => AppRoute,
 } as any)
 const AppRecuperoAgenziaRoute = AppRecuperoAgenziaRouteImport.update({
@@ -627,7 +621,6 @@ export interface FileRoutesByFullPath {
   '/opportunita': typeof AppOpportunitaRouteWithChildren
   '/piani-rientro': typeof AppPianiRientroRoute
   '/privacy': typeof AppPrivacyRoute
-  '/prova-fm67-linguette': typeof AppProvaFm67LinguetteRoute
   '/recupero-agenzia': typeof AppRecuperoAgenziaRoute
   '/recupero-crediti': typeof AppRecuperoCreditiRoute
   '/recupero-crediti-andamento': typeof AppRecuperoCreditiAndamentoRoute
@@ -720,7 +713,6 @@ export interface FileRoutesByTo {
   '/notifiche': typeof AppNotificheRoute
   '/piani-rientro': typeof AppPianiRientroRoute
   '/privacy': typeof AppPrivacyRoute
-  '/prova-fm67-linguette': typeof AppProvaFm67LinguetteRoute
   '/recupero-agenzia': typeof AppRecuperoAgenziaRoute
   '/recupero-crediti': typeof AppRecuperoCreditiRoute
   '/recupero-crediti-andamento': typeof AppRecuperoCreditiAndamentoRoute
@@ -816,7 +808,6 @@ export interface FileRoutesById {
   '/_app/opportunita': typeof AppOpportunitaRouteWithChildren
   '/_app/piani-rientro': typeof AppPianiRientroRoute
   '/_app/privacy': typeof AppPrivacyRoute
-  '/_app/prova-fm67-linguette': typeof AppProvaFm67LinguetteRoute
   '/_app/recupero-agenzia': typeof AppRecuperoAgenziaRoute
   '/_app/recupero-crediti': typeof AppRecuperoCreditiRoute
   '/_app/recupero-crediti-andamento': typeof AppRecuperoCreditiAndamentoRoute
@@ -913,7 +904,6 @@ export interface FileRouteTypes {
     | '/opportunita'
     | '/piani-rientro'
     | '/privacy'
-    | '/prova-fm67-linguette'
     | '/recupero-agenzia'
     | '/recupero-crediti'
     | '/recupero-crediti-andamento'
@@ -1006,7 +996,6 @@ export interface FileRouteTypes {
     | '/notifiche'
     | '/piani-rientro'
     | '/privacy'
-    | '/prova-fm67-linguette'
     | '/recupero-agenzia'
     | '/recupero-crediti'
     | '/recupero-crediti-andamento'
@@ -1101,7 +1090,6 @@ export interface FileRouteTypes {
     | '/_app/opportunita'
     | '/_app/piani-rientro'
     | '/_app/privacy'
-    | '/_app/prova-fm67-linguette'
     | '/_app/recupero-agenzia'
     | '/_app/recupero-crediti'
     | '/_app/recupero-crediti-andamento'
@@ -1420,13 +1408,6 @@ declare module '@tanstack/react-router' {
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof AppPrivacyRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/prova-fm67-linguette': {
-      id: '/_app/prova-fm67-linguette'
-      path: '/prova-fm67-linguette'
-      fullPath: '/prova-fm67-linguette'
-      preLoaderRoute: typeof AppProvaFm67LinguetteRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/recupero-agenzia': {
@@ -1939,7 +1920,6 @@ interface AppRouteChildren {
   AppOpportunitaRoute: typeof AppOpportunitaRouteWithChildren
   AppPianiRientroRoute: typeof AppPianiRientroRoute
   AppPrivacyRoute: typeof AppPrivacyRoute
-  AppProvaFm67LinguetteRoute: typeof AppProvaFm67LinguetteRoute
   AppRecuperoAgenziaRoute: typeof AppRecuperoAgenziaRoute
   AppRecuperoCreditiRoute: typeof AppRecuperoCreditiRoute
   AppRecuperoCreditiAndamentoRoute: typeof AppRecuperoCreditiAndamentoRoute
@@ -2012,7 +1992,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppOpportunitaRoute: AppOpportunitaRouteWithChildren,
   AppPianiRientroRoute: AppPianiRientroRoute,
   AppPrivacyRoute: AppPrivacyRoute,
-  AppProvaFm67LinguetteRoute: AppProvaFm67LinguetteRoute,
   AppRecuperoAgenziaRoute: AppRecuperoAgenziaRoute,
   AppRecuperoCreditiRoute: AppRecuperoCreditiRoute,
   AppRecuperoCreditiAndamentoRoute: AppRecuperoCreditiAndamentoRoute,
