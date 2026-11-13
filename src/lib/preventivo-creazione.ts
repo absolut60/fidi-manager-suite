@@ -14,6 +14,22 @@ export function letteraPreventivo(documento: { id: string; alternativa_di: strin
   return lettera;
 }
 
+/** FM65 Punto 5: lettere per l'elenco; raggruppa per alternativa_di e riusa letteraPreventivo. */
+export function lettereElenco(righe: readonly { id: string; alternativa_di: string | null; created_at: string }[]): Map<string, string> {
+  const gruppi = new Map<string, { id: string; created_at: string }[]>();
+  for (const r of righe) {
+    if (!r.alternativa_di) continue;
+    const g = gruppi.get(r.alternativa_di) ?? [];
+    g.push(r);
+    gruppi.set(r.alternativa_di, g);
+  }
+  const esito = new Map<string, string>();
+  for (const r of righe) {
+    esito.set(r.id, letteraPreventivo(r, r.alternativa_di ? (gruppi.get(r.alternativa_di) ?? []) : []));
+  }
+  return esito;
+}
+
 /** Date ISO, somma di giorni di calendario indipendente da DST/fuso del browser. */
 export function validitaProposta(data: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return "";

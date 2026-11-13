@@ -275,6 +275,98 @@ export async function fetchPreventivi(f: PreventiviFilters): Promise<PreventivoL
   return items;
 }
 
+/** FM65 Punto 5: filtri dell'elenco, applicati SOLO ai principali. */
+export interface ElencoPreventiviFilters extends PreventiviFilters {
+  creato_da?: string[];
+}
+
+export interface ElencoPreventivoItem extends Omit<PreventivoListItem, "cliente"> {
+  cliente: { id: string; ragione_sociale: string; codice_gestionale: string | null } | null;
+  creato_da_nome: string | null;
+}
+
+export interface ElencoPreventivi {
+  /** Principali filtrati (tetto 500). */
+  principali: ElencoPreventivoItem[];
+  /** TUTTE le alternative dei principali trovati, senza filtri. */
+  alternative: ElencoPreventivoItem[];
+}
+
+const SELECT_ELENCO = `*,
+       cantiere:cantieri(id, nome),
+       blocchi:blocchi_preventivo(righe:righe_preventivo(tipo_riga, quantita, qta_ordinata))`;
+
+export async function fetchElencoPreventivi(f: ElencoPreventiviFilters): Promise<ElencoPreventivi> {
+  let q = supabase
+    .from("preventivi")
+    .select(SELECT_ELENCO)
+    .is("alternativa_di", null)
+    .order("data", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(500);
+  if (f.tipo) q = q.eq("tipo", f.tipo);
+  if (f.cliente_id?.length) q = q.in("cliente_id", f.cliente_id);
+  if (f.stato?.length) q = q.in("stato", f.stato);
+  if (f.tipo_doc?.length) q = q.in("tipo_doc", f.tipo_doc);
+  if (f.creato_da?.length) q = q.in("creato_da", f.creato_da);
+  if (f.search?.trim()) {
+    const s = testoPerFiltroOr(f.search);
+    const parti = [`numero.ilike.%${s}%`, `titolo.ilike.%${s}%`];
+    const clienti = await cercaClientiPreventivo(f.search.trim());
+    const ids = clienti
+      .filter((c) => (c.codice_gestionale ?? "").toLowerCase().includes(f.search!.trim().toLowerCase()))
+      .map((c) => c.id);
+    if (ids.length) parti.push(`cliente_id.in.(${ids.join(",")})`);
+    q = q.or(parti.join(","));
+  }
+  const { data, error } = await q;
+  if (error) throw error;
+  const principali = (data ?? []) as unknown as ElencoPreventivoItem[];
+  const alternative: ElencoPreventivoItem[] = [];
+  const idsPrincipali = principali.map((p) => p.id);
+  for (let i = 0; i < idsPrincipali.length; i += 200) {
+    const { data: alt, error: e2 } = await supabase
+      .from("preventivi")
+      .select(SELECT_ELENCO)
+      .in("alternativa_di", idsPrincipali.slice(i, i + 200));
+    if (e2) throw e2;
+    alternative.push(...((alt ?? []) as unknown as ElencoPreventivoItem[]));
+  }
+  const tutti = [...principali, ...alternative];
+  await Promise.all([popolaClientiElenco(tutti), popolaNomiCreatoDa(tutti)]);
+  return { principali, alternative };
+}
+
+async function popolaClientiElenco(items: ElencoPreventivoItem[]): Promise<void> {
+  const ids = [...new Set(items.map((i) => i.cliente_id).filter((v): v is string => !!v))];
+  const map = new Map<string, { id: string; ragione_sociale: string; codice_gestionale: string | null }>();
+  for (let i = 0; i < ids.length; i += 500) {
+    const { data, error } = await supabase.rpc("get_clienti_elenco_preventivi", {
+      _ids: ids.slice(i, i + 500),
+    });
+    if (error) throw error;
+    for (const r of data ?? []) {
+      map.set(r.id, { id: r.id, ragione_sociale: r.ragione_sociale ?? "—", codice_gestionale: r.codice_gestionale ?? null });
+    }
+  }
+  for (const it of items) it.cliente = it.cliente_id ? (map.get(it.cliente_id) ?? null) : null;
+}
+
+async function popolaNomiCreatoDa(items: ElencoPreventivoItem[]): Promise<void> {
+  const ids = new Set(items.map((i) => i.creato_da).filter((v): v is string => !!v));
+  const map = new Map<string, string>();
+  if (ids.size) {
+    const { data, error } = await supabase.rpc("get_nomi_utenti" as never);
+    if (error) throw error;
+    for (const p of (data as unknown as { id: string; nome: string | null; cognome: string | null }[] | null) ?? []) {
+      if (!ids.has(p.id)) continue;
+      const nome = [p.nome, p.cognome].filter(Boolean).join(" ").trim();
+      if (nome) map.set(p.id, nome);
+    }
+  }
+  for (const it of items) it.creato_da_nome = it.creato_da ? (map.get(it.creato_da) ?? null) : null;
+}
+
 export interface PrezzoSpecialeCantiere {
   cod_gamma: string;
   costo_netto_speciale: number | null;
