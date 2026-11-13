@@ -198,3 +198,4 @@
 - [x] FM65 F1: cerca_articoli coppie/marca/solo_gamma + terne_articoli_filtri (0206)
 - [ ] FM65 F2-F5: logica cascata, componente condiviso, picker, verifica
 - [x] FM65 F2 logica filtri a cascata
+- [x] FM65 F3 Senza famiglia/marca in ricerca + filtri a cascata nel catalogo
