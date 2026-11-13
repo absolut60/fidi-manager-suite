@@ -100,7 +100,7 @@ export default function CantieriMappa({
             div.style.minWidth = "200px";
             const h = document.createElement("div");
             h.style.fontWeight = "600";
-            h.textContent = c.nome;
+            h.textContent = c.provvisorio ? `${c.nome} (provvisorio)` : c.nome;
             const s = document.createElement("div");
             s.style.fontSize = "12px";
             s.textContent = nomeSoggettoCantiere(c);

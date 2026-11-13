@@ -1,6 +1,6 @@
 import { CondizioniClienteGamma } from "@/components/preventivatore/CondizioniClienteGamma";
 import { useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
-import { descrizioneCantiereProvvisorio, riallineaValidita, validitaProposta } from "@/lib/preventivo-creazione";
+import { riallineaValidita, validitaProposta } from "@/lib/preventivo-creazione";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -34,7 +34,6 @@ export function NuovoPreventivoDialog({
   const [clienteId, setClienteId] = useState<string | null>(null);
   const [cantiereId, setCantiereId] = useState<string | null>(null);
   const [modoCantiere, setModoCantiere] = useState<"seleziona" | "crea" | "provvisorio">("seleziona");
-  const [cantiereDescrizione, setCantiereDescrizione] = useState("");
   const [agenteId, setAgenteId] = useState<string | null>(null);
   const [filiale, setFiliale] = useState("");
   const [titolo, setTitolo] = useState("");
@@ -99,7 +98,6 @@ export function NuovoPreventivoDialog({
       if (!isWriteOnly && c.codice_agente) setAgenteId(c.codice_agente);
       if (!clienteCambiato) return;
       setCantiereId(null);
-      setCantiereDescrizione("");
       setModoCantiere("seleziona");
     }).catch((e: unknown) => { if (attivo) toast.error((e as Error).message || "Errore lettura cliente"); });
     return () => { attivo = false; };
@@ -112,9 +110,8 @@ export function NuovoPreventivoDialog({
       const tipoDocFinal: TipoDoc = tipoDoc || "PREVENTIVO";
       return createPreventivo({
         cliente_id: clienteId,
-        cantiere_id: modoCantiere === "provvisorio" ? null : cantiereId,
-        cantiere_descrizione:
-          modoCantiere === "provvisorio" ? descrizioneCantiereProvvisorio(cantiereDescrizione) : null,
+        cantiere_id: cantiereId,
+        cantiere_descrizione: null,
         agente_codice: agenteId,
         filiale: filiale || null,
         titolo: titolo.trim() || null,
@@ -170,11 +167,6 @@ export function NuovoPreventivoDialog({
                   variant={modoCantiere === m ? "default" : "outline"}
                   onClick={() => {
                     setModoCantiere(m);
-                    if (m === "provvisorio") {
-                      setCantiereId(null);
-                    } else {
-                      setCantiereDescrizione("");
-                    }
                   }}
                 >
                   {l}
@@ -182,11 +174,9 @@ export function NuovoPreventivoDialog({
               ))}
             </div>
             {modoCantiere === "provvisorio" ? (
-              <Input
-                value={cantiereDescrizione}
-                onChange={(e) => setCantiereDescrizione(e.target.value)}
-                placeholder="Da definire"
-              />
+              <div className="grid gap-2 rounded-md border p-3">
+                <NuovoCantiereForm clienteId={clienteId} provvisorio onCreato={(c) => { setCantiereId(c.id); setModoCantiere("seleziona"); }} />
+              </div>
             ) : modoCantiere === "crea" ? (
               <div className="grid gap-2 rounded-md border p-3">
                 <NuovoCantiereForm clienteId={clienteId} onCreato={(c) => { setCantiereId(c.id); setModoCantiere("seleziona"); }} />

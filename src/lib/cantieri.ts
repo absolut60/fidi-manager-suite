@@ -67,6 +67,7 @@ export type CantiereRow = {
   id: string;
   nome: string;
   descrizione: string | null;
+  provvisorio?: boolean | null;
   cliente_id: string | null;
   lead_id: string | null;
   indirizzo: string | null;

@@ -1,4 +1,5 @@
 import { useSoloShowroom } from "@/hooks/use-solo-showroom";
+import { BadgeProvvisorio } from "@/components/badge-provvisorio";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -101,7 +102,8 @@ export function ClienteCantieriTab({
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-semibold truncate">{c.nome}</p>
+                    <p className="font-semibold break-words">{c.nome}</p>
+                    {c.provvisorio && <BadgeProvvisorio />}
                     {c.attivo ? (
                       <Badge className="bg-success/15 text-success">Attivo</Badge>
                     ) : (

@@ -9,9 +9,8 @@ import { NuovoCantiereForm } from "./NuovoCantiereForm";
 type Modo = "cliente" | "nuovo" | "provvisorio";
 const MODI: [Modo, string][] = [["cliente", "Cantiere del cliente"], ["nuovo", "+ Nuovo cantiere"], ["provvisorio", "Provvisorio"]];
 
-export function BadgeProvvisorio() {
-  return <span className="shrink-0 whitespace-nowrap rounded-full bg-pv-arancio-tenue px-2 py-0.5 text-[11px] font-semibold text-pv-arancio">Provvisorio</span>;
-}
+export { BadgeProvvisorio } from "@/components/badge-provvisorio";
+import { BadgeProvvisorio } from "@/components/badge-provvisorio";
 
 /**
  * Riquadro Cantiere della Testata (FM65 B2): tre modi, tutti collegano un vero cantiere (onCantiere → cantiere_id).

@@ -1,5 +1,6 @@
 // Dialog creazione / modifica opportunità commerciale.
 // Riusa SoggettoCombobox (ricerca unica clienti + lead) e i componenti UI esistenti.
+import { BadgeProvvisorio } from "@/components/badge-provvisorio";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -169,7 +170,7 @@ export function OpportunitaDialog({
     queryFn: async () => {
       const col = soggetto!.tipo === "cliente" ? "cliente_id" : "lead_id";
       const { data, error } = await supabase
-        .from("cantieri").select("id, nome").eq(col, soggetto!.id).order("nome");
+        .from("cantieri").select("id, nome, provvisorio").eq(col, soggetto!.id).order("nome");
       if (error) throw error;
       return (data ?? []) as Array<{ id: string; nome: string }>;
     },
@@ -331,7 +332,7 @@ export function OpportunitaDialog({
                 <SelectTrigger><SelectValue placeholder="Nessuno" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="nessuno">Nessuno</SelectItem>
-                  {cantieri.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                  {cantieri.map((c) => <SelectItem key={c.id} value={c.id}><span className="inline-flex items-center gap-2">{c.nome}{c.provvisorio && <BadgeProvvisorio />}</span></SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

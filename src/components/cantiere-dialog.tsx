@@ -1,4 +1,5 @@
 // Dialog creazione / modifica cantiere con geocodifica automatica dell'indirizzo.
+import { Switch } from "@/components/ui/switch";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -92,6 +93,7 @@ export function CantiereDialog({
   const [agenteCodice, setAgenteCodice] = useState("");
   const [note, setNote] = useState("");
   const [attivo, setAttivo] = useState(true);
+  const [provvisorio, setProvvisorio] = useState(false);
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
   const [saving, setSaving] = useState(false);
@@ -192,6 +194,7 @@ export function CantiereDialog({
     setAgenteCodice(c?.agente_codice ?? "");
     setNote(c?.note ?? "");
     setAttivo(c?.attivo ?? true);
+    setProvvisorio(c?.provvisorio === true);
     setLat(c?.lat != null ? String(c.lat) : "");
     setLng(c?.lng != null ? String(c.lng) : "");
     setSedeTesto(c ? testoSedeVicina(c) : null);
@@ -290,6 +293,7 @@ export function CantiereDialog({
         agente_codice: agenteCodice || null,
         note: note.trim() || null,
         attivo,
+        provvisorio,
         lat: latN,
         lng: lngN,
       };
@@ -512,6 +516,13 @@ export function CantiereDialog({
           <div className="flex items-center gap-2">
             <Checkbox id="cantiere-attivo" checked={attivo} onCheckedChange={(v) => setAttivo(v === true)} />
             <Label htmlFor="cantiere-attivo" className="cursor-pointer text-sm font-normal">Cantiere attivo</Label>
+          </div>
+          <div className="flex items-start gap-3">
+            <Switch id="cantiere-provvisorio" checked={provvisorio} onCheckedChange={setProvvisorio} className="mt-0.5" />
+            <div className="min-w-0">
+              <Label htmlFor="cantiere-provvisorio" className="cursor-pointer text-sm font-normal">Provvisorio</Label>
+              <p className="text-xs text-muted-foreground">Spegni quando il cantiere è confermato</p>
+            </div>
           </div>
         </div>
 
