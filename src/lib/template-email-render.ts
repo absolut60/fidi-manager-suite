@@ -131,18 +131,21 @@ export function renderTemplate(
     showMetodo: isPromemoria,
   });
   const values: Record<PlaceholderKey, string> = {
-    ragione_sociale: escapeHtml(dati.ragione_sociale ?? ""),
+    ragione_sociale: dati.ragione_sociale ?? "",
     totale_scaduto: formatEuro(totals.totaleScaduto),
     spese_insoluto: formatEuro(totals.speseInsoluto),
     totale_da_pagare: formatEuro(totals.totaleDaPagare),
     n_riba: String(totals.nRiba),
     elenco_scadenze: elenco,
     data_oggi: formatDateIt(new Date()),
-    nome_operatore: escapeHtml(dati.nome_operatore ?? ""),
+    nome_operatore: dati.nome_operatore ?? "",
   };
+  const valoriHtml = Object.fromEntries(Object.entries(values).map(([key, value]) => [
+    key, key === "elenco_scadenze" ? value : escapeHtml(value),
+  ]));
   return {
     oggetto: replaceAll(template.oggetto ?? "", values),
-    corpo: replaceAll(template.corpo ?? "", values),
+    corpo: replaceAll(template.corpo ?? "", valoriHtml),
   };
 }
 

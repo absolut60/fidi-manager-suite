@@ -5,6 +5,7 @@ import { sendEmailViaEdge } from "./send-email.server";
 import { buildEmailCampagna } from "@/lib/campagna-marketing-email";
 import { riscriviLinkTracciati } from "@/lib/tracking-clic";
 import type { DatiSede } from "@/lib/template-email-render";
+import { urlAppUfficiale as appUrl } from "@/lib/url-app.server";
 
 type EventData = { campagna_id: string };
 
@@ -12,10 +13,6 @@ const DEFAULT_BLOCCO = 12;
 const DEFAULT_PAUSA = 60;
 const MAX_PER_RUN = 150; // max destinatari processati per singola esecuzione, poi re-emit
 const ALLEGATI_BUCKET = "allegati";
-
-function appUrl(): string {
-  return process.env.VITE_APP_URL ?? "https://fidi-manager-suite.lovable.app";
-}
 
 async function getConfigInt(chiave: string, fallback: number): Promise<number> {
   const { data } = await supabaseAdmin

@@ -7,6 +7,8 @@
 import { inngest } from "./client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendEmailViaEdge } from "./send-email.server";
+import { urlAppUfficiale } from "@/lib/url-app.server";
+import { mascheraEmailNelLog } from "@/lib/email-log";
 import {
   emailEsitoImport,
   dettaglioScartateImport,
@@ -172,7 +174,7 @@ export const notificaEsitoImport = inngest.createFunction(
           logger.warn(`Esito import ${id}: profilo senza email, inviata solo la notifica`);
           return "notificato";
         }
-        const appUrl = process.env.VITE_APP_URL ?? "https://fidi-manager-suite.lovable.app";
+        const appUrl = urlAppUfficiale();
         const { subject, html } = emailEsitoImport(dati, appUrl);
         const res = await sendEmailViaEdge({
           to: email,
@@ -180,7 +182,7 @@ export const notificaEsitoImport = inngest.createFunction(
           html,
           fromName: "MADE Distribuzione",
         });
-        if (!res.ok) logger.error(`Email esito import ${id} fallita: ${res.err ?? "errore sconosciuto"}`);
+        if (!res.ok) logger.error(`Email esito import ${id} fallita: ${mascheraEmailNelLog(res.err ?? "errore sconosciuto")}`);
         return "notificato";
       });
       if (esito === "notificato") notificate++;

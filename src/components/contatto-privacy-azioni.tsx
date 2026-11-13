@@ -190,7 +190,7 @@ export function ContattoPrivacyAzioni({
     setLoading(azione);
     try {
       const res = await inviaFn({
-        data: { contattoId: contatto.id, origin: window.location.origin },
+        data: { contattoId: contatto.id },
       });
       try {
         await navigator.clipboard.writeText(res.link);

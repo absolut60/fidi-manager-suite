@@ -13,6 +13,7 @@
 // - Idempotenza: `scadenze.promemoria_scadenza_inviato_il` viene marcata dopo
 //   l'invio effettivo. Log su `promemoria_scadenza_log` (+ bridge scadenze).
 import { inngest } from "./client";
+import { mascheraEmailNelLog } from "@/lib/email-log";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendEmailViaEdge } from "./send-email.server";
 import { buildPromemoriaEmail } from "@/lib/promemoria-scadenza-render";
@@ -269,7 +270,7 @@ export const promemoriaScadenzaAutomatico = inngest.createFunction(
           email_html: htmlArchivio,
         });
         falliti++;
-        console.error(`[promemoria-scadenza] fail cliente ${clienteId}:`, res.err);
+        console.error(`[promemoria-scadenza] fail cliente ${clienteId}:`, mascheraEmailNelLog(res.err));
       }
     }
 

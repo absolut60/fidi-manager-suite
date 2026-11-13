@@ -8,6 +8,7 @@
 import { inngest } from "./client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendEmailViaEdge } from "./send-email.server";
+import { mascheraEmailNelLog } from "@/lib/email-log";
 
 async function getConfig(chiave: string, fallback: string): Promise<string> {
   const { data } = await supabaseAdmin
@@ -111,7 +112,7 @@ export const remindRatePianoRientro = inngest.createFunction(
         inviate++;
       } else {
         fallite++;
-        console.error(`[piano-reminder] fail rata ${r.id}:`, res.err);
+        console.error(`[piano-reminder] fail rata ${r.id}:`, mascheraEmailNelLog(res.err));
       }
     }
 
