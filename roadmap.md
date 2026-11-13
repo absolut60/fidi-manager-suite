@@ -1,6 +1,6 @@
 # FM65 — Correzioni B
-- [ ] Celle omogenee senza riquadri, U.M. compatta, icona riepilogo in #/testata scheda; sola grafica.
-- [ ] Diff logica invariata, test e screenshot 375/1280/1440 con codici e descrizioni lunghi.
+- [x] Celle omogenee senza riquadri, U.M. 72px compatta, # 40px e icona riepilogo in #/testata scheda; sola grafica.
+- [x] 706 test; mutation/onMutate/onPatch e conversioni identici byte per byte; screenshot 375/1280/1440 con codice lungo intero, pagina senza overflow e tabella invariata a 1470px; pagina temporanea rimossa. Prova con dati finti.
 
 # FM65 — Correzioni A
 - [x] Finestre Duplica/Nuovo senza overflow; selettore clienti chiaro alla fonte (variant default locale, nessuna modifica globale).
