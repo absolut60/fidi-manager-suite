@@ -262,7 +262,7 @@ export function RigheTable({
       {/* Da 1024 px: tabella. Sotto: schede compatte con gli stessi campi. */}
       <div className="hidden max-w-full overflow-x-auto lg:block">
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        <table className="w-full min-w-[1360px] table-fixed border-separate border-spacing-0 text-xs">
+        <table className="w-full min-w-[1470px] table-fixed border-separate border-spacing-0 text-xs">
           <thead className="bg-muted/40">
             <tr className="whitespace-nowrap text-[10px] uppercase tracking-wide text-muted-foreground">
               <th className="w-[18px] px-1 py-1.5 sticky left-0 z-10 bg-muted"></th>
