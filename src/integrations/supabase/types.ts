@@ -1927,6 +1927,7 @@ export type Database = {
           nome: string
           note: string | null
           provincia: string | null
+          provvisorio: boolean
           referente: string | null
           sede_piu_vicina_calcolata_il: string | null
           sede_piu_vicina_id: string | null
@@ -1957,6 +1958,7 @@ export type Database = {
           nome: string
           note?: string | null
           provincia?: string | null
+          provvisorio?: boolean
           referente?: string | null
           sede_piu_vicina_calcolata_il?: string | null
           sede_piu_vicina_id?: string | null
@@ -1987,6 +1989,7 @@ export type Database = {
           nome?: string
           note?: string | null
           provincia?: string | null
+          provvisorio?: boolean
           referente?: string | null
           sede_piu_vicina_calcolata_il?: string | null
           sede_piu_vicina_id?: string | null
@@ -8930,11 +8933,13 @@ export type Database = {
       count_fidi_quasi_saturi: { Args: { _store_id?: string }; Returns: number }
       crea_cantiere_lite: {
         Args: {
+          _cap?: string
           _citta?: string
           _cliente_id: string
           _indirizzo?: string
           _nome: string
           _provincia?: string
+          _provvisorio?: boolean
         }
         Returns: {
           id: string
@@ -9248,15 +9253,31 @@ export type Database = {
           tipo: Database["public"]["Enums"]["tipo_canale"]
         }[]
       }
+      get_cantiere_preventivo: {
+        Args: { _id: string }
+        Returns: {
+          attivo: boolean
+          cap: string
+          citta: string
+          cliente_id: string
+          id: string
+          indirizzo: string
+          nome: string
+          provincia: string
+          provvisorio: boolean
+        }[]
+      }
       get_cantieri_lite: {
         Args: { _cliente_id: string }
         Returns: {
           attivo: boolean
+          cap: string
           citta: string
           id: string
           indirizzo: string
           nome: string
           provincia: string
+          provvisorio: boolean
         }[]
       }
       get_clic_destinatari: {
