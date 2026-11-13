@@ -1,11 +1,12 @@
 // FM65 F3: filtri a cascata Famiglia → Sottofamiglia → Marca, condivisi da catalogo articoli e ricerca del preventivo.
 // Nessuna logica di filtro qui: opzioni e pulizia vengono solo da filtri-catalogo-articoli.ts.
 import { useMemo } from "react";
+import { formatNumeroIt } from "@/lib/numero-it";
 import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { opzioniCascata, puliziaScelte, type OpzioneCascata, type ScelteCascata } from "@/lib/filtri-catalogo-articoli";
 import { useTerneArticoliFiltri } from "@/lib/use-terne-articoli-filtri";
 
-const voci = (o: OpzioneCascata[]) => o.map(x => ({ valore: x.valore, label: `${x.etichetta} (${x.conteggio.toLocaleString("it-IT")})` }));
+const voci = (o: OpzioneCascata[]) => o.map(x => ({ valore: x.valore, label: `${x.etichetta} (${formatNumeroIt(x.conteggio, { maxDecimals: 0, migliaia: true })})` }));
 
 export function FiltriCatalogoArticoli({ scelte, onChange }: { scelte: ScelteCascata; onChange: (s: ScelteCascata) => void }) {
   const { data: terne, isLoading, error } = useTerneArticoliFiltri();

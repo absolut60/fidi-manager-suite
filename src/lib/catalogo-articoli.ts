@@ -1,6 +1,6 @@
 // Filtri e parametri dell'elenco articoli Gamma (FM63 Fetta 3).
 // Prezzo, listino della sede e giacenze li decide solo SQL (cerca_articoli + _prezzo_vendita_articoli).
-import { parametriRicerca } from "./filtri-catalogo-articoli";
+import { parametriRicerca, type ScelteCascata } from "./filtri-catalogo-articoli";
 export const VALORE_LOGISTICA = "__logistica__";
 export const ORDINAMENTI_ARTICOLI = ["codice", "descrizione", "marca", "famiglia", "prezzo", "giacenza_sede", "giacenza_logistica", "stato"] as const;
 export type OrdinamentoArticoli = (typeof ORDINAMENTI_ARTICOLI)[number];
@@ -44,3 +44,18 @@ export const STATI_ARTICOLI = [
   { valore: "in_uso", label: "In uso" }, { valore: "in_esaurimento", label: "In esaurimento" },
   { valore: "solo_preventivatore", label: "Solo preventivatore" },
 ];
+
+/** FM65 F4: parametri di cerca_articoli per la ricerca articolo del preventivo (30 righe Gamma per codice). */
+export function parametriArticoliPreventivo(testo: string, scelte?: Partial<ScelteCascata>) {
+  const c = parametriRicerca({ famiglie: scelte?.famiglie ?? [], coppie: scelte?.coppie ?? [], marche: scelte?.marche ?? [] });
+  return {
+    testo: testo.trim(), famiglie: c.famiglie, sottofamiglie: [] as string[], marche: c.marche, fornitori: [] as string[],
+    stati: ["in_uso", "in_esaurimento"], disponibile_in: [] as string[], disponibile_logistica: false,
+    _ordina: "codice", _direzione: "asc", limite: 30, offset: 0,
+    coppie: c.coppie, solo_gamma: true, // FM65 F1: righe non Gamma escluse prima del limite
+  };
+}
+/** FM65 F4: la ricerca del preventivo parte con almeno un filtro, altrimenti con almeno 2 caratteri. */
+export function ricercaPreventivoAttiva(testo: string, scelte: ScelteCascata) {
+  return scelte.famiglie.length + scelte.coppie.length + scelte.marche.length > 0 || testo.trim().length >= 2;
+}
