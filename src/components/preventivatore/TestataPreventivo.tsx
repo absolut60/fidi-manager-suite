@@ -21,58 +21,53 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
   const pagamento=prev.condizione_pagamento_cod||cliente?.condizione_pagamento_cod||'';
   const pagamentoDesc=codici.find(c=>c.cod===pagamento)?.descrizione||cliente?.condizione_pagamento_desc||'';
   const save=(patch:PreventivoUpdate)=>onSave({...(!prev.condizione_pagamento_cod&&pagamento?{condizione_pagamento_cod:pagamento}:{}),...patch});
-  const field=(label:string,value:ReactNode,control:ReactNode,wide=false)=><div key={label} className={`min-w-0 grid content-start gap-1 ${wide?'sm:col-span-2':''}`}><Label className="text-xs">{label}</Label>{modificabile?control:<div className="min-h-[34px] text-sm break-words whitespace-pre-wrap py-1.5 border-b border-border/50">{value||'—'}</div>}</div>;
-  const text=(key:'numero'|'titolo'|'filiale',label:string,wide=false)=>field(label,prev[key],<Input aria-label={label} key={`${key}-${prev[key]}`} className="h-[34px] bg-card" defaultValue={prev[key]||''} onBlur={e=>{if((e.target.value||null)!==prev[key])save({[key]:e.target.value||null});}}/>,wide);
-  const select=(label:string,value:string,options:{value:string;label:string}[],onChange:(v:string)=>void,disabled=false)=><Select value={value||'__none__'} onValueChange={onChange} disabled={disabled}><SelectTrigger aria-label={label} className="min-h-[34px] h-auto w-full min-w-0 bg-card [&>span]:whitespace-normal [&>span]:text-left"><SelectValue/></SelectTrigger><SelectContent className="max-w-[calc(100vw-2rem)]"><SelectItem value="__none__">—</SelectItem>{options.map(o=><SelectItem key={o.value} value={o.value} className="whitespace-normal break-words">{o.label}</SelectItem>)}</SelectContent></Select>;
+  const field=(label:string,value:ReactNode,control:ReactNode,wide=false)=><div key={label} className={`min-w-0 grid content-start gap-1 ${wide?'col-span-2':''}`}><Label className="text-[11px] text-muted-foreground">{label}</Label>{modificabile?control:<div className="min-h-7 text-xs break-words whitespace-pre-wrap py-1">{value||'—'}</div>}</div>;
+  const text=(key:'numero'|'titolo'|'filiale',label:string,wide=false)=>field(label,prev[key],<Input aria-label={label} key={`${key}-${prev[key]}`} className="h-7 bg-card px-2 text-xs md:text-xs" defaultValue={prev[key]||''} onBlur={e=>{if((e.target.value||null)!==prev[key])save({[key]:e.target.value||null});}}/>,wide);
+  const select=(label:string,value:string,options:{value:string;label:string}[],onChange:(v:string)=>void,disabled=false)=><Select value={value||'__none__'} onValueChange={onChange} disabled={disabled}><SelectTrigger aria-label={label} className="h-7 w-full min-w-0 bg-card px-2 text-xs [&>span]:truncate [&>span]:text-left"><SelectValue/></SelectTrigger><SelectContent className="max-w-[calc(100vw-2rem)]"><SelectItem value="__none__">—</SelectItem>{options.map(o=><SelectItem key={o.value} value={o.value} className="whitespace-normal break-words">{o.label}</SelectItem>)}</SelectContent></Select>;
   const agenteCliente=agenti.find(a=>a.id===cliente?.codice_agente)?.nome||cliente?.codice_agente||'';
-  const info=(label:string,value:ReactNode)=><div key={label} className="min-w-0"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="min-h-[1.5rem] break-words text-sm">{value||'—'}</dd></div>;
-  const due="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2";
-  return <section className="grid grid-cols-1 gap-4 py-4 lg:grid-cols-2">
-    <RiquadroScheda titolo="Documento" icona={FileText} tono="grigio">
+  const identitaCliente=[cliente?.codice_gestionale,cliente?.ragione_sociale||prev.cliente?.ragione_sociale].filter(Boolean).join(' · ');
+  const indirizzo=[cliente?.indirizzo,[cliente?.cap,cliente?.citta,cliente?.provincia&&`(${cliente.provincia})`].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  const contatti=[cliente?.telefono&&<a key="tel" className="text-pv-blu hover:underline" href={`tel:${cliente.telefono}`}>{cliente.telefono}</a>,cliente?.cellulare&&<a key="cell" className="text-pv-blu hover:underline" href={`tel:${cliente.cellulare}`}>{cliente.cellulare}</a>,cliente?.email&&<a key="email" className="break-all text-pv-blu hover:underline" href={`mailto:${cliente.email}`}>{cliente.email}</a>,cliente?.pec&&<a key="pec" className="break-all text-pv-blu hover:underline" href={`mailto:${cliente.pec}`}>PEC {cliente.pec}</a>].filter(Boolean);
+  const due="grid grid-cols-2 gap-x-2 gap-y-1.5 lg:grid-cols-5";
+  return <section className="grid grid-cols-1 gap-2 py-2 lg:grid-cols-[minmax(0,62fr)_minmax(0,38fr)]">
+    <RiquadroScheda titolo="Documento" icona={FileText} tono="grigio" densita="compatta">
       <div className={due}>
         {text('titolo','Titolo',true)}
         {text('numero','Numero')}
-        {field('Data',formatDate(prev.data),<Input aria-label="Data" className="h-[34px] bg-card" type="date" defaultValue={prev.data} onBlur={e=>{if(e.target.value&&e.target.value!==prev.data)save({data:e.target.value});}}/>)}
-        {field('Validità',prev.validita?formatDate(prev.validita):'—',<Input aria-label="Validità" className="h-[34px] bg-card" type="date" defaultValue={prev.validita||''} onBlur={e=>{if((e.target.value||null)!==prev.validita)save({validita:e.target.value||null});}}/>)}
+        {field('Data',formatDate(prev.data),<Input aria-label="Data" className="h-7 bg-card px-2 text-xs md:text-xs" type="date" defaultValue={prev.data} onBlur={e=>{if(e.target.value&&e.target.value!==prev.data)save({data:e.target.value});}}/>)}
+        {field('Validità',prev.validita?formatDate(prev.validita):'—',<Input aria-label="Validità" className="h-7 bg-card px-2 text-xs md:text-xs" type="date" defaultValue={prev.validita||''} onBlur={e=>{if((e.target.value||null)!==prev.validita)save({validita:e.target.value||null});}}/>)}
         {field('Tipo documento',TIPI_DOC_LABEL[prev.tipo_doc],select('Tipo documento',prev.tipo_doc,TIPI_DOC.map(v=>({value:v,label:TIPI_DOC_LABEL[v]})),v=>{if(TIPI_DOC.includes(v as typeof prev.tipo_doc))save({tipo_doc:v as typeof prev.tipo_doc});}))}
         {/* FM65 punto 3: lo Stato resta modificabile per chi ha il permesso anche da confermato/ordine (serve per riportarlo a Bozza/Inviato). */}
         {(modificabile||statoEditabile)
-          ? <div className="min-w-0 grid content-start gap-1"><Label className="text-xs">Stato</Label>{select('Stato',prev.stato,STATI.map(v=>({value:v,label:STATI_LABEL[v]})),v=>{if(STATI.includes(v as typeof prev.stato))save({stato:v as typeof prev.stato});})}</div>
+          ? <div className="min-w-0 grid content-start gap-1"><Label className="text-[11px] text-muted-foreground">Stato</Label>{select('Stato',prev.stato,STATI.map(v=>({value:v,label:STATI_LABEL[v]})),v=>{if(STATI.includes(v as typeof prev.stato))save({stato:v as typeof prev.stato});})}</div>
           : field('Stato',STATI_LABEL[prev.stato],<span/>)}
-        {field('Agente',agenti.find(a=>a.id===prev.agente_codice)?.nome,select('Agente',prev.agente_codice||'',agenti.map(a=>({value:a.id,label:a.nome})),v=>save({agente_codice:v==='__none__'?null:v})),true)}
-        {field('Alternativa di',principali.find(p=>p.id===prev.alternativa_di)?.numero||'— Nessuna: è un preventivo principale',<div><Select value={prev.alternativa_di||'__none__'} disabled={haAlternative||prev.tipo!=='preventivo'} onValueChange={v=>save({alternativa_di:v==='__none__'?null:v})}><SelectTrigger aria-label="Alternativa di" className="h-auto min-h-[34px] bg-card [&>span]:whitespace-normal [&>span]:text-left"><SelectValue/></SelectTrigger><SelectContent className="max-w-[calc(100vw-2rem)]"><SelectItem value="__none__">— Nessuna: è un preventivo principale</SelectItem>{principali.map(p=><SelectItem key={p.id} value={p.id}>{p.numero} {p.titolo?`· ${p.titolo}`:''}</SelectItem>)}</SelectContent></Select>{haAlternative&&<p className="text-xs text-muted-foreground mt-1">Ha alternative collegate</p>}</div>,true)}
+        {field('Agente',agenti.find(a=>a.id===prev.agente_codice)?.nome,select('Agente',prev.agente_codice||'',agenti.map(a=>({value:a.id,label:a.nome})),v=>save({agente_codice:v==='__none__'?null:v})))}
+        {field('Alternativa di',principali.find(p=>p.id===prev.alternativa_di)?.numero||'— Nessuna: è un preventivo principale',<div><Select value={prev.alternativa_di||'__none__'} disabled={haAlternative||prev.tipo!=='preventivo'} onValueChange={v=>save({alternativa_di:v==='__none__'?null:v})}><SelectTrigger aria-label="Alternativa di" className="h-auto min-h-7 bg-card px-2 text-xs md:text-xs [&>span]:whitespace-normal [&>span]:text-left"><SelectValue/></SelectTrigger><SelectContent className="max-w-[calc(100vw-2rem)]"><SelectItem value="__none__">— Nessuna: è un preventivo principale</SelectItem>{principali.map(p=><SelectItem key={p.id} value={p.id}>{p.numero} {p.titolo?`· ${p.titolo}`:''}</SelectItem>)}</SelectContent></Select>{haAlternative&&<p className="text-xs text-muted-foreground mt-1">Ha alternative collegate</p>}</div>,true)}
       </div>
     </RiquadroScheda>
-    <RiquadroScheda titolo="Dati anagrafici cliente" icona={UserRound} tono="azzurro">
-      {modificabile&&<div className="mb-3 grid gap-1"><Label className="text-xs">Cliente (cerca per codice o nome)</Label><ClientePicker value={prev.cliente_id} onChange={onChangeCliente}/></div>}
-      <p className="mb-2 break-words text-base font-semibold">{cliente?.ragione_sociale||prev.cliente?.ragione_sociale||'—'}</p>
-      <dl className={due}>
-        {info('Codice cliente',cliente?.codice_gestionale)}
-        {info('P.IVA',cliente?.partita_iva)}
-        <div className="min-w-0 sm:col-span-2">{info('Sede legale',[cliente?.indirizzo,[cliente?.cap,cliente?.citta,cliente?.provincia&&`(${cliente.provincia})`].filter(Boolean).join(' ')].filter(Boolean).join(', '))}</div>
-        {info('Telefono',cliente?.telefono&&<a className="text-pv-blu hover:underline" href={`tel:${cliente.telefono}`}>{cliente.telefono}</a>)}
-        {info('Cellulare',cliente?.cellulare&&<a className="text-pv-blu hover:underline" href={`tel:${cliente.cellulare}`}>{cliente.cellulare}</a>)}
-        {info('Email',cliente?.email&&<a className="break-all text-pv-blu hover:underline" href={`mailto:${cliente.email}`}>{cliente.email}</a>)}
-        {info('PEC',cliente?.pec&&<span className="break-all">{cliente.pec}</span>)}
-        {info('Sede MADE di riferimento',sede)}
-        {info('Agente',agenteCliente)}
-      </dl>
-      <Button variant="link" onClick={onCliente} className="mt-2 h-auto min-h-10 p-0 text-pv-blu">Apri scheda cliente<ExternalLink className="size-3 shrink-0 ml-1"/></Button>
+    <RiquadroScheda titolo="Cliente" icona={UserRound} tono="azzurro" densita="compatta" intestazione={modificabile?<div className="[&>button]:h-7 [&>button]:min-h-7 [&>button]:px-2 [&>button]:text-xs"><ClientePicker value={prev.cliente_id} onChange={onChangeCliente}/></div>:<p className="break-words text-xs font-semibold">{identitaCliente||'—'}</p>}>
+      <div className="space-y-1 text-xs">
+        {(cliente?.partita_iva||indirizzo)&&<p className="break-words">{[cliente?.partita_iva&&`P.IVA ${cliente.partita_iva}`,indirizzo].filter(Boolean).join(' · ')}</p>}
+        {contatti.length>0&&<p className="break-words">{contatti.map((c,i)=><span key={i}>{i>0&&' · '}{c}</span>)}</p>}
+        <div className="flex flex-wrap items-center gap-x-1"><span className="min-w-0 break-words">{[sede&&`Sede MADE ${sede}`,agenteCliente&&`Agente ${agenteCliente}`].filter(Boolean).join(' · ')}</span><Button variant="link" onClick={onCliente} className="h-7 p-0 text-xs text-pv-blu">Scheda<ExternalLink className="ml-1 size-3 shrink-0"/></Button></div>
+      </div>
     </RiquadroScheda>
-    <RiquadroScheda titolo="Condizioni commerciali" icona={Percent} tono="arancio">
-      <div className={due}>
-        {field('Listino',listino,<div className="min-h-[34px] py-1.5 text-sm">{listino}</div>)}
-        {field('Categoria',categoria,<div className="min-h-[34px] py-1.5 text-sm break-words">{categoria}</div>)}
-        {field('Condizione di pagamento',pagamento?`${pagamentoDesc||pagamento} (${pagamento})`:'—',<div>{select('Condizione di pagamento',pagamento,codici.map(c=>({value:c.cod,label:`${c.descrizione||''} (${c.cod})`})),v=>save({condizione_pagamento_cod:v==='__none__'?null:v}))}<p className="text-xs text-muted-foreground mt-1">Proposta dal cliente (Gamma) · modificabile</p></div>,true)}
-        {field('IVA %',`${formatNumeroIt(prev.iva_perc||0)}%`,<Input aria-label="IVA %" className="h-[34px] bg-card" inputMode="decimal" defaultValue={formatNumeroIt(prev.iva_perc||0)} onBlur={e=>{const v=parseNumeroIt(e.target.value);if(v!==null&&v!==prev.iva_perc)save({iva_perc:v});}}/>)}
+    <RiquadroScheda titolo="Condizioni commerciali" icona={Percent} tono="arancio" densita="compatta">
+      <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,2.5fr)_minmax(0,0.5fr)_minmax(0,0.8fr)]">
+        {field('Listino',listino,<div className="min-h-7 py-1 text-xs">{listino}</div>)}
+        {field('Categoria',categoria,<div className="min-h-7 py-1 text-xs break-words">{categoria}</div>)}
+        {field('Condizione di pagamento',pagamento?`${pagamentoDesc||pagamento} (${pagamento})`:'—',<div title="Proposta dal cliente (Gamma) · modificabile">{select('Condizione di pagamento',pagamento,codici.map(c=>({value:c.cod,label:`${c.descrizione||''} (${c.cod})`})),v=>save({condizione_pagamento_cod:v==='__none__'?null:v}))}</div>)}
+        {field('IVA %',`${formatNumeroIt(prev.iva_perc||0)}%`,<Input aria-label="IVA %" className="h-7 bg-card px-2 text-xs md:text-xs" inputMode="decimal" defaultValue={formatNumeroIt(prev.iva_perc||0)} onBlur={e=>{const v=parseNumeroIt(e.target.value);if(v!==null&&v!==prev.iva_perc)save({iva_perc:v});}}/>)}
         {text('filiale','Filiale')}
       </div>
     </RiquadroScheda>
-    <RiquadroScheda titolo="Cantiere" icona={HardHat} tono="verde">
-      <CantiereTestata prev={prev} modificabile={modificabile} onCantiere={onCantiere}/>
+    <RiquadroScheda titolo="Cantiere" icona={HardHat} tono="verde" densita="compatta">
+      <div className="[&>div]:space-y-1.5 [&_p]:text-xs [&_div.text-sm]:text-xs [&_button]:h-7 [&_button]:min-h-7 [&_button]:px-2 [&_button]:text-xs [&_button[role=combobox]]:w-full [&_div.space-y-2]:flex [&_div.space-y-2]:flex-col [&_div.space-y-2]:gap-1.5 [&_div.space-y-2]:space-y-0 [&_div[role=group]]:order-1 [&_div[role=group]]:flex-nowrap [&_div[role=group]_button]:px-1.5 [&_div[role=group]_button]:whitespace-normal [&_div[role=group]_button]:leading-tight [&_button[role=combobox]]:order-0">
+        <CantiereTestata prev={prev} modificabile={modificabile} onCantiere={onCantiere}/>
+      </div>
     </RiquadroScheda>
-    <RiquadroScheda titolo="Note per il cliente" icona={StickyNote} tono="viola" className="lg:col-span-2">
-      {field('Note',prev.note,<Textarea aria-label="Note" rows={3} className="bg-card" defaultValue={prev.note||''} onBlur={e=>{if((e.target.value||null)!==prev.note)save({note:e.target.value||null});}}/>,true)}
+    <RiquadroScheda titolo="Note" icona={StickyNote} tono="viola" densita="compatta" className="lg:col-span-2">
+      {modificabile?<Textarea aria-label="Note" rows={3} className="min-h-0 resize-none bg-card px-2 py-1 text-xs md:text-xs" defaultValue={prev.note||''} onBlur={e=>{if((e.target.value||null)!==prev.note)save({note:e.target.value||null});}}/>:<p className="whitespace-pre-wrap break-words text-xs">{prev.note||'—'}</p>}
     </RiquadroScheda>
   </section>;
 }
