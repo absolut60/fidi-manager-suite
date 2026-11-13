@@ -595,7 +595,11 @@ function ClienteDetail() {
         </div>
       </div>
 
-      <Tabs key={effTab} defaultValue={effTab} onValueChange={incorporata ? (tab) => navigate({ to: "/clienti/$clienteId", params: { clienteId }, search: (prev) => ({ ...prev, tab }), replace: true }) : undefined}>
+      <Tabs key={effTab} defaultValue={effTab} onValueChange={incorporata ? (valore) => {
+        const tab = TAB_VALUES.find(tab => tab === valore);
+        if (!tab) return;
+        navigate({ to: "/clienti/$clienteId", params: { clienteId }, search: (prev) => ({ ...prev, tab }), replace: true });
+      } : undefined}>
         <TabsList className="md:flex-wrap">
           <TabsTrigger value="riepilogo">Riepilogo</TabsTrigger>
           <TabsTrigger value="anagrafica">Anagrafica</TabsTrigger>
