@@ -218,3 +218,4 @@
 - [x] FM65 F4 filtri a cascata nella ricerca articolo del preventivo
 - [x] FM67 linguette Testata/Corpo/Piede (variante opt-in tabs.tsx) + Margine/Totale imponibile allineati a destra
 - [x] FM67 cella U.M.: esponente solo "1"/"2" (tolto "UM"), title/aria-label "Unità 1"/"Unità 2"; 732 test verdi, schermate 375/1280, nessuna modifica DB
+- [x] FM68 loghi allineati alla regola MADE: login `w-[341px] max-w-full h-auto` + aspectRatio (48 px come l'old h-12), header mobile `w-32` anche sotto sm; 732 test verdi, nessuna modifica DB

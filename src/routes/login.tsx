@@ -78,7 +78,8 @@ function LoginPage() {
           <img
             src={`data:image/png;base64,${LOGO_MADE_BASE64}`}
             alt="MADE"
-            className="h-12 w-auto mb-3"
+            className="w-[341px] max-w-full h-auto mb-3"
+            style={{ aspectRatio: "490 / 69" }}
           />
           <p className="text-sm text-muted-foreground">FidiManager · Gruppo MADE</p>
         </div>
