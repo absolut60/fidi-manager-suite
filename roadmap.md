@@ -1,3 +1,7 @@
+# FM67 — Testata Cliente sotto Documento
+- [x] Due colonne indipendenti 62/38; Cliente etichettato e Condizioni su due colonne, sola grafica.
+- [ ] Confronto gestori, test e schermate 375/1280/1600 modifica/lettura.
+
 # FM67 — Note con titolo e allegati
 - [x] Migrazione 0208: note, RLS, eccezione showroom autorizzata, storage, copia atomica nell’ordine.
 - [x] Note in linea e AllegatiSection compatta nella Testata; copia note nei duplicati.
