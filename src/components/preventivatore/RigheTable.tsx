@@ -260,29 +260,29 @@ export function RigheTable({
         <p className="px-3 py-2 text-xs text-muted-foreground">Imposta la quantità del blocco per usare l’incidenza</p>
       )}
       {/* Da 1024 px: tabella. Sotto: schede compatte con gli stessi campi. */}
-      <div className="hidden overflow-x-auto lg:block">
+      <div className="hidden max-w-full overflow-x-auto lg:block">
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        <table className="w-full table-fixed border-collapse text-xs">
+        <table className="w-full min-w-[1360px] table-fixed border-separate border-spacing-0 text-xs">
           <thead className="bg-muted/40">
-            <tr className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              <th className="w-5"></th>
-              <th className="w-6 text-center">#</th>
-              <th className="w-[9.4rem] px-1 py-1.5 text-left">Codice</th>
-              <th className="px-1 py-1.5 text-left">Descrizione</th>
-              <th className="w-20 px-1 py-1.5 text-left">U.M.</th>
-              <th className="w-14 px-1 py-1.5 text-right">Incid.</th>
-              <th className="w-16 px-1 py-1.5 text-right">Quantità</th>
-              <th className="w-[4.5rem] px-1 py-1.5 text-right">Prezzo lordo</th>
-              <th className="w-14 px-1 py-1.5 text-right">Sconti</th>
-              <th className="w-11 px-1 py-1.5 text-right">Magg.%</th>
-              <th className="w-11 px-1 py-1.5 text-right">Sc. extra %</th>
-              <th className="w-[4.5rem] px-1 py-1.5 text-right">Netto</th>
-              <th className="w-11 px-1 py-1.5 text-center">±</th>
-              <th className="w-[4.5rem] px-1 py-1.5 text-right">Importo</th>
-              <th className="w-[4.5rem] px-1 py-1.5 text-right">Costo</th>
-              <th className="w-11 px-1 py-1.5 text-right">Marg.%</th>
-              <th className="w-12 px-1 py-1.5 text-right">Peso</th>
-              <th className="w-16 px-1"></th>
+            <tr className="whitespace-nowrap text-[10px] uppercase tracking-wide text-muted-foreground">
+              <th className="w-[18px] px-1 py-1.5 sticky left-0 z-10 bg-muted"></th>
+              <th className="w-[22px] px-1 py-1.5 text-center sticky left-[18px] z-10 bg-muted">#</th>
+              <th className="w-[156px] px-1 py-1.5 text-left sticky left-[40px] z-10 bg-muted">Codice</th>
+              <th className="px-1 py-1.5 text-left sticky left-[196px] z-10 bg-muted border-r">Descrizione</th>
+              <th className="w-[112px] px-1 py-1.5 text-left">U.M.</th>
+              <th className="w-[72px] px-1 py-1.5 text-right">Incid.</th>
+              <th className="w-[76px] px-1 py-1.5 text-right">Quantità</th>
+              <th className="w-[84px] px-1 py-1.5 text-right">Prezzo lordo</th>
+              <th className="w-[68px] px-1 py-1.5 text-right">Sconti</th>
+              <th className="w-[60px] px-1 py-1.5 text-right">Magg.%</th>
+              <th className="w-[76px] px-1 py-1.5 text-right">Sc. extra %</th>
+              <th className="w-[84px] px-1 py-1.5 text-right">Netto</th>
+              <th className="w-[50px] px-1 py-1.5 text-center">±</th>
+              <th className="w-[96px] px-1 py-1.5 text-right">Importo</th>
+              <th className="w-[84px] px-1 py-1.5 text-right">Costo</th>
+              <th className="w-[60px] px-1 py-1.5 text-right">Marg.%</th>
+              <th className="w-[60px] px-1 py-1.5 text-right">Peso</th>
+              <th className="w-[66px] px-1 py-1.5"></th>
             </tr>
           </thead>
           <SortableContext items={blocco.righe.map((r) => r.id)} strategy={verticalListSortingStrategy}>
@@ -300,7 +300,7 @@ export function RigheTable({
           </SortableContext>
           <tfoot>
             <tr className="border-t bg-muted/30 text-xs">
-              <td colSpan={13} className="px-2 py-2">
+              <td colSpan={13} className="sticky left-0 px-2 py-2">
                 <AddRowMenu readOnly={readOnly} onAddArticolo={addArticoloEmptyAndOpen} onPick={(tipo) => addRow(null, tipo)} />
               </td>
               <td className="px-1 py-2 text-right font-mono font-semibold">€ {fmt2(calcs.totale)}</td>
@@ -495,7 +495,7 @@ function useCelleRiga(p: RigaProps) {
     codice,
     um: row.articolo_codice ? unita.convertibile ? (
       <Select value={unita.secondaria ? "um2" : "um1"} disabled={readOnly} onValueChange={(um_scelta) => onPatch({ um_scelta })}>
-        <SelectTrigger aria-label="Unità di misura" className={cn("h-9 w-full px-1 text-xs", unita.secondaria && "border-warning")}><SelectValue /></SelectTrigger>
+        <SelectTrigger aria-label="Unità di misura" className={cn("h-9 w-full whitespace-nowrap px-1.5 text-xs [&>span]:overflow-visible", unita.secondaria && "border-warning")}><SelectValue /></SelectTrigger>
         <SelectContent><SelectItem value="um1">{unita.um1} · UM1</SelectItem><SelectItem value="um2">{unita.um2} · UM2</SelectItem></SelectContent>
       </Select>
     ) : <span className="block px-1 py-2">{unita.um ?? row.um ?? "—"}</span> : (
@@ -577,7 +577,7 @@ function RigaRow(p: RigaProps) {
   };
   const c = useCelleRiga(p);
   const rowClass = cn(
-    "border-b font-mono align-top",
+    "border-b font-mono align-top whitespace-nowrap [&>td]:border-b",
     c.tipo === "manuale" && "bg-amber-50/40 dark:bg-amber-950/10",
     c.isSubtotal && "bg-primary/5 font-semibold",
     c.tipo === "separatore" && "h-2 bg-muted/30",
@@ -586,7 +586,7 @@ function RigaRow(p: RigaProps) {
     c.kitSenzaPrezzo && "bg-destructive/10",
   );
   const grip = (
-    <td className="w-5">
+    <td className="sticky left-0 z-[1] bg-card">
       <button {...sortable.attributes} {...sortable.listeners} className="cursor-grab px-0.5" title="Trascina">
         <GripVertical className="h-3 w-3 text-muted-foreground" />
       </button>
@@ -605,9 +605,9 @@ function RigaRow(p: RigaProps) {
   return (
     <tr ref={sortable.setNodeRef} style={style} className={rowClass} onClick={c.onRowClick}>
       {grip}
-      <td className="pt-2 text-center text-[10px] text-muted-foreground">{p.idx + 1}</td>
-      <td className="min-w-0 px-1 py-0.5">{c.codice}</td>
-      <td className="min-w-0 px-1 py-0.5">{c.articolo}{c.kitSenzaPrezzo && (
+      <td className="sticky left-[18px] z-[1] bg-card pt-2 text-center text-[10px] text-muted-foreground">{p.idx + 1}</td>
+      <td className="sticky left-[40px] z-[1] min-w-0 bg-card px-1 py-0.5">{c.codice}</td>
+      <td className="sticky left-[196px] z-[1] min-w-0 border-r bg-card px-1 py-0.5">{c.articolo}{c.kitSenzaPrezzo && (
         <p className="mt-0.5 text-[11px] font-sans not-italic text-destructive">Articolo non collegato a Gamma: inserisci prezzo e costo a mano</p>
       )}</td>
       <td className="px-0.5 py-0.5">{v && c.um}</td>
