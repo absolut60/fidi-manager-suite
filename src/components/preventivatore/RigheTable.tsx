@@ -462,10 +462,10 @@ function CellaUm({ idx, um1, um2, fattore, secondaria, disabled, onChange }: {
   const box = cn("flex h-9 w-full items-center justify-between gap-1 rounded-md border px-2 text-left leading-none",
     inUm2 ? "border-[#d97706] bg-[#fff7ed]" : "border-[#2b5ea7] bg-card");
   const testo = (
-    <span className="flex min-w-0 flex-col gap-0.5">
+    <div className="flex min-w-0 flex-col gap-0.5">
       <span className={cn("text-[9.5px] font-semibold uppercase", inUm2 ? "text-[#b45309]" : "text-[#2b5ea7]")}>{inUm2 ? "UM2" : "UM1"}</span>
       <span className="whitespace-nowrap font-sans text-sm font-bold text-foreground">{inUm2 ? um2 : um1}</span>
-    </span>
+    </div>
   );
   const label = `Unità di misura riga ${idx + 1}`;
   if (!um2) return <div className={box} aria-label={label} role="group">{testo}</div>;
