@@ -15,6 +15,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/lista-responsive";
+import { testoPerFiltroOr } from "@/lib/ricerca-sicura";
 
 export const Route = createFileRoute("/_app/clienti-variazioni-blocco")({
   component: ClientiVariazioniBloccoPage,
@@ -147,7 +148,7 @@ function ClientiVariazioniBloccoPage() {
 
       if (storeId.length > 0) q = q.in("store_id", storeId);
       if (qApplied) {
-        q = q.or(`codice_gestionale.ilike.%${qApplied}%,ragione_sociale.ilike.%${qApplied}%`);
+        q = q.or(`codice_gestionale.ilike.%${testoPerFiltroOr(qApplied)}%,ragione_sociale.ilike.%${testoPerFiltroOr(qApplied)}%`);
       }
       const { data, error, count } = await q;
       if (error) throw error;

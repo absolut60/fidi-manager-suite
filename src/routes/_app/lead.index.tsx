@@ -41,6 +41,7 @@ import {
   nomeLead, formatData, puoAccedereLead, puoGestireLead,
   LEAD_AMBITI, LEAD_AMBITO_LABEL, type LeadAmbito,
 } from "@/lib/lead-costanti";
+import { testoPerFiltroOr } from "@/lib/ricerca-sicura";
 
 
 export const Route = createFileRoute("/_app/lead/")({
@@ -223,7 +224,7 @@ function LeadListaPage() {
     let q = q0 as QueryLibera;
     q = q.eq("ambito", ambito);
     if (search.trim()) {
-      const s = search.trim().replace(/[,()]/g, " ");
+      const s = testoPerFiltroOr(search);
       q = q.or(
         [
           `ragione_sociale.ilike.%${s}%`,

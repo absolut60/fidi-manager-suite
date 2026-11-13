@@ -25,6 +25,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { testoPerFiltroOr } from "@/lib/ricerca-sicura";
 
 const DEST_PAGE_SIZE = 100;
 
@@ -841,7 +842,7 @@ function DestinatariWhatsappDialog({
         .from("messaggi_whatsapp")
         .select("id, numero_dest, nome_riferimento, cliente_id, stato, errore, inviato_at, created_at, clienti(ragione_sociale)", { count: "exact" })
         .eq("campagna_id", campagna.id);
-      const term = ricerca.trim().replace(/[,()]/g, " ").trim();
+      const term = testoPerFiltroOr(ricerca);
       if (term) q = q.or(`numero_dest.ilike.%${term}%,nome_riferimento.ilike.%${term}%`);
       const { data, error, count } = await q
         .order("created_at", { ascending: false })

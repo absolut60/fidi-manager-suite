@@ -52,6 +52,7 @@ import { salvaWorkbook } from "@/lib/salva-workbook";
 import { allegaPrivacyIscritti } from "@/lib/privacy-iscritti.functions";
 import { etichettaSede } from "@/lib/iscrizione-whatsapp-dati";
 import { SchedaLista } from "@/components/lista-responsive";
+import { testoPerFiltroOr } from "@/lib/ricerca-sicura";
 
 export const Route = createFileRoute("/_app/marketing/iscritti-whatsapp")({
   component: IscrittiWhatsappPage,
@@ -216,7 +217,7 @@ export default function IscrittiWhatsappPage() {
       }
       if (origine.length > 0) req = req.in("origine", origine);
       if (q) {
-        const like = `%${q}%`;
+        const like = `%${testoPerFiltroOr(q)}%`;
         req = req.or(
           `numero_raw.ilike.${like},numero_norm.ilike.${like},nome.ilike.${like},cognome.ilike.${like},azienda.ilike.${like}`,
         );

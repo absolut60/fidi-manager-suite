@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { testoPerFiltroOr } from "@/lib/ricerca-sicura";
 
 /**
  * Deduplica base "in ingresso" per il modulo Lead.
@@ -65,26 +66,28 @@ export async function cercaDuplicati(input: DedupInput): Promise<DedupMatch[]> {
     if (!out.some((x) => x.entita === m.entita && x.id === m.id && x.campo === m.campo)) out.push(m);
   };
 
+  // FM64: nei filtri .or() i valori passano da testoPerFiltroOr; il confronto locale usa il testo originale.
+  const fPiva = testoPerFiltroOr(piva), fCf = testoPerFiltroOr(cf), fEmail = testoPerFiltroOr(email), fNome = testoPerFiltroOr(nome);
   const comuni: string[] = [];
-  if (piva) comuni.push(`partita_iva.ilike.%${piva}%`);
-  if (cf) comuni.push(`codice_fiscale.ilike.%${cf}%`);
-  if (email) comuni.push(`email.ilike.${email}`);
+  if (piva) comuni.push(`partita_iva.ilike.%${fPiva}%`);
+  if (cf) comuni.push(`codice_fiscale.ilike.%${fCf}%`);
+  if (email) comuni.push(`email.ilike.${fEmail}`);
 
   const cercaNome = nome.length >= 2;
   const filtroLead = [
     ...comuni,
     ...(cercaNome
-      ? [`ragione_sociale.ilike.%${nome}%`, `nome.ilike.%${nome}%`, `cognome.ilike.%${nome}%`]
+      ? [`ragione_sociale.ilike.%${fNome}%`, `nome.ilike.%${fNome}%`, `cognome.ilike.%${fNome}%`]
       : []),
   ].join(",");
   const filtroClienti = [
     ...comuni,
-    ...(cercaNome ? [`ragione_sociale.ilike.%${nome}%`] : []),
+    ...(cercaNome ? [`ragione_sociale.ilike.%${fNome}%`] : []),
   ].join(",");
   const filtroContatti = [
-    ...(cf ? [`codice_fiscale.ilike.%${cf}%`] : []),
-    ...(email ? [`email.ilike.${email}`] : []),
-    ...(cercaNome ? [`nome.ilike.%${nome}%`, `cognome.ilike.%${nome}%`] : []),
+    ...(cf ? [`codice_fiscale.ilike.%${fCf}%`] : []),
+    ...(email ? [`email.ilike.${fEmail}`] : []),
+    ...(cercaNome ? [`nome.ilike.%${fNome}%`, `cognome.ilike.%${fNome}%`] : []),
   ].join(",");
 
   const [leadRes, clientiRes, contattiRes] = await Promise.all([
@@ -178,11 +181,11 @@ export async function cercaSoggetti(
 
   const ors = (campi: string[]) =>
     [
-      ...campi.map((c) => `${c}.ilike.%${q}%`),
+      ...campi.map((c) => `${c}.ilike.%${testoPerFiltroOr(q)}%`),
       ...(codice && codice !== q.toUpperCase()
         ? ["partita_iva", "codice_fiscale"]
             .filter((c) => campi.includes(c))
-            .map((c) => `${c}.ilike.%${codice}%`)
+            .map((c) => `${c}.ilike.%${testoPerFiltroOr(codice)}%`)
         : []),
     ].join(",");
 

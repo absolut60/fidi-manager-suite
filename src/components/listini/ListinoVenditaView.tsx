@@ -42,6 +42,7 @@ import { Search, Wand2, SlidersHorizontal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
+import { testoPerFiltroOr } from "@/lib/ricerca-sicura";
 
 interface ArticoloLite {
   id: string;
@@ -82,7 +83,7 @@ export function ListinoVenditaView() {
         .order("cod_gamma", { ascending: true })
         .limit(500);
       if (dSearch.trim()) {
-        const s = dSearch.trim().replace(/[%,]/g, " ");
+        const s = testoPerFiltroOr(dSearch);
         aq = aq.or(`cod_gamma.ilike.%${s}%,descrizione.ilike.%${s}%`);
       }
       if (categoria.length > 0) aq = aq.in("categoria", categoria);

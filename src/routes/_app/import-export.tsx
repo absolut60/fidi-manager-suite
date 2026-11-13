@@ -72,6 +72,7 @@ import {
 import { salvaWorkbook } from "@/lib/salva-workbook";
 import { salvaFile } from "@/lib/salva-file";
 import { parseOfficialScadenziarioSheet } from "@/lib/scadenziario-parser";
+import { cellaCsvSicura } from "@/lib/csv-sicuro";
 
 export const Route = createFileRoute("/_app/import-export")({
   head: () => ({ meta: [
@@ -156,15 +157,15 @@ function BgProgressBlock({
                   const lines = cntEntries
                     .sort((a, b) => b[1].count - a[1].count)
                     .map(([cg, det]) => {
-                      const rs = (det.ragione_sociale ?? "").replace(/"/g, '""');
-                      return `"${cg.replace(/"/g, '""')}";"${rs}";${det.count}`;
+                      const rs = String(cellaCsvSicura(det.ragione_sociale)).replace(/"/g, '""');
+                      return `"${String(cellaCsvSicura(cg)).replace(/"/g, '""')}";"${rs}";${det.count}`;
                     });
                   const errSection = erroriRiga.length
                     ? "\n\nErrori riga:\nriga;errore\n" +
                       erroriRiga
                         .map(
                           (e) =>
-                            `${e.riga};"${String(e.errore).replace(/"/g, '""')}"`,
+                            `${e.riga};"${String(cellaCsvSicura(e.errore)).replace(/"/g, '""')}"`,
                         )
                         .join("\n")
                     : "";
@@ -196,7 +197,7 @@ function BgProgressBlock({
                   const csv =
                     "codice_gestionale\n" +
                     codes
-                      .map((c) => `"${String(c).replace(/"/g, '""')}"`)
+                      .map((c) => `"${String(cellaCsvSicura(c)).replace(/"/g, '""')}"`)
                       .join("\n");
                   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
                   void salvaFile(blob, `codici-mancanti-${new Date().toISOString().slice(0, 10)}.csv`);
