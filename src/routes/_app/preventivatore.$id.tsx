@@ -1,6 +1,7 @@
 import { FasciaPreventivo, type RiepilogoPreventivo } from '@/components/preventivatore/FasciaPreventivo';
 import { TestataPreventivo } from '@/components/preventivatore/TestataPreventivo';
 import { PiedePreventivo } from '@/components/preventivatore/PiedePreventivo';
+import { BadgeTestata } from '@/components/preventivatore/BadgeTestata';
 import { ClientePreventivoDialog } from '@/components/preventivatore/ClientePreventivoDialog';
 import { Tabs,TabsList,TabsTrigger,TabsContent } from '@/components/ui/tabs';
 import { DropdownMenu,DropdownMenuTrigger,DropdownMenuContent,DropdownMenuItem } from '@/components/ui/dropdown-menu';
@@ -370,8 +371,7 @@ function PreventivoEditorPage() {
             <h1 className="text-xl font-semibold">
               {prev.numero ?? (prev.tipo === "ordine" ? "Nuovo ordine" : "Nuovo preventivo")}
             </h1>
-            {prev.titolo && <span className="text-sm text-muted-foreground min-w-0 break-words">· {prev.titolo}</span>}
-            <Badge variant={prev.stato==='confermato'?'default':'secondary'}>{STATI_LABEL[prev.stato]}</Badge>
+            <BadgeTestata prev={prev} />
             {prev.alternativa_di && <Link to="/preventivatore/$id" params={{id:prev.alternativa_di}} search={{tab:'corpo'}} className="text-xs bg-warning/20 text-warning-foreground border border-warning px-2 py-1 rounded">Alt. {lettera||'…'} di {principali.find(p=>p.id===prev.alternativa_di)?.numero||'preventivo principale'}</Link>}
           </div>
 
@@ -486,7 +486,7 @@ function PreventivoEditorPage() {
 
 
             {puoScrivere && prev.tipo === "preventivo" && (
-              <Button size="sm" onClick={() => setTrasformaOpen(true)}>
+              <Button size="sm" variant="outline" className="border-pv-verde text-pv-verde hover:bg-pv-verde-tenue hover:text-pv-verde" onClick={() => setTrasformaOpen(true)}>
                 <ShoppingCart className="mr-1 h-4 w-4" /> Trasforma in ordine
               </Button>
             )}
@@ -495,7 +495,7 @@ function PreventivoEditorPage() {
           </div>
         </div>
 
-        <FasciaPreventivo dati={riepilogo} onCliente={()=>setClienteOpen(true)}/>
+        <FasciaPreventivo dati={riepilogo} titolo={prev.titolo} onCliente={()=>setClienteOpen(true)}/>
         {/* Link incrociati preventivo ↔ ordini */}
         {(ordiniCollegati.length > 0 || preventivoOrigine) && (
           <Card className="border-primary/15 bg-muted">
@@ -658,11 +658,11 @@ function BloccoCard({
       <Card>
         <CardContent className="space-y-3 p-0">
           {/* Header blocco */}
-          <div className="flex flex-wrap items-start gap-3 border-b bg-muted/30 p-3">
+          <div className="flex flex-wrap items-start gap-3 rounded-t-lg border-b-2 border-pv-blu bg-pv-azzurro p-3">
             <button {...sortable.attributes} {...sortable.listeners} className="cursor-grab pt-2" title="Trascina">
               <GripVertical className="h-4 w-4 text-muted-foreground" />
             </button>
-            <div className="text-sm font-semibold text-muted-foreground">#{index + 1}</div>
+            <div className="mt-1.5 shrink-0 whitespace-nowrap rounded bg-pv-blu px-2 py-1 text-xs font-semibold text-primary-foreground">Blocco {index + 1}</div>
             <div className="grid w-24 gap-1">
               <Label className="text-[10px] uppercase">Rif.</Label>
               <Input
@@ -707,9 +707,9 @@ function BloccoCard({
                 € {formatNumeroIt(prezzoUm, { minDecimals: 2, maxDecimals: 2 })}
               </div>
             </div>
-            <div className="grid w-28 gap-1 text-right">
+            <div className="grid w-32 gap-1 text-right">
               <Label className="text-[10px] uppercase">Importo</Label>
-              <div className="h-8 rounded border bg-primary/10 px-2 py-1 text-right font-mono text-sm font-semibold">
+              <div className="h-8 whitespace-nowrap rounded bg-primary px-2 py-1 text-right font-mono text-sm font-semibold text-primary-foreground">
                 € {formatNumeroIt(totaleBlocco, { minDecimals: 2, maxDecimals: 2 })}
               </div>
             </div>

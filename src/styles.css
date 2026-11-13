@@ -31,6 +31,19 @@
   --color-warning-foreground: var(--warning-foreground);
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
+  --color-pv-azzurro: var(--pv-azzurro);
+  --color-pv-azzurro-bordo: var(--pv-azzurro-bordo);
+  --color-pv-blu: var(--pv-blu);
+  --color-pv-testa: var(--pv-testa);
+  --color-pv-viola: var(--pv-viola);
+  --color-pv-viola-tenue: var(--pv-viola-tenue);
+  --color-pv-arancio: var(--pv-arancio);
+  --color-pv-arancio-tenue: var(--pv-arancio-tenue);
+  --color-pv-verde: var(--pv-verde);
+  --color-pv-verde-tenue: var(--pv-verde-tenue);
+  --color-pv-giallo: var(--pv-giallo);
+  --color-pv-giallo-tenue: var(--pv-giallo-tenue);
+  --color-pv-grigio-tenue: var(--pv-grigio-tenue);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -53,6 +66,21 @@
 }
 
 :root {
+  /* Scheda preventivo (FM65 G1) */
+  --pv-azzurro: #eaf1fb;
+  --pv-azzurro-bordo: #cfdcf0;
+  --pv-blu: #2b5ea7;
+  --pv-testa: #eef1f5;
+  --pv-viola: #6b3fb8;
+  --pv-viola-tenue: #f1ebfb;
+  --pv-arancio: #b45309;
+  --pv-arancio-tenue: #fdf1e4;
+  --pv-verde: #1f7a3d;
+  --pv-verde-tenue: #e6f4ea;
+  --pv-giallo: #7a5b00;
+  --pv-giallo-tenue: #fdf3c4;
+  --pv-grigio-tenue: #f3f4f6;
+
   --radius: 0.5rem;
 
   /* Navy primario #0D1F3C */
