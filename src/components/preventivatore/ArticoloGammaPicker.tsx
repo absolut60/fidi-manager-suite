@@ -1,18 +1,37 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ChevronsUpDown, Search } from "lucide-react";
+import { ChevronDown, ChevronsUpDown, Search } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cercaArticoliPreventivo } from "@/lib/articoli-preventivo.functions";
+import { FiltriCatalogoArticoli } from "@/components/articoli/FiltriCatalogoArticoli";
+import { ricercaPreventivoAttiva } from "@/lib/catalogo-articoli";
+import type { ScelteCascata } from "@/lib/filtri-catalogo-articoli";
+
+/** FM65 F4: filtri del selettore ricordati solo in memoria per il preventivo aperto (tutte le righe); un altro preventivo riparte vuoto. */
+const NESSUN_FILTRO: ScelteCascata = { famiglie: [], coppie: [], marche: [] };
+let filtriMemoria: { preventivoId: string | null; scelte: ScelteCascata } = { preventivoId: null, scelte: NESSUN_FILTRO };
+const ascoltatori = new Set<() => void>();
+function useFiltriPicker(preventivoId: string | null) {
+  const scelte = useSyncExternalStore(
+    (cb) => { ascoltatori.add(cb); return () => ascoltatori.delete(cb); },
+    () => (filtriMemoria.preventivoId === preventivoId ? filtriMemoria.scelte : NESSUN_FILTRO),
+    () => NESSUN_FILTRO,
+  );
+  const imposta = (s: ScelteCascata) => { filtriMemoria = { preventivoId, scelte: s }; ascoltatori.forEach((cb) => cb()); };
+  return [scelte, imposta] as const;
+}
 
 export interface ArticoloGammaScelto { codice: string; descrizione: string | null; marca: string | null; um: string | null }
 
 /** FM65: selettore articoli del catalogo Gamma per la riga preventivo. Non mostra prezzi (seguono il cliente). */
 export function ArticoloGammaPicker({
-  codice, descrizione, onChange, autoOpen = false, disabled = false, soloCodice = false,
+  codice, descrizione, onChange, autoOpen = false, disabled = false, soloCodice = false, preventivoId = null,
 }: {
+  /** FM65 F4: chiave della memoria dei filtri (per preventivo). */
+  preventivoId?: string | null;
   codice: string | null;
   descrizione: string | null;
   onChange: (a: ArticoloGammaScelto) => void;
@@ -24,6 +43,10 @@ export function ArticoloGammaPicker({
   const [q, setQ] = useState("");
   const [qDeb, setQDeb] = useState("");
   const cerca = useServerFn(cercaArticoliPreventivo);
+  const [scelte, setScelte] = useFiltriPicker(preventivoId);
+  const [filtriAperti, setFiltriAperti] = useState(false);
+  const nFiltri = scelte.famiglie.length + scelte.coppie.length + scelte.marche.length;
+  const attiva = ricercaPreventivoAttiva(qDeb, scelte);
 
   useEffect(() => { if (autoOpen) setOpen(true); }, [autoOpen]);
   useEffect(() => {
@@ -32,9 +55,9 @@ export function ArticoloGammaPicker({
   }, [q]);
 
   const { data: items = [], isFetching } = useQuery({
-    queryKey: ["articoli-gamma-preventivo", qDeb],
-    queryFn: () => cerca({ data: { testo: qDeb } }),
-    enabled: open && qDeb.length >= 2,
+    queryKey: ["articoli-gamma-preventivo", qDeb, scelte],
+    queryFn: () => cerca({ data: { testo: qDeb, ...scelte } }),
+    enabled: open && attiva,
     placeholderData: keepPreviousData,
     staleTime: 60_000,
   });
@@ -52,6 +75,17 @@ export function ArticoloGammaPicker({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[min(92vw,520px)] p-0" align="start">
+        <div className="border-b px-2 py-1.5">
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="ghost" size="sm" aria-expanded={filtriAperti} onClick={() => setFiltriAperti(!filtriAperti)}
+              className="h-9 min-w-0 flex-1 justify-between px-2 text-xs font-medium">
+              <span>Filtri ({nFiltri})</span>
+              <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform ${filtriAperti ? "rotate-180" : ""}`} />
+            </Button>
+            {nFiltri > 0 && <Button type="button" variant="ghost" size="sm" className="h-9 shrink-0 px-2 text-xs" onClick={() => setScelte(NESSUN_FILTRO)}>Azzera filtri</Button>}
+          </div>
+          {filtriAperti && <div className="grid grid-cols-1 gap-2 pt-1.5"><FiltriCatalogoArticoli scelte={scelte} onChange={setScelte} /></div>}
+        </div>
         <div className="flex items-center gap-2 border-b px-2 py-1.5">
           <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)}
@@ -59,8 +93,8 @@ export function ArticoloGammaPicker({
             className="h-9 border-0 px-0 text-sm focus-visible:ring-0" />
         </div>
         <div className="max-h-80 overflow-y-auto">
-          {qDeb.length < 2 ? (
-            <div className="p-3 text-xs text-muted-foreground">Scrivi almeno 2 caratteri.</div>
+          {!attiva ? (
+            <div className="p-3 text-xs text-muted-foreground">Scrivi almeno 2 caratteri o scegli un filtro.</div>
           ) : items.length === 0 ? (
             <div className="p-3 text-xs text-muted-foreground">{isFetching ? "Ricerca…" : "Nessun articolo trovato."}</div>
           ) : items.map((a) => (

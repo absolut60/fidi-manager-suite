@@ -239,6 +239,7 @@ export function RigheTable({
     idx,
     fascia,
     readOnly,
+    preventivoId,
     autoOpenPicker: r.id === pendingPickerId,
     onOpenArticolo: (aid: string) => setOpenArticoloId(aid),
     onOpenRiepilogo: clienteId ? () => setRiepilogoRigaId(r.id) : null,
@@ -422,6 +423,8 @@ type RigaProps = {
   calc: ReturnType<typeof calcolaBlocco>["righe"][number]["calc"];
   fascia: FasciaListino;
   readOnly: boolean;
+  /** FM65 F4: memoria dei filtri del selettore articolo. */
+  preventivoId: string;
   autoOpenPicker?: boolean;
   onOpenArticolo: (id: string) => void;
   /** FM65 punto 4: null se il preventivo non ha cliente. */
@@ -512,7 +515,7 @@ function PulsanteRiepilogo({ idx, onOpen }: { idx: number; onOpen: (() => void) 
 }
 
 function useCelleRiga(p: RigaProps) {
-  const { row, calc, readOnly, autoOpenPicker = false, onOpenArticolo, onPatch, onSceltaGamma, prezziSpecialiMap } = p;
+  const { row, calc, readOnly, preventivoId, autoOpenPicker = false, onOpenArticolo, onPatch, onSceltaGamma, prezziSpecialiMap } = p;
   const tipo = row.tipo_riga;
   const intestazioneKit = isIntestazioneKit(row);
   const kitSenzaPrezzo = tipo === "da_kit" && !intestazioneKit && (row.prezzo_unit == null || !row.articolo_codice);
@@ -530,7 +533,7 @@ function useCelleRiga(p: RigaProps) {
   const codice = valorizzata && tipo !== "manuale" ? (
     <div className="flex min-w-0 items-center gap-0.5">
       <div className="min-w-0 flex-1">
-        <ArticoloGammaPicker soloCodice autoOpen={autoOpenPicker}
+        <ArticoloGammaPicker soloCodice autoOpen={autoOpenPicker} preventivoId={preventivoId}
           codice={row.articolo_codice ?? row.articolo?.cod_gamma ?? null}
           descrizione={row.descrizione} onChange={onSceltaGamma} disabled={readOnly} />
       </div>

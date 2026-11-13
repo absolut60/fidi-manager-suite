@@ -27,7 +27,7 @@ export function parseNumeroIt(value: string | number | null | undefined): number
 
 export function formatNumeroIt(
   value: number | string | null | undefined,
-  opts: { minDecimals?: number; maxDecimals?: number } = {},
+  opts: { minDecimals?: number; maxDecimals?: number; /** Punto delle migliaia anche a 4 cifre (2.315). */ migliaia?: boolean } = {},
 ): string {
   if (value === null || value === undefined || value === "") return "";
   const n = typeof value === "number" ? value : parseNumeroIt(value);
@@ -35,5 +35,6 @@ export function formatNumeroIt(
   return n.toLocaleString("it-IT", {
     minimumFractionDigits: opts.minDecimals ?? 0,
     maximumFractionDigits: opts.maxDecimals ?? 4,
-  });
+    ...(opts.migliaia ? { useGrouping: "always" } : {}),
+  } as Intl.NumberFormatOptions);
 }
