@@ -10,7 +10,7 @@ export const cercaArticoliPreventivo = createServerFn({ method: "POST" })
     const { data: rows, error } = await context.supabase.rpc("cerca_articoli", {
       testo: data.testo.trim(), famiglie: [], sottofamiglie: [], marche: [], fornitori: [],
       stati: ["in_uso", "in_esaurimento"], disponibile_in: [], disponibile_logistica: false,
-      listino: null as unknown as number, _ordina: "codice", _direzione: "asc", limite: 30, offset: 0,
+      _ordina: "codice", _direzione: "asc", limite: 30, offset: 0,
     });
     if (error) throw new Error(error.message);
     return (rows ?? [])

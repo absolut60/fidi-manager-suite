@@ -47,7 +47,8 @@ import { computeEvasione } from "@/lib/evasione";
 import { EvasioneBadge } from "@/components/preventivatore/EvasioneBadge";
 
 
-import { FASCE, type FasciaListino } from "@/lib/articoli-api";
+import type { FasciaListino } from "@/lib/articoli-api";
+import { CondizioniClienteGamma } from "@/components/preventivatore/CondizioniClienteGamma";
 import { round2 } from "@/lib/pricing";
 import { parseNumeroIt } from "@/lib/numero-it";
 import { cn } from "@/lib/utils";
@@ -106,7 +107,6 @@ function PreventivoEditorPage() {
       cliente_id: nuovoId,
       cantiere_id: null,
       agente_codice: c?.codice_agente ?? null,
-      ...(c?.fascia_listino_default ? { fascia_listino: c.fascia_listino_default } : {}),
     });
   }
 
@@ -560,6 +560,7 @@ function PreventivoEditorPage() {
                       <div className="text-sm text-muted-foreground">Nessun cliente selezionato</div>
                     )}
 
+                    <CondizioniClienteGamma clienteId={prev.cliente_id ?? null} className="mt-2 border-t border-[#0d1f3c]/10 pt-2" />
                     {/* Griglia campi aggiuntivi */}
                     <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1.5 border-t border-[#0d1f3c]/10 pt-2 md:grid-cols-3">
                       {[
@@ -569,7 +570,6 @@ function PreventivoEditorPage() {
                         { label: "Agente", value: agenti.find((a) => a.id === prev.agente_codice)?.nome || "—" },
                         { label: "Filiale", value: prev.filiale || "—" },
                         { label: "Tipo documento", value: TIPI_DOC_LABEL[prev.tipo_doc] || "—" },
-                        { label: "Fascia listino", value: prev.fascia_listino || "—" },
                         { label: "Stato", value: STATI_LABEL[prev.stato] || "—" },
                         { label: "IVA", value: `${Number(prev.iva_perc ?? 22)}%` },
                       ].map((f) => (
@@ -595,6 +595,7 @@ function PreventivoEditorPage() {
                       <div className="grid gap-1.5">
                         <Label className="text-xs">Cliente</Label>
                         <ClientePicker value={prev.cliente_id ?? null} onChange={onChangeCliente} />
+                        <CondizioniClienteGamma clienteId={prev.cliente_id ?? null} />
                       </div>
                       <div className="grid gap-1.5">
                         <Label className="text-xs">Cantiere</Label>
@@ -696,15 +697,6 @@ function PreventivoEditorPage() {
                         </Select>
                       </div>
                       <div className="grid gap-1.5">
-                        <Label className="text-xs">Fascia listino</Label>
-                        <Select value={prev.fascia_listino ?? "A"} onValueChange={(v) => save.mutate({ fascia_listino: v as FasciaListino })}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {FASCE.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="grid gap-1.5">
                         <Label className="text-xs">Stato</Label>
                         <Select value={prev.stato} onValueChange={(v) => save.mutate({ stato: v as StatoPreventivo })}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
@@ -759,7 +751,7 @@ function PreventivoEditorPage() {
                       </Card>
                     ) : (
                       prev.blocchi.map((b, idx) => (
-                        <BloccoCard key={b.id} blocco={b} index={idx} preventivoId={id} fascia={(prev.fascia_listino ?? "A") as FasciaListino} readOnly={!editMode} prezziSpecialiMap={prezziSpecialiMap} />
+                        <BloccoCard key={b.id} blocco={b} index={idx} preventivoId={id} fascia={(prev.fascia_listino ?? "A") as FasciaListino} readOnly={!editMode} prezziSpecialiMap={prezziSpecialiMap} clienteId={prev.cliente_id ?? null} scontoPiede={Number(prev.sconto_piede_perc ?? 0)} />
                       ))
                     )}
                   </div>
@@ -865,8 +857,8 @@ function PreventivoEditorPage() {
 }
 
 function BloccoCard({
-  blocco, index, preventivoId, fascia, readOnly = false, prezziSpecialiMap,
-}: { blocco: BloccoConRighe; index: number; preventivoId: string; fascia: FasciaListino; readOnly?: boolean; prezziSpecialiMap?: PrezziSpecialiMap | null }) {
+  blocco, index, preventivoId, fascia, readOnly = false, prezziSpecialiMap, clienteId, scontoPiede,
+}: { blocco: BloccoConRighe; index: number; preventivoId: string; fascia: FasciaListino; readOnly?: boolean; prezziSpecialiMap?: PrezziSpecialiMap | null; clienteId: string | null; scontoPiede: number }) {
   const qc = useQueryClient();
   const sortable = useSortable({ id: blocco.id });
   const style = {
@@ -990,7 +982,7 @@ function BloccoCard({
             </div>
           )}
 
-          <RigheTable blocco={blocco} preventivoId={preventivoId} fascia={fascia} readOnly={readOnly} prezziSpecialiMap={prezziSpecialiMap} />
+          <RigheTable blocco={blocco} preventivoId={preventivoId} fascia={fascia} readOnly={readOnly} prezziSpecialiMap={prezziSpecialiMap} clienteId={clienteId} scontoPiede={scontoPiede} />
         </CardContent>
       </Card>
     </div>
