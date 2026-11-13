@@ -20,12 +20,23 @@ const EVASIONE: Record<StatoEvasione, string> = {
   evaso: "border-pv-verde/30 bg-pv-verde-tenue text-pv-verde",
 };
 
+/** Pezzi condivisi con l'elenco preventivi: stessa resa della scheda. */
+export function BadgeTipoDoc({ tipoDoc, className }: { tipoDoc: TipoDoc; className?: string }) {
+  return <span className={cn(base, TIPO[tipoDoc], className)}>{TIPI_DOC_LABEL[tipoDoc]}</span>;
+}
+export function BadgeStato({ stato, className }: { stato: StatoPreventivo; className?: string }) {
+  return <span className={cn(base, STATO[stato], className)}>{stato === "bozza" && <span aria-hidden>●</span>}{STATI_LABEL[stato]}</span>;
+}
+export function BadgeEvasione({ stato, className }: { stato: StatoEvasione; className?: string }) {
+  return <span className={cn(base, EVASIONE[stato], className)}>{EVASIONE_LABEL[stato]}</span>;
+}
+
 /** Badge colorati accanto al numero: tipo documento, stato, evasione (solo preventivi). */
 export function BadgeTestata({ prev }: { prev: PreventivoConDettagli }) {
   const ev = prev.tipo === "preventivo" ? computeEvasione(prev.blocchi.flatMap((b) => b.righe)) : null;
   return <>
-    <span className={cn(base, TIPO[prev.tipo_doc])}>{TIPI_DOC_LABEL[prev.tipo_doc]}</span>
-    <span className={cn(base, STATO[prev.stato])}>{prev.stato === "bozza" && <span aria-hidden>●</span>}{STATI_LABEL[prev.stato]}</span>
-    {ev && <span className={cn(base, EVASIONE[ev])}>{EVASIONE_LABEL[ev]}</span>}
+    <BadgeTipoDoc tipoDoc={prev.tipo_doc} />
+    <BadgeStato stato={prev.stato} />
+    {ev && <BadgeEvasione stato={ev} />}
   </>;
 }
