@@ -39,7 +39,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { EditableNumberCell } from "@/components/preventivatore/EditableNumberCell";
 import { ArticoloPicker } from "@/components/preventivatore/ArticoloPicker";
 import { ArticoloGammaPicker, type ArticoloGammaScelto } from "@/components/preventivatore/ArticoloGammaPicker";
-import { campiPrezzoDaMotore, formatScontiGamma, parseScontiGamma, patchConImporto, prezzoNettoRiga } from "@/lib/riga-preventivo";
+import { campiPrezzoDaMotore, costoRiga, formatScontiGamma, parseScontiGamma, patchConImporto, prezzoNettoRiga } from "@/lib/riga-preventivo";
 import {
   calcolaBlocco, deleteRiga, fetchPrezzoClienteArticolo, fractionalOrder, insertRiga, reorderRighe,
   statoPrezzoSpecialeRiga,
@@ -601,6 +601,7 @@ function RigaRow(p: RigaProps) {
     c.tipo === "separatore" && "h-2 bg-muted/30",
     c.tipo === "nota" && "bg-muted/20 italic",
     c.onRowClick && "cursor-pointer hover:bg-accent/40",
+    c.tipo === "da_kit" && (p.row.prezzo_unit == null || !p.row.articolo_codice) && "bg-destructive/10",
   );
   const grip = (
     <td className="w-5">
@@ -623,7 +624,9 @@ function RigaRow(p: RigaProps) {
     <tr ref={sortable.setNodeRef} style={style} className={rowClass} onClick={c.onRowClick}>
       {grip}
       <td className="pt-2 text-center text-[10px] text-muted-foreground">{p.idx + 1}</td>
-      <td className="min-w-0 px-1 py-0.5">{c.articolo}</td>
+      <td className="min-w-0 px-1 py-0.5">{c.articolo}{c.tipo === "da_kit" && (p.row.prezzo_unit == null || !p.row.articolo_codice) && (
+        <p className="mt-0.5 text-[11px] font-sans not-italic text-destructive">Articolo non collegato a Gamma: inserisci prezzo e costo a mano</p>
+      )}</td>
       <td className="px-0.5 py-0.5">{v && c.um}</td>
       <td className="px-0.5 py-0.5 text-right">{v && c.incidenza}</td>
       <td className="px-0.5 py-0.5 text-right">{v && c.quantita}</td>
@@ -669,12 +672,16 @@ function RigaScheda(p: RigaProps) {
   );
   return (
     <div className={cn("rounded-md border p-2", c.tipo === "manuale" && "bg-amber-50/40 dark:bg-amber-950/10",
-      c.isSubtotal && "bg-primary/5", c.tipo === "nota" && "bg-muted/20")}
+      c.isSubtotal && "bg-primary/5", c.tipo === "nota" && "bg-muted/20",
+      c.tipo === "da_kit" && (p.row.prezzo_unit == null || !p.row.articolo_codice) && "border-destructive bg-destructive/10")}
       onClick={c.onRowClick}>
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
         <div className="min-w-0">
           <span className="text-[11px] text-muted-foreground">Riga {p.idx + 1} · {TIPI_RIGA_LABEL[c.tipo]}</span>
           {c.articolo}
+          {c.tipo === "da_kit" && (p.row.prezzo_unit == null || !p.row.articolo_codice) && (
+        <p className="mt-0.5 text-[11px] font-sans not-italic text-destructive">Articolo non collegato a Gamma: inserisci prezzo e costo a mano</p>
+      )}
         </div>
         <AzioniRiga {...p} />
       </div>
