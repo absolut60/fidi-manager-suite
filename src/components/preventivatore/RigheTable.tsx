@@ -39,7 +39,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { EditableNumberCell } from "@/components/preventivatore/EditableNumberCell";
 import { ArticoloPicker } from "@/components/preventivatore/ArticoloPicker";
 import { ArticoloGammaPicker, type ArticoloGammaScelto } from "@/components/preventivatore/ArticoloGammaPicker";
-import { campiPrezzoDaMotore, costoRiga, formatScontiGamma, isIntestazioneKit, margineTotaliRighe, parseScontiGamma, prezzoNettoRiga } from "@/lib/riga-preventivo";
+import { campiPrezzoDaMotore, costoRiga, formatScontiGamma, isIntestazioneKit, margineTotaliRighe, parseScontiGamma, prezzoNettoRiga, rigaInUnita } from "@/lib/riga-preventivo";
 import {
   calcolaBlocco, deleteRiga, fetchPrezzoClienteArticolo, fractionalOrder, insertRiga, reorderRighe,
   statoPrezzoSpecialeRiga,
@@ -171,6 +171,7 @@ export function RigheTable({
       patch: {
         articolo_codice: a.codice,
         articolo_id: null,
+        um_scelta: "um1",
         descrizione: a.descrizione,
         um: a.um ?? prezzo?.um ?? null,
         quantita,
@@ -233,8 +234,9 @@ export function RigheTable({
             <tr className="text-[10px] uppercase tracking-wide text-muted-foreground">
               <th className="w-5"></th>
               <th className="w-6 text-center">#</th>
-              <th className="px-2 py-1.5 text-left">Articolo / Descrizione</th>
-              <th className="w-11 px-1 py-1.5 text-left">U.M.</th>
+              <th className="w-[9.4rem] px-1 py-1.5 text-left">Codice</th>
+              <th className="px-1 py-1.5 text-left">Descrizione</th>
+              <th className="w-20 px-1 py-1.5 text-left">U.M.</th>
               <th className="w-14 px-1 py-1.5 text-right">Incid.</th>
               <th className="w-16 px-1 py-1.5 text-right">Quantità</th>
               <th className="w-[4.5rem] px-1 py-1.5 text-right">Prezzo lordo</th>
@@ -254,7 +256,7 @@ export function RigheTable({
             <tbody>
               {blocco.righe.length === 0 ? (
                 <tr>
-                  <td colSpan={17} className="py-6 text-center text-muted-foreground">
+                  <td colSpan={18} className="py-6 text-center text-muted-foreground">
                     Nessuna riga. Aggiungi la prima.
                   </td>
                 </tr>
@@ -265,7 +267,7 @@ export function RigheTable({
           </SortableContext>
           <tfoot>
             <tr className="border-t bg-muted/30 text-xs">
-              <td colSpan={12} className="px-2 py-2">
+              <td colSpan={13} className="px-2 py-2">
                 <AddRowMenu readOnly={readOnly} onAddArticolo={addArticoloEmptyAndOpen} onPick={(tipo) => addRow(null, tipo)} />
               </td>
               <td className="px-1 py-2 text-right font-mono font-semibold">€ {fmt2(calcs.totale)}</td>
@@ -433,83 +435,21 @@ function useCelleRiga(p: RigaProps) {
   const vecchioCatalogo = !!row.articolo_id;
   const prezzoMancante = !!row.articolo_codice && row.prezzo_unit == null;
 
-  const articolo = intestazioneKit ? <span className="block break-words py-1 font-sans text-sm">{row.descrizione}</span> : (tipo === "articolo_singolo" || tipo === "da_kit") ? (
-    vecchioCatalogo ? (
-      <>
-        <ArticoloPicker
-          autoOpen={autoOpenPicker}
-          value={row.articolo_id}
-          onChange={(articolo_id, articolo) => {
-            const listino = articolo?.listini_vendita?.find((l) => l.fascia === p.fascia);
-            const acquistoRecente = articolo?.listini_acquisto?.[0];
-            let prezzo = listino?.prezzo == null ? null : Number(listino.prezzo);
-            let costo = acquistoRecente?.costo_netto == null ? null : Number(acquistoRecente.costo_netto);
-            const sp = articolo?.cod_gamma && prezziSpecialiMap ? prezziSpecialiMap.get(articolo.cod_gamma) : undefined;
-            if (sp) {
-              if (sp.costo != null) costo = sp.costo;
-              if (sp.prezzo != null) prezzo = sp.prezzo;
-            }
-            onPatch({
-              articolo_id,
-              um: articolo?.um ?? null,
-              descrizione: articolo?.descrizione ?? null,
-              prezzo_unit: prezzo,
-              sconto_perc: sp ? 0 : (row.sconto_perc ?? 0),
-              costo,
-              vendita: prezzo,
-              peso: articolo?.peso_unit == null ? null : Number(articolo.peso_unit),
-            });
-          }}
-        />
-        {(() => {
-          const st = statoPrezzoSpecialeRiga(
-            { prezzo_unit: row.prezzo_unit, costo: row.costo, quantita: row.quantita },
-            row.articolo?.cod_gamma,
-            prezziSpecialiMap,
-          );
-          if (!st) return null;
-          const f = (v: number | null) => v == null ? "—" : `€ ${v.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 5 })}`;
-          return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="mt-0.5 inline-flex items-center gap-1 rounded border border-primary/30 bg-primary/5 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
-                    🏗 Cantiere{st.stato === "modificato" ? " (modificato)" : ""}
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  Prezzo speciale cantiere — costo: {f(st.special.costo)} / vendita: {f(st.special.prezzo)}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          );
-        })()}
-      </>
-    ) : (
-      <>
-        <ArticoloGammaPicker
-          autoOpen={autoOpenPicker}
-          codice={row.articolo_codice}
-          descrizione={row.descrizione}
-          onChange={onSceltaGamma}
-          disabled={readOnly}
-        />
-        {prezzoMancante && (
-          <span role="alert" className="mt-0.5 block text-[11px] font-semibold text-destructive">
-            Prezzo non disponibile: inseriscilo a mano
-          </span>
-        )}
-      </>
-    )
-  ) : (
-    <Input
-      defaultValue={row.descrizione ?? ""}
-      onBlur={(e) => {
-        if ((e.target.value || null) !== row.descrizione) onPatch({ descrizione: e.target.value || null });
-      }}
-      className="h-8 text-xs"
-      placeholder={isText ? "Nota libera…" : isSubtotal ? "Sotto-totale" : "Descrizione…"}
-    />
+  const unita = rigaInUnita(row, row.unita_gamma);
+  const salvaInUnita = (patch: Parameters<typeof rigaInUnita>[2]) => onPatch(rigaInUnita(row, row.unita_gamma, patch).patchUm1);
+  const codice = valorizzata && tipo !== "manuale" ? (
+    <ArticoloGammaPicker soloCodice autoOpen={autoOpenPicker}
+      codice={row.articolo_codice ?? row.articolo?.cod_gamma ?? null}
+      descrizione={row.descrizione} onChange={onSceltaGamma} disabled={readOnly} />
+  ) : valorizzata ? <span className="block px-1 py-2 font-mono text-xs">MANUALE</span> : null;
+  const articolo = (
+    <>
+      <Input key={`${row.id}-${row.descrizione ?? ""}`} defaultValue={row.descrizione ?? ""}
+        aria-label="Descrizione riga" disabled={readOnly}
+        onBlur={(e) => { if ((e.target.value || null) !== row.descrizione) onPatch({ descrizione: e.target.value || null }); }}
+        className="h-9 min-w-0 font-sans text-xs" placeholder={isText ? "Nota libera…" : isSubtotal ? "Sotto-totale" : "Descrizione…"} />
+      {prezzoMancante && <span role="alert" className="mt-0.5 block font-sans text-[11px] font-semibold text-destructive">Prezzo non disponibile: inseriscilo a mano</span>}
+    </>
   );
 
   const qOrd = Number((row as unknown as { qta_ordinata?: number }).qta_ordinata ?? 0);
@@ -519,19 +459,25 @@ function useCelleRiga(p: RigaProps) {
   return {
     tipo, isCompact, isSubtotal, valorizzata, segno, kitSenzaPrezzo,
     articolo,
-    um: (
-      <Input defaultValue={row.um ?? ""} aria-label="Unità di misura"
+    codice,
+    um: row.articolo_codice ? unita.convertibile ? (
+      <Select value={unita.secondaria ? "um2" : "um1"} disabled={readOnly} onValueChange={(um_scelta) => onPatch({ um_scelta })}>
+        <SelectTrigger aria-label="Unità di misura" className={cn("h-9 w-full px-1 text-xs", unita.secondaria && "border-warning")}><SelectValue /></SelectTrigger>
+        <SelectContent><SelectItem value="um1">{unita.um1} · UM1</SelectItem><SelectItem value="um2">{unita.um2} · UM2</SelectItem></SelectContent>
+      </Select>
+    ) : <span className="block px-1 py-2">{unita.um ?? row.um ?? "—"}</span> : (
+      <Input defaultValue={row.um ?? ""} aria-label="Unità di misura" disabled={readOnly}
         onBlur={(e) => { if ((e.target.value || null) !== row.um) onPatch({ um: e.target.value || null }); }}
-        className="h-8 px-1 text-xs" />
+        className="h-9 px-1 text-xs" />
     ),
     incidenza: (
-      <EditableNumberCell value={row.incidenza == null ? null : Number(row.incidenza)} decimali={4} ariaLabel="Incidenza"
-        onCommit={(v) => onPatch({ incidenza: v })} />
+      <EditableNumberCell value={unita.incidenza} decimali={4} ariaLabel="Incidenza"
+        onCommit={(v) => salvaInUnita({ incidenza: v })} />
     ),
     quantita: (
       <div className="flex flex-col items-end gap-0.5">
-        <EditableNumberCell value={row.quantita == null ? null : Number(row.quantita)} decimali={2} ariaLabel="Quantità riga"
-          onCommit={(v) => onPatch({ quantita: v })} {...(evasa ? { disabled: true } : {})} />
+        <EditableNumberCell value={unita.quantita} decimali={2} ariaLabel="Quantità riga"
+          onCommit={(v) => salvaInUnita({ quantita: v })} {...(evasa ? { disabled: true } : {})} />
         {(parziale || evasa) && (
           <span className={cn("text-[10px] font-semibold", evasa ? "text-[#009246]" : "text-amber-600")}
             title={evasa ? "Riga completamente evasa" : "Ordinato parzialmente"}>
@@ -541,8 +487,8 @@ function useCelleRiga(p: RigaProps) {
       </div>
     ),
     lordo: (
-      <EditableNumberCell value={row.prezzo_unit == null ? null : Number(row.prezzo_unit)} decimali={4}
-        onCommit={(v) => onPatch({ prezzo_unit: v })} />
+      <EditableNumberCell value={unita.prezzo_unit} decimali={4}
+        onCommit={(v) => salvaInUnita({ prezzo_unit: v })} />
     ),
     sconti: <ScontiCell value={row.sconti_gamma} onCommit={(v) => onPatch({ sconti_gamma: v })} />,
     magg: (
@@ -553,7 +499,7 @@ function useCelleRiga(p: RigaProps) {
       <EditableNumberCell value={row.sconto_perc == null ? null : Number(row.sconto_perc) || null}
         onCommit={(v) => onPatch({ sconto_perc: v ?? 0 })} />
     ),
-    netto: row.prezzo_unit == null ? "—" : fmt4(prezzoNettoRiga(row)),
+    netto: row.prezzo_unit == null ? "—" : fmt4(unita.netto ?? 0),
     segnoSel: (
       <Select value={String(segno)} onValueChange={(v) => onPatch({ segno: Number(v) === -1 ? -1 : 1 })}>
         <SelectTrigger className="h-8 w-12 px-1 text-xs" aria-label="Segno"><SelectValue /></SelectTrigger>
@@ -565,9 +511,9 @@ function useCelleRiga(p: RigaProps) {
     ),
     importo: `€ ${fmt2(isSubtotal ? calc.importoEffettivo : calc.importo)}`,
     costo: (
-      <EditableNumberCell value={row.costo == null ? null : q > 0 ? Number(row.costo) / q : Number(row.costo)}
+      <EditableNumberCell value={unita.costo_unit}
         decimali={4}
-        onCommit={(v) => onPatch({ costo: v == null ? null : costoRiga(v, q > 0 ? q : 1) })} />
+        onCommit={(v) => salvaInUnita({ costo_unit: v })} />
     ),
     margine: `${calc.margine_perc.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`,
     peso: row.articolo_codice && row.peso_gamma_unit == null ? "—" : fmt2(calc.peso),
@@ -617,7 +563,7 @@ function RigaRow(p: RigaProps) {
     return (
       <tr ref={sortable.setNodeRef} style={style} className={rowClass}>
         {grip}
-        <td colSpan={15}></td>
+        <td colSpan={16}></td>
         <td className="text-right"><AzioniRiga {...p} /></td>
       </tr>
     );
@@ -627,6 +573,7 @@ function RigaRow(p: RigaProps) {
     <tr ref={sortable.setNodeRef} style={style} className={rowClass} onClick={c.onRowClick}>
       {grip}
       <td className="pt-2 text-center text-[10px] text-muted-foreground">{p.idx + 1}</td>
+      <td className="min-w-0 px-1 py-0.5">{c.codice}</td>
       <td className="min-w-0 px-1 py-0.5">{c.articolo}{c.kitSenzaPrezzo && (
         <p className="mt-0.5 text-[11px] font-sans not-italic text-destructive">Articolo non collegato a Gamma: inserisci prezzo e costo a mano</p>
       )}</td>
@@ -681,7 +628,8 @@ function RigaScheda(p: RigaProps) {
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
         <div className="min-w-0">
           <span className="text-[11px] text-muted-foreground">Riga {p.idx + 1} · {TIPI_RIGA_LABEL[c.tipo]}</span>
-          {c.articolo}
+          {c.valorizzata && campo("Codice", c.codice)}
+          {campo("Descrizione", c.articolo)}
           {c.kitSenzaPrezzo && (
         <p className="mt-0.5 text-[11px] font-sans not-italic text-destructive">Articolo non collegato a Gamma: inserisci prezzo e costo a mano</p>
       )}
