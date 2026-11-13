@@ -5954,6 +5954,47 @@ export type Database = {
           },
         ]
       }
+      preventivi_note: {
+        Row: {
+          created_at: string
+          creato_da: string | null
+          id: string
+          ordine: number | null
+          preventivo_id: string
+          testo: string | null
+          titolo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          creato_da?: string | null
+          id?: string
+          ordine?: number | null
+          preventivo_id: string
+          testo?: string | null
+          titolo: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          creato_da?: string | null
+          id?: string
+          ordine?: number | null
+          preventivo_id?: string
+          testo?: string | null
+          titolo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "preventivi_note_preventivo_id_fkey"
+            columns: ["preventivo_id"]
+            isOneToOne: false
+            referencedRelation: "preventivi"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prezzi_cliente_articolo_gamma: {
         Row: {
           articolo_codice: string | null
