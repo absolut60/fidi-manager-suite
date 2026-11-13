@@ -1415,6 +1415,13 @@
       "when": 1794570946004,
       "tag": "0201_fm65_r1a_creazione_preventivo",
       "breakpoints": true
+    },
+    {
+      "idx": 202,
+      "version": "7",
+      "when": 1794572204813,
+      "tag": "0202_fm65_r2_descrizione_gamma_ordine",
+      "breakpoints": true
     }
   ]
 }
