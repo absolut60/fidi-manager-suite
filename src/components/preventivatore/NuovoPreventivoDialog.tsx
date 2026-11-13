@@ -18,6 +18,7 @@ import {
 import { useNavigate } from "@tanstack/react-router";
 import { ClientePicker } from "./ClientePicker";
 import { CantierePicker } from "./CantierePicker";
+import { NuovoCantiereForm } from "./NuovoCantiereForm";
 import {
   createPreventivo, fetchAgenti, fetchDatiClientePreventivo, anteprimaProssimoNumero,
   creaCantiereLite,
@@ -38,10 +39,6 @@ export function NuovoPreventivoDialog({
   const [cantiereId, setCantiereId] = useState<string | null>(null);
   const [modoCantiere, setModoCantiere] = useState<"seleziona" | "crea" | "provvisorio">("seleziona");
   const [cantiereDescrizione, setCantiereDescrizione] = useState("");
-  const [nuovoCantNome, setNuovoCantNome] = useState("");
-  const [nuovoCantIndirizzo, setNuovoCantIndirizzo] = useState("");
-  const [nuovoCantCitta, setNuovoCantCitta] = useState("");
-  const [nuovoCantProvincia, setNuovoCantProvincia] = useState("");
   const [agenteId, setAgenteId] = useState<string | null>(null);
   const [filiale, setFiliale] = useState("");
   const [titolo, setTitolo] = useState("");
@@ -107,49 +104,10 @@ export function NuovoPreventivoDialog({
       if (!clienteCambiato) return;
       setCantiereId(null);
       setCantiereDescrizione("");
-      setNuovoCantNome("");
-      setNuovoCantIndirizzo("");
-      setNuovoCantCitta("");
-      setNuovoCantProvincia("");
       setModoCantiere("seleziona");
     }).catch((e: unknown) => { if (attivo) toast.error((e as Error).message || "Errore lettura cliente"); });
     return () => { attivo = false; };
   }, [clienteId, isWriteOnly, profiloCodiceAgente]);
-
-  const creaCantiere = useMutation({
-    mutationFn: async () => {
-      if (!clienteId) throw new Error("Seleziona un cliente");
-      const nuovo = await creaCantiereLite(
-        clienteId,
-        nuovoCantNome,
-        nuovoCantIndirizzo || null,
-        nuovoCantCitta || null,
-        nuovoCantProvincia || null,
-      );
-      let esitoGeo: { stato: string; messaggio?: string | null } | null = null;
-      try { esitoGeo = await geocodifica({ data: { cantiere_id: nuovo.id } }); } catch { esitoGeo = null; }
-      return { nuovo, esitoGeo };
-    },
-    onSuccess: ({ nuovo, esitoGeo }) => {
-      qc.invalidateQueries({ queryKey: ["cantieri-lite", clienteId] });
-      setCantiereId(nuovo.id);
-      setModoCantiere("seleziona");
-      setNuovoCantNome("");
-      setNuovoCantIndirizzo("");
-      setNuovoCantCitta("");
-      setNuovoCantProvincia("");
-      if (esitoGeo?.stato === "ok") {
-        toast.success("Cantiere creato e geolocalizzato. Sede più vicina calcolata.");
-      } else if (esitoGeo) {
-        toast.warning(`Cantiere creato ma NON geolocalizzato: ${esitoGeo.messaggio ?? "indirizzo non trovato"}. Aprilo in Cantieri per posizionarlo a mano.`);
-      } else {
-        toast.warning("Cantiere creato. Geolocalizzazione non riuscita: verifica l'indirizzo nella scheda Cantieri.");
-      }
-    },
-    onError: (e: unknown) => {
-      toast.error((e as Error).message || "Errore creazione cantiere");
-    },
-  });
 
   const create = useMutation({
     mutationFn: async () => {
@@ -221,12 +179,6 @@ export function NuovoPreventivoDialog({
                     } else {
                       setCantiereDescrizione("");
                     }
-                    if (m !== "crea") {
-                      setNuovoCantNome("");
-                      setNuovoCantIndirizzo("");
-                      setNuovoCantCitta("");
-                      setNuovoCantProvincia("");
-                    }
                   }}
                 >
                   {l}
@@ -241,67 +193,7 @@ export function NuovoPreventivoDialog({
               />
             ) : modoCantiere === "crea" ? (
               <div className="grid gap-2 rounded-md border p-3">
-                {!clienteId ? (
-                  <p className="text-sm text-muted-foreground">Prima seleziona un cliente.</p>
-                ) : (
-                  <>
-                    <div className="grid gap-1.5">
-                      <Label className="text-xs">Nome cantiere *</Label>
-                      <Input
-                        value={nuovoCantNome}
-                        onChange={(e) => setNuovoCantNome(e.target.value)}
-                        placeholder="es. Cantiere zona Milano nord"
-                        disabled={creaCantiere.isPending}
-                      />
-                    </div>
-                    <div className="grid gap-1.5">
-                      <Label className="text-xs">Indirizzo *</Label>
-                      <Input
-                        value={nuovoCantIndirizzo}
-                        onChange={(e) => setNuovoCantIndirizzo(e.target.value)}
-                        placeholder="es. Via Roma 1"
-                        disabled={creaCantiere.isPending}
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <div className="grid gap-1.5">
-                        <Label className="text-xs">Città</Label>
-                        <Input
-                          value={nuovoCantCitta}
-                          onChange={(e) => setNuovoCantCitta(e.target.value)}
-                          placeholder="Città"
-                          disabled={creaCantiere.isPending}
-                        />
-                      </div>
-                      <div className="grid gap-1.5">
-                        <Label className="text-xs">Provincia</Label>
-                        <Input
-                          value={nuovoCantProvincia}
-                          onChange={(e) => setNuovoCantProvincia(e.target.value)}
-                          placeholder="PR"
-                          disabled={creaCantiere.isPending}
-                        />
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      L'indirizzo verrà geolocalizzato e verrà calcolata la sede più vicina. Serve un indirizzo valido (via + città).
-                    </p>
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled={creaCantiere.isPending || !clienteId}
-                      onClick={() => {
-                        if (!nuovoCantNome.trim() || !nuovoCantIndirizzo.trim()) {
-                          toast.error("Nome e indirizzo sono obbligatori");
-                          return;
-                        }
-                        creaCantiere.mutate();
-                      }}
-                    >
-                      {creaCantiere.isPending ? "Creazione…" : "Crea e seleziona cantiere"}
-                    </Button>
-                  </>
-                )}
+                <NuovoCantiereForm clienteId={clienteId} onCreato={(c) => { setCantiereId(c.id); setModoCantiere("seleziona"); }} />
               </div>
             ) : (
               <CantierePicker cliente_id={clienteId} value={cantiereId} onChange={setCantiereId} />
