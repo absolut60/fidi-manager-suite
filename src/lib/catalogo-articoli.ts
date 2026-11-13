@@ -27,7 +27,8 @@ export function parametriArticoli(f: FiltriArticoli) {
     marche: f.marche, fornitori: f.fornitori, stati: f.stati,
     disponibile_in: disp.filter(v => UUID.test(v)), disponibile_logistica: disp.includes(VALORE_LOGISTICA),
     listino: listinoValido(f.listino), _ordina: ord.ordina, _direzione: ord.direzione,
-    limite: 100, offset: (Math.max(1, Math.floor(f.page)) - 1) * 100 };
+    limite: 100, offset: (Math.max(1, Math.floor(f.page)) - 1) * 100,
+    coppie: [] as string[], solo_gamma: false };
 }
 export function prezzoArticolo(prezzo: number | null) {
   return prezzo === null ? "—" : prezzo.toLocaleString("it-IT", { style: "currency", currency: "EUR", minimumFractionDigits: 4, maximumFractionDigits: 4 });
