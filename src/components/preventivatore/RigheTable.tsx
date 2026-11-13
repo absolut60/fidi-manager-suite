@@ -270,10 +270,10 @@ export function RigheTable({
           <thead>
             <tr className="whitespace-nowrap bg-pv-testa text-[10px] uppercase tracking-wide text-muted-foreground [&>th]:bg-pv-testa [&>th]:border-b">
               <th className="w-[18px] px-1 py-1.5 sticky left-0 z-10"></th>
-              <th className="w-[22px] px-1 py-1.5 text-center sticky left-[18px] z-10">#</th>
-              <th className="w-[156px] px-1 py-1.5 text-left sticky left-[40px] z-10">Codice</th>
-              <th className="px-1 py-1.5 text-left sticky left-[196px] z-10 border-r">Descrizione</th>
-              <th className="w-[112px] px-1 py-1.5 text-left">U.M.</th>
+              <th className="w-[40px] px-1 py-1.5 text-center sticky left-[18px] z-10">#</th>
+              <th className="w-[156px] px-1 py-1.5 text-left sticky left-[58px] z-10">Codice</th>
+              <th className="px-1 py-1.5 text-left sticky left-[214px] z-10 border-r">Descrizione</th>
+              <th className="w-[72px] px-1 py-1.5 text-left">U.M.</th>
               <th className="w-[72px] px-1 py-1.5 text-right">Incid.</th>
               <th className="w-[76px] px-1 py-1.5 text-right">Quantità</th>
               <th className="w-[84px] px-1 py-1.5 text-right">Prezzo lordo</th>
@@ -470,24 +470,23 @@ function ScontiCell({ value, onCommit }: { value: number[] | null | undefined; o
   );
 }
 
-/** FM65 R2b: cella U.M. a due livelli (UM1 blu, UM2 arancio); i valori restano salvati in UM1. */
+/** Cella U.M. compatta (UM1 blu, UM2 arancio); i valori restano salvati in UM1. */
 function CellaUm({ idx, um1, um2, fattore, secondaria, disabled, onChange }: {
   idx: number; um1: string; um2: string | null; fattore: number | null; secondaria: boolean; disabled: boolean; onChange: (v: "um1" | "um2") => void;
 }) {
   const inUm2 = secondaria && !!um2;
-  const box = cn("flex h-9 w-full items-center justify-between gap-1 rounded-md border px-2 text-left leading-none",
-    inUm2 ? "border-[#d97706] bg-[#fff7ed]" : "border-[#2b5ea7] bg-card");
+  const box = "flex h-auto min-h-[26px] w-full items-center justify-between gap-0.5 rounded border border-transparent bg-transparent px-1 py-1 text-left text-xs leading-none shadow-none hover:border-input focus:border-ring focus:bg-card focus-visible:ring-0 [&>svg]:size-3 [&>svg]:shrink-0";
   const testo = (
-    <div className="flex min-w-0 flex-col gap-0.5">
-      <span className={cn("text-[9.5px] font-semibold uppercase", inUm2 ? "text-[#b45309]" : "text-[#2b5ea7]")}>{inUm2 ? "UM2" : "UM1"}</span>
-      <span className="whitespace-nowrap font-sans text-sm font-bold text-foreground">{inUm2 ? um2 : um1}</span>
+    <div className="flex min-w-0 items-center gap-0.5">
+      <span className="whitespace-nowrap font-sans text-xs font-bold text-foreground">{inUm2 ? um2 : um1}</span>
+      <span className={cn("font-sans text-[8px] font-semibold uppercase", inUm2 ? "text-pv-arancio" : "text-pv-blu")}>{inUm2 ? "UM2" : "UM1"}</span>
     </div>
   );
   const label = `Unità di misura riga ${idx + 1}`;
   if (!um2) return <div className={box} aria-label={label} role="group">{testo}</div>;
   return (
     <Select value={inUm2 ? "um2" : "um1"} disabled={disabled} onValueChange={(v) => onChange(v as "um1" | "um2")}>
-      <SelectTrigger aria-label={label} className={cn(box, "focus:ring-1")}>{testo}</SelectTrigger>
+      <SelectTrigger aria-label={label} className={box}>{testo}</SelectTrigger>
       <SelectContent>
         <SelectItem value="um1">{`${um1} – unità 1 (primaria)`}</SelectItem>
         <SelectItem value="um2">{`${um2} – unità 2 (secondaria)${fattore ? ` · 1 ${um2} = ${formatNumeroIt(fattore, { maxDecimals: 4 })} ${um1}` : ""}`}</SelectItem>
@@ -535,7 +534,6 @@ function useCelleRiga(p: RigaProps) {
           codice={row.articolo_codice ?? row.articolo?.cod_gamma ?? null}
           descrizione={row.descrizione} onChange={onSceltaGamma} disabled={readOnly} />
       </div>
-      {row.articolo_codice && <PulsanteRiepilogo idx={p.idx} onOpen={p.onOpenRiepilogo ?? null} />}
     </div>
   ) : valorizzata ? <span className="block px-1 py-2 font-mono text-xs">MANUALE</span> : null;
   const articolo = (
@@ -543,7 +541,7 @@ function useCelleRiga(p: RigaProps) {
       <Input key={`${row.id}-${row.descrizione ?? ""}`} defaultValue={row.descrizione ?? ""}
         aria-label="Descrizione riga" disabled={readOnly}
         onBlur={(e) => { if ((e.target.value || null) !== row.descrizione) onPatch({ descrizione: e.target.value || null }); }}
-        className="h-9 min-w-0 font-sans text-xs" placeholder={isText ? "Nota libera…" : isSubtotal ? "Sotto-totale" : "Descrizione…"} />
+        className="h-[26px] min-w-0 rounded border-transparent bg-transparent px-1.5 py-1 font-sans text-xs shadow-none outline-none hover:border-input focus:border-ring focus:bg-card focus-visible:ring-0 md:text-xs" placeholder={isText ? "Nota libera…" : isSubtotal ? "Sotto-totale" : "Descrizione…"} />
       {prezzoMancante && <span role="alert" className="mt-0.5 block font-sans text-[11px] font-semibold text-destructive">Prezzo non disponibile: inseriscilo a mano</span>}
     </>
   );
@@ -561,7 +559,7 @@ function useCelleRiga(p: RigaProps) {
       onChange={(um_scelta) => onPatch({ um_scelta })} /> : (
       <Input defaultValue={row.um ?? ""} aria-label="Unità di misura" disabled={readOnly}
         onBlur={(e) => { if ((e.target.value || null) !== row.um) onPatch({ um: e.target.value || null }); }}
-        className="h-9 px-1 text-xs" />
+        className="h-[26px] rounded border-transparent bg-transparent px-1 py-1 text-xs shadow-none hover:border-input focus:border-ring focus:bg-card focus-visible:ring-0 md:text-xs" />
     ),
     incidenza: (
       <EditableNumberCell value={unita.incidenza} decimali={4} ariaLabel="Incidenza"
@@ -615,7 +613,7 @@ function useCelleRiga(p: RigaProps) {
 }
 
 function BadgeMargine({ perc, testo }: { perc: number; testo: React.ReactNode }) {
-  return <span className={cn("inline-flex whitespace-nowrap rounded-full px-1.5 py-0.5 font-sans text-[11px] font-semibold",
+  return <span className={cn("inline-flex whitespace-nowrap rounded-full px-1.5 py-0.5 font-mono text-xs font-semibold",
     perc < 0 ? "bg-destructive/10 text-destructive" : "bg-pv-verde-tenue text-pv-verde")}>{testo}</span>;
 }
 const BADGE_MANUALE = <span className="mr-1 inline-flex rounded bg-pv-giallo-tenue px-1.5 py-0.5 font-sans text-[9.5px] font-bold uppercase tracking-wide text-pv-giallo not-italic">Manuale</span>;
@@ -671,9 +669,9 @@ function RigaRow(p: RigaProps) {
   return (
     <tr ref={sortable.setNodeRef} style={style} className={rowClass} onClick={c.onRowClick}>
       {grip}
-      <td className="sticky left-[18px] z-[1] bg-card pt-2 text-center text-[10px] text-muted-foreground">{p.idx + 1}</td>
-      <td className="sticky left-[40px] z-[1] min-w-0 bg-card px-1 py-0.5">{c.codice}</td>
-      <td className="sticky left-[196px] z-[1] min-w-0 border-r bg-card px-1 py-0.5">{c.tipo === "manuale" && <div className="pt-0.5">{BADGE_MANUALE}</div>}{c.articolo}{c.kitSenzaPrezzo && (
+      <td className="sticky left-[18px] z-[1] bg-card py-0.5 text-center text-xs text-muted-foreground"><div className="flex flex-col items-center"><span>{p.idx + 1}</span>{p.row.articolo_codice && <PulsanteRiepilogo idx={p.idx} onOpen={p.onOpenRiepilogo ?? null} />}</div></td>
+      <td className="sticky left-[58px] z-[1] min-w-0 bg-card px-1 py-0.5">{c.codice}</td>
+      <td className="sticky left-[214px] z-[1] min-w-0 border-r bg-card px-1 py-0.5">{c.tipo === "manuale" && <div className="pt-0.5">{BADGE_MANUALE}</div>}{c.articolo}{c.kitSenzaPrezzo && (
         <p className="mt-0.5 text-[11px] font-sans not-italic text-destructive">Articolo non collegato a Gamma: inserisci prezzo e costo a mano</p>
       )}</td>
       <td className="px-0.5 py-0.5">{v && c.um}</td>
@@ -685,7 +683,7 @@ function RigaRow(p: RigaProps) {
       <td className="px-0.5 py-0.5 text-right">{v && c.extra}</td>
       <td className="px-1 py-1.5 text-right">{v && c.netto}</td>
       <td className="px-0.5 py-0.5 text-center">{v && c.segnoSel}</td>
-      <td className={cn("px-1 py-1.5 text-right", c.isSubtotal && "border-y-2 border-primary/40 text-sm",
+      <td className={cn("px-1 py-1.5 text-right", c.isSubtotal && "border-y-2 border-primary/40 text-xs",
         p.calc.importoEffettivo < 0 && "text-destructive")}>
         {(v || c.isSubtotal) && c.importo}
       </td>
@@ -710,7 +708,7 @@ function RigaScheda(p: RigaProps) {
   const campo = (label: string, node: React.ReactNode, cls?: string) => (
     <label className={cn("grid min-w-0 gap-0.5", cls)}>
       <span className="text-[11px] text-muted-foreground">{label}</span>
-      <span className="min-h-9 rounded border border-input/60 bg-background font-mono text-xs [&_input]:min-h-9">{node}</span>
+      <span className="min-w-0 font-mono text-xs">{node}</span>
     </label>
   );
   const valore = (label: string, testo: React.ReactNode, cls?: string) => (
@@ -726,7 +724,7 @@ function RigaScheda(p: RigaProps) {
       onClick={c.onRowClick}>
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
         <div className="min-w-0">
-          <span className="text-[11px] text-muted-foreground">{c.tipo === "manuale" && BADGE_MANUALE}Riga {p.idx + 1} · {TIPI_RIGA_LABEL[c.tipo]}</span>
+          <div className="flex min-w-0 items-center gap-1"><span className="min-w-0 break-words text-xs text-muted-foreground">{c.tipo === "manuale" && BADGE_MANUALE}Riga {p.idx + 1} · {TIPI_RIGA_LABEL[c.tipo]}</span>{p.row.articolo_codice && <PulsanteRiepilogo idx={p.idx} onOpen={p.onOpenRiepilogo ?? null} />}</div>
           {c.valorizzata && campo("Codice", c.codice)}
           {campo("Descrizione", c.articolo)}
           {c.kitSenzaPrezzo && (
@@ -749,10 +747,10 @@ function RigaScheda(p: RigaProps) {
           {campo("Costo unit.", c.costo)}
           {valore("Marg.%", <BadgeMargine perc={p.calc.margine_perc} testo={c.margine} />)}
           {valore("Peso", c.peso)}
-          {valore("Importo", <span className="text-sm font-semibold">{c.importo}</span>, "col-span-2 sm:col-span-4")}
+          {valore("Importo", <span className="text-xs font-semibold">{c.importo}</span>, "col-span-2 sm:col-span-4")}
         </div>
       )}
-      {c.isSubtotal && valore("Sotto-totale", <span className="text-sm font-semibold">{c.importo}</span>)}
+      {c.isSubtotal && valore("Sotto-totale", <span className="text-xs font-semibold">{c.importo}</span>)}
     </div>
   );
 }

@@ -44,10 +44,10 @@ export function ArticoloGammaPicker({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" role="combobox" disabled={disabled}
+        <Button variant={soloCodice ? "ghost" : "outline"} role="combobox" disabled={disabled}
           title={label ?? undefined}
-          className={soloCodice ? "h-9 w-full justify-start whitespace-nowrap px-1.5 py-1 text-left font-mono text-xs" : "h-auto min-h-8 w-full justify-between whitespace-normal px-2 py-1 text-left font-mono text-xs"}>
-          <span className={soloCodice ? "min-w-0 overflow-hidden text-ellipsis whitespace-nowrap" : "line-clamp-2 min-w-0 break-words"}>{label ?? (soloCodice ? "Scegli codice…" : "Cerca articolo Gamma…")}</span>
+          className={soloCodice ? "h-auto min-h-[26px] w-full justify-start rounded border border-transparent bg-transparent whitespace-normal px-1.5 py-1 text-left font-mono text-xs shadow-none hover:border-input hover:bg-transparent focus:border-ring focus:bg-card focus-visible:ring-0" : "h-auto min-h-8 w-full justify-between whitespace-normal px-2 py-1 text-left font-mono text-xs"}>
+          <span className={soloCodice ? "min-w-0 break-all whitespace-normal" : "line-clamp-2 min-w-0 break-words"}>{label ?? (soloCodice ? "Scegli codice…" : "Cerca articolo Gamma…")}</span>
           {!soloCodice && <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />}
         </Button>
       </PopoverTrigger>
