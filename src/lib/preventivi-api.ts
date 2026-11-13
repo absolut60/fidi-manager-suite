@@ -1182,3 +1182,11 @@ export async function fetchPrezziClienteArticoli(cliente_id: string, codici: str
   for (const r of data ?? []) out.set(r.articolo_codice, r);
   return out;
 }
+
+/** FM65 punto 4: riepilogo articolo per il cliente del preventivo (sola lettura, una riga). Il prezzo di vendita resta in prezzi_preventivo_cliente. */
+export type RiepilogoArticoloPreventivo = Database["public"]["Functions"]["riepilogo_articolo_preventivo"]["Returns"][number];
+export async function fetchRiepilogoArticoloPreventivo(clienteId: string, codice: string): Promise<RiepilogoArticoloPreventivo | null> {
+  const { data, error } = await supabase.rpc("riepilogo_articolo_preventivo", { _cliente_id: clienteId, _codice: codice });
+  if (error) throw error;
+  return data?.[0] ?? null;
+}

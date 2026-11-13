@@ -102,3 +102,10 @@ Altri avvisi: `articolo_senza_prezzo_su_listino`, `cliente_senza_listino`, `clie
 - UM2 usa soltanto `rigaInUnita`: visualizzazione e scritture convertite, valori persistiti sempre UM1; ogni modifica numerica continua in `patchConImporto`. Scelta articolo precompila descrizione e ripristina UM1.
 - PDF preventivo/ordine stampa codice Gamma, descrizione salvata, unità scelta e quantità/prezzi convertiti con la stessa funzione; prezzi unitari 4 decimali, importo 2 e invariato.
 - `trasforma_preventivo_in_ordine(uuid,jsonb)` conserva firma, gate e permessi; con articolo_codice recupera la descrizione originale Gamma, senza codice copia la descrizione libera; quantità/prezzi e um_scelta copiati senza conversioni.
+
+## Riepilogo articolo (FM65 punto 4)
+
+- Fonte unica: `public.riepilogo_articolo_preventivo(_cliente_id, _codice)` (sola lettura, gate `auth_ha_accesso_preventivi()`), letta da `fetchRiepilogoArticoloPreventivo`. Il prezzo di vendita NON è qui: resta `prezzi_preventivo_cliente`.
+- Listino del cliente: ricavato richiamando `condizioni_preventivo_cliente(_cliente_id)` (stesso listino del motore prezzi); il riquadro Acquisto legge `articoli_gamma_listini` di quel listino.
+- Due costi distinti: "Costo ultimo (usato nel preventivo)" = `articoli_gamma.costo_ultimo`; "Costo netto da listino fornitore" = `articoli_gamma_listini.costo_acquisto`.
+- Giacenze dalla stessa fonte della scheda articolo (`_giacenze_articoli_catalogo`, righe `conta_totale`, aggregazione identica a `disponibilita_articolo`): sede del cliente (`clienti.store_id`), logistica comune, totale sedi (logistica esclusa), ordinato fornitori (sedi + logistica). Conto deposito/visione e altri depositi `conta_disponibilita='no'` esclusi.
