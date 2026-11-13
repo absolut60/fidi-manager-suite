@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { principaleDiAlternativa } from "@/lib/preventivi-api";
 describe("principaleDiAlternativa", () => {
   it("da un principale restituisce il suo id", () => {
