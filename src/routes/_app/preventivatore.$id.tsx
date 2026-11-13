@@ -354,7 +354,7 @@ function PreventivoEditorPage() {
   const categoria=condizioni?.macrocategoria ? [condizioni.macrocategoria_label,condizioni.categoria_label].filter(Boolean).join(' – ') : '—';
   const pagamentoCod=prev.condizione_pagamento_cod||clienteDati?.condizione_pagamento_cod||'';
   const pagamentoDesc=codiciPagamento.find(c=>c.cod===pagamentoCod)?.descrizione||clienteDati?.condizione_pagamento_desc||'';
-  const riepilogo:RiepilogoPreventivo={cliente:[clienteDati?.codice_gestionale,clienteDati?.ragione_sociale||cliente?.ragione_sociale].filter(Boolean).join(' · ')||'—',cantiere:cantiere?.nome?`${cantiere.nome}${cantiere.provvisorio?' (provvisorio)':''}`:(!cantiereDescrizione||cantiereDescrizione==='Da definire'?'Da definire (provvisorio)':cantiereDescrizione),listino,categoria,pagamento:pagamentoCod?`${pagamentoDesc||pagamentoCod} (${pagamentoCod})`:'—',validita:prev.validita?formatDate(prev.validita):'—',imponibile:totali.imponibile_netto,marginePerc:margineTotale.perc,margineEuro:margineTotale.euro};
+  const riepilogo:RiepilogoPreventivo={cliente:[clienteDati?.codice_gestionale,clienteDati?.ragione_sociale||cliente?.ragione_sociale].filter(Boolean).join(' · ')||'—',cantiere:cantiere?.nome?`${cantiere.nome}${cantiere.provvisorio?' (provvisorio)':''}`:(cantiereDescrizione||'Da definire'),listino,categoria,pagamento:pagamentoCod?`${pagamentoDesc||pagamentoCod} (${pagamentoCod})`:'—',validita:prev.validita?formatDate(prev.validita):'—',imponibile:totali.imponibile_netto,marginePerc:margineTotale.perc,margineEuro:margineTotale.euro};
   const cambiaTab=(v:string)=>navigate({to:'/preventivatore/$id',params:{id},search:(old)=>({...old,tab:v}),replace:true});
 
   return (

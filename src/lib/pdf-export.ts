@@ -140,6 +140,8 @@ function drawHeader(doc: jsPDF, titolo: string, prev: PreventivoConDettagli, log
     const ctAddrParts: string[] = [];
     if (cant.indirizzo) ctAddrParts.push(cant.indirizzo);
     const ctLoc: string[] = [];
+    const ctCap = (prev.cantiere as { cap?: string | null } | null)?.cap;
+    if (ctCap) ctLoc.push(ctCap);
     if (cant.comune?.nome) ctLoc.push(cant.comune.nome);
     if (cant.provincia) ctLoc.push(`(${cant.provincia})`);
     const ctLocStr = ctLoc.join(" ");
@@ -183,7 +185,7 @@ function drawHeader(doc: jsPDF, titolo: string, prev: PreventivoConDettagli, log
 
     doc.setFont("helvetica", "bold"); doc.setFontSize(11);
     doc.setTextColor(...NAVY);
-    doc.text(cant.nome ?? "—", padX, stripY + padTop + labelH + nameH - 0.2);
+    doc.text(`${cant.nome ?? "—"}${(prev.cantiere as { provvisorio?: boolean } | null)?.provvisorio ? " (provvisorio)" : ""}`, padX, stripY + padTop + labelH + nameH - 0.2);
 
     if (addrLines.length) {
       doc.setFont("helvetica", "normal"); doc.setFontSize(8);
