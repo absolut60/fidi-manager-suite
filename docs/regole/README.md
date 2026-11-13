@@ -9,5 +9,6 @@ Queste regole sono parte delle istruzioni permanenti del progetto: valgono quant
 - `sicurezza-permessi.md` — leggere prima di toccare: invio comunicazioni di recupero al cliente, fido teorico, porte verso l'esterno, correzioni della scansione Security.
 - `responsive.md` — leggere prima di toccare qualsiasi pagina: responsive su ogni larghezza (anche desktop), contenitori, due colonne nei dettagli, card compatte.
 - `unita-di-misura.md` — leggere prima di mostrare quantità o prezzi di articoli: UM1/UM2 Gamma, fattore di conversione (quantità ÷, prezzo ×), unità sempre visibile.
+- `prezzi-preventivo.md` — leggere prima di toccare prezzi nel preventivo: il prezzo segue il cliente (listino Gamma e sede del cliente), catena Gamma LI01, il TypeScript non ricalcola prezzi e usa `prezzi_preventivo_cliente` (FM65).
 - Lettura diretta di articoli_gamma_listini e prezzi_deposito_gamma limitata via RLS alla sede (FM64). Ogni nuova lettura di prezzi per conto di un cliente con listino diverso da quello della sede (es. futuro motore del preventivo) deve passare da una funzione SECURITY DEFINER, mai dalla lettura diretta.
 - `lingua-italiana.md` — leggere prima di toccare qualsiasi pagina: app sempre in italiano, niente traduzione automatica, niente controlli nativi con testo del browser, locale it-IT.

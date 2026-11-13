@@ -8303,6 +8303,39 @@ export type Database = {
           store_id: string
         }[]
       }
+      _prezzo_preventivo_articoli: {
+        Args: {
+          _categoria: string
+          _cliente_codice: number
+          _codici: string[]
+          _data: string
+          _listino: number
+          _listino_piu_articoli: string
+          _macrocategoria: string
+          _sottocategoria: string
+          _store_id: string
+        }
+        Returns: {
+          articolo_codice: string
+          avvisi: string[]
+          costo_ultimo: number
+          deposito_codice: string
+          fonte_prezzo: string
+          listino: number
+          maggiorazione_perc: number
+          prezzo_base: number
+          prezzo_listino: number
+          prezzo_netto: number
+          regole: string[]
+          sc1: number
+          sc2: number
+          sc3: number
+          sc4: number
+          sc5: number
+          sc6: number
+          um: string
+        }[]
+      }
       _prezzo_vendita_articoli: {
         Args: {
           _codice?: string
@@ -10295,6 +10328,29 @@ export type Database = {
         Returns: number
       }
       peso_mese_fido: { Args: { _eta: number }; Returns: number }
+      prezzi_preventivo_cliente: {
+        Args: { _cliente_id: string; _codici: string[]; _data?: string }
+        Returns: {
+          articolo_codice: string
+          avvisi: string[]
+          costo_ultimo: number
+          deposito_codice: string
+          fonte_prezzo: string
+          listino: number
+          maggiorazione_perc: number
+          prezzo_base: number
+          prezzo_listino: number
+          prezzo_netto: number
+          regole: string[]
+          sc1: number
+          sc2: number
+          sc3: number
+          sc4: number
+          sc5: number
+          sc6: number
+          um: string
+        }[]
+      }
       processa_richiesta_fido: {
         Args: {
           _condizione_approvata_cod?: string
