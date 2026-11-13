@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { derivaStatoSalvataggio, ultimaScritturaInErrore } from "@/lib/use-stato-salvataggio-preventivo";
 
 describe("derivaStatoSalvataggio", () => {
