@@ -1,3 +1,7 @@
+# FM65 — Correzioni B
+- [ ] Celle omogenee senza riquadri, U.M. compatta, icona riepilogo in #/testata scheda; sola grafica.
+- [ ] Diff logica invariata, test e screenshot 375/1280/1440 con codici e descrizioni lunghi.
+
 # FM65 — Correzioni A
 - [x] Finestre Duplica/Nuovo senza overflow; selettore clienti chiaro alla fonte (variant default locale, nessuna modifica globale).
 - [x] Filiale dalla sede cliente solo al cambio, modifica manuale preservata; primo blocco solo dalla finestra Nuovo, errore non bloccante.
