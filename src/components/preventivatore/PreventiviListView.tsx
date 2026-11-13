@@ -15,7 +15,7 @@ import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Plus, Search, SlidersHorizontal } from "lucide-react";
+import { CornerDownRight, Plus, Search, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   fetchElencoPreventivi, STATI, STATI_LABEL, TIPI_DOC, TIPI_DOC_LABEL,
@@ -128,21 +128,23 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
   const apri = (id: string) => navigate({ to: "/preventivatore/$id", params: { id } });
   const nColonne = isOrdine ? 9 : 11;
 
-  const riga = (r: ElencoPreventivoItem, alternativa: boolean, haAlt: boolean) => {
+  const riga = (r: ElencoPreventivoItem, alternativa: boolean, haAlt: boolean, indiceGruppo: number) => {
     const lettera = lettere.get(r.id) ?? "A";
     return (
       <TableRow
         key={r.id}
         onClick={() => apri(r.id)}
-        className={cn("cursor-pointer text-xs hover:bg-muted/50", alternativa && "bg-muted/30")}
+        className={cn("cursor-pointer text-xs hover:bg-muted/50", indiceGruppo % 2 === 1 ? "bg-muted/30" : "bg-card")}
       >
-        <TableCell className={cn("px-2 py-2 align-top", alternativa && "pl-5")}>
+        <TableCell className={cn("px-2 py-2 align-top", (alternativa || haAlt) && "border-l-[3px] border-l-pv-blu")}>
           <div className="flex flex-wrap items-center gap-1">
+            {alternativa && <CornerDownRight className="size-3 shrink-0 text-muted-foreground" aria-hidden />}
+            {alternativa && <EtichettaLettera lettera={lettera} alternativa />}
             <span className="font-mono font-medium">{r.numero ?? "—"}</span>
-            {(alternativa || haAlt) && <EtichettaLettera lettera={lettera} alternativa={alternativa} />}
+            {!alternativa && haAlt && <EtichettaLettera lettera={lettera} alternativa={false} />}
           </div>
         </TableCell>
-        <TableCell className="px-2 py-2 align-top"><Testo>{r.titolo}</Testo></TableCell>
+        <TableCell className="px-2 py-2 align-top"><Testo className="font-medium">{r.titolo}</Testo></TableCell>
         <TableCell className="px-2 py-2 align-top">
           <Testo className="font-medium">{r.cliente?.ragione_sociale}</Testo>
           {r.cliente?.codice_gestionale && (
@@ -256,18 +258,19 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
               <div className="py-8 text-center text-sm text-muted-foreground">{labelEmpty}</div>
             ) : (
               <ElencoSchede>
-                {principali.map((r) => {
+                {principali.map((r, indiceGruppo) => {
                   const alt = mostraAlternative ? (altPer.get(r.id) ?? []) : [];
                   return (
                     <SchedaLista
                       key={r.id}
+                      className={cn(indiceGruppo % 2 === 1 ? "bg-muted/30" : "bg-card", (altPer.get(r.id)?.length ?? 0) > 0 && "border-l-[3px] border-l-pv-blu")}
                       onClick={() => apri(r.id)}
                       colonneCampi={2}
                       titolo={
                         <span className="break-words">
                           <span className="font-mono">{r.numero ?? "—"}</span>
                           {alt.length > 0 && <> <EtichettaLettera lettera="A" alternativa={false} /></>}
-                          {r.titolo ? ` · ${r.titolo}` : ""}
+                          {r.titolo && <span className="font-medium"> · {r.titolo}</span>}
                         </span>
                       }
                       badge={
@@ -300,8 +303,9 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
                                 key={a.id}
                                 type="button"
                                 onClick={(e) => { e.stopPropagation(); apri(a.id); }}
-                                className="flex min-h-10 w-full items-center gap-2 rounded border bg-muted/30 px-2 text-left text-xs"
+                                className="flex min-h-10 w-full items-center gap-2 rounded border bg-transparent px-2 text-left text-xs"
                               >
+                                <CornerDownRight className="size-3 shrink-0 text-muted-foreground" aria-hidden />
                                 <EtichettaLettera lettera={lettere.get(a.id) ?? "?"} alternativa />
                                 <span className="min-w-0 flex-1 break-words font-mono">{a.numero ?? "—"}</span>
                                 <BadgeStato stato={a.stato} className="shrink-0 px-2 text-[10px]" />
@@ -340,12 +344,12 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
                 ) : principali.length === 0 ? (
                   <TableRow><TableCell colSpan={nColonne} className="py-8 text-center text-sm text-muted-foreground">{labelEmpty}</TableCell></TableRow>
                 ) : (
-                  principali.map((r) => {
+                  principali.map((r, indiceGruppo) => {
                     const alt = altPer.get(r.id) ?? [];
                     return (
                       <Fragment key={r.id}>
-                        {riga(r, false, alt.length > 0)}
-                        {mostraAlternative && alt.map((a) => riga(a, true, false))}
+                        {riga(r, false, alt.length > 0, indiceGruppo)}
+                        {mostraAlternative && alt.map((a) => riga(a, true, false, indiceGruppo))}
                       </Fragment>
                     );
                   })

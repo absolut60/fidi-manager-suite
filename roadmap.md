@@ -1,3 +1,7 @@
+# FM65 — Correzioni C + D
+- [ ] Fascia con token azzurro medio; elenco con frecce, bordo e alternanza per gruppo, titoli medium; sola grafica.
+- [ ] Test e screenshot 375/1280 con tre gruppi; query, filtri e conteggi invariati.
+
 # FM65 — Correzioni B
 - [x] Celle omogenee senza riquadri, U.M. 72px compatta, # 40px e icona riepilogo in #/testata scheda; sola grafica.
 - [x] 706 test; mutation/onMutate/onPatch e conversioni identici byte per byte; screenshot 375/1280/1440 con codice lungo intero, pagina senza overflow e tabella invariata a 1470px; pagina temporanea rimossa. Prova con dati finti.
