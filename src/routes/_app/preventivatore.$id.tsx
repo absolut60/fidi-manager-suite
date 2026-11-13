@@ -25,7 +25,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { puoScriverePreventivi } from "@/lib/permessi-preventivi";
+import { preventivoModificabile, puoScriverePreventivi } from "@/lib/permessi-preventivi";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
@@ -41,7 +41,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Check, Copy, FileDown, GripVertical, Pencil, Plus, RefreshCw, ShoppingCart, Trash2,
+  Copy, FileDown, GripVertical, Lock, Plus, RefreshCw, ShoppingCart, Trash2,
 } from "lucide-react";
 import { BackButton } from "@/components/back-button";
 import { toast } from "sonner";
@@ -96,8 +96,6 @@ function PreventivoEditorPage() {
   const { roles } = useAuth();
   // FM63: chi consulta soltanto (es. store manager) non vede comandi di modifica; il DB resta il controllo vero.
   const puoScrivere = puoScriverePreventivi(roles as string[]);
-  const [editMode, setEditMode] = useState(false);
-  const [editModeInitialized, setEditModeInitialized] = useState(false);
   const [trasformaOpen, setTrasformaOpen] = useState(false);
 
   const { data: prev, isLoading } = useQuery({
@@ -303,15 +301,6 @@ function PreventivoEditorPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [totali.imponibile, totali.iva, totali.totale, prev?.totale_imponibile, prev?.iva_importo, prev?.totale]);
-
-  // Inizializza editMode: bozza vuota → modifica, altrimenti sola lettura
-  useEffect(() => {
-    if (!prev || editModeInitialized) return;
-    setEditMode(puoScrivere && prev.stato === "bozza" && prev.blocchi.length === 0);
-    setEditModeInitialized(true);
-  }, [prev, editModeInitialized]);
-
-
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
