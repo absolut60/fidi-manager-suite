@@ -16,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from "@/components/ui/command";
+import { testoPerFiltroOr } from "@/lib/ricerca-sicura";
 
 type Cliente = { id: string; ragione_sociale: string; codice_gestionale: string | null };
 
@@ -49,7 +50,7 @@ export function RegistraPromessaSelectorDialog({
         .limit(30);
       if (query.trim()) {
         q = q.or(
-          `ragione_sociale.ilike.%${query}%,codice_gestionale.ilike.%${query}%`,
+          `ragione_sociale.ilike.%${testoPerFiltroOr(query)}%,codice_gestionale.ilike.%${testoPerFiltroOr(query)}%`,
         );
       }
       const { data, error } = await q;

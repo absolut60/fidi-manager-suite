@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchArticoliFacets } from "@/lib/articoli-api";
 import type { ArticoloConListini } from "@/lib/kit-api";
 import { cn } from "@/lib/utils";
+import { testoPerFiltroOr } from "@/lib/ricerca-sicura";
 
 const ARTICOLO_SELECT = `
   id, cod_gamma, cod_fornitore, descrizione, um, peso_unit, qta_fornitore, qta_cliente,
@@ -70,7 +71,7 @@ export function ArticoloPicker({
       if (fornitoreFiltro.length > 0) qb = qb.in("fornitore_id", fornitoreFiltro);
       if (tipologiaFiltro.length > 0) qb = qb.in("tipologia", tipologiaFiltro);
       if (q.trim()) {
-        const s = q.trim().replace(/[%,]/g, " ");
+        const s = testoPerFiltroOr(q);
         qb = qb.or(`cod_gamma.ilike.%${s}%,descrizione.ilike.%${s}%,cod_fornitore.ilike.%${s}%`);
       }
       const { data, error } = await qb;

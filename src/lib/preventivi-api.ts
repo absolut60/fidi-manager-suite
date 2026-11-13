@@ -16,6 +16,7 @@ import {
   type CantiereRow,
   type Agente,
 } from "./clienti-api";
+import { testoPerFiltroOr } from "@/lib/ricerca-sicura";
 
 export type Preventivo = Database["public"]["Tables"]["preventivi"]["Row"];
 export type PreventivoInsert = Database["public"]["Tables"]["preventivi"]["Insert"];
@@ -221,7 +222,7 @@ export async function fetchPreventivi(f: PreventiviFilters): Promise<PreventivoL
   if (f.stato?.length) q = q.in("stato", f.stato);
   if (f.tipo_doc?.length) q = q.in("tipo_doc", f.tipo_doc);
   if (f.search?.trim()) {
-    const s = f.search.trim().replace(/[%,]/g, " ");
+    const s = testoPerFiltroOr(f.search);
     q = q.or(`numero.ilike.%${s}%`);
   }
   const { data, error } = await q;

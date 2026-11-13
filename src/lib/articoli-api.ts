@@ -39,7 +39,7 @@ export async function fetchArticoli(
     .range(from, to);
 
   if (filters.search && filters.search.trim()) {
-    const s = filters.search.trim().replace(/[%,]/g, " ");
+    const s = testoPerFiltroOr(filters.search);
     q = q.or(`cod_gamma.ilike.%${s}%,descrizione.ilike.%${s}%,cod_fornitore.ilike.%${s}%`);
   }
   if (filters.categoria?.length) q = q.in("categoria", filters.categoria);
@@ -173,6 +173,7 @@ export {
 } from "./pricing";
 
 import { calcCosto as _calcCosto } from "./pricing";
+import { testoPerFiltroOr } from "@/lib/ricerca-sicura";
 export function calcCostoNetto(l: Partial<ListinoAcquisto>) {
   return _calcCosto(l);
 }

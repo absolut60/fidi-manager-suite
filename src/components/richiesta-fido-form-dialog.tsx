@@ -35,6 +35,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { testoPerFiltroOr } from "@/lib/ricerca-sicura";
 
 const STATI_IN_APPROVAZIONE_FORM = ["in_approvazione", "in_attesa_liv1", "in_attesa_liv2", "in_attesa_liv3", "integrazioni_richieste"];
 
@@ -123,7 +124,7 @@ export function RichiestaFormDialog({
     queryKey: ["clienti", "search-richiesta", debouncedSearch],
     enabled: !clienteBloccato && openCliente && debouncedSearch.length >= 2,
     queryFn: async () => {
-      const term = debouncedSearch.replace(/[%_,]/g, (m) => `\\${m}`);
+      const term = testoPerFiltroOr(debouncedSearch);
       const { data, error } = await supabase
         .from("clienti")
         .select("id, ragione_sociale, codice_gestionale, store_id, fido_aziendale_concesso, fido_gestionale, bloccato, in_gestione_legale, scaduto, totale_rischio, fido_residuo, a_scadere, condizioni_pagamento, condizione_pagamento_cod, dilazione_concordata, dilazione_effettiva, num_insoluti, motivo_blocco, cliente_attivo, ultima_data_fatturazione, ultima_sincronizzazione")

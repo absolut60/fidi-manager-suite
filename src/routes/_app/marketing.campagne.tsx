@@ -42,6 +42,7 @@ export const Route = createFileRoute("/_app/marketing/campagne")({
 
 import { MARKETING_ROLES } from "@/lib/ruoli-marketing";
 import { sanificaDocumentoHtml, SANDBOX_ANTEPRIMA } from "@/lib/html-sicuro";
+import { testoPerFiltroOr } from "@/lib/ricerca-sicura";
 
 type Campagna = {
   id: string;
@@ -730,7 +731,7 @@ function DestinatariCampagnaDialog({
         .from("campagne_email_destinatari")
         .select("id, email, tipo_destinatario, nome_riferimento, cliente_id, aggiunto_il, stato_invio, inviato_at, errore, clienti(ragione_sociale)", { count: "exact" })
         .eq("campagna_id", campagna.id);
-      const term = ricerca.trim().replace(/[,()]/g, " ").trim();
+      const term = testoPerFiltroOr(ricerca);
       if (term) q = q.or(`email.ilike.%${term}%,nome_riferimento.ilike.%${term}%`);
       const { data, error, count } = await q
         .order("aggiunto_il", { ascending: false })

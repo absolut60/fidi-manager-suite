@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { testoPerFiltroOr } from "@/lib/ricerca-sicura";
 
 export type FasciaListino = Database["public"]["Enums"]["fascia_listino"];
 export const FASCE: FasciaListino[] = ["A", "B", "C", "SOCI"];
@@ -101,7 +102,7 @@ export async function fetchClienti(filters: ClientiFilters, limit = 1000): Promi
     .limit(limit);
 
   if (filters.search && filters.search.trim()) {
-    const s = filters.search.trim().replace(/[%,]/g, " ");
+    const s = testoPerFiltroOr(filters.search);
     q = q.or(
       `ragione_sociale.ilike.%${s}%,codice_gestionale.ilike.%${s}%,partita_iva.ilike.%${s}%`,
     );

@@ -60,6 +60,7 @@ import { ProposteFidoMassivoDialog } from "@/components/proposta-fido-massiva-di
 import { EsportaFidoTeoricoButton } from "@/components/esporta-fido-teorico-button";
 
 import { INFORMATIVA_FULL, CONSENSO_TESTI } from "@/lib/consensi-testi";
+import { testoPerFiltroOr } from "@/lib/ricerca-sicura";
 
 type ClientiSearch = { preset?: string; edit?: 1; store?: string; fascia?: string };
 
@@ -793,7 +794,7 @@ function ClientiPage() {
       q = q.not("id", "in", `(${richiesteAttiveIds.join(",")})`);
     }
 
-    const term = search.replace(/[(),]/g, " ").trim();
+    const term = testoPerFiltroOr(search);
     if (term) {
       const like = `%${term}%`;
       q = q.or(
@@ -3039,7 +3040,7 @@ function ClientePicker({
     queryKey: ["clienti-picker", termTrim],
     queryFn: async () => {
       if (termTrim.length < 2) return [];
-      const like = `%${termTrim.replace(/[(),]/g, " ")}%`;
+      const like = `%${testoPerFiltroOr(termTrim)}%`;
       const { data, error } = await supabase
         .from("clienti")
         .select("id, ragione_sociale, codice_gestionale, partita_iva, citta")
