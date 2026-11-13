@@ -12,7 +12,7 @@ import { formatDate } from '@/lib/fidi';
 import { MoreHorizontal } from 'lucide-react';
 import { fallback, zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useBlocker, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -64,7 +64,8 @@ import { round2 } from "@/lib/pricing";
 import { margineTotaliRighe } from "@/lib/riga-preventivo";
 import { formatNumeroIt, parseNumeroIt } from "@/lib/numero-it";
 import { cn } from "@/lib/utils";
-import { useStatoSalvataggioPreventivo, type StatoSalvataggio } from "@/lib/use-stato-salvataggio-preventivo";
+import { UscitaNonSalvataDialog } from "@/components/preventivatore/UscitaNonSalvataDialog";
+import { devoBloccareUscita, useStatoSalvataggioPreventivo, type StatoSalvataggio } from "@/lib/use-stato-salvataggio-preventivo";
 import { AggiungiBloccoDialog } from "@/components/preventivatore/AggiungiBloccoDialog";
 import { RigheTable } from "@/components/preventivatore/RigheTable";
 import { GeneraDocumentoDialog } from "@/components/preventivatore/GeneraDocumentoDialog";

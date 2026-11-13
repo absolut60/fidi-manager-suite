@@ -14,6 +14,11 @@ export function derivaStatoSalvataggio(s: { errore: boolean; inCorso: boolean; c
   return "salvato";
 }
 
+/** FM65 B3: la finestra d'uscita compare solo con modifiche aperte, salvataggio in corso o errore. */
+export function devoBloccareUscita(stato: StatoSalvataggio): boolean {
+  return stato === "modifiche" || stato === "salvataggio" || stato === "errore";
+}
+
 type Esito = { status: string; submittedAt: number };
 
 /** Vero se l'ultima scrittura conclusa è finita in errore (non seguita da una riuscita). */
