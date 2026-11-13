@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { importoRiga } from "@/lib/riga-preventivo";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -60,8 +61,7 @@ export function TrasformaInOrdineDialog({
       for (const r of b.righe) {
         const s = stato.righe[r.id];
         if (!s?.selected || !s.qta) continue;
-        const segno = (r.segno ?? 1) === -1 ? -1 : 1;
-        tot += s.qta * n(r.prezzo_unit) * (1 - n(r.sconto_perc) / 100) * segno;
+        tot += importoRiga({ ...r, quantita: s.qta });
       }
     }
     return tot;

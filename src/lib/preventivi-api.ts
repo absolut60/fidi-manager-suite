@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { importoRiga, marginePercRiga, prezzoNettoRiga, segnoRiga } from "./riga-preventivo";
+import { importoRiga, marginePercRiga, segnoRiga } from "./riga-preventivo";
 import type { Database } from "@/integrations/supabase/types";
 import { round2 } from "./pricing";
 import {

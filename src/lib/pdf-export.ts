@@ -1,4 +1,5 @@
 import jsPDF from "jspdf";
+import { prezzoNettoRiga } from "./riga-preventivo";
 import autoTable from "jspdf-autotable";
 import type { PreventivoConDettagli } from "./preventivi-api";
 import { calcolaTotaliPreventivo, calcolaBlocco } from "./preventivi-api";
@@ -408,7 +409,7 @@ export async function exportPreventivoPdf(prev: PreventivoConDettagli, opzioni: 
       }
       const prezzo = Number(r.prezzo_unit ?? 0);
       const sc = Number(r.sconto_perc ?? 0);
-      const prezzoScontato = prezzo * (1 - sc / 100);
+      const prezzoScontato = prezzoNettoRiga(r);
       const hasQta = r.quantita != null && Number(r.quantita) !== 0;
       const hasPrezzo = r.prezzo_unit != null && Number(r.prezzo_unit) !== 0;
       const row: CellSpec[] = [

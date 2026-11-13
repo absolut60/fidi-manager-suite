@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { calcCosto, round2 } from "./pricing";
+import { importoRiga } from "./riga-preventivo";
 import { calcIncidenzaFromDriver, round4, type TipoDriver } from "./incidenza";
 
 export type Kit = Database["public"]["Tables"]["kit"]["Row"];
@@ -199,7 +200,7 @@ export function calcolaRigaKit(
     costo_unit: round2(costo_unit),
     vendita_unit: round2(vendita_unit),
     costo_riga: round2(costo_unit * incidenza),
-    vendita_riga: round2(vendita_unit * incidenza),
+    vendita_riga: importoRiga({ quantita: incidenza, prezzo_unit: vendita_unit }),
     peso_riga: round4(peso_unit * incidenza),
   };
 }
