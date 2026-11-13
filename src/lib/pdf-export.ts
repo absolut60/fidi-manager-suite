@@ -1,5 +1,5 @@
 import jsPDF from "jspdf";
-import { prezzoNettoRiga } from "./riga-preventivo";
+import { prezzoNettoRiga, rigaInUnita, formatScontiGamma, isIntestazioneKit } from "./riga-preventivo";
 import autoTable from "jspdf-autotable";
 import type { PreventivoConDettagli } from "./preventivi-api";
 import { calcolaTotaliPreventivo, calcolaBlocco } from "./preventivi-api";
@@ -336,7 +336,7 @@ export async function exportPreventivoPdf(prev: PreventivoConDettagli, opzioni: 
     for (const x of calcBl.righe) subMap.set(x.id, x.calc.importoEffettivo);
 
     for (const r of b.righe) {
-      if (r.tipo_riga === "nota") {
+      if (r.tipo_riga === "nota" || isIntestazioneKit(r)) {
         body.push([{
           content: r.descrizione ?? "",
           colSpan: ncols,
@@ -407,20 +407,21 @@ export async function exportPreventivoPdf(prev: PreventivoConDettagli, opzioni: 
         }
         continue;
       }
-      const prezzo = Number(r.prezzo_unit ?? 0);
+      const mostrata = rigaInUnita(r, r.unita_gamma);
+      const prezzo = mostrata.prezzo_unit ?? 0;
       const sc = Number(r.sconto_perc ?? 0);
-      const prezzoScontato = prezzoNettoRiga(r);
+      const prezzoScontato = mostrata.netto ?? 0;
       const hasQta = r.quantita != null && Number(r.quantita) !== 0;
       const hasPrezzo = r.prezzo_unit != null && Number(r.prezzo_unit) !== 0;
       const row: CellSpec[] = [
-        r.articolo?.cod_gamma ?? "",
+        r.articolo_codice ?? r.articolo?.cod_gamma ?? "",
         r.descrizione ?? r.articolo?.descrizione ?? "",
       ];
-      if (col.um) row.push(r.um ?? r.articolo?.um ?? "");
-      if (col.quantita) row.push(hasQta ? fmtNum(Number(r.quantita), 2) : "");
-      if (col.prezzo_unit) row.push(hasPrezzo ? fmtEur(prezzo) : "");
-      if (col.sconto) row.push(sc > 0 ? `${fmtNum(sc, 2)}%` : "—");
-      if (col.prezzo_scontato) row.push(hasPrezzo ? fmtEur(prezzoScontato) : "");
+      if (col.um) row.push(mostrata.um ?? r.um ?? r.articolo?.um ?? "");
+      if (col.quantita) row.push(hasQta ? fmtNum(mostrata.quantita ?? 0, 2) : "");
+      if (col.prezzo_unit) row.push(hasPrezzo ? `€ ${fmtNum(prezzo, 4)}` : "");
+      if (col.sconto) row.push([formatScontiGamma(r.sconti_gamma), sc > 0 ? `extra ${fmtNum(sc, 2)}%` : ""].filter(Boolean).join(" / ") || "—");
+      if (col.prezzo_scontato) row.push(hasPrezzo ? `€ ${fmtNum(prezzoScontato, 4)}` : "");
       if (col.importo) row.push(r.importo != null ? fmtEur(Number(r.importo)) : "");
       body.push(row);
     }

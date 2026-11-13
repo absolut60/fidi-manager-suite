@@ -62,7 +62,7 @@ Altri avvisi: `articolo_senza_prezzo_su_listino`, `cliente_senza_listino`, `clie
 - "Aggiungi riga" cerca nel catalogo Gamma (`cerca_articoli`, solo articoli in uso/in esaurimento, 30 risultati) senza mostrare il prezzo della lista (è della sede dell'utente). Alla scelta il prezzo arriva solo da `prezzi_preventivo_cliente`: prezzo lordo = `prezzo_base`, sconti = slot diversi da 0 nell'ordine, maggiorazione, sconto extra = sconto a piede se presente, costo = costo ultimo × quantità. Fonte, regole e avvisi del motore non si mostrano.
 - Senza cliente o senza prezzo dal motore la riga si salva senza prezzo con l'avviso "Prezzo non disponibile: inseriscilo a mano".
 - Prezzo, sconti ("17+5", massimo 6), maggiorazione, sconto extra e costo unitario restano modificabili; ogni modifica salva l'importo con `patchConImporto`/`importoRiga`.
-- Le righe del vecchio catalogo (`articolo_id`) restano modificabili con il vecchio selettore.
+- Le righe del vecchio catalogo (`articolo_id`) mostrano il proprio codice; la sostituzione passa dal selettore Gamma e dal motore del cliente (FM65 R2).
 
 
 ## Kit e "Aggiorna listini" (FM65 fetta 2b-2)
@@ -96,3 +96,9 @@ Altri avvisi: `articolo_senza_prezzo_su_listino`, `cliente_senza_listino`, `clie
 - Testata: dati dalla RPC cliente dedicata, alternative solo principali stesso cliente con RLS, escluso sé stesso; scelta disabilitata se esistono figli visibili. Pagamento vuoto proposto dal cliente e scritto con la prima modifica ai campi di testata. Lettera dal lettore SQL R1a, mai salvata.
 - `ClientePreventivoDialog` verifica accesso tramite SELECT clienti con RLS utente: se ammesso ospita la pagina cliente esistente in iframe same-origin nella finestra sovrapposta, senza cambiare URL del preventivo; non esiste un componente di scheda cliente completa già separato riutilizzabile. Il dialog Cerved esistente riusa solo ClienteCervedTab, non la scheda completa. Se non ammesso mostra soltanto DTO `dati_cliente_preventivo` e messaggio previsto. Nessun bypass RLS.
 - PRV-161 rilettura: imponibile 170,01, costi 134,40, margine 20,9% / 35,61, IVA 37,40, totale con IVA 207,41. Nessuna scrittura dati eseguita nelle prove R1b.
+
+## Corpo e stampa (FM65 R2)
+- Codice e descrizione sono separati su tabella e telefono. Codice in pulsante Gamma, descrizione liberamente modificabile e persistita; manuali etichettati MANUALE, gruppi kit solo testo.
+- UM2 usa soltanto `rigaInUnita`: visualizzazione e scritture convertite, valori persistiti sempre UM1; ogni modifica numerica continua in `patchConImporto`. Scelta articolo precompila descrizione e ripristina UM1.
+- PDF preventivo/ordine stampa codice Gamma, descrizione salvata, unità scelta e quantità/prezzi convertiti con la stessa funzione; prezzi unitari 4 decimali, importo 2 e invariato.
+- `trasforma_preventivo_in_ordine(uuid,jsonb)` conserva firma, gate e permessi; con articolo_codice recupera la descrizione originale Gamma, senza codice copia la descrizione libera; quantità/prezzi e um_scelta copiati senza conversioni.

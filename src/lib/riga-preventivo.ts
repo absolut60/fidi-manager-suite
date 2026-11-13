@@ -7,6 +7,38 @@
  * Il netto NON viene arrotondato (si mostra a 4 decimali).
  */
 
+import { inUnita, unitaArticolo } from "./scheda-articolo";
+
+export type UnitaGammaRiga = { um: string | null; um2: string | null; fattore_conversione: number | null };
+
+/** Presentation and edits only: persisted quantities/prices/costs always remain UM1. */
+export function rigaInUnita(
+  riga: ImportoRigaInput & { incidenza?: number | null; costo?: number | null; um?: string | null; um_scelta?: string | null },
+  gamma?: UnitaGammaRiga | null,
+  patch: { quantita?: number | null; incidenza?: number | null; prezzo_unit?: number | null; costo_unit?: number | null } = {},
+) {
+  const u = unitaArticolo(gamma ?? { um: riga.um ?? null, um2: null, fattore_conversione: null });
+  const secondaria = u.convertibile && riga.um_scelta === "um2";
+  const scelta = secondaria ? "secondaria" : "primaria";
+  const converti = (v: number | null | undefined, tipo: "quantita" | "prezzo", inversa = false) =>
+    inUnita(v, inversa ? (tipo === "quantita" ? "prezzo" : "quantita") : tipo, scelta, u.fattore);
+  const patchUm1: { quantita?: number | null; incidenza?: number | null; prezzo_unit?: number | null; costo?: number | null } = {};
+  if ("quantita" in patch) patchUm1.quantita = converti(patch.quantita, "quantita", true);
+  if ("incidenza" in patch) patchUm1.incidenza = converti(patch.incidenza, "quantita", true);
+  if ("prezzo_unit" in patch) patchUm1.prezzo_unit = converti(patch.prezzo_unit, "prezzo", true);
+  if ("costo_unit" in patch) patchUm1.costo = patch.costo_unit == null ? null : costoRiga(converti(patch.costo_unit, "prezzo", true), riga.quantita);
+  const q = num(riga.quantita);
+  return {
+    ...u, secondaria, um: secondaria ? u.um2 : u.um1,
+    quantita: converti(riga.quantita == null ? null : num(riga.quantita), "quantita"),
+    incidenza: converti(riga.incidenza, "quantita"),
+    prezzo_unit: converti(riga.prezzo_unit == null ? null : num(riga.prezzo_unit), "prezzo"),
+    netto: converti(prezzoNettoRiga(riga), "prezzo"),
+    costo_unit: converti(riga.costo == null ? null : q > 0 ? num(riga.costo) / q : num(riga.costo), "prezzo"),
+    patchUm1,
+  };
+}
+
 export interface PrezzoRigaInput {
   prezzo_unit: number | string | null | undefined;
   sconti_gamma?: readonly (number | string | null)[] | null;

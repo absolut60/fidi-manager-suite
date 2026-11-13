@@ -25,4 +25,7 @@ Solo se UM2 non vuota, UM2 ≠ UM1, fattore > 0 e fattore ≠ 1. Con UM2 diversa
 `unitaArticolo()` e `inUnita()` in `src/lib/scheda-articolo.ts`: nessun altro punto del codice converte. Quantità convertite al massimo 3 decimali, prezzi sempre 4 decimali. Ogni quantità mostra l'unità, ogni prezzo "€/UM".
 
 ## Preventivi e ordini (FM65 R1a, decisione Andrea valida anche per R2)
-Quantità e prezzi di riga sono SEMPRE salvati in UM1. `um_scelta` (`um1`/`um2`, default `um1`) è soltanto la scelta di visualizzazione, inserimento e stampa. In UM2: quantità mostrata = UM1 ÷ fattore, prezzo mostrato = UM1 × fattore; importo invariato. La trasformazione in ordine e la duplicazione copiano quantità/prezzi UM1 e `um_scelta`, senza conversione. R1a prepara e copia il campo; editor e PDF UM2 arrivano in R2.
+Quantità, prezzi e costi di riga sono SEMPRE salvati in UM1. `um_scelta` (`um1`/`um2`, default `um1`) è soltanto la scelta di visualizzazione, inserimento e stampa. La trasformazione in ordine e la duplicazione copiano quantità/prezzi UM1 e `um_scelta`, senza conversione.
+
+## Editor e PDF (FM65 R2)
+`rigaInUnita` in `riga-preventivo.ts` delega tutte le conversioni a `unitaArticolo`/`inUnita`: UM2 quantità/incidenza ÷ fattore, prezzi lordo/netto/costo unitario × fattore; scritture inverse, senza arrotondare il prezzo salvato. Quantità a schermo/PDF 2 decimali, incidenza 4, prezzi/costi unitari 4. La precisione di calcolo non viene ridotta alla precisione di visualizzazione. Importi, margini, sconti e maggiorazioni invariati. La lettura batch dei pesi include um/um2/fattore; nessuna richiesta per riga aggiunta. Cambiare articolo ripristina UM1.

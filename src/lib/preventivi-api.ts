@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { campiPrezzoDaMotore, confrontoAggiornamento, costoRiga, importoRiga, isIntestazioneKit, isRigaValorizzata, marginePercRiga, pesoRigaGamma, patchConImporto, quantitaDaIncidenza, segnoRiga, type PrezzoClienteGamma } from "./riga-preventivo";
+import { campiPrezzoDaMotore, confrontoAggiornamento, costoRiga, importoRiga, isIntestazioneKit, isRigaValorizzata, marginePercRiga, pesoRigaGamma, patchConImporto, quantitaDaIncidenza, segnoRiga, type PrezzoClienteGamma, type UnitaGammaRiga } from "./riga-preventivo";
 import type { Database } from "@/integrations/supabase/types";
 import { round2 } from "./pricing";
 import {
@@ -29,13 +29,13 @@ export type Riga = Database["public"]["Tables"]["righe_preventivo"]["Row"];
 export type RigaInsert = Database["public"]["Tables"]["righe_preventivo"]["Insert"];
 export type RigaUpdate = Database["public"]["Tables"]["righe_preventivo"]["Update"];
 /** Una sola lettura batch, RLS utente: mai una richiesta per riga. */
-async function fetchPesiGamma(codici: string[]): Promise<Map<string, number | null>> {
+async function fetchPesiGamma(codici: string[]): Promise<Map<string, UnitaGammaRiga & { peso_netto: number | null }>> {
   const unici = [...new Set(codici.filter(Boolean))];
-  const pesi = new Map<string, number | null>();
+  const pesi = new Map<string, UnitaGammaRiga & { peso_netto: number | null }>();
   for (let i = 0; i < unici.length; i += 500) {
-    const { data, error } = await supabase.from("articoli_gamma").select("codice,peso_netto").in("codice", unici.slice(i, i + 500));
+    const { data, error } = await supabase.from("articoli_gamma").select("codice,peso_netto,um,um2,fattore_conversione").in("codice", unici.slice(i, i + 500));
     if (error) throw error;
-    for (const r of data ?? []) pesi.set(r.codice, r.peso_netto);
+    for (const r of data ?? []) pesi.set(r.codice, r);
   }
   return pesi;
 }
@@ -312,6 +312,7 @@ export interface PreventivoConDettagli extends Preventivo {
 export interface BloccoConRighe extends Blocco {
   righe: (Riga & {
     peso_gamma_unit?: number | null;
+    unita_gamma?: UnitaGammaRiga | null;
     articolo: {
       id: string;
       cod_gamma: string | null;
@@ -352,7 +353,10 @@ export async function fetchPreventivo(id: string): Promise<PreventivoConDettagli
   p.blocchi.sort((a, b) => Number(a.ordine ?? 0) - Number(b.ordine ?? 0));
   for (const b of p.blocchi) {
     for (const r of b.righe) {
-      if (r.articolo_codice) r.peso_gamma_unit = pesi.get(r.articolo_codice) ?? null;
+      if (r.articolo_codice) {
+        r.peso_gamma_unit = pesi.get(r.articolo_codice)?.peso_netto ?? null;
+        r.unita_gamma = pesi.get(r.articolo_codice) ?? null;
+      }
     }
     b.righe.sort((a, b2) => Number(a.ordine ?? 0) - Number(b2.ordine ?? 0));
   }
@@ -839,7 +843,7 @@ export async function addBloccoDaKit(args: {
       quantita,
       segno: 1,
       vendita: null,
-      peso: codice ? pesoRigaGamma(pesi.get(codice), quantita) : c.articolo_id ? round2((c.articolo?.peso_unit ?? 0) * quantita) : null,
+      peso: codice ? pesoRigaGamma(pesi.get(codice)?.peso_netto, quantita) : c.articolo_id ? round2((c.articolo?.peso_unit ?? 0) * quantita) : null,
       ordine: idx + 1,
       ...campi,
     };
@@ -881,7 +885,7 @@ export async function updateRiga(id: string, patch: RigaUpdate): Promise<Riga> {
   const codice = patch.articolo_codice ?? corrente.articolo_codice;
   const cambiaQuantita = "quantita" in patch || "incidenza" in patch;
   const pesi = codice && cambiaQuantita ? await fetchPesiGamma([codice]) : null;
-  const riga = { ...corrente, ...(pesi && codice ? { peso_gamma_unit: pesi.get(codice) ?? null } : {}) };
+  const riga = { ...corrente, ...(pesi && codice ? { peso_gamma_unit: pesi.get(codice)?.peso_netto ?? null } : {}) };
   const calcolata = patchConImporto(riga, patch, corrente.blocco?.quantita_base);
   const { data, error } = await supabase.from("righe_preventivo")
     .update(calcolata).eq("id", id).select().single();
@@ -907,14 +911,14 @@ export async function ricalcolaBloccoSuNuovaQuantita(
 ): Promise<void> {
   const qBase = n(nuovaQuantitaBase);
   const aggiornate: { id: string; importo: number }[] = [];
-  const pesi = qBase > 0 ? await fetchPesiGamma(righe.filter((r) => isRigaValorizzata(r) && r.incidenza != null).map((r) => r.articolo_codice ?? "")) : new Map<string, number | null>();
+  const pesi = qBase > 0 ? await fetchPesiGamma(righe.filter((r) => isRigaValorizzata(r) && r.incidenza != null).map((r) => r.articolo_codice ?? "")) : null;
 
   await Promise.all(
     righe.map(async (r) => {
       if (!isRigaValorizzata(r)) return;
       const nuovaQta = quantitaDaIncidenza(r.incidenza, qBase);
       if (nuovaQta == null) return;
-      const corrente = r.articolo_codice ? { ...r, peso_gamma_unit: pesi.get(r.articolo_codice) ?? null } : r;
+      const corrente = r.articolo_codice ? { ...r, peso_gamma_unit: pesi?.get(r.articolo_codice)?.peso_netto ?? null } : r;
       const patch = patchConImporto(corrente, { incidenza: r.incidenza }, qBase);
       const { error } = await supabase.from("righe_preventivo").update(patch).eq("id", r.id);
       if (error) throw error;

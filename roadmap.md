@@ -1,3 +1,9 @@
+# FM65 — Ridisegno R2
+- [x] Codice/descrizione separati, picker Gamma di sostituzione, conversioni UM2 condivise per righe e PDF; lettura batch unità/pesi.
+- [x] 0202 descrizione Gamma negli ordini, firma/permessi invariati e verificati; anon 0.
+- [x] 680 test verdi; prova DB PRV-161 11 NR → 39,6 MQ / 148,51 / costo 119,196; ripristino 40 MQ UM1 / 150,01 e totale 170,01. PDF NR generato dal componente su dati reali, riga 11,11 / 15,0012 / 13,5011 / 150,01. Immagini e salvataggi simulati a 375/1024/1280/1920/360, nessun errore/overflow; pagina temporanea rimossa.
+- [ ] Prova autenticata PRV-161 e trasformazione cliccata: account Andrea non trovato da --self; prova DB distinta dalle interazioni simulate, nessuna sessione di altri utenti scelta.
+
 # FM65 — Ridisegno R1b
 - [x] Componenti fascia/testata/piede, tab URL, cliente sovrapposto con RLS/fallback, Corpo invariato.
 - [x] Dati PRV-161 170,01 / 20,9% / 35,61 / 37,40 / 207,41; test 664 verdi, immagini 375/1024/1280/1920 e 360 senza overflow/errori, tab persistente e modifica simulata. Pagina prova rimossa.
