@@ -10,13 +10,13 @@ export function FasciaPreventivo({ dati, onCliente }: { dati: RiepilogoPreventiv
   const fmt = (n: number) => formatNumeroIt(n, { minDecimals: 2, maxDecimals: 2 });
   const etichetta = "block text-[10.5px] font-medium uppercase tracking-wide opacity-70";
   const voce = (label: string, value: string, max?: string) => (
-    <div key={label} className={`min-w-0 lg:shrink ${max ?? ""}`}>
+    <div key={label} className={`min-w-0 lg:shrink-0 ${max ?? ""}`}>
       <span className={etichetta}>{label}</span>
       <span title={value} className="block break-words text-xs font-medium lg:overflow-hidden lg:text-ellipsis lg:whitespace-nowrap">{value}</span>
     </div>
   );
-  return <section aria-label="Riepilogo preventivo" className="grid grid-cols-2 gap-x-4 gap-y-3 bg-primary px-3 py-3 text-primary-foreground lg:flex lg:flex-nowrap lg:items-end lg:gap-x-7">
-    <div className="col-span-2 min-w-0 lg:max-w-[18rem] lg:shrink">
+  return <section aria-label="Riepilogo preventivo" className="grid grid-cols-2 gap-x-4 gap-y-3 bg-primary px-3 py-3 text-primary-foreground lg:flex lg:flex-wrap lg:items-end lg:gap-x-7">
+    <div className="col-span-2 min-w-0 lg:max-w-[18rem] lg:shrink-0">
       <span className={etichetta}>Cliente</span>
       <Button variant="link" title={dati.cliente} className="flex h-auto max-w-full justify-start p-0 text-left text-xs font-medium text-primary-foreground" onClick={onCliente}>
         <span className="min-w-0 break-words lg:overflow-hidden lg:text-ellipsis lg:whitespace-nowrap">{dati.cliente}</span><ExternalLink className="ml-1 size-3 shrink-0" />
