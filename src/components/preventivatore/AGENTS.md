@@ -1,0 +1,3 @@
+- Quote header/footer/summary receive the same calculated totals from the page; never calculate prices or margins locally.
+- The quote client overlay checks the client SELECT through user RLS before embedding the existing client page; denied access renders only the dedicated quote-client DTO.
+- Quote tabs persist in validated URL search state and the body markup/handlers stay unchanged until the dedicated line redesign.

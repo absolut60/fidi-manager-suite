@@ -12,8 +12,8 @@ import { formatNumeroIt,parseNumeroIt } from "@/lib/numero-it";
 import { formatDate } from "@/lib/fidi";
 import { ExternalLink } from "lucide-react";
 
-export function TestataPreventivo({prev,cliente,editMode,agenti,principali,haAlternative,listino,categoria,onSave,onCliente,onChangeCliente,onCantiere,modoCantiere,onModoCantiere}: {
-  prev: PreventivoConDettagli; cliente: DatiClientePreventivo|null|undefined; editMode:boolean; agenti:Agente[]; principali:{id:string;numero:string|null;titolo:string|null}[]; haAlternative:boolean; listino:string; categoria:string;
+export function TestataPreventivo({prev,cliente,editMode,agenti,principali,haAlternative,listino,categoria,sede,onSave,onCliente,onChangeCliente,onCantiere,modoCantiere,onModoCantiere}: {
+  prev: PreventivoConDettagli; cliente: DatiClientePreventivo|null|undefined; editMode:boolean; agenti:Agente[]; principali:{id:string;numero:string|null;titolo:string|null}[]; haAlternative:boolean; listino:string; categoria:string; sede:string;
   onSave:(patch:PreventivoUpdate)=>void; onCliente:()=>void; onChangeCliente:(id:string)=>void; onCantiere:(id:string)=>void; modoCantiere:'cantiere'|'provvisorio'; onModoCantiere:(v:'cantiere'|'provvisorio')=>void;
 }) {
   const {data:codici=[]}=useCodiciPagamento();
@@ -26,7 +26,7 @@ export function TestataPreventivo({prev,cliente,editMode,agenti,principali,haAlt
   return <section className="py-4 space-y-4">
     <div className="bg-muted p-3 flex flex-col lg:flex-row gap-4 text-sm">
       <div className="min-w-0 flex-1"><Button variant="link" onClick={onCliente} className="h-auto min-h-10 p-0 text-left whitespace-normal font-semibold justify-start">{cliente?.ragione_sociale||prev.cliente?.ragione_sociale||'—'}<ExternalLink className="size-3 shrink-0 ml-1"/></Button><p>{cliente?.codice_gestionale||'—'} · P.IVA {cliente?.partita_iva||'—'}</p><p>{[cliente?.indirizzo,cliente?.cap,cliente?.citta,cliente?.provincia].filter(Boolean).join(' · ')||'—'}</p><p>{[cliente?.telefono,cliente?.cellulare].filter(Boolean).join(' · ')||'—'}</p><p className="break-words">{[cliente?.email,cliente?.pec].filter(Boolean).join(' · ')||'—'}</p></div>
-      <div className="min-w-0 lg:w-64 space-y-1"><p>Listino: <strong>{listino}</strong></p><p>Categoria: <strong>{categoria}</strong></p><p>Sede: <strong>{prev.filiale||'—'}</strong></p></div>
+      <div className="min-w-0 lg:w-64 space-y-1"><p>Listino: <strong>{listino}</strong></p><p>Categoria: <strong>{categoria}</strong></p><p>Sede: <strong>{sede}</strong></p></div>
     </div>
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-x-4 gap-y-3">
       {field('Cliente',[cliente?.codice_gestionale,cliente?.ragione_sociale].filter(Boolean).join(' · '),<ClientePicker value={prev.cliente_id} onChange={onChangeCliente}/>)}
