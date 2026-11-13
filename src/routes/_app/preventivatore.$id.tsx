@@ -544,9 +544,6 @@ function PreventivoEditorPage() {
           <TabsContent value="corpo"><fieldset disabled={!editMode} className={cn('min-w-0',!editMode&&'readonly-mode')}>
             {/* ===== CORPO ===== */}
             <section className="flex flex-col gap-3">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Corpo · Blocchi ({prev.blocchi.length})
-              </div>
 
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEndBlocchi}>
                 <SortableContext items={prev.blocchi.map((b) => b.id)} strategy={verticalListSortingStrategy}>
