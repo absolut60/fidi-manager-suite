@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArticoloDettaglioDialog } from "@/components/preventivatore/ArticoloDettaglioDialog";
+import { RiepilogoArticoloDialog } from "@/components/preventivatore/RiepilogoArticoloDialog";
+import { Info } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -85,6 +87,7 @@ export function RigheTable({
 
 
   const calcs = useMemo(() => calcolaBlocco(blocco.righe), [blocco.righe]);
+  const [riepilogoRigaId, setRiepilogoRigaId] = useState<string | null>(null);
   const calcMap = useMemo(() => new Map(calcs.righe.map((r) => [r.id, r.calc])), [calcs]);
 
   // FM65 R2b: le modifiche di cella aggiornano subito la sola riga in cache (stesso calcolo
@@ -238,6 +241,7 @@ export function RigheTable({
     readOnly,
     autoOpenPicker: r.id === pendingPickerId,
     onOpenArticolo: (aid: string) => setOpenArticoloId(aid),
+    onOpenRiepilogo: clienteId ? () => setRiepilogoRigaId(r.id) : null,
     prezziSpecialiMap: prezziSpecialiMap ?? null,
     calc: calcMap.get(r.id) ?? { importo: 0, costo: 0, vendita: 0, margine_perc: 0, peso: 0, importoEffettivo: 0 },
     onPatch: (patch: Parameters<typeof updateRiga>[1]) =>
@@ -336,6 +340,14 @@ export function RigheTable({
         open={!!openArticoloId}
         onOpenChange={(b) => { if (!b) setOpenArticoloId(null); }}
       />
+      {(() => {
+        const rr = riepilogoRigaId ? blocco.righe.find((x) => x.id === riepilogoRigaId) : null;
+        const cc = rr ? calcMap.get(rr.id) : null;
+        return rr?.articolo_codice && clienteId && cc ? (
+          <RiepilogoArticoloDialog open onOpenChange={(b) => { if (!b) setRiepilogoRigaId(null); }}
+            clienteId={clienteId} codice={rr.articolo_codice} riga={rr} calc={cc} />
+        ) : null;
+      })()}
     </div>
   );
 }
@@ -412,6 +424,8 @@ type RigaProps = {
   readOnly: boolean;
   autoOpenPicker?: boolean;
   onOpenArticolo: (id: string) => void;
+  /** FM65 punto 4: null se il preventivo non ha cliente. */
+  onOpenRiepilogo?: (() => void) | null;
   onPatch: (patch: Parameters<typeof updateRiga>[1]) => void;
   onSceltaGamma: (a: ArticoloGammaScelto) => void;
   onDelete: () => void;
@@ -482,6 +496,22 @@ function CellaUm({ idx, um1, um2, fattore, secondaria, disabled, onChange }: {
   );
 }
 
+/**
+ * FM65 punto 4: <span role="button"> e non <button>, perché il Corpo in sola lettura sta in
+ * <fieldset disabled>, che disattiva i <button> ma non gli altri elementi.
+ */
+function PulsanteRiepilogo({ idx, onOpen }: { idx: number; onOpen: (() => void) | null }) {
+  const apri = (e: React.SyntheticEvent) => { e.stopPropagation(); e.preventDefault(); onOpen?.(); };
+  return <span role="button" tabIndex={onOpen ? 0 : -1} aria-disabled={!onOpen || undefined}
+    aria-label={`Riepilogo articolo riga ${idx + 1}`} title={onOpen ? "Riepilogo articolo" : "Scegli prima il cliente"}
+    onClick={onOpen ? apri : (e) => e.stopPropagation()}
+    onKeyDown={(e) => { if (onOpen && (e.key === "Enter" || e.key === " ")) apri(e); }}
+    className={cn("grid size-10 shrink-0 place-items-center rounded-md text-pv-blu sm:size-6",
+      onOpen ? "cursor-pointer hover:bg-pv-azzurro focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" : "cursor-not-allowed opacity-40")}>
+    <Info className="size-4 sm:size-3.5" aria-hidden />
+  </span>;
+}
+
 function useCelleRiga(p: RigaProps) {
   const { row, calc, readOnly, autoOpenPicker = false, onOpenArticolo, onPatch, onSceltaGamma, prezziSpecialiMap } = p;
   const tipo = row.tipo_riga;
@@ -499,9 +529,14 @@ function useCelleRiga(p: RigaProps) {
   const unita = rigaInUnita(row, row.unita_gamma);
   const salvaInUnita = (patch: Parameters<typeof rigaInUnita>[2]) => onPatch(rigaInUnita(row, row.unita_gamma, patch).patchUm1);
   const codice = valorizzata && tipo !== "manuale" ? (
-    <ArticoloGammaPicker soloCodice autoOpen={autoOpenPicker}
-      codice={row.articolo_codice ?? row.articolo?.cod_gamma ?? null}
-      descrizione={row.descrizione} onChange={onSceltaGamma} disabled={readOnly} />
+    <div className="flex min-w-0 items-center gap-0.5">
+      <div className="min-w-0 flex-1">
+        <ArticoloGammaPicker soloCodice autoOpen={autoOpenPicker}
+          codice={row.articolo_codice ?? row.articolo?.cod_gamma ?? null}
+          descrizione={row.descrizione} onChange={onSceltaGamma} disabled={readOnly} />
+      </div>
+      {row.articolo_codice && <PulsanteRiepilogo idx={p.idx} onOpen={p.onOpenRiepilogo ?? null} />}
+    </div>
   ) : valorizzata ? <span className="block px-1 py-2 font-mono text-xs">MANUALE</span> : null;
   const articolo = (
     <>
