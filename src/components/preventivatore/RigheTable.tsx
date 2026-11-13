@@ -265,7 +265,7 @@ export function RigheTable({
         <p className="px-3 py-2 text-xs text-muted-foreground">Imposta la quantità del blocco per usare l’incidenza</p>
       )}
       {/* Da 1024 px: tabella. Sotto: schede compatte con gli stessi campi. */}
-      <div className="hidden max-w-full overflow-x-auto lg:block">
+      <div className="hidden max-w-full overflow-x-auto pv-tabella:block">
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <table className="w-full min-w-[1470px] table-fixed border-separate border-spacing-0 text-xs">
           <thead>
@@ -273,7 +273,7 @@ export function RigheTable({
               <th className="w-[18px] px-1 py-1.5 sticky left-0 z-10"></th>
               <th className="w-[48px] px-1 py-1.5 text-center sticky left-[18px] z-10">#</th>
               <th className="w-[156px] px-1 py-1.5 text-left sticky left-[66px] z-10">Codice</th>
-              <th className="px-1 py-1.5 text-left sticky left-[222px] z-10">Descrizione</th>
+              <th className="px-1 py-1.5 text-left lg:sticky lg:left-[222px] lg:z-10">Descrizione</th>
               <th className="w-[64px] px-1 py-1.5 text-left">U.M.</th>
               <th className="w-[60px] px-1 py-1.5 text-right">Incid.</th>
               <th className="w-[76px] px-1 py-1.5 text-right">Quantità</th>
@@ -319,7 +319,7 @@ export function RigheTable({
       </DndContext>
       </div>
 
-      <div className="space-y-2 p-2 lg:hidden">
+      <div className="space-y-2 p-2 pv-tabella:hidden">
         {blocco.righe.length === 0 && (
           <div className="py-4 text-center text-sm text-muted-foreground">Nessuna riga. Aggiungi la prima.</div>
         )}
@@ -503,13 +503,13 @@ function CellaUm({ idx, um1, um2, fattore, secondaria, disabled, onChange }: {
  * FM65 punto 4: <span role="button"> e non <button>, perché il Corpo in sola lettura sta in
  * <fieldset disabled>, che disattiva i <button> ma non gli altri elementi.
  */
-function PulsanteRiepilogo({ idx, onOpen }: { idx: number; onOpen: (() => void) | null }) {
+function PulsanteRiepilogo({ idx, onOpen, inTabella }: { idx: number; onOpen: (() => void) | null; inTabella?: boolean }) {
   const apri = (e: React.SyntheticEvent) => { e.stopPropagation(); e.preventDefault(); onOpen?.(); };
   return <span role="button" tabIndex={onOpen ? 0 : -1} aria-disabled={!onOpen || undefined}
     aria-label={`Riepilogo articolo riga ${idx + 1}`} title={onOpen ? "Riepilogo articolo" : "Scegli prima il cliente"}
     onClick={onOpen ? apri : (e) => e.stopPropagation()}
     onKeyDown={(e) => { if (onOpen && (e.key === "Enter" || e.key === " ")) apri(e); }}
-    className={cn("grid size-10 shrink-0 place-items-center rounded-md text-pv-blu lg:size-5",
+    className={cn("grid shrink-0 place-items-center rounded-md text-pv-blu", inTabella ? "size-7 lg:size-5" : "size-10",
       onOpen ? "cursor-pointer hover:bg-pv-azzurro focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" : "cursor-not-allowed opacity-40")}>
     <Info className="size-4 lg:size-3.5" aria-hidden />
   </span>;
@@ -715,9 +715,9 @@ function RigaRow(p: RigaProps) {
   return (
     <tr ref={sortable.setNodeRef} style={style} className={rowClass} onClick={c.onRowClick}>
       {grip}
-      <td className="sticky left-[18px] z-[1] py-0.5 text-center text-xs text-muted-foreground"><div className="flex min-h-[26px] flex-row items-center justify-center gap-0.5"><span>{p.idx + 1}</span>{p.row.articolo_codice && <PulsanteRiepilogo idx={p.idx} onOpen={p.onOpenRiepilogo ?? null} />}</div></td>
+      <td className="sticky left-[18px] z-[1] py-0.5 text-center text-xs text-muted-foreground"><div className="flex min-h-[26px] flex-row items-center justify-center gap-0.5"><span>{p.idx + 1}</span>{p.row.articolo_codice && <PulsanteRiepilogo idx={p.idx} onOpen={p.onOpenRiepilogo ?? null} inTabella />}</div></td>
       <td className="sticky left-[66px] z-[1] min-w-0 px-1 py-0.5">{c.codice}</td>
-      <td className="sticky left-[222px] z-[1] min-w-0 whitespace-normal px-1 py-0.5">{c.articolo}{c.kitSenzaPrezzo && (
+      <td className="lg:sticky lg:left-[222px] lg:z-[1] min-w-0 whitespace-normal px-1 py-0.5">{c.articolo}{c.kitSenzaPrezzo && (
         <p className="mt-0.5 text-[11px] font-sans not-italic text-destructive">Articolo non collegato a Gamma: inserisci prezzo e costo a mano</p>
       )}</td>
       <td className="px-0.5 py-0.5">{v && c.um}</td>
@@ -751,9 +751,9 @@ function RigaScheda(p: RigaProps) {
       </div>
     );
   }
-  const campo = (label: string, node: React.ReactNode, cls?: string) => (
+  const campo = (label: string, node: React.ReactNode, cls?: string, titolo?: string) => (
     <label className={cn("grid min-w-0 gap-0.5", cls)}>
-      <span className="text-[11px] text-muted-foreground">{label}</span>
+      <span className="text-[11px] text-muted-foreground" title={titolo}>{label}</span>
       <span className="min-w-0 font-mono text-xs">{node}</span>
     </label>
   );
@@ -766,32 +766,33 @@ function RigaScheda(p: RigaProps) {
   return (
     <div className={cn("rounded-md border p-2", sfondoScheda(c), c.kitSenzaPrezzo && "border-destructive")}
       onClick={c.onRowClick}>
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
-        <div className="min-w-0">
-          <div className="flex min-w-0 items-center gap-1"><span className="min-w-0 break-words text-xs text-muted-foreground">Riga {p.idx + 1} · {TIPI_RIGA_LABEL[c.tipo]}</span>{p.row.articolo_codice && <PulsanteRiepilogo idx={p.idx} onOpen={p.onOpenRiepilogo ?? null} />}</div>
-          {c.valorizzata && campo("Codice", c.codice)}
-          {campo("Descrizione", c.articolo)}
-          {c.kitSenzaPrezzo && (
-        <p className="mt-0.5 text-[11px] font-sans not-italic text-destructive">Articolo non collegato a Gamma: inserisci prezzo e costo a mano</p>
-      )}
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+        <div className="flex min-w-0 items-center gap-1"><span className="min-w-0 break-words text-xs text-muted-foreground">Riga {p.idx + 1} · {TIPI_RIGA_LABEL[c.tipo]}</span>{p.row.articolo_codice && <PulsanteRiepilogo idx={p.idx} onOpen={p.onOpenRiepilogo ?? null} />}</div>
+        <div className="ml-auto flex shrink-0 items-center gap-1.5">
+          {c.valorizzata && <><span className="whitespace-nowrap font-mono text-xs font-semibold">{c.importo}</span><BadgeMargine perc={p.calc.margine_perc} testo={c.margine} /></>}
+          <AzioniRiga {...p} />
         </div>
-        <AzioniRiga {...p} />
+      </div>
+      <div className="min-w-0">
+        {c.valorizzata && campo("Codice", c.codice)}
+        {campo("Descrizione", c.articolo)}
+        {c.kitSenzaPrezzo && (
+          <p className="mt-0.5 text-[11px] font-sans not-italic text-destructive">Articolo non collegato a Gamma: inserisci prezzo e costo a mano</p>
+        )}
       </div>
       {c.valorizzata && (
-        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="mt-2 grid grid-cols-3 gap-x-2 gap-y-1.5 sm:grid-cols-4">
           {campo("U.M.", c.um)}
-          {campo("Incidenza", c.incidenza)}
           {campo("Quantità", c.quantita)}
           {campo("Prezzo lordo", c.lordo)}
           {campo("Sconti", c.sconti)}
-          {campo("Magg.%", c.magg)}
-          {campo("Sc. extra %", c.extra)}
+          {campo("Extra %", c.extra, undefined, "Sconto extra %")}
           {valore("Netto", c.netto)}
+          {campo("Incidenza", c.incidenza)}
+          {campo("Magg.%", c.magg)}
           {campo("±", c.segnoSel)}
           {campo("Costo unit.", c.costo)}
-          {valore("Marg.%", <BadgeMargine perc={p.calc.margine_perc} testo={c.margine} />)}
           {valore("Peso", c.peso)}
-          {valore("Importo", <span className="text-xs font-semibold">{c.importo}</span>, "col-span-2 sm:col-span-4")}
         </div>
       )}
       {c.isSubtotal && valore("Sotto-totale", <span className="text-xs font-semibold">{c.importo}</span>)}
