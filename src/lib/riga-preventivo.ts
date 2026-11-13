@@ -35,6 +35,13 @@ export function round2Importo(x: number): number {
   return (Math.sign(x) * Math.round(c)) / 100 || 0;
 }
 
+/** Costo totale di riga = costo unitario × quantità, salvato a 4 decimali (il costo unitario mostrato resta esatto). */
+export function costoRiga(costoUnit: number | string | null | undefined, quantita: number | string | null | undefined): number {
+  const x = num(costoUnit) * num(quantita);
+  const c = Number((Math.abs(x) * 10000).toPrecision(15));
+  return (Math.sign(x) * Math.round(c)) / 10000 || 0;
+}
+
 export function segnoRiga(segno: number | null | undefined): 1 | -1 {
   return (segno ?? 1) === -1 ? -1 : 1;
 }
@@ -112,7 +119,7 @@ export function campiPrezzoDaMotore(
   scontoPiede: number,
 ): { prezzo_unit: number | null; sconti_gamma: number[]; maggiorazione_perc: number; sconto_perc: number; costo: number | null; importo: number } {
   const sconto_perc = scontoPiede > 0 ? scontoPiede : 0;
-  const costo = p?.costo_ultimo == null ? null : round2Importo(num(p.costo_ultimo) * quantita);
+  const costo = p?.costo_ultimo == null ? null : costoRiga(p.costo_ultimo, quantita);
   if (!p || p.prezzo_base == null) {
     return { prezzo_unit: null, sconti_gamma: [], maggiorazione_perc: 0, sconto_perc, costo, importo: 0 };
   }
@@ -145,8 +152,55 @@ export function patchConImporto<P extends Partial<RigaBase>>(riga: RigaBase, pat
   const out: P & { importo?: number; costo?: number | null } = { ...patch };
   if ("quantita" in patch && !("costo" in patch) && riga.costo != null) {
     const qVecchia = num(riga.quantita);
-    if (qVecchia > 0) out.costo = round2Importo((num(riga.costo) / qVecchia) * num(patch.quantita));
+    if (qVecchia > 0) out.costo = costoRiga(num(riga.costo) / qVecchia, patch.quantita);
   }
   out.importo = importoRiga({ ...riga, ...out } as ImportoRigaInput);
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// FM65 fetta 2b-2: "Aggiorna listini" — confronto fra valori salvati e motore.
+// ---------------------------------------------------------------------------
+
+const r4 = (v: number) => Math.round(v * 10000) / 10000;
+const stessiSconti = (a: readonly number[], b: readonly number[]) =>
+  a.length === b.length && a.every((v, i) => r4(v) === r4(b[i]));
+
+export interface ValoriPrezzoRiga {
+  prezzo_unit: number | null;
+  sconti_gamma: number[];
+  maggiorazione_perc: number;
+  costo_unit: number | null;
+}
+
+/**
+ * Valori attuali e nuovi di una riga; null se il motore non dà prezzo o non cambia nulla.
+ * Il costo resta quello salvato quando il motore non ha costo ultimo.
+ */
+export function confrontoAggiornamento(
+  riga: { quantita?: number | null; prezzo_unit?: number | null; sconti_gamma?: number[] | null; maggiorazione_perc?: number | null; costo?: number | null; sconto_perc?: number | null },
+  p: PrezzoClienteGamma | null | undefined,
+): { attuali: ValoriPrezzoRiga; nuovi: ValoriPrezzoRiga; nettoNuovo: number; sottoCosto: boolean } | null {
+  if (!p || p.prezzo_base == null) return null;
+  const q = num(riga.quantita);
+  const attuali: ValoriPrezzoRiga = {
+    prezzo_unit: riga.prezzo_unit == null ? null : num(riga.prezzo_unit),
+    sconti_gamma: (riga.sconti_gamma ?? []).map(num).filter((s) => s !== 0),
+    maggiorazione_perc: num(riga.maggiorazione_perc),
+    costo_unit: riga.costo == null ? null : q > 0 ? num(riga.costo) / q : num(riga.costo),
+  };
+  const nuovi: ValoriPrezzoRiga = {
+    prezzo_unit: num(p.prezzo_base),
+    sconti_gamma: scontiDaSlot(p),
+    maggiorazione_perc: num(p.maggiorazione_perc),
+    costo_unit: p.costo_ultimo == null ? attuali.costo_unit : num(p.costo_ultimo),
+  };
+  const uguale =
+    attuali.prezzo_unit != null && r4(attuali.prezzo_unit) === r4(nuovi.prezzo_unit!) &&
+    stessiSconti(attuali.sconti_gamma, nuovi.sconti_gamma) &&
+    r4(attuali.maggiorazione_perc) === r4(nuovi.maggiorazione_perc) &&
+    (attuali.costo_unit == null ? nuovi.costo_unit == null : nuovi.costo_unit != null && r4(attuali.costo_unit) === r4(nuovi.costo_unit));
+  if (uguale) return null;
+  const nettoNuovo = prezzoNettoRiga({ ...nuovi, sconto_perc: riga.sconto_perc });
+  return { attuali, nuovi, nettoNuovo, sottoCosto: nuovi.costo_unit != null && nettoNuovo < nuovi.costo_unit };
 }
