@@ -42,6 +42,18 @@ export function costoRiga(costoUnit: number | string | null | undefined, quantit
   return (Math.sign(x) * Math.round(c)) / 10000 || 0;
 }
 
+/** Quantité de ligne en UM1, arrondie à deux décimales. */
+export function quantitaDaIncidenza(incidenza: number | null | undefined, Qb: number | null | undefined): number | null {
+  return incidenza == null || num(Qb) <= 0 ? null : round2Importo(num(incidenza) * num(Qb));
+}
+
+/** Incidenza a quattro decimali; null significa che il blocco non consente il calcolo. */
+export function incidenzaDaQuantita(quantita: number | null | undefined, Qb: number | null | undefined): number | null {
+  if (quantita == null || num(Qb) <= 0) return null;
+  const x = num(quantita) / num(Qb);
+  return Math.sign(x) * Math.round(Number((Math.abs(x) * 10000).toPrecision(15))) / 10000 || 0;
+}
+
 export function segnoRiga(segno: number | null | undefined): 1 | -1 {
   return (segno ?? 1) === -1 ? -1 : 1;
 }
@@ -160,20 +172,36 @@ type RigaBase = {
   articolo_id?: string | null; articolo_codice?: string | null;
   quantita?: number | null; prezzo_unit?: number | null; sconto_perc?: number | null;
   sconti_gamma?: number[] | null; maggiorazione_perc?: number | null; segno?: number | null; costo?: number | null;
+  incidenza?: number | null; peso?: number | null; peso_gamma_unit?: number | null;
 };
 
 /**
  * Aggiunge al patch l'importo ricalcolato (fonte unica). Se cambia la quantità e il costo
  * non è nel patch, il costo totale segue la quantità mantenendo il costo unitario.
  */
-export function patchConImporto<P extends Partial<RigaBase>>(riga: RigaBase, patch: P): P & { importo?: number; costo?: number | null } {
+export function patchConImporto<P extends Partial<RigaBase>>(riga: RigaBase, patch: P, Qb?: number | null): P & { importo?: number; costo?: number | null; quantita?: number | null; incidenza?: number | null; peso?: number | null } {
   const tipo = patch.tipo_riga ?? riga.tipo_riga;
   if (!tipo || !isRigaValorizzata({ ...riga, ...patch, tipo_riga: tipo })) return patch;
-  if (!CAMPI_IMPORTO.some((k) => k in patch)) return patch;
-  const out: P & { importo?: number; costo?: number | null } = { ...patch };
-  if ("quantita" in patch && !("costo" in patch) && riga.costo != null) {
+  const out: P & { importo?: number; costo?: number | null; quantita?: number | null; incidenza?: number | null; peso?: number | null } = { ...patch };
+  if ("incidenza" in patch) {
+    const q = quantitaDaIncidenza(patch.incidenza, Qb);
+    if (q != null) out.quantita = q;
+  } else if ("quantita" in patch) {
+    if (patch.quantita != null) out.quantita = round2Importo(num(patch.quantita));
+    const inc = incidenzaDaQuantita(out.quantita, Qb);
+    if (inc != null) out.incidenza = inc;
+  }
+  if (!CAMPI_IMPORTO.some((k) => k in out)) return out;
+  if ("quantita" in out && !("costo" in patch) && riga.costo != null) {
     const qVecchia = num(riga.quantita);
-    if (qVecchia > 0) out.costo = costoRiga(num(riga.costo) / qVecchia, patch.quantita);
+    if (qVecchia > 0) out.costo = costoRiga(num(riga.costo) / qVecchia, out.quantita);
+  }
+  if ("quantita" in out && !("peso" in patch)) {
+    if (riga.articolo_codice && "peso_gamma_unit" in riga) {
+      out.peso = pesoRigaGamma(riga.peso_gamma_unit, out.quantita);
+    } else if (riga.peso != null && num(riga.quantita) > 0) {
+      out.peso = num(riga.peso) / num(riga.quantita) * num(out.quantita);
+    }
   }
   out.importo = importoRiga({ ...riga, ...out } as ImportoRigaInput);
   return out;
@@ -217,7 +245,7 @@ export function confrontoAggiornamento(
     costo_unit: p.costo_ultimo == null ? attuali.costo_unit : num(p.costo_ultimo),
   };
   const uguale =
-    attuali.prezzo_unit != null && r4(attuali.prezzo_unit) === r4(nuovi.prezzo_unit!) &&
+    attuali.prezzo_unit != null && nuovi.prezzo_unit != null && r4(attuali.prezzo_unit) === r4(nuovi.prezzo_unit) &&
     stessiSconti(attuali.sconti_gamma, nuovi.sconti_gamma) &&
     r4(attuali.maggiorazione_perc) === r4(nuovi.maggiorazione_perc) &&
     (attuali.costo_unit == null ? nuovi.costo_unit == null : nuovi.costo_unit != null && r4(attuali.costo_unit) === r4(nuovi.costo_unit));
