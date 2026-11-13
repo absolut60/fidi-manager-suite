@@ -9334,6 +9334,14 @@ export type Database = {
           id: string
         }[]
       }
+      get_clienti_elenco_preventivi: {
+        Args: { _ids: string[] }
+        Returns: {
+          codice_gestionale: string
+          id: string
+          ragione_sociale: string
+        }[]
+      }
       get_clienti_email_valida_ids: {
         Args: { _modo: string }
         Returns: {

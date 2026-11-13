@@ -1436,6 +1436,13 @@
       "when": 1794586515185,
       "tag": "0204_fm65_riepilogo_articolo_preventivo",
       "breakpoints": true
+    },
+    {
+      "idx": 205,
+      "version": "7",
+      "when": 1794589696212,
+      "tag": "0205_fm65_clienti_elenco_preventivi",
+      "breakpoints": true
     }
   ]
 }
