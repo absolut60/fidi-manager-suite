@@ -8,7 +8,10 @@ export function ContenutoIncorporato({ children }: { children: ReactNode }) {
     const contenuto = ref.current;
     if (!contenuto) return;
     const aggiorna = () => contenuto.querySelectorAll<HTMLAnchorElement>("a[href]").forEach(link => {
-      if (!destinazioneFuoriFinestra(link.href, window.location.href)) return;
+      if (link.hasAttribute("download")) return;
+      const destinazione = destinazioneFuoriFinestra(link.href, window.location.href);
+      if (!destinazione) return;
+      link.href = destinazione;
       link.target = "_blank";
       link.rel = "noopener noreferrer";
     });

@@ -1,5 +1,5 @@
 # FM65 — Correzioni E
-- [ ] FM67 cliente incorporato: parametro validato, cornice rimossa dopo i gate esistenti, tab preservate, link fuori finestra e verifica autenticata.
+- [x] FM67 cliente incorporato: parametro validato, cornice rimossa dopo gate identici, tab preservate, link fuori finestra; 727 test e schermate 375/1280 della finestra/normalità, sessione reale e cliente simulato (elenchi reali vuoti). Pagina temporanea rimossa; nessuna modifica DB.
 - [x] FM67 Testata compatta: densità opt-in, griglia 62/38, 722 test verdi; save e 10 gestori identici byte per byte. Schermate modifica/lettura 375/1280/1600 e controlli 320/768/1024/1920 senza overflow/errori; dati finti, pagina temporanea rimossa. Nessuna modifica database.
 - [x] Cornice anagrafica condivisa; nota acquisto e giacenze tramite lettore esistente, errori locali; nessuna modifica SQL/database.
 - [x] 710 test verdi; typecheck e compilazione verdi. Screenshot 375/1280 Riepilogo/Testata/Piede e diniego isolato; controlli 320/390/768/1920 senza overflow/errori browser. Dati finti, pagina temporanea rimossa; nessuna migrazione.
