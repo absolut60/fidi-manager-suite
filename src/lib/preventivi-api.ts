@@ -478,7 +478,7 @@ export async function duplicaPreventivo(
       .eq("id", options.nuovoClienteId)
       .single();
     if (error) throw error;
-    nuovoClienteRow = data as unknown as typeof nuovoClienteRow;
+    nuovoClienteRow = data;
   }
 
   const oggi = new Date().toISOString().slice(0, 10);
