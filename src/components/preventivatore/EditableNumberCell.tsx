@@ -14,6 +14,7 @@ export function EditableNumberCell({
   disabled,
   placeholder,
   suffix,
+  decimali,
 }: {
   value: number | null | undefined;
   onCommit: (v: number | null) => void | Promise<void>;
@@ -22,9 +23,11 @@ export function EditableNumberCell({
   disabled?: boolean;
   placeholder?: string;
   suffix?: string;
+  /** Decimali fissi in visualizzazione (es. 4 per i prezzi unitari). */
+  decimali?: number;
 }) {
   const toDisplay = (v: number | null | undefined) =>
-    v == null ? "" : String(v).replace(".", ",");
+    v == null ? "" : (decimali != null ? Number(v).toFixed(decimali) : String(v)).replace(".", ",");
 
   const [local, setLocal] = useState<string>(toDisplay(value));
   const [editing, setEditing] = useState(false);
@@ -35,6 +38,7 @@ export function EditableNumberCell({
   }, [value, editing]);
 
   async function commit() {
+    if (!editing) return; // nessuna modifica scritta: niente salvataggio
     setEditing(false);
     const trimmed = local.trim();
     if (trimmed === "" && (value == null || Number.isNaN(value as number))) return;

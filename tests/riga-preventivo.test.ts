@@ -32,3 +32,30 @@ describe("FM65 — casi Gamma verificati con DDT", () => {
   it("segno −1 rende l'importo negativo", () =>
     expect(importoRiga({ quantita: 2, prezzo_unit: 10, segno: -1 })).toBe(-20));
 });
+
+import { campiPrezzoDaMotore, formatScontiGamma, parseScontiGamma, patchConImporto } from "@/lib/riga-preventivo";
+
+describe("FM65 2b-1 — sconti come in Gamma e riga dal motore", () => {
+  it("formato 17+5", () => expect(formatScontiGamma([17, 5])).toBe("17+5"));
+  it("lettura con virgola e zeri tolti", () => expect(parseScontiGamma("10 + 2,5 + 0")).toEqual([10, 2.5]));
+  it("oltre 6 sconti non valido", () => expect(parseScontiGamma("1+1+1+1+1+1+1")).toBeNull());
+  it("testo non valido", () => expect(parseScontiGamma("10+abc")).toBeNull());
+  const lastraAN = { prezzo_base: 4.167, sc1: 10, sc2: 0, sc3: 0, sc4: 0, sc5: 0, sc6: 0, maggiorazione_perc: 0, costo_ultimo: 3.01 };
+  it("A.N. lastra 25,2: sconti [10], importo 94,51", () => {
+    const c = campiPrezzoDaMotore(lastraAN, 25.2, 0);
+    expect(c.sconti_gamma).toEqual([10]);
+    expect(c.importo).toBe(94.51);
+    expect(c.costo).toBe(75.85);
+  });
+  it("sconto a piede finisce nello sconto extra", () => expect(campiPrezzoDaMotore(lastraAN, 1, 5).sconto_perc).toBe(5));
+  it("senza prezzo dal motore: riga senza prezzo, importo 0", () => {
+    const c = campiPrezzoDaMotore({ ...lastraAN, prezzo_base: null }, 2, 0);
+    expect(c.prezzo_unit).toBeNull();
+    expect(c.importo).toBe(0);
+  });
+  it("cambio quantità ricalcola importo e costo totale", () => {
+    const riga = { tipo_riga: "articolo_singolo", quantita: 1, prezzo_unit: 23.7, sconti_gamma: [], maggiorazione_perc: 0, sconto_perc: 0, costo: 10 };
+    expect(patchConImporto(riga, { quantita: 2 })).toEqual({ quantita: 2, costo: 20, importo: 47.4 });
+  });
+  it("nota: nessun importo", () => expect(patchConImporto({ tipo_riga: "nota" }, { quantita: 2 })).toEqual({ quantita: 2 }));
+});

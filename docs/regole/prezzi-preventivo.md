@@ -56,3 +56,10 @@ Altri avvisi: `articolo_senza_prezzo_su_listino`, `cliente_senza_listino`, `clie
 ## Punti aperti
 - Preventivi ai lead: la funzione interna accetta `_cliente_codice` NULL (livelli 3 e 6 saltati);
   manca la funzione pubblica e la scelta di listino/sede per il lead.
+
+## Testata e riga articolo (FM65 fetta 2b-1)
+- Nel preventivo non si sceglie più la fascia A/B/C/SOCI: la testata mostra in sola lettura "Listino" e "Categoria" del cliente da `public.condizioni_preventivo_cliente` (gate `auth_ha_accesso_preventivi`). La colonna `fascia_listino` resta solo per kit e "Aggiorna listini" fino alla fetta 2b-2.
+- "Aggiungi riga" cerca nel catalogo Gamma (`cerca_articoli`, solo articoli in uso/in esaurimento, 30 risultati) senza mostrare il prezzo della lista (è della sede dell'utente). Alla scelta il prezzo arriva solo da `prezzi_preventivo_cliente`: prezzo lordo = `prezzo_base`, sconti = slot diversi da 0 nell'ordine, maggiorazione, sconto extra = sconto a piede se presente, costo = costo ultimo × quantità. Fonte, regole e avvisi del motore non si mostrano.
+- Senza cliente o senza prezzo dal motore la riga si salva senza prezzo con l'avviso "Prezzo non disponibile: inseriscilo a mano".
+- Prezzo, sconti ("17+5", massimo 6), maggiorazione, sconto extra e costo unitario restano modificabili; ogni modifica salva l'importo con `patchConImporto`/`importoRiga`.
+- Le righe del vecchio catalogo (`articolo_id`) restano modificabili con il vecchio selettore.
