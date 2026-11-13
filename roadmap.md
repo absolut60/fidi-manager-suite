@@ -1,6 +1,6 @@
 # FM67 — Testata Cliente sotto Documento
 - [x] Due colonne indipendenti 62/38; Cliente etichettato e Condizioni su due colonne, sola grafica.
-- [ ] Confronto gestori, test e schermate 375/1280/1600 modifica/lettura.
+- [x] 732 test; save e 10 gestori identici byte per byte; schermate 375/1280/1600 modifica/lettura con dati simulati, controlli 320/768/1024/1920 senza overflow/errori; blur Titolo/Note verificati senza scritture DB.
 
 # FM67 — Note con titolo e allegati
 - [x] Migrazione 0208: note, RLS, eccezione showroom autorizzata, storage, copia atomica nell’ordine.
