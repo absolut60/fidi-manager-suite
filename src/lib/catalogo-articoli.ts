@@ -1,12 +1,15 @@
 // Filtri e parametri dell'elenco articoli Gamma (FM63 Fetta 3).
 // Prezzo, listino della sede e giacenze li decide solo SQL (cerca_articoli + _prezzo_vendita_articoli).
+import { parametriRicerca } from "./filtri-catalogo-articoli";
 export const VALORE_LOGISTICA = "__logistica__";
 export const ORDINAMENTI_ARTICOLI = ["codice", "descrizione", "marca", "famiglia", "prezzo", "giacenza_sede", "giacenza_logistica", "stato"] as const;
 export type OrdinamentoArticoli = (typeof ORDINAMENTI_ARTICOLI)[number];
 export const LISTINI_GLOBALI = [10, 20, 30] as const;
 
 export const FILTRI_ARTICOLI = {
-  search: "", famiglie: [] as string[], sottofamiglie: [] as string[], marche: [] as string[],
+  search: "", famiglie: [] as string[], coppie: [] as string[], marche: [] as string[],
+  /** Solo filtri salvati prima di FM65 F3: convertiti in coppie all'apertura, mai inviati alla ricerca. */
+  sottofamiglie: [] as string[],
   fornitori: [] as string[], stati: [] as string[], disponibileIn: [] as string[], listino: 10,
   ordina: "codice" as string, dir: "asc" as string, page: 1,
 };
@@ -23,12 +26,13 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export function parametriArticoli(f: FiltriArticoli) {
   const disp = Array.isArray(f.disponibileIn) ? f.disponibileIn : [];
   const ord = ordinamentoArticoliValido(f.ordina, f.dir);
-  return { testo: f.search.trim(), famiglie: f.famiglie, sottofamiglie: f.sottofamiglie,
-    marche: f.marche, fornitori: f.fornitori, stati: f.stati,
+  const cascata = parametriRicerca({ famiglie: f.famiglie, coppie: Array.isArray(f.coppie) ? f.coppie : [], marche: f.marche });
+  return { testo: f.search.trim(), famiglie: cascata.famiglie, sottofamiglie: [] as string[],
+    marche: cascata.marche, fornitori: f.fornitori, stati: f.stati,
     disponibile_in: disp.filter(v => UUID.test(v)), disponibile_logistica: disp.includes(VALORE_LOGISTICA),
     listino: listinoValido(f.listino), _ordina: ord.ordina, _direzione: ord.direzione,
     limite: 100, offset: (Math.max(1, Math.floor(f.page)) - 1) * 100,
-    coppie: [] as string[], solo_gamma: false };
+    coppie: cascata.coppie, solo_gamma: false };
 }
 export function prezzoArticolo(prezzo: number | null) {
   return prezzo === null ? "—" : prezzo.toLocaleString("it-IT", { style: "currency", currency: "EUR", minimumFractionDigits: 4, maximumFractionDigits: 4 });

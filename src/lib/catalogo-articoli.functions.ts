@@ -7,7 +7,7 @@ import { contaPreventiviArticolo, ordinaFornitoriArticolo } from "./scheda-artic
 
 export const elencoArticoliGamma = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: FiltriArticoli) => z.object({ search: z.string(), famiglie: z.array(z.string()), sottofamiglie: z.array(z.string()), marche: z.array(z.string()), fornitori: z.array(z.string().uuid()), stati: z.array(z.string()), disponibileIn: z.array(z.string()), listino: z.number(), ordina: z.string(), dir: z.string(), page: z.number().finite() }).parse(input))
+  .inputValidator((input: FiltriArticoli) => z.object({ search: z.string(), famiglie: z.array(z.string()), coppie: z.array(z.string()), sottofamiglie: z.array(z.string()), marche: z.array(z.string()), fornitori: z.array(z.string().uuid()), stati: z.array(z.string()), disponibileIn: z.array(z.string()), listino: z.number(), ordina: z.string(), dir: z.string(), page: z.number().finite() }).parse(input))
   .handler(async ({ data, context }) => {
     const { data: rows, error } = await context.supabase.rpc("cerca_articoli", parametriArticoli(data));
     if (error) throw new Error(error.message);
