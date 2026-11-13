@@ -115,7 +115,7 @@ export function RigheTable({
           ...prima,
           blocchi: prima.blocchi.map((b) => b.id !== blocco.id ? b : {
             ...b,
-            righe: b.righe.map((r) => r.id !== id ? r : { ...r, ...patchConImporto(r, patch, b.quantita_base) } as Riga),
+            righe: b.righe.map((r) => r.id !== id ? r : ({ ...r, ...patchConImporto(r, patch, b.quantita_base) }) as typeof r),
           }),
         });
       }
