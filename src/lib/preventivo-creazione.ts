@@ -26,7 +26,3 @@ export function validitaProposta(data: string): string {
 export function riallineaValidita(data: string, validita: string, modificataAMano: boolean): string {
   return modificataAMano ? validita : validitaProposta(data);
 }
-
-export function descrizioneCantiereProvvisorio(testo: string): string {
-  return testo.trim() || "Da definire";
-}
