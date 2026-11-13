@@ -27,7 +27,7 @@ export function FasciaPreventivo({ dati, onCliente }: { dati: RiepilogoPreventiv
     {voce("Categoria", dati.categoria, "lg:max-w-[14rem]")}
     {voce("Pagamento", dati.pagamento, "lg:max-w-[16rem]")}
     {voce("Validità", dati.validita, "lg:shrink-0")}
-    <div className="min-w-0 lg:ml-auto lg:shrink-0"><span className={etichetta}>Margine</span><span className="block whitespace-nowrap text-sm font-semibold">{formatNumeroIt(dati.marginePerc,{minDecimals:1,maxDecimals:1})}% · € {fmt(dati.margineEuro)}</span></div>
-    <div className="min-w-0 lg:shrink-0"><span className={etichetta}>Totale imponibile</span><span className="block whitespace-nowrap text-xl font-bold tabular-nums sm:text-2xl">€ {fmt(dati.imponibile)}</span></div>
+    <div className="col-span-2 grid grid-cols-2 gap-x-4 lg:ml-auto lg:flex lg:shrink-0 lg:items-end lg:gap-x-7"><div className="min-w-0"><span className={etichetta}>Margine</span><span className="block whitespace-nowrap text-sm font-semibold">{formatNumeroIt(dati.marginePerc,{minDecimals:1,maxDecimals:1})}% · € {fmt(dati.margineEuro)}</span></div>
+    <div className="min-w-0"><span className={etichetta}>Totale imponibile</span><span className="block whitespace-nowrap text-xl font-bold tabular-nums sm:text-2xl">€ {fmt(dati.imponibile)}</span></div></div>
   </section>;
 }
