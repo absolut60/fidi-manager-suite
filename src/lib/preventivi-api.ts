@@ -899,6 +899,17 @@ export async function updateRiga(id: string, patch: RigaUpdate): Promise<Riga> {
   return data;
 }
 
+/**
+ * FM65 R2b: salvataggio di una modifica di cella già calcolata a schermo
+ * (patchConImporto sulla riga in cache, che contiene già i dati Gamma della riga).
+ * Nessuna rilettura della riga né dei dati Gamma; poi totali di blocco e preventivo.
+ */
+export async function salvaPatchRigaCalcolata(id: string, calcolata: RigaUpdate, preventivo_id: string, iva: number): Promise<void> {
+  const { error } = await supabase.from("righe_preventivo").update(calcolata).eq("id", id);
+  if (error) throw error;
+  await ricalcolaTotaliPreventivo(preventivo_id, iva);
+}
+
 export async function deleteRiga(id: string) {
   const { error } = await supabase.from("righe_preventivo").delete().eq("id", id);
   if (error) throw error;
