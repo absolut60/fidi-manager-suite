@@ -10,7 +10,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { calcolaTotaliKit, fetchKitsWithComponenti } from "@/lib/kit-api";
+import { fetchKitsWithComponenti } from "@/lib/kit-api";
 import { FAMIGLIE_KIT, FAMIGLIA_LABEL } from "@/lib/incidenza";
 import { addBloccoDaKit, addBloccoVuoto, fractionalOrder } from "@/lib/preventivi-api";
 import type { FasciaListino } from "@/lib/articoli-api";
@@ -18,13 +18,15 @@ import { toast } from "sonner";
 import { parseNumeroIt } from "@/lib/numero-it";
 
 export function AggiungiBloccoDialog({
-  open, onOpenChange, preventivoId, fascia, lastOrdine,
+  open, onOpenChange, preventivoId, lastOrdine, clienteId, scontoPiede = 0,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   preventivoId: string;
-  fascia: FasciaListino;
+  fascia?: FasciaListino;
   lastOrdine: number;
+  clienteId: string | null;
+  scontoPiede?: number;
 }) {
   const qc = useQueryClient();
   const [tab, setTab] = useState<"kit" | "vuoto">("kit");
@@ -46,7 +48,8 @@ export function AggiungiBloccoDialog({
         preventivo_id: preventivoId,
         kit_id: kitId!,
         quantita_base: parseNumeroIt(quantita) ?? 0,
-        fascia,
+        cliente_id: clienteId,
+        sconto_piede: scontoPiede,
         ordine: fractionalOrder(lastOrdine, null),
       }),
     onSuccess: () => {
@@ -78,7 +81,8 @@ export function AggiungiBloccoDialog({
             <TabsTrigger value="vuoto">Blocco vuoto</TabsTrigger>
           </TabsList>
           <TabsContent value="kit" className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            {!clienteId && <p role="alert" className="text-sm font-semibold text-destructive">Scegli prima il cliente: i prezzi del kit arrivano dalle sue condizioni Gamma.</p>}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="grid gap-1.5">
                 <Label>Famiglia</Label>
                 <Select value={famiglia} onValueChange={setFamiglia}>
@@ -101,7 +105,6 @@ export function AggiungiBloccoDialog({
                 <div className="p-4 text-center text-sm text-muted-foreground">Nessun kit disponibile.</div>
               ) : (
                 filtered.map((k) => {
-                  const t = calcolaTotaliKit(k.componenti, fascia);
                   return (
                     <button
                       key={k.id}
@@ -117,10 +120,7 @@ export function AggiungiBloccoDialog({
                           {FAMIGLIA_LABEL[k.famiglia]}{k.spessore != null ? ` · sp. ${Number(k.spessore)} mm` : ""}
                         </div>
                       </div>
-                      <div className="font-mono text-xs text-right">
-                        <div>€ {t.prezzo_mq.toFixed(2)}/{k.um_base}</div>
-                        <div className="text-muted-foreground">{t.margine_perc.toFixed(1)}%</div>
-                      </div>
+                      <div className="shrink-0 text-xs text-muted-foreground">{k.componenti.length} componenti</div>
                     </button>
                   );
                 })
@@ -136,7 +136,7 @@ export function AggiungiBloccoDialog({
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
           {tab === "kit" ? (
-            <Button onClick={() => addKit.mutate()} disabled={!kitId || addKit.isPending}>
+            <Button onClick={() => addKit.mutate()} disabled={!kitId || !clienteId || addKit.isPending}>
               Aggiungi kit
             </Button>
           ) : (

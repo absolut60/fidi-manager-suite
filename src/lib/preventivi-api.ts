@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { importoRiga, marginePercRiga, segnoRiga } from "./riga-preventivo";
+import { campiPrezzoDaMotore, confrontoAggiornamento, costoRiga, importoRiga, marginePercRiga, segnoRiga, type PrezzoClienteGamma } from "./riga-preventivo";
 import type { Database } from "@/integrations/supabase/types";
 import { round2 } from "./pricing";
 import {
@@ -460,7 +460,7 @@ export async function duplicaPreventivo(
     cantiere_id: nuovoCliente ? null : src.cantiere_id,
     agente_codice: nuovoCliente ? nuovoClienteRow!.codice_agente : src.agente_codice,
     filiale: nuovoCliente ? null : src.filiale,
-    fascia_listino: nuovoCliente ? (nuovoClienteRow!.fascia_listino_default ?? src.fascia_listino) : src.fascia_listino,
+    fascia_listino: src.fascia_listino, // FM65: colonna non più usata per i prezzi
     tipo_doc: src.tipo_doc,
     stato: "bozza",
     iva_perc: src.iva_perc,
@@ -592,122 +592,108 @@ export async function applicaScontoPiedeARighe(
   );
 }
 
-export async function aggiornaListiniPreventivo(preventivo_id: string): Promise<{
-  aggiornate: number;
-  saltate_manuali: number;
-  senza_listino: number;
-  speciali_applicati: number;
-}> {
+/** Riga candidata ad "Aggiorna listini": codice Gamma e confronto valori attuali → nuovi. */
+export interface DifferenzaListino {
+  riga_id: string;
+  blocco_id: string;
+  codice: string;
+  descrizione: string | null;
+  quantita: number;
+  aggiungiCodice: boolean;
+  confronto: NonNullable<ReturnType<typeof confrontoAggiornamento>>;
+}
+
+export interface AnalisiAggiornaListini {
+  differenze: DifferenzaListino[];
+  invariate: number;
+  senza_prezzo: number;
+  senza_codice: number;
+  non_articolo: number;
+}
+
+/** FM65: confronta le righe articolo/kit con il motore prezzi del cliente (UNA chiamata). */
+export async function analizzaAggiornaListini(preventivo_id: string): Promise<AnalisiAggiornaListini> {
   const prev = await fetchPreventivo(preventivo_id);
-  const fascia = prev.fascia_listino;
-  if (!fascia) {
-    throw new Error("Imposta la fascia di listino del preventivo prima di aggiornare i listini.");
-  }
-
-  const articoloIds = new Set<string>();
+  if (!prev.cliente_id) throw new Error("Scegli prima il cliente: i prezzi arrivano dalle sue condizioni Gamma.");
+  const candidate: { r: BloccoConRighe["righe"][number]; codice: string; blocco_id: string }[] = [];
+  let senza_codice = 0;
+  let non_articolo = 0;
   for (const b of prev.blocchi) {
     for (const r of b.righe) {
-      if (r.articolo_id && (r.tipo_riga === "articolo_singolo" || r.tipo_riga === "da_kit")) {
-        articoloIds.add(r.articolo_id);
-      }
+      if (r.tipo_riga !== "articolo_singolo" && r.tipo_riga !== "da_kit") { non_articolo++; continue; }
+      const codice = r.articolo_codice ?? r.articolo?.cod_gamma ?? null;
+      if (!codice) { senza_codice++; continue; }
+      candidate.push({ r, codice, blocco_id: b.id });
     }
   }
-
-  const articoliMap = new Map<string, ArticoloConListini>();
-  if (articoloIds.size > 0) {
-    const { data, error } = await supabase
-      .from("articoli")
-      .select(`id, cod_gamma, descrizione, um, peso_unit, qta_fornitore, qta_cliente,
-        listini_acquisto:listini_acquisto(*),
-        listini_vendita:listini_vendita(*)`)
-      .in("id", Array.from(articoloIds));
-    if (error) throw error;
-    for (const a of (data ?? []) as unknown as ArticoloConListini[]) {
-      articoliMap.set(a.id, a);
-    }
+  const mappa = await fetchPrezziClienteArticoli(prev.cliente_id, candidate.map((c) => c.codice));
+  const differenze: DifferenzaListino[] = [];
+  let invariate = 0;
+  let senza_prezzo = 0;
+  for (const { r, codice, blocco_id } of candidate) {
+    const p = mappa.get(codice);
+    if (!p || p.prezzo_base == null) { senza_prezzo++; continue; }
+    const confronto = confrontoAggiornamento(r, p);
+    if (!confronto) { invariate++; continue; }
+    differenze.push({
+      riga_id: r.id, blocco_id, codice, descrizione: r.descrizione ?? r.articolo?.descrizione ?? null,
+      quantita: n(r.quantita), aggiungiCodice: !r.articolo_codice, confronto,
+    });
   }
+  return { differenze, invariate, senza_prezzo, senza_codice, non_articolo };
+}
 
+/** Applica solo le righe spuntate; lo sconto extra (sconto_perc) non si tocca. */
+export async function applicaAggiornaListini(preventivo_id: string, scelte: DifferenzaListino[]): Promise<{ aggiornate: number; speciali: number }> {
+  const prev = await fetchPreventivo(preventivo_id);
+  const righe = new Map(prev.blocchi.flatMap((b) => b.righe.map((r) => [r.id, r] as const)));
   let aggiornate = 0;
-  let saltate_manuali = 0;
-  let senza_listino = 0;
-
-  const prezziSpecialiMap = buildPrezziSpecialiMap(prev.prezziSpeciali ?? []);
-  let speciali_applicati = 0;
-
-  for (const b of prev.blocchi) {
-    for (const r of b.righe) {
-      if (r.tipo_riga === "nota" || r.tipo_riga === "separatore" || r.tipo_riga === "sotto_totale") {
-        continue;
-      }
-      if (r.tipo_riga === "manuale") { saltate_manuali++; continue; }
-      if (r.tipo_riga !== "articolo_singolo" && r.tipo_riga !== "da_kit") continue;
-      if (!r.articolo_id) { saltate_manuali++; continue; }
-      const art = articoliMap.get(r.articolo_id);
-      if (!art) { senza_listino++; continue; }
-      let vendita_unit = getPrezzoVendita(art, fascia);
-      let costo_unit = getCostoNettoCorrente(art);
-      const sp_cant = art.cod_gamma ? prezziSpecialiMap.get(art.cod_gamma) : undefined;
-      if (sp_cant) {
-        if (sp_cant.costo != null) costo_unit = sp_cant.costo;
-        if (sp_cant.prezzo != null) vendita_unit = sp_cant.prezzo;
-        speciali_applicati++;
-      }
-      if (!vendita_unit) senza_listino++;
-      const q = n(r.quantita);
-      const importo = importoRiga({ ...r, prezzo_unit: vendita_unit, sconto_perc: 0 });
-      const { error: upErr } = await supabase
-        .from("righe_preventivo")
-        .update({
-          prezzo_unit: round2(vendita_unit),
-          sconto_perc: 0,
-          costo: round2(costo_unit * q),
-          vendita: round2(vendita_unit * q),
-          peso: round2(Number(art.peso_unit ?? 0) * q),
-          importo,
-        })
-        .eq("id", r.id);
-      if (upErr) throw upErr;
-      aggiornate++;
-    }
+  for (const d of scelte) {
+    const r = righe.get(d.riga_id);
+    if (!r) continue;
+    const nv = d.confronto.nuovi;
+    const campi = {
+      prezzo_unit: nv.prezzo_unit,
+      sconti_gamma: nv.sconti_gamma,
+      maggiorazione_perc: nv.maggiorazione_perc,
+      costo: nv.costo_unit == null ? r.costo : costoRiga(nv.costo_unit, r.quantita),
+      ...(r.articolo_codice ? {} : { articolo_codice: d.codice }),
+    };
+    const { error } = await supabase
+      .from("righe_preventivo")
+      .update({ ...campi, importo: importoRiga({ ...r, ...campi }) })
+      .eq("id", r.id);
+    if (error) throw error;
+    aggiornate++;
   }
+  // Prezzi speciali del cantiere: applicati dopo il motore, come prima.
+  const { aggiornate: speciali } = await riapplicaPrezziSpecialiCantiere(preventivo_id);
+  await ricalcolaTotaliPreventivo(preventivo_id, n(prev.iva_perc));
+  return { aggiornate, speciali };
+}
 
-  const sp = n(prev.sconto_piede_perc);
-  if (sp > 0) {
-    await applicaScontoPiedeARighe(preventivo_id, sp);
-  } else {
-    const { data: blocchi, error: bErr } = await supabase
-      .from("blocchi_preventivo")
-      .select("id, righe:righe_preventivo(*)")
-      .eq("preventivo_id", preventivo_id);
-    if (bErr) throw bErr;
-    for (const bl of ((blocchi ?? []) as unknown as { id: string; righe: Riga[] }[])) {
-      let totale = 0;
-      for (const r of bl.righe ?? []) {
-        if (r.tipo_riga === "nota" || r.tipo_riga === "separatore" || r.tipo_riga === "sotto_totale") continue;
-        totale += n(r.importo);
-      }
-      const { error: ubErr } = await supabase
-        .from("blocchi_preventivo")
-        .update({ importo: round2(totale) })
-        .eq("id", bl.id);
-      if (ubErr) throw ubErr;
-    }
-  }
-
-  const { data: blocchi2, error: b2Err } = await supabase
+async function ricalcolaTotaliPreventivo(preventivo_id: string, iva: number): Promise<void> {
+  const { data: blocchi, error: bErr } = await supabase
     .from("blocchi_preventivo")
-    .select("importo")
+    .select("id, righe:righe_preventivo(*)")
     .eq("preventivo_id", preventivo_id);
-  if (b2Err) throw b2Err;
-  const tot = (blocchi2 ?? []).reduce((s, b) => s + n((b as { importo: number | null }).importo), 0);
-  const iva = n(prev.iva_perc);
+  if (bErr) throw bErr;
+  let tot = 0;
+  for (const bl of ((blocchi ?? []) as unknown as { id: string; righe: Riga[] }[])) {
+    let totale = 0;
+    for (const r of bl.righe ?? []) {
+      if (r.tipo_riga === "nota" || r.tipo_riga === "separatore" || r.tipo_riga === "sotto_totale") continue;
+      totale += n(r.importo);
+    }
+    tot += round2(totale);
+    const { error } = await supabase.from("blocchi_preventivo").update({ importo: round2(totale) }).eq("id", bl.id);
+    if (error) throw error;
+  }
   await supabase.from("preventivi").update({
     totale_imponibile: round2(tot),
     iva_importo: round2(tot * iva / 100),
     totale: round2(tot * (1 + iva / 100)),
   }).eq("id", preventivo_id);
-
-  return { aggiornate, saltate_manuali, senza_listino, speciali_applicati };
 }
 
 export async function riapplicaPrezziSpecialiCantiere(preventivo_id: string): Promise<{
@@ -738,7 +724,7 @@ export async function riapplicaPrezziSpecialiCantiere(preventivo_id: string): Pr
         .from("righe_preventivo")
         .update({
           prezzo_unit: round2(nuovoPrezzo),
-          costo: round2(nuovoCostoUnit * q),
+          costo: costoRiga(nuovoCostoUnit, q),
           vendita: round2(nuovoPrezzo * q),
           importo,
         })
@@ -790,19 +776,38 @@ export async function addBloccoDaKit(args: {
   preventivo_id: string;
   kit_id: string;
   quantita_base: number;
-  fascia: FasciaListino;
   ordine: number;
+  cliente_id: string | null;
+  sconto_piede: number;
 }): Promise<Blocco> {
+  if (!args.cliente_id) throw new Error("Scegli prima il cliente: i prezzi del kit arrivano dalle sue condizioni Gamma.");
   const kit = await fetchKit(args.kit_id);
-  const totali = kit.componenti.reduce(
-    (acc, c) => {
-      const r = calcolaRigaKit(c, c.articolo, args.fascia);
-      acc.prezzo += r.vendita_riga;
-      acc.costo += r.costo_riga;
-      return acc;
-    },
-    { prezzo: 0, costo: 0 },
-  );
+  const codici = kit.componenti.map((c) => c.articolo?.cod_gamma).filter((c): c is string => !!c);
+  const prezzi = await fetchPrezziClienteArticoli(args.cliente_id, codici);
+
+  const qBaseEff = args.quantita_base > 0 ? args.quantita_base : 1;
+  const righe = kit.componenti.map((c, idx) => {
+    // FASCIA_KIT_SOLO_INCIDENZA: calcolaRigaKit serve qui solo per l'incidenza; il prezzo è del motore.
+    const incidenza = calcolaRigaKit(c, c.articolo, "A").incidenza_effettiva;
+    const quantita = round2(incidenza * qBaseEff);
+    const codice = c.articolo?.cod_gamma ?? null;
+    const campi = campiPrezzoDaMotore(codice ? prezzi.get(codice) : null, quantita, args.sconto_piede);
+    return {
+      tipo_riga: "da_kit" as const,
+      articolo_id: c.articolo_id,
+      articolo_codice: codice,
+      descrizione: c.articolo?.descrizione ?? c.ruolo ?? null,
+      um: c.articolo?.um ?? null,
+      incidenza,
+      quantita,
+      segno: 1,
+      vendita: null,
+      peso: round2((c.articolo?.peso_unit ?? 0) * quantita),
+      ordine: idx + 1,
+      ...campi,
+    };
+  });
+  const totale = round2(righe.reduce((s, r) => s + r.importo, 0));
 
   const blocco = await insertBlocco({
     preventivo_id: args.preventivo_id,
@@ -810,37 +815,13 @@ export async function addBloccoDaKit(args: {
     descrizione: kit.nome,
     um_base: kit.um_base,
     quantita_base: args.quantita_base,
-    prezzo_um: round2(totali.prezzo),
-    importo: round2(totali.prezzo * args.quantita_base),
+    prezzo_um: args.quantita_base > 0 ? round2(totale / args.quantita_base) : null,
+    importo: totale,
     note_tecniche: kit.descrizione_tecnica,
     ordine: args.ordine,
   });
-
-  const qBaseEff = args.quantita_base > 0 ? args.quantita_base : 1;
-  const righeRows: RigaInsert[] = kit.componenti.map((c, idx) => {
-    const r = calcolaRigaKit(c, c.articolo, args.fascia);
-    const incidenza = r.incidenza_effettiva;
-    const quantita = round2(incidenza * qBaseEff);
-    return {
-      blocco_id: blocco.id,
-      tipo_riga: "da_kit",
-      articolo_id: c.articolo_id,
-      descrizione: c.articolo?.descrizione ?? c.ruolo ?? null,
-      um: c.articolo?.um ?? null,
-      incidenza,
-      quantita,
-      prezzo_unit: r.vendita_unit,
-      sconto_perc: 0,
-      segno: 1,
-      importo: importoRiga({ quantita, prezzo_unit: r.vendita_unit }),
-      costo: round2(r.costo_unit * quantita),
-      vendita: round2(r.vendita_unit * quantita),
-      peso: round2((c.articolo?.peso_unit ?? 0) * quantita),
-      ordine: idx + 1,
-    };
-  });
-  if (righeRows.length) {
-    const { error } = await supabase.from("righe_preventivo").insert(righeRows);
+  if (righe.length) {
+    const { error } = await supabase.from("righe_preventivo").insert(righe.map((r) => ({ ...r, blocco_id: blocco.id })));
     if (error) throw error;
   }
   return blocco;
@@ -888,7 +869,7 @@ export async function ricalcolaBloccoSuNuovaQuantita(
       const oldQta = n(r.quantita) || 1;
       const nuovaQta = round2(inc * qBase);
       const nuovoImporto = importoRiga({ ...r, quantita: nuovaQta });
-      const nuovoCosto = round2((n(r.costo) / oldQta) * nuovaQta);
+      const nuovoCosto = costoRiga(n(r.costo) / oldQta, nuovaQta);
       const nuovaVendita = round2((n(r.vendita) / oldQta) * nuovaQta);
       const nuovoPeso = round2((n(r.peso) / oldQta) * nuovaQta);
       const { error } = await supabase
@@ -1122,4 +1103,15 @@ export async function fetchPrezzoClienteArticolo(cliente_id: string, codice: str
   const { data, error } = await supabase.rpc("prezzi_preventivo_cliente", { _cliente_id: cliente_id, _codici: [codice] });
   if (error) throw error;
   return data?.[0] ?? null;
+}
+
+/** FM65: prezzi del motore per più codici in UNA chiamata (max 500), indicizzati per codice. */
+export async function fetchPrezziClienteArticoli(cliente_id: string, codici: string[]): Promise<Map<string, PrezzoClienteGamma & { um: string | null }>> {
+  const unici = Array.from(new Set(codici.filter(Boolean)));
+  const out = new Map<string, PrezzoClienteGamma & { um: string | null }>();
+  if (unici.length === 0) return out;
+  const { data, error } = await supabase.rpc("prezzi_preventivo_cliente", { _cliente_id: cliente_id, _codici: unici });
+  if (error) throw error;
+  for (const r of data ?? []) out.set(r.articolo_codice, r);
+  return out;
 }
