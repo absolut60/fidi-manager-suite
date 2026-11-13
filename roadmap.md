@@ -1,6 +1,6 @@
 # FM65 — Correzioni C + D
-- [ ] Fascia con token azzurro medio; elenco con frecce, bordo e alternanza per gruppo, titoli medium; sola grafica.
-- [ ] Test e screenshot 375/1280 con tre gruppi; query, filtri e conteggi invariati.
+- [x] Fascia con token azzurro medio documentato in styles.css; elenco con frecce, bordo 3px e alternanza per gruppo, titoli medium; sola grafica.
+- [x] 706 test; screenshot 375/1280 con tre gruppi e due alternative sul primo, nessun overflow/errori; contrasto minimo fascia 4,79:1. Query, filtri e conteggi identici byte per byte; pagina temporanea rimossa.
 
 # FM65 — Correzioni B
 - [x] Celle omogenee senza riquadri, U.M. 72px compatta, # 40px e icona riepilogo in #/testata scheda; sola grafica.
