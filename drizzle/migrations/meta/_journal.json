@@ -1443,6 +1443,13 @@
       "when": 1794589696212,
       "tag": "0205_fm65_clienti_elenco_preventivi",
       "breakpoints": true
+    },
+    {
+      "idx": 206,
+      "version": "7",
+      "when": 1794595034331,
+      "tag": "0206_fm65_f1_cerca_articoli_cascata",
+      "breakpoints": true
     }
   ]
 }

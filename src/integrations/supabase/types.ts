@@ -8591,6 +8591,7 @@ export type Database = {
         Args: {
           _direzione?: string
           _ordina?: string
+          coppie?: string[]
           disponibile_in?: string[]
           disponibile_logistica?: boolean
           famiglie?: string[]
@@ -8599,6 +8600,7 @@ export type Database = {
           listino?: number
           marche?: string[]
           offset?: number
+          solo_gamma?: boolean
           sottofamiglie?: string[]
           stati?: string[]
           testo?: string
@@ -10884,6 +10886,18 @@ export type Database = {
       }
       storage_path_cliente_id: { Args: { _name: string }; Returns: string }
       store_id_effettivo: { Args: { _store_id: string }; Returns: string }
+      terne_articoli_filtri: {
+        Args: never
+        Returns: {
+          codice_famiglia: string
+          codice_sottofamiglia: string
+          conteggio: number
+          famiglia: string
+          marca: string
+          marca_codice: string
+          sottofamiglia: string
+        }[]
+      }
       testo_impegni_fido: {
         Args: {
           _con_ordini: boolean
