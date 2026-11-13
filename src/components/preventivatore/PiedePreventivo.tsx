@@ -6,13 +6,13 @@ import type { RiepilogoPreventivo } from "./FasciaPreventivo";
 import { RiquadroScheda } from "./RiquadroScheda";
 import { Calculator, Percent } from "lucide-react";
 
-export function PiedePreventivo({ dati, iva, totale, ivaPerc, sconto, editMode, inCorso, onSconto, onTestata }: {
-  dati: RiepilogoPreventivo; iva: number; totale: number; ivaPerc: number; sconto: number; editMode: boolean; inCorso: boolean; onSconto: (n:number)=>void; onTestata:()=>void;
+export function PiedePreventivo({ dati, iva, totale, ivaPerc, sconto, modificabile, inCorso, onSconto, onTestata }: {
+  dati: RiepilogoPreventivo; iva: number; totale: number; ivaPerc: number; sconto: number; modificabile: boolean; inCorso: boolean; onSconto: (n:number)=>void; onTestata:()=>void;
 }) {
   const fmt=(n:number)=>formatNumeroIt(n,{minDecimals:2,maxDecimals:2});
   return <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 py-4">
     <RiquadroScheda titolo="Sconti e pagamento" icona={Percent} tono="arancio"><div className="space-y-5 min-w-0">
-      <div className="space-y-2"><Label htmlFor="sconto-piede">Sconto a piede %</Label><Input id="sconto-piede" className="w-32 bg-card text-right" inputMode="decimal" disabled={!editMode||inCorso} key={sconto} defaultValue={formatNumeroIt(sconto)} onBlur={(e)=>{ const n=Math.max(0,parseNumeroIt(e.target.value)||0); if(n!==sconto)onSconto(n); }}/><p className="text-xs text-muted-foreground">Si aggiunge agli sconti Gamma di ogni riga</p></div>
+      <div className="space-y-2"><Label htmlFor="sconto-piede">Sconto a piede %</Label><Input id="sconto-piede" className="w-32 bg-card text-right" inputMode="decimal" disabled={!modificabile||inCorso} key={sconto} defaultValue={formatNumeroIt(sconto)} onBlur={(e)=>{ const n=Math.max(0,parseNumeroIt(e.target.value)||0); if(n!==sconto)onSconto(n); }}/><p className="text-xs text-muted-foreground">Si aggiunge agli sconti Gamma di ogni riga</p></div>
       <div><Label>Condizione di pagamento</Label><p className="text-sm break-words mt-1">{dati.pagamento}</p><Button variant="link" className="px-0" onClick={onTestata}>cambia in Testata</Button></div>
       <p className="text-sm text-muted-foreground">Validità: {dati.validita}. I prezzi sono espressi in Euro, IVA esclusa salvo diversa indicazione.</p>
     </div></RiquadroScheda>

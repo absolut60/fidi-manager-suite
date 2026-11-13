@@ -566,7 +566,7 @@ function PreventivoEditorPage() {
               )}
             </section>
             </fieldset></TabsContent>
-          <TabsContent value="piede"><PiedePreventivo dati={riepilogo} iva={totali.iva} totale={totali.totale} ivaPerc={Number(prev.iva_perc??22)} sconto={Number(prev.sconto_piede_perc??0)} editMode={modificabile} inCorso={applicaSconto.isPending} onSconto={v=>applicaSconto.mutate(v)} onTestata={()=>cambiaTab('testata')}/></TabsContent>
+          <TabsContent value="piede"><PiedePreventivo dati={riepilogo} iva={totali.iva} totale={totali.totale} ivaPerc={Number(prev.iva_perc??22)} sconto={Number(prev.sconto_piede_perc??0)} modificabile={modificabile} inCorso={applicaSconto.isPending} onSconto={v=>applicaSconto.mutate(v)} onTestata={()=>cambiaTab('testata')}/></TabsContent>
         </Tabs>
       </div>
       {clienteOpen && clienteDati && <ClientePreventivoDialog cliente={clienteDati} onClose={()=>setClienteOpen(false)}/>}
