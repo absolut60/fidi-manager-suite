@@ -27,10 +27,10 @@ export function useBarraAScomparsa(disattiva: boolean): boolean {
 
     let ultimo = window.scrollY;
     let accumuloSu = 0;
-    let inCoda = false;
+    let coda: number | null = null;
 
     const applica = () => {
-      inCoda = false;
+      coda = null;
       const attuale = window.scrollY;
       const scarto = attuale - ultimo;
       ultimo = attuale;
@@ -55,17 +55,14 @@ export function useBarraAScomparsa(disattiva: boolean): boolean {
     };
 
     const sulScroll = () => {
-      if (inCoda) return;
-      inCoda = true;
-      requestAnimationFrame(applica);
+      if (coda !== null) return;
+      coda = requestAnimationFrame(applica);
     };
 
     window.addEventListener("scroll", sulScroll, { passive: true });
     return () => {
       window.removeEventListener("scroll", sulScroll);
-      if (inCoda && typeof cancelAnimationFrame === "function") {
-        // niente di grave se il frame non parte: la funzione è idempotente
-      }
+      if (coda !== null) cancelAnimationFrame(coda);
     };
   }, [disattiva]);
 
