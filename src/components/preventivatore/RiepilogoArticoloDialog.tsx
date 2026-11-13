@@ -8,9 +8,10 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } fr
 import { Skeleton } from "@/components/ui/skeleton";
 import { RiquadroScheda } from "./RiquadroScheda";
 import { fetchPrezzoClienteArticolo, fetchRiepilogoArticoloPreventivo } from "@/lib/preventivi-api";
+import { disponibilitaSchedaArticolo } from "@/lib/catalogo-articoli.functions";
 import { formatScontiGamma, rigaInUnita, type ImportoRigaInput } from "@/lib/riga-preventivo";
 import { prezzoConUnita, quantitaConUnita, unitaArticolo } from "@/lib/scheda-articolo";
-import { fontePrezzoTesto, scontiAcquistoTesto, trasportoAcquistoTesto } from "@/lib/riepilogo-articolo";
+import { condizioniListinoSede, errorePermessoGiacenze, fontePrezzoTesto, giacenzeRiepilogoArticolo, scontiAcquistoTesto, trasportoAcquistoTesto } from "@/lib/riepilogo-articolo";
 import { formatNumeroIt } from "@/lib/numero-it";
 import { cn } from "@/lib/utils";
 
@@ -40,7 +41,9 @@ function Voce({ etichetta, valore, forte }: { etichetta: ReactNode; valore: Reac
 export function RiepilogoArticoloDialog({ open, onOpenChange, clienteId, codice, riga, calc }: RiepilogoArticoloDialogProps) {
   const qRiep = useQuery({ queryKey: ["riepilogo-articolo-preventivo", clienteId, codice], queryFn: () => fetchRiepilogoArticoloPreventivo(clienteId, codice), enabled: open && !!clienteId && !!codice });
   const qPrezzo = useQuery({ queryKey: ["prezzo-cliente-articolo", clienteId, codice], queryFn: () => fetchPrezzoClienteArticolo(clienteId, codice), enabled: open && !!clienteId && !!codice });
+  const qGiacenze = useQuery({ queryKey: ["catalogo-articolo-disponibilita", codice], queryFn: () => disponibilitaSchedaArticolo({ data: { codice } }), enabled: open && !!codice, retry: (tentativo, errore) => !errorePermessoGiacenze(errore) && tentativo < 2 });
   const a = qRiep.data, pr = qPrezzo.data;
+  const giacenze = giacenzeRiepilogoArticolo(qGiacenze.data ?? [], a?.sede_cliente_id ?? null);
   const caricamento = qRiep.isLoading || qPrezzo.isLoading;
   const errore = qRiep.error || qPrezzo.error;
   const u = a ? unitaArticolo(a) : null;
@@ -83,14 +86,24 @@ export function RiepilogoArticoloDialog({ open, onOpenChange, clienteId, codice,
             <Voce etichetta="Trasporto" valore={trasportoAcquistoTesto(a)} />
             <Voce etichetta="Costo netto da listino fornitore" valore={p4(a.costo_acquisto)} />
             <Voce etichetta="Costo ultimo (usato nel preventivo)" valore={p4(a.costo_ultimo)} forte />
-          </dl><p className="mt-2 text-xs text-muted-foreground">Condizioni del listino del cliente{a.sede_cliente_nome ? ` (${a.sede_cliente_nome.toLowerCase().startsWith("sede") ? a.sede_cliente_nome : `sede di ${a.sede_cliente_nome}`})` : ""}</p></RiquadroScheda>
+          </dl><p className="mt-2 text-xs text-muted-foreground">{condizioniListinoSede(a.sede_cliente_nome)}</p></RiquadroScheda>
 
-          <RiquadroScheda titolo="Giacenze" icona={Boxes} tono="verde"><dl>
-            <Voce etichetta={`Sede del cliente${a.sede_cliente_nome ? ` (${a.sede_cliente_nome})` : ""}`} valore={qt(a.giacenza_sede_cliente, a.um)} />
-            <Voce etichetta="Logistica comune" valore={qt(a.giacenza_logistica, a.um)} />
-            <Voce etichetta="Totale sedi" valore={qt(a.giacenza_totale_sedi, a.um)} />
-            <Voce etichetta="Ordinato a fornitori" valore={qt(a.ordinato_fornitori, a.um)} />
-          </dl></RiquadroScheda>
+          <RiquadroScheda titolo="Giacenze" icona={Boxes} tono="verde">
+            {qGiacenze.isPending ? <p role="status" className="text-sm text-muted-foreground">Caricamento giacenze…</p>
+              : qGiacenze.error ? <p role="alert" className="text-sm text-muted-foreground">{errorePermessoGiacenze(qGiacenze.error) ? "Giacenze non disponibili per il tuo ruolo" : "Giacenze non disponibili. Riprova tra poco."}</p>
+              : <table className="w-full table-fixed text-xs" aria-label="Giacenze e disponibilità per sede">
+                <thead><tr className="border-b text-muted-foreground"><th scope="col" className="w-[40%] py-2 pr-1 text-left font-medium">Sede</th><th scope="col" className="w-[30%] px-1 py-2 text-right font-medium">Giacenza</th><th scope="col" className="w-[30%] py-2 pl-1 text-right font-medium">Disponibilità</th></tr></thead>
+                <tbody>{giacenze.map((r, i) => {
+                  const propria = !!a.sede_cliente_id && r.store_id === a.sede_cliente_id && r.livello === "sede";
+                  const logistica = r.livello === "logistica_comune";
+                  return <tr key={`${r.livello}-${r.store_id ?? i}`} className={cn(propria && "bg-pv-azzurro font-bold", logistica && "border-t border-border")}>
+                    <th scope="row" className={cn("break-words py-2 pr-1 text-left", propria ? "font-bold" : "font-normal")}>{logistica ? "Logistica comune" : r.nome ?? "—"}</th>
+                    <td className="break-words px-1 py-2 text-right font-mono tabular-nums">{qt(r.giacenza, a.um)}</td>
+                    <td className="break-words py-2 pl-1 text-right font-mono tabular-nums">{qt(r.disponibilita, a.um)}</td>
+                  </tr>;
+                })}</tbody>
+              </table>}
+          </RiquadroScheda>
 
           <RiquadroScheda titolo="In questo preventivo" icona={FileText} tono="grigio"><dl>
             <Voce etichetta="Quantità" valore={qt(vista.quantita, vista.um)} />
