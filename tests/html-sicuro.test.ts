@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { Window } from "happy-dom";
+import { JSDOM } from "jsdom";
 import { sanificaHtml, sanificaDocumentoHtml, SANDBOX_ANTEPRIMA } from "../src/lib/html-sicuro";
 
-const win = new Window() as unknown as Parameters<typeof sanificaHtml>[1];
+const win = new JSDOM("").window as unknown as Parameters<typeof sanificaHtml>[1];
 
 describe("sanificaHtml (FM64)", () => {
   test("toglie <script>", () => {
