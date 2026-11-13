@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { derivaStatoSalvataggio, ultimaScritturaInErrore } from "@/lib/use-stato-salvataggio-preventivo";
+import { devoBloccareUscita, derivaStatoSalvataggio, ultimaScritturaInErrore } from "@/lib/use-stato-salvataggio-preventivo";
 
 describe("derivaStatoSalvataggio", () => {
   it("errore vince su tutto", () => expect(derivaStatoSalvataggio({ errore: true, inCorso: true, caselleAperte: true })).toBe("errore"));
@@ -12,4 +12,10 @@ describe("ultimaScritturaInErrore", () => {
   it("ultima in errore", () => expect(ultimaScritturaInErrore([{ status: "success", submittedAt: 1 }, { status: "error", submittedAt: 2 }])).toBe(true));
   it("in corso ignorata", () => expect(ultimaScritturaInErrore([{ status: "error", submittedAt: 1 }, { status: "pending", submittedAt: 2 }])).toBe(true));
   it("nessuna scrittura", () => expect(ultimaScritturaInErrore([])).toBe(false));
+});
+describe("devoBloccareUscita", () => {
+  it("salvato non blocca", () => expect(devoBloccareUscita("salvato")).toBe(false));
+  it("modifiche blocca", () => expect(devoBloccareUscita("modifiche")).toBe(true));
+  it("salvataggio blocca", () => expect(devoBloccareUscita("salvataggio")).toBe(true));
+  it("errore blocca", () => expect(devoBloccareUscita("errore")).toBe(true));
 });
