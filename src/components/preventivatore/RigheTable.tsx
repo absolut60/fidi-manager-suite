@@ -263,12 +263,12 @@ export function RigheTable({
       <div className="hidden max-w-full overflow-x-auto lg:block">
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <table className="w-full min-w-[1470px] table-fixed border-separate border-spacing-0 text-xs">
-          <thead className="bg-muted/40">
-            <tr className="whitespace-nowrap text-[10px] uppercase tracking-wide text-muted-foreground">
-              <th className="w-[18px] px-1 py-1.5 sticky left-0 z-10 bg-muted"></th>
-              <th className="w-[22px] px-1 py-1.5 text-center sticky left-[18px] z-10 bg-muted">#</th>
-              <th className="w-[156px] px-1 py-1.5 text-left sticky left-[40px] z-10 bg-muted">Codice</th>
-              <th className="px-1 py-1.5 text-left sticky left-[196px] z-10 bg-muted border-r">Descrizione</th>
+          <thead>
+            <tr className="whitespace-nowrap bg-pv-testa text-[10px] uppercase tracking-wide text-muted-foreground [&>th]:bg-pv-testa [&>th]:border-b">
+              <th className="w-[18px] px-1 py-1.5 sticky left-0 z-10"></th>
+              <th className="w-[22px] px-1 py-1.5 text-center sticky left-[18px] z-10">#</th>
+              <th className="w-[156px] px-1 py-1.5 text-left sticky left-[40px] z-10">Codice</th>
+              <th className="px-1 py-1.5 text-left sticky left-[196px] z-10 border-r">Descrizione</th>
               <th className="w-[112px] px-1 py-1.5 text-left">U.M.</th>
               <th className="w-[72px] px-1 py-1.5 text-right">Incid.</th>
               <th className="w-[76px] px-1 py-1.5 text-right">Quantità</th>
@@ -304,8 +304,8 @@ export function RigheTable({
                 <AddRowMenu readOnly={readOnly} onAddArticolo={addArticoloEmptyAndOpen} onPick={(tipo) => addRow(null, tipo)} />
               </td>
               <td className="px-1 py-2 text-right font-mono font-semibold">€ {fmt2(calcs.totale)}</td>
-              <td className="px-1 py-2 text-right font-mono text-muted-foreground">€ {fmt2(calcs.costo)}</td>
-              <td className="px-1 py-2 text-right font-mono text-muted-foreground">{margineTot.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</td>
+              <td className="px-1 py-2 text-right"><span className="inline-flex flex-col items-end rounded-md bg-pv-grigio-tenue px-1.5 py-0.5 font-mono"><span className="font-sans text-[9px] font-semibold uppercase text-muted-foreground">Costo</span>€ {fmt2(calcs.costo)}</span></td>
+              <td className="px-1 py-2 text-right"><span className={cn("inline-flex flex-col items-end rounded-md px-1.5 py-0.5 font-mono", margineTot < 0 ? "bg-destructive/10 text-destructive" : "bg-pv-verde-tenue text-pv-verde")}><span className="font-sans text-[9px] font-semibold uppercase">Margine</span>{margineTot.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</span></td>
               <td className="px-1 py-2 text-right font-mono text-muted-foreground">{fmt2(calcs.peso)}</td>
               <td></td>
             </tr>
@@ -323,8 +323,10 @@ export function RigheTable({
           <AddRowMenu readOnly={readOnly} onAddArticolo={addArticoloEmptyAndOpen} onPick={(tipo) => addRow(null, tipo)} />
           <div className="grid grid-cols-2 gap-x-4 font-mono text-xs">
             <span className="text-muted-foreground">Totale</span><span className="text-right font-semibold">€ {fmt2(calcs.totale)}</span>
-            <span className="text-muted-foreground">Costo</span><span className="text-right">€ {fmt2(calcs.costo)}</span>
-            <span className="text-muted-foreground">Marg.</span><span className="text-right">{margineTot.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</span>
+            <span className="col-span-2 mt-1 flex flex-wrap justify-end gap-1">
+              <span className="whitespace-nowrap rounded-full bg-pv-grigio-tenue px-2 py-0.5">Costo € {fmt2(calcs.costo)}</span>
+              <span className={cn("whitespace-nowrap rounded-full px-2 py-0.5", margineTot < 0 ? "bg-destructive/10 text-destructive" : "bg-pv-verde-tenue text-pv-verde")}>Margine {margineTot.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</span>
+            </span>
           </div>
         </div>
       </div>
@@ -577,6 +579,12 @@ function useCelleRiga(p: RigaProps) {
   };
 }
 
+function BadgeMargine({ perc, testo }: { perc: number; testo: React.ReactNode }) {
+  return <span className={cn("inline-flex whitespace-nowrap rounded-full px-1.5 py-0.5 font-sans text-[11px] font-semibold",
+    perc < 0 ? "bg-destructive/10 text-destructive" : "bg-pv-verde-tenue text-pv-verde")}>{testo}</span>;
+}
+const BADGE_MANUALE = <span className="mr-1 inline-flex rounded bg-pv-giallo-tenue px-1.5 py-0.5 font-sans text-[9.5px] font-bold uppercase tracking-wide text-pv-giallo not-italic">Manuale</span>;
+
 function AzioniRiga(p: RigaProps) {
   return (
     <div className="flex items-center justify-end gap-0.5">
@@ -601,7 +609,7 @@ function RigaRow(p: RigaProps) {
   const c = useCelleRiga(p);
   const rowClass = cn(
     "border-b font-mono align-top whitespace-nowrap [&>td]:border-b",
-    c.tipo === "manuale" && "bg-amber-50/40 dark:bg-amber-950/10",
+    c.tipo === "manuale" && "bg-pv-giallo-tenue/30",
     c.isSubtotal && "bg-primary/5 font-semibold",
     c.tipo === "separatore" && "h-2 bg-muted/30",
     c.tipo === "nota" && "bg-muted/20 italic",
@@ -630,7 +638,7 @@ function RigaRow(p: RigaProps) {
       {grip}
       <td className="sticky left-[18px] z-[1] bg-card pt-2 text-center text-[10px] text-muted-foreground">{p.idx + 1}</td>
       <td className="sticky left-[40px] z-[1] min-w-0 bg-card px-1 py-0.5">{c.codice}</td>
-      <td className="sticky left-[196px] z-[1] min-w-0 border-r bg-card px-1 py-0.5">{c.articolo}{c.kitSenzaPrezzo && (
+      <td className="sticky left-[196px] z-[1] min-w-0 border-r bg-card px-1 py-0.5">{c.tipo === "manuale" && <div className="pt-0.5">{BADGE_MANUALE}</div>}{c.articolo}{c.kitSenzaPrezzo && (
         <p className="mt-0.5 text-[11px] font-sans not-italic text-destructive">Articolo non collegato a Gamma: inserisci prezzo e costo a mano</p>
       )}</td>
       <td className="px-0.5 py-0.5">{v && c.um}</td>
@@ -647,7 +655,7 @@ function RigaRow(p: RigaProps) {
         {(v || c.isSubtotal) && c.importo}
       </td>
       <td className="px-0.5 py-0.5 text-right text-muted-foreground">{v && c.costo}</td>
-      <td className={cn("px-1 py-1.5 text-right", v && p.calc.margine_perc < 0 && "text-destructive")}>{v && c.margine}</td>
+      <td className="px-1 py-1 text-right">{v && <BadgeMargine perc={p.calc.margine_perc} testo={c.margine} />}</td>
       <td className="px-1 py-1.5 text-right text-muted-foreground">{v && c.peso}</td>
       <td className="px-0.5 text-right"><AzioniRiga {...p} /></td>
     </tr>
@@ -677,13 +685,13 @@ function RigaScheda(p: RigaProps) {
     </div>
   );
   return (
-    <div className={cn("rounded-md border p-2", c.tipo === "manuale" && "bg-amber-50/40 dark:bg-amber-950/10",
+    <div className={cn("rounded-md border p-2", c.tipo === "manuale" && "bg-pv-giallo-tenue/30",
       c.isSubtotal && "bg-primary/5", c.tipo === "nota" && "bg-muted/20",
       c.kitSenzaPrezzo && "border-destructive bg-destructive/10")}
       onClick={c.onRowClick}>
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
         <div className="min-w-0">
-          <span className="text-[11px] text-muted-foreground">Riga {p.idx + 1} · {TIPI_RIGA_LABEL[c.tipo]}</span>
+          <span className="text-[11px] text-muted-foreground">{c.tipo === "manuale" && BADGE_MANUALE}Riga {p.idx + 1} · {TIPI_RIGA_LABEL[c.tipo]}</span>
           {c.valorizzata && campo("Codice", c.codice)}
           {campo("Descrizione", c.articolo)}
           {c.kitSenzaPrezzo && (
@@ -704,7 +712,7 @@ function RigaScheda(p: RigaProps) {
           {valore("Netto", c.netto)}
           {campo("±", c.segnoSel)}
           {campo("Costo unit.", c.costo)}
-          {valore("Marg.%", c.margine, p.calc.margine_perc < 0 ? "text-destructive" : undefined)}
+          {valore("Marg.%", <BadgeMargine perc={p.calc.margine_perc} testo={c.margine} />)}
           {valore("Peso", c.peso)}
           {valore("Importo", <span className="text-sm font-semibold">{c.importo}</span>, "col-span-2 sm:col-span-4")}
         </div>
