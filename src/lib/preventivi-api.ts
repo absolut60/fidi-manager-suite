@@ -1,3 +1,4 @@
+import { copiaNotePreventivo } from "./preventivi-note";
 import { supabase } from "@/integrations/supabase/client";
 import { campiPrezzoDaMotore, confrontoAggiornamento, costoRiga, importoRiga, isIntestazioneKit, isRigaValorizzata, marginePercRiga, pesoRigaGamma, patchConImporto, quantitaDaIncidenza, segnoRiga, type PrezzoClienteGamma, type UnitaGammaRiga } from "./riga-preventivo";
 import type { Database } from "@/integrations/supabase/types";
@@ -677,6 +678,7 @@ export async function duplicaPreventivo(
     }
   }
 
+  await copiaNotePreventivo(sourceId, nuovo.id);
   return { id: nuovo.id, numero: nuovo.numero ?? "", allegatiFalliti: [] };
 }
 

@@ -1,3 +1,8 @@
+# FM67 — Note con titolo e allegati
+- [x] Migrazione 0208: note, RLS, eccezione showroom autorizzata, storage, copia atomica nell’ordine.
+- [x] Note in linea e AllegatiSection compatta nella Testata; copia note nei duplicati.
+- [ ] Verifiche permessi reali, duplicazione, test e schermate.
+
 # FM65 — Correzioni E
 - [x] FM67 cliente incorporato: parametro validato, cornice rimossa dopo gate identici, tab preservate, link fuori finestra; 727 test e schermate 375/1280 della finestra/normalità, sessione reale e cliente simulato (elenchi reali vuoti). Pagina temporanea rimossa; nessuna modifica DB.
 - [x] FM67 Testata compatta: densità opt-in, griglia 62/38, 722 test verdi; save e 10 gestori identici byte per byte. Schermate modifica/lettura 375/1280/1600 e controlli 320/768/1024/1920 senza overflow/errori; dati finti, pagina temporanea rimossa. Nessuna modifica database.

@@ -1,3 +1,5 @@
+import { AllegatiSection } from "@/components/allegati-section";
+import { NotePreventivo } from "./NotePreventivo";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +12,7 @@ import { useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-
 import { STATI,STATI_LABEL,TIPI_DOC,TIPI_DOC_LABEL,type PreventivoConDettagli,type PreventivoUpdate,type DatiClientePreventivo,type Agente } from "@/lib/preventivi-api";
 import { formatNumeroIt,parseNumeroIt } from "@/lib/numero-it";
 import { formatDate } from "@/lib/fidi";
-import { ExternalLink, FileText, HardHat, Percent, StickyNote, UserRound } from "lucide-react";
+import { ExternalLink, FileText, HardHat, Percent, Paperclip, StickyNote, UserRound } from "lucide-react";
 import { RiquadroScheda } from "./RiquadroScheda";
 
 export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agenti,principali,haAlternative,listino,categoria,sede,onSave,onCliente,onChangeCliente,onCantiere}: {
@@ -66,8 +68,12 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
         <CantiereTestata prev={prev} modificabile={modificabile} onCantiere={onCantiere}/>
       </div>
     </RiquadroScheda>
-    <RiquadroScheda titolo="Note" icona={StickyNote} tono="viola" densita="compatta" className="lg:col-span-2">
+    <RiquadroScheda titolo="Note" icona={StickyNote} tono="viola" densita="compatta">
       {modificabile?<Textarea aria-label="Note" rows={3} className="min-h-0 resize-none bg-card px-2 py-1 text-xs md:text-xs" defaultValue={prev.note||''} onBlur={e=>{if((e.target.value||null)!==prev.note)save({note:e.target.value||null});}}/>:<p className="whitespace-pre-wrap break-words text-xs">{prev.note||'—'}</p>}
+      <NotePreventivo id={prev.id} modificabile={modificabile}/>
+    </RiquadroScheda>
+    <RiquadroScheda titolo="Allegati" icona={Paperclip} tono="grigio" densita="compatta" intestazione={<span className="sr-only">Allegati</span>}>
+      <AllegatiSection entitaTipo="preventivo" entitaId={prev.id} clienteId={null} canEdit={modificabile} eliminaTutti={modificabile} compact/>
     </RiquadroScheda>
   </section>;
 }

@@ -17,6 +17,7 @@ import {
   Paperclip, Upload, Download, Trash2, Loader2, FileText, Image as ImageIcon,
   File as FileIcon, Plus, Eye, UploadCloud,
 } from "lucide-react";
+import { chiaveSalvaPreventivo } from "@/lib/use-stato-salvataggio-preventivo";
 import { cn } from "@/lib/utils";
 import { GRIGLIA_ALLEGATI, SchedaAllegato } from "@/components/allegati/anteprima-allegato";
 
@@ -29,6 +30,7 @@ export type AllegatoEntitaTipo =
   | "piano_rientro"
   | "campagna_email"
   | "lead"
+  | "preventivo"
   | "fornitore"
   | "attivita_fornitore";
 
@@ -175,11 +177,23 @@ export function AllegatiSection({
     },
   });
 
+  const { data: nomi = [] } = useQuery({
+    queryKey: ["nomi-utenti-allegati"],
+    enabled: entitaTipo === "preventivo" && !!data?.length,
+    staleTime: 30 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_nomi_utenti" as never);
+      if (error) throw error;
+      return (data ?? []) as unknown as { id: string; nome: string | null; cognome: string | null }[];
+    },
+  });
   const del = useMutation({
+    mutationKey: entitaTipo === "preventivo" ? chiaveSalvaPreventivo(entitaId) : undefined,
     mutationFn: async (a: AllegatoRow) => {
       const { error } = await supabase.from("allegati").delete().eq("id", a.id);
       if (error) throw error;
-      await supabase.storage.from(ALLEGATI_BUCKET).remove([a.storage_path]);
+      const { error: storageError } = await supabase.storage.from(ALLEGATI_BUCKET).remove([a.storage_path]);
+      if (storageError) throw storageError;
     },
     onSuccess: () => {
       toast.success("Allegato eliminato");
@@ -201,9 +215,9 @@ export function AllegatiSection({
           </h3>
         </div>
         {canEdit && (
-          <Button size="sm" variant="outline" onClick={() => setDialogOpen(true)}>
+          <Button size="sm" variant="outline" className={compact ? "min-h-10 text-xs" : undefined} onClick={() => setDialogOpen(true)}>
             <Plus className="size-4" />
-            Allega documento
+            {entitaTipo === "preventivo" ? "Aggiungi allegato" : "Allega documento"}
           </Button>
         )}
       </div>
@@ -213,9 +227,10 @@ export function AllegatiSection({
       ) : !data?.length ? (
         <div className="text-xs text-muted-foreground italic px-1">Nessun allegato.</div>
       ) : (
-        <ul className={GRIGLIA_ALLEGATI}>
+        <ul className={compact ? "space-y-2" : GRIGLIA_ALLEGATI}>
           {data.map((a) => {
-            const canDelete = eliminaTutti || canManageAll || a.caricato_da === user?.id;
+            const canDelete = entitaTipo === "preventivo" ? canEdit : eliminaTutti || canManageAll || a.caricato_da === user?.id;
+            const autore = nomi.find(n => n.id === a.caricato_da);
             return (
               <SchedaAllegato
                 key={a.id}
@@ -224,16 +239,18 @@ export function AllegatiSection({
                 mimeType={a.mime_type}
                 dimensione={a.dimensione_bytes}
                 bucket={ALLEGATI_BUCKET}
+                compatta={compact}
+                azioniStandard={entitaTipo === "preventivo" ? { onElimina: canDelete ? () => setToDelete(a) : undefined } : undefined}
                 dettagli={
                   <>
-                    <div>{fmtDate(a.created_at)}</div>
+                    <div>{entitaTipo === "preventivo" && <>{autore ? [autore.nome, autore.cognome].filter(Boolean).join(" ") : "Utente"} · </>}{fmtDate(a.created_at)}</div>
                     {a.origine_lead_id && (
                       <div className="mt-0.5 text-[11px] font-medium text-primary">dal lead</div>
                     )}
                     {a.descrizione && <div className="mt-0.5">{a.descrizione}</div>}
                   </>
                 }
-                azioni={canDelete ? (
+                azioni={canDelete && entitaTipo !== "preventivo" ? (
                   <Button
                     size="icon"
                     variant="ghost"
@@ -330,6 +347,7 @@ function UploadDialog({
   };
 
   const upload = useMutation({
+    mutationKey: entitaTipo === "preventivo" ? chiaveSalvaPreventivo(entitaId) : undefined,
     mutationFn: async () => {
       if (!file) throw new Error("Nessun file selezionato");
       if (!userId) throw new Error("Utente non autenticato");

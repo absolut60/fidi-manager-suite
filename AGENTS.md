@@ -38,3 +38,6 @@
 - Recalculation progress in pages comes only from barraRicalcolo on the shared lock row, renewed with its phase by every step in fido-teorico-ricalcolo-passi.server, so automatic and manual runs look identical.
 - Showroom UI permissions live only in src/lib/permessi-showroom.ts (twin of auth_solo_showroom), so UI and RLS cannot diverge.
 - MADE_ARTICOLI_LISTINI_PQ: one import parsed only in browser (listini-gamma-parser); server reads staged JSON (xlsx crashed Worker).
+
+- Quote titled notes live only in preventivi-note; duplication copies them through copiaNotePreventivo and order conversion copies them atomically inside the existing SQL RPC. Attachments reuse AllegatiSection and never copy, so access and presentation cannot diverge.
+- Quote note and attachment mutations use chiaveSalvaPreventivo; their edit controls use the existing preventivoModificabile result, so the save badge and exit guard include these writes.
