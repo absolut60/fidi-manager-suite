@@ -14,3 +14,5 @@ Queste regole sono parte delle istruzioni permanenti del progetto: valgono quant
 - `lingua-italiana.md` — leggere prima di toccare qualsiasi pagina: app sempre in italiano, niente traduzione automatica, niente controlli nativi con testo del browser, locale it-IT.
 - `cantiere-provvisorio.md` — cantieri provvisori: segno, conferma, badge, esclusione dai conteggi marketing.
 - `preventivo-salvataggio.md` — leggere prima di toccare la scheda preventivo: sempre modificabile, sola lettura per confermati/ordini, salvataggio automatico e pulsante Salva, chiave comune delle scritture, finestra d'uscita.
+
+- `preventivo-note-allegati.md` — FM67: note con titolo, allegati preventivo, copia e policy verbatim (migrazione 0208); limiti delle verifiche reali documentati.

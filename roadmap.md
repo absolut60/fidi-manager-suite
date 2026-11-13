@@ -1,7 +1,8 @@
 # FM67 — Note con titolo e allegati
 - [x] Migrazione 0208: note, RLS, eccezione showroom autorizzata, storage, copia atomica nell’ordine.
 - [x] Note in linea e AllegatiSection compatta nella Testata; copia note nei duplicati.
-- [ ] Verifiche permessi reali, duplicazione, test e schermate.
+- [x] 732 test; compilazione OK; schermate 375/1280 e nessun overflow 320/375/390/768/1280/1920, aggiunta/modifica/elimina e anteprima simulate; RPC reale identica salvo copia note.
+- [ ] Verifiche RLS con amministratore/store_manager/preventivi e duplicazione/ordine su dati reali: sessione disponibile non soddisfa MFA e non vede PRV-161; strumento SQL non può assumere authenticated né eseguire i gate. Nessun bypass o dato di prova persistente.
 
 # FM65 — Correzioni E
 - [x] FM67 cliente incorporato: parametro validato, cornice rimossa dopo gate identici, tab preservate, link fuori finestra; 727 test e schermate 375/1280 della finestra/normalità, sessione reale e cliente simulato (elenchi reali vuoti). Pagina temporanea rimossa; nessuna modifica DB.
