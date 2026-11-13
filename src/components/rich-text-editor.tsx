@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { sanificaHtml } from "@/lib/html-sicuro";
 
 /**
  * Editor rich-text minimale basato su contentEditable + document.execCommand.
@@ -136,7 +137,8 @@ export function RichTextEditor({
     if (!el) return;
     const next = value ?? "";
     if (next !== lastHtml.current) {
-      el.innerHTML = next;
+      // FM64: il contenuto salvato entra nel DOM vivo solo sanificato.
+      el.innerHTML = sanificaHtml(next);
       lastHtml.current = next;
     }
   }, [value]);

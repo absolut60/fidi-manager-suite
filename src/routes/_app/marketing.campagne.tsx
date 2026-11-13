@@ -41,6 +41,7 @@ export const Route = createFileRoute("/_app/marketing/campagne")({
 });
 
 import { MARKETING_ROLES } from "@/lib/ruoli-marketing";
+import { sanificaDocumentoHtml, SANDBOX_ANTEPRIMA } from "@/lib/html-sicuro";
 
 type Campagna = {
   id: string;
@@ -642,7 +643,8 @@ function EditorCampagna({
             </div>
             <iframe
               title="Anteprima campagna"
-              srcDoc={anteprima.html}
+              sandbox={SANDBOX_ANTEPRIMA}
+              srcDoc={sanificaDocumentoHtml(anteprima.html)}
               className="w-full h-[560px] rounded-md border bg-white"
             />
           </div>

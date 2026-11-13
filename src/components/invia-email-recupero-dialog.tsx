@@ -32,6 +32,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { sanificaHtml } from "@/lib/html-sicuro";
 
 type Modalita = "modello" | "libera";
 
@@ -822,7 +823,7 @@ export function InviaEmailRecuperoDialog({
                       <div className="text-[11px] uppercase text-muted-foreground mb-1">Corpo</div>
                       <div
                         className="rounded border border-border bg-background px-3 sm:px-4 py-3 text-sm max-h-80 overflow-auto"
-                        dangerouslySetInnerHTML={{ __html: rendered.corpo }}
+                        dangerouslySetInnerHTML={{ __html: sanificaHtml(rendered.corpo) }}
                       />
                     </div>
                   </>

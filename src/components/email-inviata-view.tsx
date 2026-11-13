@@ -2,6 +2,7 @@ import { Copy } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { AllegatiSection } from "@/components/allegati-section";
+import { sanificaHtml } from "@/lib/html-sicuro";
 
 type Props = {
   destinatario: string | null;
@@ -21,7 +22,7 @@ export function EmailInviataView({ destinatario, oggetto, corpoHtml, cc, bcc, az
     try {
       // copia il testo (strip HTML tags)
       const tmp = document.createElement("div");
-      tmp.innerHTML = corpoHtml ?? "";
+      tmp.innerHTML = sanificaHtml(corpoHtml);
       const text = tmp.innerText;
       await navigator.clipboard.writeText(text);
       toast.success("Testo copiato negli appunti");
@@ -64,7 +65,7 @@ export function EmailInviataView({ destinatario, oggetto, corpoHtml, cc, bcc, az
       </div>
       <div
         className="rounded-md border border-border bg-background px-4 py-3 text-sm max-h-96 overflow-y-auto"
-        dangerouslySetInnerHTML={{ __html: corpoHtml }}
+        dangerouslySetInnerHTML={{ __html: sanificaHtml(corpoHtml) }}
       />
       {azioneId && (
         <AllegatiSection
