@@ -172,7 +172,7 @@ export function OpportunitaDialog({
       const { data, error } = await supabase
         .from("cantieri").select("id, nome, provvisorio").eq(col, soggetto!.id).order("nome");
       if (error) throw error;
-      return (data ?? []) as Array<{ id: string; nome: string }>;
+      return (data ?? []) as Array<{ id: string; nome: string; provvisorio: boolean | null }>;
     },
   });
 
