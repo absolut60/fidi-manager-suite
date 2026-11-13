@@ -36,13 +36,15 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
         {field('Validità',prev.validita?formatDate(prev.validita):'—',<Input aria-label="Validità" className="h-[34px] bg-card" type="date" defaultValue={prev.validita||''} onBlur={e=>{if((e.target.value||null)!==prev.validita)save({validita:e.target.value||null});}}/>)}
         {field('Tipo documento',TIPI_DOC_LABEL[prev.tipo_doc],select('Tipo documento',prev.tipo_doc,TIPI_DOC.map(v=>({value:v,label:TIPI_DOC_LABEL[v]})),v=>{if(TIPI_DOC.includes(v as typeof prev.tipo_doc))save({tipo_doc:v as typeof prev.tipo_doc});}))}
         {/* FM65 punto 3: lo Stato resta modificabile per chi ha il permesso anche da confermato/ordine (serve per riportarlo a Bozza/Inviato). */}
-        {(modificabile||statoEditabile)?field('Stato',STATI_LABEL[prev.stato],select('Stato',prev.stato,STATI.map(v=>({value:v,label:STATI_LABEL[v]})),v=>{if(STATI.includes(v as typeof prev.stato))save({stato:v as typeof prev.stato});})).props.children&&<div className="min-w-0 grid content-start gap-1"><Label className="text-xs">Stato</Label>{select('Stato',prev.stato,STATI.map(v=>({value:v,label:STATI_LABEL[v]})),v=>{if(STATI.includes(v as typeof prev.stato))save({stato:v as typeof prev.stato});})}</div>:field('Stato',STATI_LABEL[prev.stato],<span/>)}
+        {(modificabile||statoEditabile)
+          ? <div className="min-w-0 grid content-start gap-1"><Label className="text-xs">Stato</Label>{select('Stato',prev.stato,STATI.map(v=>({value:v,label:STATI_LABEL[v]})),v=>{if(STATI.includes(v as typeof prev.stato))save({stato:v as typeof prev.stato});})}</div>
+          : field('Stato',STATI_LABEL[prev.stato],<span/>)}
         {field('Agente',agenti.find(a=>a.id===prev.agente_codice)?.nome,select('Agente',prev.agente_codice||'',agenti.map(a=>({value:a.id,label:a.nome})),v=>save({agente_codice:v==='__none__'?null:v})),true)}
         {field('Alternativa di',principali.find(p=>p.id===prev.alternativa_di)?.numero||'— Nessuna: è un preventivo principale',<div><Select value={prev.alternativa_di||'__none__'} disabled={haAlternative||prev.tipo!=='preventivo'} onValueChange={v=>save({alternativa_di:v==='__none__'?null:v})}><SelectTrigger aria-label="Alternativa di" className="h-auto min-h-[34px] bg-card [&>span]:whitespace-normal [&>span]:text-left"><SelectValue/></SelectTrigger><SelectContent className="max-w-[calc(100vw-2rem)]"><SelectItem value="__none__">— Nessuna: è un preventivo principale</SelectItem>{principali.map(p=><SelectItem key={p.id} value={p.id}>{p.numero} {p.titolo?`· ${p.titolo}`:''}</SelectItem>)}</SelectContent></Select>{haAlternative&&<p className="text-xs text-muted-foreground mt-1">Ha alternative collegate</p>}</div>,true)}
       </div>
     </RiquadroScheda>
     <RiquadroScheda titolo="Dati anagrafici cliente" icona={UserRound} tono="azzurro">
-      {editMode&&<div className="mb-3 grid gap-1"><Label className="text-xs">Cliente (cerca per codice o nome)</Label><ClientePicker value={prev.cliente_id} onChange={onChangeCliente}/></div>}
+      {modificabile&&<div className="mb-3 grid gap-1"><Label className="text-xs">Cliente (cerca per codice o nome)</Label><ClientePicker value={prev.cliente_id} onChange={onChangeCliente}/></div>}
       <p className="mb-2 break-words text-base font-semibold">{cliente?.ragione_sociale||prev.cliente?.ragione_sociale||'—'}</p>
       <dl className={due}>
         {info('Codice cliente',cliente?.codice_gestionale)}
@@ -67,7 +69,7 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
       </div>
     </RiquadroScheda>
     <RiquadroScheda titolo="Cantiere" icona={HardHat} tono="verde">
-      <CantiereTestata prev={prev} editMode={editMode} onCantiere={onCantiere}/>
+      <CantiereTestata prev={prev} modificabile={modificabile} onCantiere={onCantiere}/>
     </RiquadroScheda>
     <RiquadroScheda titolo="Note per il cliente" icona={StickyNote} tono="viola" className="lg:col-span-2">
       {field('Note',prev.note,<Textarea aria-label="Note" rows={3} className="bg-card" defaultValue={prev.note||''} onBlur={e=>{if((e.target.value||null)!==prev.note)save({note:e.target.value||null});}}/>,true)}

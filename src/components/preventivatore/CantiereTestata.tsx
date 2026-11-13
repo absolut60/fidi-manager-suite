@@ -16,7 +16,7 @@ import { BadgeProvvisorio } from "@/components/badge-provvisorio";
  * Riquadro Cantiere della Testata (FM65 B2): tre modi, tutti collegano un vero cantiere (onCantiere → cantiere_id).
  * cantiere_descrizione non viene più scritta: resta solo come fallback in lettura.
  */
-export function CantiereTestata({ prev, editMode, onCantiere }: { prev: PreventivoConDettagli; editMode: boolean; onCantiere: (id: string) => void }) {
+export function CantiereTestata({ prev, modificabile, onCantiere }: { prev: PreventivoConDettagli; modificabile: boolean; onCantiere: (id: string) => void }) {
   const c = prev.cantiere;
   const storico = (prev as { cantiere_descrizione?: string | null }).cantiere_descrizione ?? null;
   const [scelta, setScelta] = useState(!c);
@@ -34,7 +34,7 @@ export function CantiereTestata({ prev, editMode, onCantiere }: { prev: Preventi
       {loc && <p className="break-words text-muted-foreground">{loc}</p>}
     </div> : <p className="break-words text-sm">{storico || "Da definire"}</p>}
 
-    {editMode && (!scelta && c
+    {modificabile && (!scelta && c
       ? <Button size="sm" variant="outline" className="bg-card" onClick={() => setScelta(true)}>Cambia</Button>
       : <div className="space-y-2">
         <div role="group" aria-label="Modo cantiere" className="flex flex-wrap gap-1">
