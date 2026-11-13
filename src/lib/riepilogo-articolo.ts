@@ -1,5 +1,25 @@
 /** FM65 punto 4: parte pura della finestra "Riepilogo articolo". Nessun calcolo di prezzo: solo testi. */
 import { formatScontiGamma } from "./riga-preventivo";
+import type { RigaDisponibilitaArticolo } from "./scheda-articolo";
+
+/** Usa solo gli aggregati canonici: nessuna somma dei depositi nel browser. */
+export function giacenzeRiepilogoArticolo(rows: readonly RigaDisponibilitaArticolo[], storeId: string | null) {
+  const sedi = rows.filter(r => r.livello === "sede" && r.conta_disponibilita !== "no").sort((a, b) =>
+    Number(!!storeId && b.store_id === storeId) - Number(!!storeId && a.store_id === storeId)
+    || (a.nome ?? "").localeCompare(b.nome ?? "", "it-IT"));
+  return [...sedi, ...rows.filter(r => r.livello === "logistica_comune" && r.conta_disponibilita !== "no")];
+}
+
+export function condizioniListinoSede(nome: string | null | undefined) {
+  const sede = nome?.trim();
+  return sede ? `Condizioni di listino ${/^sede\s+di\b/i.test(sede) ? sede : `sede di ${sede}`}` : "Condizioni di listino sede di —";
+}
+
+export function errorePermessoGiacenze(errore: unknown) {
+  if (!errore || typeof errore !== "object") return false;
+  const e = errore as { code?: unknown; message?: unknown };
+  return e.code === "42501" || (typeof e.message === "string" && /accesso negato|permission denied|insufficient privilege|non autorizzato/i.test(e.message));
+}
 
 /** Sconti d'acquisto del listino fornitore in forma Gamma "17+5"; "—" se nessuno. */
 export function scontiAcquistoTesto(r: { acq_sc1?: number | null; acq_sc2?: number | null; acq_sc3?: number | null } | null | undefined): string {
