@@ -16,6 +16,7 @@ import { escapeHtml } from "@/lib/template-email-render";
 import { isEmailValida } from "@/lib/email-validazione";
 import { parseNumeroIt } from "@/lib/numero-it";
 import { useAuth } from "@/hooks/use-auth";
+import { sanificaDocumentoHtml, SANDBOX_ANTEPRIMA } from "@/lib/html-sicuro";
 
 function testoToHtml(testo: string): string {
   return testo
@@ -282,8 +283,8 @@ export function MailSinistroDialog({
               <div className="text-xs text-muted-foreground mb-1">Anteprima</div>
               <iframe
                 title="Anteprima email"
-                sandbox=""
-                srcDoc={anteprimaHtml}
+                sandbox={SANDBOX_ANTEPRIMA}
+                srcDoc={sanificaDocumentoHtml(anteprimaHtml)}
                 className="w-full rounded border"
                 style={{ height: 420 }}
               />

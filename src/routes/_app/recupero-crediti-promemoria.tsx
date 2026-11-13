@@ -532,6 +532,7 @@ function SortableHead({
 }
 
 import { MessageIdCell } from "@/components/message-id-cell";
+import { sanificaDocumentoHtml, SANDBOX_ANTEPRIMA } from "@/lib/html-sicuro";
 
 // ==================== Storico invii automatici ====================
 
@@ -712,7 +713,8 @@ function LogDettaglio({ row }: { row: PromLogRow }) {
         {row.email_html ? (
           <iframe
             title={`email-${row.id}`}
-            srcDoc={row.email_html}
+            sandbox={SANDBOX_ANTEPRIMA}
+            srcDoc={sanificaDocumentoHtml(row.email_html)}
             className="w-full h-[520px] rounded-md border border-border bg-background"
           />
         ) : (

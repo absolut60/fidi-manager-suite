@@ -32,6 +32,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BellRing } from "lucide-react";
 import { ProvaCervedCard } from "@/components/impostazioni/prova-cerved-card";
+import { sanificaDocumentoHtml, SANDBOX_ANTEPRIMA } from "@/lib/html-sicuro";
 
 
 export const Route = createFileRoute("/_app/impostazioni")({
@@ -1239,7 +1240,8 @@ function PromemoriaScadenzaCard() {
             {previewHtml && (
               <iframe
                 title="Anteprima promemoria di scadenza"
-                srcDoc={previewHtml}
+                sandbox={SANDBOX_ANTEPRIMA}
+                srcDoc={sanificaDocumentoHtml(previewHtml)}
                 className="w-full rounded-md border bg-white"
                 style={{ height: 720 }}
               />

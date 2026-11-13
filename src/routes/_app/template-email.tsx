@@ -28,6 +28,7 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { PLACEHOLDERS, renderTemplate, caricaDatiCliente, caricaSedeCliente, wrapEmailHtml, type TemplateEmail } from "@/lib/template-email";
+import { sanificaHtml } from "@/lib/html-sicuro";
 
 export const Route = createFileRoute("/_app/template-email")({
   component: TemplateEmailPage,
@@ -405,7 +406,7 @@ function PreviewDialog({
                     <Label className="text-xs uppercase tracking-wider text-muted-foreground">Corpo</Label>
                     <div
                       className="mt-1 rounded border border-border bg-background px-4 py-3 text-sm prose prose-sm max-w-none"
-                      dangerouslySetInnerHTML={{ __html: rendered.corpo }}
+                      dangerouslySetInnerHTML={{ __html: sanificaHtml(rendered.corpo) }}
                     />
                   </div>
                 </>

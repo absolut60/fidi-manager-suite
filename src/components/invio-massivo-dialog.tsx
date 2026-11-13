@@ -27,6 +27,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { sanificaHtml } from "@/lib/html-sicuro";
 
 type Props = {
   open: boolean;
@@ -829,7 +830,7 @@ export function InvioMassivoDialog({
                       <div className="text-[11px] uppercase text-muted-foreground mb-1">Corpo</div>
                       <div
                         className="rounded border border-border bg-background px-4 py-3 text-sm max-h-72 overflow-y-auto"
-                        dangerouslySetInnerHTML={{ __html: anteprima.corpo }}
+                        dangerouslySetInnerHTML={{ __html: sanificaHtml(anteprima.corpo) }}
                       />
                     </div>
                   </>
