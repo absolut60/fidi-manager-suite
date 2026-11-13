@@ -41,7 +41,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Copy, FileDown, GripVertical, Lock, Plus, RefreshCw, ShoppingCart, Trash2,
+  Copy, FileDown, GripVertical, Loader2, Lock, Plus, RefreshCw, Save, ShoppingCart, Trash2,
 } from "lucide-react";
 import { BackButton } from "@/components/back-button";
 import { toast } from "sonner";
@@ -64,6 +64,7 @@ import { round2 } from "@/lib/pricing";
 import { margineTotaliRighe } from "@/lib/riga-preventivo";
 import { formatNumeroIt, parseNumeroIt } from "@/lib/numero-it";
 import { cn } from "@/lib/utils";
+import { useStatoSalvataggioPreventivo, type StatoSalvataggio } from "@/lib/use-stato-salvataggio-preventivo";
 import { AggiungiBloccoDialog } from "@/components/preventivatore/AggiungiBloccoDialog";
 import { RigheTable } from "@/components/preventivatore/RigheTable";
 import { GeneraDocumentoDialog } from "@/components/preventivatore/GeneraDocumentoDialog";
@@ -91,6 +92,15 @@ function PreventivoEditorPage() {
   const {data:codiciPagamento=[]}=useCodiciPagamento();
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const salvataggio = useStatoSalvataggioPreventivo(id);
+  const [salvaAttesa, setSalvaAttesa] = useState(false);
+  const onSalva = async () => {
+    setSalvaAttesa(true);
+    try {
+      const ok = await salvataggio.salvaOra();
+      if (ok) toast.success("Preventivo salvato"); else toast.error("Errore nel salvataggio");
+    } finally { setSalvaAttesa(false); }
+  };
   const [addBloccoOpen, setAddBloccoOpen] = useState(false);
   const [outputOpen, setOutputOpen] = useState(false);
   const { roles } = useAuth();
@@ -385,6 +395,15 @@ function PreventivoEditorPage() {
                 </AlertDialogContent>
               </AlertDialog>
             )}
+            {modificabile && (
+              <>
+                <BadgeSalvataggio stato={salvataggio.stato} />
+                <Button size="sm" onClick={onSalva} disabled={salvaAttesa}>
+                  {salvaAttesa ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Save className="mr-1 h-4 w-4" />}
+                  {salvaAttesa ? "Salvataggio…" : "Salva"}
+                </Button>
+              </>
+            )}
             <Button size="sm" variant="outline" onClick={() => setOutputOpen(true)}>
               <FileDown className="mr-1 h-4 w-4" /> Genera documento
             </Button>
@@ -471,6 +490,7 @@ function PreventivoEditorPage() {
           </div>
         </div>
 
+        <div className="flex min-w-0 flex-col gap-4" {...salvataggio.contenitoreProps}>
         <FasciaPreventivo dati={riepilogo} titolo={prev.titolo} onCliente={()=>setClienteOpen(true)}/>
         {puoScrivere && !modificabile && (
           <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
@@ -568,6 +588,7 @@ function PreventivoEditorPage() {
             </fieldset></TabsContent>
           <TabsContent value="piede"><PiedePreventivo dati={riepilogo} iva={totali.iva} totale={totali.totale} ivaPerc={Number(prev.iva_perc??22)} sconto={Number(prev.sconto_piede_perc??0)} modificabile={modificabile} inCorso={applicaSconto.isPending} onSconto={v=>applicaSconto.mutate(v)} onTestata={()=>cambiaTab('testata')}/></TabsContent>
         </Tabs>
+        </div>
       </div>
       {clienteOpen && clienteDati && <ClientePreventivoDialog cliente={clienteDati} onClose={()=>setClienteOpen(false)}/>}
       <AlertDialog open={eliminaOpen} onOpenChange={setEliminaOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Eliminare il documento?</AlertDialogTitle><AlertDialogDescription>Tutti i blocchi e le righe verranno eliminati. Irreversibile.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Annulla</AlertDialogCancel><AlertDialogAction onClick={()=>delPrev.mutate()}>Elimina</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
@@ -726,5 +747,24 @@ function BloccoCard({
         </CardContent>
       </Card>
     </div>
+  );
+}
+const BADGE_SALVATAGGIO: Record<StatoSalvataggio, { testo: string; cls: string; pallino: string }> = {
+  modifiche: { testo: "Modifiche non salvate", cls: "bg-pv-arancio-tenue text-pv-arancio border-pv-arancio/30", pallino: "bg-pv-arancio" },
+  salvataggio: { testo: "Salvataggio…", cls: "bg-muted text-muted-foreground border-border", pallino: "bg-muted-foreground" },
+  errore: { testo: "Errore nel salvataggio", cls: "bg-destructive/10 text-destructive border-destructive/30", pallino: "bg-destructive" },
+  salvato: { testo: "Salvato", cls: "bg-pv-verde-tenue text-pv-verde border-pv-verde/30", pallino: "bg-pv-verde" },
+};
+
+function BadgeSalvataggio({ stato }: { stato: StatoSalvataggio }) {
+  const b = BADGE_SALVATAGGIO[stato];
+  return (
+    <span role="status" aria-label={b.testo} title={b.testo}
+      className={cn("inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium sm:h-7", b.cls)}>
+      {stato === "salvataggio"
+        ? <Loader2 className="size-3.5 animate-spin" aria-hidden />
+        : <span className={cn("size-2.5 rounded-full", b.pallino)} aria-hidden />}
+      <span className="hidden whitespace-nowrap sm:inline">{b.testo}</span>
+    </span>
   );
 }
