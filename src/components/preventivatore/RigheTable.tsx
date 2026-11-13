@@ -39,7 +39,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { EditableNumberCell } from "@/components/preventivatore/EditableNumberCell";
 import { ArticoloPicker } from "@/components/preventivatore/ArticoloPicker";
 import { ArticoloGammaPicker, type ArticoloGammaScelto } from "@/components/preventivatore/ArticoloGammaPicker";
-import { campiPrezzoDaMotore, costoRiga, formatScontiGamma, parseScontiGamma, patchConImporto, prezzoNettoRiga } from "@/lib/riga-preventivo";
+import { campiPrezzoDaMotore, costoRiga, formatScontiGamma, isIntestazioneKit, margineTotaliRighe, parseScontiGamma, patchConImporto, prezzoNettoRiga } from "@/lib/riga-preventivo";
 import {
   calcolaBlocco, deleteRiga, fetchPrezzoClienteArticolo, fractionalOrder, insertRiga, reorderRighe,
   statoPrezzoSpecialeRiga,
@@ -217,10 +217,7 @@ export function RigheTable({
     },
   });
 
-  const margineTot = (() => {
-    const v = calcs.righe.reduce((a, x) => a + x.calc.vendita, 0);
-    return v ? ((v - calcs.costo) / v) * 100 : 0;
-  })();
+  const margineTot = margineTotaliRighe(calcs).perc;
 
   return (
     <div>
@@ -269,7 +266,7 @@ export function RigheTable({
               </td>
               <td className="px-1 py-2 text-right font-mono font-semibold">€ {calcs.totale.toFixed(2)}</td>
               <td className="px-1 py-2 text-right font-mono text-muted-foreground">€ {calcs.costo.toFixed(2)}</td>
-              <td className="px-1 py-2 text-right font-mono text-muted-foreground">{margineTot.toFixed(1)}%</td>
+              <td className="px-1 py-2 text-right font-mono text-muted-foreground">{margineTot.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</td>
               <td className="px-1 py-2 text-right font-mono text-muted-foreground">{calcs.peso.toFixed(2)}</td>
               <td></td>
             </tr>
@@ -288,7 +285,7 @@ export function RigheTable({
           <div className="grid grid-cols-2 gap-x-4 font-mono text-xs">
             <span className="text-muted-foreground">Totale</span><span className="text-right font-semibold">€ {calcs.totale.toFixed(2)}</span>
             <span className="text-muted-foreground">Costo</span><span className="text-right">€ {calcs.costo.toFixed(2)}</span>
-            <span className="text-muted-foreground">Marg.</span><span className="text-right">{margineTot.toFixed(1)}%</span>
+            <span className="text-muted-foreground">Marg.</span><span className="text-right">{margineTot.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</span>
           </div>
         </div>
       </div>
@@ -367,7 +364,7 @@ function AddRowMenu({
 
 
 type RigaProps = {
-  row: Riga & { articolo: { id: string; cod_gamma: string | null; descrizione: string; um: string | null; peso_unit: number | null } | null };
+  row: BloccoConRighe["righe"][number];
   idx: number;
   calc: ReturnType<typeof calcolaBlocco>["righe"][number]["calc"];
   fascia: FasciaListino;
@@ -421,7 +418,9 @@ function ScontiCell({ value, onCommit }: { value: number[] | null | undefined; o
 function useCelleRiga(p: RigaProps) {
   const { row, calc, readOnly, autoOpenPicker = false, onOpenArticolo, onPatch, onSceltaGamma, prezziSpecialiMap } = p;
   const tipo = row.tipo_riga;
-  const isCompact = tipo === "nota" || tipo === "separatore";
+  const intestazioneKit = isIntestazioneKit(row);
+  const kitSenzaPrezzo = tipo === "da_kit" && !intestazioneKit && (row.prezzo_unit == null || !row.articolo_codice);
+  const isCompact = tipo === "nota" || tipo === "separatore" || intestazioneKit;
   const isSubtotal = tipo === "sotto_totale";
   const valorizzata = !isCompact && !isSubtotal;
   const isText = tipo === "nota";
@@ -430,7 +429,7 @@ function useCelleRiga(p: RigaProps) {
   const vecchioCatalogo = !!row.articolo_id;
   const prezzoMancante = !!row.articolo_codice && row.prezzo_unit == null;
 
-  const articolo = (tipo === "articolo_singolo" || tipo === "da_kit") ? (
+  const articolo = intestazioneKit ? <span className="block break-words py-1 font-sans text-sm">{row.descrizione}</span> : (tipo === "articolo_singolo" || tipo === "da_kit") ? (
     vecchioCatalogo ? (
       <>
         <ArticoloPicker
@@ -514,7 +513,7 @@ function useCelleRiga(p: RigaProps) {
   const parziale = qOrd > 0 && qOrd < q;
 
   return {
-    tipo, isCompact, isSubtotal, valorizzata, segno,
+    tipo, isCompact, isSubtotal, valorizzata, segno, kitSenzaPrezzo,
     articolo,
     um: (
       <Input defaultValue={row.um ?? ""} aria-label="Unità di misura"
@@ -566,8 +565,8 @@ function useCelleRiga(p: RigaProps) {
         decimali={4}
         onCommit={(v) => onPatch({ costo: v == null ? null : costoRiga(v, q > 0 ? q : 1) })} />
     ),
-    margine: `${calc.margine_perc.toFixed(1)}%`,
-    peso: calc.peso.toFixed(2),
+    margine: `${calc.margine_perc.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`,
+    peso: row.articolo_codice && row.peso_gamma_unit == null ? "—" : fmt2(calc.peso),
     onRowClick: readOnly && vecchioCatalogo ? () => onOpenArticolo(row.articolo_id!) : undefined,
   };
 }
@@ -601,7 +600,7 @@ function RigaRow(p: RigaProps) {
     c.tipo === "separatore" && "h-2 bg-muted/30",
     c.tipo === "nota" && "bg-muted/20 italic",
     c.onRowClick && "cursor-pointer hover:bg-accent/40",
-    c.tipo === "da_kit" && (p.row.prezzo_unit == null || !p.row.articolo_codice) && "bg-destructive/10",
+    c.kitSenzaPrezzo && "bg-destructive/10",
   );
   const grip = (
     <td className="w-5">
@@ -624,7 +623,7 @@ function RigaRow(p: RigaProps) {
     <tr ref={sortable.setNodeRef} style={style} className={rowClass} onClick={c.onRowClick}>
       {grip}
       <td className="pt-2 text-center text-[10px] text-muted-foreground">{p.idx + 1}</td>
-      <td className="min-w-0 px-1 py-0.5">{c.articolo}{c.tipo === "da_kit" && (p.row.prezzo_unit == null || !p.row.articolo_codice) && (
+      <td className="min-w-0 px-1 py-0.5">{c.articolo}{c.kitSenzaPrezzo && (
         <p className="mt-0.5 text-[11px] font-sans not-italic text-destructive">Articolo non collegato a Gamma: inserisci prezzo e costo a mano</p>
       )}</td>
       <td className="px-0.5 py-0.5">{v && c.um}</td>
@@ -673,13 +672,13 @@ function RigaScheda(p: RigaProps) {
   return (
     <div className={cn("rounded-md border p-2", c.tipo === "manuale" && "bg-amber-50/40 dark:bg-amber-950/10",
       c.isSubtotal && "bg-primary/5", c.tipo === "nota" && "bg-muted/20",
-      c.tipo === "da_kit" && (p.row.prezzo_unit == null || !p.row.articolo_codice) && "border-destructive bg-destructive/10")}
+      c.kitSenzaPrezzo && "border-destructive bg-destructive/10")}
       onClick={c.onRowClick}>
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
         <div className="min-w-0">
           <span className="text-[11px] text-muted-foreground">Riga {p.idx + 1} · {TIPI_RIGA_LABEL[c.tipo]}</span>
           {c.articolo}
-          {c.tipo === "da_kit" && (p.row.prezzo_unit == null || !p.row.articolo_codice) && (
+          {c.kitSenzaPrezzo && (
         <p className="mt-0.5 text-[11px] font-sans not-italic text-destructive">Articolo non collegato a Gamma: inserisci prezzo e costo a mano</p>
       )}
         </div>

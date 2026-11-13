@@ -133,10 +133,31 @@ export function campiPrezzoDaMotore(
 }
 
 const TIPI_VALORIZZATI = new Set(["articolo_singolo", "da_kit", "manuale"]);
+/** I gruppi dei kit non hanno né articolo del catalogo tecnico né codice Gamma. */
+export function isIntestazioneKit(r: { tipo_riga?: string | null; articolo_id?: string | null; articolo_codice?: string | null }): boolean {
+  return r.tipo_riga === "da_kit" && !r.articolo_id && !r.articolo_codice;
+}
+
+export function isRigaValorizzata(r: { tipo_riga?: string | null; articolo_id?: string | null; articolo_codice?: string | null }): boolean {
+  return TIPI_VALORIZZATI.has(r.tipo_riga ?? "manuale") && !isIntestazioneKit(r);
+}
+
+/** Stessa formula per il piede del blocco e del preventivo, sugli importi netti. */
+export function margineTotaliRighe(totali: { totale: number; costo: number }): { euro: number; perc: number } {
+  const euro = totali.totale - totali.costo;
+  return { euro: round2Importo(euro), perc: totali.totale > 0 ? euro / totali.totale * 100 : 0 };
+}
+
+/** Peso Gamma in UM1; null segnala un dato assente, senza sostituirlo col peso tecnico. */
+export function pesoRigaGamma(pesoNetto: number | string | null | undefined, quantita: number | string | null | undefined): number | null {
+  return pesoNetto == null ? null : num(pesoNetto) * num(quantita);
+}
+
 const CAMPI_IMPORTO = ["quantita", "prezzo_unit", "sconti_gamma", "maggiorazione_perc", "sconto_perc", "segno", "costo"] as const;
 
 type RigaBase = {
   tipo_riga?: string | null;
+  articolo_id?: string | null; articolo_codice?: string | null;
   quantita?: number | null; prezzo_unit?: number | null; sconto_perc?: number | null;
   sconti_gamma?: number[] | null; maggiorazione_perc?: number | null; segno?: number | null; costo?: number | null;
 };
@@ -147,7 +168,7 @@ type RigaBase = {
  */
 export function patchConImporto<P extends Partial<RigaBase>>(riga: RigaBase, patch: P): P & { importo?: number; costo?: number | null } {
   const tipo = patch.tipo_riga ?? riga.tipo_riga;
-  if (!tipo || !TIPI_VALORIZZATI.has(tipo)) return patch;
+  if (!tipo || !isRigaValorizzata({ ...riga, ...patch, tipo_riga: tipo })) return patch;
   if (!CAMPI_IMPORTO.some((k) => k in patch)) return patch;
   const out: P & { importo?: number; costo?: number | null } = { ...patch };
   if ("quantita" in patch && !("costo" in patch) && riga.costo != null) {

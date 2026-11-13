@@ -1,3 +1,9 @@
+# FM65 — Fetta 2b-3
+- [x] Margine condiviso blocco/preventivo, intestazioni kit escluse, peso Gamma per quantità; 642 test verdi e build OK.
+- [x] Screenshot componenti con campioni a 375/1280 e controllo 320–1920, senza overflow o errori; pagina temporanea rimossa. PRV-161 19,7%, kit PRV-160 239,30 verificati sui dati reali in sola lettura.
+- [ ] Totale PRV-160 atteso 357,51: riga ARENA preesistente da 6,38 senza importo salvato porta il calcolo a 363,89 già prima della correzione; attende decisione Andrea, nessun dato modificato.
+- [ ] Verifica nell'account reale: --self non trova account del richiedente; non eseguita, nessun bypass.
+
 # FM64 — Fetta 4
 - [x] URL email unico, log mascherati, controllo allegati e oggetti letterali; 542 test verdi e build automatica OK; send-email distribuita senza invii di prova.
 - [x] Ignorati 9 avvisi warn/info con le motivazioni di Andrea; risultati riletti: 15 attivi (11 critical + 4 warn corretti, non ignorati).

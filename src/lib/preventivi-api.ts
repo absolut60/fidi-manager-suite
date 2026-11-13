@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { campiPrezzoDaMotore, confrontoAggiornamento, costoRiga, importoRiga, marginePercRiga, segnoRiga, type PrezzoClienteGamma } from "./riga-preventivo";
+import { campiPrezzoDaMotore, confrontoAggiornamento, costoRiga, importoRiga, isIntestazioneKit, isRigaValorizzata, marginePercRiga, pesoRigaGamma, segnoRiga, type PrezzoClienteGamma } from "./riga-preventivo";
 import type { Database } from "@/integrations/supabase/types";
 import { round2 } from "./pricing";
 import {
@@ -28,6 +28,17 @@ export type BloccoUpdate = Database["public"]["Tables"]["blocchi_preventivo"]["U
 export type Riga = Database["public"]["Tables"]["righe_preventivo"]["Row"];
 export type RigaInsert = Database["public"]["Tables"]["righe_preventivo"]["Insert"];
 export type RigaUpdate = Database["public"]["Tables"]["righe_preventivo"]["Update"];
+/** Una sola lettura batch, RLS utente: mai una richiesta per riga. */
+async function fetchPesiGamma(codici: string[]): Promise<Map<string, number | null>> {
+  const unici = [...new Set(codici.filter(Boolean))];
+  const pesi = new Map<string, number | null>();
+  for (let i = 0; i < unici.length; i += 500) {
+    const { data, error } = await supabase.from("articoli_gamma").select("codice,peso_netto").in("codice", unici.slice(i, i + 500));
+    if (error) throw error;
+    for (const r of data ?? []) pesi.set(r.codice, r.peso_netto);
+  }
+  return pesi;
+}
 export type TipoDoc = Database["public"]["Enums"]["tipo_doc_preventivo"];
 export type StatoPreventivo = Database["public"]["Enums"]["stato_preventivo"];
 export type TipoRiga = Database["public"]["Enums"]["tipo_riga_preventivo"];
@@ -287,6 +298,7 @@ export interface PreventivoConDettagli extends Preventivo {
 
 export interface BloccoConRighe extends Blocco {
   righe: (Riga & {
+    peso_gamma_unit?: number | null;
     articolo: {
       id: string;
       cod_gamma: string | null;
@@ -323,8 +335,12 @@ export async function fetchPreventivo(id: string): Promise<PreventivoConDettagli
     .single();
   if (error) throw error;
   const p = data as unknown as PreventivoConDettagli;
+  const pesi = await fetchPesiGamma(p.blocchi.flatMap((b) => b.righe.map((r) => r.articolo_codice ?? "")));
   p.blocchi.sort((a, b) => Number(a.ordine ?? 0) - Number(b.ordine ?? 0));
   for (const b of p.blocchi) {
+    for (const r of b.righe) {
+      if (r.articolo_codice) r.peso_gamma_unit = pesi.get(r.articolo_codice) ?? null;
+    }
     b.righe.sort((a, b2) => Number(a.ordine ?? 0) - Number(b2.ordine ?? 0));
   }
   p.cliente = p.cliente_id ? await fetchClienteLite(p.cliente_id) : null;
@@ -566,7 +582,7 @@ export async function applicaScontoPiedeARighe(
   const importiPiede = new Map<string, number>();
   for (const b of (blocchi ?? []) as unknown as { id: string; righe: Riga[] }[]) {
     for (const r of b.righe ?? []) {
-      if (r.tipo_riga !== "articolo_singolo" && r.tipo_riga !== "da_kit" && r.tipo_riga !== "manuale") continue;
+      if (!isRigaValorizzata(r)) continue;
       const importo = importoRiga({ ...r, sconto_perc: sc });
       importiPiede.set(r.id, importo);
       updates.push(
@@ -580,7 +596,7 @@ export async function applicaScontoPiedeARighe(
     ((blocchi ?? []) as unknown as { id: string; righe: Riga[] }[]).map((b) => {
       let totale = 0;
       for (const r of b.righe ?? []) {
-        if (r.tipo_riga === "nota" || r.tipo_riga === "separatore" || r.tipo_riga === "sotto_totale") continue;
+        if (!isRigaValorizzata(r)) continue;
         if (r.tipo_riga === "articolo_singolo" || r.tipo_riga === "da_kit" || r.tipo_riga === "manuale") {
           totale += importiPiede.get(r.id) ?? 0;
         } else {
@@ -620,7 +636,7 @@ export async function analizzaAggiornaListini(preventivo_id: string): Promise<An
   let non_articolo = 0;
   for (const b of prev.blocchi) {
     for (const r of b.righe) {
-      if (r.tipo_riga !== "articolo_singolo" && r.tipo_riga !== "da_kit") { non_articolo++; continue; }
+      if (isIntestazioneKit(r) || (r.tipo_riga !== "articolo_singolo" && r.tipo_riga !== "da_kit")) { non_articolo++; continue; }
       const codice = r.articolo_codice ?? r.articolo?.cod_gamma ?? null;
       if (!codice) { senza_codice++; continue; }
       candidate.push({ r, codice, blocco_id: b.id });
@@ -682,7 +698,7 @@ async function ricalcolaTotaliPreventivo(preventivo_id: string, iva: number): Pr
   for (const bl of ((blocchi ?? []) as unknown as { id: string; righe: Riga[] }[])) {
     let totale = 0;
     for (const r of bl.righe ?? []) {
-      if (r.tipo_riga === "nota" || r.tipo_riga === "separatore" || r.tipo_riga === "sotto_totale") continue;
+      if (!isRigaValorizzata(r)) continue;
       totale += n(r.importo);
     }
     tot += round2(totale);
@@ -709,7 +725,7 @@ export async function riapplicaPrezziSpecialiCantiere(preventivo_id: string): Pr
 
   for (const b of prev.blocchi) {
     for (const r of b.righe) {
-      if (r.tipo_riga !== "articolo_singolo" && r.tipo_riga !== "da_kit") continue;
+      if (isIntestazioneKit(r) || (r.tipo_riga !== "articolo_singolo" && r.tipo_riga !== "da_kit")) continue;
       const cod = r.articolo?.cod_gamma;
       if (!cod) continue;
       const sp = map.get(cod);
@@ -746,7 +762,7 @@ export async function riapplicaPrezziSpecialiCantiere(preventivo_id: string): Pr
     if (!bloccoIdsDirty.has(bl.id)) continue;
     let totale = 0;
     for (const r of bl.righe ?? []) {
-      if (r.tipo_riga === "nota" || r.tipo_riga === "separatore" || r.tipo_riga === "sotto_totale") continue;
+      if (!isRigaValorizzata(r)) continue;
       totale += n(r.importo);
     }
     await supabase.from("blocchi_preventivo").update({ importo: round2(totale) }).eq("id", bl.id);
@@ -784,6 +800,7 @@ export async function addBloccoDaKit(args: {
   const kit = await fetchKit(args.kit_id);
   const codici = kit.componenti.map((c) => c.articolo?.cod_gamma).filter((c): c is string => !!c);
   const prezzi = await fetchPrezziClienteArticoli(args.cliente_id, codici);
+  const pesi = await fetchPesiGamma(codici);
 
   const qBaseEff = args.quantita_base > 0 ? args.quantita_base : 1;
   const righe = kit.componenti.map((c, idx) => {
@@ -793,7 +810,7 @@ export async function addBloccoDaKit(args: {
     const codice = c.articolo?.cod_gamma ?? null;
     const campi = campiPrezzoDaMotore(codice ? prezzi.get(codice) : null, quantita, args.sconto_piede);
     return {
-      tipo_riga: "da_kit" as const,
+      tipo_riga: c.articolo_id == null ? "nota" as const : "da_kit" as const,
       articolo_id: c.articolo_id,
       articolo_codice: codice,
       descrizione: c.articolo?.descrizione ?? c.ruolo ?? null,
@@ -802,7 +819,7 @@ export async function addBloccoDaKit(args: {
       quantita,
       segno: 1,
       vendita: null,
-      peso: round2((c.articolo?.peso_unit ?? 0) * quantita),
+      peso: codice ? pesoRigaGamma(pesi.get(codice), quantita) : c.articolo_id ? round2((c.articolo?.peso_unit ?? 0) * quantita) : null,
       ordine: idx + 1,
       ...campi,
     };
@@ -863,7 +880,7 @@ export async function ricalcolaBloccoSuNuovaQuantita(
 
   await Promise.all(
     righe.map(async (r) => {
-      if (r.tipo_riga !== "da_kit" && r.tipo_riga !== "articolo_singolo") return;
+      if (isIntestazioneKit(r) || (r.tipo_riga !== "da_kit" && r.tipo_riga !== "articolo_singolo")) return;
       const inc = r.incidenza == null ? null : n(r.incidenza);
       if (inc == null) return;
       const oldQta = n(r.quantita) || 1;
@@ -889,7 +906,7 @@ export async function ricalcolaBloccoSuNuovaQuantita(
 
   let totale = 0;
   for (const r of righe) {
-    if (r.tipo_riga === "nota" || r.tipo_riga === "separatore" || r.tipo_riga === "sotto_totale") continue;
+    if (!isRigaValorizzata(r)) continue;
     if (r.tipo_riga === "da_kit" || r.tipo_riga === "articolo_singolo") {
       const inc = r.incidenza == null ? null : n(r.incidenza);
       if (inc != null) {
@@ -935,9 +952,9 @@ export interface RigaCalc {
   peso: number;
 }
 
-export function calcolaRiga(r: Partial<Riga>): RigaCalc {
+export function calcolaRiga(r: Partial<Riga> & { peso_gamma_unit?: number | null }): RigaCalc {
   const tipo = r.tipo_riga ?? "manuale";
-  if (tipo === "nota" || tipo === "separatore") {
+  if (tipo !== "sotto_totale" && !isRigaValorizzata(r)) {
     return { importo: 0, costo: 0, vendita: 0, margine_perc: 0, peso: 0 };
   }
   const segno = segnoRiga(r.segno);
@@ -953,7 +970,7 @@ export function calcolaRiga(r: Partial<Riga>): RigaCalc {
     costo,
     vendita: venditaSnapshot,
     margine_perc: round2(margine),
-    peso: round2(n(r.peso) || 0),
+    peso: r.articolo_codice ? n(pesoRigaGamma(r.peso_gamma_unit, q)) : round2(n(r.peso) || 0),
   };
 }
 
@@ -983,7 +1000,7 @@ export function calcolaBlocco(righe: Riga[]): {
       runningSegment = 0;
       continue;
     }
-    if (r.tipo_riga === "nota" || r.tipo_riga === "separatore") {
+    if (!isRigaValorizzata(r)) {
       out.push({ id: r.id, calc: { ...c, importoEffettivo: 0 } });
       continue;
     }
