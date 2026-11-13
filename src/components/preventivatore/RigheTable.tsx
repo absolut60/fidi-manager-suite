@@ -474,7 +474,7 @@ function ScontiCell({ value, onCommit }: { value: number[] | null | undefined; o
 }
 
 /** Cella U.M. compatta (UM1 blu, UM2 arancio); i valori restano salvati in UM1. */
-export function CellaUm({ idx, um1, um2, fattore, secondaria, disabled, onChange }: {
+function CellaUm({ idx, um1, um2, fattore, secondaria, disabled, onChange }: {
   idx: number; um1: string; um2: string | null; fattore: number | null; secondaria: boolean; disabled: boolean; onChange: (v: "um1" | "um2") => void;
 }) {
   const inUm2 = secondaria && !!um2;
