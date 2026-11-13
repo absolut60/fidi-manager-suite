@@ -565,7 +565,7 @@ function useCelleRiga(p: RigaProps) {
         decimali={4}
         onCommit={(v) => onPatch({ costo: v == null ? null : costoRiga(v, q > 0 ? q : 1) })} />
     ),
-    margine: `${calc.margine_perc.toFixed(1)}%`,
+    margine: `${calc.margine_perc.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`,
     peso: row.articolo_codice && row.peso_gamma_unit == null ? "—" : fmt2(calc.peso),
     onRowClick: readOnly && vecchioCatalogo ? () => onOpenArticolo(row.articolo_id!) : undefined,
   };
