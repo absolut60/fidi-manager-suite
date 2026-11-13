@@ -56,7 +56,6 @@ import { Route as AppTaskRouteImport } from './routes/_app/task'
 import { Route as AppTemplateEmailRouteImport } from './routes/_app/template-email'
 import { Route as AppTemplateLetteraRouteImport } from './routes/_app/template-lettera'
 import { Route as AppUtentiRouteImport } from './routes/_app/utenti'
-import { Route as AppVerificaIncorporataRouteImport } from './routes/_app/verifica-incorporata'
 import { Route as AppWhatsappRouteImport } from './routes/_app/whatsapp'
 import { Route as ConsensiTokenRouteImport } from './routes/consensi.$token'
 import { Route as FirmaPrivacyTokenRouteImport } from './routes/firma-privacy.$token'
@@ -343,11 +342,6 @@ const AppTemplateLetteraRoute = AppTemplateLetteraRouteImport.update({
 const AppUtentiRoute = AppUtentiRouteImport.update({
   id: '/utenti',
   path: '/utenti',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppVerificaIncorporataRoute = AppVerificaIncorporataRouteImport.update({
-  id: '/verifica-incorporata',
-  path: '/verifica-incorporata',
   getParentRoute: () => AppRoute,
 } as any)
 const AppWhatsappRoute = AppWhatsappRouteImport.update({
@@ -640,7 +634,6 @@ export interface FileRoutesByFullPath {
   '/template-email': typeof AppTemplateEmailRoute
   '/template-lettera': typeof AppTemplateLetteraRoute
   '/utenti': typeof AppUtentiRoute
-  '/verifica-incorporata': typeof AppVerificaIncorporataRoute
   '/whatsapp': typeof AppWhatsappRoute
   '/consensi/$token': typeof ConsensiTokenRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
@@ -732,7 +725,6 @@ export interface FileRoutesByTo {
   '/template-email': typeof AppTemplateEmailRoute
   '/template-lettera': typeof AppTemplateLetteraRoute
   '/utenti': typeof AppUtentiRoute
-  '/verifica-incorporata': typeof AppVerificaIncorporataRoute
   '/whatsapp': typeof AppWhatsappRoute
   '/consensi/$token': typeof ConsensiTokenRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
@@ -829,7 +821,6 @@ export interface FileRoutesById {
   '/_app/template-email': typeof AppTemplateEmailRoute
   '/_app/template-lettera': typeof AppTemplateLetteraRoute
   '/_app/utenti': typeof AppUtentiRoute
-  '/_app/verifica-incorporata': typeof AppVerificaIncorporataRoute
   '/_app/whatsapp': typeof AppWhatsappRoute
   '/consensi/$token': typeof ConsensiTokenRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
@@ -926,7 +917,6 @@ export interface FileRouteTypes {
     | '/template-email'
     | '/template-lettera'
     | '/utenti'
-    | '/verifica-incorporata'
     | '/whatsapp'
     | '/consensi/$token'
     | '/firma-privacy/$token'
@@ -1018,7 +1008,6 @@ export interface FileRouteTypes {
     | '/template-email'
     | '/template-lettera'
     | '/utenti'
-    | '/verifica-incorporata'
     | '/whatsapp'
     | '/consensi/$token'
     | '/firma-privacy/$token'
@@ -1114,7 +1103,6 @@ export interface FileRouteTypes {
     | '/_app/template-email'
     | '/_app/template-lettera'
     | '/_app/utenti'
-    | '/_app/verifica-incorporata'
     | '/_app/whatsapp'
     | '/consensi/$token'
     | '/firma-privacy/$token'
@@ -1511,13 +1499,6 @@ declare module '@tanstack/react-router' {
       path: '/utenti'
       fullPath: '/utenti'
       preLoaderRoute: typeof AppUtentiRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/verifica-incorporata': {
-      id: '/_app/verifica-incorporata'
-      path: '/verifica-incorporata'
-      fullPath: '/verifica-incorporata'
-      preLoaderRoute: typeof AppVerificaIncorporataRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/whatsapp': {
@@ -1952,7 +1933,6 @@ interface AppRouteChildren {
   AppTemplateEmailRoute: typeof AppTemplateEmailRoute
   AppTemplateLetteraRoute: typeof AppTemplateLetteraRoute
   AppUtentiRoute: typeof AppUtentiRoute
-  AppVerificaIncorporataRoute: typeof AppVerificaIncorporataRoute
   AppWhatsappRoute: typeof AppWhatsappRoute
   AppArticoliIdRoute: typeof AppArticoliIdRoute
   AppEventiEventoIdRoute: typeof AppEventiEventoIdRoute
@@ -2025,7 +2005,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppTemplateEmailRoute: AppTemplateEmailRoute,
   AppTemplateLetteraRoute: AppTemplateLetteraRoute,
   AppUtentiRoute: AppUtentiRoute,
-  AppVerificaIncorporataRoute: AppVerificaIncorporataRoute,
   AppWhatsappRoute: AppWhatsappRoute,
   AppArticoliIdRoute: AppArticoliIdRoute,
   AppEventiEventoIdRoute: AppEventiEventoIdRoute,
