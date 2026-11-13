@@ -623,7 +623,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <main className="flex-1 min-w-0 lg:ml-64 pt-14 lg:pt-0">
         <BannerAttivaNotifiche />
-        <div className="p-4 sm:p-6 lg:p-8">{children}</div>
+        <div className="p-4 sm:p-6 lg:p-8 pv-orizzontale:px-1 pv-orizzontale:py-2">{children}</div>
       </main>
 
     </div>
