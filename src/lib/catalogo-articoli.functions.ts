@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { parametriArticoli, type FiltriArticoli } from "./catalogo-articoli";
 import { z } from "zod";
+import { compattaTerne } from "./filtri-catalogo-articoli";
 import { contaPreventiviArticolo, ordinaFornitoriArticolo } from "./scheda-articolo";
 
 export const elencoArticoliGamma = createServerFn({ method: "POST" })
@@ -98,10 +99,11 @@ export const disponibilitaSchedaArticolo = createServerFn({ method: "POST" }).mi
 /** FM65 F1: terne famiglia/sottofamiglia/marca degli articoli attivi in uso o in esaurimento, per i filtri a cascata calcolati in TS (F2). */
 const ternaSchema = z.object({ codice_famiglia: z.string().nullable(), famiglia: z.string().nullable(), codice_sottofamiglia: z.string().nullable(),
   sottofamiglia: z.string().nullable(), marca_codice: z.string().nullable(), marca: z.string().nullable(), conteggio: z.coerce.number() });
-export type TernaArticoliFiltri = z.infer<typeof ternaSchema>;
+export type { TernaArticoliFiltri } from "./filtri-catalogo-articoli";
 export const terneArticoliFiltri = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase.rpc("terne_articoli_filtri");
     if (error) throw new Error(error.message);
-    return z.array(ternaSchema).parse(data ?? []);
+    // FM65 F2: formato compatto (dizionari + indici), senza perdita; espanso da espandiTerne.
+    return compattaTerne(z.array(ternaSchema).parse(data ?? []));
   });
