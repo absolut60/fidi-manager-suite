@@ -134,10 +134,11 @@ function PreventivoEditorPage() {
       save.mutate({ cliente_id: null, cantiere_id: null });
       return;
     }
-    const c = await fetchCliente(nuovoId);
+    const c = await fetchDatiClientePreventivo(nuovoId);
     save.mutate({
       cliente_id: nuovoId,
       cantiere_id: null,
+      alternativa_di: null,
       agente_codice: c?.codice_agente ?? null,
     });
   }

@@ -1,6 +1,7 @@
 # FM65 — Ridisegno R1b
-- [ ] Componenti fascia/testata/piede, tab URL, cliente sovrapposto, Corpo invariato.
-- [ ] Verifica dati PRV-161, immagini 375/1024/1280/1920, test e rapporto.
+- [x] Componenti fascia/testata/piede, tab URL, cliente sovrapposto con RLS/fallback, Corpo invariato.
+- [x] Dati PRV-161 170,01 / 20,9% / 35,61 / 37,40 / 207,41; test 664 verdi, immagini 375/1024/1280/1920 e 360 senza overflow/errori, tab persistente e modifica simulata. Pagina prova rimossa.
+- [ ] Verifica autenticata scheda/cliente completa: sessione Andrea indisponibile; componenti provati con risposte simulate, DB solo letto. Scheda completa riusata tramite pagina esistente in iframe, percorso autenticato non verificato.
 
 # FM65 — Ridisegno R1a
 - [x] 0201 additiva, trigger alternative/autore, lettori cliente e lettera; impronte di 9 preventivi/13 blocchi/92 righe invariate, prove SQL annullate, anon 0.
