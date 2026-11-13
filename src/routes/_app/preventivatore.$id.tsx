@@ -176,10 +176,10 @@ function PreventivoEditorPage() {
   const [duplicaClienteId, setDuplicaClienteId] = useState<string | null>(null);
 
   const duplica = useMutation({
-    mutationFn: (args: { mode: "stesso_cliente" | "nuovo_cliente"; nuovoClienteId?: string | null }) =>
+    mutationFn: (args: { mode: "stesso_cliente" | "nuovo_cliente" | "alternativa"; nuovoClienteId?: string | null }) =>
       duplicaPreventivo(id, { mode: args.mode, nuovoClienteId: args.nuovoClienteId ?? null }),
-    onSuccess: (res) => {
-      toast.success(`Preventivo duplicato: ${res.numero}`);
+    onSuccess: (res, args) => {
+      toast.success(args.mode === "alternativa" ? `Alternativa creata: ${res.numero}` : `Preventivo duplicato: ${res.numero}`);
       if (res.allegatiFalliti.length > 0) {
         toast.warning(`Allegati non copiati: ${res.allegatiFalliti.join(", ")}`);
       }
@@ -441,20 +441,25 @@ function PreventivoEditorPage() {
                     </DialogTitle>
                     {duplicaStep === "scelta" && (
                       <DialogDescription>
-                        Scegli come duplicare. In entrambi i casi verrà creato un nuovo numero progressivo, con data di oggi e stato bozza.
+                        Scegli come duplicare. In tutti i casi verrà creato un nuovo numero progressivo, con data di oggi e stato bozza.
                         <br /><br />
-                        <strong>Stesso cliente</strong>: copia completa di testata, blocchi, righe e allegati.
+                        <strong>Stesso cliente</strong>: copia di testata, blocchi e righe (stesso cliente, cantiere e agente); gli allegati non vengono copiati.
                         <br />
                         <strong>Nuovo cliente</strong>: copia blocchi e righe (prezzi inclusi), scegli il cliente di destinazione; agente e filiale vengono dal nuovo cliente, cantiere e allegati non vengono copiati.
+                        <br />
+                        <strong>Come alternativa</strong>: stessa copia, collegata come alternativa al preventivo principale (lettera B, C…).
                       </DialogDescription>
                     )}
                   </DialogHeader>
 
                   {duplicaStep === "scelta" ? (
-                    <DialogFooter className="gap-2 sm:gap-2">
+                    <DialogFooter className="flex-col gap-2 sm:flex-row sm:gap-2 [&>button]:w-full sm:[&>button]:w-auto">
                       <Button variant="outline" onClick={() => setDuplicaOpen(false)}>Annulla</Button>
                       <Button variant="outline" onClick={() => setDuplicaStep("seleziona-cliente")}>
                         Nuovo cliente
+                      </Button>
+                      <Button variant="outline" disabled={duplica.isPending} onClick={() => duplica.mutate({ mode: "alternativa" })}>
+                        Come alternativa
                       </Button>
                       <Button onClick={() => duplica.mutate({ mode: "stesso_cliente" })}>
                         Stesso cliente

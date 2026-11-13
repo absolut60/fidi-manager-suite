@@ -563,6 +563,14 @@ export async function deletePreventivo(id: string) {
 }
 
 /**
+ * Principale a cui collegare una nuova alternativa: da un principale il suo id,
+ * da un'alternativa il suo principale (mai alternativa di alternativa).
+ */
+export function principaleDiAlternativa(src: { id: string; alternativa_di?: string | null }): string {
+  return src.alternativa_di ?? src.id;
+}
+
+/**
  * Duplica un preventivo: testata + blocchi + righe.
  * NB: la copia degli ALLEGATI è rimandata allo strato di integrazione allegati
  * (si userà il sistema allegati polimorfico di FidiManager). Per ora il duplicato
@@ -570,7 +578,7 @@ export async function deletePreventivo(id: string) {
  */
 export async function duplicaPreventivo(
   sourceId: string,
-  options: { mode?: "stesso_cliente" | "nuovo_cliente"; nuovoClienteId?: string | null } = {},
+  options: { mode?: "stesso_cliente" | "nuovo_cliente" | "alternativa"; nuovoClienteId?: string | null } = {},
 ): Promise<{ id: string; numero: string; allegatiFalliti: string[] }> {
   const mode = options.mode ?? "stesso_cliente";
   const nuovoCliente = mode === "nuovo_cliente";
@@ -611,7 +619,7 @@ export async function duplicaPreventivo(
     note: src.note,
     titolo: src.titolo,
     condizione_pagamento_cod: src.condizione_pagamento_cod,
-    alternativa_di: null,
+    alternativa_di: mode === "alternativa" ? principaleDiAlternativa(src) : null,
     tipo: "preventivo",
     preventivo_origine_id: null,
     totale_imponibile: src.totale_imponibile,
