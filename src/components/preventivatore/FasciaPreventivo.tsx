@@ -14,7 +14,7 @@ export function FasciaPreventivo({ dati, titolo, onCliente }: { dati: RiepilogoP
       <span className="block break-words text-sm font-medium">{value}</span>
     </div>
   );
-  return <section aria-label="Riepilogo preventivo" className="flex flex-col gap-3 rounded-[12px] border border-pv-azzurro-bordo bg-pv-azzurro p-3 text-foreground lg:flex-row lg:items-center lg:gap-6 lg:p-4">
+  return <section aria-label="Riepilogo preventivo" className="flex flex-col gap-3 rounded-[12px] border border-pv-azzurro-medio-bordo bg-pv-azzurro-medio p-3 text-foreground lg:flex-row lg:items-center lg:gap-6 lg:p-4">
     <div className="min-w-0 flex-1 space-y-2">
       <h2 className="break-words text-[18px] font-bold leading-tight">{titolo || "Senza titolo"}</h2>
       <div className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_auto]">
