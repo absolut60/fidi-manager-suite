@@ -23,3 +23,6 @@ Solo se UM2 non vuota, UM2 ≠ UM1, fattore > 0 e fattore ≠ 1. Con UM2 diversa
 
 ## Fonte unica
 `unitaArticolo()` e `inUnita()` in `src/lib/scheda-articolo.ts`: nessun altro punto del codice converte. Quantità convertite al massimo 3 decimali, prezzi sempre 4 decimali. Ogni quantità mostra l'unità, ogni prezzo "€/UM".
+
+## Preventivi e ordini (FM65 R1a, decisione Andrea valida anche per R2)
+Quantità e prezzi di riga sono SEMPRE salvati in UM1. `um_scelta` (`um1`/`um2`, default `um1`) è soltanto la scelta di visualizzazione, inserimento e stampa. In UM2: quantità mostrata = UM1 ÷ fattore, prezzo mostrato = UM1 × fattore; importo invariato. La trasformazione in ordine e la duplicazione copiano quantità/prezzi UM1 e `um_scelta`, senza conversione. R1a prepara e copia il campo; editor e PDF UM2 arrivano in R2.

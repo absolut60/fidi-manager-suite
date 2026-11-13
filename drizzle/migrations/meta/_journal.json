@@ -1408,6 +1408,13 @@
       "when": 1794562665074,
       "tag": "0200_fm65_condizioni_preventivo_cliente",
       "breakpoints": true
+    },
+    {
+      "idx": 201,
+      "version": "7",
+      "when": 1794570946004,
+      "tag": "0201_fm65_r1a_creazione_preventivo",
+      "breakpoints": true
     }
   ]
 }
