@@ -42,7 +42,7 @@ export function costoRiga(costoUnit: number | string | null | undefined, quantit
   return (Math.sign(x) * Math.round(c)) / 10000 || 0;
 }
 
-/** Quantité de ligne en UM1, arrondie à deux décimales. */
+/** Quantità di riga in UM1, arrotondata a due decimali. */
 export function quantitaDaIncidenza(incidenza: number | null | undefined, Qb: number | null | undefined): number | null {
   return incidenza == null || num(Qb) <= 0 ? null : round2Importo(num(incidenza) * num(Qb));
 }

@@ -889,13 +889,15 @@ export async function ricalcolaBloccoSuNuovaQuantita(
 ): Promise<void> {
   const qBase = n(nuovaQuantitaBase);
   const aggiornate: { id: string; importo: number }[] = [];
+  const pesi = qBase > 0 ? await fetchPesiGamma(righe.filter((r) => isRigaValorizzata(r) && r.incidenza != null).map((r) => r.articolo_codice ?? "")) : new Map<string, number | null>();
 
   await Promise.all(
     righe.map(async (r) => {
       if (!isRigaValorizzata(r)) return;
       const nuovaQta = quantitaDaIncidenza(r.incidenza, qBase);
       if (nuovaQta == null) return;
-      const patch = patchConImporto(r, { incidenza: r.incidenza }, qBase);
+      const corrente = r.articolo_codice ? { ...r, peso_gamma_unit: pesi.get(r.articolo_codice) ?? null } : r;
+      const patch = patchConImporto(corrente, { incidenza: r.incidenza }, qBase);
       const { error } = await supabase.from("righe_preventivo").update(patch).eq("id", r.id);
       if (error) throw error;
       const nuovoImporto = patch.importo ?? n(r.importo);
