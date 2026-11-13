@@ -564,7 +564,7 @@ function useCelleRiga(p: RigaProps) {
     costo: (
       <EditableNumberCell value={row.costo == null ? null : q > 0 ? Number(row.costo) / q : Number(row.costo)}
         decimali={4}
-        onCommit={(v) => onPatch({ costo: v == null ? null : Math.round(v * (q > 0 ? q : 1) * 100) / 100 })} />
+        onCommit={(v) => onPatch({ costo: v == null ? null : costoRiga(v, q > 0 ? q : 1) })} />
     ),
     margine: `${calc.margine_perc.toFixed(1)}%`,
     peso: calc.peso.toFixed(2),
