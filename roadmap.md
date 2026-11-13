@@ -1,3 +1,7 @@
+# FM68 — Barra blu a scomparsa (telefono orizzontale)
+- [x] Hook use-barra-a-scomparsa (scroll passive + rAF, soglie 56px / 8px, `disattiva` col menu aperto); header mobile con `data-nascosta` e classe `pv-orizzontale:data-[nascosta=true]:-translate-y-full`. Nessuna modifica a menu, voci, permessi, badge, notifiche, DB.
+- [x] 732 test verdi; comportamento verificato con sessione reale a 740×360 (giù → barra fuori, su ≥8px → ritorna, su 5px → resta nascosta, cima → visibile), 375×812 (barra sempre visibile), 1280×800 (header `display:none`, `main` invariato); menu aperto + scroll → barra visibile.
+
 # FM67 — Testata Cliente sotto Documento
 - [x] Due colonne indipendenti 62/38; Cliente etichettato e Condizioni su due colonne, sola grafica.
 - [x] 732 test; save e 10 gestori identici byte per byte; schermate 375/1280/1600 modifica/lettura con dati simulati, controlli 320/768/1024/1920 senza overflow/errori; blur Titolo/Note verificati senza scritture DB.
