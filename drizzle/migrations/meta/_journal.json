@@ -1429,6 +1429,13 @@
       "when": 1794581039995,
       "tag": "0203_fm65_cantiere_provvisorio",
       "breakpoints": true
+    },
+    {
+      "idx": 204,
+      "version": "7",
+      "when": 1794586515185,
+      "tag": "0204_fm65_riepilogo_articolo_preventivo",
+      "breakpoints": true
     }
   ]
 }
