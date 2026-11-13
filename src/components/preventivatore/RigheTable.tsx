@@ -39,12 +39,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { EditableNumberCell } from "@/components/preventivatore/EditableNumberCell";
 import { ArticoloPicker } from "@/components/preventivatore/ArticoloPicker";
 import { ArticoloGammaPicker, type ArticoloGammaScelto } from "@/components/preventivatore/ArticoloGammaPicker";
-import { campiPrezzoDaMotore, costoRiga, formatScontiGamma, isIntestazioneKit, margineTotaliRighe, parseScontiGamma, prezzoNettoRiga, rigaInUnita } from "@/lib/riga-preventivo";
+import { campiPrezzoDaMotore, costoRiga, formatScontiGamma, isIntestazioneKit, margineTotaliRighe, patchConImporto, parseScontiGamma, prezzoNettoRiga, rigaInUnita } from "@/lib/riga-preventivo";
 import {
-  calcolaBlocco, deleteRiga, fetchPrezzoClienteArticolo, fractionalOrder, insertRiga, reorderRighe,
+  calcolaBlocco, deleteRiga, salvaPatchRigaCalcolata, fetchPrezzoClienteArticolo, fractionalOrder, insertRiga, reorderRighe,
   statoPrezzoSpecialeRiga,
   TIPI_RIGA, TIPI_RIGA_LABEL, updateRiga,
-  type BloccoConRighe, type PrezziSpecialiMap, type Riga, type TipoRiga,
+  type BloccoConRighe, type PreventivoConDettagli, type PrezziSpecialiMap, type Riga, type RigaUpdate, type TipoRiga,
 } from "@/lib/preventivi-api";
 import type { FasciaListino } from "@/lib/articoli-api";
 import { formatNumeroIt } from "@/lib/numero-it";
@@ -87,11 +87,44 @@ export function RigheTable({
   const calcs = useMemo(() => calcolaBlocco(blocco.righe), [blocco.righe]);
   const calcMap = useMemo(() => new Map(calcs.righe.map((r) => [r.id, r.calc])), [calcs]);
 
+  // FM65 R2b: le modifiche di cella aggiornano subito la sola riga in cache (stesso calcolo
+  // patchConImporto) e salvano in background, senza ricaricare preventivo e dati Gamma.
+  // Cambio articolo o tipo riga restano sul percorso completo (cambiano i dati Gamma).
+  const chiave = ["preventivo", preventivoId];
   const upd = useMutation({
-    mutationFn: ({ id, patch }: { id: string; patch: Parameters<typeof updateRiga>[1] }) =>
-      updateRiga(id, patch),
-    onSuccess: invalidate,
-    onError: (e: unknown) => toast.error((e as Error).message),
+    mutationFn: async ({ id, patch }: { id: string; patch: RigaUpdate }) => {
+      const t0 = performance.now();
+      if ("articolo_codice" in patch || "tipo_riga" in patch) {
+        await updateRiga(id, patch);
+        await invalidate();
+      } else {
+        const prev = qc.getQueryData<PreventivoConDettagli>(chiave);
+        const riga = blocco.righe.find((r) => r.id === id);
+        if (!prev || !riga) { await updateRiga(id, patch); await invalidate(); return; }
+        const calcolata = patchConImporto(riga, patch, blocco.quantita_base);
+        await salvaPatchRigaCalcolata(id, calcolata, preventivoId, Number(prev.iva_perc ?? 22));
+      }
+      if (import.meta.env.DEV) console.debug(`[preventivo] salvataggio riga ${Math.round(performance.now() - t0)} ms`);
+    },
+    onMutate: async ({ id, patch }) => {
+      if ("articolo_codice" in patch || "tipo_riga" in patch) return { prima: undefined };
+      await qc.cancelQueries({ queryKey: chiave });
+      const prima = qc.getQueryData<PreventivoConDettagli>(chiave);
+      if (prima) {
+        qc.setQueryData<PreventivoConDettagli>(chiave, {
+          ...prima,
+          blocchi: prima.blocchi.map((b) => b.id !== blocco.id ? b : {
+            ...b,
+            righe: b.righe.map((r) => r.id !== id ? r : { ...r, ...patchConImporto(r, patch, b.quantita_base) } as Riga),
+          }),
+        });
+      }
+      return { prima };
+    },
+    onError: (e: unknown, _v, ctx) => {
+      if (ctx?.prima) qc.setQueryData(chiave, ctx.prima);
+      toast.error(`Modifica non salvata: ${(e as Error).message}`);
+    },
   });
   const del = useMutation({
     mutationFn: (id: string) => deleteRiga(id),
