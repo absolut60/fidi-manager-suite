@@ -530,7 +530,7 @@ function useCelleRiga(p: RigaProps) {
   const codice = valorizzata && tipo !== "manuale" ? (
     <div className="flex min-w-0 items-center gap-0.5">
       <div className="min-w-0 flex-1">
-        <ArticoloGammaPicker soloCodice autoOpen={autoOpenPicker}
+        <ArticoloGammaPicker soloCodice autoOpen={autoOpenPicker} preventivoId={preventivoId}
           codice={row.articolo_codice ?? row.articolo?.cod_gamma ?? null}
           descrizione={row.descrizione} onChange={onSceltaGamma} disabled={readOnly} />
       </div>
