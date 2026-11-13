@@ -60,7 +60,7 @@ export function TestataPreventivo({prev,cliente,editMode,agenti,principali,haAlt
       <div className={due}>
         {field('Listino',listino,<div className="min-h-[34px] py-1.5 text-sm">{listino}</div>)}
         {field('Categoria',categoria,<div className="min-h-[34px] py-1.5 text-sm break-words">{categoria}</div>)}
-        {field('Condizione di pagamento',`${pagamento} – ${pagamentoDesc}`,<div>{select('Condizione di pagamento',pagamento,codici.map(c=>({value:c.cod,label:`${c.descrizione||''} (${c.cod})`})),v=>save({condizione_pagamento_cod:v==='__none__'?null:v}))}<p className="text-xs text-muted-foreground mt-1">Proposta dal cliente (Gamma) · modificabile</p></div>,true)}
+        {field('Condizione di pagamento',pagamento?`${pagamentoDesc||pagamento} (${pagamento})`:'—',<div>{select('Condizione di pagamento',pagamento,codici.map(c=>({value:c.cod,label:`${c.descrizione||''} (${c.cod})`})),v=>save({condizione_pagamento_cod:v==='__none__'?null:v}))}<p className="text-xs text-muted-foreground mt-1">Proposta dal cliente (Gamma) · modificabile</p></div>,true)}
         {field('IVA %',`${formatNumeroIt(prev.iva_perc||0)}%`,<Input aria-label="IVA %" className="h-[34px] bg-card" inputMode="decimal" defaultValue={formatNumeroIt(prev.iva_perc||0)} onBlur={e=>{const v=parseNumeroIt(e.target.value);if(v!==null&&v!==prev.iva_perc)save({iva_perc:v});}}/>)}
         {text('filiale','Filiale')}
       </div>
