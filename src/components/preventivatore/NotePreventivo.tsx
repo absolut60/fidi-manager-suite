@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -46,18 +46,20 @@ function EditorNota({ nota, occupato, onSalva, onAnnulla }: {
   nota: { id?: string; titolo: string; testo: string | null; ordine: number | null }; occupato: boolean;
   onSalva: (nota: { id?: string; titolo: string; testo: string; ordine: number | null }) => void; onAnnulla: () => void;
 }) {
-  const [titolo, setTitolo] = useState(nota.titolo);
-  const [testo, setTesto] = useState(nota.testo ?? "");
+  const titoloInput = useRef<HTMLInputElement>(null);
+  const testoInput = useRef<HTMLTextAreaElement>(null);
   const [errore, setErrore] = useState(false);
   // Il blur dell'intera riga salva entrambi i campi; spostarsi Titolo → Testo non crea scritture parziali.
   return <div className="space-y-1 border-t pt-2" onBlur={e => {
     if (e.currentTarget.contains(e.relatedTarget)) return;
     if (occupato) return;
+    const titolo = titoloInput.current?.value ?? "";
+    const testo = testoInput.current?.value ?? "";
     if (!titolo.trim()) { setErrore(true); return; }
     if (titolo.trim() !== nota.titolo || testo !== (nota.testo ?? "")) onSalva({ id: nota.id, titolo, testo, ordine: nota.ordine });
   }}>
-    <div className="flex min-w-0 items-center gap-1"><Input aria-label="Titolo nota" placeholder="Titolo" className="h-7 min-w-0 bg-card text-xs md:text-xs" value={titolo} onChange={e => { setTitolo(e.target.value); setErrore(false); }} disabled={occupato} /><Button variant="ghost" size="icon" className="size-10 shrink-0" aria-label="Chiudi modifica nota" title="Chiudi modifica nota" onClick={onAnnulla} disabled={occupato}><X className="size-3.5" /></Button></div>
-    <Textarea aria-label="Testo nota" placeholder="Testo" rows={3} className="min-h-0 bg-card text-xs md:text-xs" value={testo} onChange={e => setTesto(e.target.value)} disabled={occupato} />
+    <div className="flex min-w-0 items-center gap-1"><Input ref={titoloInput} aria-label="Titolo nota" placeholder="Titolo" className="h-7 min-w-0 bg-card text-xs md:text-xs" defaultValue={nota.titolo} onInput={() => setErrore(false)} disabled={occupato} /><Button variant="ghost" size="icon" className="size-10 shrink-0" aria-label="Chiudi modifica nota" title="Chiudi modifica nota" onClick={onAnnulla} disabled={occupato}><X className="size-3.5" /></Button></div>
+    <Textarea ref={testoInput} aria-label="Testo nota" placeholder="Testo" rows={3} className="min-h-0 bg-card text-xs md:text-xs" defaultValue={nota.testo ?? ""} disabled={occupato} />
     {errore && <p role="alert" className="text-xs text-destructive">Inserisci il titolo della nota.</p>}
   </div>;
 }
