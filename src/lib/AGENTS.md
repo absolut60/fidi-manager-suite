@@ -4,3 +4,4 @@
 - Quote-line net price and amount are computed only in src/lib/riga-preventivo.ts (Gamma cascade, amount rounded to 2 decimals half-up), so every save path, dialog and PDF agree.
 - Quote incidence and quantity share quantitaDaIncidenza/incidenzaDaQuantita/patchConImporto for row saves, block changes and kits, avoiding duplicated bidirectional formulas.
 - Block/document margins share margineTotaliRighe; kit headings have no article links; Gamma weights are read in batches with user RLS, never inferred from technical weights.
+- Quote creation uses dedicated client RPCs without changing shared lite readers; alternative letters use the read-only SQL function and its documented TS twin, while dates/defaults live in preventivo-creazione.ts to keep creation rules testable.

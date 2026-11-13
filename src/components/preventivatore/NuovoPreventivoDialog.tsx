@@ -1,4 +1,6 @@
 import { CondizioniClienteGamma } from "@/components/preventivatore/CondizioniClienteGamma";
+import { useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
+import { descrizioneCantiereProvvisorio, riallineaValidita, validitaProposta } from "@/lib/preventivo-creazione";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -17,12 +19,11 @@ import { useNavigate } from "@tanstack/react-router";
 import { ClientePicker } from "./ClientePicker";
 import { CantierePicker } from "./CantierePicker";
 import {
-  createPreventivo, fetchAgenti, fetchCliente, anteprimaProssimoNumero,
+  createPreventivo, fetchAgenti, fetchDatiClientePreventivo, anteprimaProssimoNumero,
   creaCantiereLite,
   TIPI_DOC, TIPI_DOC_LABEL,
   type TipoDoc, type TipoDocumento,
 } from "@/lib/preventivi-api";
-import { FASCE, type FasciaListino } from "@/lib/articoli-api";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -43,11 +44,14 @@ export function NuovoPreventivoDialog({
   const [nuovoCantProvincia, setNuovoCantProvincia] = useState("");
   const [agenteId, setAgenteId] = useState<string | null>(null);
   const [filiale, setFiliale] = useState("");
-  const [fascia, setFascia] = useState<FasciaListino>("A");
+  const [titolo, setTitolo] = useState("");
+  const [pagamento, setPagamento] = useState("");
+  const { data: codiciPagamento = [] } = useCodiciPagamento();
   const [tipoDoc, setTipoDoc] = useState<TipoDoc>("PREVENTIVO");
   const [numero, setNumero] = useState("");
   const [data, setData] = useState(today);
-  const [validita, setValidita] = useState("");
+  const [validita, setValidita] = useState(() => validitaProposta(today));
+  const validitaManuale = useRef(false);
 
   const { profilo, roles } = useAuth();
   const isWriteOnly = roles.includes("preventivi_write") && !roles.includes("amministratore") && !roles.includes("preventivi_manage");
@@ -86,17 +90,18 @@ export function NuovoPreventivoDialog({
     }
   }, [open, tipo, isWriteOnly, profiloCodiceAgente]);
 
-  // Quando cambia il cliente: precompila fascia e agente.
+  // Quando cambia il cliente: precompila pagamento e agente, senza risposte obsolete.
   // Il reset del cantiere riparte solo se cambia davvero il cliente (ref),
   // non al variare di isWriteOnly/profiloCodiceAgente.
   const ultimoClienteRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!clienteId) return;
+    let attivo = true;
+    if (!clienteId) { setPagamento(""); return; }
     const clienteCambiato = ultimoClienteRef.current !== clienteId;
     ultimoClienteRef.current = clienteId;
-    fetchCliente(clienteId).then((c) => {
-      if (!c) return;
-      if (c.fascia_listino_default) setFascia(c.fascia_listino_default);
+    fetchDatiClientePreventivo(clienteId).then((c) => {
+      if (!attivo || !c) return;
+      if (clienteCambiato) setPagamento(c.condizione_pagamento_cod ?? "");
       // Write-only: l'agente resta quello del profilo (policy INSERT), non quello del cliente.
       if (!isWriteOnly && c.codice_agente) setAgenteId(c.codice_agente);
       if (!clienteCambiato) return;
@@ -107,7 +112,8 @@ export function NuovoPreventivoDialog({
       setNuovoCantCitta("");
       setNuovoCantProvincia("");
       setModoCantiere("seleziona");
-    });
+    }).catch((e: unknown) => { if (attivo) toast.error((e as Error).message || "Errore lettura cliente"); });
+    return () => { attivo = false; };
   }, [clienteId, isWriteOnly, profiloCodiceAgente]);
 
   const creaCantiere = useMutation({
@@ -149,16 +155,16 @@ export function NuovoPreventivoDialog({
     mutationFn: async () => {
       const numeroFinal = numero.trim(); // se vuoto, createPreventivo assegnerà
       const dataFinal = data || today;
-      const fasciaFinal: FasciaListino = fascia || "A";
       const tipoDocFinal: TipoDoc = tipoDoc || "PREVENTIVO";
       return createPreventivo({
         cliente_id: clienteId,
         cantiere_id: modoCantiere === "provvisorio" ? null : cantiereId,
         cantiere_descrizione:
-          modoCantiere === "provvisorio" ? cantiereDescrizione.trim() || null : null,
+          modoCantiere === "provvisorio" ? descrizioneCantiereProvvisorio(cantiereDescrizione) : null,
         agente_codice: agenteId,
         filiale: filiale || null,
-        fascia_listino: fasciaFinal,
+        titolo: titolo.trim() || null,
+        condizione_pagamento_cod: pagamento || null,
         tipo_doc: tipoDocFinal,
         tipo,
         numero: numeroFinal,
@@ -184,9 +190,13 @@ export function NuovoPreventivoDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader><DialogTitle>Nuovo {labelDoc}</DialogTitle></DialogHeader>
         <div className="grid gap-3">
+          <div className="grid gap-1.5 min-w-0">
+            <Label htmlFor="nuovo-preventivo-titolo">Titolo <span className="text-muted-foreground font-normal">(facoltativo, consigliato)</span></Label>
+            <Input id="nuovo-preventivo-titolo" value={titolo} onChange={(e) => setTitolo(e.target.value)} placeholder="Titolo del preventivo" />
+          </div>
           <div className="grid gap-1.5">
             <Label>Cliente *</Label>
             <ClientePicker value={clienteId} onChange={setClienteId} />
@@ -227,7 +237,7 @@ export function NuovoPreventivoDialog({
               <Input
                 value={cantiereDescrizione}
                 onChange={(e) => setCantiereDescrizione(e.target.value)}
-                placeholder="Descrivi il cantiere (indirizzo da definire)…"
+                placeholder="Da definire"
               />
             ) : modoCantiere === "crea" ? (
               <div className="grid gap-2 rounded-md border p-3">
@@ -253,7 +263,7 @@ export function NuovoPreventivoDialog({
                         disabled={creaCantiere.isPending}
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div className="grid gap-1.5">
                         <Label className="text-xs">Città</Label>
                         <Input
@@ -297,7 +307,7 @@ export function NuovoPreventivoDialog({
               <CantierePicker cliente_id={clienteId} value={cantiereId} onChange={setCantiereId} />
             )}
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="grid gap-1.5">
               <Label>Agente</Label>
               <Select
@@ -335,6 +345,17 @@ export function NuovoPreventivoDialog({
             </div>
           </div>
           <CondizioniClienteGamma clienteId={clienteId} />
+          <div className="grid gap-1.5 min-w-0">
+            <Label>Condizione di pagamento</Label>
+            <Select value={pagamento || "__none__"} onValueChange={(v) => setPagamento(v === "__none__" ? "" : v)}>
+              <SelectTrigger aria-label="Condizione di pagamento" className="h-auto min-h-10 w-full min-w-0 [&>span]:whitespace-normal [&>span]:text-left [&>span]:break-words"><SelectValue placeholder="Seleziona condizione di pagamento" /></SelectTrigger>
+              <SelectContent className="max-w-[calc(100vw-2rem)]">
+                <SelectItem value="__none__">— Nessuna —</SelectItem>
+                {pagamento && !codiciPagamento.some((c) => c.cod === pagamento) && <SelectItem value={pagamento}>{pagamento}</SelectItem>}
+                {codiciPagamento.map((c) => <SelectItem key={c.cod} value={c.cod} className="whitespace-normal break-words">{c.cod} – {c.descrizione}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {!isOrdine && (
               <div className="grid gap-1.5">
@@ -350,18 +371,18 @@ export function NuovoPreventivoDialog({
               </div>
             )}
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="grid gap-1.5">
               <Label>Numero</Label>
               <Input value={numero} onChange={(e) => setNumero(e.target.value)} placeholder="es. 2026/0001" />
             </div>
             <div className="grid gap-1.5">
-              <Label>Data</Label>
-              <Input type="date" value={data} onChange={(e) => setData(e.target.value)} />
+              <Label htmlFor="nuovo-preventivo-data">Data</Label>
+              <Input id="nuovo-preventivo-data" type="date" value={data} onChange={(e) => { setData(e.target.value); setValidita((v) => riallineaValidita(e.target.value, v, validitaManuale.current)); }} />
             </div>
             <div className="grid gap-1.5">
-              <Label>Validità</Label>
-              <Input type="date" value={validita} onChange={(e) => setValidita(e.target.value)} />
+              <Label htmlFor="nuovo-preventivo-validita">Validità</Label>
+              <Input id="nuovo-preventivo-validita" type="date" value={validita} onChange={(e) => { validitaManuale.current = true; setValidita(e.target.value); }} />
             </div>
           </div>
         </div>
