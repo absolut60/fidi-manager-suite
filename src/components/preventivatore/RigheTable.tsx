@@ -364,7 +364,7 @@ function AddRowMenu({
 
 
 type RigaProps = {
-  row: Riga & { articolo: { id: string; cod_gamma: string | null; descrizione: string; um: string | null; peso_unit: number | null } | null };
+  row: BloccoConRighe["righe"][number];
   idx: number;
   calc: ReturnType<typeof calcolaBlocco>["righe"][number]["calc"];
   fascia: FasciaListino;

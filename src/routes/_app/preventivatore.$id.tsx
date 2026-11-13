@@ -62,7 +62,13 @@ import { CantierePicker } from "@/components/preventivatore/CantierePicker";
 import { TrasformaInOrdineDialog } from "@/components/preventivatore/TrasformaInOrdineDialog";
 
 export const Route = createFileRoute("/_app/preventivatore/$id")({
-  head: () => ({ meta: [{ title: "Editor Preventivo — Sistema MADE" }] }),
+  head: () => ({ meta: [
+    { title: "Editor Preventivo — Sistema MADE" },
+    { name: "description", content: "Articoli, kit e condizioni cliente nel preventivo MADE." },
+    { property: "og:title", content: "Editor Preventivo — Sistema MADE" },
+    { property: "og:description", content: "Articoli, kit e condizioni cliente nel preventivo MADE." },
+    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
+  ] }),
   component: PreventivoEditorPage,
 });
 

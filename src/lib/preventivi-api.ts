@@ -582,7 +582,7 @@ export async function applicaScontoPiedeARighe(
   const importiPiede = new Map<string, number>();
   for (const b of (blocchi ?? []) as unknown as { id: string; righe: Riga[] }[]) {
     for (const r of b.righe ?? []) {
-      if (r.tipo_riga !== "articolo_singolo" && r.tipo_riga !== "da_kit" && r.tipo_riga !== "manuale") continue;
+      if (!isRigaValorizzata(r)) continue;
       const importo = importoRiga({ ...r, sconto_perc: sc });
       importiPiede.set(r.id, importo);
       updates.push(
@@ -596,7 +596,7 @@ export async function applicaScontoPiedeARighe(
     ((blocchi ?? []) as unknown as { id: string; righe: Riga[] }[]).map((b) => {
       let totale = 0;
       for (const r of b.righe ?? []) {
-        if (r.tipo_riga === "nota" || r.tipo_riga === "separatore" || r.tipo_riga === "sotto_totale") continue;
+        if (!isRigaValorizzata(r)) continue;
         if (r.tipo_riga === "articolo_singolo" || r.tipo_riga === "da_kit" || r.tipo_riga === "manuale") {
           totale += importiPiede.get(r.id) ?? 0;
         } else {
@@ -636,7 +636,7 @@ export async function analizzaAggiornaListini(preventivo_id: string): Promise<An
   let non_articolo = 0;
   for (const b of prev.blocchi) {
     for (const r of b.righe) {
-      if (r.tipo_riga !== "articolo_singolo" && r.tipo_riga !== "da_kit") { non_articolo++; continue; }
+      if (isIntestazioneKit(r) || (r.tipo_riga !== "articolo_singolo" && r.tipo_riga !== "da_kit")) { non_articolo++; continue; }
       const codice = r.articolo_codice ?? r.articolo?.cod_gamma ?? null;
       if (!codice) { senza_codice++; continue; }
       candidate.push({ r, codice, blocco_id: b.id });
@@ -698,7 +698,7 @@ async function ricalcolaTotaliPreventivo(preventivo_id: string, iva: number): Pr
   for (const bl of ((blocchi ?? []) as unknown as { id: string; righe: Riga[] }[])) {
     let totale = 0;
     for (const r of bl.righe ?? []) {
-      if (r.tipo_riga === "nota" || r.tipo_riga === "separatore" || r.tipo_riga === "sotto_totale") continue;
+      if (!isRigaValorizzata(r)) continue;
       totale += n(r.importo);
     }
     tot += round2(totale);
@@ -725,7 +725,7 @@ export async function riapplicaPrezziSpecialiCantiere(preventivo_id: string): Pr
 
   for (const b of prev.blocchi) {
     for (const r of b.righe) {
-      if (r.tipo_riga !== "articolo_singolo" && r.tipo_riga !== "da_kit") continue;
+      if (isIntestazioneKit(r) || (r.tipo_riga !== "articolo_singolo" && r.tipo_riga !== "da_kit")) continue;
       const cod = r.articolo?.cod_gamma;
       if (!cod) continue;
       const sp = map.get(cod);
@@ -762,7 +762,7 @@ export async function riapplicaPrezziSpecialiCantiere(preventivo_id: string): Pr
     if (!bloccoIdsDirty.has(bl.id)) continue;
     let totale = 0;
     for (const r of bl.righe ?? []) {
-      if (r.tipo_riga === "nota" || r.tipo_riga === "separatore" || r.tipo_riga === "sotto_totale") continue;
+      if (!isRigaValorizzata(r)) continue;
       totale += n(r.importo);
     }
     await supabase.from("blocchi_preventivo").update({ importo: round2(totale) }).eq("id", bl.id);
@@ -906,7 +906,7 @@ export async function ricalcolaBloccoSuNuovaQuantita(
 
   let totale = 0;
   for (const r of righe) {
-    if (r.tipo_riga === "nota" || r.tipo_riga === "separatore" || r.tipo_riga === "sotto_totale") continue;
+    if (!isRigaValorizzata(r)) continue;
     if (r.tipo_riga === "da_kit" || r.tipo_riga === "articolo_singolo") {
       const inc = r.incidenza == null ? null : n(r.incidenza);
       if (inc != null) {

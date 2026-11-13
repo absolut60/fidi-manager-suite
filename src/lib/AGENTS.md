@@ -2,3 +2,4 @@
 - Sale price (list or own-site depot) comes only from public._prezzo_vendita_articoli, used by listini_articolo_visibili and cerca_articoli, so sheet and list cannot diverge; list sorting uses the shared lista-responsive/ordinamento-colonne component.
 - Article list stock per site/logistics reads only public.giacenze_articoli_sede, an aggregated copy of _giacenze_articoli_catalogo rebuilt only by ricalcola_giacenze_articoli_sede (Inngest step after the price-list import), because aggregating all stock on every search was slow; price stays in _prezzo_vendita_articoli (_codici filter).
 - Quote-line net price and amount are computed only in src/lib/riga-preventivo.ts (Gamma cascade, amount rounded to 2 decimals half-up), so every save path, dialog and PDF agree.
+- Block/document margins share margineTotaliRighe; kit headings have no article links; Gamma weights are read in batches with user RLS, never inferred from technical weights.
