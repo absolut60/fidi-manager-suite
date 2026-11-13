@@ -6,3 +6,4 @@
 - Quote incidence and quantity share quantitaDaIncidenza/incidenzaDaQuantita/patchConImporto for row saves, block changes and kits, avoiding duplicated bidirectional formulas.
 - Block/document margins share margineTotaliRighe; kit headings have no article links; Gamma weights are read in batches with user RLS, never inferred from technical weights.
 - Quote creation uses dedicated client RPCs without changing shared lite readers; alternative letters use the read-only SQL function and its documented TS twin, while dates/defaults live in preventivo-creazione.ts to keep creation rules testable.
+- Quote article summary (customer list purchase terms, two distinct costs, stock) is read only by public.riepilogo_articolo_preventivo, which reuses condizioni_preventivo_cliente for the list and _giacenze_articoli_catalogo for stock, so it cannot diverge from the price engine or the article sheet.
