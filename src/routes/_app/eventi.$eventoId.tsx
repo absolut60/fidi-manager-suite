@@ -619,7 +619,7 @@ function EventoDettaglioPage() {
         if (!p.contatto_id || !email) { saltate++; continue; }
         try {
           const res = await inviaFn({
-            data: { contattoId: p.contatto_id, origin: window.location.origin },
+            data: { contattoId: p.contatto_id },
           });
           if (res.emailInviata) inviate++;
           else soloLink++;

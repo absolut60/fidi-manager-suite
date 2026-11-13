@@ -106,7 +106,8 @@ export const inviaEmailComunicazioneRichiesta = createServerFn({ method: "POST" 
     const autoreEmail = autore?.email ?? null;
 
     // g) testo dal DB, appUrl server
-    const appUrl = process.env.VITE_APP_URL ?? "https://fidi-manager-suite.lovable.app";
+    const { urlAppUfficiale } = await import("@/lib/url-app.server");
+    const appUrl = urlAppUfficiale();
 
     // h) invio
     let inviate = 0;

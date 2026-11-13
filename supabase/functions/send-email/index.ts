@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import nodemailer from "npm:nodemailer@6.9.16";
-import { LOGO_MADE_BASE64 } from "./logo-made.ts";
+import { LOGO_MADE_BASE64, mascheraEmail, mascheraEmailNelLog } from "./logo-made.ts";
 
 // Content-ID fisso usato dal template (<img src="cid:logoMade">).
 // Senza trattini per evitare bug di parser legacy.
@@ -135,7 +135,7 @@ async function authorizeRequest(req: Request): Promise<{ ok: true } | { ok: fals
     .select("role")
     .eq("user_id", user.id);
   if (rolesErr) {
-    console.error("Errore lettura user_roles:", rolesErr);
+    console.error("Errore lettura user_roles:", mascheraEmailNelLog(rolesErr));
     return { ok: false, status: 500, error: "Role lookup failed" };
   }
   const abilitato = (roles ?? []).some((r: { role: string }) => RUOLI_AUTORIZZATI.has(r.role));
@@ -255,10 +255,10 @@ serve(async (req) => {
           ...(attachments.length ? { attachments } : {}),
         });
         results.push({ email: recipient, ok: true, messageId: info.messageId });
-        console.log(`Email inviata a ${recipient}: ${subject} (id=${info.messageId})`);
+        console.log(`Email inviata a ${mascheraEmail(recipient)}`);
       } catch (e) {
         results.push({ email: recipient, ok: false, err: String(e) });
-        console.error(`Errore invio a ${recipient}:`, e);
+        console.error(`Errore invio a ${mascheraEmail(recipient)}:`, mascheraEmailNelLog(e));
       }
     }
 
@@ -270,7 +270,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error("Errore Edge Function send-email:", err);
+    console.error("Errore Edge Function send-email:", mascheraEmailNelLog(err));
     return new Response(JSON.stringify({ error: String(err) }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

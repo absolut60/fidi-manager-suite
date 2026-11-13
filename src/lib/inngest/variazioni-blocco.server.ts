@@ -10,6 +10,8 @@ import { type AlertEmail } from "@/lib/alert-fidi-email";
 import { messaggioConteggi, raggruppaAvvisiPerNegozio } from "@/lib/avvisi-clienti";
 import { etichetteRigaProposta } from "@/lib/proposta-fido-riga";
 import { segnalazioniCorrenti } from "@/lib/fido-segnalazioni";
+import { urlAppUfficiale } from "@/lib/url-app.server";
+import { mascheraEmail, mascheraEmailNelLog } from "@/lib/email-log";
 
 function withTimeout<T>(p: PromiseLike<T>, ms: number, label: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -357,7 +359,7 @@ export const notificaVariazioniBlocco = inngest.createFunction(
       return righe.length;
     });
 
-    const appUrl = process.env.VITE_APP_URL ?? "https://fidi-manager-suite.lovable.app";
+    const appUrl = urlAppUfficiale();
     let negoziAvvisati = 0;
     let mailInviate = 0;
     let mailFallite = 0;
@@ -453,16 +455,16 @@ export const notificaVariazioniBlocco = inngest.createFunction(
             const r = await withTimeout(
               sendEmailViaEdge({ to, subject: oggetto, html, inlineLogo: true, fromName: "MADE Distribuzione" }),
               T_MS * 2,
-              `send ${to}`,
+              `send ${mascheraEmail(to)}`,
             );
             if (r.ok) inviate++;
             else {
               fallite++;
-              logger.error(`Mail a ${to} fallita: ${r.err ?? "errore"}`);
+              logger.error(`Mail a ${mascheraEmail(to)} fallita: ${mascheraEmailNelLog(r.err ?? "errore")}`);
             }
           } catch (e) {
             fallite++;
-            logger.error(`Mail a ${to} fallita: ${e instanceof Error ? e.message : String(e)}`);
+            logger.error(`Mail a ${mascheraEmail(to)} fallita: ${mascheraEmailNelLog(e)}`);
           }
         }
 

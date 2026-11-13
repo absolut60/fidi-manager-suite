@@ -187,7 +187,8 @@ export const inviaCredenziali = createServerFn({ method: "POST" })
       .maybeSingle();
 
     const nome = [profilo?.nome, profilo?.cognome].filter(Boolean).join(" ") || email;
-    const appUrl = process.env.VITE_APP_URL ?? "https://fidi-manager-suite.lovable.app";
+    const { urlAppUfficiale } = await import("@/lib/url-app.server");
+    const appUrl = urlAppUfficiale();
 
     const esc = (s: string) =>
       String(s ?? "")
@@ -280,7 +281,8 @@ export const inviaIstruzioniNotifiche = createServerFn({ method: "POST" })
       .maybeSingle();
 
     const nome = [profilo?.nome, profilo?.cognome].filter(Boolean).join(" ") || email;
-    const appUrl = process.env.VITE_APP_URL ?? "https://fidi-manager-suite.lovable.app";
+    const { urlAppUfficiale } = await import("@/lib/url-app.server");
+    const appUrl = urlAppUfficiale();
     const activationLink = `${appUrl}/attiva-notifiche`;
 
     const esc = (s: string) =>

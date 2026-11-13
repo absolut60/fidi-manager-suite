@@ -1,3 +1,8 @@
+# FM64 — Fetta 4
+- [x] URL email unico, log mascherati, controllo allegati e oggetti letterali; 542 test verdi e build automatica OK; send-email distribuita senza invii di prova.
+- [x] Ignorati 9 avvisi warn/info con le motivazioni di Andrea; risultati riletti: 15 attivi (11 critical + 4 warn corretti, non ignorati).
+- [ ] Ignorare gli 11 critical accettati: lo strumento richiede ignore_security_finding, non disponibile in questa sessione; non marcati come corretti in alternativa.
+
 # FM64 — Fetta 1: RLS listini per sede
 - [x] Ricerca completa src/supabase/tests: nessuna lettura diretta dei due listini con client utente.
 - [x] Migrazione 0196 applicata: solo due policy SELECT e commenti; regola documentata nel README delle regole.

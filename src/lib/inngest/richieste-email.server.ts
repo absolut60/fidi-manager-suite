@@ -12,6 +12,8 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendEmailViaEdge } from "./send-email.server";
 import { buildRichiestaEmail, EVENT_CFG } from "@/lib/richieste-email-render";
 import { SEDE_FALLBACK, type DatiSede } from "@/lib/template-email-render";
+import { urlAppUfficiale } from "@/lib/url-app.server";
+import { mascheraEmail, mascheraEmailNelLog } from "@/lib/email-log";
 
 // Timeout helper locale (stesso pattern di functions.server.ts):
 // supabase-js non espone AbortSignal; questo sblocca lo step Inngest.
@@ -291,15 +293,14 @@ export const inviaEmailRichiesta = inngest.createFunction(
         destinatari.totalePrima === 0
           ? `Nessun utente attivo con ruolo per evento '${data.event}' (dest=${data.extra?.dest ?? "-"})`
           : `Unico destinatario era il mittente (${data.actor.email})`;
-      logger.warn(`[richieste-invia-email][${data.event}] skip: ${motivo}`);
+      logger.warn(`[richieste-invia-email][${data.event}] skip: ${mascheraEmailNelLog(motivo)}`);
       await accodaBonifico();
       return { ok: true, sent: 0, skipped: true, motivo };
     }
 
     // 4) Rendering (una volta sola)
     const rendered = await step.run("render-email", () => {
-      const appUrl =
-        process.env.VITE_APP_URL ?? "https://fidi-manager-suite.lovable.app";
+      const appUrl = urlAppUfficiale();
       const mittenteNome = data.actor.nome?.trim() || "MADE Distribuzione";
       const { oggetto, html } = buildRichiestaEmail({
         event: data.event,
@@ -347,12 +348,12 @@ export const inviaEmailRichiesta = inngest.createFunction(
               replyTo: data.actor.email ?? undefined,
             }),
             30_000,
-            `send ${dest}`,
+            `send ${mascheraEmail(dest)}`,
           );
           if (res.ok) sent++;
-          else errors.push(`${dest}: ${res.err ?? "?"}`);
+          else errors.push(`${mascheraEmail(dest)}: ${mascheraEmailNelLog(res.err ?? "?")}`);
         } catch (e) {
-          errors.push(`${dest}: ${e instanceof Error ? e.message : String(e)}`);
+          errors.push(`${mascheraEmail(dest)}: ${mascheraEmailNelLog(e)}`);
         }
       }
       return { sent, errors };

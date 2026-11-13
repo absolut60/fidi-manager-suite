@@ -6,6 +6,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { sendInngestEvent } from "@/lib/inngest/client";
 import { byteBase64, MAX_ALLEGATI_FORNITORE_BYTES } from "@/lib/comunicazioni-fornitore";
+import { verificaTipoAllegatoInvio } from "@/lib/allegati-invio-sicuri";
 import { avviaInvioFornitoriInput, pianificaInvioFornitori, MAX_FORNITORI_INVIO } from "@/lib/invio-multiplo-fornitori";
 
 export const EVENTO_INVIO_FORNITORI = "fornitori/invio-multiplo.requested";
@@ -55,6 +56,8 @@ export const avviaInvioFornitori = createServerFn({ method: "POST" })
     const { data: gia } = await supabaseAdmin.from("invii_fornitori").select("id, totale, saltati").eq("chiave_invio", data.chiaveInvio).maybeSingle();
     if (gia) return { invioId: gia.id, totale: gia.totale, saltati: gia.saltati, giaAvviato: true };
 
+    // Validare TUTTI i tipi prima di qualsiasi caricamento, senza file orfani.
+    for (const a of data.nuoviAllegati) verificaTipoAllegatoInvio(a.filename, a.contentType);
     const totaleByte = data.nuoviAllegati.reduce((s, a) => s + byteBase64(a.base64), 0);
     if (totaleByte > MAX_ALLEGATI_FORNITORE_BYTES) throw new Error("Gli allegati superano il limite di 10 MB.");
 

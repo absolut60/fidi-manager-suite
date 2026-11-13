@@ -68,12 +68,12 @@ export function SceltaCanalePrivacy({
  * Non blocca mai: se manca l'email avvisa che il link va inviato a mano.
  */
 export async function inviaRichiestaDopoCreazione(
-  inviaFn: (args: { data: { contattoId: string; origin: string } }) => Promise<{ link: string; emailInviata: boolean }>,
+  inviaFn: (args: { data: { contattoId: string } }) => Promise<{ link: string; emailInviata: boolean }>,
   contattoId: string,
   haEmail: boolean,
 ): Promise<void> {
   try {
-    const res = await inviaFn({ data: { contattoId, origin: window.location.origin } });
+    const res = await inviaFn({ data: { contattoId } });
     try {
       await navigator.clipboard.writeText(res.link);
     } catch {

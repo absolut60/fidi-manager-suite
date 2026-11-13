@@ -105,3 +105,6 @@ Estratto dal knowledge di progetto il 08/10/2026 (sessione 40). Si aggiorna modi
 - Campagne marketing (FM64): i valori dei segnaposto cliente nel corpo HTML passano da `escapeHtml` (fonte unica in `template-email-render.ts`); nell'oggetto (testo semplice) restano letterali. Il corpo scritto dall'editor non viene toccato.
 - Ricerche (FM64): ogni testo dell'utente dentro un filtro `.or(...)` passa da `testoPerFiltroOr` (`src/lib/ricerca-sicura.ts`), che trasforma `, . ( ) : " \ * %` nel jolly `_`; mai interpolare il testo grezzo.
 - Export CSV (FM64): ogni cella di testo passa da `cellaCsvSicura` (`src/lib/csv-sicuro.ts`): se inizia con = + - @ tab o a capo viene prefissata con '; i numeri restano numeri.
+- Link nelle email (FM64): URL ufficiale solo da `urlAppUfficiale` lato server (`PUBLIC_APP_URL`, fallback al dominio ufficiale); mai origin inviato dal browser.
+- Log email (FM64): destinatari e indirizzi negli errori passano da `mascheraEmail` / `mascheraEmailNelLog` (`src/lib/email-log.ts`), condivisi da job e servizio email; invio invariato.
+- Allegati invio multiplo fornitori (FM64): prima degli upload il server verifica estensione e MIME coerenti con `verificaTipoAllegatoInvio`; solo PDF, JPG/JPEG/PNG/WebP/GIF, DOC/DOCX, XLS/XLSX/CSV.

@@ -37,10 +37,9 @@ export const generaTokenFirmaPrivacy = createServerFn({ method: "POST" })
  */
 export const inviaRichiestaFirmaPrivacy = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { contattoId: string; origin: string }) =>
+  .inputValidator((d: { contattoId: string }) =>
     z.object({
       contattoId: z.string().uuid(),
-      origin: z.string().url().max(300),
     }).parse(d)
   )
   .handler(async ({ data, context }) => {
@@ -55,7 +54,8 @@ export const inviaRichiestaFirmaPrivacy = createServerFn({ method: "POST" })
 
     const { generaTokenPrivacy } = await import("./firma-privacy-token.server");
     const { token, expires_at } = await generaTokenPrivacy(data.contattoId, 30);
-    const link = `${data.origin.replace(/\/+$/, "")}/firma-privacy/${token}`;
+    const { urlAppUfficiale } = await import("./url-app.server");
+    const link = `${urlAppUfficiale()}/firma-privacy/${token}`;
 
     if (!ct.email) return { link, expires_at, emailInviata: false };
 
