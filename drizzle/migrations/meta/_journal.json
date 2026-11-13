@@ -1457,6 +1457,13 @@
       "when": 1794595634557,
       "tag": "0207_fm65_f3_cerca_articoli_senza_famiglia_marca",
       "breakpoints": true
+    },
+    {
+      "idx": 208,
+      "version": "7",
+      "when": 1794600457523,
+      "tag": "0208_fm67_preventivi_note_allegati",
+      "breakpoints": true
     }
   ]
 }
