@@ -6812,6 +6812,7 @@ export type Database = {
       }
       righe_preventivo: {
         Row: {
+          articolo_codice: string | null
           articolo_id: string | null
           blocco_id: string
           costo: number | null
@@ -6820,6 +6821,7 @@ export type Database = {
           id: string
           importo: number | null
           incidenza: number | null
+          maggiorazione_perc: number
           margine: number | null
           ordine: number
           peso: number | null
@@ -6828,6 +6830,7 @@ export type Database = {
           quantita: number | null
           ricarico: number | null
           riga_origine_id: string | null
+          sconti_gamma: number[]
           sconto_perc: number | null
           segno: number
           tipo_riga: Database["public"]["Enums"]["tipo_riga_preventivo"]
@@ -6836,6 +6839,7 @@ export type Database = {
           vendita: number | null
         }
         Insert: {
+          articolo_codice?: string | null
           articolo_id?: string | null
           blocco_id: string
           costo?: number | null
@@ -6844,6 +6848,7 @@ export type Database = {
           id?: string
           importo?: number | null
           incidenza?: number | null
+          maggiorazione_perc?: number
           margine?: number | null
           ordine?: number
           peso?: number | null
@@ -6852,6 +6857,7 @@ export type Database = {
           quantita?: number | null
           ricarico?: number | null
           riga_origine_id?: string | null
+          sconti_gamma?: number[]
           sconto_perc?: number | null
           segno?: number
           tipo_riga?: Database["public"]["Enums"]["tipo_riga_preventivo"]
@@ -6860,6 +6866,7 @@ export type Database = {
           vendita?: number | null
         }
         Update: {
+          articolo_codice?: string | null
           articolo_id?: string | null
           blocco_id?: string
           costo?: number | null
@@ -6868,6 +6875,7 @@ export type Database = {
           id?: string
           importo?: number | null
           incidenza?: number | null
+          maggiorazione_perc?: number
           margine?: number | null
           ordine?: number
           peso?: number | null
@@ -6876,6 +6884,7 @@ export type Database = {
           quantita?: number | null
           ricarico?: number | null
           riga_origine_id?: string | null
+          sconti_gamma?: number[]
           sconto_perc?: number | null
           segno?: number
           tipo_riga?: Database["public"]["Enums"]["tipo_riga_preventivo"]

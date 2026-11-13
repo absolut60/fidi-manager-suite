@@ -1394,6 +1394,13 @@
       "when": 1794560998131,
       "tag": "0198_fm65_motore_prezzi_preventivo",
       "breakpoints": true
+    },
+    {
+      "idx": 199,
+      "version": "7",
+      "when": 1794562209183,
+      "tag": "0199_fm65_riga_preventivo_gamma",
+      "breakpoints": true
     }
   ]
 }
