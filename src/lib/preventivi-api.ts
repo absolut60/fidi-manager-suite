@@ -312,7 +312,7 @@ export async function fetchElencoPreventivi(f: ElencoPreventiviFilters): Promise
   if (f.search?.trim()) {
     const s = testoPerFiltroOr(f.search);
     const parti = [`numero.ilike.%${s}%`, `titolo.ilike.%${s}%`];
-    const clienti = await searchClientiPreventivo(f.search.trim());
+    const clienti = await cercaClientiPreventivo(f.search.trim());
     const ids = clienti
       .filter((c) => (c.codice_gestionale ?? "").toLowerCase().includes(f.search!.trim().toLowerCase()))
       .map((c) => c.id);

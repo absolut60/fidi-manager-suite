@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { letteraPreventivo, riallineaValidita, validitaProposta } from "../src/lib/preventivo-creazione";
+import { letteraPreventivo, lettereElenco, riallineaValidita, validitaProposta } from "../src/lib/preventivo-creazione";
 import { inUnita } from "../src/lib/scheda-articolo";
 
 describe("FM65 R1a", () => {
@@ -29,5 +29,21 @@ describe("FM65 R1a", () => {
     expect(q).toBeCloseTo(7, 10);
     expect(p).toBeCloseTo(15.0012, 10);
     expect(Number(q) * Number(p)).toBeCloseTo(25.2 * 4.167, 10);
+  });
+});
+describe("FM65 Punto 5 lettereElenco", () => {
+  test("principale A, alternative B/C per created_at e id, gruppo senza alternative", () => {
+    const m = lettereElenco([
+      { id: "p1", alternativa_di: null, created_at: "2026-01-01T00:00:00Z" },
+      { id: "z", alternativa_di: "p1", created_at: "2026-01-03T00:00:00Z" },
+      { id: "b", alternativa_di: "p1", created_at: "2026-01-02T00:00:00Z" },
+      { id: "a", alternativa_di: "p1", created_at: "2026-01-02T00:00:00Z" },
+      { id: "p2", alternativa_di: null, created_at: "2026-01-05T00:00:00Z" },
+    ]);
+    expect(m.get("p1")).toBe("A");
+    expect(m.get("a")).toBe("B");
+    expect(m.get("b")).toBe("C");
+    expect(m.get("z")).toBe("D");
+    expect(m.get("p2")).toBe("A");
   });
 });
