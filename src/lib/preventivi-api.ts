@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { importoRiga, marginePercRiga, segnoRiga } from "./riga-preventivo";
 import type { Database } from "@/integrations/supabase/types";
 import { round2 } from "./pricing";
 import {
@@ -502,6 +503,9 @@ export async function duplicaPreventivo(
         quantita: r.quantita,
         prezzo_unit: r.prezzo_unit,
         sconto_perc: r.sconto_perc,
+        articolo_codice: r.articolo_codice,
+        sconti_gamma: r.sconti_gamma,
+        maggiorazione_perc: r.maggiorazione_perc,
         segno: r.segno,
         importo: r.importo,
         costo: r.costo,
@@ -559,13 +563,12 @@ export async function applicaScontoPiedeARighe(
   if (errB) throw errB;
 
   const updates: PromiseLike<unknown>[] = [];
+  const importiPiede = new Map<string, number>();
   for (const b of (blocchi ?? []) as unknown as { id: string; righe: Riga[] }[]) {
     for (const r of b.righe ?? []) {
       if (r.tipo_riga !== "articolo_singolo" && r.tipo_riga !== "da_kit" && r.tipo_riga !== "manuale") continue;
-      const q = n(r.quantita);
-      const p = n(r.prezzo_unit);
-      const segno = (r.segno ?? 1) === -1 ? -1 : 1;
-      const importo = round2(q * p * (1 - sc / 100) * segno);
+      const importo = importoRiga({ ...r, sconto_perc: sc });
+      importiPiede.set(r.id, importo);
       updates.push(
         supabase.from("righe_preventivo").update({ sconto_perc: sc, importo }).eq("id", r.id).then(),
       );
@@ -579,10 +582,7 @@ export async function applicaScontoPiedeARighe(
       for (const r of b.righe ?? []) {
         if (r.tipo_riga === "nota" || r.tipo_riga === "separatore" || r.tipo_riga === "sotto_totale") continue;
         if (r.tipo_riga === "articolo_singolo" || r.tipo_riga === "da_kit" || r.tipo_riga === "manuale") {
-          const q = n(r.quantita);
-          const p = n(r.prezzo_unit);
-          const segno = (r.segno ?? 1) === -1 ? -1 : 1;
-          totale += q * p * (1 - sc / 100) * segno;
+          totale += importiPiede.get(r.id) ?? 0;
         } else {
           totale += n(r.importo);
         }
@@ -654,8 +654,7 @@ export async function aggiornaListiniPreventivo(preventivo_id: string): Promise<
       }
       if (!vendita_unit) senza_listino++;
       const q = n(r.quantita);
-      const segno = (r.segno ?? 1) === -1 ? -1 : 1;
-      const importo = round2(q * vendita_unit * segno);
+      const importo = importoRiga({ ...r, prezzo_unit: vendita_unit, sconto_perc: 0 });
       const { error: upErr } = await supabase
         .from("righe_preventivo")
         .update({
@@ -731,12 +730,10 @@ export async function riapplicaPrezziSpecialiCantiere(preventivo_id: string): Pr
       if (!sp) continue;
       if (sp.costo == null && sp.prezzo == null) continue;
       const q = n(r.quantita);
-      const segno = (r.segno ?? 1) === -1 ? -1 : 1;
-      const sc = n(r.sconto_perc);
       const nuovoPrezzo = sp.prezzo != null ? sp.prezzo : n(r.prezzo_unit);
       const costoUnitOld = q > 0 ? n(r.costo) / q : 0;
       const nuovoCostoUnit = sp.costo != null ? sp.costo : costoUnitOld;
-      const importo = round2(q * nuovoPrezzo * (1 - sc / 100) * segno);
+      const importo = importoRiga({ ...r, prezzo_unit: nuovoPrezzo });
       const { error } = await supabase
         .from("righe_preventivo")
         .update({
@@ -835,7 +832,7 @@ export async function addBloccoDaKit(args: {
       prezzo_unit: r.vendita_unit,
       sconto_perc: 0,
       segno: 1,
-      importo: round2(r.vendita_unit * quantita),
+      importo: importoRiga({ quantita, prezzo_unit: r.vendita_unit }),
       costo: round2(r.costo_unit * quantita),
       vendita: round2(r.vendita_unit * quantita),
       peso: round2((c.articolo?.peso_unit ?? 0) * quantita),
@@ -890,10 +887,7 @@ export async function ricalcolaBloccoSuNuovaQuantita(
       if (inc == null) return;
       const oldQta = n(r.quantita) || 1;
       const nuovaQta = round2(inc * qBase);
-      const prezzo = n(r.prezzo_unit);
-      const sc = n(r.sconto_perc);
-      const segno = (r.segno ?? 1) === -1 ? -1 : 1;
-      const nuovoImporto = round2(prezzo * nuovaQta * (1 - sc / 100) * segno);
+      const nuovoImporto = importoRiga({ ...r, quantita: nuovaQta });
       const nuovoCosto = round2((n(r.costo) / oldQta) * nuovaQta);
       const nuovaVendita = round2((n(r.vendita) / oldQta) * nuovaQta);
       const nuovoPeso = round2((n(r.peso) / oldQta) * nuovaQta);
@@ -965,19 +959,14 @@ export function calcolaRiga(r: Partial<Riga>): RigaCalc {
   if (tipo === "nota" || tipo === "separatore") {
     return { importo: 0, costo: 0, vendita: 0, margine_perc: 0, peso: 0 };
   }
-  const segno = (r.segno ?? 1) === -1 ? -1 : 1;
+  const segno = segnoRiga(r.segno);
   const q = n(r.quantita);
   const p = n(r.prezzo_unit);
-  const sc = n(r.sconto_perc);
-  const importo = round2(q * p * (1 - sc / 100) * segno);
+  const riga = { ...r, quantita: q, prezzo_unit: p };
+  const importo = importoRiga(riga);
   const costo = round2(n(r.costo) || 0);
   const venditaSnapshot = r.vendita == null ? round2(q * p * segno) : round2(n(r.vendita));
-  const prezzoScontatoUnit = p * (1 - sc / 100) * segno;
-  const costoUnit = q > 0 ? n(r.costo) / q : 0;
-  const margine =
-    prezzoScontatoUnit !== 0
-      ? ((prezzoScontatoUnit - costoUnit) / prezzoScontatoUnit) * 100
-      : 0;
+  const margine = marginePercRiga(riga);
   return {
     importo,
     costo,

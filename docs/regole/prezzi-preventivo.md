@@ -45,7 +45,14 @@ Altri avvisi: `articolo_senza_prezzo_su_listino`, `cliente_senza_listino`, `clie
 | EDILSPI 3173 | FASL / ITA1000108 | 4,1670 / 5,5000 | sottocategoria LA1 senza regola → 01/01 generale; deposito EA |
 | COMUNE DI SEDRIANO 2249 | FASL / ITA1000108 | 4,6300 / 5,6000 | categoria 03 senza regola, sconto anagrafica ignorato; deposito 00 |
 
+## Riga del preventivo (FM65 fetta 2a)
+- **Il calcolo della riga vive solo in `src/lib/riga-preventivo.ts`** (`prezzoNettoRiga`, `importoRiga`, `marginePercRiga`); nessun altro file copia la formula.
+- Colonne riga: `articolo_codice` (codice Gamma), `sconti_gamma` (fino a 6 sconti in cascata, nell'ordine), `maggiorazione_perc`; `sconto_perc` è lo **sconto extra** (piede o trattativa), in cascata DOPO gli sconti Gamma.
+- Netto = prezzo_unit × Π(1 − s/100 per s in sconti_gamma) × (1 + maggiorazione_perc/100) × (1 − sconto_perc/100). Il netto **non** si arrotonda (si mostra a 4 decimali).
+- Importo = arrotonda2(quantità × netto × segno). **Arrotondamento chiuso:** Gamma arrotonda solo l'importo di riga a 2 decimali, metà per eccesso (A.N. COSTRUZIONI: 25,2 MQ × 3,7503 = 94,5076 → 94,51; 23,70 × 1,15 = 27,255 → 27,26). Il "Prezzo netto unitario" di Gamma è importo/quantità.
+- Lo sconto a piede scrive `sconto_perc` sulle righe articolo/kit/manuale e ricalcola l'importo sopra gli sconti Gamma della riga.
+- `importo` è salvato con il segno: i totali di blocco sono SUM(importo), mai importo × segno.
+
 ## Punti aperti
-- Arrotondamento finale di Gamma (oggi solo 4 decimali) in verifica.
 - Preventivi ai lead: la funzione interna accetta `_cliente_codice` NULL (livelli 3 e 6 saltati);
   manca la funzione pubblica e la scelta di listino/sede per il lead.
