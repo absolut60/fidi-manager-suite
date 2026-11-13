@@ -1,4 +1,5 @@
 # FM65 — Correzioni E
+- [ ] FM67 Testata compatta: densità opt-in, griglia 62/38, controlli invariati e verifica schermi.
 - [x] Cornice anagrafica condivisa; nota acquisto e giacenze tramite lettore esistente, errori locali; nessuna modifica SQL/database.
 - [x] 710 test verdi; typecheck e compilazione verdi. Screenshot 375/1280 Riepilogo/Testata/Piede e diniego isolato; controlli 320/390/768/1920 senza overflow/errori browser. Dati finti, pagina temporanea rimossa; nessuna migrazione.
 
