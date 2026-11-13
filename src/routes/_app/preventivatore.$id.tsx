@@ -27,7 +27,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { puoScriverePreventivi } from "@/lib/permessi-preventivi";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -56,13 +55,10 @@ import {
   updateBlocco, updatePreventivo,
   type BloccoConRighe, type PrezziSpecialiMap, type StatoPreventivo, type TipoDoc,
 } from "@/lib/preventivi-api";
-import { computeEvasione } from "@/lib/evasione";
-import { EvasioneBadge } from "@/components/preventivatore/EvasioneBadge";
 
 
 import type { FasciaListino } from "@/lib/articoli-api";
 import { AggiornaListiniDialog } from "@/components/preventivatore/AggiornaListiniDialog";
-import { CondizioniClienteGamma } from "@/components/preventivatore/CondizioniClienteGamma";
 import { round2 } from "@/lib/pricing";
 import { margineTotaliRighe } from "@/lib/riga-preventivo";
 import { formatNumeroIt, parseNumeroIt } from "@/lib/numero-it";
@@ -71,7 +67,6 @@ import { AggiungiBloccoDialog } from "@/components/preventivatore/AggiungiBlocco
 import { RigheTable } from "@/components/preventivatore/RigheTable";
 import { GeneraDocumentoDialog } from "@/components/preventivatore/GeneraDocumentoDialog";
 import { ClientePicker } from "@/components/preventivatore/ClientePicker";
-import { CantierePicker } from "@/components/preventivatore/CantierePicker";
 import { TrasformaInOrdineDialog } from "@/components/preventivatore/TrasformaInOrdineDialog";
 
 export const Route = createFileRoute("/_app/preventivatore/$id")({
@@ -502,7 +497,7 @@ function PreventivoEditorPage() {
         <FasciaPreventivo dati={riepilogo} onCliente={()=>setClienteOpen(true)}/>
         {/* Link incrociati preventivo ↔ ordini */}
         {(ordiniCollegati.length > 0 || preventivoOrigine) && (
-          <Card className="border-[#0d1f3c]/15 bg-[#f4f7fb]">
+          <Card className="border-primary/15 bg-muted">
             <CardContent className="flex flex-wrap items-center gap-x-4 gap-y-1 p-3 text-xs">
               {preventivoOrigine && (
                 <div className="flex items-center gap-1.5">
@@ -510,7 +505,7 @@ function PreventivoEditorPage() {
                   <Link
                     to="/preventivatore/$id"
                     params={{ id: preventivoOrigine.id }}
-                    className="font-mono font-semibold text-[#2b5ea7] hover:underline"
+                    className="font-mono font-semibold text-info hover:underline"
                   >
                     {preventivoOrigine.numero ?? "—"}
                   </Link>
@@ -526,7 +521,7 @@ function PreventivoEditorPage() {
                       key={o.id}
                       to="/preventivatore/$id"
                       params={{ id: o.id }}
-                      className="rounded bg-white px-1.5 py-0.5 font-mono text-[#2b5ea7] hover:underline"
+                      className="rounded bg-card px-1.5 py-0.5 font-mono text-info hover:underline"
                     >
                       {o.numero ?? "—"}{" "}
                       <span className="text-[10px] text-muted-foreground">
@@ -544,7 +539,7 @@ function PreventivoEditorPage() {
           <TabsList className="w-full justify-start bg-transparent border-b rounded-none h-11 p-0">
             {(['testata','corpo','piede'] as const).map(t=><TabsTrigger key={t} value={t} className="flex-1 sm:flex-none rounded-none h-11 px-4 bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary">{t==='testata'?'Testata':t==='piede'?'Piede':`Corpo · ${prev.blocchi.length} blocchi`}</TabsTrigger>)}
           </TabsList>
-          <TabsContent value="testata"><TestataPreventivo prev={prev} cliente={clienteDati} editMode={editMode} agenti={agenti} principali={principali} haAlternative={haAlternative} listino={listino} categoria={categoria} onSave={p=>save.mutate(p)} onCliente={()=>setClienteOpen(true)} onChangeCliente={onChangeCliente} modoCantiere={modoCantiereEdit} onModoCantiere={setModoCantiereEdit} onCantiere={cid=>save.mutate({cantiere_id:cid,cantiere_descrizione:null},{onSuccess:()=>riapplicaSpeciali.mutate()})}/></TabsContent>
+          <TabsContent value="testata"><TestataPreventivo prev={prev} cliente={clienteDati} editMode={editMode} agenti={agenti} principali={principali} haAlternative={haAlternative} listino={listino} categoria={categoria} sede={condizioni?.sede_nome||'—'} onSave={p=>save.mutate(p)} onCliente={()=>setClienteOpen(true)} onChangeCliente={onChangeCliente} modoCantiere={modoCantiereEdit} onModoCantiere={setModoCantiereEdit} onCantiere={cid=>save.mutate({cantiere_id:cid,cantiere_descrizione:null},{onSuccess:()=>riapplicaSpeciali.mutate()})}/></TabsContent>
           <TabsContent value="corpo"><fieldset disabled={!editMode} className={cn('min-w-0',!editMode&&'readonly-mode')}>
             {/* ===== CORPO ===== */}
             <section className="flex flex-col gap-3">
