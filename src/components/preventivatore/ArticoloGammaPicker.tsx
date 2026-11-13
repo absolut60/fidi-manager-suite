@@ -84,7 +84,7 @@ export function ArticoloGammaPicker({
             </Button>
             {nFiltri > 0 && <Button type="button" variant="ghost" size="sm" className="h-9 shrink-0 px-2 text-xs" onClick={() => setScelte(NESSUN_FILTRO)}>Azzera filtri</Button>}
           </div>
-          {filtriAperti && <div className="grid grid-cols-1 gap-2 pt-1.5 sm:grid-cols-3"><FiltriCatalogoArticoli scelte={scelte} onChange={setScelte} /></div>}
+          {filtriAperti && <div className="grid grid-cols-1 gap-2 pt-1.5"><FiltriCatalogoArticoli scelte={scelte} onChange={setScelte} /></div>}
         </div>
         <div className="flex items-center gap-2 border-b px-2 py-1.5">
           <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
