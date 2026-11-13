@@ -213,3 +213,4 @@
 - [x] FM65 F3 Senza famiglia/marca in ricerca + filtri a cascata nel catalogo
 - [x] FM65 F4 filtri a cascata nella ricerca articolo del preventivo
 - [x] FM67 linguette Testata/Corpo/Piede (variante opt-in tabs.tsx) + Margine/Totale imponibile allineati a destra
+- [x] FM67 cella U.M.: esponente solo "1"/"2" (tolto "UM"), title/aria-label "Unità 1"/"Unità 2"; 732 test verdi, schermate 375/1280, nessuna modifica DB
