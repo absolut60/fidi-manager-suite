@@ -35,7 +35,7 @@ import { toast } from "sonner";
 import {
   addBloccoVuoto,
   applicaScontoPiedeARighe,
-  aggiornaListiniPreventivo,
+  analizzaAggiornaListini, applicaAggiornaListini, type AnalisiAggiornaListini,
   buildPrezziSpecialiMap,
   calcolaBlocco, calcolaTotaliPreventivo, deleteBlocco, deletePreventivo, duplicaPreventivo, fetchAgenti, fetchCliente, fetchOrdiniCollegati, fetchPreventivo, fetchPreventivoOrigine,
   fractionalOrder,
@@ -48,6 +48,7 @@ import { EvasioneBadge } from "@/components/preventivatore/EvasioneBadge";
 
 
 import type { FasciaListino } from "@/lib/articoli-api";
+import { AggiornaListiniDialog } from "@/components/preventivatore/AggiornaListiniDialog";
 import { CondizioniClienteGamma } from "@/components/preventivatore/CondizioniClienteGamma";
 import { round2 } from "@/lib/pricing";
 import { parseNumeroIt } from "@/lib/numero-it";
@@ -151,13 +152,24 @@ function PreventivoEditorPage() {
 
 
 
+  const [analisiListini, setAnalisiListini] = useState<AnalisiAggiornaListini | null>(null);
   const aggiornaListini = useMutation({
-    mutationFn: () => aggiornaListiniPreventivo(id),
+    mutationFn: () => analizzaAggiornaListini(id),
     onSuccess: (res) => {
-      const parts = [`${res.aggiornate} righe aggiornate`];
-      if (res.saltate_manuali > 0) parts.push(`${res.saltate_manuali} manuali ignorate`);
-      if (res.senza_listino > 0) parts.push(`${res.senza_listino} senza listino`);
-      toast.success(`Listini aggiornati: ${parts.join(", ")}`);
+      if (res.differenze.length === 0) {
+        toast.success(`Nessuna differenza: ${res.invariate} righe già aggiornate` +
+          (res.senza_codice + res.non_articolo + res.senza_prezzo > 0 ? ` (${res.senza_codice} senza codice Gamma, ${res.senza_prezzo} senza prezzo, ${res.non_articolo} manuali/note non toccate)` : ""));
+        return;
+      }
+      setAnalisiListini(res);
+    },
+    onError: (e: unknown) => toast.error((e as Error).message),
+  });
+  const applicaListini = useMutation({
+    mutationFn: (scelte: AnalisiAggiornaListini["differenze"]) => applicaAggiornaListini(id, scelte),
+    onSuccess: (res) => {
+      toast.success(`${res.aggiornate} righe aggiornate` + (res.speciali ? `, ${res.speciali} con prezzi speciali cantiere` : ""));
+      setAnalisiListini(null);
       invalidate();
     },
     onError: (e: unknown) => toast.error((e as Error).message),
@@ -358,12 +370,12 @@ function PreventivoEditorPage() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>Aggiornare prezzi e costi dai listini attuali?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Le righe collegate ad articoli verranno aggiornate con prezzo di vendita (fascia {prev.fascia_listino ?? "—"}) e costo netto correnti. Eventuali prezzi e sconti modificati manualmente saranno SOVRASCRITTI. Lo sconto a piede, se presente, verrà riapplicato sui nuovi prezzi. Le righe manuali, note e separatori restano intatti. L'operazione non è reversibile.
+                      Calcolo i prezzi attuali del cliente per le righe articolo e kit con codice Gamma e ti mostro solo quelle diverse: scegli tu quali applicare. Lo sconto extra resta com'è; righe manuali, note e separatori non si toccano.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Annulla</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => aggiornaListini.mutate()}>Aggiorna</AlertDialogAction>
+                    <AlertDialogAction onClick={() => aggiornaListini.mutate()}>Confronta</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
@@ -841,9 +853,13 @@ function PreventivoEditorPage() {
         onOpenChange={setAddBloccoOpen}
         preventivoId={id}
         fascia={(prev.fascia_listino ?? "A") as FasciaListino}
+        clienteId={prev.cliente_id ?? null}
+        scontoPiede={Number(prev.sconto_piede_perc ?? 0)}
         lastOrdine={lastOrdine}
       />
 
+      <AggiornaListiniDialog analisi={analisiListini} onClose={() => setAnalisiListini(null)}
+        onApplica={(sc) => applicaListini.mutate(sc)} inCorso={applicaListini.isPending} />
       <GeneraDocumentoDialog open={outputOpen} onOpenChange={setOutputOpen} prev={prev} />
       {prev.tipo === "preventivo" && (
         <TrasformaInOrdineDialog
