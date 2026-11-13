@@ -55,7 +55,6 @@ import { Route as AppScadenziarioRouteImport } from './routes/_app/scadenziario'
 import { Route as AppTaskRouteImport } from './routes/_app/task'
 import { Route as AppTemplateEmailRouteImport } from './routes/_app/template-email'
 import { Route as AppTemplateLetteraRouteImport } from './routes/_app/template-lettera'
-import { Route as AppTmpFm68LarghezzaRouteImport } from './routes/_app/tmp-fm68-larghezza'
 import { Route as AppUtentiRouteImport } from './routes/_app/utenti'
 import { Route as AppWhatsappRouteImport } from './routes/_app/whatsapp'
 import { Route as ConsensiTokenRouteImport } from './routes/consensi.$token'
@@ -338,11 +337,6 @@ const AppTemplateEmailRoute = AppTemplateEmailRouteImport.update({
 const AppTemplateLetteraRoute = AppTemplateLetteraRouteImport.update({
   id: '/template-lettera',
   path: '/template-lettera',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppTmpFm68LarghezzaRoute = AppTmpFm68LarghezzaRouteImport.update({
-  id: '/tmp-fm68-larghezza',
-  path: '/tmp-fm68-larghezza',
   getParentRoute: () => AppRoute,
 } as any)
 const AppUtentiRoute = AppUtentiRouteImport.update({
@@ -639,7 +633,6 @@ export interface FileRoutesByFullPath {
   '/task': typeof AppTaskRouteWithChildren
   '/template-email': typeof AppTemplateEmailRoute
   '/template-lettera': typeof AppTemplateLetteraRoute
-  '/tmp-fm68-larghezza': typeof AppTmpFm68LarghezzaRoute
   '/utenti': typeof AppUtentiRoute
   '/whatsapp': typeof AppWhatsappRoute
   '/consensi/$token': typeof ConsensiTokenRoute
@@ -731,7 +724,6 @@ export interface FileRoutesByTo {
   '/scadenziario': typeof AppScadenziarioRoute
   '/template-email': typeof AppTemplateEmailRoute
   '/template-lettera': typeof AppTemplateLetteraRoute
-  '/tmp-fm68-larghezza': typeof AppTmpFm68LarghezzaRoute
   '/utenti': typeof AppUtentiRoute
   '/whatsapp': typeof AppWhatsappRoute
   '/consensi/$token': typeof ConsensiTokenRoute
@@ -828,7 +820,6 @@ export interface FileRoutesById {
   '/_app/task': typeof AppTaskRouteWithChildren
   '/_app/template-email': typeof AppTemplateEmailRoute
   '/_app/template-lettera': typeof AppTemplateLetteraRoute
-  '/_app/tmp-fm68-larghezza': typeof AppTmpFm68LarghezzaRoute
   '/_app/utenti': typeof AppUtentiRoute
   '/_app/whatsapp': typeof AppWhatsappRoute
   '/consensi/$token': typeof ConsensiTokenRoute
@@ -925,7 +916,6 @@ export interface FileRouteTypes {
     | '/task'
     | '/template-email'
     | '/template-lettera'
-    | '/tmp-fm68-larghezza'
     | '/utenti'
     | '/whatsapp'
     | '/consensi/$token'
@@ -1017,7 +1007,6 @@ export interface FileRouteTypes {
     | '/scadenziario'
     | '/template-email'
     | '/template-lettera'
-    | '/tmp-fm68-larghezza'
     | '/utenti'
     | '/whatsapp'
     | '/consensi/$token'
@@ -1113,7 +1102,6 @@ export interface FileRouteTypes {
     | '/_app/task'
     | '/_app/template-email'
     | '/_app/template-lettera'
-    | '/_app/tmp-fm68-larghezza'
     | '/_app/utenti'
     | '/_app/whatsapp'
     | '/consensi/$token'
@@ -1504,13 +1492,6 @@ declare module '@tanstack/react-router' {
       path: '/template-lettera'
       fullPath: '/template-lettera'
       preLoaderRoute: typeof AppTemplateLetteraRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/tmp-fm68-larghezza': {
-      id: '/_app/tmp-fm68-larghezza'
-      path: '/tmp-fm68-larghezza'
-      fullPath: '/tmp-fm68-larghezza'
-      preLoaderRoute: typeof AppTmpFm68LarghezzaRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/utenti': {
@@ -1951,7 +1932,6 @@ interface AppRouteChildren {
   AppTaskRoute: typeof AppTaskRouteWithChildren
   AppTemplateEmailRoute: typeof AppTemplateEmailRoute
   AppTemplateLetteraRoute: typeof AppTemplateLetteraRoute
-  AppTmpFm68LarghezzaRoute: typeof AppTmpFm68LarghezzaRoute
   AppUtentiRoute: typeof AppUtentiRoute
   AppWhatsappRoute: typeof AppWhatsappRoute
   AppArticoliIdRoute: typeof AppArticoliIdRoute
@@ -2024,7 +2004,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppTaskRoute: AppTaskRouteWithChildren,
   AppTemplateEmailRoute: AppTemplateEmailRoute,
   AppTemplateLetteraRoute: AppTemplateLetteraRoute,
-  AppTmpFm68LarghezzaRoute: AppTmpFm68LarghezzaRoute,
   AppUtentiRoute: AppUtentiRoute,
   AppWhatsappRoute: AppWhatsappRoute,
   AppArticoliIdRoute: AppArticoliIdRoute,
