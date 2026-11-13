@@ -4,7 +4,7 @@ import { Check, ChevronsUpDown, Search } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { searchClienti, fetchCliente } from "@/lib/preventivi-api";
+import { cercaClientiPreventivo, fetchDatiClientePreventivo } from "@/lib/preventivi-api";
 import { cn } from "@/lib/utils";
 
 export function ClientePicker({
@@ -19,37 +19,38 @@ export function ClientePicker({
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const { data: items = [] } = useQuery({
-    queryKey: ["clienti-search", q],
-    queryFn: () => searchClienti(q),
+    queryKey: ["clienti-preventivo-search", q],
+    queryFn: () => cercaClientiPreventivo(q),
   });
   const { data: selected } = useQuery({
-    queryKey: ["cliente", value],
-    queryFn: () => (value ? fetchCliente(value) : null),
+    queryKey: ["cliente-preventivo-dati", value],
+    queryFn: () => (value ? fetchDatiClientePreventivo(value) : null),
     enabled: !!value,
   });
 
   const label = useMemo(
-    () => (selected ? selected.ragione_sociale : null),
+    () => (selected ? [selected.codice_gestionale, selected.ragione_sociale].filter(Boolean).join(" · ") : null),
     [selected],
   );
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" role="combobox" className="w-full justify-between">
-          <span className="truncate">{label ?? placeholder}</span>
+        <Button variant="outline" role="combobox" aria-label="Cliente" aria-expanded={open} className="h-auto min-h-10 w-full min-w-0 justify-between">
+          <span className="min-w-0 break-words whitespace-normal text-left">{label ?? placeholder}</span>
           <ChevronsUpDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0" align="start">
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)] p-0" align="start">
         <div className="flex items-center gap-2 border-b px-2 py-1.5">
           <Search className="h-3.5 w-3.5 text-muted-foreground" />
           <Input
             autoFocus
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Cerca cliente…"
-            className="h-7 border-0 px-0 text-xs focus-visible:ring-0"
+            placeholder="Cerca per codice, ragione sociale o P.IVA"
+            aria-label="Cerca per codice, ragione sociale o P.IVA"
+            className="h-10 border-0 px-0 text-xs focus-visible:ring-0"
           />
         </div>
         <div className="max-h-64 overflow-auto">
@@ -57,7 +58,7 @@ export function ClientePicker({
             <div className="p-3 text-xs text-muted-foreground">Nessun risultato</div>
           ) : (
             items.map((c) => (
-              <button
+              <Button
                 key={c.id}
                 type="button"
                 onClick={() => {
@@ -65,7 +66,7 @@ export function ClientePicker({
                   setOpen(false);
                 }}
                 className={cn(
-                  "flex w-full items-start gap-2 border-b px-2 py-1.5 text-left text-xs hover:bg-accent",
+                  "h-auto min-h-10 w-full items-start justify-start gap-2 rounded-none border-b px-2 py-2 text-left text-xs whitespace-normal",
                   value === c.id && "bg-accent/50",
                 )}
               >
@@ -73,13 +74,12 @@ export function ClientePicker({
                   className={cn("mt-0.5 h-3 w-3", value === c.id ? "opacity-100" : "opacity-0")}
                 />
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium">{c.ragione_sociale}</div>
+                  <div className="font-medium break-words">{[c.codice_gestionale, c.ragione_sociale].filter(Boolean).join(" · ")}</div>
                   <div className="text-muted-foreground">
-                    {c.piva ?? ""} {c.provincia ? `· ${c.provincia}` : ""}{" "}
-                    {c.fascia_listino_default ? `· Fascia ${c.fascia_listino_default}` : ""}
+                    {c.partita_iva ?? ""} {c.provincia ? `· ${c.provincia}` : ""}
                   </div>
                 </div>
-              </button>
+              </Button>
             ))
           )}
         </div>

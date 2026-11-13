@@ -89,6 +89,19 @@ async function fetchClienteLite(id: string): Promise<ClienteRow | null> {
 
 export const fetchCliente = fetchClienteLite;
 
+export type DatiClientePreventivo = Database["public"]["Functions"]["dati_cliente_preventivo"]["Returns"][number];
+export async function fetchDatiClientePreventivo(id: string): Promise<DatiClientePreventivo | null> {
+  const { data, error } = await supabase.rpc("dati_cliente_preventivo", { _id: id });
+  if (error) throw error;
+  return data?.[0] ?? null;
+}
+
+export async function cercaClientiPreventivo(q: string) {
+  const { data, error } = await supabase.rpc("cerca_clienti_preventivo", { _q: q });
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function searchClienti(q: string): Promise<ClienteRow[]> {
   const { data, error } = await supabase.rpc("get_clienti_lite_search" as never, {
     _q: q ?? "",
@@ -469,12 +482,13 @@ export async function duplicaPreventivo(
   }
 
   const oggi = new Date().toISOString().slice(0, 10);
+  if (nuovoCliente && !nuovoClienteRow) throw new Error("Cliente del duplicato non trovato");
   const { preventivo: nuovo } = await createPreventivo({
     data: oggi,
     validita: src.validita,
-    cliente_id: nuovoCliente ? nuovoClienteRow!.id : src.cliente_id,
+    cliente_id: nuovoCliente ? nuovoClienteRow?.id : src.cliente_id,
     cantiere_id: nuovoCliente ? null : src.cantiere_id,
-    agente_codice: nuovoCliente ? nuovoClienteRow!.codice_agente : src.agente_codice,
+    agente_codice: nuovoCliente ? nuovoClienteRow?.codice_agente : src.agente_codice,
     filiale: nuovoCliente ? null : src.filiale,
     fascia_listino: src.fascia_listino, // FM65: colonna non più usata per i prezzi
     tipo_doc: src.tipo_doc,
@@ -482,6 +496,9 @@ export async function duplicaPreventivo(
     iva_perc: src.iva_perc,
     sconto_piede_perc: src.sconto_piede_perc,
     note: src.note,
+    titolo: src.titolo,
+    condizione_pagamento_cod: src.condizione_pagamento_cod,
+    alternativa_di: null,
     tipo: "preventivo",
     preventivo_origine_id: null,
     totale_imponibile: src.totale_imponibile,
@@ -515,6 +532,7 @@ export async function duplicaPreventivo(
         articolo_id: r.articolo_id,
         descrizione: r.descrizione,
         um: r.um,
+        um_scelta: r.um_scelta,
         incidenza: r.incidenza,
         quantita: r.quantita,
         prezzo_unit: r.prezzo_unit,
