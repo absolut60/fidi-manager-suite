@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { haAccessoPreventivi, puoConsultarePreventivi, puoGestireAnagrafichePreventivi, puoScriverePreventivi, puoVedereFornitori } from "@/lib/permessi-preventivi";
+import { haAccessoPreventivi, preventivoModificabile, puoConsultarePreventivi, puoGestireAnagrafichePreventivi, puoScriverePreventivi, puoVedereFornitori } from "@/lib/permessi-preventivi";
 import { puoGestireFornitori, puoVedereArticoliFornitori } from "@/lib/permessi-fornitori";
 
 describe("FM63 consultazione preventivi per store manager", () => {
