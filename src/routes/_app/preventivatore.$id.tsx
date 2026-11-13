@@ -1,3 +1,14 @@
+import { FasciaPreventivo, type RiepilogoPreventivo } from '@/components/preventivatore/FasciaPreventivo';
+import { TestataPreventivo } from '@/components/preventivatore/TestataPreventivo';
+import { PiedePreventivo } from '@/components/preventivatore/PiedePreventivo';
+import { ClientePreventivoDialog } from '@/components/preventivatore/ClientePreventivoDialog';
+import { Tabs,TabsList,TabsTrigger,TabsContent } from '@/components/ui/tabs';
+import { DropdownMenu,DropdownMenuTrigger,DropdownMenuContent,DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { supabase } from '@/integrations/supabase/client';
+import { useCodiciPagamento } from '@/components/condizione-pagamento-richiesta-select';
+import { fetchDatiClientePreventivo, fetchCondizioniPreventivoCliente } from '@/lib/preventivi-api';
+import { formatDate } from '@/lib/fidi';
+import { MoreHorizontal } from 'lucide-react';
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -62,6 +73,7 @@ import { CantierePicker } from "@/components/preventivatore/CantierePicker";
 import { TrasformaInOrdineDialog } from "@/components/preventivatore/TrasformaInOrdineDialog";
 
 export const Route = createFileRoute("/_app/preventivatore/$id")({
+  validateSearch: (search: Record<string, unknown>) => ({ tab: typeof search.tab === 'string' ? search.tab : 'corpo' }),
   head: () => ({ meta: [
     { title: "Editor Preventivo — Sistema MADE" },
     { name: "description", content: "Articoli, kit e condizioni cliente nel preventivo MADE." },
@@ -74,6 +86,11 @@ export const Route = createFileRoute("/_app/preventivatore/$id")({
 
 function PreventivoEditorPage() {
   const { id } = Route.useParams();
+  const {tab: tabUrl}=Route.useSearch();
+  const tab=['testata','corpo','piede'].includes(tabUrl)?tabUrl:'corpo';
+  const [clienteOpen,setClienteOpen]=useState(false);
+  const [eliminaOpen,setEliminaOpen]=useState(false);
+  const {data:codiciPagamento=[]}=useCodiciPagamento();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [addBloccoOpen, setAddBloccoOpen] = useState(false);
@@ -101,9 +118,19 @@ function PreventivoEditorPage() {
 
   const { data: preventivoOrigine } = useQuery({
     queryKey: ["preventivo-origine", prev?.preventivo_origine_id],
-    queryFn: () => fetchPreventivoOrigine(prev!.preventivo_origine_id!),
+    queryFn: () => prev?.preventivo_origine_id ? fetchPreventivoOrigine(prev.preventivo_origine_id) : null,
     enabled: !!prev?.preventivo_origine_id,
   });
+
+  const {data:clienteDati}=useQuery({queryKey:['cliente-preventivo-dati',prev?.cliente_id],queryFn:()=>prev?.cliente_id?fetchDatiClientePreventivo(prev.cliente_id):null,enabled:!!prev?.cliente_id});
+  const {data:condizioni}=useQuery({queryKey:['condizioni-preventivo-cliente',prev?.cliente_id],queryFn:()=>prev?.cliente_id?fetchCondizioniPreventivoCliente(prev.cliente_id):null,enabled:!!prev?.cliente_id});
+  const {data:principali=[]}=useQuery({queryKey:['preventivi-principali',prev?.cliente_id,id],queryFn:async()=>{
+    if(!prev?.cliente_id)return [];
+    const {data,error}=await supabase.from('preventivi').select('id,numero,titolo').eq('cliente_id',prev.cliente_id).eq('tipo','preventivo').is('alternativa_di',null).neq('id',id).order('created_at');
+    if(error)throw error; return data||[];
+  },enabled:!!prev?.cliente_id});
+  const {data:haAlternative=false}=useQuery({queryKey:['preventivo-ha-alternative',id],queryFn:async()=>{const {count,error}=await supabase.from('preventivi').select('id',{count:'exact',head:true}).eq('alternativa_di',id);if(error)throw error;return (count||0)>0;}});
+  const {data:lettera}=useQuery({queryKey:['preventivo-lettera',id,prev?.alternativa_di],queryFn:async()=>{const {data,error}=await supabase.rpc('lettera_preventivo',{_id:id});if(error)throw error;return data;},enabled:!!prev?.alternativa_di});
 
   async function onChangeCliente(nuovoId: string | null) {
     if (!nuovoId) {
@@ -123,7 +150,7 @@ function PreventivoEditorPage() {
 
   const save = useMutation({
     mutationFn: (patch: Parameters<typeof updatePreventivo>[1]) => updatePreventivo(id, patch),
-    onSuccess: invalidate,
+    onSuccess: () => { invalidate(); qc.invalidateQueries({queryKey:['preventivi-principali']}); qc.invalidateQueries({queryKey:['preventivo-lettera']}); qc.invalidateQueries({queryKey:['preventivo-ha-alternative']}); },
     onError: (e: unknown) => toast.error((e as Error).message),
   });
 
@@ -328,27 +355,26 @@ function PreventivoEditorPage() {
     ? [cantiere.nome, cantiere.indirizzo, cantiere.comune?.nome].filter(Boolean).join(" · ")
     : null;
 
+  const listino=condizioni?.listino != null ? String(condizioni.listino) : '—';
+  const categoria=condizioni?.macrocategoria ? [condizioni.macrocategoria_label,condizioni.categoria_label].filter(Boolean).join(' – ') : '—';
+  const pagamentoCod=prev.condizione_pagamento_cod||clienteDati?.condizione_pagamento_cod||'';
+  const pagamentoDesc=codiciPagamento.find(c=>c.cod===pagamentoCod)?.descrizione||clienteDati?.condizione_pagamento_desc||'';
+  const riepilogo:RiepilogoPreventivo={cliente:[clienteDati?.codice_gestionale,clienteDati?.ragione_sociale||cliente?.ragione_sociale].filter(Boolean).join(' · ')||'—',cantiere:cantiere?.nome||(!cantiereDescrizione||cantiereDescrizione==='Da definire'?'Da definire (provvisorio)':cantiereDescrizione),listino,categoria,pagamento:pagamentoCod?`${pagamentoCod} – ${pagamentoDesc}`:'—',validita:prev.validita?formatDate(prev.validita):'—',imponibile:totali.imponibile_netto,marginePerc:margineTotale.perc,margineEuro:margineTotale.euro};
+  const cambiaTab=(v:string)=>navigate({to:'/preventivatore/$id',params:{id},search:(old)=>({...old,tab:v}),replace:true});
+
   return (
     <>
-      <div className="flex flex-col gap-4 p-3 md:p-4 lg:p-6">
+      <div className="flex flex-col gap-3 p-3 md:p-4 min-w-0">
         {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 bg-card p-3">
+          <div className="flex flex-wrap min-w-0 items-center gap-2">
             <BackButton fallbackTo="/preventivatore" fallbackLabel="Preventivi" />
             <h1 className="text-xl font-semibold">
               {prev.numero ?? (prev.tipo === "ordine" ? "Nuovo ordine" : "Nuovo preventivo")}
             </h1>
-            {prev.tipo === "preventivo" ? (
-              <EvasioneBadge
-                stato={computeEvasione(
-                  prev.blocchi.flatMap((b) => b.righe ?? []),
-                )}
-              />
-            ) : (
-              <Badge variant={prev.stato === "confermato" ? "default" : prev.stato === "inviato" ? "secondary" : "outline"}>
-                {STATI_LABEL[prev.stato]}
-              </Badge>
-            )}
+            {prev.titolo && <span className="text-sm text-muted-foreground min-w-0 break-words">· {prev.titolo}</span>}
+            <Badge variant={prev.stato==='confermato'?'default':'secondary'}>{STATI_LABEL[prev.stato]}</Badge>
+            {prev.alternativa_di && <Link to="/preventivatore/$id" params={{id:prev.alternativa_di}} search={{tab:'corpo'}} className="text-xs bg-warning/20 text-warning-foreground border border-warning px-2 py-1 rounded">Alt. {lettera||'…'} di {principali.find(p=>p.id===prev.alternativa_di)?.numero||'preventivo principale'}</Link>}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -466,26 +492,12 @@ function PreventivoEditorPage() {
                 <ShoppingCart className="mr-1 h-4 w-4" /> Trasforma in ordine
               </Button>
             )}
-            {puoScrivere && <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button size="sm" variant="ghost" className="text-destructive">
-                  <Trash2 className="mr-1 h-4 w-4" /> {prev.tipo === "ordine" ? "Elimina ordine" : "Elimina preventivo"}
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>{prev.tipo === "ordine" ? "Eliminare l'ordine?" : "Eliminare il preventivo?"}</AlertDialogTitle>
-                  <AlertDialogDescription>Tutti i blocchi e le righe verranno eliminati. Irreversibile.</AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Annulla</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => delPrev.mutate()}>Elimina</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>}
+            {puoScrivere && <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="Altre azioni"><MoreHorizontal className="size-5"/></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem className="text-destructive" onSelect={()=>setEliminaOpen(true)}><Trash2 className="size-4 mr-2"/>Elimina</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}
+
           </div>
         </div>
 
+        <FasciaPreventivo dati={riepilogo} onCliente={()=>setClienteOpen(true)}/>
         {/* Link incrociati preventivo ↔ ordini */}
         {(ordiniCollegati.length > 0 || preventivoOrigine) && (
           <Card className="border-[#0d1f3c]/15 bg-[#f4f7fb]">
@@ -526,221 +538,12 @@ function PreventivoEditorPage() {
           </Card>
         )}
 
-        <div className={cn("flex flex-col gap-5 pt-3", !editMode && "readonly-mode")}>
-            <fieldset disabled={!editMode} className="contents">
-            {/* ===== TESTATA ===== */}
-            <section className="flex flex-col gap-3">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Testata</div>
-
-              {!editMode ? (
-                /* ===== BANNER RIASSUNTIVO (sola lettura) ===== */
-                <Card className="overflow-hidden border-[#0d1f3c]/15">
-                  <CardContent
-                    className="p-3 md:p-3.5"
-                    style={{ background: "linear-gradient(135deg, #f4f7fb 0%, #e8eef7 100%)" }}
-                  >
-                    {cliente ? (
-                      <div className="flex flex-col space-y-0.5">
-                        {cliente.id_cliente && (
-                          <div className="font-mono text-xs text-[#2b5ea7]">Cliente n. {cliente.id_cliente}</div>
-                        )}
-                        <Link
-                          to="/clienti/$clienteId"
-                          params={{ clienteId: cliente.id }}
-                          onClick={(e) => e.stopPropagation()}
-                          title="Apri scheda cliente"
-                          className="cursor-pointer self-start bg-transparent p-0 text-left text-base font-bold leading-tight text-[#0d1f3c] hover:text-[#2b5ea7] hover:underline"
-                        >
-                          {cliente.ragione_sociale}
-                        </Link>
-                        {cliente.piva && (
-                          <div className="text-sm leading-snug text-[#0d1f3c]/80">P.IVA {cliente.piva}</div>
-                        )}
-                        {cliente.indirizzo && (
-                          <div className="text-sm leading-snug text-[#0d1f3c]/80">{cliente.indirizzo}</div>
-                        )}
-                        {(cliente.cap || cliente.comune?.nome || cliente.provincia) && (
-                          <div className="text-sm leading-snug text-[#0d1f3c]/80">
-                            {[cliente.cap, cliente.comune?.nome].filter(Boolean).join(" ")}
-                            {cliente.provincia ? ` (${cliente.provincia})` : ""}
-                          </div>
-                        )}
-                        {cantiereLine ? (
-                          <div className="pt-0.5 text-sm leading-snug text-[#0d1f3c]">📍 Cantiere: {cantiereLine}</div>
-                        ) : cantiereDescrizione ? (
-                          <div className="pt-0.5 text-sm leading-snug text-[#0d1f3c]">
-                            📍 Cantiere (provvisorio): {cantiereDescrizione}
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <div className="text-sm text-muted-foreground">Nessun cliente selezionato</div>
-                    )}
-
-                    <CondizioniClienteGamma clienteId={prev.cliente_id ?? null} className="mt-2 border-t border-[#0d1f3c]/10 pt-2" />
-                    {/* Griglia campi aggiuntivi */}
-                    <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1.5 border-t border-[#0d1f3c]/10 pt-2 md:grid-cols-3">
-                      {[
-                        { label: "Numero", value: prev.numero || "—" },
-                        { label: "Data", value: prev.data ? new Date(prev.data).toLocaleDateString("it-IT") : "—" },
-                        { label: "Validità", value: prev.validita ? new Date(prev.validita).toLocaleDateString("it-IT") : "—" },
-                        { label: "Agente", value: agenti.find((a) => a.id === prev.agente_codice)?.nome || "—" },
-                        { label: "Filiale", value: prev.filiale || "—" },
-                        { label: "Tipo documento", value: TIPI_DOC_LABEL[prev.tipo_doc] || "—" },
-                        { label: "Stato", value: STATI_LABEL[prev.stato] || "—" },
-                        { label: "IVA", value: `${Number(prev.iva_perc ?? 22)}%` },
-                      ].map((f) => (
-                        <div key={f.label} className="flex flex-col leading-tight">
-                          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{f.label}</span>
-                          <span className="text-sm font-medium text-[#0d1f3c]">{f.value}</span>
-                        </div>
-                      ))}
-                    </div>
-                    {prev.note && (
-                      <div className="mt-2 border-t border-[#0d1f3c]/10 pt-2">
-                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Note</div>
-                        <div className="whitespace-pre-wrap text-sm leading-snug text-[#0d1f3c]">{prev.note}</div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ) : (
-                <>
-                  {/* Cliente / Cantiere pickers */}
-                  <Card>
-                    <CardContent className="grid grid-cols-1 gap-3 p-4 md:grid-cols-2">
-                      <div className="grid gap-1.5">
-                        <Label className="text-xs">Cliente</Label>
-                        <ClientePicker value={prev.cliente_id ?? null} onChange={onChangeCliente} />
-                        <CondizioniClienteGamma clienteId={prev.cliente_id ?? null} />
-                      </div>
-                      <div className="grid gap-1.5">
-                        <Label className="text-xs">Cantiere</Label>
-                        <div className="flex gap-2">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant={modoCantiereEdit === "cantiere" ? "default" : "outline"}
-                            onClick={() => setModoCantiereEdit("cantiere")}
-                          >
-                            Cantiere
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant={modoCantiereEdit === "provvisorio" ? "default" : "outline"}
-                            onClick={() => setModoCantiereEdit("provvisorio")}
-                          >
-                            Provvisorio
-                          </Button>
-                        </div>
-                        {modoCantiereEdit === "cantiere" ? (
-                          <CantierePicker
-                            cliente_id={prev.cliente_id ?? null}
-                            value={prev.cantiere_id ?? null}
-                            onChange={(id) => save.mutate({ cantiere_id: id, ...(cantDescr ? { cantiere_descrizione: null } : {}) }, { onSuccess: () => riapplicaSpeciali.mutate() })}
-                          />
-                        ) : (
-                          <Input
-                            key={`cantdescr-${prev.id}`}
-                            defaultValue={cantDescr ?? ""}
-                            placeholder="Descrivi il cantiere (indirizzo da definire)…"
-                            onBlur={(e) => {
-                              if ((e.target.value || null) !== cantDescr) {
-                                save.mutate({ cantiere_descrizione: e.target.value || null, cantiere_id: null });
-                              }
-                            }}
-                          />
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Campi modificabili in griglia 2 colonne */}
-                  <Card>
-                    <CardContent className="grid grid-cols-1 gap-3 p-4 md:grid-cols-2">
-                      <div className="grid gap-1.5">
-                        <Label className="text-xs">Numero</Label>
-                        <Input defaultValue={prev.numero ?? ""}
-                          onBlur={(e) => {
-                            if ((e.target.value || null) !== prev.numero)
-                              save.mutate({ numero: e.target.value || null });
-                          }} />
-                      </div>
-                      <div className="grid gap-1.5">
-                        <Label className="text-xs">Agente</Label>
-                        <Select
-                          value={prev.agente_codice ?? ""}
-                          onValueChange={(v) => save.mutate({ agente_codice: v || null })}
-                        >
-                          <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                          <SelectContent>
-                            {agenti.map((a) => (
-                              <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="grid gap-1.5">
-                        <Label className="text-xs">Filiale</Label>
-                        <Input
-                          defaultValue={prev.filiale ?? ""}
-                          key={`fil-${prev.filiale ?? ""}`}
-                          onBlur={(e) => {
-                            if ((e.target.value || null) !== prev.filiale)
-                              save.mutate({ filiale: e.target.value || null });
-                          }}
-                        />
-                      </div>
-                      <div className="grid gap-1.5">
-                        <Label className="text-xs">Data</Label>
-                        <Input type="date" defaultValue={prev.data}
-                          onBlur={(e) => { if (e.target.value && e.target.value !== prev.data) save.mutate({ data: e.target.value }); }} />
-                      </div>
-                      <div className="grid gap-1.5">
-                        <Label className="text-xs">Validità</Label>
-                        <Input type="date" defaultValue={prev.validita ?? ""}
-                          onBlur={(e) => { if ((e.target.value || null) !== prev.validita) save.mutate({ validita: e.target.value || null }); }} />
-                      </div>
-                      <div className="grid gap-1.5">
-                        <Label className="text-xs">Tipo documento</Label>
-                        <Select value={prev.tipo_doc} onValueChange={(v) => save.mutate({ tipo_doc: v as TipoDoc })}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {TIPI_DOC.map((t) => (
-                              <SelectItem key={t} value={t}>{TIPI_DOC_LABEL[t]}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="grid gap-1.5">
-                        <Label className="text-xs">Stato</Label>
-                        <Select value={prev.stato} onValueChange={(v) => save.mutate({ stato: v as StatoPreventivo })}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {STATI.map((s) => <SelectItem key={s} value={s}>{STATI_LABEL[s]}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="grid gap-1.5">
-                        <Label className="text-xs">IVA %</Label>
-                        <Input type="text" inputMode="decimal" defaultValue={String(prev.iva_perc ?? 22).replace(".",",")}
-                          onBlur={(e) => {
-                            const v = parseNumeroIt(e.target.value);
-                            if (v !== null && v !== Number(prev.iva_perc ?? 22)) save.mutate({ iva_perc: v });
-                          }} />
-                      </div>
-                      <div className="grid gap-1.5 md:col-span-2">
-                        <Label className="text-xs">Note</Label>
-                        <Textarea rows={2} defaultValue={prev.note ?? ""}
-                          onBlur={(e) => { if ((e.target.value || null) !== prev.note) save.mutate({ note: e.target.value || null }); }} />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </>
-              )}
-            </section>
-
+        <Tabs value={tab} onValueChange={cambiaTab} className="min-w-0">
+          <TabsList className="w-full justify-start bg-transparent border-b rounded-none h-11 p-0">
+            {(['testata','corpo','piede'] as const).map(t=><TabsTrigger key={t} value={t} className="flex-1 sm:flex-none rounded-none h-11 px-4 bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary">{t==='testata'?'Testata':t==='piede'?'Piede':`Corpo · ${prev.blocchi.length} blocchi`}</TabsTrigger>)}
+          </TabsList>
+          <TabsContent value="testata"><TestataPreventivo prev={prev} cliente={clienteDati} editMode={editMode} agenti={agenti} principali={principali} haAlternative={haAlternative} listino={listino} categoria={categoria} onSave={p=>save.mutate(p)} onCliente={()=>setClienteOpen(true)} onChangeCliente={onChangeCliente} modoCantiere={modoCantiereEdit} onModoCantiere={setModoCantiereEdit} onCantiere={cid=>save.mutate({cantiere_id:cid,cantiere_descrizione:null},{onSuccess:()=>riapplicaSpeciali.mutate()})}/></TabsContent>
+          <TabsContent value="corpo"><fieldset disabled={!editMode} className={cn('min-w-0',!editMode&&'readonly-mode')}>
             {/* ===== CORPO ===== */}
             <section className="flex flex-col gap-3">
               <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -785,73 +588,12 @@ function PreventivoEditorPage() {
                 </div>
               )}
             </section>
-            </fieldset>
-
-            {/* ===== PIEDE ===== */}
-            <section className="flex flex-col gap-3">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Piede</div>
-              <Card>
-                <CardContent className="space-y-2 p-4">
-                  <div className="flex items-center justify-between border-b py-2">
-                    <span className="text-sm font-medium text-muted-foreground">Margine</span>
-                    <span className={cn("font-mono text-base font-semibold", margineTotale.perc >= 0 ? "text-[#009246]" : "text-destructive")}>
-                      {margineTotale.perc.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}% · € {fmt(margineTotale.euro)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 py-1">
-                    <Label className="text-sm text-muted-foreground" htmlFor="sconto-piede">Sconto a piede %</Label>
-                    <Input
-                      id="sconto-piede"
-                      type="text"
-                      inputMode="decimal"
-                      disabled={!editMode || applicaSconto.isPending}
-                      defaultValue={String(Number(prev.sconto_piede_perc ?? 0)).replace(".",",")}
-                      key={`scp-${prev.sconto_piede_perc ?? 0}`}
-                      className="h-8 w-28 text-right font-mono"
-                      onBlur={(e) => {
-                        const raw = e.target.value.trim();
-                        const parsed = raw === "" ? 0 : parseNumeroIt(raw);
-                        const v = parsed === null ? 0 : Math.max(0, parsed);
-                        if (v !== Number(prev.sconto_piede_perc ?? 0)) {
-                          applicaSconto.mutate(v);
-                        }
-                      }}
-                    />
-                  </div>
-                  <p className="text-[11px] italic text-muted-foreground">
-                    Applicando lo sconto a piede, la percentuale verrà impostata su tutte le righe.
-                    {applicaSconto.isPending && " · Aggiornamento in corso…"}
-                  </p>
-                  {Number(prev.sconto_piede_perc ?? 0) > 0 && (
-                    <div className="flex items-center justify-between border-t py-1 text-destructive">
-                      <span className="text-sm">
-                        Sconto applicato: {Number(prev.sconto_piede_perc).toLocaleString("it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}% su tutte le righe
-                      </span>
-                    </div>
-                  )}
-                  <div className="mt-2 flex items-center justify-between rounded-md bg-[#0d1f3c] px-4 py-3 text-white">
-                    <span className="text-sm font-semibold uppercase tracking-wider">Totale</span>
-                    <span className="font-mono text-2xl font-bold">€ {fmt(totali.imponibile_netto)}</span>
-                  </div>
-                  <div className="flex items-center justify-between py-1">
-                    <span className="text-sm text-muted-foreground">IVA {Number(prev.iva_perc ?? 22)}%</span>
-                    <span className="font-mono text-base">€ {fmt(totali.iva)}</span>
-                  </div>
-                  <div className="flex items-center justify-between py-1">
-                    <span className="text-sm text-muted-foreground">Totale con IVA</span>
-                    <span className="font-mono text-base">€ {fmt(totali.totale)}</span>
-                  </div>
-                  <p className="pt-2 text-[11px] italic text-muted-foreground">
-                    Il presente preventivo si intende valido per il periodo di validità indicato. I prezzi sono espressi in Euro, IVA esclusa salvo diversa indicazione.
-                  </p>
-
-                </CardContent>
-              </Card>
-            </section>
-
-        </div>
+            </fieldset></TabsContent>
+          <TabsContent value="piede"><PiedePreventivo dati={riepilogo} iva={totali.iva} totale={totali.totale} ivaPerc={Number(prev.iva_perc??22)} sconto={Number(prev.sconto_piede_perc??0)} editMode={editMode} inCorso={applicaSconto.isPending} onSconto={v=>applicaSconto.mutate(v)} onTestata={()=>cambiaTab('testata')}/></TabsContent>
+        </Tabs>
       </div>
-
+      {clienteOpen && clienteDati && <ClientePreventivoDialog cliente={clienteDati} onClose={()=>setClienteOpen(false)}/>}
+      <AlertDialog open={eliminaOpen} onOpenChange={setEliminaOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Eliminare il documento?</AlertDialogTitle><AlertDialogDescription>Tutti i blocchi e le righe verranno eliminati. Irreversibile.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Annulla</AlertDialogCancel><AlertDialogAction onClick={()=>delPrev.mutate()}>Elimina</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
 
       <AggiungiBloccoDialog
         open={addBloccoOpen}
