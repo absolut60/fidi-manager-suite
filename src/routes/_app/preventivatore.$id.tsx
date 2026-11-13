@@ -369,7 +369,7 @@ function PreventivoEditorPage() {
 
   return (
     <>
-      <div className="flex flex-col gap-3 p-3 md:p-4 min-w-0">
+      <div className="flex flex-col gap-3 p-3 md:p-4 min-w-0 pv-orizzontale:px-0 pv-orizzontale:py-1">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-2 bg-card p-3">
           <div className="flex flex-wrap min-w-0 items-center gap-2">
