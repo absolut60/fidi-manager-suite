@@ -1,3 +1,8 @@
+# FM65 — Ridisegno R2
+- [ ] Codice/descrizione separati e conversioni UM2 condivise per righe e PDF.
+- [ ] Migrazione descrizione Gamma negli ordini, firma/permessi invariati.
+- [ ] Test, prova PRV-161 con ripristino, PDF, immagini telefono/PC, rapporto e SHA.
+
 # FM65 — Ridisegno R1b
 - [x] Componenti fascia/testata/piede, tab URL, cliente sovrapposto con RLS/fallback, Corpo invariato.
 - [x] Dati PRV-161 170,01 / 20,9% / 35,61 / 37,40 / 207,41; test 664 verdi, immagini 375/1024/1280/1920 e 360 senza overflow/errori, tab persistente e modifica simulata. Pagina prova rimossa.
