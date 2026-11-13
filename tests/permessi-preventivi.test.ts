@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { haAccessoPreventivi, puoConsultarePreventivi, puoGestireAnagrafichePreventivi, puoScriverePreventivi, puoVedereFornitori } from "@/lib/permessi-preventivi";
+import { haAccessoPreventivi, preventivoModificabile, puoConsultarePreventivi, puoGestireAnagrafichePreventivi, puoScriverePreventivi, puoVedereFornitori } from "@/lib/permessi-preventivi";
 import { puoGestireFornitori, puoVedereArticoliFornitori } from "@/lib/permessi-fornitori";
 
 describe("FM63 consultazione preventivi per store manager", () => {
@@ -25,6 +25,20 @@ describe("FM63 consultazione preventivi per store manager", () => {
   });
   it("agente senza ruoli preventivi non consulta", () => {
     expect(puoConsultarePreventivi(["agente"])).toBe(false);
+  });
+});
+
+describe("FM65 punto 3: preventivo sempre modificabile, sola lettura per confermati e ordini", () => {
+  it("bozza e inviato sono modificabili per chi ha il permesso", () => {
+    expect(preventivoModificabile({ stato: "bozza", tipo: "preventivo" }, true)).toBe(true);
+    expect(preventivoModificabile({ stato: "inviato", tipo: "preventivo" }, true)).toBe(true);
+  });
+  it("confermato e ordine sono in sola lettura", () => {
+    expect(preventivoModificabile({ stato: "confermato", tipo: "preventivo" }, true)).toBe(false);
+    expect(preventivoModificabile({ stato: "bozza", tipo: "ordine" }, true)).toBe(false);
+  });
+  it("senza permesso di scrittura non è mai modificabile", () => {
+    expect(preventivoModificabile({ stato: "bozza", tipo: "preventivo" }, false)).toBe(false);
   });
 });
 

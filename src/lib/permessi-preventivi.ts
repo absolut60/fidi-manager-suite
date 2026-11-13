@@ -12,3 +12,8 @@ export const puoConsultarePreventivi = (r: Ruoli) => haAccessoPreventivi(r) || r
 export const puoVedereFornitori = (r: Ruoli) => puoConsultarePreventivi(r) || r.includes("amministrazione");
 export const puoScriverePreventivi = (r: Ruoli) => r.some((x) => ["amministratore", "preventivi_manage", "preventivi_write"].includes(x));
 export const puoGestireAnagrafichePreventivi = (r: Ruoli) => r.some((x) => x === "amministratore" || x === "preventivi_manage");
+
+// FM65 punto 3: unica fonte della modificabilità della scheda preventivo (salvataggio automatico invariato).
+// Confermati e ordini sono in sola lettura; il controllo vero resta nel database (RLS preventivi_update).
+export const preventivoModificabile = (prev: { stato: string; tipo: string }, puoScrivere: boolean) =>
+  puoScrivere && prev.stato !== "confermato" && prev.tipo !== "ordine";
