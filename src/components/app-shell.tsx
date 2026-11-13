@@ -585,7 +585,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <img
             src={`data:image/png;base64,${LOGO_MADE_SIDEBAR_BASE64}`}
             alt="MADE"
-            className="w-28 sm:w-32 h-auto block shrink-0"
+            className="w-32 h-auto block shrink-0"
             style={{ aspectRatio: "490 / 69" }}
           />
         </div>
