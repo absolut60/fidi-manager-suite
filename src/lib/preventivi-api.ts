@@ -141,8 +141,22 @@ export interface CantiereLite {
   id: string;
   nome: string;
   indirizzo: string | null;
+  cap: string | null;
   citta: string | null;
   provincia: string | null;
+  attivo: boolean;
+  provvisorio: boolean;
+}
+
+/** Cantiere collegato al preventivo (anche archiviato), via RPC con gate preventivi: non dipende dal negozio del cliente. */
+export type CantierePreventivo = CantiereRow & { cap: string | null; attivo: boolean; provvisorio: boolean };
+export async function fetchCantierePreventivo(id: string): Promise<CantierePreventivo | null> {
+  const { data, error } = await supabase.rpc("get_cantiere_preventivo", { _id: id });
+  if (error) throw error;
+  const r = data?.[0];
+  if (!r) return null;
+  return { id: r.id, cliente_id: r.cliente_id, nome: r.nome, indirizzo: r.indirizzo, cap: r.cap, citta: r.citta, provincia: r.provincia,
+    comune: r.citta ? { nome: r.citta, provincia: r.provincia } : null, attivo: r.attivo, provvisorio: r.provvisorio };
 }
 
 export async function fetchCantieriLite(cliente_id: string): Promise<CantiereLite[]> {
@@ -159,6 +173,8 @@ export async function creaCantiereLite(
   indirizzo?: string | null,
   citta?: string | null,
   provincia?: string | null,
+  cap?: string | null,
+  provvisorio = false,
 ): Promise<{ id: string; nome: string }> {
   const { data, error } = await supabase.rpc("crea_cantiere_lite" as never, {
     _cliente_id: cliente_id,
@@ -166,6 +182,8 @@ export async function creaCantiereLite(
     _indirizzo: indirizzo ?? null,
     _citta: citta ?? null,
     _provincia: provincia ?? null,
+    _cap: cap ?? null,
+    _provvisorio: provvisorio,
   } as never);
   if (error) throw error;
   const row = (data as unknown as { id: string; nome: string }[] | null)?.[0];
@@ -303,7 +321,7 @@ export function statoPrezzoSpecialeRiga(
 
 export interface PreventivoConDettagli extends Preventivo {
   cliente: ClienteRow | null;
-  cantiere: CantiereRow | null;
+  cantiere: CantierePreventivo | null;
   agente: { id: string; nome: string } | null;
   blocchi: BloccoConRighe[];
   prezziSpeciali: PrezzoSpecialeCantiere[];
@@ -361,9 +379,8 @@ export async function fetchPreventivo(id: string): Promise<PreventivoConDettagli
     b.righe.sort((a, b2) => Number(a.ordine ?? 0) - Number(b2.ordine ?? 0));
   }
   p.cliente = p.cliente_id ? await fetchClienteLite(p.cliente_id) : null;
-  if (p.cantiere_id && p.cliente_id) {
-    const cants = await _fetchCantieri(p.cliente_id);
-    p.cantiere = cants.find((c) => c.id === p.cantiere_id) ?? null;
+  if (p.cantiere_id) {
+    p.cantiere = await fetchCantierePreventivo(p.cantiere_id);
   } else {
     p.cantiere = null;
   }

@@ -104,7 +104,7 @@ export function CantierePicker({
                   className={cn("mt-0.5 h-3 w-3", value === c.id ? "opacity-100" : "opacity-0")}
                 />
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium">{c.nome}</div>
+                  <div className="flex flex-wrap items-center gap-1.5 font-medium"><span className="min-w-0 break-words">{c.nome}</span>{c.provvisorio && <span className="shrink-0 rounded-full bg-pv-arancio-tenue px-1.5 py-0.5 text-[10px] font-semibold text-pv-arancio">Provvisorio</span>}</div>
                   {(c.citta || c.provincia) && (
                     <div className="text-muted-foreground">
                       {c.citta ?? ""}

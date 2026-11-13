@@ -1422,6 +1422,13 @@
       "when": 1794572204813,
       "tag": "0202_fm65_r2_descrizione_gamma_ordine",
       "breakpoints": true
+    },
+    {
+      "idx": 203,
+      "version": "7",
+      "when": 1794581039995,
+      "tag": "0203_fm65_cantiere_provvisorio",
+      "breakpoints": true
     }
   ]
 }
