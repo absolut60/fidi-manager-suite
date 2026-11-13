@@ -59,6 +59,7 @@ import { isSoloShowroom, voceMenuVisibileShowroom } from "@/lib/permessi-showroo
 import { NotificationsBell } from "@/components/notifications-bell";
 import { contaNonLette, notificheNonLetteQueryKey } from "@/lib/notifiche";
 import { useBadgeNotifiche } from "@/hooks/use-badge-notifiche";
+import { useBarraAScomparsa } from "@/hooks/use-barra-a-scomparsa";
 import { toast } from "sonner";
 import { haAccessoPreventivi, puoConsultarePreventivi } from "@/lib/permessi-preventivi";
 
@@ -196,6 +197,8 @@ function isItemActive(item: NavItem, currentPath: string) {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  // FM68: la barra si nasconde solo sul telefono in orizzontale (effetto deciso dal CSS).
+  const barraNascosta = useBarraAScomparsa(mobileOpen);
   const { profilo, role, roles, user } = useAuth();
   const navigate = useNavigate();
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
@@ -574,7 +577,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen flex w-full bg-background">
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-primary text-primary-foreground flex items-center justify-between px-4 z-40 border-b border-sidebar-border">
+      <header
+        data-nascosta={barraNascosta}
+        className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-primary text-primary-foreground flex items-center justify-between px-4 z-40 border-b border-sidebar-border transition-transform duration-200 pv-orizzontale:data-[nascosta=true]:-translate-y-full"
+      >
         <div className="flex items-center gap-2 min-w-0">
           <img
             src={`data:image/png;base64,${LOGO_MADE_SIDEBAR_BASE64}`}
