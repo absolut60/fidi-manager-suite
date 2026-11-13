@@ -199,3 +199,4 @@
 - [ ] FM65 F2-F5: logica cascata, componente condiviso, picker, verifica
 - [x] FM65 F2 logica filtri a cascata
 - [x] FM65 F3 Senza famiglia/marca in ricerca + filtri a cascata nel catalogo
+- [x] FM65 F4 filtri a cascata nella ricerca articolo del preventivo
