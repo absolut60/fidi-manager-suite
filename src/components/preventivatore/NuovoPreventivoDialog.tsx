@@ -1,3 +1,4 @@
+import { CondizioniClienteGamma } from "@/components/preventivatore/CondizioniClienteGamma";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -333,16 +334,8 @@ export function NuovoPreventivoDialog({
               </Select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label>Fascia listino</Label>
-              <Select value={fascia} onValueChange={(v) => setFascia(v as FasciaListino)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {FASCE.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+          <CondizioniClienteGamma clienteId={clienteId} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {!isOrdine && (
               <div className="grid gap-1.5">
                 <Label>Tipo documento</Label>
