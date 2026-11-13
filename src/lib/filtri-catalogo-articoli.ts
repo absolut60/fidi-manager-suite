@@ -91,7 +91,7 @@ export function puliziaScelte(terne: TernaArticoliFiltri[], scelte: ScelteCascat
 /**
  * Parametri per cerca_articoli (mai il vecchio `sottofamiglie`). Coppie: "__none__" → "" perché SQL confronta
  * coalesce(codice,'')||'|'||coalesce(codice,''). Famiglie/marche "__none__" passano invariate:
- * oggi cerca_articoli usa `= ANY(...)` e non trova i NULL (serve un'aggiunta SQL in una fetta successiva).
+ * cerca_articoli (FM65 F3) le interpreta come codice NULL, in OR con gli altri valori.
  */
 export function parametriRicerca(scelte: ScelteCascata) {
   return {
@@ -99,4 +99,18 @@ export function parametriRicerca(scelte: ScelteCascata) {
     coppie: scelte.coppie.map(c => c.split("|").map(p => (p === VALORE_NESSUNO ? "" : p)).join("|")),
     marche: [...scelte.marche],
   };
+}
+
+/**
+ * Filtri salvati prima di F3: codici sottofamiglia senza famiglia. Ogni codice diventa la sua coppia 'FAM|SOT'
+ * solo se univoco (fra le famiglie scelte, se ce ne sono); se ambiguo o inesistente viene scartato.
+ */
+export function convertiSottofamiglieSalvate(terne: TernaArticoliFiltri[], codici: string[], famiglie: string[]): string[] {
+  const fam = new Set(famiglie);
+  const out: string[] = [];
+  for (const cod of codici) {
+    const coppie = new Set(terne.filter(t => chiave(t.codice_sottofamiglia) === cod && (!fam.size || fam.has(chiave(t.codice_famiglia)))).map(chiaveCoppia));
+    if (coppie.size === 1) out.push([...coppie][0]);
+  }
+  return [...new Set(out)];
 }

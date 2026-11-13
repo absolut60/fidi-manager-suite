@@ -1450,6 +1450,13 @@
       "when": 1794595034331,
       "tag": "0206_fm65_f1_cerca_articoli_cascata",
       "breakpoints": true
+    },
+    {
+      "idx": 207,
+      "version": "7",
+      "when": 1794595634557,
+      "tag": "0207_fm65_f3_cerca_articoli_senza_famiglia_marca",
+      "breakpoints": true
     }
   ]
 }

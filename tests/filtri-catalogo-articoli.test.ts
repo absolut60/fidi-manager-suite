@@ -51,3 +51,17 @@ describe("filtri a cascata articoli", () => {
     expect(espandiTerne(compattaTerne(terne))).toEqual(terne);
   });
 });
+
+import { convertiSottofamiglieSalvate } from "../src/lib/filtri-catalogo-articoli";
+import { FILTRI_ARTICOLI, parametriArticoli } from "../src/lib/catalogo-articoli";
+describe("FM65 F3 catalogo articoli", () => {
+  test("filtri salvati vecchi: AB ambigua scartata, univoca se la famiglia la decide", () => {
+    expect(convertiSottofamiglieSalvate(terne, ["AB"], [])).toEqual([]);
+    expect(convertiSottofamiglieSalvate(terne, ["AB"], ["SR"])).toEqual(["SR|AB"]);
+    expect(convertiSottofamiglieSalvate(terne, ["ZZ"], [])).toEqual([]);
+  });
+  test("la ricerca usa le coppie e mai il vecchio parametro sottofamiglie", () => {
+    const p = parametriArticoli({ ...FILTRI_ARTICOLI, famiglie: ["SR"], coppie: ["SR|AB"], marche: ["__none__"], sottofamiglie: ["AB"] });
+    expect([p.famiglie, p.coppie, p.sottofamiglie, p.marche]).toEqual([["SR"], ["SR|AB"], [], ["__none__"]]);
+  });
+});

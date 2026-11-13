@@ -4,6 +4,9 @@ import { keepPreviousData, useQuery, useSuspenseQuery } from "@tanstack/react-qu
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { FiltroMultiplo } from "@/components/filtro-multiplo";
+import { FiltriCatalogoArticoli } from "@/components/articoli/FiltriCatalogoArticoli";
+import { convertiSottofamiglieSalvate } from "@/lib/filtri-catalogo-articoli";
+import { useTerneArticoliFiltri } from "@/lib/use-terne-articoli-filtri";
 import { SchedaLista } from "@/components/lista-responsive/scheda-lista";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,13 +42,20 @@ function useFiltriApplicati(f: FiltriArticoli) {
 }
 function ArticoliListPage() {
   const { user } = useAuth();
-  const { filtri: f, setParziale } = useFiltriPagina("articoli-gamma", FILTRI_ARTICOLI, { userId: user?.id, valida: { famiglie: Array.isArray, sottofamiglie: Array.isArray, marche: Array.isArray, fornitori: Array.isArray, stati: Array.isArray, disponibileIn: Array.isArray } });
+  const { filtri: f, setParziale } = useFiltriPagina("articoli-gamma", FILTRI_ARTICOLI, { userId: user?.id, valida: { famiglie: Array.isArray, coppie: Array.isArray, sottofamiglie: Array.isArray, marche: Array.isArray, fornitori: Array.isArray, stati: Array.isArray, disponibileIn: Array.isArray } });
   const [aperti, setAperti] = useState(false);
   const [cercaFornitore, setCercaFornitore] = useState("");
   const search = useDebounce(f.search);
   const applicati = useFiltriApplicati(f);
   const testoFornitore = useDebounce(cercaFornitore);
   const cambia = (patch: Partial<FiltriArticoli>) => setParziale({ ...patch, page: 1 });
+  // FM65 F3: filtri salvati con soli codici sottofamiglia → coppie se univoci, altrimenti scartati.
+  const { data: terne } = useTerneArticoliFiltri();
+  useEffect(() => {
+    if (!terne || !f.sottofamiglie.length) return;
+    const coppie = Array.from(new Set([...f.coppie, ...convertiSottofamiglieSalvate(terne, f.sottofamiglie, f.famiglie)]));
+    setParziale({ coppie, sottofamiglie: [], page: 1 });
+  }, [terne, f.sottofamiglie, f.coppie, f.famiglie, setParziale]);
   return <div className="flex h-full min-h-0 flex-col">
     <header className="max-h-[65dvh] shrink-0 overflow-y-auto border-b bg-card px-3 py-3 lg:px-6">
       <h1 className="text-xl font-bold text-navy">Articoli</h1>
@@ -61,15 +71,8 @@ function ArticoliListPage() {
 function Filtri({ f, cambia, aperti, testoFornitore, cercaFornitore }: { f: FiltriArticoli; cambia: (p: Partial<FiltriArticoli>) => void; aperti: boolean; testoFornitore: string; cercaFornitore: (s: string) => void }) {
   const { data: facets } = useSuspenseQuery({ queryKey: ["catalogo-articoli-facets"], queryFn: () => facetsArticoliGamma(), staleTime: 60000 });
   const { data: fornitori = [], error: erroreFornitori } = useQuery({ queryKey: ["catalogo-articoli-fornitori", testoFornitore, f.fornitori], queryFn: () => fornitoriArticoliGamma({ data: { testo: testoFornitore, selezionati: f.fornitori } }) });
-  const opzioni = (items: { codice: string; descrizione: string | null; conteggio: number }[]) => Array.from(items.reduce((map, x) => {
-    const previous = map.get(x.codice);
-    map.set(x.codice, { ...x, conteggio: x.conteggio + (previous?.conteggio ?? 0) });
-    return map;
-  }, new Map<string, { codice: string; descrizione: string | null; conteggio: number }>()).values()).map(x => ({ valore: x.codice, label: `${x.descrizione || x.codice} (${x.conteggio.toLocaleString("it-IT")})` }));
   return <div className={`${aperti ? "grid" : "hidden"} mt-3 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid lg:grid-cols-4 xl:grid-cols-6`}>
-    <FiltroMultiplo etichetta="Famiglia" testoTutti="Tutte le famiglie" cercabile opzioni={opzioni(facets.famiglie)} selezionati={f.famiglie} onChange={famiglie => cambia({ famiglie, sottofamiglie: [] })} />
-    <FiltroMultiplo etichetta="Sottofamiglia" testoTutti="Tutte le sottofamiglie" cercabile opzioni={opzioni(facets.sottofamiglie.filter(s => !f.famiglie.length || f.famiglie.includes(s.famiglia ?? "")))} selezionati={f.sottofamiglie} onChange={sottofamiglie => cambia({ sottofamiglie })} />
-    <FiltroMultiplo etichetta="Marca" testoTutti="Tutte le marche" cercabile opzioni={opzioni(facets.marche)} selezionati={f.marche} onChange={marche => cambia({ marche })} />
+    <FiltriCatalogoArticoli scelte={{ famiglie: f.famiglie, coppie: f.coppie, marche: f.marche }} onChange={s => cambia(s)} />
     <div className="min-w-0"><FiltroMultiplo etichetta="Fornitore" testoTutti="Tutti i fornitori" cercabile onCercaChange={cercaFornitore} opzioni={fornitori.map(x => ({ valore: x.id, label: x.ragione_sociale }))} selezionati={f.fornitori} onChange={fornitori => cambia({ fornitori })} />{erroreFornitori && <p role="alert" className="text-xs text-destructive">Ricerca fornitori non disponibile</p>}</div>
     <FiltroMultiplo etichetta="Stato" testoTutti="Tutti gli stati" opzioni={STATI_ARTICOLI} selezionati={f.stati} onChange={stati => cambia({ stati })} />
     <FiltroMultiplo etichetta="Disponibile in" testoTutti="Ovunque" selezionaTutte opzioni={[...facets.sedi.map(x => ({ valore: x.id, label: `${x.nome ?? "Sede"}${x.propria ? " (la tua sede)" : ""}` })), { valore: VALORE_LOGISTICA, label: "Logistica" }]} selezionati={f.disponibileIn} onChange={disponibileIn => cambia({ disponibileIn })} />
