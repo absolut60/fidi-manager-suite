@@ -7,7 +7,7 @@ export interface RiepilogoPreventivo {
 }
 export function FasciaPreventivo({ dati, titolo, onCliente }: { dati: RiepilogoPreventivo; titolo?: string | null; onCliente: () => void }) {
   const fmt = (n: number) => formatNumeroIt(n, { minDecimals: 2, maxDecimals: 2 });
-  const etichetta = "block text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground";
+  const etichetta = "block text-[10.5px] font-semibold uppercase tracking-wide text-foreground/75";
   const voce = (label: string, value: string) => (
     <div key={label} className="min-w-0">
       <span className={etichetta}>{label}</span>
