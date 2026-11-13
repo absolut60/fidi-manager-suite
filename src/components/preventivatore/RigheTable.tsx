@@ -481,7 +481,8 @@ function CellaUm({ idx, um1, um2, fattore, secondaria, disabled, onChange }: {
   const box = "flex h-auto min-h-[26px] w-full items-center justify-between gap-0.5 rounded border border-transparent bg-transparent px-1 py-1 text-left text-xs leading-none shadow-none hover:border-input focus:border-ring focus:bg-card focus-visible:ring-0 [&>svg]:size-3 [&>svg]:shrink-0";
   const testo = (
     <div className="flex min-w-0 items-start">
-      <span className={cn("-mt-0.5 mr-px font-sans text-[8px] font-semibold uppercase leading-none", inUm2 ? "text-pv-arancio" : "text-pv-blu")}>{inUm2 ? "UM2" : "UM1"}</span>
+      <span className={cn("-mt-0.5 mr-px font-sans text-[8px] font-semibold leading-none", inUm2 ? "text-pv-arancio" : "text-pv-blu")}
+        title={inUm2 ? "Unità 2" : "Unità 1"} aria-label={inUm2 ? "Unità 2" : "Unità 1"}>{inUm2 ? "2" : "1"}</span>
       <span className="whitespace-nowrap font-sans text-xs font-bold leading-none text-foreground">{inUm2 ? um2 : um1}</span>
     </div>
   );
