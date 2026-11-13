@@ -1,3 +1,7 @@
+# FM64 — Fetta 4
+- [ ] URL email unico, log mascherati, controllo allegati, oggetti letterali e test.
+- [ ] Ignorare gli avvisi accettati e rileggere quelli attivi.
+
 # FM64 — Fetta 1: RLS listini per sede
 - [x] Ricerca completa src/supabase/tests: nessuna lettura diretta dei due listini con client utente.
 - [x] Migrazione 0196 applicata: solo due policy SELECT e commenti; regola documentata nel README delle regole.
