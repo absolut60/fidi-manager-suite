@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Plus, MapPin, Map as MapIcon, Pencil, Construction } from "lucide-react";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouter, useSearch } from "@tanstack/react-router";
+import { vistaIncorporata } from "@/lib/vista-incorporata";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -24,6 +25,8 @@ export function ClienteCantieriTab({
 }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const router = useRouter();
+  const incorporata = vistaIncorporata(useSearch({ strict: false }));
   const { puoEliminareCantiere } = usePermessiCommerciale();
   // FM56: cantieri in sola lettura per lo showroom (RESTRICTIVE su cantieri).
   const soloShowroom = useSoloShowroom();
@@ -43,7 +46,10 @@ export function ClienteCantieriTab({
       toast.error("Cantiere non posizionato: verifica l'indirizzo");
       return;
     }
-    navigate({ to: "/cantieri", search: { tab: "mappa", focus: c.id } });
+    if (incorporata) {
+      const destinazione = router.buildLocation({ to: "/cantieri", search: { tab: "mappa", focus: c.id } });
+      window.open(destinazione.href, "_blank", "noopener,noreferrer");
+    } else navigate({ to: "/cantieri", search: { tab: "mappa", focus: c.id } });
   }
 
   const { data, isLoading } = useQuery({
