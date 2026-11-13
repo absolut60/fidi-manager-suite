@@ -3,6 +3,9 @@
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
+/* pv-orizzontale = telefono in orizzontale; pv-tabella = dove il corpo del preventivo si vede come tabella (tablet, telefono orizzontale, PC) */
+@custom-variant pv-orizzontale { @media (orientation: landscape) and (max-height: 500px) and (max-width: 1023.98px) { @slot; } }
+@custom-variant pv-tabella { @media (min-width: 768px), (orientation: landscape) and (max-height: 500px) { @slot; } }
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
