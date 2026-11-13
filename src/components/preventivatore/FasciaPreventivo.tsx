@@ -8,13 +8,26 @@ export interface RiepilogoPreventivo {
 }
 export function FasciaPreventivo({ dati, onCliente }: { dati: RiepilogoPreventivo; onCliente: () => void }) {
   const fmt = (n: number) => formatNumeroIt(n, { minDecimals: 2, maxDecimals: 2 });
-  return <section aria-label="Riepilogo preventivo" className="bg-primary text-primary-foreground px-3 py-3 flex flex-wrap lg:flex-nowrap items-center gap-x-4 gap-y-3">
-    <div className="min-w-0 basis-full lg:basis-auto lg:flex-1">
-      <span className="text-xs opacity-75">Cliente</span>
-      <Button variant="link" className="h-auto min-h-10 p-0 text-primary-foreground whitespace-normal text-left justify-start break-words" onClick={onCliente}>{dati.cliente}<ExternalLink className="size-3 shrink-0 ml-1" /></Button>
+  const etichetta = "block text-[10.5px] font-medium uppercase tracking-wide opacity-70";
+  const voce = (label: string, value: string, max?: string) => (
+    <div key={label} className={`min-w-0 lg:shrink ${max ?? ""}`}>
+      <span className={etichetta}>{label}</span>
+      <span title={value} className="block break-words text-xs font-medium lg:overflow-hidden lg:text-ellipsis lg:whitespace-nowrap">{value}</span>
     </div>
-    {([['Cantiere',dati.cantiere],['Listino',dati.listino],['Categoria',dati.categoria],['Pagamento',dati.pagamento],['Validità',dati.validita]] as const).map(([label,value]) => <div key={label} className="min-w-0 basis-[calc(50%-1rem)] lg:basis-auto lg:flex-1"><div className="text-xs opacity-75">{label}</div><div className="text-xs break-words font-medium">{value}</div></div>)}
-    <div className="ml-auto shrink-0"><div className="text-xs opacity-75">Margine</div><div className="text-sm font-semibold">{formatNumeroIt(dati.marginePerc,{minDecimals:1,maxDecimals:1})}% · € {fmt(dati.margineEuro)}</div></div>
-    <div className="shrink-0"><div className="text-xs opacity-75">Totale imponibile</div><div className="text-2xl font-bold tabular-nums">€ {fmt(dati.imponibile)}</div></div>
+  );
+  return <section aria-label="Riepilogo preventivo" className="grid grid-cols-2 gap-x-4 gap-y-3 bg-primary px-3 py-3 text-primary-foreground lg:flex lg:flex-nowrap lg:items-end lg:gap-x-7">
+    <div className="col-span-2 min-w-0 lg:max-w-[18rem] lg:shrink">
+      <span className={etichetta}>Cliente</span>
+      <Button variant="link" title={dati.cliente} className="flex h-auto max-w-full justify-start p-0 text-left text-xs font-medium text-primary-foreground" onClick={onCliente}>
+        <span className="min-w-0 break-words lg:overflow-hidden lg:text-ellipsis lg:whitespace-nowrap">{dati.cliente}</span><ExternalLink className="ml-1 size-3 shrink-0" />
+      </Button>
+    </div>
+    {voce("Cantiere", dati.cantiere, "lg:max-w-[14rem]")}
+    {voce("Listino", dati.listino, "lg:max-w-[10rem]")}
+    {voce("Categoria", dati.categoria, "lg:max-w-[14rem]")}
+    {voce("Pagamento", dati.pagamento, "lg:max-w-[16rem]")}
+    {voce("Validità", dati.validita, "lg:shrink-0")}
+    <div className="min-w-0 lg:ml-auto lg:shrink-0"><span className={etichetta}>Margine</span><span className="block whitespace-nowrap text-sm font-semibold">{formatNumeroIt(dati.marginePerc,{minDecimals:1,maxDecimals:1})}% · € {fmt(dati.margineEuro)}</span></div>
+    <div className="min-w-0 lg:shrink-0"><span className={etichetta}>Totale imponibile</span><span className="block whitespace-nowrap text-xl font-bold tabular-nums sm:text-2xl">€ {fmt(dati.imponibile)}</span></div>
   </section>;
 }
