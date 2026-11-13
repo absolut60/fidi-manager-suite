@@ -21,14 +21,14 @@ const EVASIONE: Record<StatoEvasione, string> = {
 };
 
 /** Pezzi condivisi con l'elenco preventivi: stessa resa della scheda. */
-export function BadgeTipoDoc({ tipoDoc }: { tipoDoc: TipoDoc }) {
-  return <span className={cn(base, TIPO[tipoDoc])}>{TIPI_DOC_LABEL[tipoDoc]}</span>;
+export function BadgeTipoDoc({ tipoDoc, className }: { tipoDoc: TipoDoc; className?: string }) {
+  return <span className={cn(base, TIPO[tipoDoc], className)}>{TIPI_DOC_LABEL[tipoDoc]}</span>;
 }
-export function BadgeStato({ stato }: { stato: StatoPreventivo }) {
-  return <span className={cn(base, STATO[stato])}>{stato === "bozza" && <span aria-hidden>●</span>}{STATI_LABEL[stato]}</span>;
+export function BadgeStato({ stato, className }: { stato: StatoPreventivo; className?: string }) {
+  return <span className={cn(base, STATO[stato], className)}>{stato === "bozza" && <span aria-hidden>●</span>}{STATI_LABEL[stato]}</span>;
 }
-export function BadgeEvasione({ stato }: { stato: StatoEvasione }) {
-  return <span className={cn(base, EVASIONE[stato])}>{EVASIONE_LABEL[stato]}</span>;
+export function BadgeEvasione({ stato, className }: { stato: StatoEvasione; className?: string }) {
+  return <span className={cn(base, EVASIONE[stato], className)}>{EVASIONE_LABEL[stato]}</span>;
 }
 
 /** Badge colorati accanto al numero: tipo documento, stato, evasione (solo preventivi). */
