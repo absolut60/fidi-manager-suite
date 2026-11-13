@@ -1,8 +1,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import nodemailer from "npm:nodemailer@6.9.16";
-import { LOGO_MADE_BASE64 } from "./logo-made.ts";
-import { mascheraEmail, mascheraEmailNelLog } from "../../../src/lib/email-log.ts";
+import { LOGO_MADE_BASE64, mascheraEmail, mascheraEmailNelLog } from "./logo-made.ts";
 
 // Content-ID fisso usato dal template (<img src="cid:logoMade">).
 // Senza trattini per evitare bug di parser legacy.
