@@ -59,3 +59,13 @@ describe("FM65 2b-1 — sconti come in Gamma e riga dal motore", () => {
   });
   it("nota: nessun importo", () => expect(patchConImporto({ tipo_riga: "nota" }, { quantita: 2 })).toEqual({ quantita: 2 }));
 });
+
+import { costoRiga } from "@/lib/riga-preventivo";
+describe("FM65 2b-2 — costo di riga a 4 decimali", () => {
+  it("lastra 25,2 × 3,01 = 75,852 (costo unitario resta 3,0100)", () => {
+    expect(costoRiga(3.01, 25.2)).toBe(75.852);
+  });
+  it("guida kit 7,17 × 0,728 = 5,2198", () => {
+    expect(costoRiga(0.728, 7.17)).toBe(5.2198);
+  });
+});

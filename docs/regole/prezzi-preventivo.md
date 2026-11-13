@@ -63,3 +63,11 @@ Altri avvisi: `articolo_senza_prezzo_su_listino`, `cliente_senza_listino`, `clie
 - Senza cliente o senza prezzo dal motore la riga si salva senza prezzo con l'avviso "Prezzo non disponibile: inseriscilo a mano".
 - Prezzo, sconti ("17+5", massimo 6), maggiorazione, sconto extra e costo unitario restano modificabili; ogni modifica salva l'importo con `patchConImporto`/`importoRiga`.
 - Le righe del vecchio catalogo (`articolo_id`) restano modificabili con il vecchio selettore.
+
+
+## Kit e "Aggiorna listini" (FM65 fetta 2b-2)
+
+- La fascia A/B/C/SOCI non si sceglie più né nella creazione né nel preventivo: listino e categoria vengono dal cliente (`condizioni_preventivo_cliente`).
+- Blocco da kit: UNA chiamata a `prezzi_preventivo_cliente` per tutti i codici dei componenti; senza cliente il kit non si aggiunge ("Scegli prima il cliente"). Componenti senza codice Gamma o senza prezzo: riga rossa "Articolo non collegato a Gamma: inserisci prezzo e costo a mano".
+- "Aggiorna listini": UNA chiamata al motore per le righe articolo/kit con codice; mostra solo le righe diverse, aggiorna solo quelle spuntate e non tocca lo sconto extra. Righe manuali, note e separatori non si toccano.
+- Costo di riga = costo unitario × quantità a 4 decimali (`costoRiga`), anche quando il costo unitario si modifica a mano.
