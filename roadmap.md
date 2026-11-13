@@ -1,7 +1,7 @@
 # FM65 — Correzioni A
-- [ ] Finestre Duplica/Nuovo senza overflow; selettore clienti chiaro alla fonte.
-- [ ] Filiale dalla sede cliente solo al cambio; primo blocco solo dalla finestra Nuovo, errore non bloccante.
-- [ ] Test e screenshot 375/1280/1440; nessun dato di prova nel database.
+- [x] Finestre Duplica/Nuovo senza overflow; selettore clienti chiaro alla fonte (variant default locale, nessuna modifica globale).
+- [x] Filiale dalla sede cliente solo al cambio, modifica manuale preservata; primo blocco solo dalla finestra Nuovo, errore non bloccante.
+- [x] 706 test; screenshot 375/1280/1440 delle finestre reali con dati simulati, filiale automatica/manuale/senza sede e nessun overflow o errore browser; pagina temporanea rimossa, nessun dato creato nel database. Sessione Andrea non disponibile.
 
 # FM65 — Ridisegno R2
 - [x] Codice/descrizione separati, picker Gamma di sostituzione, conversioni UM2 condivise per righe e PDF; lettura batch unità/pesi.
