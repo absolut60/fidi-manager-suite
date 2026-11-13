@@ -61,20 +61,20 @@ export function ClientePicker({
               <Button
                 key={c.id}
                 type="button"
+                variant="ghost"
                 onClick={() => {
                   onChange(c.id);
                   setOpen(false);
                 }}
                 className={cn(
-                  "h-auto min-h-10 w-full items-start justify-start gap-2 rounded-none border-b px-2 py-2 text-left text-xs whitespace-normal",
-                  value === c.id && "bg-accent/50",
+                  "h-auto min-h-10 w-full items-start justify-start gap-2 rounded-none border-b bg-popover px-2 py-2 text-left text-xs text-popover-foreground whitespace-normal hover:bg-pv-azzurro hover:text-popover-foreground focus-visible:bg-pv-azzurro",
                 )}
               >
                 <Check
                   className={cn("mt-0.5 h-3 w-3", value === c.id ? "opacity-100" : "opacity-0")}
                 />
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium break-words">{[c.codice_gestionale, c.ragione_sociale].filter(Boolean).join(" · ")}</div>
+                  <div className="font-medium break-words">{c.codice_gestionale && <span className="text-muted-foreground">{c.codice_gestionale} · </span>}{c.ragione_sociale}</div>
                   <div className="text-muted-foreground">
                     {c.partita_iva ?? ""} {c.provincia ? `· ${c.provincia}` : ""}
                   </div>

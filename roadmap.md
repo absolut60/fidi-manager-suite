@@ -1,3 +1,8 @@
+# FM65 — Correzioni A
+- [ ] Finestre Duplica/Nuovo senza overflow; selettore clienti chiaro alla fonte.
+- [ ] Filiale dalla sede cliente solo al cambio; primo blocco solo dalla finestra Nuovo, errore non bloccante.
+- [ ] Test e screenshot 375/1280/1440; nessun dato di prova nel database.
+
 # FM65 — Ridisegno R2
 - [x] Codice/descrizione separati, picker Gamma di sostituzione, conversioni UM2 condivise per righe e PDF; lettura batch unità/pesi.
 - [x] 0202 descrizione Gamma negli ordini, firma/permessi invariati e verificati; anon 0.
