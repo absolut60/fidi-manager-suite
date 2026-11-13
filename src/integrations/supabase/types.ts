@@ -10679,6 +10679,36 @@ export type Database = {
         }
         Returns: Json
       }
+      riepilogo_articolo_preventivo: {
+        Args: { _cliente_id: string; _codice: string }
+        Returns: {
+          acq_prezzo: number
+          acq_sc1: number
+          acq_sc2: number
+          acq_sc3: number
+          acq_trasporto_euro: number
+          acq_trasporto_perc: number
+          attivo: boolean
+          codice: string
+          costo_acquisto: number
+          costo_ultimo: number
+          descrizione: string
+          famiglia: string
+          fattore_conversione: number
+          giacenza_logistica: number
+          giacenza_sede_cliente: number
+          giacenza_totale_sedi: number
+          listino_cliente: number
+          marca: string
+          ordinato_fornitori: number
+          sede_cliente_id: string
+          sede_cliente_nome: string
+          sottofamiglia: string
+          stato_gamma: string
+          um: string
+          um2: string
+        }[]
+      }
       rileva_ingressi_scaduto_60: {
         Args: { _importazione_id?: string }
         Returns: number
