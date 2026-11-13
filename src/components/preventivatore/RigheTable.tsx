@@ -271,23 +271,23 @@ export function RigheTable({
           <thead>
             <tr className="whitespace-nowrap bg-pv-testa text-[10px] uppercase tracking-wide text-muted-foreground [&>th]:bg-pv-testa [&>th]:border-b">
               <th className="w-[18px] px-1 py-1.5 sticky left-0 z-10"></th>
-              <th className="w-[40px] px-1 py-1.5 text-center sticky left-[18px] z-10">#</th>
-              <th className="w-[156px] px-1 py-1.5 text-left sticky left-[58px] z-10">Codice</th>
-              <th className="px-1 py-1.5 text-left sticky left-[214px] z-10 border-r">Descrizione</th>
-              <th className="w-[72px] px-1 py-1.5 text-left">U.M.</th>
-              <th className="w-[72px] px-1 py-1.5 text-right">Incid.</th>
+              <th className="w-[48px] px-1 py-1.5 text-center sticky left-[18px] z-10">#</th>
+              <th className="w-[156px] px-1 py-1.5 text-left sticky left-[66px] z-10">Codice</th>
+              <th className="px-1 py-1.5 text-left sticky left-[222px] z-10">Descrizione</th>
+              <th className="w-[64px] px-1 py-1.5 text-left">U.M.</th>
+              <th className="w-[60px] px-1 py-1.5 text-right">Incid.</th>
               <th className="w-[76px] px-1 py-1.5 text-right">Quantità</th>
               <th className="w-[84px] px-1 py-1.5 text-right">Prezzo lordo</th>
               <th className="w-[68px] px-1 py-1.5 text-right">Sconti</th>
-              <th className="w-[60px] px-1 py-1.5 text-right">Magg.%</th>
-              <th className="w-[76px] px-1 py-1.5 text-right">Sc. extra %</th>
+              <th className="w-[52px] px-1 py-1.5 text-right">Magg.%</th>
+              <th className="w-[60px] px-1 py-1.5 text-right" title="Sconto extra %">Extra %</th>
               <th className="w-[84px] px-1 py-1.5 text-right">Netto</th>
-              <th className="w-[50px] px-1 py-1.5 text-center">±</th>
+              <th className="w-[44px] px-1 py-1.5 text-center">±</th>
               <th className="w-[96px] px-1 py-1.5 text-right">Importo</th>
-              <th className="w-[84px] px-1 py-1.5 text-right">Costo</th>
+              <th className="w-[76px] px-1 py-1.5 text-right">Costo</th>
               <th className="w-[60px] px-1 py-1.5 text-right">Marg.%</th>
-              <th className="w-[60px] px-1 py-1.5 text-right">Peso</th>
-              <th className="w-[66px] px-1 py-1.5"></th>
+              <th className="w-[52px] px-1 py-1.5 text-right">Peso</th>
+              <th className="w-[60px] px-1 py-1.5"></th>
             </tr>
           </thead>
           <SortableContext items={blocco.righe.map((r) => r.id)} strategy={verticalListSortingStrategy}>
@@ -480,9 +480,9 @@ function CellaUm({ idx, um1, um2, fattore, secondaria, disabled, onChange }: {
   const inUm2 = secondaria && !!um2;
   const box = "flex h-auto min-h-[26px] w-full items-center justify-between gap-0.5 rounded border border-transparent bg-transparent px-1 py-1 text-left text-xs leading-none shadow-none hover:border-input focus:border-ring focus:bg-card focus-visible:ring-0 [&>svg]:size-3 [&>svg]:shrink-0";
   const testo = (
-    <div className="flex min-w-0 items-center gap-0.5">
-      <span className="whitespace-nowrap font-sans text-xs font-bold text-foreground">{inUm2 ? um2 : um1}</span>
-      <span className={cn("font-sans text-[8px] font-semibold uppercase", inUm2 ? "text-pv-arancio" : "text-pv-blu")}>{inUm2 ? "UM2" : "UM1"}</span>
+    <div className="flex min-w-0 items-start">
+      <span className={cn("-mt-0.5 mr-px font-sans text-[8px] font-semibold uppercase leading-none", inUm2 ? "text-pv-arancio" : "text-pv-blu")}>{inUm2 ? "UM2" : "UM1"}</span>
+      <span className="whitespace-nowrap font-sans text-xs font-bold leading-none text-foreground">{inUm2 ? um2 : um1}</span>
     </div>
   );
   const label = `Unità di misura riga ${idx + 1}`;
@@ -508,10 +508,17 @@ function PulsanteRiepilogo({ idx, onOpen }: { idx: number; onOpen: (() => void) 
     aria-label={`Riepilogo articolo riga ${idx + 1}`} title={onOpen ? "Riepilogo articolo" : "Scegli prima il cliente"}
     onClick={onOpen ? apri : (e) => e.stopPropagation()}
     onKeyDown={(e) => { if (onOpen && (e.key === "Enter" || e.key === " ")) apri(e); }}
-    className={cn("grid size-10 shrink-0 place-items-center rounded-md text-pv-blu sm:size-6",
+    className={cn("grid size-10 shrink-0 place-items-center rounded-md text-pv-blu lg:size-5",
       onOpen ? "cursor-pointer hover:bg-pv-azzurro focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" : "cursor-not-allowed opacity-40")}>
-    <Info className="size-4 sm:size-3.5" aria-hidden />
+    <Info className="size-4 lg:size-3.5" aria-hidden />
   </span>;
+}
+
+/** La descrizione va a capo e cresce col testo (fallback dove field-sizing non è supportato). */
+function adattaAltezza(el: HTMLTextAreaElement | null) {
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = `${el.scrollHeight}px`;
 }
 
 function useCelleRiga(p: RigaProps) {
@@ -541,10 +548,12 @@ function useCelleRiga(p: RigaProps) {
   ) : valorizzata ? <span className="block px-1 py-2 font-mono text-xs">MANUALE</span> : null;
   const articolo = (
     <>
-      <Input key={`${row.id}-${row.descrizione ?? ""}`} defaultValue={row.descrizione ?? ""}
-        aria-label="Descrizione riga" disabled={readOnly}
+      <textarea key={`${row.id}-${row.descrizione ?? ""}`} defaultValue={row.descrizione ?? ""}
+        aria-label="Descrizione riga" disabled={readOnly} rows={1}
+        ref={adattaAltezza} onInput={(e) => adattaAltezza(e.currentTarget)}
+        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } }}
         onBlur={(e) => { if ((e.target.value || null) !== row.descrizione) onPatch({ descrizione: e.target.value || null }); }}
-        className="h-[26px] min-w-0 rounded border-transparent bg-transparent px-1.5 py-1 font-sans text-xs shadow-none outline-none hover:border-input focus:border-ring focus:bg-card focus-visible:ring-0 md:text-xs" placeholder={isText ? "Nota libera…" : isSubtotal ? "Sotto-totale" : "Descrizione…"} />
+        className="block min-h-[26px] w-full min-w-0 resize-none overflow-hidden whitespace-pre-wrap break-words rounded border border-transparent bg-transparent px-1.5 py-1 font-sans text-xs leading-4 shadow-none outline-none [field-sizing:content] hover:border-input focus:border-ring focus:bg-card focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50" placeholder={isText ? "Nota libera…" : isSubtotal ? "Sotto-totale" : "Descrizione…"} />
       {prezzoMancante && <span role="alert" className="mt-0.5 block font-sans text-[11px] font-semibold text-destructive">Prezzo non disponibile: inseriscilo a mano</span>}
     </>
   );
@@ -596,7 +605,7 @@ function useCelleRiga(p: RigaProps) {
     netto: row.prezzo_unit == null ? "—" : fmt4(unita.netto ?? 0),
     segnoSel: (
       <Select value={String(segno)} onValueChange={(v) => onPatch({ segno: Number(v) === -1 ? -1 : 1 })}>
-        <SelectTrigger className="h-8 w-12 px-1 text-xs" aria-label="Segno"><SelectValue /></SelectTrigger>
+        <SelectTrigger className="h-8 w-10 px-1 text-xs" aria-label="Segno"><SelectValue /></SelectTrigger>
         <SelectContent>
           <SelectItem value="1">+</SelectItem>
           <SelectItem value="-1">−</SelectItem>
@@ -619,7 +628,41 @@ function BadgeMargine({ perc, testo }: { perc: number; testo: React.ReactNode })
   return <span className={cn("inline-flex whitespace-nowrap rounded-full px-1.5 py-0.5 font-mono text-xs font-semibold",
     perc < 0 ? "bg-destructive/10 text-destructive" : "bg-pv-verde-tenue text-pv-verde")}>{testo}</span>;
 }
-const BADGE_MANUALE = <span className="mr-1 inline-flex rounded bg-pv-giallo-tenue px-1.5 py-0.5 font-sans text-[9.5px] font-bold uppercase tracking-wide text-pv-giallo not-italic">Manuale</span>;
+
+/**
+ * Unico punto che decide lo sfondo di una riga del corpo. Colori opachi (mescolati con card)
+ * applicati a TUTTE le celle, sticky comprese, così la riga non resta mai "a metà".
+ * Le righe manuali restano bianche come gli articoli.
+ */
+type TonoRiga = "card" | "sottototale" | "separatore" | "nota" | "kit";
+function tonoRiga(c: { tipo: string; isSubtotal: boolean; kitSenzaPrezzo: boolean }): TonoRiga {
+  if (c.kitSenzaPrezzo) return "kit";
+  if (c.isSubtotal) return "sottototale";
+  if (c.tipo === "separatore") return "separatore";
+  if (c.tipo === "nota") return "nota";
+  return "card";
+}
+const SFONDO_CELLE: Record<TonoRiga, string> = {
+  card: "[&>td]:bg-card",
+  sottototale: "[&>td]:bg-[color-mix(in_oklab,var(--color-primary)_5%,var(--color-card))]",
+  separatore: "[&>td]:bg-[color-mix(in_oklab,var(--color-muted)_30%,var(--color-card))]",
+  nota: "[&>td]:bg-[color-mix(in_oklab,var(--color-muted)_20%,var(--color-card))]",
+  kit: "[&>td]:bg-[color-mix(in_oklab,var(--color-destructive)_10%,var(--color-card))]",
+};
+const SFONDO_SCHEDA: Record<TonoRiga, string> = {
+  card: "bg-card",
+  sottototale: "bg-[color-mix(in_oklab,var(--color-primary)_5%,var(--color-card))]",
+  separatore: "bg-[color-mix(in_oklab,var(--color-muted)_30%,var(--color-card))]",
+  nota: "bg-[color-mix(in_oklab,var(--color-muted)_20%,var(--color-card))]",
+  kit: "bg-[color-mix(in_oklab,var(--color-destructive)_10%,var(--color-card))]",
+};
+const HOVER_CELLE = "hover:[&>td]:bg-[color-mix(in_oklab,var(--color-accent)_40%,var(--color-card))]";
+function sfondoRiga(c: Parameters<typeof tonoRiga>[0] & { onRowClick?: unknown }) {
+  return cn(SFONDO_CELLE[tonoRiga(c)], !!c.onRowClick && HOVER_CELLE);
+}
+function sfondoScheda(c: Parameters<typeof tonoRiga>[0]) {
+  return SFONDO_SCHEDA[tonoRiga(c)];
+}
 
 function AzioniRiga(p: RigaProps) {
   return (
@@ -645,15 +688,14 @@ function RigaRow(p: RigaProps) {
   const c = useCelleRiga(p);
   const rowClass = cn(
     "border-b font-mono align-top whitespace-nowrap [&>td]:border-b",
-    c.tipo === "manuale" && "bg-pv-giallo-tenue/30",
-    c.isSubtotal && "bg-primary/5 font-semibold",
-    c.tipo === "separatore" && "h-2 bg-muted/30",
-    c.tipo === "nota" && "bg-muted/20 italic",
-    c.onRowClick && "cursor-pointer hover:bg-accent/40",
-    c.kitSenzaPrezzo && "bg-destructive/10",
+    sfondoRiga(c),
+    c.isSubtotal && "font-semibold",
+    c.tipo === "separatore" && "h-2",
+    c.tipo === "nota" && "italic",
+    c.onRowClick && "cursor-pointer",
   );
   const grip = (
-    <td className="sticky left-0 z-[1] bg-card">
+    <td className="sticky left-0 z-[1]">
       <button {...sortable.attributes} {...sortable.listeners} className="cursor-grab px-0.5" title="Trascina">
         <GripVertical className="h-3 w-3 text-muted-foreground" />
       </button>
@@ -672,9 +714,9 @@ function RigaRow(p: RigaProps) {
   return (
     <tr ref={sortable.setNodeRef} style={style} className={rowClass} onClick={c.onRowClick}>
       {grip}
-      <td className="sticky left-[18px] z-[1] bg-card py-0.5 text-center text-xs text-muted-foreground"><div className="flex flex-col items-center"><span>{p.idx + 1}</span>{p.row.articolo_codice && <PulsanteRiepilogo idx={p.idx} onOpen={p.onOpenRiepilogo ?? null} />}</div></td>
-      <td className="sticky left-[58px] z-[1] min-w-0 bg-card px-1 py-0.5">{c.codice}</td>
-      <td className="sticky left-[214px] z-[1] min-w-0 border-r bg-card px-1 py-0.5">{c.tipo === "manuale" && <div className="pt-0.5">{BADGE_MANUALE}</div>}{c.articolo}{c.kitSenzaPrezzo && (
+      <td className="sticky left-[18px] z-[1] py-0.5 text-center text-xs text-muted-foreground"><div className="flex min-h-[26px] flex-row items-center justify-center gap-0.5"><span>{p.idx + 1}</span>{p.row.articolo_codice && <PulsanteRiepilogo idx={p.idx} onOpen={p.onOpenRiepilogo ?? null} />}</div></td>
+      <td className="sticky left-[66px] z-[1] min-w-0 px-1 py-0.5">{c.codice}</td>
+      <td className="sticky left-[222px] z-[1] min-w-0 whitespace-normal px-1 py-0.5">{c.articolo}{c.kitSenzaPrezzo && (
         <p className="mt-0.5 text-[11px] font-sans not-italic text-destructive">Articolo non collegato a Gamma: inserisci prezzo e costo a mano</p>
       )}</td>
       <td className="px-0.5 py-0.5">{v && c.um}</td>
@@ -721,13 +763,11 @@ function RigaScheda(p: RigaProps) {
     </div>
   );
   return (
-    <div className={cn("rounded-md border p-2", c.tipo === "manuale" && "bg-pv-giallo-tenue/30",
-      c.isSubtotal && "bg-primary/5", c.tipo === "nota" && "bg-muted/20",
-      c.kitSenzaPrezzo && "border-destructive bg-destructive/10")}
+    <div className={cn("rounded-md border p-2", sfondoScheda(c), c.kitSenzaPrezzo && "border-destructive")}
       onClick={c.onRowClick}>
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
         <div className="min-w-0">
-          <div className="flex min-w-0 items-center gap-1"><span className="min-w-0 break-words text-xs text-muted-foreground">{c.tipo === "manuale" && BADGE_MANUALE}Riga {p.idx + 1} · {TIPI_RIGA_LABEL[c.tipo]}</span>{p.row.articolo_codice && <PulsanteRiepilogo idx={p.idx} onOpen={p.onOpenRiepilogo ?? null} />}</div>
+          <div className="flex min-w-0 items-center gap-1"><span className="min-w-0 break-words text-xs text-muted-foreground">Riga {p.idx + 1} · {TIPI_RIGA_LABEL[c.tipo]}</span>{p.row.articolo_codice && <PulsanteRiepilogo idx={p.idx} onOpen={p.onOpenRiepilogo ?? null} />}</div>
           {c.valorizzata && campo("Codice", c.codice)}
           {campo("Descrizione", c.articolo)}
           {c.kitSenzaPrezzo && (

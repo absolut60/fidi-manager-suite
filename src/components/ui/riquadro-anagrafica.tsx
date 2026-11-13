@@ -15,5 +15,5 @@ export const TONI_ANAGRAFICA: Record<TonoAnagrafica, { bordo: string; testo: str
 
 /** Cornice unica delle sezioni anagrafiche e del preventivo. */
 export function RiquadroAnagrafica({ tono, className, ...props }: ComponentProps<typeof Card> & { tono: TonoAnagrafica }) {
-  return <Card {...props} className={cn("min-w-0 rounded-l-none rounded-r-lg border-[0.5px] border-l-[3px] bg-card p-3 sm:p-4", TONI_ANAGRAFICA[tono].bordo, className)} />;
+  return <Card {...props} className={cn("min-w-0 rounded-lg border-[0.5px] border-l-[3px] bg-card p-3 sm:p-4", TONI_ANAGRAFICA[tono].bordo, className)} />;
 }

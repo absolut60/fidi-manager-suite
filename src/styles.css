@@ -73,8 +73,8 @@
   --pv-azzurro-bordo: #cfdcf0;
   /* Fascia riepilogo FM65 C: tono intermedio, distinto dalle intestazioni blocco.
      Bordo condiviso con l'azzurro esistente; testo nei token foreground/pv-blu. */
-  --pv-azzurro-medio: #dce7f5;
-  --pv-azzurro-medio-bordo: var(--pv-azzurro-bordo);
+  --pv-azzurro-medio: #c9d9ef;
+  --pv-azzurro-medio-bordo: #a9c1e3;
   --pv-blu: #2b5ea7;
   --pv-testa: #eef1f5;
   --pv-viola: #6b3fb8;
