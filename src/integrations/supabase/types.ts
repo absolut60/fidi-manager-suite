@@ -5831,10 +5831,13 @@ export type Database = {
       preventivi: {
         Row: {
           agente_codice: string | null
+          alternativa_di: string | null
           cantiere_descrizione: string | null
           cantiere_id: string | null
           cliente_id: string | null
+          condizione_pagamento_cod: string | null
           created_at: string
+          creato_da: string | null
           data: string
           fascia_listino: Database["public"]["Enums"]["fascia_listino"] | null
           filiale: string | null
@@ -5848,6 +5851,7 @@ export type Database = {
           stato: Database["public"]["Enums"]["stato_preventivo"]
           tipo: Database["public"]["Enums"]["tipo_documento"]
           tipo_doc: Database["public"]["Enums"]["tipo_doc_preventivo"]
+          titolo: string | null
           totale: number | null
           totale_imponibile: number | null
           updated_at: string
@@ -5855,10 +5859,13 @@ export type Database = {
         }
         Insert: {
           agente_codice?: string | null
+          alternativa_di?: string | null
           cantiere_descrizione?: string | null
           cantiere_id?: string | null
           cliente_id?: string | null
+          condizione_pagamento_cod?: string | null
           created_at?: string
+          creato_da?: string | null
           data?: string
           fascia_listino?: Database["public"]["Enums"]["fascia_listino"] | null
           filiale?: string | null
@@ -5872,6 +5879,7 @@ export type Database = {
           stato?: Database["public"]["Enums"]["stato_preventivo"]
           tipo?: Database["public"]["Enums"]["tipo_documento"]
           tipo_doc?: Database["public"]["Enums"]["tipo_doc_preventivo"]
+          titolo?: string | null
           totale?: number | null
           totale_imponibile?: number | null
           updated_at?: string
@@ -5879,10 +5887,13 @@ export type Database = {
         }
         Update: {
           agente_codice?: string | null
+          alternativa_di?: string | null
           cantiere_descrizione?: string | null
           cantiere_id?: string | null
           cliente_id?: string | null
+          condizione_pagamento_cod?: string | null
           created_at?: string
+          creato_da?: string | null
           data?: string
           fascia_listino?: Database["public"]["Enums"]["fascia_listino"] | null
           filiale?: string | null
@@ -5896,12 +5907,20 @@ export type Database = {
           stato?: Database["public"]["Enums"]["stato_preventivo"]
           tipo?: Database["public"]["Enums"]["tipo_documento"]
           tipo_doc?: Database["public"]["Enums"]["tipo_doc_preventivo"]
+          titolo?: string | null
           totale?: number | null
           totale_imponibile?: number | null
           updated_at?: string
           validita?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "preventivi_alternativa_di_fkey"
+            columns: ["alternativa_di"]
+            isOneToOne: false
+            referencedRelation: "preventivi"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "preventivi_cantiere_id_fkey"
             columns: ["cantiere_id"]
@@ -6835,6 +6854,7 @@ export type Database = {
           segno: number
           tipo_riga: Database["public"]["Enums"]["tipo_riga_preventivo"]
           um: string | null
+          um_scelta: string
           updated_at: string
           vendita: number | null
         }
@@ -6862,6 +6882,7 @@ export type Database = {
           segno?: number
           tipo_riga?: Database["public"]["Enums"]["tipo_riga_preventivo"]
           um?: string | null
+          um_scelta?: string
           updated_at?: string
           vendita?: number | null
         }
@@ -6889,6 +6910,7 @@ export type Database = {
           segno?: number
           tipo_riga?: Database["public"]["Enums"]["tipo_riga_preventivo"]
           um?: string | null
+          um_scelta?: string
           updated_at?: string
           vendita?: number | null
         }
@@ -8624,6 +8646,21 @@ export type Database = {
           tipo: string
         }[]
       }
+      cerca_clienti_preventivo: {
+        Args: { _q: string }
+        Returns: {
+          cap: string
+          citta: string
+          codice_agente: string
+          codice_gestionale: string
+          fascia_listino_default: string
+          id: string
+          indirizzo: string
+          partita_iva: string
+          provincia: string
+          ragione_sociale: string
+        }[]
+      }
       cerca_contatti_collegabili_fornitore: {
         Args: { _fornitore_id: string; _testo?: string }
         Returns: {
@@ -8984,6 +9021,26 @@ export type Database = {
           occhio_vicino: boolean
           oltre_fido: number
           totale_rischio: number
+        }[]
+      }
+      dati_cliente_preventivo: {
+        Args: { _id: string }
+        Returns: {
+          cap: string
+          cellulare: string
+          citta: string
+          codice_agente: string
+          codice_gestionale: string
+          condizione_pagamento_cod: string
+          condizione_pagamento_desc: string
+          email: string
+          id: string
+          indirizzo: string
+          partita_iva: string
+          pec: string
+          provincia: string
+          ragione_sociale: string
+          telefono: string
         }[]
       }
       decidi_candidato_riconciliazione: {
@@ -10311,6 +10368,7 @@ export type Database = {
         }
       }
       lead_evento_provvisorio: { Args: { _lead_id: string }; Returns: boolean }
+      lettera_preventivo: { Args: { _id: string }; Returns: string }
       listini_articolo_visibili: {
         Args: { _codice: string }
         Returns: {
