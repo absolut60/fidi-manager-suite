@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select,SelectContent,SelectItem,SelectTrigger,SelectValue } from "@/components/ui/select";
 import { ClientePicker } from "./ClientePicker";
-import { CantierePicker } from "./CantierePicker";
+import { CantiereTestata } from "./CantiereTestata";
 import { useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
 import { STATI,STATI_LABEL,TIPI_DOC,TIPI_DOC_LABEL,type PreventivoConDettagli,type PreventivoUpdate,type DatiClientePreventivo,type Agente } from "@/lib/preventivi-api";
 import { formatNumeroIt,parseNumeroIt } from "@/lib/numero-it";
@@ -13,9 +13,9 @@ import { formatDate } from "@/lib/fidi";
 import { ExternalLink, FileText, HardHat, Percent, StickyNote, UserRound } from "lucide-react";
 import { RiquadroScheda } from "./RiquadroScheda";
 
-export function TestataPreventivo({prev,cliente,editMode,agenti,principali,haAlternative,listino,categoria,sede,onSave,onCliente,onChangeCliente,onCantiere,modoCantiere,onModoCantiere}: {
+export function TestataPreventivo({prev,cliente,editMode,agenti,principali,haAlternative,listino,categoria,sede,onSave,onCliente,onChangeCliente,onCantiere}: {
   prev: PreventivoConDettagli; cliente: DatiClientePreventivo|null|undefined; editMode:boolean; agenti:Agente[]; principali:{id:string;numero:string|null;titolo:string|null}[]; haAlternative:boolean; listino:string; categoria:string; sede:string;
-  onSave:(patch:PreventivoUpdate)=>void; onCliente:()=>void; onChangeCliente:(id:string)=>void; onCantiere:(id:string)=>void; modoCantiere:'cantiere'|'provvisorio'; onModoCantiere:(v:'cantiere'|'provvisorio')=>void;
+  onSave:(patch:PreventivoUpdate)=>void; onCliente:()=>void; onChangeCliente:(id:string)=>void; onCantiere:(id:string)=>void;
 }) {
   const {data:codici=[]}=useCodiciPagamento();
   const pagamento=prev.condizione_pagamento_cod||cliente?.condizione_pagamento_cod||'';
@@ -66,7 +66,7 @@ export function TestataPreventivo({prev,cliente,editMode,agenti,principali,haAlt
       </div>
     </RiquadroScheda>
     <RiquadroScheda titolo="Cantiere" icona={HardHat} tono="verde">
-      {field('Cantiere',prev.cantiere?.nome||prev.cantiere_descrizione||'Da definire',<div className="space-y-1"><div className="flex gap-1"><Button size="sm" variant={modoCantiere==='cantiere'?'default':'outline'} onClick={()=>onModoCantiere('cantiere')}>Cantiere</Button><Button size="sm" variant={modoCantiere==='provvisorio'?'default':'outline'} onClick={()=>onModoCantiere('provvisorio')}>Provvisorio</Button></div>{modoCantiere==='cantiere'?<CantierePicker cliente_id={prev.cliente_id} value={prev.cantiere_id} onChange={onCantiere}/>:<Input className="h-[34px] bg-card" aria-label="Cantiere provvisorio" defaultValue={prev.cantiere_descrizione||''} placeholder="Da definire" onBlur={e=>{const v=e.target.value.trim()||'Da definire';if(v!==prev.cantiere_descrizione)save({cantiere_descrizione:v,cantiere_id:null});}}/>}</div>)}
+      <CantiereTestata prev={prev} editMode={editMode} onCantiere={onCantiere}/>
     </RiquadroScheda>
     <RiquadroScheda titolo="Note per il cliente" icona={StickyNote} tono="viola" className="lg:col-span-2">
       {field('Note',prev.note,<Textarea aria-label="Note" rows={3} className="bg-card" defaultValue={prev.note||''} onBlur={e=>{if((e.target.value||null)!==prev.note)save({note:e.target.value||null});}}/>,true)}

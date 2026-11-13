@@ -99,7 +99,6 @@ function PreventivoEditorPage() {
   const [editMode, setEditMode] = useState(false);
   const [editModeInitialized, setEditModeInitialized] = useState(false);
   const [trasformaOpen, setTrasformaOpen] = useState(false);
-  const [modoCantiereEdit, setModoCantiereEdit] = useState<"cantiere" | "provvisorio">("cantiere");
 
   const { data: prev, isLoading } = useQuery({
     queryKey: ["preventivo", id],
@@ -312,9 +311,6 @@ function PreventivoEditorPage() {
     setEditModeInitialized(true);
   }, [prev, editModeInitialized]);
 
-  useEffect(() => {
-    if (prev) setModoCantiereEdit(((prev as { cantiere_descrizione?: string | null }).cantiere_descrizione) ? "provvisorio" : "cantiere");
-  }, [prev?.id]);
 
 
   const sensors = useSensors(
@@ -358,7 +354,7 @@ function PreventivoEditorPage() {
   const categoria=condizioni?.macrocategoria ? [condizioni.macrocategoria_label,condizioni.categoria_label].filter(Boolean).join(' – ') : '—';
   const pagamentoCod=prev.condizione_pagamento_cod||clienteDati?.condizione_pagamento_cod||'';
   const pagamentoDesc=codiciPagamento.find(c=>c.cod===pagamentoCod)?.descrizione||clienteDati?.condizione_pagamento_desc||'';
-  const riepilogo:RiepilogoPreventivo={cliente:[clienteDati?.codice_gestionale,clienteDati?.ragione_sociale||cliente?.ragione_sociale].filter(Boolean).join(' · ')||'—',cantiere:cantiere?.nome||(!cantiereDescrizione||cantiereDescrizione==='Da definire'?'Da definire (provvisorio)':cantiereDescrizione),listino,categoria,pagamento:pagamentoCod?`${pagamentoDesc||pagamentoCod} (${pagamentoCod})`:'—',validita:prev.validita?formatDate(prev.validita):'—',imponibile:totali.imponibile_netto,marginePerc:margineTotale.perc,margineEuro:margineTotale.euro};
+  const riepilogo:RiepilogoPreventivo={cliente:[clienteDati?.codice_gestionale,clienteDati?.ragione_sociale||cliente?.ragione_sociale].filter(Boolean).join(' · ')||'—',cantiere:cantiere?.nome?`${cantiere.nome}${cantiere.provvisorio?' (provvisorio)':''}`:(cantiereDescrizione||'Da definire'),listino,categoria,pagamento:pagamentoCod?`${pagamentoDesc||pagamentoCod} (${pagamentoCod})`:'—',validita:prev.validita?formatDate(prev.validita):'—',imponibile:totali.imponibile_netto,marginePerc:margineTotale.perc,margineEuro:margineTotale.euro};
   const cambiaTab=(v:string)=>navigate({to:'/preventivatore/$id',params:{id},search:(old)=>({...old,tab:v}),replace:true});
 
   return (
@@ -540,7 +536,7 @@ function PreventivoEditorPage() {
           <TabsList className="w-full justify-start bg-transparent border-b rounded-none h-11 p-0">
             {(['testata','corpo','piede'] as const).map(t=><TabsTrigger key={t} value={t} className="flex-1 sm:flex-none rounded-none h-11 px-4 bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary">{t==='testata'?'Testata':t==='piede'?'Piede':`Corpo · ${prev.blocchi.length} blocchi`}</TabsTrigger>)}
           </TabsList>
-          <TabsContent value="testata"><TestataPreventivo prev={prev} cliente={clienteDati} editMode={editMode} agenti={agenti} principali={principali} haAlternative={haAlternative} listino={listino} categoria={categoria} sede={condizioni?.sede_nome||'—'} onSave={p=>save.mutate(p)} onCliente={()=>setClienteOpen(true)} onChangeCliente={onChangeCliente} modoCantiere={modoCantiereEdit} onModoCantiere={setModoCantiereEdit} onCantiere={cid=>save.mutate({cantiere_id:cid,cantiere_descrizione:null},{onSuccess:()=>riapplicaSpeciali.mutate()})}/></TabsContent>
+          <TabsContent value="testata"><TestataPreventivo prev={prev} cliente={clienteDati} editMode={editMode} agenti={agenti} principali={principali} haAlternative={haAlternative} listino={listino} categoria={categoria} sede={condizioni?.sede_nome||'—'} onSave={p=>save.mutate(p)} onCliente={()=>setClienteOpen(true)} onChangeCliente={onChangeCliente} onCantiere={cid=>save.mutate({cantiere_id:cid,cantiere_descrizione:null},{onSuccess:()=>riapplicaSpeciali.mutate()})}/></TabsContent>
           <TabsContent value="corpo"><fieldset disabled={!editMode} className={cn('min-w-0',!editMode&&'readonly-mode')}>
             {/* ===== CORPO ===== */}
             <section className="flex flex-col gap-3">
