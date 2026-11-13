@@ -144,7 +144,7 @@ function PreventivoEditorPage() {
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["preventivo", id] });
 
-  const save = useMutation({
+  const save = useMutation({ mutationKey: ["salva-preventivo", id],
     mutationFn: (patch: Parameters<typeof updatePreventivo>[1]) => updatePreventivo(id, patch),
     onSuccess: () => { invalidate(); qc.invalidateQueries({queryKey:['preventivi-principali']}); qc.invalidateQueries({queryKey:['preventivo-lettera']}); qc.invalidateQueries({queryKey:['preventivo-ha-alternative']}); },
     onError: (e: unknown) => toast.error((e as Error).message),
@@ -183,7 +183,7 @@ function PreventivoEditorPage() {
 
 
   const [analisiListini, setAnalisiListini] = useState<AnalisiAggiornaListini | null>(null);
-  const aggiornaListini = useMutation({
+  const aggiornaListini = useMutation({ mutationKey: ["salva-preventivo", id],
     mutationFn: () => analizzaAggiornaListini(id),
     onSuccess: (res) => {
       if (res.differenze.length === 0) {
@@ -195,7 +195,7 @@ function PreventivoEditorPage() {
     },
     onError: (e: unknown) => toast.error((e as Error).message),
   });
-  const applicaListini = useMutation({
+  const applicaListini = useMutation({ mutationKey: ["salva-preventivo", id],
     mutationFn: (scelte: AnalisiAggiornaListini["differenze"]) => applicaAggiornaListini(id, scelte),
     onSuccess: (res) => {
       toast.success(`${res.aggiornate} righe aggiornate` + (res.speciali ? `, ${res.speciali} con prezzi speciali cantiere` : ""));
@@ -205,7 +205,7 @@ function PreventivoEditorPage() {
     onError: (e: unknown) => toast.error((e as Error).message),
   });
 
-  const riapplicaSpeciali = useMutation({
+  const riapplicaSpeciali = useMutation({ mutationKey: ["salva-preventivo", id],
     mutationFn: () => riapplicaPrezziSpecialiCantiere(id),
     onSuccess: (res) => {
       if (res.aggiornate > 0) toast.success(`${res.aggiornate} righe aggiornate con prezzi speciali del cantiere`);
@@ -215,7 +215,7 @@ function PreventivoEditorPage() {
   });
 
 
-  const applicaSconto = useMutation({
+  const applicaSconto = useMutation({ mutationKey: ["salva-preventivo", id],
     mutationFn: async (perc: number) => {
       await applicaScontoPiedeARighe(id, perc);
       await updatePreventivo(id, { sconto_piede_perc: perc });
@@ -227,7 +227,7 @@ function PreventivoEditorPage() {
     onError: (e: unknown) => toast.error((e as Error).message),
   });
 
-  const addEmptyBlocco = useMutation({
+  const addEmptyBlocco = useMutation({ mutationKey: ["salva-preventivo", id],
     mutationFn: (ordine: number) => addBloccoVuoto(id, ordine),
     onSuccess: () => {
       invalidate();
@@ -276,7 +276,7 @@ function PreventivoEditorPage() {
 
 
   // Persist totali in DB automaticamente quando cambiano
-  const saveTotali = useMutation({
+  const saveTotali = useMutation({ mutationKey: ["salva-preventivo", id],
     mutationFn: (t: { imponibile: number; iva: number; totale: number }) =>
       updatePreventivo(id, {
         totale_imponibile: t.imponibile,
@@ -616,20 +616,20 @@ function BloccoCard({
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["preventivo", preventivoId] });
 
-  const upd = useMutation({
+  const upd = useMutation({ mutationKey: ["salva-preventivo", preventivoId],
     mutationFn: (patch: Parameters<typeof updateBlocco>[1]) => updateBlocco(blocco.id, patch),
     onSuccess: invalidate,
     onError: (e: unknown) => toast.error((e as Error).message),
   });
 
-  const recalcQta = useMutation({
+  const recalcQta = useMutation({ mutationKey: ["salva-preventivo", preventivoId],
     mutationFn: (v: number | null) =>
       ricalcolaBloccoSuNuovaQuantita(blocco.id, v, blocco.righe),
     onSuccess: invalidate,
     onError: (e: unknown) => toast.error((e as Error).message),
   });
 
-  const del = useMutation({
+  const del = useMutation({ mutationKey: ["salva-preventivo", preventivoId],
     mutationFn: () => deleteBlocco(blocco.id),
     onSuccess: invalidate,
     onError: (e: unknown) => toast.error((e as Error).message),

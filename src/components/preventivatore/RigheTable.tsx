@@ -91,7 +91,7 @@ export function RigheTable({
   // patchConImporto) e salvano in background, senza ricaricare preventivo e dati Gamma.
   // Cambio articolo o tipo riga restano sul percorso completo (cambiano i dati Gamma).
   const chiave = ["preventivo", preventivoId];
-  const upd = useMutation({
+  const upd = useMutation({ mutationKey: ["salva-preventivo", preventivoId],
     mutationFn: async ({ id, patch }: { id: string; patch: RigaUpdate }) => {
       const t0 = performance.now();
       if ("articolo_codice" in patch || "tipo_riga" in patch) {
@@ -126,12 +126,12 @@ export function RigheTable({
       toast.error(`Modifica non salvata: ${(e as Error).message}`);
     },
   });
-  const del = useMutation({
+  const del = useMutation({ mutationKey: ["salva-preventivo", preventivoId],
     mutationFn: (id: string) => deleteRiga(id),
     onSuccess: invalidate,
     onError: (e: unknown) => toast.error((e as Error).message),
   });
-  const ins = useMutation({
+  const ins = useMutation({ mutationKey: ["salva-preventivo", preventivoId],
     mutationFn: (row: Parameters<typeof insertRiga>[0]) => insertRiga(row),
     onSuccess: invalidate,
     onError: (e: unknown) => toast.error((e as Error).message),
