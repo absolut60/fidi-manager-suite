@@ -1,3 +1,7 @@
+# FM65 — Fetta 3a
+- [ ] Fonte unica incidenza/quantità, salvataggi e ricalcolo blocco/kit; formati italiani in tutto il preventivatore.
+- [ ] Test e prova PRV-161/26: incidenza 1,5 → 30/112,51, ripristino 2 → 40/150,01 e totale 170,01; verifica visiva telefono/PC.
+
 # FM65 — Fetta 2b-3
 - [x] Margine condiviso blocco/preventivo, intestazioni kit escluse, peso Gamma per quantità; 642 test verdi e build OK.
 - [x] Screenshot componenti con campioni a 375/1280 e controllo 320–1920, senza overflow o errori; pagina temporanea rimossa. PRV-161 19,7%, kit PRV-160 239,30 verificati sui dati reali in sola lettura.
