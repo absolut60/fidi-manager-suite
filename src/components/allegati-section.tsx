@@ -163,7 +163,7 @@ export function AllegatiSection({
 
   const key = ["allegati", entitaTipo, entitaId];
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error: erroreElenco } = useQuery({
     queryKey: key,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -207,10 +207,10 @@ export function AllegatiSection({
 
   return (
     <div className={compact ? "space-y-2" : "space-y-3"}>
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           <Paperclip className="size-4 text-muted-foreground" />
-          <h3 className="text-sm font-medium">
+          <h3 className={entitaTipo === "preventivo" ? "text-xs font-semibold" : "text-sm font-medium"}>
             {title} ({data?.length ?? 0})
           </h3>
         </div>
@@ -222,7 +222,9 @@ export function AllegatiSection({
         )}
       </div>
 
-      {isLoading ? (
+      {erroreElenco ? (
+        <p role="alert" className="text-xs text-destructive">Impossibile caricare gli allegati.</p>
+      ) : isLoading ? (
         <div className="text-xs text-muted-foreground">Caricamento…</div>
       ) : !data?.length ? (
         <div className="text-xs text-muted-foreground italic px-1">Nessun allegato.</div>
@@ -239,7 +241,7 @@ export function AllegatiSection({
                 mimeType={a.mime_type}
                 dimensione={a.dimensione_bytes}
                 bucket={ALLEGATI_BUCKET}
-                compatta={compact}
+                compatta={compact && entitaTipo === "preventivo"}
                 azioniStandard={entitaTipo === "preventivo" ? { onElimina: canDelete ? () => setToDelete(a) : undefined } : undefined}
                 dettagli={
                   <>

@@ -72,7 +72,7 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
       {modificabile?<Textarea aria-label="Note" rows={3} className="min-h-0 resize-none bg-card px-2 py-1 text-xs md:text-xs" defaultValue={prev.note||''} onBlur={e=>{if((e.target.value||null)!==prev.note)save({note:e.target.value||null});}}/>:<p className="whitespace-pre-wrap break-words text-xs">{prev.note||'—'}</p>}
       <NotePreventivo id={prev.id} modificabile={modificabile}/>
     </RiquadroScheda>
-    <RiquadroScheda titolo="Allegati" icona={Paperclip} tono="grigio" densita="compatta" intestazione={<span className="sr-only">Allegati</span>}>
+    <RiquadroScheda titolo="Allegati" icona={Paperclip} tono="grigio" densita="compatta" className="[&>header]:hidden">
       <AllegatiSection entitaTipo="preventivo" entitaId={prev.id} clienteId={null} canEdit={modificabile} eliminaTutti={modificabile} compact/>
     </RiquadroScheda>
   </section>;
