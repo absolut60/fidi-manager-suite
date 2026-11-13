@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import righe from "./fixtures/fm65-righe-preventivo.json";
 import { importoRiga, prezzoNettoRiga } from "@/lib/riga-preventivo";
 
