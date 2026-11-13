@@ -6,6 +6,7 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import { ClientePicker } from '@/components/preventivatore/ClientePicker';
 import { NuovoPreventivoDialog } from '@/components/preventivatore/NuovoPreventivoDialog';
 import { Copy } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 export const Route = createFileRoute('/prova-correzioni-a')({component: Prova});
 function Prova() {
  const qc = useQueryClient();
