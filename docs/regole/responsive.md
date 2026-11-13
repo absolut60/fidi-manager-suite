@@ -22,3 +22,9 @@ Regola permanente del proprietario. Si aggiunge alla sezione 1 del knowledge.
 
 - Ogni pagina usa tutta la larghezza disponibile come la scheda cliente (niente max-w fissi sulle schede) e si restringe in modo progressivo da 360 px a 1920 px; nessuna pagina con riquadri stirati o spazio sprecato su monitor larghi.
 - Prezzi unitari in euro sempre a 4 decimali.
+
+## Telefono in orizzontale (FM68)
+
+- La variante `pv-orizzontale` in `src/styles.css` è la fonte unica del "telefono in orizzontale": una media query in JS non va riscritta.
+- Barra blu in alto a scomparsa: lo stato (nascosta/mostra) viene calcolato dal hook `src/hooks/use-barra-a-scomparsa.ts` su ogni dispositivo, l'effetto visivo lo decide solo il CSS con `pv-orizzontale:data-[nascosta=true]:-translate-y-full`. Fuori da `pv-orizzontale` la barra resta sempre visibile.
+- `<main>` mantiene `pt-14`: in cima alla pagina la barra non copre nulla.
