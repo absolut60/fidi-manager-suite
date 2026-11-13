@@ -331,6 +331,14 @@ function PreventivoEditorPage() {
     reorderBlocchi(reordered.map((b, i) => ({ id: b.id, ordine: (i + 1) * 10 }))).then(invalidate);
   }
 
+  // FM65 B3: finestra d'uscita solo con modifiche/salvataggio/errore; il cambio tab (?tab=) non blocca mai.
+  const bloccaUscita = !!prev && preventivoModificabile(prev, puoScrivere) && devoBloccareUscita(salvataggio.stato);
+  const uscita = useBlocker({
+    shouldBlockFn: ({ current, next }) => bloccaUscita && current.pathname !== next.pathname,
+    enableBeforeUnload: bloccaUscita,
+    withResolver: true,
+  });
+
   if (isLoading || !prev) {
     return <div className="p-3 md:p-4 lg:p-6 text-sm text-muted-foreground">Caricamento…</div>;
   }
@@ -591,6 +599,13 @@ function PreventivoEditorPage() {
         </Tabs>
         </div>
       </div>
+      <UscitaNonSalvataDialog
+        open={uscita.status === "blocked"}
+        stato={salvataggio.stato}
+        salvaOra={salvataggio.salvaOra}
+        onEsci={() => uscita.proceed?.()}
+        onResta={() => uscita.reset?.()}
+      />
       {clienteOpen && clienteDati && <ClientePreventivoDialog cliente={clienteDati} onClose={()=>setClienteOpen(false)}/>}
       <AlertDialog open={eliminaOpen} onOpenChange={setEliminaOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Eliminare il documento?</AlertDialogTitle><AlertDialogDescription>Tutti i blocchi e le righe verranno eliminati. Irreversibile.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Annulla</AlertDialogCancel><AlertDialogAction onClick={()=>delPrev.mutate()}>Elimina</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
 
