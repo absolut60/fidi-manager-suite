@@ -1,3 +1,7 @@
+# FM65 — Fetta 2b-3
+- [ ] Margine condiviso blocco/preventivo, intestazioni kit escluse, peso Gamma per quantità.
+- [ ] Test, verifica visiva telefono/desktop e totali reali; sessione personale non disponibile (--self senza corrispondenza).
+
 # FM64 — Fetta 4
 - [x] URL email unico, log mascherati, controllo allegati e oggetti letterali; 542 test verdi e build automatica OK; send-email distribuita senza invii di prova.
 - [x] Ignorati 9 avvisi warn/info con le motivazioni di Andrea; risultati riletti: 15 attivi (11 critical + 4 warn corretti, non ignorati).

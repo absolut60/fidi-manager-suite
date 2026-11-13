@@ -1,8 +1,35 @@
 import { describe, expect, it } from "bun:test";
 import righe from "./fixtures/fm65-righe-preventivo.json";
-import { importoRiga, prezzoNettoRiga } from "@/lib/riga-preventivo";
+import { importoRiga, isIntestazioneKit, isRigaValorizzata, margineTotaliRighe, pesoRigaGamma, prezzoNettoRiga } from "@/lib/riga-preventivo";
 
 const round2 = (x: number) => Math.round(x * 100) / 100;
+describe("FM65 2b-3 — margine, gruppi kit e peso", () => {
+  it("PRV-161: 150,01 − 120,40 = 29,61 e margine 19,7%", () => {
+    const m = margineTotaliRighe({ totale: 150.01, costo: 120.4 });
+    expect(m.euro).toBe(29.61);
+    expect(Number(m.perc.toFixed(1))).toBe(19.7);
+  });
+  it("margine nullo senza importi", () => expect(margineTotaliRighe({ totale: 0, costo: 0 }).perc).toBe(0));
+  it("STRATI senza articolo e codice è intestazione esclusa dai valori", () => {
+    const r = { tipo_riga: "da_kit", articolo_id: null, articolo_codice: null };
+    expect(isIntestazioneKit(r)).toBe(true);
+    expect(isRigaValorizzata(r)).toBe(false);
+  });
+  it("articolo tecnico senza codice non è intestazione", () => {
+    const r = { tipo_riga: "da_kit", articolo_id: "articolo-tecnico", articolo_codice: null };
+    expect(isIntestazioneKit(r)).toBe(false);
+    expect(isRigaValorizzata(r)).toBe(true);
+  });
+  it("articolo Gamma senza articolo tecnico non è intestazione", () => expect(isIntestazioneKit({ tipo_riga: "da_kit", articolo_codice: "FASL00H003300A0" })).toBe(false));
+  it("peso = peso netto × quantità, senza effetto sul prezzo", () => {
+    expect(pesoRigaGamma(8.7, 40)).toBe(348);
+    expect(importoRiga({ quantita: 40, prezzo_unit: 4.167, sconti_gamma: [10] })).toBe(150.01);
+  });
+  it("peso assente resta assente, zero resta zero", () => {
+    expect(pesoRigaGamma(null, 40)).toBeNull();
+    expect(pesoRigaGamma(0, 40)).toBe(0);
+  });
+});
 type R = { id: string; quantita: number | null; prezzo_unit: number | null; sconto_perc: number | null; segno: number | null };
 
 describe("FM65 — importo riga: non regressione sulle 70 righe reali", () => {

@@ -51,6 +51,7 @@ import type { FasciaListino } from "@/lib/articoli-api";
 import { AggiornaListiniDialog } from "@/components/preventivatore/AggiornaListiniDialog";
 import { CondizioniClienteGamma } from "@/components/preventivatore/CondizioniClienteGamma";
 import { round2 } from "@/lib/pricing";
+import { margineTotaliRighe } from "@/lib/riga-preventivo";
 import { parseNumeroIt } from "@/lib/numero-it";
 import { cn } from "@/lib/utils";
 import { AggiungiBloccoDialog } from "@/components/preventivatore/AggiungiBloccoDialog";
@@ -236,9 +237,7 @@ function PreventivoEditorPage() {
       costo += c.costo;
       vendita += c.totale; // già al netto dello sconto di riga
     }
-    const euro = vendita - costo;
-    const perc = vendita > 0 ? (euro / vendita) * 100 : 0;
-    return { costo, vendita, euro: round2(euro), perc: round2(perc) };
+    return { costo, vendita, ...margineTotaliRighe({ totale: vendita, costo }) };
   }, [prev]);
 
   const prezziSpecialiMap = useMemo<PrezziSpecialiMap>(
