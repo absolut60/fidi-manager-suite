@@ -1,6 +1,7 @@
 import { CondizioniClienteGamma } from "@/components/preventivatore/CondizioniClienteGamma";
 import { useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
 import { riallineaValidita, validitaProposta } from "@/lib/preventivo-creazione";
+import { creaConPrimoBlocco } from "@/lib/nuovo-preventivo";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -18,7 +19,7 @@ import { ClientePicker } from "./ClientePicker";
 import { CantierePicker } from "./CantierePicker";
 import { NuovoCantiereForm } from "./NuovoCantiereForm";
 import {
-  createPreventivo, fetchAgenti, fetchDatiClientePreventivo, anteprimaProssimoNumero,
+  createPreventivo, addBloccoVuoto, fetchAgenti, fetchDatiClientePreventivo, fetchCondizioniPreventivoCliente, anteprimaProssimoNumero,
   TIPI_DOC, TIPI_DOC_LABEL,
   type TipoDoc, type TipoDocumento,
 } from "@/lib/preventivi-api";
@@ -36,6 +37,7 @@ export function NuovoPreventivoDialog({
   const [modoCantiere, setModoCantiere] = useState<"seleziona" | "crea" | "provvisorio">("seleziona");
   const [agenteId, setAgenteId] = useState<string | null>(null);
   const [filiale, setFiliale] = useState("");
+  const filialeManuale = useRef(false);
   const [titolo, setTitolo] = useState("");
   const [pagamento, setPagamento] = useState("");
   const { data: codiciPagamento = [] } = useCodiciPagamento();
@@ -103,12 +105,30 @@ export function NuovoPreventivoDialog({
     return () => { attivo = false; };
   }, [clienteId, isWriteOnly, profiloCodiceAgente]);
 
+  // Stessa fonte/cache di CondizioniClienteGamma: non riproporre la filiale dopo una modifica manuale.
+  useEffect(() => {
+    let attivo = true;
+    filialeManuale.current = false;
+    setFiliale("");
+    if (!clienteId) return;
+    qc.ensureQueryData({
+      queryKey: ["condizioni-preventivo-cliente", clienteId],
+      queryFn: () => fetchCondizioniPreventivoCliente(clienteId),
+      staleTime: 5 * 60_000,
+    }).then((condizioni) => {
+      if (attivo && !filialeManuale.current) setFiliale(condizioni?.sede_nome ?? "");
+    }).catch(() => {
+      if (attivo) toast.warning("Impossibile leggere la sede del cliente: scegli la filiale manualmente.");
+    });
+    return () => { attivo = false; };
+  }, [clienteId, qc]);
+
   const create = useMutation({
     mutationFn: async () => {
       const numeroFinal = numero.trim(); // se vuoto, createPreventivo assegnerà
       const dataFinal = data || today;
       const tipoDocFinal: TipoDoc = tipoDoc || "PREVENTIVO";
-      return createPreventivo({
+      return creaConPrimoBlocco(() => createPreventivo({
         cliente_id: clienteId,
         cantiere_id: cantiereId,
         cantiere_descrizione: null,
@@ -121,15 +141,16 @@ export function NuovoPreventivoDialog({
         numero: numeroFinal,
         data: dataFinal,
         validita: validita || null,
-      });
+      }), addBloccoVuoto);
     },
-    onSuccess: ({ preventivo, numeroRiassegnato }) => {
+    onSuccess: ({ preventivo, numeroRiassegnato, erroreBlocco }) => {
       qc.invalidateQueries({ queryKey: ["preventivi"] });
       if (numeroRiassegnato) {
         toast.warning(`Numero già impegnato — assegnato il successivo: ${numeroRiassegnato}`);
       } else {
         toast.success(`${labelDocCap} creato`);
       }
+      if (erroreBlocco) toast.warning(`${labelDocCap} creato, ma il primo blocco non è stato aggiunto. Puoi aggiungerlo dalla scheda.`);
       onOpenChange(false);
       navigate({ to: "/preventivatore/$id", params: { id: preventivo.id } });
     },
@@ -141,7 +162,7 @@ export function NuovoPreventivoDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl min-w-0 max-h-[90dvh] overflow-y-auto overflow-x-hidden [&>*]:min-w-0">
         <DialogHeader><DialogTitle>Nuovo {labelDoc}</DialogTitle></DialogHeader>
         <div className="grid gap-3">
           <div className="grid gap-1.5 min-w-0">
@@ -154,7 +175,7 @@ export function NuovoPreventivoDialog({
           </div>
           <div className="grid gap-1.5">
             <Label>Cantiere</Label>
-            <div className="flex gap-1">
+            <div className="flex flex-wrap gap-1">
               {([
                 ["seleziona", "Seleziona"],
                 ["crea", "Crea nuovo"],
@@ -204,17 +225,17 @@ export function NuovoPreventivoDialog({
                 <p className="text-xs text-muted-foreground">Come agente sei impostato tu.</p>
               )}
             </div>
-            <div className="grid gap-1.5">
+            <div className="grid min-w-0 gap-1.5">
               <Label>Filiale</Label>
               <Select
                 value={filiale || "_none"}
-                onValueChange={(v) => setFiliale(v === "_none" ? "" : v)}
+                onValueChange={(v) => { filialeManuale.current = true; setFiliale(v === "_none" ? "" : v); }}
               >
-                <SelectTrigger><SelectValue placeholder="Seleziona sede…" /></SelectTrigger>
-                <SelectContent>
+                <SelectTrigger className="h-auto min-h-10 min-w-0 [&>span]:whitespace-normal [&>span]:break-words [&>span]:text-left"><SelectValue placeholder="Seleziona sede…" /></SelectTrigger>
+                <SelectContent className="max-w-[calc(100vw-2rem)]">
                   <SelectItem value="_none">— Nessuna —</SelectItem>
                   {stores.map((s) => (
-                    <SelectItem key={s.id} value={s.nome}>
+                    <SelectItem key={s.id} value={s.nome} className="whitespace-normal break-words">
                       {s.codice} — {s.nome}
                     </SelectItem>
                   ))}

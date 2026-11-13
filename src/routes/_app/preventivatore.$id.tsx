@@ -432,38 +432,38 @@ function PreventivoEditorPage() {
                     <Copy className="mr-1 h-4 w-4" /> {duplica.isPending ? "Duplicazione…" : "Duplica"}
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
+                <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl min-w-0 overflow-x-hidden [&>*]:min-w-0">
+                  <DialogHeader className="break-words text-left">
                     <DialogTitle>
                       {duplicaStep === "scelta"
                         ? "Duplicare questo preventivo?"
                         : "Duplica preventivo — Seleziona cliente"}
                     </DialogTitle>
                     {duplicaStep === "scelta" && (
-                      <DialogDescription>
+                      <DialogDescription className="whitespace-normal break-words">
                         Scegli come duplicare. In tutti i casi verrà creato un nuovo numero progressivo, con data di oggi e stato bozza.
                         <br /><br />
                         <strong>Stesso cliente</strong>: copia di testata, blocchi e righe (stesso cliente, cantiere e agente); gli allegati non vengono copiati.
                         <br />
-                        <strong>Nuovo cliente</strong>: copia blocchi e righe (prezzi inclusi), scegli il cliente di destinazione; agente e filiale vengono dal nuovo cliente, cantiere e allegati non vengono copiati.
-                        <br />
                         <strong>Come alternativa</strong>: stessa copia, collegata come alternativa al preventivo principale (lettera B, C…).
+                        <br />
+                        <strong>Nuovo cliente</strong>: copia blocchi e righe (prezzi inclusi), scegli il cliente di destinazione; agente e filiale vengono dal nuovo cliente, cantiere e allegati non vengono copiati.
                       </DialogDescription>
                     )}
                   </DialogHeader>
 
                   {duplicaStep === "scelta" ? (
-                    <DialogFooter className="flex-col gap-2 sm:flex-row sm:gap-2 [&>button]:w-full sm:[&>button]:w-auto">
-                      <Button variant="outline" onClick={() => setDuplicaOpen(false)}>Annulla</Button>
-                      <Button variant="outline" onClick={() => setDuplicaStep("seleziona-cliente")}>
-                        Nuovo cliente
+                    <DialogFooter className="flex-col gap-2 sm:flex-row sm:flex-wrap sm:space-x-0 [&>button]:min-h-10 [&>button]:w-full sm:[&>button]:w-auto">
+                      <Button onClick={() => duplica.mutate({ mode: "stesso_cliente" })}>
+                        Stesso cliente
                       </Button>
                       <Button variant="outline" disabled={duplica.isPending} onClick={() => duplica.mutate({ mode: "alternativa" })}>
                         Come alternativa
                       </Button>
-                      <Button onClick={() => duplica.mutate({ mode: "stesso_cliente" })}>
-                        Stesso cliente
+                      <Button variant="outline" onClick={() => setDuplicaStep("seleziona-cliente")}>
+                        Nuovo cliente
                       </Button>
+                      <Button variant="outline" onClick={() => setDuplicaOpen(false)}>Annulla</Button>
                     </DialogFooter>
                   ) : (
                     <>
