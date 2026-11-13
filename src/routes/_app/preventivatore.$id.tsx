@@ -9,6 +9,8 @@ import { useCodiciPagamento } from '@/components/condizione-pagamento-richiesta-
 import { fetchDatiClientePreventivo, fetchCondizioniPreventivoCliente } from '@/lib/preventivi-api';
 import { formatDate } from '@/lib/fidi';
 import { MoreHorizontal } from 'lucide-react';
+import { fallback, zodValidator } from '@tanstack/zod-adapter';
+import { z } from 'zod';
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -73,7 +75,7 @@ import { CantierePicker } from "@/components/preventivatore/CantierePicker";
 import { TrasformaInOrdineDialog } from "@/components/preventivatore/TrasformaInOrdineDialog";
 
 export const Route = createFileRoute("/_app/preventivatore/$id")({
-  validateSearch: (search: { tab?: unknown }) => ({ tab: typeof search.tab === 'string' ? search.tab : 'corpo' }),
+  validateSearch: zodValidator(z.object({tab:fallback(z.string(),'corpo').default('corpo')})),
   head: () => ({ meta: [
     { title: "Editor Preventivo — Sistema MADE" },
     { name: "description", content: "Articoli, kit e condizioni cliente nel preventivo MADE." },
