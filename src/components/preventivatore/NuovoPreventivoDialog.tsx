@@ -37,6 +37,7 @@ export function NuovoPreventivoDialog({
   const [modoCantiere, setModoCantiere] = useState<"seleziona" | "crea" | "provvisorio">("seleziona");
   const [agenteId, setAgenteId] = useState<string | null>(null);
   const [filiale, setFiliale] = useState("");
+  const filialeManuale = useRef(false);
   const [titolo, setTitolo] = useState("");
   const [pagamento, setPagamento] = useState("");
   const { data: codiciPagamento = [] } = useCodiciPagamento();
@@ -107,6 +108,7 @@ export function NuovoPreventivoDialog({
   // Stessa fonte/cache di CondizioniClienteGamma: non riproporre la filiale dopo una modifica manuale.
   useEffect(() => {
     let attivo = true;
+    filialeManuale.current = false;
     setFiliale("");
     if (!clienteId) return;
     qc.ensureQueryData({
@@ -114,7 +116,7 @@ export function NuovoPreventivoDialog({
       queryFn: () => fetchCondizioniPreventivoCliente(clienteId),
       staleTime: 5 * 60_000,
     }).then((condizioni) => {
-      if (attivo) setFiliale(condizioni?.sede_nome ?? "");
+      if (attivo && !filialeManuale.current) setFiliale(condizioni?.sede_nome ?? "");
     }).catch(() => {
       if (attivo) toast.warning("Impossibile leggere la sede del cliente: scegli la filiale manualmente.");
     });
@@ -227,7 +229,7 @@ export function NuovoPreventivoDialog({
               <Label>Filiale</Label>
               <Select
                 value={filiale || "_none"}
-                onValueChange={(v) => setFiliale(v === "_none" ? "" : v)}
+                onValueChange={(v) => { filialeManuale.current = true; setFiliale(v === "_none" ? "" : v); }}
               >
                 <SelectTrigger className="h-auto min-h-10 min-w-0 [&>span]:whitespace-normal [&>span]:break-words [&>span]:text-left"><SelectValue placeholder="Seleziona sede…" /></SelectTrigger>
                 <SelectContent className="max-w-[calc(100vw-2rem)]">
