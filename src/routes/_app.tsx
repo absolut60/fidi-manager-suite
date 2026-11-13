@@ -8,12 +8,17 @@ import { useAuth, utenteAttivo } from "@/hooks/use-auth";
 import { useConfig, useConfigReady } from "@/hooks/use-config";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { giorniAllaScadenza, passwordDaCambiare } from "@/lib/regole-password";
+import { zodValidator } from "@tanstack/zod-adapter";
+import { vistaIncorporata, vistaSearchSchema } from "@/lib/vista-incorporata";
+import { ContenutoIncorporato } from "@/components/vista-incorporata";
 
 export const Route = createFileRoute("/_app")({
+  validateSearch: zodValidator(vistaSearchSchema),
   component: ProtectedAppLayout,
 });
 
 function ProtectedAppLayout() {
+  const incorporata = vistaIncorporata(Route.useSearch());
   const { session, loading, profilo, roles } = useAuth();
   const config = useConfig();
   const configPronto = useConfigReady();
@@ -88,6 +93,8 @@ function ProtectedAppLayout() {
   const giorniRestanti = pronto ? giorniAllaScadenza(profilo, giorni) : null;
   const mostraAvviso =
     giorniRestanti !== null && giorniRestanti > 0 && giorniRestanti <= 7 && pathname !== "/cambia-password";
+
+  if (incorporata) return <TooltipProvider><ContenutoIncorporato><Outlet /></ContenutoIncorporato></TooltipProvider>;
 
   return (
     <TooltipProvider>

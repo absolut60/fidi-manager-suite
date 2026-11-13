@@ -92,6 +92,7 @@ import { NuovoContattoWizard } from "@/components/nuovo-contatto-wizard";
 import { RuoloSelect } from "@/components/ruolo-select";
 import { CondizionePagamentoSelect } from "@/components/condizione-pagamento-select";
 import { CategoriaSelect } from "@/components/categoria-select";
+import { vistaIncorporata } from "@/lib/vista-incorporata";
 
 const TAB_VALUES = [
   "riepilogo",
@@ -295,6 +296,7 @@ function ConsensoBadge({ ok, label }: { ok: boolean; label: string }) {
 function ClienteDetail() {
   const { clienteId } = Route.useParams();
   const { edit, tab, insolutiTab } = Route.useSearch();
+  const incorporata = vistaIncorporata(Route.useSearch());
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { role, hasRole, roles, user: utente } = useAuth();
@@ -461,9 +463,9 @@ function ClienteDetail() {
   return (
     <div className="space-y-6">
       <div>
-        <div className="mb-2">
+        {!incorporata && <div className="mb-2">
           <BackButton fallbackTo="/clienti" fallbackLabel="Clienti" />
-        </div>
+        </div>}
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
@@ -593,7 +595,11 @@ function ClienteDetail() {
         </div>
       </div>
 
-      <Tabs key={effTab} defaultValue={effTab}>
+      <Tabs key={effTab} defaultValue={effTab} onValueChange={incorporata ? (valore) => {
+        const tab = TAB_VALUES.find(tab => tab === valore);
+        if (!tab) return;
+        navigate({ to: "/clienti/$clienteId", params: { clienteId }, search: (prev) => ({ ...prev, tab }), replace: true });
+      } : undefined}>
         <TabsList className="md:flex-wrap">
           <TabsTrigger value="riepilogo">Riepilogo</TabsTrigger>
           <TabsTrigger value="anagrafica">Anagrafica</TabsTrigger>
