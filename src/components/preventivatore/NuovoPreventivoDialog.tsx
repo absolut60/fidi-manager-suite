@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { geocodificaCantiere } from "@/lib/cantieri.functions";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -21,7 +20,6 @@ import { CantierePicker } from "./CantierePicker";
 import { NuovoCantiereForm } from "./NuovoCantiereForm";
 import {
   createPreventivo, fetchAgenti, fetchDatiClientePreventivo, anteprimaProssimoNumero,
-  creaCantiereLite,
   TIPI_DOC, TIPI_DOC_LABEL,
   type TipoDoc, type TipoDocumento,
 } from "@/lib/preventivi-api";
@@ -33,7 +31,6 @@ export function NuovoPreventivoDialog({
 }: { open: boolean; onOpenChange: (v: boolean) => void; tipo?: TipoDocumento }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const geocodifica = useServerFn(geocodificaCantiere);
   const today = new Date().toISOString().slice(0, 10);
   const [clienteId, setClienteId] = useState<string | null>(null);
   const [cantiereId, setCantiereId] = useState<string | null>(null);
