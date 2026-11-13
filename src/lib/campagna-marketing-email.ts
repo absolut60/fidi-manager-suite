@@ -1,4 +1,4 @@
-import { renderTemplate, wrapEmailHtml, type DatiSede } from "@/lib/template-email-render";
+import { renderTemplate, wrapEmailHtml, escapeHtml, type DatiSede } from "@/lib/template-email-render";
 
 /** Placeholder supportati nelle campagne marketing (editor + invio reale). */
 export const PLACEHOLDER_MARKETING: { key: string; descr: string; esempio: string }[] = [
@@ -15,17 +15,27 @@ export type DatiCampagnaCliente = {
   categoria: string;
 };
 
-function sostituisci(testo: string, dati: DatiCampagnaCliente): string {
+/**
+ * Sostituisce i campi cliente. FM64: nel corpo HTML i VALORI passano da
+ * escapeHtml (fonte unica in template-email-render); nell'oggetto (testo
+ * semplice) restano letterali, ragione_sociale e nome_operatore compresi,
+ * così il motore condiviso non li trasforma in entity.
+ */
+function sostituisci(testo: string, dati: DatiCampagnaCliente, modo: "html" | "testo", nomeOperatore?: string): string {
   let out = testo ?? "";
-  // {{ragione_sociale}} è gestito dal motore condiviso (renderTemplate);
-  // qui sostituiamo gli altri campi cliente.
   const map: Record<string, string> = {
     citta: dati.citta,
     agente: dati.agente,
     categoria: dati.categoria,
   };
+  // Nel corpo {{ragione_sociale}} resta al motore condiviso, che fa già l'escape.
+  if (modo === "testo") {
+    map.ragione_sociale = dati.ragione_sociale;
+    if (nomeOperatore !== undefined) map.nome_operatore = nomeOperatore;
+  }
   for (const [k, v] of Object.entries(map)) {
-    out = out.replace(new RegExp(`\\{\\{\\s*${k}\\s*\\}\\}`, "gi"), v ?? "");
+    const valore = modo === "html" ? escapeHtml(v ?? "") : (v ?? "");
+    out = out.replace(new RegExp(`\\{\\{\\s*${k}\\s*\\}\\}`, "gi"), () => valore);
   }
   return out;
 }
@@ -80,8 +90,8 @@ export function buildEmailCampagna(params: {
   const mittente = params.mittente ?? { nome: "Ufficio Marketing MADE" };
   const reso = renderTemplate(
     {
-      oggetto: sostituisci(params.oggetto, params.dati),
-      corpo: sostituisci(params.corpo, params.dati),
+      oggetto: sostituisci(params.oggetto, params.dati, "testo", mittente.nome),
+      corpo: sostituisci(params.corpo, params.dati, "html"),
     },
     { ragione_sociale: params.dati.ragione_sociale, scadenze: [], nome_operatore: mittente.nome },
     { tipo: "libero" },
