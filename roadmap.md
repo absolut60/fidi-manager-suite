@@ -1,6 +1,6 @@
 # FM65 — Correzioni E
 - [x] Cornice anagrafica condivisa; nota acquisto e giacenze tramite lettore esistente, errori locali; nessuna modifica SQL/database.
-- [ ] Test e verifiche automatiche; screenshot 375/1280 di Riepilogo, Testata e Piede, con pagina temporanea da rimuovere.
+- [x] 710 test verdi; typecheck e compilazione verdi. Screenshot 375/1280 Riepilogo/Testata/Piede e diniego isolato; controlli 320/390/768/1920 senza overflow/errori browser. Dati finti, pagina temporanea rimossa; nessuna migrazione.
 
 # FM65 — Correzioni C + D
 - [x] Fascia con token azzurro medio documentato in styles.css; elenco con frecce, bordo 3px e alternanza per gruppo, titoli medium; sola grafica.

@@ -1,3 +1,4 @@
 - Quote header/footer/summary receive the same calculated totals from the page; never calculate prices or margins locally.
+- RiquadroScheda delegates its frame and tone to ui/riquadro-anagrafica, also used by customer SectionCard and article Sezione, so cards share one presentation source.
 - The quote client overlay checks the client SELECT through user RLS before embedding the existing client page; denied access renders only the dedicated quote-client DTO.
 - Quote tabs persist in validated URL search state; row code/description are separate and desktop/mobile cells share the same unit-aware controls.
