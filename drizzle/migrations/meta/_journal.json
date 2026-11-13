@@ -1387,6 +1387,13 @@
       "when": 1794527709338,
       "tag": "0197_fm64_fornitori_manuali_richieste",
       "breakpoints": true
+    },
+    {
+      "idx": 198,
+      "version": "7",
+      "when": 1794560998131,
+      "tag": "0198_fm65_motore_prezzi_preventivo",
+      "breakpoints": true
     }
   ]
 }
