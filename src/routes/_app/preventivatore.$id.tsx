@@ -327,6 +327,8 @@ function PreventivoEditorPage() {
   const lastOrdine = prev.blocchi.length
     ? Number(prev.blocchi[prev.blocchi.length - 1].ordine ?? 0)
     : 0;
+  // FM65 punto 3: scheda sempre modificabile per chi ha il permesso; confermati e ordini in sola lettura.
+  const modificabile = preventivoModificabile(prev, puoScrivere);
 
   const fmt = (n: number) =>
     formatNumeroIt(n, { minDecimals: 2, maxDecimals: 2 });
@@ -361,18 +363,7 @@ function PreventivoEditorPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {puoScrivere && <Button
-              size="sm"
-              variant={editMode ? "default" : "outline"}
-              onClick={() => setEditMode((v) => !v)}
-            >
-              {editMode ? (
-                <><Check className="mr-1 h-4 w-4" /> Fine modifica</>
-              ) : (
-                <><Pencil className="mr-1 h-4 w-4" /> Modifica</>
-              )}
-            </Button>}
-            {editMode && (
+            {modificabile && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button size="sm" variant="outline" disabled={aggiornaListini.isPending}>
@@ -481,6 +472,12 @@ function PreventivoEditorPage() {
         </div>
 
         <FasciaPreventivo dati={riepilogo} titolo={prev.titolo} onCliente={()=>setClienteOpen(true)}/>
+        {puoScrivere && !modificabile && (
+          <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
+            <Lock className="size-4 shrink-0" />
+            <span>{prev.tipo === "ordine" ? "Ordine: in sola lettura." : "Preventivo confermato: in sola lettura. Per modificarlo riporta lo stato a Bozza o Inviato in Testata."}</span>
+          </div>
+        )}
         {/* Link incrociati preventivo ↔ ordini */}
         {(ordiniCollegati.length > 0 || preventivoOrigine) && (
           <Card className="border-primary/15 bg-muted">
