@@ -199,7 +199,6 @@ export function RigheTable({
 
   const righeProps = (r: (typeof blocco.righe)[number], idx: number) => ({
     row: r,
-    quantitaBlocco: blocco.quantita_base,
     idx,
     fascia,
     readOnly,
@@ -370,7 +369,6 @@ function AddRowMenu({
 
 type RigaProps = {
   row: BloccoConRighe["righe"][number];
-  quantitaBlocco: number | null;
   idx: number;
   calc: ReturnType<typeof calcolaBlocco>["righe"][number]["calc"];
   fascia: FasciaListino;

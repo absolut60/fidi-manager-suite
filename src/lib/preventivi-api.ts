@@ -583,10 +583,11 @@ export async function applicaScontoPiedeARighe(
   for (const b of (blocchi ?? []) as unknown as { id: string; righe: Riga[] }[]) {
     for (const r of b.righe ?? []) {
       if (!isRigaValorizzata(r)) continue;
-      const importo = importoRiga({ ...r, sconto_perc: sc });
+      const patch = patchConImporto(r, { sconto_perc: sc });
+      const importo = patch.importo ?? n(r.importo);
       importiPiede.set(r.id, importo);
       updates.push(
-        supabase.from("righe_preventivo").update({ sconto_perc: sc, importo }).eq("id", r.id).then(),
+        supabase.from("righe_preventivo").update(patch).eq("id", r.id).then(),
       );
     }
   }
@@ -677,7 +678,7 @@ export async function applicaAggiornaListini(preventivo_id: string, scelte: Diff
     };
     const { error } = await supabase
       .from("righe_preventivo")
-      .update({ ...campi, importo: importoRiga({ ...r, ...campi }) })
+      .update(patchConImporto(r, campi))
       .eq("id", r.id);
     if (error) throw error;
     aggiornate++;
@@ -691,25 +692,26 @@ export async function applicaAggiornaListini(preventivo_id: string, scelte: Diff
 async function ricalcolaTotaliPreventivo(preventivo_id: string, iva: number): Promise<void> {
   const { data: blocchi, error: bErr } = await supabase
     .from("blocchi_preventivo")
-    .select("id, righe:righe_preventivo(*)")
+    .select("id, quantita_base, righe:righe_preventivo(*)")
     .eq("preventivo_id", preventivo_id);
   if (bErr) throw bErr;
   let tot = 0;
-  for (const bl of ((blocchi ?? []) as unknown as { id: string; righe: Riga[] }[])) {
+  for (const bl of ((blocchi ?? []) as unknown as { id: string; quantita_base: number | null; righe: Riga[] }[])) {
     let totale = 0;
     for (const r of bl.righe ?? []) {
       if (!isRigaValorizzata(r)) continue;
       totale += n(r.importo);
     }
     tot += round2(totale);
-    const { error } = await supabase.from("blocchi_preventivo").update({ importo: round2(totale) }).eq("id", bl.id);
+    const { error } = await supabase.from("blocchi_preventivo").update({ importo: round2(totale), prezzo_um: n(bl.quantita_base) > 0 ? round2(totale / n(bl.quantita_base)) : null }).eq("id", bl.id);
     if (error) throw error;
   }
-  await supabase.from("preventivi").update({
+  const { error: totaleErrore } = await supabase.from("preventivi").update({
     totale_imponibile: round2(tot),
     iva_importo: round2(tot * iva / 100),
     totale: round2(tot * (1 + iva / 100)),
   }).eq("id", preventivo_id);
+  if (totaleErrore) throw totaleErrore;
 }
 
 export async function riapplicaPrezziSpecialiCantiere(preventivo_id: string): Promise<{
@@ -738,12 +740,12 @@ export async function riapplicaPrezziSpecialiCantiere(preventivo_id: string): Pr
       const importo = importoRiga({ ...r, prezzo_unit: nuovoPrezzo });
       const { error } = await supabase
         .from("righe_preventivo")
-        .update({
+        .update(patchConImporto(r, {
           prezzo_unit: round2(nuovoPrezzo),
           costo: costoRiga(nuovoCostoUnit, q),
           vendita: round2(nuovoPrezzo * q),
           importo,
-        })
+        }))
         .eq("id", r.id);
       if (error) throw error;
       aggiornate++;
@@ -858,8 +860,10 @@ export async function updateRiga(id: string, patch: RigaUpdate): Promise<Riga> {
   const { data: corrente, error: letturaErrore } = await supabase.from("righe_preventivo")
     .select("*, blocco:blocchi_preventivo(quantita_base,preventivo_id)").eq("id", id).single();
   if (letturaErrore) throw letturaErrore;
-  const pesi = corrente.articolo_codice ? await fetchPesiGamma([corrente.articolo_codice]) : new Map<string, number | null>();
-  const riga = { ...corrente, ...(corrente.articolo_codice ? { peso_gamma_unit: pesi.get(corrente.articolo_codice) ?? null } : {}) };
+  const codice = patch.articolo_codice ?? corrente.articolo_codice;
+  const cambiaQuantita = "quantita" in patch || "incidenza" in patch;
+  const pesi = codice && cambiaQuantita ? await fetchPesiGamma([codice]) : null;
+  const riga = { ...corrente, ...(pesi && codice ? { peso_gamma_unit: pesi.get(codice) ?? null } : {}) };
   const calcolata = patchConImporto(riga, patch, corrente.blocco?.quantita_base);
   const { data, error } = await supabase.from("righe_preventivo")
     .update(calcolata).eq("id", id).select().single();

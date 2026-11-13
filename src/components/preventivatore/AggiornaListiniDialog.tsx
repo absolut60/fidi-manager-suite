@@ -5,8 +5,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import type { AnalisiAggiornaListini, DifferenzaListino } from "@/lib/preventivi-api";
 import { formatScontiGamma } from "@/lib/riga-preventivo";
 import { cn } from "@/lib/utils";
+import { formatNumeroIt } from "@/lib/numero-it";
 
-const f4 = (v: number | null) => v == null ? "—" : v.toLocaleString("it-IT", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+const f4 = (v: number | null) => v == null ? "—" : formatNumeroIt(v, { minDecimals: 4, maxDecimals: 4 });
 
 /** FM65: tutte spuntate; si toglie la spunta dove non si è d'accordo. Rosso = netto nuovo sotto il costo. */
 export function AggiornaListiniDialog({ analisi, onClose, onApplica, inCorso }: {
@@ -43,7 +44,7 @@ export function AggiornaListiniDialog({ analisi, onClose, onApplica, inCorso }: 
                   <div className="break-words text-sm"><span className="font-mono font-semibold">{d.codice}</span> {d.descrizione}</div>
                   {riga("Prezzo lordo", f4(c.attuali.prezzo_unit), f4(c.nuovi.prezzo_unit))}
                   {riga("Sconti", formatScontiGamma(c.attuali.sconti_gamma) || "—", formatScontiGamma(c.nuovi.sconti_gamma) || "—")}
-                  {riga("Magg.%", String(c.attuali.maggiorazione_perc), String(c.nuovi.maggiorazione_perc))}
+                  {riga("Magg.%", formatNumeroIt(c.attuali.maggiorazione_perc), formatNumeroIt(c.nuovi.maggiorazione_perc))}
                   {riga("Costo unit.", f4(c.attuali.costo_unit), f4(c.nuovi.costo_unit))}
                   {c.sottoCosto && <div className="text-xs font-semibold text-destructive">Netto nuovo {f4(c.nettoNuovo)} sotto il costo</div>}
                 </div>

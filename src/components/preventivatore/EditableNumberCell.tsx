@@ -29,7 +29,7 @@ export function EditableNumberCell({
   ariaLabel?: string;
 }) {
   const toDisplay = (v: number | null | undefined) =>
-    v == null ? "" : formatNumeroIt(v, { minDecimals: decimali ?? 0, maxDecimals: decimali ?? 4 });
+    v == null ? "" : formatNumeroIt(v, { minDecimals: decimali ?? 2, maxDecimals: decimali ?? 4 });
 
   const [local, setLocal] = useState<string>(toDisplay(value));
   const [editing, setEditing] = useState(false);
