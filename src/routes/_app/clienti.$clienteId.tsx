@@ -42,6 +42,7 @@ import { SegmentoSelect } from "@/components/segmento-select";
 import { useConfig, isClienteAttivo } from "@/hooks/use-config";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { RiquadroAnagrafica, TONI_ANAGRAFICA, type TonoAnagrafica } from "@/components/ui/riquadro-anagrafica";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
@@ -968,27 +969,20 @@ function SectionCard({
   children: ReactNode;
   className?: string;
 }) {
-  const variants = {
-    blue: { border: "border-l-blue-500", text: "text-blue-700 dark:text-blue-400" },
-    green: { border: "border-l-emerald-500", text: "text-emerald-700 dark:text-emerald-400" },
-    violet: { border: "border-l-violet-500", text: "text-violet-700 dark:text-violet-400" },
-    gray: { border: "border-l-slate-400", text: "text-slate-700 dark:text-slate-400" },
-    amber: { border: "border-l-amber-500", text: "text-amber-700 dark:text-amber-400" },
-    muted: { border: "border-l-slate-300", text: "text-slate-600 dark:text-slate-400" },
-  } as const;
-  const v = variants[variant];
+  const toni: Record<typeof variant, TonoAnagrafica> = { blue: "azzurro", green: "verde", violet: "viola", gray: "grigio", amber: "arancio", muted: "neutro" };
+  const tono = toni[variant];
   return (
-    <Card
-      className={`p-4 rounded-l-none rounded-r-xl border-[0.5px] border-l-[3px] ${v.border} h-full ${className ?? ""}`}
+    <RiquadroAnagrafica tono={tono}
+      className={`h-full ${className ?? ""}`}
     >
       <div
-        className={`flex items-center gap-2 mb-3 text-sm font-semibold uppercase tracking-wide ${v.text}`}
+        className={`flex items-center gap-2 mb-3 text-sm font-semibold uppercase tracking-wide ${TONI_ANAGRAFICA[tono].testo}`}
       >
         {Icon && <Icon className="size-4" />}
         <span>{title}</span>
       </div>
       {children}
-    </Card>
+    </RiquadroAnagrafica>
   );
 }
 

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { RiquadroAnagrafica } from "@/components/ui/riquadro-anagrafica";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
@@ -20,7 +21,7 @@ import { unitaArticolo, inUnita, quantitaConUnita, prezzoConUnita, type UnitaSce
 export type DettaglioGamma = NonNullable<Awaited<ReturnType<typeof dettaglioArticoloGamma>>>;
 const LABEL_TAB = { panoramica: "Panoramica", vendita: "Vendita", acquisto: "Acquisto", disponibilita: "Disponibilità", fornitori: "Fornitori", "sistema-made": "Sistema MADE" };
 export function Sezione({ titolo, children, icon: Icon = Package }: { titolo: string; children: ReactNode; icon?: LucideIcon }) {
-  return <Card className="min-w-0 border-l-[3px] border-l-primary p-3 sm:p-4" role="region" aria-label={titolo}><h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-primary"><Icon className="size-4 shrink-0" />{titolo}</h2>{children}</Card>;
+  return <RiquadroAnagrafica tono="primary" role="region" aria-label={titolo}><h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-primary"><Icon className="size-4 shrink-0" />{titolo}</h2>{children}</RiquadroAnagrafica>;
 }
 export function Dato({ label, value }: { label: string; value: ReactNode }) {
   return <div className="grid min-w-0 grid-cols-[7rem_minmax(0,1fr)] gap-2 border-b py-2 text-sm"><dt className="text-muted-foreground">{label}</dt><dd className="min-w-0 break-words tabular-nums">{value ?? "—"}</dd></div>;
