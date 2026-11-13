@@ -522,8 +522,8 @@ function PreventivoEditorPage() {
           <TabsList className="w-full justify-start bg-transparent border-b rounded-none h-11 p-0">
             {(['testata','corpo','piede'] as const).map(t=><TabsTrigger key={t} value={t} className="flex-1 sm:flex-none rounded-none h-11 px-4 bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary">{t==='testata'?'Testata':t==='piede'?'Piede':`Corpo · ${prev.blocchi.length} blocchi`}</TabsTrigger>)}
           </TabsList>
-          <TabsContent value="testata"><TestataPreventivo prev={prev} cliente={clienteDati} editMode={editMode} agenti={agenti} principali={principali} haAlternative={haAlternative} listino={listino} categoria={categoria} sede={condizioni?.sede_nome||'—'} onSave={p=>save.mutate(p)} onCliente={()=>setClienteOpen(true)} onChangeCliente={onChangeCliente} onCantiere={cid=>save.mutate({cantiere_id:cid,cantiere_descrizione:null},{onSuccess:()=>riapplicaSpeciali.mutate()})}/></TabsContent>
-          <TabsContent value="corpo"><fieldset disabled={!editMode} className={cn('min-w-0',!editMode&&'readonly-mode')}>
+          <TabsContent value="testata"><TestataPreventivo prev={prev} cliente={clienteDati} modificabile={modificabile} statoEditabile={puoScrivere} agenti={agenti} principali={principali} haAlternative={haAlternative} listino={listino} categoria={categoria} sede={condizioni?.sede_nome||'—'} onSave={p=>save.mutate(p)} onCliente={()=>setClienteOpen(true)} onChangeCliente={onChangeCliente} onCantiere={cid=>save.mutate({cantiere_id:cid,cantiere_descrizione:null},{onSuccess:()=>riapplicaSpeciali.mutate()})}/></TabsContent>
+          <TabsContent value="corpo"><fieldset disabled={!modificabile} className={cn('min-w-0',!modificabile&&'readonly-mode')}>
             {/* ===== CORPO ===== */}
             <section className="flex flex-col gap-3">
 
@@ -533,8 +533,8 @@ function PreventivoEditorPage() {
                     {prev.blocchi.length === 0 ? (
                       <Card>
                         <CardContent className="flex flex-col items-center gap-2 p-12 text-center">
-                          <p className="text-sm text-muted-foreground">Nessun blocco. {editMode ? "Aggiungine uno per iniziare." : puoScrivere ? "Premi Modifica per aggiungerne." : ""}</p>
-                          {editMode && (
+                          <p className="text-sm text-muted-foreground">Nessun blocco. {modificabile ? "Aggiungine uno per iniziare." : ""}</p>
+                          {modificabile && (
                             <div className="flex items-center gap-2">
                               <Button size="sm" onClick={handleAddEmptyBlocco} disabled={addEmptyBlocco.isPending}>
                                 <Plus className="mr-1 h-4 w-4" /> Aggiungi blocco
@@ -548,13 +548,13 @@ function PreventivoEditorPage() {
                       </Card>
                     ) : (
                       prev.blocchi.map((b, idx) => (
-                        <BloccoCard key={b.id} blocco={b} index={idx} preventivoId={id} fascia={(prev.fascia_listino ?? "A") as FasciaListino} readOnly={!editMode} prezziSpecialiMap={prezziSpecialiMap} clienteId={prev.cliente_id ?? null} scontoPiede={Number(prev.sconto_piede_perc ?? 0)} />
+                        <BloccoCard key={b.id} blocco={b} index={idx} preventivoId={id} fascia={(prev.fascia_listino ?? "A") as FasciaListino} readOnly={!modificabile} prezziSpecialiMap={prezziSpecialiMap} clienteId={prev.cliente_id ?? null} scontoPiede={Number(prev.sconto_piede_perc ?? 0)} />
                       ))
                     )}
                   </div>
                 </SortableContext>
               </DndContext>
-              {editMode && prev.blocchi.length > 0 && (
+              {modificabile && prev.blocchi.length > 0 && (
                 <div className="flex items-center gap-2">
                   <Button size="sm" onClick={handleAddEmptyBlocco} disabled={addEmptyBlocco.isPending}>
                     <Plus className="mr-1 h-4 w-4" /> Aggiungi blocco
@@ -566,7 +566,7 @@ function PreventivoEditorPage() {
               )}
             </section>
             </fieldset></TabsContent>
-          <TabsContent value="piede"><PiedePreventivo dati={riepilogo} iva={totali.iva} totale={totali.totale} ivaPerc={Number(prev.iva_perc??22)} sconto={Number(prev.sconto_piede_perc??0)} editMode={editMode} inCorso={applicaSconto.isPending} onSconto={v=>applicaSconto.mutate(v)} onTestata={()=>cambiaTab('testata')}/></TabsContent>
+          <TabsContent value="piede"><PiedePreventivo dati={riepilogo} iva={totali.iva} totale={totali.totale} ivaPerc={Number(prev.iva_perc??22)} sconto={Number(prev.sconto_piede_perc??0)} editMode={modificabile} inCorso={applicaSconto.isPending} onSconto={v=>applicaSconto.mutate(v)} onTestata={()=>cambiaTab('testata')}/></TabsContent>
         </Tabs>
       </div>
       {clienteOpen && clienteDati && <ClientePreventivoDialog cliente={clienteDati} onClose={()=>setClienteOpen(false)}/>}
