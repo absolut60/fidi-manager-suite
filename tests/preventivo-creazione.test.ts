@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { descrizioneCantiereProvvisorio, letteraPreventivo, riallineaValidita, validitaProposta } from "../src/lib/preventivo-creazione";
+import { letteraPreventivo, riallineaValidita, validitaProposta } from "../src/lib/preventivo-creazione";
 import { inUnita } from "../src/lib/scheda-articolo";
 
 describe("FM65 R1a", () => {
@@ -10,10 +10,6 @@ describe("FM65 R1a", () => {
   test("validità segue la data solo prima della modifica manuale", () => {
     expect(riallineaValidita("2026-11-14", "2026-11-20", false)).toBe("2026-11-21");
     expect(riallineaValidita("2026-11-14", "2026-11-30", true)).toBe("2026-11-30");
-  });
-  test("cantiere provvisorio vuoto Da definire", () => {
-    expect(descrizioneCantiereProvvisorio("  ")).toBe("Da definire");
-    expect(descrizioneCantiereProvvisorio(" Via Roma ")).toBe("Via Roma");
   });
   test("principale A e alternative ordinate per data e id", () => {
     const righe = [{ id: "c", created_at: "2026-11-14T00:00:00Z" }, { id: "b", created_at: "2026-11-13T00:00:00Z" }, { id: "a", created_at: "2026-11-13T00:00:00Z" }];

@@ -10,6 +10,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { FiltroMultiplo } from "@/components/filtro-multiplo";
+import { BadgeProvvisorio } from "@/components/badge-provvisorio";
+import { FILTRI_PROVVISORIO, passaFiltroProvvisorio } from "@/lib/cantieri-provvisori";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -66,9 +68,11 @@ function CantieriPage() {
   // Filtri conservati (useFiltriPagina). Con ?focus= nell'URL si parte dai default,
   // cosi' il cantiere richiesto non resta nascosto da filtri salvati.
   const { filtri: FC, setCampo: setCampoCantieri } = useFiltriPagina("cantieri", {
-    search: "", geoF: [] as string[], agenteF: [] as string[], attivoF: "tutti", categoriaF: [] as string[],
+    search: "", geoF: [] as string[], agenteF: [] as string[], attivoF: "tutti", provvF: "tutti", categoriaF: [] as string[],
   }, { userId: user?.id, partiDaiDefault: !!focus, valida: { geoF: Array.isArray, agenteF: Array.isArray, categoriaF: Array.isArray } });
   const { search, geoF, attivoF, categoriaF } = FC;
+  const provvF = typeof FC.provvF === "string" ? FC.provvF : "tutti";
+  const setProvvF = (v: string) => setCampoCantieri("provvF", v);
   // Filtro agente visibile solo ai trasversali: altrimenti il salvato non si applica.
   const agenteF = isTrasversale ? FC.agenteF : [];
   const setSearch = (v: string) => setCampoCantieri("search", v);
@@ -132,9 +136,10 @@ function CantieriPage() {
       if (agenteF.length > 0 && !agenteF.includes(c.agente_codice ?? "")) return false;
       if (attivoF !== "tutti" && String(c.attivo ?? true) !== attivoF) return false;
       if (categoriaF.length > 0 && !categoriaF.includes(c.categoria ?? "")) return false;
+      if (!passaFiltroProvvisorio(c, provvF)) return false;
       return true;
     });
-  }, [rows, search, geoF, agenteF, attivoF, categoriaF]);
+  }, [rows, search, geoF, agenteF, attivoF, categoriaF, provvF]);
 
   const daPosizionare = useMemo(
     () => rows.filter((c) => {
@@ -250,7 +255,7 @@ function CantieriPage() {
             search={search} setSearch={setSearch}
             geoF={geoF} setGeoF={setGeoF}
             agenteF={agenteF} setAgenteF={setAgenteF}
-            attivoF={attivoF} setAttivoF={setAttivoF}
+            attivoF={attivoF} setAttivoF={setAttivoF} provvF={provvF} setProvvF={setProvvF}
             categoriaF={categoriaF} setCategoriaF={setCategoriaF}
             agenti={agenti} isTrasversale={isTrasversale}
           />
@@ -269,7 +274,7 @@ function CantieriPage() {
                   return (
                     <SchedaLista
                       key={c.id}
-                      titolo={c.nome}
+                      titolo={<span className="inline-flex flex-wrap items-center gap-2">{c.nome}{c.provvisorio && <BadgeProvvisorio />}</span>}
                       badge={
                         c.attivo === false
                           ? <Badge variant="outline">Chiuso</Badge>
@@ -330,6 +335,7 @@ function CantieriPage() {
                         <TableRow key={c.id}>
                           <TableCell className="font-medium">
                             {c.nome}
+                            {c.provvisorio && <span className="ml-2 inline-block align-middle"><BadgeProvvisorio /></span>}
                             {c.categoria && (
                               <span className="ml-2 text-xs text-muted-foreground">
                                 {CATEGORIA_LABEL[c.categoria] ?? c.categoria}
@@ -388,7 +394,7 @@ function CantieriPage() {
             search={search} setSearch={setSearch}
             geoF={geoF} setGeoF={setGeoF}
             agenteF={agenteF} setAgenteF={setAgenteF}
-            attivoF={attivoF} setAttivoF={setAttivoF}
+            attivoF={attivoF} setAttivoF={setAttivoF} provvF={provvF} setProvvF={setProvvF}
             categoriaF={categoriaF} setCategoriaF={setCategoriaF}
             agenti={agenti} isTrasversale={isTrasversale}
           />
@@ -430,20 +436,21 @@ function CantieriPage() {
 }
 
 function Filtri({
-  search, setSearch, geoF, setGeoF, agenteF, setAgenteF, attivoF, setAttivoF,
+  search, setSearch, geoF, setGeoF, agenteF, setAgenteF, attivoF, setAttivoF, provvF, setProvvF,
   categoriaF, setCategoriaF, agenti, isTrasversale,
 }: {
   search: string; setSearch: (v: string) => void;
   geoF: string[]; setGeoF: (v: string[]) => void;
   agenteF: string[]; setAgenteF: (v: string[]) => void;
   attivoF: string; setAttivoF: (v: string) => void;
+  provvF: string; setProvvF: (v: string) => void;
   categoriaF: string[]; setCategoriaF: (v: string[]) => void;
   agenti: Array<{ codice: string; descrizione: string | null }>;
   isTrasversale: boolean;
 }) {
   return (
     <FiltriCollassabili>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input
@@ -469,6 +476,12 @@ function Filtri({
             <SelectItem value="tutti">Attivi e chiusi</SelectItem>
             <SelectItem value="true">Solo attivi</SelectItem>
             <SelectItem value="false">Solo chiusi</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={provvF} onValueChange={setProvvF}>
+          <SelectTrigger aria-label="Provvisori"><SelectValue placeholder="Provvisori" /></SelectTrigger>
+          <SelectContent>
+            {FILTRI_PROVVISORIO.map((f) => <SelectItem key={f.valore} value={f.valore}>{f.label}</SelectItem>)}
           </SelectContent>
         </Select>
         <FiltroMultiplo

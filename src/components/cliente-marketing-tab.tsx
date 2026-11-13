@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { contaCantieriMarketing } from "@/lib/cantieri-provvisori";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -56,7 +57,7 @@ export function ClienteMarketingTab({ clienteId, cliente }: { clienteId: string;
     queryKey: ["cliente-marketing-profilo", clienteId, cliente.store_id ?? null],
     queryFn: async () => {
       const [cantieri, contatti, store] = await Promise.all([
-        supabase.from("cantieri").select("id, attivo").eq("cliente_id", clienteId),
+        supabase.from("cantieri").select("id, attivo, provvisorio").eq("cliente_id", clienteId),
         supabase
           .from("contatti")
           .select("id, consenso_marketing_diretto, consenso_marketing_media, consenso_profilazione")
@@ -84,8 +85,9 @@ export function ClienteMarketingTab({ clienteId, cliente }: { clienteId: string;
     },
   });
 
-  const cantieriTot = data?.cantieri.length ?? 0;
-  const cantieriAttivi = (data?.cantieri ?? []).filter((c: any) => c.attivo).length;
+  const contiCantieri = contaCantieriMarketing(data?.cantieri ?? []);
+  const cantieriTot = contiCantieri.totali;
+  const cantieriAttivi = contiCantieri.attivi;
 
   const contatti = data?.contatti ?? [];
   const totContatti = contatti.length;
