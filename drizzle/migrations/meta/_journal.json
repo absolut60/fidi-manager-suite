@@ -1401,6 +1401,13 @@
       "when": 1794562209183,
       "tag": "0199_fm65_riga_preventivo_gamma",
       "breakpoints": true
+    },
+    {
+      "idx": 200,
+      "version": "7",
+      "when": 1794562665074,
+      "tag": "0200_fm65_condizioni_preventivo_cliente",
+      "breakpoints": true
     }
   ]
 }

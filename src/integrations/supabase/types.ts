@@ -8786,6 +8786,19 @@ export type Database = {
         Args: { _attuale: string; _proposta: string }
         Returns: boolean
       }
+      condizioni_preventivo_cliente: {
+        Args: { _cliente_id: string }
+        Returns: {
+          categoria: string
+          categoria_label: string
+          listino: number
+          listino_descrizione: string
+          macrocategoria: string
+          macrocategoria_label: string
+          sede_nome: string
+          sottocategoria: string
+        }[]
+      }
       conferma_alert_fido: {
         Args: { _alert_id: string }
         Returns: {
