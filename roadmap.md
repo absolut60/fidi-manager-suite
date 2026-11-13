@@ -1,3 +1,8 @@
+# FM65 — Ridisegno R1a
+- [ ] Migrazione additiva, trigger alternative/autore, lettori cliente e lettera; impronte e test SQL.
+- [ ] Creazione: titolo, validità +7, pagamento, cantiere Da definire; duplicazione e ordine UM1.
+- [ ] Test, immagini telefono/PC, documentazione e rapporto.
+
 # FM65 — Fetta 3a
 - [x] Fonte unica incidenza/quantità in patchConImporto/updateRiga e ricalcolo blocco/kit, incluse manuali; formati italiani con formatNumeroIt. 657 test verdi, build OK.
 - [x] PRV-161 modificato/riletto nel DB: 1,5 → 30/112,51/costo 90,30; ripristino 2 → 40/150,01/costo 120,40. Imponibile 170,01, totale con IVA 207,41. Altre 90 righe impronta 09e5c915e3e5c81a0d83cff4723c6564 invariata.
