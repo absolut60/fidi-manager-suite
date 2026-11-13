@@ -45,7 +45,7 @@ describe("FM65 2b-1 — sconti come in Gamma e riga dal motore", () => {
     const c = campiPrezzoDaMotore(lastraAN, 25.2, 0);
     expect(c.sconti_gamma).toEqual([10]);
     expect(c.importo).toBe(94.51);
-    expect(c.costo).toBe(75.85);
+    expect(c.costo).toBe(75.852);
   });
   it("sconto a piede finisce nello sconto extra", () => expect(campiPrezzoDaMotore(lastraAN, 1, 5).sconto_perc).toBe(5));
   it("senza prezzo dal motore: riga senza prezzo, importo 0", () => {
