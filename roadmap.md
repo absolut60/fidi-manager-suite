@@ -1,7 +1,8 @@
 # FM65 — Ridisegno R1a
-- [ ] Migrazione additiva, trigger alternative/autore, lettori cliente e lettera; impronte e test SQL.
-- [ ] Creazione: titolo, validità +7, pagamento, cantiere Da definire; duplicazione e ordine UM1.
-- [ ] Test, immagini telefono/PC, documentazione e rapporto.
+- [x] 0201 additiva, trigger alternative/autore, lettori cliente e lettera; impronte di 9 preventivi/13 blocchi/92 righe invariate, prove SQL annullate, anon 0.
+- [x] Creazione: titolo, validità +7, pagamento, cantiere Da definire; duplicazione e ordine UM1 con um_scelta copiata. Nessuna tab R1b né conversione R2.
+- [x] 663 test verdi; screenshot 375/1280 e flusso simulato 320–1920 senza errori/overflow; documentazione aggiornata, pagina temporanea rimossa.
+- [ ] Prova autenticata creazione: --self non trova account Andrea; prove cliccate con risposte simulate, SQL impersonato separatamente. Mockup esterno non leggibile (contenuto non restituito).
 
 # FM65 — Fetta 3a
 - [x] Fonte unica incidenza/quantità in patchConImporto/updateRiga e ricalcolo blocco/kit, incluse manuali; formati italiani con formatNumeroIt. 657 test verdi, build OK.
