@@ -212,3 +212,4 @@
 - [x] FM65 F2 logica filtri a cascata
 - [x] FM65 F3 Senza famiglia/marca in ricerca + filtri a cascata nel catalogo
 - [x] FM65 F4 filtri a cascata nella ricerca articolo del preventivo
+- [x] FM67 linguette Testata/Corpo/Piede (variante opt-in tabs.tsx) + Margine/Totale imponibile allineati a destra

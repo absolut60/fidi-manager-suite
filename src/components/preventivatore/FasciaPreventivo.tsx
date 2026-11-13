@@ -29,11 +29,11 @@ export function FasciaPreventivo({ dati, titolo, onCliente }: { dati: RiepilogoP
       </div>
     </div>
     <div className="grid shrink-0 grid-cols-2 gap-2 lg:flex">
-      <div className="min-w-0 rounded-lg border border-pv-verde/30 bg-pv-verde-tenue px-3 py-2 text-pv-verde">
+      <div className="min-w-0 rounded-lg border border-pv-verde/30 bg-pv-verde-tenue px-3 py-2 text-right text-pv-verde">
         <span className="block text-[10.5px] font-semibold uppercase tracking-wide">Margine</span>
         <span className="block whitespace-nowrap text-sm font-bold tabular-nums">{formatNumeroIt(dati.marginePerc,{minDecimals:1,maxDecimals:1})}% · € {fmt(dati.margineEuro)}</span>
       </div>
-      <div className="min-w-0 rounded-lg bg-primary px-3 py-2 text-primary-foreground">
+      <div className="min-w-0 rounded-lg bg-primary px-3 py-2 text-right text-primary-foreground">
         <span className="block text-[10.5px] font-semibold uppercase tracking-wide opacity-80">Totale imponibile</span>
         <span className="block whitespace-nowrap text-lg font-bold tabular-nums sm:text-2xl">€ {fmt(dati.imponibile)}</span>
       </div>
