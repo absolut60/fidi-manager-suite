@@ -11,13 +11,14 @@ export interface ArticoloGammaScelto { codice: string; descrizione: string | nul
 
 /** FM65: selettore articoli del catalogo Gamma per la riga preventivo. Non mostra prezzi (seguono il cliente). */
 export function ArticoloGammaPicker({
-  codice, descrizione, onChange, autoOpen = false, disabled = false,
+  codice, descrizione, onChange, autoOpen = false, disabled = false, soloCodice = false,
 }: {
   codice: string | null;
   descrizione: string | null;
   onChange: (a: ArticoloGammaScelto) => void;
   autoOpen?: boolean;
   disabled?: boolean;
+  soloCodice?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -38,14 +39,14 @@ export function ArticoloGammaPicker({
     staleTime: 60_000,
   });
 
-  const label = codice ? `${codice} · ${descrizione ?? ""}` : null;
+  const label = codice ? (soloCodice ? codice : `${codice} · ${descrizione ?? ""}`) : null;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="outline" role="combobox" disabled={disabled}
           className="h-auto min-h-8 w-full justify-between whitespace-normal px-2 py-1 text-left font-mono text-xs">
-          <span className="line-clamp-2 min-w-0 break-words">{label ?? "Cerca articolo Gamma…"}</span>
+          <span className="line-clamp-2 min-w-0 break-words">{label ?? (soloCodice ? "Scegli codice…" : "Cerca articolo Gamma…")}</span>
           <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -62,16 +63,16 @@ export function ArticoloGammaPicker({
           ) : items.length === 0 ? (
             <div className="p-3 text-xs text-muted-foreground">{isFetching ? "Ricerca…" : "Nessun articolo trovato."}</div>
           ) : items.map((a) => (
-            <button key={a.codice} type="button"
+            <Button key={a.codice} type="button" variant="ghost"
               onClick={() => { onChange(a); setOpen(false); }}
-              className="grid w-full grid-cols-[minmax(0,1fr)_auto] gap-2 border-b px-2 py-2 text-left text-xs hover:bg-accent">
+              className="grid h-auto w-full grid-cols-[minmax(0,1fr)_auto] gap-2 whitespace-normal rounded-none border-b px-2 py-2 text-left text-xs hover:bg-accent">
               <span className="min-w-0">
                 <span className="font-mono font-semibold">{a.codice}</span>
                 <span className="block break-words">{a.descrizione}</span>
                 {a.marca && <span className="block font-semibold text-primary">{a.marca}</span>}
               </span>
               <span className="shrink-0 text-muted-foreground">{a.um ?? ""}</span>
-            </button>
+            </Button>
           ))}
         </div>
       </PopoverContent>
