@@ -1,3 +1,7 @@
+# FM65 — Ridisegno R1b
+- [ ] Componenti fascia/testata/piede, tab URL, cliente sovrapposto, Corpo invariato.
+- [ ] Verifica dati PRV-161, immagini 375/1024/1280/1920, test e rapporto.
+
 # FM65 — Ridisegno R1a
 - [x] 0201 additiva, trigger alternative/autore, lettori cliente e lettera; impronte di 9 preventivi/13 blocchi/92 righe invariate, prove SQL annullate, anon 0.
 - [x] Creazione: titolo, validità +7, pagamento, cantiere Da definire; duplicazione e ordine UM1 con um_scelta copiata. Nessuna tab R1b né conversione R2.
