@@ -11,9 +11,10 @@ export const cercaArticoliPreventivo = createServerFn({ method: "POST" })
       testo: data.testo.trim(), famiglie: [], sottofamiglie: [], marche: [], fornitori: [],
       stati: ["in_uso", "in_esaurimento"], disponibile_in: [], disponibile_logistica: false,
       _ordina: "codice", _direzione: "asc", limite: 30, offset: 0,
+      coppie: [], solo_gamma: true, // FM65 F1: righe non Gamma escluse prima del limite
     });
     if (error) throw new Error(error.message);
     return (rows ?? [])
-      .filter((r) => r.origine === "gamma")
+      .filter((r) => r.origine === "gamma") // rete di sicurezza: con solo_gamma non arrivano altre righe
       .map((r) => ({ codice: r.codice, descrizione: r.descrizione, marca: r.marca, um: r.um }));
   });

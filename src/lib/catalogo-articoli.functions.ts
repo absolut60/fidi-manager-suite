@@ -95,3 +95,13 @@ export const disponibilitaSchedaArticolo = createServerFn({ method: "POST" }).mi
     if (result.error) throw new Error(result.error.message);
     return result.data ?? [];
   });
+/** FM65 F1: terne famiglia/sottofamiglia/marca degli articoli attivi in uso o in esaurimento, per i filtri a cascata calcolati in TS (F2). */
+const ternaSchema = z.object({ codice_famiglia: z.string().nullable(), famiglia: z.string().nullable(), codice_sottofamiglia: z.string().nullable(),
+  sottofamiglia: z.string().nullable(), marca_codice: z.string().nullable(), marca: z.string().nullable(), conteggio: z.coerce.number() });
+export type TernaArticoliFiltri = z.infer<typeof ternaSchema>;
+export const terneArticoliFiltri = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase.rpc("terne_articoli_filtri");
+    if (error) throw new Error(error.message);
+    return z.array(ternaSchema).parse(data ?? []);
+  });

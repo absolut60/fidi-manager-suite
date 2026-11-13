@@ -194,3 +194,6 @@
 - [x] Indietro: tab/filtri/pagina in replace (scheda fornitore e articolo)
 - [x] Tabella attivita_fornitore + tab Attività + card Ultima attività
 - [ ] Prova autenticata live (sessione non disponibile)
+
+- [x] FM65 F1: cerca_articoli coppie/marca/solo_gamma + terne_articoli_filtri (0206)
+- [ ] FM65 F2-F5: logica cascata, componente condiviso, picker, verifica
