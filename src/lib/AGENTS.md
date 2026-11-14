@@ -13,3 +13,4 @@
 
 - Quote titled notes live only in preventivi-note; duplication copies them through copiaNotePreventivo and order conversion copies them atomically inside the existing SQL RPC. Attachments reuse AllegatiSection and never copy, so access and presentation cannot diverge.
 - Quote note and attachment mutations use chiaveSalvaPreventivo; their edit controls use the existing preventivoModificabile result, so the save badge and exit guard include these writes.
+- Estimator UI access uses è_preventivista and puoModificareRecordPreventivista; full lead-management gates remain separate, and customer links check direct customer RLS rather than quote-lite RPC access.
