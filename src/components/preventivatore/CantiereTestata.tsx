@@ -142,7 +142,7 @@ export function CantiereTestata({ prev, modificabile, onCantiere, clienteEtichet
         {modo === "cliente" && <CantierePicker cliente_id={prev.cliente_id} value={prev.cantiere_id} onChange={collega} />}
         {c && <AzioneRiquadro icona={X} etichetta="Annulla cambio cantiere" onClick={() => { setScelta(false); setModo("cliente"); }}/>}
       </div>}
-    {prezziId && cantierePrezzi && <PrezziCantiereDialog open onOpenChange={o => { if (!o) setPrezziId(null); }} cantiere={cantierePrezzi}/>}
+    {prezziId && cantierePrezzi && <PrezziCantiereDialog condizioniPrezzi={prev} open onOpenChange={o => { if (!o) setPrezziId(null); }} cantiere={cantierePrezzi}/>}
     {scheda && geo && <CantiereDialog open={scheda} onOpenChange={setScheda} cantiere={geo} queryKeysExtra={[["cantiere-preventivo-posizione", c?.id], ["preventivo", prev.id]]}/>}
     {mappa && geo && <MappaCantierePreventivo open={mappa} onOpenChange={setMappa} cantiere={geo} sedi={sediMappa} sedeCliente={sedeCliente}/>}
 

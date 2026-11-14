@@ -1,3 +1,4 @@
+import { fetchPrezzoPreventivoArticolo, type CondizioniPrezziPreventivo } from "@/lib/prezzi-preventivo";
 import { messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { opzioniPrezziCantiere } from "@/lib/cantiere-listini-api";
 import { CellaUm } from "@/components/cella-um";
@@ -46,7 +47,7 @@ import { ArticoloPicker } from "@/components/preventivatore/ArticoloPicker";
 import { ArticoloGammaPicker, type ArticoloGammaScelto } from "@/components/preventivatore/ArticoloGammaPicker";
 import { campiPrezzoDaMotore, prezzoConPrioritaCantiere, patchConFontePrezzo, segnoPrezzoCantiere, costoRiga, formatScontiGamma, isIntestazioneKit, margineTotaliRighe, patchConImporto, parseScontiGamma, prezzoNettoRiga, rigaInUnita } from "@/lib/riga-preventivo";
 import {
-  calcolaBlocco, deleteRiga, salvaPatchRigaCalcolata, fetchPrezzoClienteArticolo, fractionalOrder, insertRiga, reorderRighe,
+  calcolaBlocco, deleteRiga, salvaPatchRigaCalcolata, fractionalOrder, insertRiga, reorderRighe,
   TIPI_RIGA, TIPI_RIGA_LABEL, updateRiga,
   type BloccoConRighe, type PreventivoConDettagli, type Riga, type RigaUpdate, type TipoRiga,
 } from "@/lib/preventivi-api";
@@ -63,8 +64,9 @@ export function RigheTable({
   clienteId,
   scontoPiede = 0,
   cantiereId,
-  sedeGiacenzaId = null, sedeNome = null,
+  sedeGiacenzaId = null, sedeNome = null, condizioniPrezzi,
 }: {
+  condizioniPrezzi: CondizioniPrezziPreventivo;
   blocco: BloccoConRighe;
   preventivoId: string;
   fascia: FasciaListino;
@@ -205,9 +207,9 @@ export function RigheTable({
     const quantita = Number(r.quantita ?? 1) || 1;
     const dedicato = cantiereId ? (await qc.fetchQuery(opzioniPrezziCantiere(cantiereId))).find(p => p.cod_gamma === a.codice) : null;
     let prezzo = null;
-    if (clienteId) {
+    if (condizioniPrezzi.listino_rif != null || condizioniPrezzi.cliente_id) {
       try {
-        prezzo = await fetchPrezzoClienteArticolo(clienteId, a.codice);
+        prezzo = await fetchPrezzoPreventivoArticolo(condizioniPrezzi, a.codice);
       } catch (e) {
         if (!dedicato) toast.warning(`Prezzo non disponibile: ${(e as Error).message}`);
       }

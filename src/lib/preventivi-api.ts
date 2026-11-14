@@ -1,3 +1,4 @@
+import { fetchPrezziPreventivo, fetchPrezzoPreventivoArticolo, condizioniPrezziCliente, type CondizioniPrezziPreventivo } from "./prezzi-preventivo";
 import { eliminaConEsito } from "./esito-eliminazione";
 import { getCantiereListini, type CantiereListinoRow } from "./cantiere-listini-api";
 import { copiaNotePreventivo } from "./preventivi-note";
@@ -542,6 +543,9 @@ export async function duplicaPreventivo(
     cantiere_id: nuovoCliente ? null : src.cantiere_id,
     agente_codice: nuovoCliente ? nuovoClienteRow?.codice_agente : src.agente_codice,
     ...campiSedePreventivo(nuovoCliente ? { id: condizioniNuovoCliente?.store_id ?? null, nome: condizioniNuovoCliente?.sede_nome ?? null } : { id: src.store_id, nome: src.filiale }),
+    listino_rif: src.listino_rif,
+    macrocategoria_rif: src.macrocategoria_rif,
+    categoria_rif: src.categoria_rif,
     fascia_listino: src.fascia_listino, // FM65: colonna non più usata per i prezzi
     tipo_doc: src.tipo_doc,
     stato: "bozza",
@@ -716,7 +720,7 @@ export async function analizzaAggiornaListini(preventivo_id: string, prezziCanti
       candidate.push({ r, codice, blocco_id: b.id });
     }
   }
-  const mappa = prev.cliente_id ? await fetchPrezziClienteArticoli(prev.cliente_id, candidate.map((c) => c.codice)).catch(e => { if (!dedicati.size) throw e; return new Map(); }) : new Map();
+  const mappa = await fetchPrezziPreventivo(prev, candidate.map((c) => c.codice)).catch(e => { if (!dedicati.size) throw e; return new Map(); });
   const differenze: DifferenzaListino[] = [];
   let invariate = 0;
   let senza_prezzo = 0;
@@ -804,12 +808,14 @@ export async function addBloccoDaKit(args: {
   cliente_id: string | null;
   sconto_piede: number;
   prezzi_cantiere?: CantiereListinoRow[];
+  condizioni_prezzi?: CondizioniPrezziPreventivo;
 }): Promise<Blocco> {
   const dedicati = new Map((args.prezzi_cantiere ?? []).map(p => [p.cod_gamma, p]));
-  if (!args.cliente_id && !dedicati.size) throw new Error("Scegli prima il cliente: i prezzi del kit arrivano dalle sue condizioni Gamma.");
+  const condizioni = args.condizioni_prezzi ?? await fetchPreventivo(args.preventivo_id);
+  if (condizioni.listino_rif == null && !condizioni.cliente_id && !dedicati.size) throw new Error("Scegli prima il cliente: i prezzi del kit arrivano dalle sue condizioni Gamma.");
   const kit = await fetchKit(args.kit_id);
   const codici = kit.componenti.map((c) => c.articolo?.cod_gamma).filter((c): c is string => !!c);
-  const prezzi = args.cliente_id ? await fetchPrezziClienteArticoli(args.cliente_id, codici).catch(e => { if (!dedicati.size) throw e; return new Map(); }) : new Map();
+  const prezzi = await fetchPrezziPreventivo(condizioni, codici).catch(e => { if (!dedicati.size) throw e; return new Map(); });
   const pesi = await fetchPesiGamma(codici);
 
   const qBaseEff = args.quantita_base > 0 ? args.quantita_base : 1;
@@ -1136,21 +1142,9 @@ export async function fetchCondizioniPreventivoCliente(cliente_id: string): Prom
   return data?.[0] ?? null;
 }
 
+/** Lettore cliente conservato per il riepilogo: anche questo delega alla fonte unica. */
 export async function fetchPrezzoClienteArticolo(cliente_id: string, codice: string) {
-  const { data, error } = await supabase.rpc("prezzi_preventivo_cliente", { _cliente_id: cliente_id, _codici: [codice] });
-  if (error) throw error;
-  return data?.[0] ?? null;
-}
-
-/** FM65: prezzi del motore per più codici in UNA chiamata (max 500), indicizzati per codice. */
-export async function fetchPrezziClienteArticoli(cliente_id: string, codici: string[]): Promise<Map<string, PrezzoClienteGamma & { um: string | null }>> {
-  const unici = Array.from(new Set(codici.filter(Boolean)));
-  const out = new Map<string, PrezzoClienteGamma & { um: string | null }>();
-  if (unici.length === 0) return out;
-  const { data, error } = await supabase.rpc("prezzi_preventivo_cliente", { _cliente_id: cliente_id, _codici: unici });
-  if (error) throw error;
-  for (const r of data ?? []) out.set(r.articolo_codice, r);
-  return out;
+  return fetchPrezzoPreventivoArticolo(condizioniPrezziCliente(cliente_id), codice);
 }
 
 /** FM65 punto 4: riepilogo articolo per il cliente del preventivo (sola lettura, una riga). Il prezzo di vendita resta in prezzi_preventivo_cliente. */
