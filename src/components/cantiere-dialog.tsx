@@ -1,5 +1,6 @@
 // Dialog creazione / modifica cantiere con geocodifica automatica dell'indirizzo.
 import { Switch } from "@/components/ui/switch";
+import { provvisorioInizialeCantiere } from "@/lib/cantieri-provvisori";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -197,7 +198,7 @@ export function CantiereDialog({
     setAgenteCodice(c?.agente_codice ?? "");
     setNote(c?.note ?? "");
     setAttivo(c?.attivo ?? true);
-    setProvvisorio(c ? c.provvisorio === true : provvisorioIniziale);
+    setProvvisorio(provvisorioInizialeCantiere(c, provvisorioIniziale));
     setLat(c?.lat != null ? String(c.lat) : "");
     setLng(c?.lng != null ? String(c.lng) : "");
     setSedeTesto(c ? testoSedeVicina(c) : null);

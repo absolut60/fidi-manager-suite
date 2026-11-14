@@ -18,7 +18,7 @@ import { BadgeProvvisorio } from "@/components/badge-provvisorio";
  */
 export function CantiereTestata({ prev, modificabile, onCantiere, clienteEtichetta }: { prev: PreventivoConDettagli; modificabile: boolean; onCantiere: (id: string) => void; clienteEtichetta?: string }) {
   const qc = useQueryClient();
-  const soggettoFisso = useMemo(() => prev.cliente_id ? { tipo: "cliente" as const, id: prev.cliente_id, etichetta: clienteEtichetta || [prev.cliente?.codice_gestionale, prev.cliente?.ragione_sociale].filter(Boolean).join(" · ") || "Cliente" } : undefined, [prev.cliente_id, prev.cliente?.codice_gestionale, prev.cliente?.ragione_sociale, clienteEtichetta]);
+  const soggettoFisso = useMemo(() => prev.cliente_id ? { tipo: "cliente" as const, id: prev.cliente_id, etichetta: clienteEtichetta || prev.cliente?.ragione_sociale || "Cliente" } : undefined, [prev.cliente_id, prev.cliente?.ragione_sociale, clienteEtichetta]);
   const c = prev.cantiere;
   const storico = (prev as { cantiere_descrizione?: string | null }).cantiere_descrizione ?? null;
   const [scelta, setScelta] = useState(!c);
