@@ -33,10 +33,13 @@ test("il primo carattere arriva alla cella prima del cambio stato, anche passand
     if (!setter) throw new Error("Setter input mancante");
     for (const input of container.querySelectorAll("input")) {
       await act(async () => { input.focus(); });
-      await act(async () => {
-        setter.call(input, "7");
-        input.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
-      });
+      // Non racchiudere l'evento nativo in act: quel batching artificiale
+      // nasconde il ripristino del value fra capture e bubble nel browser.
+      Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", false);
+      setter.call(input, "7");
+      input.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+      Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", true);
+      await act(async () => {});
       expect(input.value).toBe("7");
       expect(container.querySelector("output")?.textContent).toBe("modifiche");
       expect(container.querySelector("output")?.getAttribute("data-block")).toBe("true");
