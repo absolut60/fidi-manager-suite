@@ -1,3 +1,7 @@
+# FM71 — Preventivi ai lead, fetta 3a (solo database)
+- [ ] Baseline visibilità amministratore, store_manager 485baff2 e agente 7; migrazione 0224, riaggancio e dipendenze del gate.
+- [ ] Test SQL in ROLLBACK, suite completa, confronto firme dopo e documentazione.
+
 # FM71 — Testata condizioni di riferimento, fetta 2b
 - [x] Interruttore, cataloghi con RLS utente, salvataggio completo/azzeramento e avviso dopo successo; badge condiviso Testata/Corpo, anche senza cantiere. Nessun DB/PDF/ordine.
 - [x] 872 test verdi; browser componenti reali con risposte simulate 375/1280: tre campi salvati e riletti, categoria facoltativa, badge in entrambi i punti, NULL su azzeramento, diniego senza falso successo né righe modificate. Screenshot controllati, niente overflow anche 320/390/768/1920; route temporanea rimossa. Documentazione aggiornata. Regola architetturale root non salvata: AGENTS.md al limite.
