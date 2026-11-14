@@ -19,3 +19,5 @@
 
 - Quote price provenance is written only by patchConFontePrezzo; automated paths supply priority source, manual sale-term edits are protected by spunteInizialiListini, and segnoPrezzoCantiere uses persisted source with NULL-only value fallback.
 - Verified deletes use esito-eliminazione exact counts against unique requested IDs; consumers update cache/navigate only on full success, so zero-row RLS deletes cannot masquerade as success. Quote notes retain their parent filter through the shared helper.
+
+- Manual marketing cascades enumerate all visible child IDs in stable pages and verify full deletion before deleting the parent; partial recipient removal refreshes data and retains only surviving IDs, preventing false success.
