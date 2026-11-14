@@ -10,7 +10,7 @@ import { formatNumeroIt } from "@/lib/numero-it";
 
 const f4 = (v: number | null) => v == null ? "—" : formatNumeroIt(v, { minDecimals: 4, maxDecimals: 4 });
 
-/** FM65: tutte spuntate; si toglie la spunta dove non si è d'accordo. Rosso = netto nuovo sotto il costo. */
+/** Manual prices require explicit selection; red still marks a proposed net below cost. */
 export function AggiornaListiniDialog({ analisi, onClose, onApplica, inCorso }: {
   analisi: AnalisiAggiornaListini | null;
   onClose: () => void;
