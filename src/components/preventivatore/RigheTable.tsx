@@ -485,6 +485,16 @@ function PulsanteRiepilogo({ idx, onOpen, inTabella }: { idx: number; onOpen: ((
   </span>;
 }
 
+/** Fixed number and detail slots, also for rows without a Gamma article. */
+function NumeroRiga({ p, inTabella = false }: { p: RigaProps; inTabella?: boolean }) {
+  return <div className={cn("grid shrink-0 items-center gap-0.5 text-xs text-muted-foreground", inTabella ? "min-h-[26px] grid-cols-[20px_20px]" : "grid-cols-[24px_40px]")}>
+    <span className="text-center font-mono tabular-nums">{p.idx + 1}</span>
+    <span className={cn("flex items-center justify-center", inTabella ? "size-5" : "size-10")}>
+      {p.row.articolo_codice && <PulsanteRiepilogo idx={p.idx} onOpen={p.onOpenRiepilogo ?? null} inTabella={inTabella} />}
+    </span>
+  </div>;
+}
+
 /** La descrizione va a capo e cresce col testo (fallback dove field-sizing non è supportato). */
 function adattaAltezza(el: HTMLTextAreaElement | null) {
   if (!el) return;
@@ -540,9 +550,8 @@ function useCelleRiga(p: RigaProps) {
     um: row.articolo_codice ? <CellaUm idx={p.idx} um1={unita.um1 ?? unita.um ?? row.um ?? "—"} um2={unita.convertibile ? unita.um2 ?? null : null}
       fattore={row.unita_gamma?.fattore_conversione ?? null} secondaria={!!unita.secondaria} disabled={readOnly}
       onChange={(um_scelta) => onPatch({ um_scelta })} /> : (
-      <Input defaultValue={row.um ?? ""} aria-label="Unità di misura" disabled={readOnly}
-        onBlur={(e) => { if ((e.target.value || null) !== row.um) onPatch({ um: e.target.value || null }); }}
-        className="h-[26px] rounded border-transparent bg-transparent px-1 py-1 text-xs shadow-none hover:border-input focus:border-ring focus:bg-card focus-visible:ring-0 md:text-xs" />
+      <CellaUm idx={p.idx} um1={row.um ?? ""} um2={null} fattore={null} secondaria={false} disabled={readOnly}
+        onChange={() => {}} onManualCommit={(um) => onPatch({ um })} />
     ),
     incidenza: (
       <EditableNumberCell value={unita.incidenza} decimali={4} ariaLabel="Incidenza"
@@ -685,7 +694,7 @@ function RigaRow(p: RigaProps) {
   return (
     <tr ref={sortable.setNodeRef} style={style} className={rowClass} onClick={c.onRowClick}>
       {grip}
-      <td className="sticky left-[18px] z-[1] py-0.5 text-center text-xs text-muted-foreground"><div className="flex min-h-[26px] flex-row items-center justify-center gap-0.5"><span>{p.idx + 1}</span>{p.row.articolo_codice && <PulsanteRiepilogo idx={p.idx} onOpen={p.onOpenRiepilogo ?? null} inTabella />}</div></td>
+      <td className="sticky left-[18px] z-[1] py-0.5 text-center text-xs text-muted-foreground"><NumeroRiga p={p} inTabella /></td>
       <td className="sticky left-[66px] z-[1] min-w-0 px-1 py-0.5">{c.codice}</td>
       <td className="lg:sticky lg:left-[222px] lg:z-[1] min-w-0 whitespace-normal px-1 py-0.5">{c.articolo}{c.kitSenzaPrezzo && (
         <p className="mt-0.5 text-[11px] font-sans not-italic text-destructive">Articolo non collegato a Gamma: inserisci prezzo e costo a mano</p>
@@ -737,7 +746,7 @@ function RigaScheda(p: RigaProps) {
     <div className={cn("rounded-md border p-2", sfondoScheda(c), c.kitSenzaPrezzo && "border-destructive")}
       onClick={c.onRowClick}>
       <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-        <div className="flex min-w-0 items-center gap-1"><span className="min-w-0 break-words text-xs text-muted-foreground">Riga {p.idx + 1} · {TIPI_RIGA_LABEL[c.tipo]}</span>{p.row.articolo_codice && <PulsanteRiepilogo idx={p.idx} onOpen={p.onOpenRiepilogo ?? null} />}</div>
+        <div className="flex min-w-0 items-center gap-1"><NumeroRiga p={p} /><span className="min-w-0 break-words text-xs text-muted-foreground">{TIPI_RIGA_LABEL[c.tipo]}</span></div>
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
           {c.valorizzata && <><span className="whitespace-nowrap font-mono text-xs font-semibold">{c.importo}</span><BadgeMargine perc={p.calc.margine_perc} testo={c.margine} /></>}
           <AzioniRiga {...p} />
