@@ -7,11 +7,23 @@ import { AttivitaCommercialeDialog } from "@/components/attivita-commerciale-dia
 import { fmtDataOra, luogoAttivita, ordinaAttivitaPreventivo, TIPO_ATTIVITA_LABEL, type AttivitaRow } from "@/lib/attivita-commerciale";
 import { RiquadroScheda } from "./RiquadroScheda";
 
-export function AttivitaPreventivo({ id, clienteId, agenteCodice, storeId, modificabile }: {
-  id: string; clienteId: string | null; agenteCodice: string | null; storeId: string | null; modificabile: boolean;
+export function AttivitaPreventivo({ id, clienteId, agenteCodice, sedeNome, modificabile }: {
+  id: string; clienteId: string | null; agenteCodice: string | null; sedeNome: string; modificabile: boolean;
 }) {
   const [aperto, setAperto] = useState(false);
   const [selezionata, setSelezionata] = useState<AttivitaRow | null>(null);
+  // La RPC condizioni restituisce il nome esatto della sede, non il suo UUID.
+  // Risoluzione sul catalogo sedi, senza aprire la riga cliente o usare la sede dell'operatore.
+  const { data: sede, isPending: sedeInCaricamento, error: erroreSede } = useQuery({
+    queryKey: ["sede-attivita-preventivo", sedeNome],
+    enabled: modificabile && !!sedeNome && sedeNome !== "—",
+    queryFn: async () => {
+      const { data, error } = await supabase.from("stores").select("id").eq("nome", sedeNome).maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error("Sede del cliente non disponibile");
+      return data;
+    },
+  });
   const { data: attivita = [], isPending, error } = useQuery({
     queryKey: ["attivita-commerciale", "preventivo", id],
     queryFn: async () => {
@@ -44,10 +56,11 @@ export function AttivitaPreventivo({ id, clienteId, agenteCodice, storeId, modif
           : <div key={a.id} className={stile}>{contenuto}</div>;
       })}
     </div>
-    {modificabile && <Button variant="ghost" size="sm" className="min-h-10 text-xs" onClick={() => { setSelezionata(null); setAperto(true); }}><Plus className="size-3.5"/>Registra attività</Button>}
+    {erroreSede && <p role="alert" className="text-xs text-destructive">Impossibile caricare la sede del cliente.</p>}
+    {modificabile && <Button variant="ghost" size="sm" className="min-h-10 text-xs" disabled={!!erroreSede || (sedeNome !== "—" && sedeInCaricamento)} onClick={() => { setSelezionata(null); setAperto(true); }}><Plus className="size-3.5"/>Registra attività</Button>}
     {modificabile && aperto && <AttivitaCommercialeDialog open={aperto} onOpenChange={setAperto} attivita={selezionata} contesto={selezionata ? {
       preventivo_id: selezionata.preventivo_id, cliente_id: selezionata.cliente_id, lead_id: selezionata.lead_id,
       opportunita_id: selezionata.opportunita_id, agente_codice: selezionata.agente_codice, store_id: selezionata.store_id,
-    } : { preventivo_id: id, cliente_id: clienteId, agente_codice: agenteCodice, store_id: storeId }}/ >}
+    } : { preventivo_id: id, cliente_id: clienteId, agente_codice: agenteCodice, store_id: sede?.id ?? null }}/>}
   </RiquadroScheda>;
 }
