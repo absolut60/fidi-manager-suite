@@ -20,8 +20,11 @@ import { IndicatoreClientePreventivo } from "./IndicatoreClientePreventivo";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { campiSedePreventivo } from "@/lib/preventivo-creazione";
+import { CondizioniRiferimento } from "./CondizioniRiferimento";
+import type { CataloghiRiferimento, RiferimentoPreventivo } from "@/lib/condizioni-riferimento";
 
-export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agenti,principali,haAlternative,listino,categoria,sede,sedeClienteId,onSave,onCliente,onChangeCliente,onCantiere}: {
+export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agenti,principali,haAlternative,listino,categoria,sede,sedeClienteId,onSave,onCliente,onChangeCliente,onCantiere,cataloghiRiferimento,erroreCataloghi,caricamentoCataloghi,onRiferimento,badgeRiferimento}: {
+  cataloghiRiferimento?: CataloghiRiferimento; erroreCataloghi?: string; caricamentoCataloghi: boolean; onRiferimento: (patch: RiferimentoPreventivo) => Promise<void>; badgeRiferimento?: ReactNode;
   prev: PreventivoConDettagli; cliente: DatiClientePreventivo|null|undefined; modificabile:boolean; statoEditabile:boolean; agenti:Agente[]; principali:{id:string;numero:string|null;titolo:string|null}[]; haAlternative:boolean; listino:string; categoria:string; sede:string; sedeClienteId?:string|null;
   onSave:(patch:PreventivoUpdate)=>void; onCliente:()=>void; onChangeCliente:(id:string)=>void; onCantiere:(id:string)=>void|Promise<void>;
 }) {
@@ -74,14 +77,15 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
     <div className="flex min-w-0 flex-col gap-2">
     <RiquadroScheda titolo="Condizioni commerciali" icona={Percent} tono="arancio" densita="compatta">
       <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
-        {field('Listino',listino,<div className="min-h-7 py-1 text-xs">{listino}</div>)}
-        {field('Categoria',categoria,<div className="min-h-7 py-1 text-xs break-words">{categoria}</div>)}
+        {field('Listino del cliente',listino,<div className="min-h-7 py-1 text-xs">{listino}</div>)}
+        {field('Categoria del cliente',categoria,<div className="min-h-7 py-1 text-xs break-words">{categoria}</div>)}
+        <CondizioniRiferimento key={`${prev.id}:${prev.listino_rif}:${prev.macrocategoria_rif}:${prev.categoria_rif}`} riferimento={prev} cataloghi={cataloghiRiferimento} errore={erroreCataloghi} caricamento={caricamentoCataloghi} modificabile={modificabile} onSave={onRiferimento}/>
         {field('Condizione di pagamento',pagamento?`${pagamentoDesc||pagamento} (${pagamento})`:'—',<div title="Proposta dal cliente (Gamma) · modificabile">{select('Condizione di pagamento',pagamento,codici.map(c=>({value:c.cod,label:`${c.descrizione||''} (${c.cod})`})),v=>save({condizione_pagamento_cod:v==='__none__'?null:v}))}</div>,true)}
         {field('IVA %',`${formatNumeroIt(prev.iva_perc||0)}%`,<Input aria-label="IVA %" className="h-7 bg-card px-2 text-xs md:text-xs" inputMode="decimal" defaultValue={formatNumeroIt(prev.iva_perc||0)} onBlur={e=>{const v=parseNumeroIt(e.target.value);if(v!==null&&v!==prev.iva_perc)save({iva_perc:v});}}/>)}
         {field('Filiale',prev.filiale,select('Filiale',prev.store_id||'',stores.map(s=>({value:s.id,label:s.nome})),id=>save(campiSedePreventivo(stores.find(s=>s.id===id)??null))))}
       </div>
     </RiquadroScheda>
-    <CantiereTestata prev={prev} modificabile={modificabile} onCantiere={onCantiere} clienteEtichetta={identitaCliente} sedeClienteNome={sede} sedeClienteId={sedeClienteId}/>
+    <CantiereTestata prev={prev} modificabile={modificabile} onCantiere={onCantiere} clienteEtichetta={identitaCliente} sedeClienteNome={sede} sedeClienteId={sedeClienteId} badgeRiferimento={badgeRiferimento}/>
     </div>
     <RiquadroScheda titolo="Note" icona={StickyNote} tono="viola" densita="compatta">
       {modificabile?<Textarea aria-label="Note" rows={3} className="min-h-0 resize-none bg-card px-2 py-1 text-xs md:text-xs" defaultValue={prev.note||''} onBlur={e=>{if((e.target.value||null)!==prev.note)save({note:e.target.value||null});}}/>:<p className="whitespace-pre-wrap break-words text-xs">{prev.note||'—'}</p>}

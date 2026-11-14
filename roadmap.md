@@ -1,3 +1,8 @@
+# FM71 — Testata condizioni di riferimento, fetta 2b
+- [x] Interruttore, cataloghi con RLS utente, salvataggio completo/azzeramento e avviso dopo successo; badge condiviso Testata/Corpo, anche senza cantiere. Nessun DB/PDF/ordine.
+- [x] 872 test verdi; browser componenti reali con risposte simulate 375/1280: tre campi salvati e riletti, categoria facoltativa, badge in entrambi i punti, NULL su azzeramento, diniego senza falso successo né righe modificate. Screenshot controllati, niente overflow anche 320/390/768/1920; route temporanea rimossa. Documentazione aggiornata. Regola architetturale root non salvata: AGENTS.md al limite.
+- [ ] Verifica cataloghi con sessione operativa: le letture reali di listini_gamma/macrocategorie/categorie_cliente restituiscono tutte zero righe senza errore; non stabilisce un diniego RLS, nessun bypass. Salvataggi reali non eseguiti.
+
 # FM71 — Condizioni di riferimento lato app, fetta 2a
 - [x] Fonte unica prezzi-preventivo.ts: dispatcher cliente/riferimento, sede prezzi solo dal preventivo (anche NULL), data/codici e forma comune; priorità cantiere e fonte listino invariate. Nessuna modifica SQL.
 - [x] Scelta righe, kit, analisi listini e proposte prezzi cantiere allineati; applicazione usa la proposta analizzata senza nuova RPC. Duplicazione copia i tre riferimenti. Finestre cantiere dirette e annidate ricevono contesto prezzi, cache distinta per condizioni/sede/data; nessuna nuova scelta nella Testata.

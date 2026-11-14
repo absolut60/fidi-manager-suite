@@ -2,6 +2,8 @@ import type { CondizioniPrezziPreventivo } from "@/lib/prezzi-preventivo";
 import { messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { opzioniPrezziCantiere } from "@/lib/cantiere-listini-api";
 import { BadgePrezziDedicati } from "@/components/badge-prezzi-dedicati";
+import { BadgeCondizioniRiferimento } from "@/components/preventivatore/BadgeCondizioniRiferimento";
+import { opzioniCataloghiRiferimento, type RiferimentoPreventivo } from "@/lib/condizioni-riferimento";
 import { PrezziCantiereDialog } from "@/components/prezzi-cantiere-dialog";
 import type { CantiereRow } from "@/lib/cantieri";
 import { FasciaPreventivo, type RiepilogoPreventivo } from '@/components/preventivatore/FasciaPreventivo';
@@ -145,6 +147,7 @@ function PreventivoEditorPage() {
 
   const {data:clienteDati}=useQuery({queryKey:['cliente-preventivo-dati',prev?.cliente_id],queryFn:()=>prev?.cliente_id?fetchDatiClientePreventivo(prev.cliente_id):null,enabled:!!prev?.cliente_id});
   const {data:condizioni}=useQuery({queryKey:['condizioni-preventivo-cliente',prev?.cliente_id],queryFn:()=>prev?.cliente_id?fetchCondizioniPreventivoCliente(prev.cliente_id):null,enabled:!!prev?.cliente_id});
+  const cataloghiRiferimento = useQuery({ ...opzioniCataloghiRiferimento, enabled: !!prev && (tab === 'testata' || prev.listino_rif != null) });
   const {data:principali=[]}=useQuery({queryKey:['preventivi-principali',prev?.cliente_id,id],queryFn:async()=>{
     if(!prev?.cliente_id)return [];
     const {data,error}=await supabase.from('preventivi').select('id,numero,titolo').eq('cliente_id',prev.cliente_id).eq('tipo','preventivo').is('alternativa_di',null).neq('id',id).order('created_at');
@@ -175,6 +178,10 @@ function PreventivoEditorPage() {
     onSuccess: () => { invalidate(); qc.invalidateQueries({queryKey:['preventivi-principali']}); qc.invalidateQueries({queryKey:['preventivo-lettera']}); qc.invalidateQueries({queryKey:['preventivo-ha-alternative']}); },
     onError: (e: unknown) => toast.error((e as Error).message),
   });
+  const salvaRiferimento = async (patch: RiferimentoPreventivo) => {
+    await save.mutateAsync(patch);
+    if (prev?.blocchi.some(b => b.righe.length > 0)) toast.info("Le righe esistenti non cambiano: usa Aggiorna listini per vedere le differenze");
+  };
 
   const delPrev = useMutation({
     mutationFn: () => deletePreventivo(id),
@@ -557,8 +564,8 @@ function PreventivoEditorPage() {
           <TabsList variant="linguette" className="w-full justify-start">
             {(['testata','corpo','piede'] as const).map(t=><TabsTrigger key={t} variant="linguette" value={t}>{t==='testata'?'Testata':t==='piede'?'Piede':`Corpo · ${prev.blocchi.length} blocchi`}</TabsTrigger>)}
           </TabsList>
-          <TabsContent value="testata"><TestataPreventivo prev={prev} cliente={clienteDati} modificabile={modificabile} statoEditabile={puoScrivere} agenti={agenti} principali={principali} haAlternative={haAlternative} listino={listino} categoria={categoria} sede={condizioni?.sede_nome||'—'} sedeClienteId={condizioni?.store_id??null} onSave={p=>save.mutate(p)} onCliente={()=>setClienteOpen(true)} onChangeCliente={onChangeCliente} onCantiere={async cid=>{await save.mutateAsync({cantiere_id:cid,cantiere_descrizione:null});}}/></TabsContent>
-          <TabsContent value="corpo"><div className="mb-2"><BadgePrezziDedicati conteggio={prezziCantiere.length} mostraNumero onClick={() => setPrezziOpen(true)} /></div><fieldset disabled={!modificabile} className={cn('min-w-0',!modificabile&&'readonly-mode')}>
+          <TabsContent value="testata"><TestataPreventivo prev={prev} cliente={clienteDati} modificabile={modificabile} statoEditabile={puoScrivere} agenti={agenti} principali={principali} haAlternative={haAlternative} listino={listino} categoria={categoria} sede={condizioni?.sede_nome||'—'} sedeClienteId={condizioni?.store_id??null} onSave={p=>save.mutate(p)} cataloghiRiferimento={cataloghiRiferimento.data} erroreCataloghi={cataloghiRiferimento.error?.message} caricamentoCataloghi={cataloghiRiferimento.isLoading} onRiferimento={salvaRiferimento} badgeRiferimento={<BadgeCondizioniRiferimento riferimento={prev} cataloghi={cataloghiRiferimento.data}/>} onCliente={()=>setClienteOpen(true)} onChangeCliente={onChangeCliente} onCantiere={async cid=>{await save.mutateAsync({cantiere_id:cid,cantiere_descrizione:null});}}/></TabsContent>
+          <TabsContent value="corpo"><div className="mb-2 flex min-w-0 flex-wrap items-center gap-2"><BadgePrezziDedicati conteggio={prezziCantiere.length} mostraNumero onClick={() => setPrezziOpen(true)} /><BadgeCondizioniRiferimento riferimento={prev} cataloghi={cataloghiRiferimento.data}/></div><fieldset disabled={!modificabile} className={cn('min-w-0',!modificabile&&'readonly-mode')}>
             {/* ===== CORPO ===== */}
             <section className="flex flex-col gap-3">
 
