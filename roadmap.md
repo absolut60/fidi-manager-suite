@@ -1,3 +1,6 @@
+# FM70 — Apertura picker, fetta 3b
+- [ ] RPC apertura con gate e visibilità cantiere, recenti propri distinti (15), badge condiviso e righe comuni, test SQL/TS e browser 375/1280.
+
 # FM70 — Giacenze e risultati, fetta 3a
 - [x] Applicata 0221_fm70_preventivi_store_id.sql: 3 preventivi collegati su 4, quello senza filiale resta NULL; indice verificato. Salvataggi creazione/Testata/duplicazione tramite campiSedePreventivo; picker righe con sede preventivo, Prezzi cantiere con sede cliente. Giacenze UM1/logistica e totale SQL, pagine 30/60/65, reset su ricerca/sede, selezione e assenza giacenze senza sede verificati con risposte simulate a 375/1280 (schermate, zero errori). 847 test verdi, build OK. Nessuna modifica cerca_articoli/prezzi/RLS. Verifica autenticata reale tentata: editor non accessibile alla sessione disponibile.
 
