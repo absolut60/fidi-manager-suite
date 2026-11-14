@@ -40,7 +40,7 @@ function sedeSvg(colore: string): string {
 }
 
 export default function CantieriMappa({
-  apiKey, cantieri, sedi = [], onApri, focusId, onFocusFatto,
+  apiKey, cantieri, sedi = [], onApri, focusId, onFocusFatto, puoAprire,
 }: {
   apiKey: string;
   cantieri: CantiereRow[];
@@ -48,6 +48,7 @@ export default function CantieriMappa({
   onApri: (c: CantiereRow) => void;
   focusId?: string | null;
   onFocusFatto?: () => void;
+  puoAprire?: (c: CantiereRow) => boolean;
 }) {
   const divRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any>(null);
@@ -117,6 +118,11 @@ export default function CantieriMappa({
             btn.textContent = "Apri";
             btn.style.cssText = "margin-top:8px;font-size:12px;text-decoration:underline;cursor:pointer";
             btn.onclick = () => onApri(c);
+            if (puoAprire && !puoAprire(c)) {
+              btn.disabled = true;
+              btn.textContent = "Sola lettura";
+              btn.title = "Puoi modificare solo i cantieri creati da te";
+            }
             div.append(h, s, a, sede, btn);
             infoRef.current.setContent(div);
             infoRef.current.open({ map, anchor: marker });
@@ -137,7 +143,7 @@ export default function CantieriMappa({
       })
       .catch(() => {});
     return () => { annullato = true; };
-  }, [apiKey, cantieri, onApri]);
+  }, [apiKey, cantieri, onApri, puoAprire]);
 
   // --- Marker dei punti vendita (non filtrati per agente) ------------------
   useEffect(() => {

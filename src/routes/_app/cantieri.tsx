@@ -420,6 +420,7 @@ function CantieriPage() {
                     cantieri={suMappa}
                     sedi={sedi}
                     onApri={apriModifica}
+                    puoAprire={puoModificare}
                     focusId={focus ?? null}
                   />
                 </Suspense>

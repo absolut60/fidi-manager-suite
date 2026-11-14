@@ -1,9 +1,10 @@
 import { Link } from "@tanstack/react-router";
+import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 /** Legge solo l'id sotto RLS: non usa le RPC lite per decidere l'accesso alla scheda completa. */
-export function ClienteVisibileLink({ clienteId, children, className }: { clienteId: string; children: React.ReactNode; className?: string }) {
+export function ClienteVisibileLink({ clienteId, children, className }: { clienteId: string; children: ReactNode; className?: string }) {
   const { data: visibile } = useQuery({
     queryKey: ["cliente-visibile-lead", clienteId],
     queryFn: async () => {
