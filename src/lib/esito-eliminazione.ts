@@ -1,5 +1,4 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/integrations/supabase/types";
 
 type ErroreEliminazione = { code?: string; message: string };
 export type EsitoEliminazione =
@@ -19,7 +18,7 @@ export function classificaEsitoEliminazione(
 }
 
 export async function eliminaConEsito(
-  tabella: keyof Database["public"]["Tables"], id: string,
+  tabella: "cantieri", id: string,
 ): Promise<EsitoEliminazione> {
   try {
     const { error, data } = await supabase.from(tabella).delete().eq("id", id).select("id");

@@ -142,7 +142,7 @@ export function ClienteCantieriTab({
                     <BottoneElimina
                       titolo="Eliminare questo cantiere?"
                       descrizione={`"${c.nome}" verrà eliminato definitivamente. L'azione è irreversibile.`}
-                      onConferma={() => delMut.mutateAsync(c.id)}
+                      onConferma={async () => { await delMut.mutateAsync(c.id); }}
                     />
                   )}
                 </div>
