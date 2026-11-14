@@ -24,13 +24,17 @@ function componente(place: any, tipo: string, corto = false): string {
 }
 
 export function IndirizzoAutocomplete({
-  apiKey, value, onChange, onScelto, placeholder,
+  apiKey, value, onChange, onScelto, placeholder, disabled, maxLength, id, required,
 }: {
   apiKey?: string | null;
   value: string;
   onChange: (v: string) => void;
   onScelto: (d: IndirizzoScelto) => void;
   placeholder?: string;
+  disabled?: boolean;
+  maxLength?: number;
+  id?: string;
+  required?: boolean;
 }) {
   const [sugg, setSugg] = useState<Sugg[]>([]);
   const [aperto, setAperto] = useState(false);
@@ -57,7 +61,7 @@ export function IndirizzoAutocomplete({
     const testo = value.trim();
     ultimoRef.current = testo;
     if (saltaRef.current) { saltaRef.current = false; setSugg([]); setAperto(false); return; }
-    if (!apiKey || testo.length < 3) { setSugg([]); return; }
+    if (disabled || !apiKey || testo.length < 3) { setSugg([]); setAperto(false); return; }
     const t = setTimeout(async () => {
       try {
         await caricaMaps(apiKey);
@@ -83,9 +87,10 @@ export function IndirizzoAutocomplete({
       }
     }, 300);
     return () => clearTimeout(t);
-  }, [value, apiKey]);
+  }, [value, apiKey, disabled]);
 
   async function scegli(s: Sugg) {
+    if (disabled) return;
     saltaRef.current = true;
     setAperto(false);
     setSugg([]);
@@ -117,13 +122,17 @@ export function IndirizzoAutocomplete({
   return (
     <div className="relative" ref={boxRef}>
       <Input
+        id={id}
+        disabled={disabled}
+        maxLength={maxLength}
+        required={required}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onFocus={() => { if (sugg.length) setAperto(true); }}
         placeholder={placeholder}
         autoComplete="off"
       />
-      {aperto && sugg.length > 0 && (
+      {!disabled && aperto && sugg.length > 0 && (
         <ul className="absolute z-[10000] mt-1 w-full max-h-60 overflow-y-auto rounded-md border bg-popover p-1 shadow-md">
           {sugg.map((s) => (
             <li key={s.placeId}>
