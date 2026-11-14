@@ -1,3 +1,8 @@
+# FM71 — Numero non modificabile, fetta 3d
+- [ ] Trigger con contatori esistenti per preventivi e ordini, blocco UPDATE salvo service_role; nessun backfill o cambio RLS.
+- [ ] Creazione/duplicazione senza numero, Testata in sola lettura, conversione ordine server invariata.
+- [ ] SQL reale BEGIN/ROLLBACK, suite e browser 375/1280, documentazione; sezionale e riparti da futuri.
+
 # FM71 — Correzioni collaudo, fetta 3c
 - [x] Colonna unica e ricerca lead con lettura RLS, categoria obbligatoria nelle nuove scritture, pagamento cercabile condiviso, scheda lead sovrapposta. Nessun DB o permesso modificato.
 - [x] Test permanenti e browser simulato 375/1280: join/ricerca lead, categoria salvata, pagamento multi-parola/accenti, finestra senza nuova scheda né cambio URL; screenshot controllati. Pagina temporanea rimossa; documentazione aggiornata. AGENTS root al limite: regola non aggiunta.
