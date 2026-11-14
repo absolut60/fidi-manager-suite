@@ -1,3 +1,6 @@
+# FM69 — Primo carattere nei campi del preventivo
+- [ ] Riprodurre nei campi reali, individuare la causa, preservare indicatore/Salva/uscita, test di regressione e suite completa.
+
 # FM69 — Correzioni dopo prova Andrea
 - [x] Righe compatte, CellaUm condivisa, ricerca con portale modale scorrevole e badge/conteggi RLS batch da 500 ID in tutte le viste richieste; invalidazione condivisa e plurali corretti.
 - [x] 798 test superati; controlli automatici/build OK. Screenshot prezzi, ricerca (30 risultati, oltre 10 visibili PC, wheel verificata dentro/fuori dialog) e lista Cantieri a 375/1280 senza overflow. Dati simulati; sessione reale mostra lista vuota, nessuna scrittura DB; pagina temporanea rimossa. AGENTS root pieno: nuove regole tecniche non salvate.
