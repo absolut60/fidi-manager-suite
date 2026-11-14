@@ -2,6 +2,8 @@
 import { Switch } from "@/components/ui/switch";
 import { eliminaConEsito, messaggioEliminazioneCantiere } from "@/lib/esito-eliminazione";
 import { CollegamentiCantiere } from "@/components/collegamenti-cantiere";
+import { PrezziCantiereDialog } from "@/components/prezzi-cantiere-dialog";
+import { contaPrezziCantiere, chiaveConteggioPrezziCantiere } from "@/lib/cantiere-listini-api";
 import { provvisorioInizialeCantiere, nomeInizialeCantiere } from "@/lib/cantieri-provvisori";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -98,6 +100,8 @@ export function CantiereDialog({
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
   const [saving, setSaving] = useState(false);
+  const [prezziOpen, setPrezziOpen] = useState(false);
+  const { data: numeroPrezzi } = useQuery({ queryKey: chiaveConteggioPrezziCantiere(cantiere?.id ?? ""), queryFn: () => cantiere ? contaPrezziCantiere(cantiere.id) : 0, enabled: open && !!cantiere });
   const [geoBusy, setGeoBusy] = useState(false);
   const [gpsBusy, setGpsBusy] = useState(false);
   const [sedeBusy, setSedeBusy] = useState(false);
@@ -491,6 +495,8 @@ export function CantiereDialog({
           )}
 
           {open && cantiere && <CollegamentiCantiere cantiereId={cantiere.id} onChiudi={() => onOpenChange(false)} />}
+          {cantiere && <Button type="button" variant="outline" onClick={() => setPrezziOpen(true)}>Prezzi del cantiere ({numeroPrezzi ?? "…"})</Button>}
+          {open && cantiere && <PrezziCantiereDialog open={prezziOpen} onOpenChange={setPrezziOpen} cantiere={cantiere} />}
 
           <div className="space-y-1.5">
             <Label>Note</Label>
