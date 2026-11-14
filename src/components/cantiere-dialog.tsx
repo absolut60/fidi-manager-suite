@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Crosshair, MapPin, Navigation, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { è_preventivista, puoModificareRecordPreventivista } from "@/lib/permessi-preventivi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -258,6 +259,9 @@ export function CantiereDialog({
   }
 
   async function salva() {
+    if (cantiere && !puoModificareRecordPreventivista(roles, cantiere.created_by, user?.id, !è_preventivista(roles) || isTrasversale || puoEliminareCantiere(cantiere))) {
+      toast.error("Puoi modificare solo i cantieri creati da te"); return;
+    }
     if (!nome.trim()) { toast.error("Il nome del cantiere è obbligatorio"); return; }
     if (!soggetto) { toast.error("Seleziona un cliente o un lead"); return; }
 
@@ -307,8 +311,9 @@ export function CantiereDialog({
       if (cantiere) {
         // In modifica l'agente-only non deve mai riscrivere agente_codice
         if (forzaAgente) delete payload.agente_codice;
-        const { error } = await supabase.from("cantieri").update(payload as never).eq("id", cantiere.id);
+        const { data: updated, error } = await supabase.from("cantieri").update(payload as never).eq("id", cantiere.id).select("id");
         if (error) throw error;
+        if (!updated?.length) throw new Error("Non hai il permesso di modificare questo cantiere");
       } else {
         payload.created_by = user?.id ?? null;
         const { data, error } = await supabase.from("cantieri").insert(payload as never).select("id").single();
