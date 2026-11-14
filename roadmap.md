@@ -1,6 +1,6 @@
 # FM68 — Fetta A: visibilità preventivisti (solo database)
-- [ ] 0210: helper e nove policy additive su cantieri, contatti e lead; nessuna apertura clienti o dati finanziari/legali.
-- [ ] Verificare policy applicate, default, grant e invarianza di tutte le policy/funzioni preesistenti.
+- [x] 0210: helper e nove policy additive su cantieri, contatti e lead; nessuna apertura clienti o dati finanziari/legali. Unica dipendenza diretta: consensi_log su contatti, con gate originali invariati; nessuna cascata finanziaria/legale.
+- [x] Quindici controlli SQL superati: policy applicate, default, grant e impronte di tutte le policy/funzioni preesistenti invariate. Nessuna modifica TypeScript manuale; tipi rigenerati automaticamente dalla piattaforma. Prove di scrittura con sessione utente non eseguite.
 
 # FM68 — Barra blu a scomparsa (telefono orizzontale)
 - [x] Hook use-barra-a-scomparsa (scroll passive + rAF, soglie 56px / 8px, `disattiva` col menu aperto); header mobile con `data-nascosta` e classe `pv-orizzontale:data-[nascosta=true]:-translate-y-full`. Nessuna modifica a menu, voci, permessi, badge, notifiche, DB.
