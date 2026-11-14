@@ -1,3 +1,8 @@
+/** Solo presentazione: non usare per identità, confronti o ricerche. */
+export function nomeSedeBreve(nome: string): string {
+  return nome.trim().replace(/^SEDE DI\s+/i, "").toLocaleLowerCase("it-IT").replace(/(^|[\s'-])(\p{L})/gu, (_, separatore: string, lettera: string) => separatore + lettera.toLocaleUpperCase("it-IT"));
+}
+
 export function formatoDistanzaCantiere(km: number, minuti: number): string {
   const m = Math.max(0, Math.round(minuti));
   const h = Math.floor(m / 60);

@@ -8,3 +8,4 @@
 - Quote customer indicators share one query key and the existing SemaforoPallino palette; only indicatore_cliente_preventivo supplies the stage and boolean flags, preventing financial-detail reads.
 - Quote sites read persisted nearest-store distances under RLS and fetch customer-store road distance without persistence through distanzaCantiereSede; identical stores show only the persisted row, and the map dialog reuses CantieriMappa in opt-in compact mode.
 - Customer store identity for quote activities/sites comes only from condizioni_preventivo_cliente.store_id; names are display-only and store catalog lookups use IDs to survive renames and duplicate names.
+- Quote card header actions use AzioneRiquadro through RiquadroScheda azioni, keeping icon size, tooltip and accessible labels consistent.
