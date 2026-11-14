@@ -1,3 +1,4 @@
+import { messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { useEffect, useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
@@ -90,7 +91,10 @@ export function ListinoAcquistoSection({
 
   const delMut = useMutation({
     mutationFn: deleteListinoAcquisto,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["listini_acquisto", articoloId] }),
+    onSuccess: (esito) => {
+      if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") qc.invalidateQueries({ queryKey: ["listini_acquisto", articoloId] }); toast.error(messaggioEsitoEliminazione(esito, "il listino di acquisto")); return; }
+      return qc.invalidateQueries({ queryKey: ["listini_acquisto", articoloId] });
+    },
   });
 
   function setTrasportoEur(v: number | null) {

@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione, type EsitoEliminazione } from "@/lib/esito-eliminazione";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -410,15 +411,17 @@ function GestisciPartecipantiDialog({
   const [nomeInserito, setNomeInserito] = useState(nomeAttuale ?? "");
   const membriKey = ["chat", "canale-membri", canaleId] as const;
 
-  const { data: membri, isLoading } = useQuery({
+  const { data: righeMembri, isLoading, refetch: ricaricaMembri } = useQuery({
     queryKey: membriKey,
     enabled: open,
     queryFn: async () => {
-      const { data, error } = await supabase.from("canale_membri").select("user_id").eq("canale_id", canaleId);
+      const { data, error } = await supabase.from("canale_membri").select("id, user_id").eq("canale_id", canaleId);
       if (error) throw error;
-      return (data ?? []).map((r) => r.user_id as string);
+      return data ?? [];
     },
   });
+
+  const membri = useMemo(() => righeMembri?.map(r => r.user_id), [righeMembri]);
 
   useEffect(() => {
     if (open && membri) setSel(new Set(membri));
@@ -468,6 +471,7 @@ function GestisciPartecipantiDialog({
     if (!modificato || vuoto || nomeVuoto || salvo) return;
     setSalvo(true);
     let insOk = true, delOk = true, nomeOk = true;
+    let esitoRimozioni: EsitoEliminazione | null = null;
     if (nomeCambiato) {
       const { error } = await supabase.from("canali").update({ nome: nomeTrim }).eq("id", canaleId);
       nomeOk = !error;
@@ -480,13 +484,20 @@ function GestisciPartecipantiDialog({
       insOk = !error;
     }
     if (rimossi.length > 0) {
-      const { error } = await supabase.from("canale_membri").delete().eq("canale_id", canaleId).in("user_id", rimossi);
-      delOk = !error;
+      const ids = (righeMembri ?? []).filter(r => rimossi.includes(r.user_id)).map(r => r.id);
+      esitoRimozioni = await eliminaConEsito("canale_membri", ids);
+      delOk = esitoRimozioni.tipo === "eliminato";
     }
     setSalvo(false);
     queryClient.invalidateQueries({ queryKey: ["chat", "canali"] });
     queryClient.invalidateQueries({ queryKey: ["chat", "non-letti"] });
-    queryClient.invalidateQueries({ queryKey: membriKey });
+    const ricaricati = await ricaricaMembri();
+    if (ricaricati.data) setSel(new Set(ricaricati.data.map(r => r.user_id)));
+    if (ricaricati.error) { toast.error(ricaricati.error.message); return; }
+    if (esitoRimozioni && esitoRimozioni.tipo !== "eliminato") {
+      toast.error(messaggioEsitoEliminazione(esitoRimozioni, "i partecipanti"));
+      return;
+    }
     if (insOk && delOk && nomeOk) {
       toast.success(nomeCambiato ? "Canale aggiornato" : "Partecipanti aggiornati");
       onOpenChange(false);

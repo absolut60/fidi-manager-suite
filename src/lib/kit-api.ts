@@ -1,3 +1,4 @@
+import { eliminaConEsito } from "./esito-eliminazione";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { calcCosto, round2 } from "./pricing";
@@ -95,8 +96,7 @@ export async function updateKit(id: string, patch: KitUpdate): Promise<Kit> {
 }
 
 export async function deleteKit(id: string) {
-  const { error } = await supabase.from("kit").delete().eq("id", id);
-  if (error) throw error;
+  return eliminaConEsito("kit", id);
 }
 
 export async function duplicateKit(id: string, newName?: string): Promise<Kit> {
@@ -143,8 +143,7 @@ export async function updateComponente(id: string, patch: KitComponenteUpdate) {
 }
 
 export async function deleteComponente(id: string) {
-  const { error } = await supabase.from("kit_componenti").delete().eq("id", id);
-  if (error) throw error;
+  return eliminaConEsito("kit_componenti", id);
 }
 
 export function getCostoNettoCorrente(art: ArticoloConListini | null | undefined): number {

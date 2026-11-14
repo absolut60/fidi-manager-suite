@@ -1,3 +1,4 @@
+import { messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { BackButton } from "@/components/back-button";
 import { useMemo, useState } from "react";
@@ -58,7 +59,7 @@ import { EditableNumberCell } from "@/components/preventivatore/EditableNumberCe
 import { ArticoloPicker } from "@/components/kit/ArticoloPicker";
 
 export const Route = createFileRoute("/_app/kit/$id")({
-  head: () => ({ meta: [{ title: "Editor Kit — Sistema MADE" }] }),
+  head: () => ({ meta: [{ title: "Editor Kit — Sistema MADE" }, { name: "description", content: "Gestione dei componenti e delle condizioni del kit MADE." }, { property: "og:title", content: "Editor Kit — Sistema MADE" }, { property: "og:description", content: "Gestione dei componenti e delle condizioni del kit MADE." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: KitEditorPage,
 });
 
@@ -111,7 +112,10 @@ function KitEditorPage() {
 
   const delRow = useMutation({
     mutationFn: (rowId: string) => deleteComponente(rowId),
-    onSuccess: () => invalidate(),
+    onSuccess: (esito) => {
+      if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") invalidate(); toast.error(messaggioEsitoEliminazione(esito, "il componente")); return; }
+      return invalidate();
+    },
     onError: (e: unknown) => toast.error((e as Error).message),
   });
 
@@ -126,7 +130,8 @@ function KitEditorPage() {
 
   const delKit = useMutation({
     mutationFn: () => deleteKit(id),
-    onSuccess: () => {
+    onSuccess: (esito) => {
+      if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") invalidate(); toast.error(messaggioEsitoEliminazione(esito, "il kit")); return; }
       toast.success("Kit eliminato");
       navigate({ to: "/kit" });
     },
@@ -180,7 +185,7 @@ function KitEditorPage() {
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Annulla</AlertDialogCancel>
-                <AlertDialogAction onClick={() => delKit.mutate()}>Elimina</AlertDialogAction>
+                <AlertDialogAction onClick={(e) => { e.preventDefault(); delKit.mutate(); }}>Elimina</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>

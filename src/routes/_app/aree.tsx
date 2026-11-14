@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -382,10 +383,12 @@ function MembriDialog({ area, onClose }: { area: AreaRow; onClose: () => void })
 
   const rimuovi = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("area_membri").delete().eq("id", id);
-      if (error) throw error;
+      return eliminaConEsito("area_membri", id);
     },
-    onSuccess: () => { toast.success("Persona rimossa"); invalida(); },
+    onSuccess: (esito) => {
+      if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") invalida(); toast.error(messaggioEsitoEliminazione(esito, "il membro dell’area")); return; }
+      toast.success("Persona rimossa"); invalida();
+    },
     onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Errore"),
   });
 
