@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { BloccoIndirizzo } from "@/components/blocco-indirizzo";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -421,10 +422,8 @@ export function NuovoContattoWizard({
                 <Input value={contatto.codice_fiscale}
                   onChange={(e) => setC("codice_fiscale", e.target.value.toUpperCase())} />
               </div>
-              <div className="space-y-1.5">
-                <Label>Residenza</Label>
-                <Input value={contatto.residenza} onChange={(e) => setC("residenza", e.target.value)} />
-              </div>
+              <BloccoIndirizzo residenzaUnica value={{ indirizzo: contatto.residenza, cap: "", citta: "", provincia: "" }}
+                onChange={(d) => { if (d.indirizzo !== undefined) setC("residenza", d.indirizzo); }} etichette={{ indirizzo: "Residenza" }} />
             </div>
             <div className="flex items-center gap-2">
               <Checkbox id="principale-wiz" checked={contatto.principale}
@@ -537,11 +536,9 @@ function StepFirmaContatto({
           <Input value={dich.codice_fiscale}
             onChange={(e) => setD("codice_fiscale", e.target.value.toUpperCase())} />
         </div>
-        <div className="space-y-1.5">
-          <Label>Residenza</Label>
-          <Input value={dich.residenza} onChange={(e) => setD("residenza", e.target.value)}
-            placeholder="Via, n°, CAP, Città (Prov.)" />
-        </div>
+        <BloccoIndirizzo residenzaUnica value={{ indirizzo: dich.residenza, cap: "", citta: "", provincia: "" }}
+          onChange={(d) => { if (d.indirizzo !== undefined) setD("residenza", d.indirizzo); }}
+          etichette={{ indirizzo: "Residenza" }} placeholder="Via, n°, CAP, Città (Prov.)" />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">

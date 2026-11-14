@@ -258,10 +258,9 @@ function ContattoFormFields({
               onChange={(e) => set("codice_fiscale", e.target.value)}
             />
           </div>
-          <div className="space-y-1.5">
-            <Label>Residenza</Label>
-            <Input value={form.residenza} onChange={(e) => set("residenza", e.target.value)} />
-          </div>
+          <BloccoIndirizzo residenzaUnica value={{ indirizzo: form.residenza ?? "", cap: "", citta: "", provincia: "" }}
+            onChange={(d) => { if (d.indirizzo !== undefined) set("residenza", d.indirizzo); }}
+            etichette={{ indirizzo: "Residenza" }} limiti={{ indirizzo: 200 }} />
         </div>
       </div>
     </div>

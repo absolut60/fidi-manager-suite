@@ -3460,10 +3460,9 @@ function StepFirma({
           <Label>Codice fiscale</Label>
           <Input value={form.dichiarante_codice_fiscale} onChange={(e) => set("dichiarante_codice_fiscale", e.target.value.toUpperCase())} />
         </div>
-        <div className="space-y-1.5">
-          <Label>Residenza</Label>
-          <Input value={form.dichiarante_residenza} onChange={(e) => set("dichiarante_residenza", e.target.value)} placeholder="Via, n°, CAP, Città (Prov.)" />
-        </div>
+        <BloccoIndirizzo residenzaUnica value={{ indirizzo: form.dichiarante_residenza ?? "", cap: "", citta: "", provincia: "" }}
+          onChange={(d) => { if (d.indirizzo !== undefined) set("dichiarante_residenza", d.indirizzo); }}
+          etichette={{ indirizzo: "Residenza" }} limiti={{ indirizzo: 200 }} placeholder="Via, n°, CAP, Città (Prov.)" />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
