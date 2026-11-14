@@ -1555,6 +1555,13 @@
       "when": 1794685509340,
       "tag": "0221_fm70_preventivi_store_id",
       "breakpoints": true
+    },
+    {
+      "idx": 222,
+      "version": "7",
+      "when": 1794686203793,
+      "tag": "0222_fm70_picker_apertura",
+      "breakpoints": true
     }
   ]
 }

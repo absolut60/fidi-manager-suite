@@ -251,7 +251,7 @@ export function RigheTable({
     idx,
     fascia,
     readOnly,
-    preventivoId, sedeGiacenzaId, sedeNome,
+    preventivoId, sedeGiacenzaId, sedeNome, cantiereId,
     autoOpenPicker: r.id === pendingPickerId,
     onOpenArticolo: (aid: string) => setOpenArticoloId(aid),
     onOpenRiepilogo: clienteId ? () => setRiepilogoRigaId(r.id) : null,
@@ -439,6 +439,7 @@ type RigaProps = {
   preventivoId: string;
   sedeGiacenzaId?: string | null; sedeNome?: string | null;
   autoOpenPicker?: boolean;
+  cantiereId?: string | null;
   onOpenArticolo: (id: string) => void;
   /** FM65 punto 4: null se il preventivo non ha cliente. */
   onOpenRiepilogo?: (() => void) | null;
@@ -537,7 +538,7 @@ function useCelleRiga(p: RigaProps) {
   const codice = valorizzata && tipo !== "manuale" ? (
     <div className="flex min-w-0 items-center gap-0.5">
       <div className="min-w-0 flex-1">
-        <ArticoloGammaPicker soloCodice autoOpen={autoOpenPicker} preventivoId={preventivoId} sedeGiacenzaId={p.sedeGiacenzaId} sedeNome={p.sedeNome}
+        <ArticoloGammaPicker soloCodice autoOpen={autoOpenPicker} preventivoId={preventivoId} sedeGiacenzaId={p.sedeGiacenzaId} sedeNome={p.sedeNome} cantiereId={p.cantiereId}
           codice={row.articolo_codice ?? row.articolo?.cod_gamma ?? null}
           descrizione={row.descrizione} onChange={onSceltaGamma} disabled={readOnly} />
       </div>

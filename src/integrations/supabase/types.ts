@@ -8584,6 +8584,18 @@ export type Database = {
           totale: number
         }[]
       }
+      articoli_picker_apertura: {
+        Args: { _cantiere_id?: string; _sede_giacenza?: string }
+        Returns: {
+          codice: string
+          descrizione: string
+          giacenza_logistica: number
+          giacenza_sede: number
+          gruppo: string
+          marca: string
+          um: string
+        }[]
+      }
       assicura_fornitore_manuale: { Args: { _nome: string }; Returns: string }
       auth_consulta_preventivi: { Args: never; Returns: boolean }
       auth_e_showroom: { Args: never; Returns: boolean }
