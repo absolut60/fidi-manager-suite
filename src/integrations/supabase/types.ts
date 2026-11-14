@@ -8913,6 +8913,7 @@ export type Database = {
           macrocategoria_label: string
           sede_nome: string
           sottocategoria: string
+          store_id: string
         }[]
       }
       conferma_alert_fido: {
