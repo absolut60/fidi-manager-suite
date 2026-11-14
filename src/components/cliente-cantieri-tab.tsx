@@ -1,6 +1,8 @@
 import { useSoloShowroom } from "@/hooks/use-solo-showroom";
 import { eliminaConEsito, messaggioEliminazioneCantiere } from "@/lib/esito-eliminazione";
 import { BadgeProvvisorio } from "@/components/badge-provvisorio";
+import { BadgePrezziDedicati } from "@/components/badge-prezzi-dedicati";
+import { useConteggiPrezziCantieri } from "@/lib/cantiere-listini-api";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -80,6 +82,7 @@ export function ClienteCantieriTab({
     },
   });
 
+  const { data: conteggiPrezzi = {} } = useConteggiPrezziCantieri((data ?? []).map(c => c.id));
   const editingCantiere = data?.find((c) => c.id === editId) ?? null;
 
   return (
@@ -111,6 +114,7 @@ export function ClienteCantieriTab({
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-semibold break-words">{c.nome}</p>
                     {c.provvisorio && <BadgeProvvisorio />}
+                    <BadgePrezziDedicati conteggio={conteggiPrezzi[c.id]} />
                     {c.attivo ? (
                       <Badge className="bg-success/15 text-success">Attivo</Badge>
                     ) : (

@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 import type { Database } from "@/integrations/supabase/types";
 import type { CantiereRow } from "@/lib/cantieri";
 import { eliminaConEsito } from "@/lib/esito-eliminazione";
@@ -8,6 +9,34 @@ export type CantiereListinoRow = Database["public"]["Tables"]["cantiere_listini_
 export type CantiereListinoInput = Pick<CantiereListinoRow, "cantiere_id" | "cod_gamma" | "descrizione" | "prezzo_vendita_speciale" | "sconti" | "maggiorazione_perc" | "costo_netto_speciale" | "um_scelta" | "note"> & { id?: string };
 export const chiavePrezziCantiere = (id: string) => ["prezzi-cantiere", id] as const;
 export const chiaveConteggioPrezziCantiere = (id: string) => ["prezzi-cantiere-conteggio", id] as const;
+export const chiaveConteggiPrezziCantieri = ["prezzi-cantiere-conteggio"] as const;
+type LettoreConteggi = (ids: string[]) => Promise<Array<{ cantiere_id: string }>>;
+/** One RLS read per 500 IDs; paginate rows too, so the Data API cap never truncates counts. */
+export async function contaPrezziCantieri(ids: readonly string[], leggi: LettoreConteggi = async blocco => {
+  const righe: Array<{ cantiere_id: string }> = [];
+  for (let da = 0; ; da += 1000) {
+    const { data, error } = await supabase.from("cantiere_listini_speciali").select("cantiere_id").in("cantiere_id", blocco).order("id").range(da, da + 999);
+    if (error) throw error;
+    righe.push(...(data ?? []));
+    if ((data?.length ?? 0) < 1000) return righe;
+  }
+}): Promise<Record<string, number>> {
+  const unici = [...new Set(ids)].filter(Boolean);
+  const conteggi: Record<string, number> = Object.fromEntries(unici.map(id => [id, 0]));
+  for (let da = 0; da < unici.length; da += 500) {
+    for (const r of await leggi(unici.slice(da, da + 500))) {
+      if (Object.hasOwn(conteggi, r.cantiere_id)) conteggi[r.cantiere_id] += 1;
+    }
+  }
+  return conteggi;
+}
+export function useConteggiPrezziCantieri(ids: readonly string[], enabled = true) {
+  const unici = [...new Set(ids)].filter(Boolean).sort();
+  return useQuery({ queryKey: [...chiaveConteggiPrezziCantieri, "batch", unici], queryFn: () => contaPrezziCantieri(unici), enabled: enabled && unici.length > 0 });
+}
+export function testoPrezziDedicati(n: number): string {
+  return `${n} ${n === 1 ? "prezzo dedicato" : "prezzi dedicati"}`;
+}
 export async function getCantiereListini(cantiereId: string): Promise<CantiereListinoRow[]> {
   const { data, error } = await supabase.from("cantiere_listini_speciali").select("*").eq("cantiere_id", cantiereId).order("created_at").order("id");
   if (error) throw error;
