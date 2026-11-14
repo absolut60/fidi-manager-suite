@@ -1548,6 +1548,13 @@
       "when": 1794684215775,
       "tag": "0220_fm70_ricerca_articoli_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 221,
+      "version": "7",
+      "when": 1794685509340,
+      "tag": "0221_fm70_preventivi_store_id",
+      "breakpoints": true
     }
   ]
 }

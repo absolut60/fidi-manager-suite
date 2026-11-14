@@ -1,3 +1,6 @@
+# FM70 — Giacenze e risultati, fetta 3a
+- [ ] Collegamento sede del preventivo, salvataggi filiale/store_id insieme, giacenze e paginazione nel picker, test e verifica 375/1280.
+
 # FM70 — Ricerca articoli, fetta 1-bis
 - [x] Applicata 0220_fm70_ricerca_articoli_fix.sql: due extensions.similarity, query senza varianti, varianti memorizzate bidirezionali e backfill di 64.622 righe; trigger, firma ricerca, gate e prezzi invariati. Documentazione/test aggiornati. Riprodotto 42883 locale con pg_trgm in extensions, stessa chiamata codice ora passa; prove SQL complete e aggiuntive cm↔mm superate sul database isolato, normalizzazione e qualificazione verificate sul DB reale. Ricerca reale autenticata resta non verificabile con la sessione disponibile.
 
