@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -32,6 +33,7 @@ import {
 
 export const Route = createFileRoute("/_app/template-lettera")({
   component: TemplateLetteraPage,
+  head: () => ({ meta: [{ title: "Template lettera — FidiManager" }, { name: "description", content: "Gestione dei template lettera MADE." }, { property: "og:title", content: "Template lettera — FidiManager" }, { property: "og:description", content: "Gestione dei template lettera MADE." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
 });
 
 const TIPI: { value: string; label: string }[] = [
@@ -72,10 +74,10 @@ function TemplateLetteraPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("template_lettera").delete().eq("id", id);
-      if (error) throw error;
+      return eliminaConEsito("template_lettera", id);
     },
-    onSuccess: () => {
+    onSuccess: (esito) => {
+      if (esito.tipo !== "eliminato") { toast.error(messaggioEsitoEliminazione(esito, "il template")); return; }
       toast.success("Template eliminato");
       qc.invalidateQueries({ queryKey: ["template_lettera"] });
       setDeleting(null);
@@ -171,7 +173,7 @@ function TemplateLetteraPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annulla</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deleting && deleteMutation.mutate(deleting.id)}>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); if (deleting) deleteMutation.mutate(deleting.id); }}>
               Elimina
             </AlertDialogAction>
           </AlertDialogFooter>

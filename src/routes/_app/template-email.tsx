@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -32,6 +33,7 @@ import { sanificaHtml } from "@/lib/html-sicuro";
 
 export const Route = createFileRoute("/_app/template-email")({
   component: TemplateEmailPage,
+  head: () => ({ meta: [{ title: "Template email — FidiManager" }, { name: "description", content: "Gestione dei template email MADE." }, { property: "og:title", content: "Template email — FidiManager" }, { property: "og:description", content: "Gestione dei template email MADE." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
 });
 
 const TIPI: { value: string; label: string }[] = [
@@ -70,10 +72,10 @@ function TemplateEmailPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("template_email").delete().eq("id", id);
-      if (error) throw error;
+      return eliminaConEsito("template_email", id);
     },
-    onSuccess: () => {
+    onSuccess: (esito) => {
+      if (esito.tipo !== "eliminato") { toast.error(messaggioEsitoEliminazione(esito, "il template")); return; }
       toast.success("Template eliminato");
       qc.invalidateQueries({ queryKey: ["template_email"] });
       setDeleting(null);
@@ -162,7 +164,7 @@ function TemplateEmailPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annulla</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deleting && deleteMutation.mutate(deleting.id)}>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); if (deleting) deleteMutation.mutate(deleting.id); }}>
               Elimina
             </AlertDialogAction>
           </AlertDialogFooter>

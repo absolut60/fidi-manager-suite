@@ -1,3 +1,4 @@
+import { eliminaConEsito } from "./esito-eliminazione";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -125,8 +126,7 @@ export async function insertListinoAcquisto(row: ListinoAcquistoInsert) {
 }
 
 export async function deleteListinoAcquisto(id: string) {
-  const { error } = await supabase.from("listini_acquisto").delete().eq("id", id);
-  if (error) throw error;
+  return eliminaConEsito("listini_acquisto", id);
 }
 
 export async function fetchListiniVendita(articolo_id: string): Promise<ListinoVendita[]> {

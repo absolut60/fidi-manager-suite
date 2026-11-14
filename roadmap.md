@@ -1,3 +1,6 @@
+# FM69 — Eliminazioni verificate, fetta 2b
+- [ ] Template, listini acquisto, kit/componenti, aree e membri chat; audit chiamanti, test e browser negato/riuscito. Nessun DB.
+
 # FM69 — Eliminazioni verificate, fetta 2a
 - [x] Tutti i chiamanti della fetta 1 verificano l'esito; PrezziCantiereDialog ora usa anche messaggio unico. Casi indicati migrati, conferme negate restano aperte; task corregge Storage-prima-riga, AllegatiSection mantiene riga-prima-Storage con guardia. Partecipanti parziali aggiornano lista e preservano selezione residua. 827 test superati, build/controlli automatici OK; browser simulato 375/1280 negato/riuscito allegato (Storage intatto se negato) e partecipanti negati/2 su 3, nessun errore runtime. Prova permanente tests/eliminazioni-fetta2a.browser.py. Nessun DB o altre eliminazioni.
 
