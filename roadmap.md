@@ -1,6 +1,6 @@
 # FM69 — Aperti: cantieri, Testata e barra richieste
 - [x] Applicata 0218: gate consultazione condizioni/cantiere, DROP lite senza dipendenze, RPC batch modificabili.
-- [ ] Verifica matrici aal2 prima/dopo, test statici/suite/typecheck e browser 375/1280.
+- [x] Matrici aal2 prima/dopo verificate con rollback: Daniele accede alle condizioni, altri invariati; RPC modificabili coerente con UPDATE per tutti e cinque. 824 test superati, controlli automatici/build OK. Browser con risposte simulate a 375/1280 e 740 orizzontale: una richiesta per lista, sola modifica autorizzata, barra a 8px quando nascosta e 64px al ritorno; nessuna scrittura reale. AGENTS root pieno: regola salvata in docs/regole/fonti-uniche.md.
 
 # FM69 — Fonte prezzo e protezione listini
 - [x] Applicata 0217_fm69_fonte_prezzo_riga.sql, NULL storico senza backfill; fonte unica/copia duplicato, manuali non spuntate e segno persistito. Conversione ordine invariata: non copia la fonte.
