@@ -1,6 +1,6 @@
 // Dialog creazione / modifica cantiere con geocodifica automatica dell'indirizzo.
 import { Switch } from "@/components/ui/switch";
-import { provvisorioInizialeCantiere } from "@/lib/cantieri-provvisori";
+import { provvisorioInizialeCantiere, nomeInizialeCantiere } from "@/lib/cantieri-provvisori";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -40,7 +40,7 @@ export type SoggettoFisso = {
 };
 
 export function CantiereDialog({
-  open, onOpenChange, cantiere, agenti, soggettoFisso, queryKeysExtra, provvisorioIniziale = false, onSalvato,
+  open, onOpenChange, cantiere, agenti, soggettoFisso, queryKeysExtra, provvisorioIniziale = false, onSalvato, nomeIniziale = "",
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -49,6 +49,7 @@ export function CantiereDialog({
   soggettoFisso?: SoggettoFisso;
   queryKeysExtra?: ReadonlyArray<readonly unknown[]>;
   provvisorioIniziale?: boolean;
+  nomeIniziale?: string;
   onSalvato?: (c: { id: string; nome: string; nuovo: boolean }) => void;
 }) {
   const qc = useQueryClient();
@@ -168,7 +169,7 @@ export function CantiereDialog({
   useEffect(() => {
     if (!open) return;
     const c = cantiere;
-    setNome(c?.nome ?? "");
+    setNome(nomeInizialeCantiere(c, nomeIniziale));
     setSoggetto(
       soggettoFisso
         ? { tipo: soggettoFisso.tipo, id: soggettoFisso.id, etichetta: soggettoFisso.etichetta }
@@ -198,7 +199,7 @@ export function CantiereDialog({
     setSedeTesto(c ? testoSedeVicina(c) : null);
     setSedeErrore(null);
     setCoordDaAutocomplete(false);
-  }, [open, cantiere, soggettoFisso, provvisorioIniziale]);
+  }, [open, cantiere, soggettoFisso, provvisorioIniziale, nomeIniziale]);
 
   // Precompila l'agente dal soggetto scelto
   useEffect(() => {

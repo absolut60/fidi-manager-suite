@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronsUpDown, Plus, Search } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { fetchCantieriLite, creaCantiereLite } from "@/lib/preventivi-api";
+import { fetchCantieriLite, fetchDatiClientePreventivo } from "@/lib/preventivi-api";
+import { CantiereDialog, type SoggettoFisso } from "@/components/cantiere-dialog";
 import { cn } from "@/lib/utils";
 
 export function CantierePicker({
@@ -20,6 +21,8 @@ export function CantierePicker({
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
+  const [creazione, setCreazione] = useState<{ soggetto: SoggettoFisso; nome: string } | null>(null);
+  const [aprendo, setAprendo] = useState(false);
 
   const { data: cantieri = [] } = useQuery({
     queryKey: ["cantieri-lite", cliente_id],
@@ -43,21 +46,19 @@ export function CantierePicker({
     (c) => (c.nome ?? "").trim().toLowerCase() === testo.toLowerCase(),
   );
 
-  const crea = useMutation({
-    mutationFn: () => creaCantiereLite(cliente_id!, testo),
-    onSuccess: (nuovo) => {
-      qc.invalidateQueries({ queryKey: ["cantieri-lite", cliente_id] });
-      toast.success("Cantiere creato");
-      onChange(nuovo.id);
-      setQ("");
+  async function apriCreazione() {
+    if (!cliente_id || !testo) return;
+    setAprendo(true);
+    try {
+      const cliente = await qc.ensureQueryData({ queryKey: ["cliente-preventivo-dati", cliente_id], queryFn: () => fetchDatiClientePreventivo(cliente_id) });
+      setCreazione({ soggetto: { tipo: "cliente", id: cliente_id, etichetta: [cliente?.codice_gestionale, cliente?.ragione_sociale].filter(Boolean).join(" · ") || "Cliente" }, nome: testo });
       setOpen(false);
-    },
-    onError: (e: unknown) => {
-      toast.error((e as Error).message || "Errore creazione cantiere");
-    },
-  });
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Errore lettura cliente"); }
+    finally { setAprendo(false); }
+  }
 
   return (
+    <>
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
@@ -72,7 +73,7 @@ export function CantierePicker({
           <ChevronsUpDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0" align="start">
+      <PopoverContent className="w-[400px] max-w-[calc(100vw-2rem)] p-0" align="start">
         <div className="flex items-center gap-2 border-b px-2 py-1.5">
           <Search className="h-3.5 w-3.5 text-muted-foreground" />
           <Input
@@ -118,17 +119,21 @@ export function CantierePicker({
           )}
         </div>
         {!!cliente_id && testo && !esisteEsatto && (
-          <button
+          <Button
             type="button"
-            disabled={crea.isPending}
-            onClick={() => crea.mutate()}
-            className="flex w-full items-center gap-2 border-t px-2 py-2 text-left text-xs font-medium hover:bg-accent disabled:opacity-60"
+            variant="ghost"
+            disabled={aprendo}
+            onClick={apriCreazione}
+            className="flex h-auto w-full justify-start gap-2 whitespace-normal rounded-none border-t px-2 py-2 text-left text-xs font-medium"
           >
             <Plus className="h-3.5 w-3.5" />
             Crea cantiere «{testo}»
-          </button>
+          </Button>
         )}
       </PopoverContent>
     </Popover>
+    {creazione && <CantiereDialog open onOpenChange={(v) => { if (!v) setCreazione(null); }} soggettoFisso={creazione.soggetto} nomeIniziale={creazione.nome}
+      onSalvato={(nuovo) => { onChange(nuovo.id); qc.invalidateQueries({ queryKey: ["cantieri-lite", cliente_id] }); setQ(""); setOpen(false); setCreazione(null); }} />}
+    </>
   );
 }

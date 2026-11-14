@@ -1,3 +1,4 @@
+import { BloccoIndirizzo } from "@/components/blocco-indirizzo";
 import { useVisibilitaLimitataNegozio } from "@/lib/visibilita-negozio";
 import { useSoloShowroom } from "@/hooks/use-solo-showroom";
 import { decodificaFiltroDashboard, etichettaChipDashboard, PREFISSO_PRESET } from "@/lib/dashboard-fidi-gruppi";
@@ -3180,25 +3181,9 @@ function StepImpresa({
         </div>
       </div>
 
-      <div className="space-y-1.5">
-        <Label>Indirizzo</Label>
-        <Input value={form.indirizzo} onChange={(e) => set("indirizzo", e.target.value)} />
-      </div>
-
-      <div className="grid grid-cols-[1fr_2fr_1fr] sm:grid-cols-4 gap-4">
-        <div className="space-y-1.5">
-          <Label>CAP</Label>
-          <Input value={form.cap} onChange={(e) => set("cap", e.target.value)} />
-        </div>
-        <div className="space-y-1.5 sm:col-span-2">
-          <Label>Città</Label>
-          <Input value={form.citta} onChange={(e) => set("citta", e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Prov.</Label>
-          <Input maxLength={2} value={form.provincia} onChange={(e) => set("provincia", e.target.value.toUpperCase())} />
-        </div>
-      </div>
+      <BloccoIndirizzo value={{ indirizzo: form.indirizzo ?? "", cap: form.cap ?? "", citta: form.citta ?? "", provincia: form.provincia ?? "" }}
+        onChange={(d) => { for (const campo of ["indirizzo", "cap", "citta", "provincia"] as const) { const valore = d[campo]; if (valore !== undefined) set(campo, valore); } }}
+        limiti={{ provincia: 2 }} etichette={{ provincia: "Prov." }} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">

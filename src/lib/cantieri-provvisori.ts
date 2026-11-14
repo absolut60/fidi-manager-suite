@@ -3,6 +3,10 @@
  * Fonte unica per filtro lista e conteggi marketing (i provvisori non si contano).
  */
 export type FiltroProvvisorio = "tutti" | "provvisori" | "confermati";
+/** Il nome proposto dal picker non cambia mai un cantiere esistente. */
+export function nomeInizialeCantiere(cantiere: { nome?: string | null } | null | undefined, iniziale = ""): string {
+  return cantiere ? cantiere.nome ?? "" : iniziale;
+}
 /** L'opzione iniziale vale solo in creazione; in modifica prevale il dato salvato. */
 export function provvisorioInizialeCantiere(cantiere: { provvisorio?: boolean | null } | null | undefined, iniziale = false): boolean {
   return cantiere ? cantiere.provvisorio === true : iniziale;

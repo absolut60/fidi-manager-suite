@@ -1,3 +1,4 @@
+import { BloccoIndirizzo } from "@/components/blocco-indirizzo";
 import { isSoloShowroom, puoModificareContattoClienteShowroom } from "@/lib/permessi-showroom";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { FidoInAttesaGammaNota } from "@/components/fido-in-attesa-gamma-nota";
@@ -2061,26 +2062,8 @@ function EditClienteDialog({
 
         <div className="border-t pt-3 space-y-3">
           <h4 className="text-sm font-semibold">Sede</h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label>Indirizzo</Label>
-              <Input value={form.indirizzo} onChange={(e) => set("indirizzo", e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Città</Label>
-              <Input value={form.citta} onChange={(e) => set("citta", e.target.value)} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>CAP</Label>
-                <Input value={form.cap} onChange={(e) => set("cap", e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Prov.</Label>
-                <Input value={form.provincia} onChange={(e) => set("provincia", e.target.value)} />
-              </div>
-            </div>
-          </div>
+          <BloccoIndirizzo value={{ indirizzo: form.indirizzo ?? "", cap: form.cap ?? "", citta: form.citta ?? "", provincia: form.provincia ?? "" }} onChange={(d) => setForm((p) => ({ ...p, ...d }))} etichette={{ provincia: "Prov." }} />
+          <p className="text-xs text-muted-foreground">L'indirizzo arriva da Gamma: una modifica qui può essere sovrascritta dal prossimo import.</p>
         </div>
 
         <div className="border-t pt-3 space-y-3">

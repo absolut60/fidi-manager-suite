@@ -1,8 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import { contaCantieriMarketing, passaFiltroProvvisorio, provvisorioInizialeCantiere } from "../src/lib/cantieri-provvisori";
+import { contaCantieriMarketing, passaFiltroProvvisorio, provvisorioInizialeCantiere, nomeInizialeCantiere } from "../src/lib/cantieri-provvisori";
 
 const righe = [{ provvisorio: true, attivo: true }, { provvisorio: false, attivo: true }, { provvisorio: null, attivo: false }];
 describe("FM65 B3 cantieri provvisori", () => {
+  test("Nome iniziale dal picker solo in creazione", () => {
+    expect(nomeInizialeCantiere(null, "Cantiere Empoli")).toBe("Cantiere Empoli");
+    expect(nomeInizialeCantiere(undefined)).toBe("");
+  });
+  test("Nome esistente prevale sul nome iniziale", () => {
+    expect(nomeInizialeCantiere({ nome: "Esistente" }, "Cantiere Empoli")).toBe("Esistente");
+  });
   test("FM68 C: creazione ordinaria mantiene lo switch spento", () => {
     expect(provvisorioInizialeCantiere(undefined)).toBe(false);
   });
