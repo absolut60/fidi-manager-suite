@@ -14,6 +14,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as IscrizioneWhatsappRouteImport } from './routes/iscrizione-whatsapp'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as VerificaCodiceRouteImport } from './routes/verifica-codice'
+import { Route as VerificaRiquadriTemporaneaRouteImport } from './routes/verifica-riquadri-temporanea'
 import { Route as AppAlertFidiRouteImport } from './routes/_app/alert-fidi'
 import { Route as AppApprovazioniRouteImport } from './routes/_app/approvazioni'
 import { Route as AppAreeRouteImport } from './routes/_app/aree'
@@ -127,6 +128,12 @@ const VerificaCodiceRoute = VerificaCodiceRouteImport.update({
   path: '/verifica-codice',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VerificaRiquadriTemporaneaRoute =
+  VerificaRiquadriTemporaneaRouteImport.update({
+    id: '/verifica-riquadri-temporanea',
+    path: '/verifica-riquadri-temporanea',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AppAlertFidiRoute = AppAlertFidiRouteImport.update({
   id: '/alert-fidi',
   path: '/alert-fidi',
@@ -592,6 +599,7 @@ export interface FileRoutesByFullPath {
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
   '/verifica-codice': typeof VerificaCodiceRoute
+  '/verifica-riquadri-temporanea': typeof VerificaRiquadriTemporaneaRoute
   '/alert-fidi': typeof AppAlertFidiRoute
   '/approvazioni': typeof AppApprovazioniRoute
   '/aree': typeof AppAreeRoute
@@ -686,6 +694,7 @@ export interface FileRoutesByTo {
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
   '/verifica-codice': typeof VerificaCodiceRoute
+  '/verifica-riquadri-temporanea': typeof VerificaRiquadriTemporaneaRoute
   '/alert-fidi': typeof AppAlertFidiRoute
   '/approvazioni': typeof AppApprovazioniRoute
   '/aree': typeof AppAreeRoute
@@ -779,6 +788,7 @@ export interface FileRoutesById {
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
   '/verifica-codice': typeof VerificaCodiceRoute
+  '/verifica-riquadri-temporanea': typeof VerificaRiquadriTemporaneaRoute
   '/_app/alert-fidi': typeof AppAlertFidiRoute
   '/_app/approvazioni': typeof AppApprovazioniRoute
   '/_app/aree': typeof AppAreeRoute
@@ -875,6 +885,7 @@ export interface FileRouteTypes {
     | '/iscrizione-whatsapp'
     | '/login'
     | '/verifica-codice'
+    | '/verifica-riquadri-temporanea'
     | '/alert-fidi'
     | '/approvazioni'
     | '/aree'
@@ -969,6 +980,7 @@ export interface FileRouteTypes {
     | '/iscrizione-whatsapp'
     | '/login'
     | '/verifica-codice'
+    | '/verifica-riquadri-temporanea'
     | '/alert-fidi'
     | '/approvazioni'
     | '/aree'
@@ -1061,6 +1073,7 @@ export interface FileRouteTypes {
     | '/iscrizione-whatsapp'
     | '/login'
     | '/verifica-codice'
+    | '/verifica-riquadri-temporanea'
     | '/_app/alert-fidi'
     | '/_app/approvazioni'
     | '/_app/aree'
@@ -1157,6 +1170,7 @@ export interface RootRouteChildren {
   IscrizioneWhatsappRoute: typeof IscrizioneWhatsappRoute
   LoginRoute: typeof LoginRoute
   VerificaCodiceRoute: typeof VerificaCodiceRoute
+  VerificaRiquadriTemporaneaRoute: typeof VerificaRiquadriTemporaneaRoute
   ConsensiTokenRoute: typeof ConsensiTokenRoute
   FirmaPrivacyTokenRoute: typeof FirmaPrivacyTokenRoute
   IscrizioneEventoCodiceRoute: typeof IscrizioneEventoCodiceRoute
@@ -1205,6 +1219,13 @@ declare module '@tanstack/react-router' {
       path: '/verifica-codice'
       fullPath: '/verifica-codice'
       preLoaderRoute: typeof VerificaCodiceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verifica-riquadri-temporanea': {
+      id: '/verifica-riquadri-temporanea'
+      path: '/verifica-riquadri-temporanea'
+      fullPath: '/verifica-riquadri-temporanea'
+      preLoaderRoute: typeof VerificaRiquadriTemporaneaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/alert-fidi': {
@@ -2042,6 +2063,7 @@ const rootRouteChildren: RootRouteChildren = {
   IscrizioneWhatsappRoute: IscrizioneWhatsappRoute,
   LoginRoute: LoginRoute,
   VerificaCodiceRoute: VerificaCodiceRoute,
+  VerificaRiquadriTemporaneaRoute: VerificaRiquadriTemporaneaRoute,
   ConsensiTokenRoute: ConsensiTokenRoute,
   FirmaPrivacyTokenRoute: FirmaPrivacyTokenRoute,
   IscrizioneEventoCodiceRoute: IscrizioneEventoCodiceRoute,
