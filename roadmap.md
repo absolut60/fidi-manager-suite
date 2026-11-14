@@ -1,4 +1,8 @@
 # FM68 — Fetta A: visibilità preventivisti (solo database)
+## Attività commerciali — indirizzo e sede di riferimento
+- [ ] Migrazione additiva, tipi e confronto policy; store_id invariato in modifica, luogo storico conservato.
+- [ ] Maschera con BloccoIndirizzo e sede, formatter condiviso per tutte le visualizzazioni esistenti.
+- [ ] Test bun, confronto payload, screenshot creazione/modifica 375/1280 con suggerimenti simulati e inventario diff.
 ## Indirizzi giro 3
 - [x] Cinque residenze con BloccoIndirizzo opt-in a campo unico, stessi stati e salvataggi; nessuna modifica DB/chiave. I suggerimenti uniscono via/CAP/città/provincia nel solo campo esistente.
 - [x] 752 test; salvataggi identici byte per byte; schermate simulate modifica contatto/privacy 375/1280, modifica manuale e payload privacy verificati; fallback senza chiave scrivibile. Google reale e scritture reali non provati; pagine temporanee rimosse. Residuo: attivita-commerciale-dialog.tsx:227 Luogo (indirizzo o sede), non toccato; città/provincia marketing sono filtri, invio massivo usa email/PEC. Modulo privacy pubblico solo in firma-privacy; iscrizioni non lo importano.

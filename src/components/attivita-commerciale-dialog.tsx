@@ -15,7 +15,8 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SoggettoCombobox, type SoggettoSelezionato } from "@/components/soggetto-combobox";
 import { Badge } from "@/components/ui/badge";
-import { TIPI_ATTIVITA, TIPO_ATTIVITA_LABEL, type AttivitaRow, type TipoAttivita } from "@/lib/attivita-commerciale";
+import { BloccoIndirizzo } from "@/components/blocco-indirizzo";
+import { TIPI_ATTIVITA, TIPO_ATTIVITA_LABEL, sedeInizialeAttivita, storeIdAttivita, type AttivitaRow, type TipoAttivita } from "@/lib/attivita-commerciale";
 
 type Contesto = {
   opportunita_id?: string | null;
@@ -62,17 +63,43 @@ export function AttivitaCommercialeDialog({
   const [dataPianificata, setDataPianificata] = useState("");
   const [completata, setCompletata] = useState(false);
   const [esito, setEsito] = useState("");
-  const [luogo, setLuogo] = useState("");
+  const [indirizzo, setIndirizzo] = useState({ indirizzo: "", cap: "", citta: "", provincia: "" });
+  const [sedeManuale, setSedeManuale] = useState<string | null | undefined>(undefined);
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [soggetto, setSoggetto] = useState<SoggettoSelezionato | null>(null);
   const [soggettoMeta, setSoggettoMeta] = useState<{ agente_codice: string | null; store_id: string | null }>({ agente_codice: null, store_id: null });
 
+  const ambito = { attivita, contestoStoreId: contesto.store_id, soggettoScelto: !!soggetto, soggettoStoreId: soggettoMeta.store_id };
+  const sedeRiferimentoId = sedeInizialeAttivita({ ...ambito, sceltaManuale: sedeManuale });
+  const { data: sedi = [] } = useQuery({
+    queryKey: ["sedi-attivita-commerciale"],
+    enabled: open,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("stores").select("id, nome").eq("attivo", true).order("nome");
+      if (error) throw error;
+      return data ?? [];
+    },
+    staleTime: 300_000,
+  });
+  // Una sede salvata non attiva resta leggibile in modifica, ma non è proposta in creazione.
+  const { data: sedeSalvata } = useQuery({
+    queryKey: ["sede-attivita-commerciale", attivita?.sede_riferimento_id],
+    enabled: open && !!attivita?.sede_riferimento_id,
+    queryFn: async () => {
+      if (!attivita?.sede_riferimento_id) return null;
+      const { data, error } = await supabase.from("stores").select("id, nome").eq("id", attivita.sede_riferimento_id).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: mioCodice } = useQuery({
     queryKey: ["mio-codice-agente", user?.id],
     enabled: !!user?.id && forzaAgente,
     queryFn: async () => {
-      const { data } = await supabase.from("profili").select("codice_agente").eq("id", user!.id).maybeSingle();
+      if (!user) return "";
+      const { data } = await supabase.from("profili").select("codice_agente").eq("id", user.id).maybeSingle();
       return (data as { codice_agente: string | null } | null)?.codice_agente ?? "";
     },
     staleTime: 300_000,
@@ -86,7 +113,8 @@ export function AttivitaCommercialeDialog({
     setDataPianificata(toLocalInput(a?.data_pianificata));
     setCompletata(a?.completata ?? false);
     setEsito(a?.esito ?? "");
-    setLuogo(a?.luogo ?? "");
+    setIndirizzo({ indirizzo: a?.indirizzo ?? "", cap: a?.cap ?? "", citta: a?.citta ?? "", provincia: a?.provincia ?? "" });
+    setSedeManuale(undefined);
     setNote(a?.note ?? "");
     setSoggetto(null);
     setSoggettoMeta({ agente_codice: null, store_id: null });
@@ -95,7 +123,11 @@ export function AttivitaCommercialeDialog({
 
   // Metadati (agente/store) del soggetto scelto dal calendario
   useEffect(() => {
-    if (!open || !soggetto) return;
+    if (!open || !soggetto) {
+      setSoggettoMeta({ agente_codice: null, store_id: null });
+      return;
+    }
+    setSoggettoMeta({ agente_codice: null, store_id: null });
     let annullato = false;
     (async () => {
       if (soggetto.tipo === "cliente") {
@@ -141,10 +173,14 @@ export function AttivitaCommercialeDialog({
         ? (attivita?.data_svolgimento ?? new Date().toISOString())
         : null,
       esito: esito.trim() || null,
-      luogo: luogo.trim() || null,
+      indirizzo: indirizzo.indirizzo.trim() || null,
+      cap: indirizzo.cap.trim() || null,
+      citta: indirizzo.citta.trim() || null,
+      provincia: indirizzo.provincia.trim().toUpperCase().slice(0, 2) || null,
+      sede_riferimento_id: sedeRiferimentoId,
       note: note.trim() || null,
       agente_codice: agenteCodice,
-      store_id: soggetto ? soggettoMeta.store_id : (contesto.store_id ?? null),
+      store_id: storeIdAttivita(ambito),
     };
 
     const { error } = attivita
@@ -217,15 +253,25 @@ export function AttivitaCommercialeDialog({
             <Label htmlFor="attivita-completata" className="font-normal">Attività completata (registra data svolgimento)</Label>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Esito</Label>
-              <Input value={esito} onChange={(e) => setEsito(e.target.value)} placeholder="positivo, da richiamare…" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Luogo</Label>
-              <Input value={luogo} onChange={(e) => setLuogo(e.target.value)} placeholder="Indirizzo o sede" />
-            </div>
+          <div className="space-y-1.5">
+            <Label>Esito</Label>
+            <Input value={esito} onChange={(e) => setEsito(e.target.value)} placeholder="positivo, da richiamare…" />
+          </div>
+
+          <BloccoIndirizzo value={indirizzo} onChange={(parziale) => setIndirizzo((prima) => ({ ...prima, ...parziale }))} limiti={{ provincia: 2 }} />
+          {attivita?.luogo && !attivita.indirizzo?.trim() && (
+            <p className="text-xs text-muted-foreground break-words">Luogo registrato in precedenza: {attivita.luogo}</p>
+          )}
+          <div className="space-y-1.5">
+            <Label htmlFor="attivita-sede-riferimento">Sede di riferimento</Label>
+            <Select value={sedeRiferimentoId ?? "__none__"} onValueChange={(v) => setSedeManuale(v === "__none__" ? null : v)}>
+              <SelectTrigger id="attivita-sede-riferimento"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Nessuna</SelectItem>
+                {sedi.map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
+                {sedeSalvata && !sedi.some((s) => s.id === sedeSalvata.id) && <SelectItem value={sedeSalvata.id}>{sedeSalvata.nome}</SelectItem>}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-1.5">
