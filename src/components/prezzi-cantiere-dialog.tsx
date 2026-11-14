@@ -8,15 +8,17 @@ import { chiavePrezziCantiere, chiaveConteggioPrezziCantiere, getCantiereListini
 import { fetchPrezziClienteArticoli } from "@/lib/preventivi-api";
 import type { CantiereRow } from "@/lib/cantieri";
 import type { PrezzoClienteGamma } from "@/lib/riga-preventivo";
+import { useAuth } from "@/hooks/use-auth";
 
 export function PrezziCantiereDialog({ open, onOpenChange, cantiere }: { open: boolean; onOpenChange: (v: boolean) => void; cantiere: CantiereRow }) {
   return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="flex h-dvh max-h-dvh w-full max-w-none flex-col gap-3 overflow-hidden rounded-none p-3 sm:h-auto sm:max-h-[92dvh] sm:w-[calc(100%-2rem)] sm:max-w-[1600px] sm:rounded-lg sm:p-4"><DialogHeader className="shrink-0 pr-8"><DialogTitle>Prezzi del cantiere</DialogTitle><DialogDescription className="break-words">{cantiere.nome}</DialogDescription></DialogHeader>{open && <ContenutoPrezziCantiere key={cantiere.id} cantiere={cantiere} />}</DialogContent></Dialog>;
 }
 function ContenutoPrezziCantiere({ cantiere }: { cantiere: CantiereRow }) {
   const qc = useQueryClient();
+  const { user } = useAuth();
   const [adding, setAdding] = useState(false);
   const { data: rows = [], isPending, error } = useQuery({ queryKey: chiavePrezziCantiere(cantiere.id), queryFn: () => getCantiereListini(cantiere.id) });
-  const { data: modificabile = false, error: permessoError } = useQuery({ queryKey: ["prezzi-cantiere-modifica", cantiere.id, cantiere.cliente_id, cantiere.lead_id, cantiere.agente_codice, cantiere.created_by], queryFn: () => puoModificareCantiereDb(cantiere), retry: false });
+  const { data: modificabile = false, error: permessoError } = useQuery({ queryKey: ["prezzi-cantiere-modifica", user?.id, cantiere.id, cantiere.cliente_id, cantiere.lead_id, cantiere.agente_codice, cantiere.created_by], queryFn: () => puoModificareCantiereDb(cantiere), retry: false });
   const codici = rows.map(r => r.cod_gamma);
   const { data: gamma = [] } = useQuery({ queryKey: ["prezzi-cantiere-unita", cantiere.id, codici], queryFn: () => unitaPrezziCantiere(codici), enabled: !!codici.length });
   const { data: prezzi = new Map<string, PrezzoClienteGamma>() } = useQuery({ queryKey: ["prezzi-cantiere-listino", cantiere.id, codici], queryFn: async () => {
@@ -41,7 +43,7 @@ function ContenutoPrezziCantiere({ cantiere }: { cantiere: CantiereRow }) {
       qc.setQueryData(["prezzi-cantiere-proposta", cantiere.id, a.codice], prezzo);
       const proposta = propostaPrezzoCantiere(prezzo);
       const r = await upsertCantiereListino({ cantiere_id: cantiere.id, cod_gamma: a.codice, descrizione: a.descrizione, prezzo_vendita_speciale: proposta.prezzo_vendita_speciale, sconti: proposta.sconti, maggiorazione_perc: proposta.maggiorazione_perc, costo_netto_speciale: null, um_scelta: "um1", note: null });
-      cambiaRows([...rows, r]); focus(a.codice);
+      cambiaRows([...(qc.getQueryData<CantiereListinoRow[]>(chiavePrezziCantiere(cantiere.id)) ?? []), r]); focus(a.codice);
     } catch (e) {
       if (e && typeof e === "object" && "code" in e && e.code === "23505") { await qc.invalidateQueries({ queryKey: chiavePrezziCantiere(cantiere.id) }); focus(a.codice); }
       else toast.error(e instanceof Error ? e.message : "Inserimento non riuscito");

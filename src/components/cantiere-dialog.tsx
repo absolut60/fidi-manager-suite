@@ -496,7 +496,7 @@ export function CantiereDialog({
 
           {open && cantiere && <CollegamentiCantiere cantiereId={cantiere.id} onChiudi={() => onOpenChange(false)} />}
           {cantiere && <Button type="button" variant="outline" onClick={() => setPrezziOpen(true)}>Prezzi del cantiere ({numeroPrezzi ?? "…"})</Button>}
-          {open && cantiere && <PrezziCantiereDialog open={prezziOpen} onOpenChange={setPrezziOpen} cantiere={cantiere} />}
+          {open && cantiere && <PrezziCantiereDialog key={cantiere.id} open={prezziOpen} onOpenChange={setPrezziOpen} cantiere={cantiere} />}
 
           <div className="space-y-1.5">
             <Label>Note</Label>

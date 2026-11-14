@@ -3,6 +3,7 @@ import { Save } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RiquadroAnagrafica } from "@/components/ui/riquadro-anagrafica";
 import { BottoneElimina } from "@/components/conferma-eliminazione";
@@ -33,7 +34,7 @@ export function PrezziCantiereRiga({ row, gamma, listino, costoUltimo, modificab
     finally { setBusy(false); }
   }
   const testo = (campo: "descrizione" | "note", label: string) => modificabile
-    ? <Input aria-label={`${label} ${row.cod_gamma}`} disabled={busy} value={draft[campo] ?? ""} className="h-11 min-w-0 px-1 text-xs sm:h-8" onChange={e => setDraft({ ...draft, [campo]: e.target.value })} onBlur={() => { if (draft[campo] !== row[campo]) void salva(); }} />
+    ? <Textarea aria-label={`${label} ${row.cod_gamma}`} disabled={busy} rows={2} value={draft[campo] ?? ""} className="min-h-11 min-w-0 resize-y px-1 py-1 text-xs" onChange={e => setDraft({ ...draft, [campo]: e.target.value })} onBlur={() => { if (draft[campo] !== row[campo]) void salva(); }} />
     : <span className="break-words">{draft[campo] || "—"}</span>;
   const numero = (campo: "prezzo_vendita_speciale" | "costo_netto_speciale" | "maggiorazione_perc", label: string, valore: number | null) => modificabile
     ? <Input key={`${campo}-${valore}-${draft.um_scelta}`} aria-label={`${label} ${row.cod_gamma}`} disabled={busy} inputMode="decimal" defaultValue={valore == null ? "" : formatNumeroIt(valore, { minDecimals: 4 })} className="h-11 min-w-0 px-1 text-right font-mono text-xs sm:h-8" onBlur={e => {
