@@ -1,5 +1,6 @@
 # FM69 — Applicazione prezzi cantiere
-- [ ] Priorità unica, cache RLS, articoli/kit/listini, segno e Corpo; test e browser 375/1280, nessun DB.
+- [x] Priorità unica, cache RLS condivisa, articoli/kit/listini, segno e finestra dal Corpo; documentazione aggiornata, nessun DB.
+- [x] 806 test pass, build OK; browser 375/1280 con risposte simulate: articolo dedicato 6,50/costo 3,10, listino 12, extra 10%, modifica manuale/segno e ripristino scelto, kit quantità 2/costo 6,20, una lettura prezzi. Nessuna scrittura reale.
 
 # FM69 — Ricerca unica, U.M. manuali e numeri
 - [x] Riprodotti due portali alla creazione: trigger tabella visibile e scheda nascosta ancorata a (0,4). Selettore condiviso verifica layout reale e chiude quando nascosto; U.M. manuale nel componente condiviso; slot numeri/icona fissi.

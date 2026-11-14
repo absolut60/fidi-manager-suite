@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ArticoloGammaPicker, type ArticoloGammaScelto } from "@/components/preventivatore/ArticoloGammaPicker";
 import { PrezziCantiereRiga, COLONNE_PREZZI_CANTIERE } from "@/components/prezzi-cantiere-riga";
-import { opzioniPrezziCantiere, chiavePrezziCantiere, chiaveConteggiPrezziCantieri, getCantiereListini, upsertCantiereListino, deleteCantiereListino, puoModificareCantiereDb, unitaPrezziCantiere, propostaPrezzoCantiere, type CantiereListinoRow } from "@/lib/cantiere-listini-api";
+import { opzioniPrezziCantiere, chiavePrezziCantiere, chiaveConteggiPrezziCantieri, upsertCantiereListino, deleteCantiereListino, puoModificareCantiereDb, unitaPrezziCantiere, propostaPrezzoCantiere, type CantiereListinoRow } from "@/lib/cantiere-listini-api";
 import { fetchPrezziClienteArticoli } from "@/lib/preventivi-api";
 import type { CantiereRow } from "@/lib/cantieri";
 import type { PrezzoClienteGamma } from "@/lib/riga-preventivo";
