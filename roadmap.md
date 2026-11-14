@@ -1,3 +1,8 @@
+# FM71 — Condizioni di riferimento, fetta 1 (solo database)
+- [ ] Migrazione additiva 0223: tre colonne nullable e wrapper del motore esistente, gate/limite/grant identici; nessuna modifica UI o policy.
+- [ ] Test SQL A.N./INTECH/DELEO e gate, suite completa, verifica impronte e registro 0000–0223.
+- [ ] Documentazione della fonte unica e delle condizioni commerciali di riferimento.
+
 # FM70 — Selettore più largo, filtri e sede di riserva, fetta 3c
 - [x] Picker 96vw/max 780px, filtri sempre visibili in riga da sm e impilati su telefono, colonna giacenza non comprimibile. Sede cliente di riserva solo di lettura tramite sedeGiacenzePreventivo, apertura/ricerca condividono le props. Precompilazione modificabile del nuovo preventivo già presente e conservata. 853 test verdi; browser con risposte simulate a 320/375/390/768/1280/1920: larghezza, filtri, giacenze sede riserva, badge, apertura, pagine 30/60/65 e selezione, zero errori; screenshot 375/1280 controllati. Pagina temporanea rimossa. Nessuna modifica DB/prezzi/ricerca/permessi; verifica reale autenticata non eseguita.
 
