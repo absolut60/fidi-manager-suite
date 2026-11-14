@@ -68,11 +68,11 @@ describe("FM65 F3 catalogo articoli", () => {
 
 import { parametriArticoliPreventivo, ricercaPreventivoAttiva } from "../src/lib/catalogo-articoli";
 describe("FM65 F4 ricerca articolo del preventivo", () => {
-  test("senza filtri i parametri sono identici a prima", () => {
+  test("senza filtri conserva i parametri, con rilevanza FM70", () => {
     expect(parametriArticoliPreventivo(" lastra ")).toEqual({
       testo: "lastra", famiglie: [], sottofamiglie: [], marche: [], fornitori: [],
       stati: ["in_uso", "in_esaurimento"], disponibile_in: [], disponibile_logistica: false,
-      _ordina: "codice", _direzione: "asc", limite: 30, offset: 0, coppie: [], solo_gamma: true });
+      _ordina: "rilevanza", _direzione: "asc", limite: 30, offset: 0, coppie: [], solo_gamma: true });
   });
   test("con filtri passa famiglie/coppie/marche via parametriRicerca", () => {
     const p = parametriArticoliPreventivo("", { famiglie: ["SR"], coppie: ["SR|AB", "SR|__none__"], marche: ["ARB"] });
