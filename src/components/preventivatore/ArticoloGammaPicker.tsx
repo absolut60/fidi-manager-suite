@@ -103,8 +103,7 @@ export function ArticoloGammaPicker({
               className="grid h-auto w-full grid-cols-[minmax(0,1fr)_auto] gap-x-2 gap-y-0 whitespace-normal rounded-none border-b px-2 py-1.5 text-left text-xs hover:bg-accent">
               <span className="min-w-0">
                 <span className="font-mono font-semibold">{a.codice}</span>
-                <span className="block break-words">{a.descrizione}</span>
-                {a.marca && <span className="font-semibold text-primary"> · {a.marca}</span>}
+                <span className="block break-words">{a.descrizione}{a.marca && <span className="font-semibold text-primary"> · {a.marca}</span>}</span>
               </span>
               <span className="shrink-0 text-muted-foreground">{a.um ?? ""}</span>
             </Button>
