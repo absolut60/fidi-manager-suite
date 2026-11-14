@@ -11,12 +11,12 @@ export function CellaUm({ idx, etichetta, um1, um2, fattore, secondaria, disable
   const inUm2 = secondaria && !!um2;
   const box = "flex h-auto min-h-[26px] w-full items-center justify-between gap-0.5 rounded border border-transparent bg-transparent px-1 py-1 text-left text-xs leading-none shadow-none hover:border-input focus:border-ring focus:bg-card focus-visible:ring-0 [&>svg]:size-3 [&>svg]:shrink-0";
   const testo = (
-    <div className="flex min-w-0 items-start">
+    <div className={cn("flex min-w-0 items-start", onManualCommit && "w-full")}>
       <span className={cn("-mt-0.5 mr-px font-sans text-[8px] font-semibold leading-none", inUm2 ? "text-pv-arancio" : "text-pv-blu")}
         title={inUm2 ? "Unità 2" : "Unità 1"} aria-label={inUm2 ? "Unità 2" : "Unità 1"}>{inUm2 ? "2" : "1"}</span>
       {onManualCommit ? <Input key={um1} defaultValue={um1} aria-label="Unità di misura" disabled={disabled}
         onBlur={(e) => { if (e.currentTarget.value !== um1) onManualCommit(e.currentTarget.value || null); }}
-        className="h-auto min-w-0 rounded-none border-0 bg-transparent p-0 font-sans text-xs font-bold leading-none text-foreground shadow-none focus-visible:ring-0 md:text-xs" />
+        className="h-3 min-w-0 flex-1 rounded-none border-0 bg-transparent p-0 font-sans text-xs font-bold leading-none text-foreground shadow-none focus-visible:ring-0 md:text-xs" />
         : <span className="whitespace-nowrap font-sans text-xs font-bold leading-none text-foreground">{inUm2 ? um2 : um1}</span>}
     </div>
   );
