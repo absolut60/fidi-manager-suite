@@ -1,0 +1,3 @@
+ALTER TABLE public.righe_preventivo ADD COLUMN fonte_prezzo text NULL;
+ALTER TABLE public.righe_preventivo ADD CONSTRAINT righe_preventivo_fonte_prezzo_check CHECK (fonte_prezzo IN ('listino', 'cantiere', 'manuale'));
+COMMENT ON COLUMN public.righe_preventivo.fonte_prezzo IS 'Fonte del prezzo di riga: listino, cantiere o manuale. NULL sulle righe preesistenti equivale a listino, senza backfill. Modifiche a lordo/sconti/maggiorazione diventano manuale; quantita, extra, UM, descrizione e costo non cambiano la fonte.';
