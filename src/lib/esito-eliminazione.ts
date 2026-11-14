@@ -3,6 +3,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
 type ErroreEliminazione = { code?: string; message: string };
+type QueryEliminazione = PromiseLike<{ error: ErroreEliminazione | null; count: number | null }> & {
+  eq: (colonna: string, valore: string) => QueryEliminazione;
+  not: (colonna: string, operatore: string, valore: null) => QueryEliminazione;
+};
 export type EsitoEliminazione =
   | { tipo: "eliminato"; eliminati?: number }
   | { tipo: "collegato" }
@@ -21,7 +25,7 @@ export function classificaEsitoEliminazione(error: ErroreEliminazione | null, co
 
 export async function eliminaConEsito(
   tabella: keyof Database["public"]["Tables"],
-  id: string | readonly string[] | { richiesti: number; filtro: (query: ReturnType<ReturnType<SupabaseClient<Database>["from"]>["delete"]>) => PromiseLike<{ error: ErroreEliminazione | null; count: number | null }> },
+  id: string | readonly string[] | { richiesti: number; filtro: (query: QueryEliminazione) => QueryEliminazione },
   vincolo?: { preventivo_id: string },
   client: SupabaseClient<Database> = supabase,
 ): Promise<EsitoEliminazione> {
