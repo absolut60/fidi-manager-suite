@@ -132,7 +132,6 @@ export function NuovoPreventivoDialog({
   const create = useMutation({
     mutationFn: async () => {
       if (!soggetto) throw new Error("Scegli un cliente o un lead");
-      const numeroFinal = numero.trim(); // se vuoto, createPreventivo assegnerà
       const dataFinal = data || today;
       const tipoDocFinal: TipoDoc = tipoDoc || "PREVENTIVO";
       return creaConPrimoBlocco(() => createPreventivo({
@@ -145,18 +144,13 @@ export function NuovoPreventivoDialog({
         condizione_pagamento_cod: pagamento || null,
         tipo_doc: tipoDocFinal,
         tipo,
-        numero: numeroFinal,
         data: dataFinal,
         validita: validita || null,
       }), addBloccoVuoto);
     },
-    onSuccess: ({ preventivo, numeroRiassegnato, erroreBlocco }) => {
+    onSuccess: ({ preventivo, erroreBlocco }) => {
       qc.invalidateQueries({ queryKey: ["preventivi"] });
-      if (numeroRiassegnato) {
-        toast.warning(`Numero già impegnato — assegnato il successivo: ${numeroRiassegnato}`);
-      } else {
-        toast.success(`${labelDocCap} creato`);
-      }
+      toast.success(`${labelDocCap} creato`);
       if (erroreBlocco) toast.warning(`${labelDocCap} creato, ma il primo blocco non è stato aggiunto. Puoi aggiungerlo dalla scheda.`);
       onOpenChange(false);
       navigate({ to: "/preventivatore/$id", params: { id: preventivo.id } });
@@ -275,7 +269,8 @@ export function NuovoPreventivoDialog({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="grid gap-1.5">
               <Label>Numero</Label>
-              <Input value={numero} onChange={(e) => setNumero(e.target.value)} placeholder="es. 2026/0001" />
+              <p aria-label="Numero" className="min-h-10 break-words py-2 text-sm font-mono">{numero || "—"}</p>
+              <p className="text-xs text-muted-foreground">Anteprima: verrà assegnato alla creazione.</p>
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="nuovo-preventivo-data">Data</Label>

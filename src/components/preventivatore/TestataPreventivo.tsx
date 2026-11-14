@@ -35,7 +35,7 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
   const pagamentoDesc=codici.find(c=>c.cod===pagamento)?.descrizione||cliente?.condizione_pagamento_desc||'';
   const save=(patch:PreventivoUpdate)=>onSave({...(!prev.condizione_pagamento_cod&&pagamento?{condizione_pagamento_cod:pagamento}:{}),...patch});
   const field=(label:string,value:ReactNode,control:ReactNode,wide=false)=><div key={label} className={`min-w-0 grid content-start gap-1 ${wide?'col-span-2':''}`}><Label className="text-[11px] text-muted-foreground">{label}</Label>{modificabile?control:<div className="min-h-7 text-xs break-words whitespace-pre-wrap py-1">{value||'—'}</div>}</div>;
-  const text=(key:'numero'|'titolo',label:string,wide=false)=>field(label,prev[key],<Input aria-label={label} key={`${key}-${prev[key]}`} className="h-7 bg-card px-2 text-xs md:text-xs" defaultValue={prev[key]||''} onBlur={e=>{if((e.target.value||null)!==prev[key])save({[key]:e.target.value||null});}}/>,wide);
+  const text=(key:'titolo',label:string,wide=false)=>field(label,prev[key],<Input aria-label={label} key={`${key}-${prev[key]}`} className="h-7 bg-card px-2 text-xs md:text-xs" defaultValue={prev[key]||''} onBlur={e=>{if((e.target.value||null)!==prev[key])save({[key]:e.target.value||null});}}/>,wide);
   const select=(label:string,value:string,options:{value:string;label:string}[],onChange:(v:string)=>void,disabled=false)=><Select value={value||'__none__'} onValueChange={onChange} disabled={disabled}><SelectTrigger aria-label={label} className="h-7 w-full min-w-0 bg-card px-2 text-xs [&>span]:truncate [&>span]:text-left"><SelectValue/></SelectTrigger><SelectContent className="max-w-[calc(100vw-2rem)]"><SelectItem value="__none__">—</SelectItem>{options.map(o=><SelectItem key={o.value} value={o.value} className="whitespace-normal break-words">{o.label}</SelectItem>)}</SelectContent></Select>;
   const agenteCliente=agenti.find(a=>a.id===cliente?.codice_agente)?.nome||cliente?.codice_agente||'';
   const identitaCliente=prev.lead_id ? nomeLeadPreventivo(prev.lead) : [cliente?.codice_gestionale,cliente?.ragione_sociale||prev.cliente?.ragione_sociale].filter(Boolean).join(' · ');
@@ -48,7 +48,7 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
     <RiquadroScheda titolo="Documento" icona={FileText} tono="grigio" densita="compatta">
       <div className={due}>
         {text('titolo','Titolo',true)}
-        {text('numero','Numero')}
+        <div className="grid min-w-0 content-start gap-1"><Label className="text-[11px] text-muted-foreground">Numero</Label><p aria-label="Numero" className="min-h-7 break-words py-1 font-mono text-xs">{prev.numero || '—'}</p></div>
         {field('Data',formatDate(prev.data),<Input aria-label="Data" className="h-7 bg-card px-2 text-xs md:text-xs" type="date" defaultValue={prev.data} onBlur={e=>{if(e.target.value&&e.target.value!==prev.data)save({data:e.target.value});}}/>)}
         {field('Validità',prev.validita?formatDate(prev.validita):'—',<Input aria-label="Validità" className="h-7 bg-card px-2 text-xs md:text-xs" type="date" defaultValue={prev.validita||''} onBlur={e=>{if((e.target.value||null)!==prev.validita)save({validita:e.target.value||null});}}/>)}
         {field('Tipo documento',TIPI_DOC_LABEL[prev.tipo_doc],select('Tipo documento',prev.tipo_doc,TIPI_DOC.map(v=>({value:v,label:TIPI_DOC_LABEL[v]})),v=>{if(TIPI_DOC.includes(v as typeof prev.tipo_doc))save({tipo_doc:v as typeof prev.tipo_doc});}))}
