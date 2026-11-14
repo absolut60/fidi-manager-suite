@@ -1,6 +1,6 @@
 # FM69 — Eliminazioni e collegamenti cantieri
-- [ ] Esito unico nei tre DELETE; collegamenti sotto RLS nel dialog e navigazione incorporata.
-- [ ] Test, typecheck automatico, schermate 375/1280 e inventario altre eliminazioni (senza modificarle).
+- [x] Esito unico nei tre DELETE; collegamenti sotto RLS nel dialog e navigazione incorporata. Permessi e query lista invariati; nessuna modifica DB.
+- [x] 785 test, typecheck senza errori e build OK; schermate 320/375/390/768/1280/1920 senza overflow, messaggi zero righe/FK/errore/successo e navigazione normale/incorporata verificati con risposte simulate. Sessione reale: lista vuota; nessuna cancellazione reale. Inventario altre eliminazioni completato senza modificarle.
 
 # FM68 — Pulizia Cliente e Cantiere
 - [x] AzioneRiquadro condivisa; nome apre CantiereDialog con regola di modifica dell’elenco, altrimenti /cantieri?tab=lista&focus=id; distanze compatte e nomeSedeBreve solo visuale.
