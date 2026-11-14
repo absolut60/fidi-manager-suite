@@ -461,7 +461,7 @@ export function DettaglioPartecipanteDialog({
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Annulla</AlertDialogCancel>
-                <AlertDialogAction onClick={() => elimina.mutate()}>Elimina</AlertDialogAction>
+                <AlertDialogAction onClick={(e) => { e.preventDefault(); elimina.mutate(); }}>Elimina</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>

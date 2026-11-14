@@ -296,7 +296,7 @@ export function AllegatiSection({
           <AlertDialogFooter>
             <AlertDialogCancel>Annulla</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => toDelete && del.mutate(toDelete)}
+              onClick={(e) => { e.preventDefault(); if (toDelete) del.mutate(toDelete); }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Elimina

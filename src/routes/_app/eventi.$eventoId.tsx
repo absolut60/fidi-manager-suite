@@ -349,6 +349,7 @@ function EventoDettaglioPage() {
   }, [ricerca]);
 
   const [selezionati, setSelezionati] = useState<string[]>([]);
+  const [confermaEliminaMassivo, setConfermaEliminaMassivo] = useState(false);
   const [filtroStato, setFiltroStato] = useState<"tutti" | "attesi" | "presenti" | "no_show">("tutti");
   const [fRiconc, setFRiconc] = useState<"tutti" | "riconciliato" | "da_riconciliare">("tutti");
   const [fSulPosto, setFSulPosto] = useState<"tutti" | "solo">("tutti");
@@ -593,7 +594,7 @@ function EventoDettaglioPage() {
     },
     onSuccess: ({ esito, richiesti }) => {
       if (esito.tipo !== "eliminato" && esito.tipo !== "parziale") { toast.error(messaggioEsitoEliminazione(esito, "i partecipanti")); return; }
-      if (esito.tipo === "eliminato") setSelezionati([]);
+      if (esito.tipo === "eliminato") { setSelezionati([]); setConfermaEliminaMassivo(false); }
       queryClient.invalidateQueries({ queryKey: ["evento-partecipanti", eventoId] });
       queryClient.invalidateQueries({ queryKey: ["eventi-lista"] });
       if (esito.tipo === "parziale") toast.error(messaggioEsitoEliminazione(esito, "i partecipanti"));
@@ -943,7 +944,7 @@ function EventoDettaglioPage() {
             >
               {invioInCorso ? "Invio in corso…" : "Invia link privacy"}
             </Button>
-            <AlertDialog>
+            <AlertDialog open={confermaEliminaMassivo} onOpenChange={setConfermaEliminaMassivo}>
               <AlertDialogTrigger asChild>
                 <Button size="sm" variant="destructive" className="gap-1.5 ml-auto">
                   <Trash2 className="size-4" /> Elimina
@@ -961,7 +962,7 @@ function EventoDettaglioPage() {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Annulla</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => eliminaMassivo.mutate()}>Elimina</AlertDialogAction>
+                  <AlertDialogAction onClick={(e) => { e.preventDefault(); eliminaMassivo.mutate(); }}>Elimina</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
@@ -1413,7 +1414,7 @@ function EventoDettaglioPage() {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Annulla</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => eliminaEvento.mutate()}>Elimina</AlertDialogAction>
+                  <AlertDialogAction onClick={(e) => { e.preventDefault(); eliminaEvento.mutate(); }}>Elimina</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
