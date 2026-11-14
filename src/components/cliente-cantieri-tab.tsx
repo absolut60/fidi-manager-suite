@@ -2,7 +2,7 @@ import { useSoloShowroom } from "@/hooks/use-solo-showroom";
 import { eliminaConEsito, messaggioEliminazioneCantiere } from "@/lib/esito-eliminazione";
 import { BadgeProvvisorio } from "@/components/badge-provvisorio";
 import { BadgePrezziDedicati } from "@/components/badge-prezzi-dedicati";
-import { useConteggiPrezziCantieri } from "@/lib/cantiere-listini-api";
+import { useConteggiPrezziCantieri, useCantieriModificabili } from "@/lib/cantiere-listini-api";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -83,6 +83,7 @@ export function ClienteCantieriTab({
   });
 
   const { data: conteggiPrezzi = {} } = useConteggiPrezziCantieri((data ?? []).map(c => c.id));
+  const { data: modificabili } = useCantieriModificabili((data ?? []).map(c => c.id));
   const editingCantiere = data?.find((c) => c.id === editId) ?? null;
 
   return (
@@ -133,7 +134,7 @@ export function ClienteCantieriTab({
                   >
                     <MapIcon className="size-4" />
                   </Button>
-                  {!soloShowroom && (
+                  {modificabili?.has(c.id) && (
                   <Button
                     variant="ghost" size="icon" title="Modifica"
                     onClick={() => setEditId(c.id)}

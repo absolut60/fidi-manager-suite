@@ -1,3 +1,7 @@
+# FM69 — Aperti: cantieri, Testata e barra richieste
+- [x] Applicata 0218: gate consultazione condizioni/cantiere, DROP lite senza dipendenze, RPC batch modificabili.
+- [ ] Verifica matrici aal2 prima/dopo, test statici/suite/typecheck e browser 375/1280.
+
 # FM69 — Fonte prezzo e protezione listini
 - [x] Applicata 0217_fm69_fonte_prezzo_riga.sql, NULL storico senza backfill; fonte unica/copia duplicato, manuali non spuntate e segno persistito. Conversione ordine invariata: non copia la fonte.
 - [x] 821 test superati e build OK; browser simulato 375/1280: scelta articolo/kit, manuale non spuntato e badge, listino/NULL spuntati, manuale sotto costo con entrambe le indicazioni, ripristino volontario. Nessuna scrittura di dati reali.

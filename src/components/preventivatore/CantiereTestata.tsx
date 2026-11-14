@@ -1,9 +1,6 @@
 import type { ReactNode } from "react";
 import { ArrowLeftRight, ChevronRight, HardHat, MapPin, Navigation, Store, X } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
-import { useAuth } from "@/hooks/use-auth";
-import { usePermessiCommerciale } from "@/hooks/use-permessi-commerciale";
-import { è_preventivista, puoModificareRecordPreventivista } from "@/lib/permessi-preventivi";
 import { AzioneRiquadro } from "./AzioneRiquadro";
 import { RiquadroScheda } from "./RiquadroScheda";
 import { useMemo, useState } from "react";
@@ -21,7 +18,7 @@ import { formatoDistanzaCantiere, nomeSedeBreve } from "@/lib/cantiere-distanza"
 import { toast } from "sonner";
 import { PrezziCantiereDialog } from "@/components/prezzi-cantiere-dialog";
 import { BadgePrezziDedicati } from "@/components/badge-prezzi-dedicati";
-import { chiaveConteggioPrezziCantiere, contaPrezziCantiere, mostraAvvisoPrezziCantiere, testoPrezziDedicati } from "@/lib/cantiere-listini-api";
+import { chiaveConteggioPrezziCantiere, contaPrezziCantiere, mostraAvvisoPrezziCantiere, testoPrezziDedicati, useCantieriModificabili } from "@/lib/cantiere-listini-api";
 import { MappaCantierePreventivo } from "./MappaCantierePreventivo";
 
 type Modo = "cliente" | "nuovo" | "provvisorio";
@@ -37,8 +34,6 @@ import { BadgeProvvisorio } from "@/components/badge-provvisorio";
 export function CantiereTestata({ prev, modificabile, onCantiere, clienteEtichetta, sedeClienteNome, sedeClienteId }: { prev: PreventivoConDettagli; modificabile: boolean; onCantiere: (id: string) => void | Promise<void>; clienteEtichetta?: string; sedeClienteNome?: string; sedeClienteId?: string | null }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const { roles, user } = useAuth();
-  const { puoEliminareCantiere } = usePermessiCommerciale();
   const [scheda, setScheda] = useState(false);
   const soggettoFisso = useMemo(() => prev.cliente_id ? { tipo: "cliente" as const, id: prev.cliente_id, etichetta: clienteEtichetta || prev.cliente?.ragione_sociale || "Cliente" } : undefined, [prev.cliente_id, prev.cliente?.ragione_sociale, clienteEtichetta]);
   const c = prev.cantiere;
@@ -112,9 +107,9 @@ export function CantiereTestata({ prev, modificabile, onCantiere, clienteEtichet
     } catch { /* An unavailable count must not block linking the site. */ }
   };
 
+  const { data: modificabili } = useCantieriModificabili(geo ? [geo.id] : [], geo);
   const apriCantiere = () => {
-    const isTrasversale = roles.some(r => ["amministratore", "amministrazione", "direzione", "marketing", "store_manager", "responsabile_agenti"].includes(r));
-    if (geo && puoModificareRecordPreventivista(roles, geo.created_by, user?.id, !è_preventivista(roles) || isTrasversale || puoEliminareCantiere(geo))) setScheda(true);
+    if (geo && modificabili?.has(geo.id)) setScheda(true);
     else if (c) void navigate({ to: "/cantieri", search: { tab: "lista", focus: c.id } });
   };
   const rigaDistanza = (etichetta: string, valore: ReactNode, riferimento = false) => <div className="grid min-w-0 grid-cols-[minmax(0,7.5rem)_minmax(0,1fr)] items-start gap-2 py-1">
