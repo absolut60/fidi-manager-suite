@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -553,8 +554,8 @@ function NoteLegaliGestionaliCard({ clienteId, canManage }: { clienteId: string;
               titolo="Eliminare la nota legale gestionale?"
               descrizione="L'azione e irreversibile: la nota legale importata dal gestionale verra eliminata definitivamente."
               onConferma={async () => {
-                const { error } = await supabase.from("note_legali_gestionali" as never).delete().eq("id", data.id);
-                if (error) { toast.error(error.message); return; }
+                const esito = await eliminaConEsito("note_legali_gestionali", data.id);
+                if (esito.tipo !== "eliminato") { toast.error(messaggioEsitoEliminazione(esito, "la nota legale")); return false; }
                 toast.success("Nota legale eliminata");
                 await qc.invalidateQueries({ queryKey: ["note-legali-gest", clienteId] });
                 await dopoVariazioneLegale();
@@ -654,15 +655,14 @@ function PraticaCard({ pratica: p, clienteId, canManage }: { pratica: PraticaRow
         .eq("entita_id", p.id);
       if (eAll) throw eAll;
       if (alleg && alleg.length > 0) {
-        const paths = alleg.map((a) => a.storage_path).filter(Boolean);
-        if (paths.length > 0) await supabase.storage.from(ALLEGATI_BUCKET).remove(paths);
-        const ids = alleg.map((a) => a.id);
-        const { error: eDelAll } = await supabase.from("allegati").delete().in("id", ids);
-        if (eDelAll) throw eDelAll;
+        const esito = await eliminaConEsito("allegati", alleg.map(a => a.id));
+        if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") { invalidate(); qc.invalidateQueries({ queryKey: ["allegati"] }); } toast.error(messaggioEsitoEliminazione(esito, "gli allegati")); return; }
+        const paths = alleg.map(a => a.storage_path).filter(Boolean);
+        if (paths.length) await supabase.storage.from(ALLEGATI_BUCKET).remove(paths);
       }
       // pratiche_legali_allegati e storico_pratiche_legali: cascade DB. reminder.pratica_id -> NULL
-      const { error } = await supabase.from("pratiche_legali" as never).delete().eq("id", p.id);
-      if (error) throw error;
+      const esito = await eliminaConEsito("pratiche_legali", p.id);
+      if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") invalidate(); toast.error(messaggioEsitoEliminazione(esito, "la pratica")); return; }
       toast.success("Pratica eliminata");
       setOpenDelete(false);
       invalidateLegale();
@@ -1128,14 +1128,13 @@ function AssicurazioniSection({ clienteId, canManage, canEditAllegati }: { clien
         .eq("entita_id", deletePol.id);
       if (eAll) throw eAll;
       if (alleg && alleg.length > 0) {
-        const paths = alleg.map((a) => a.storage_path).filter(Boolean);
-        if (paths.length > 0) await supabase.storage.from(ALLEGATI_BUCKET).remove(paths);
-        const ids = alleg.map((a) => a.id);
-        const { error: eDelAll } = await supabase.from("allegati").delete().in("id", ids);
-        if (eDelAll) throw eDelAll;
+        const esito = await eliminaConEsito("allegati", alleg.map(a => a.id));
+        if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") { invalidate(); qc.invalidateQueries({ queryKey: ["allegati"] }); } toast.error(messaggioEsitoEliminazione(esito, "gli allegati")); return; }
+        const paths = alleg.map(a => a.storage_path).filter(Boolean);
+        if (paths.length) await supabase.storage.from(ALLEGATI_BUCKET).remove(paths);
       }
-      const { error } = await supabase.from("assicurazioni_credito" as never).delete().eq("id", deletePol.id);
-      if (error) throw error;
+      const esito = await eliminaConEsito("assicurazioni_credito", deletePol.id);
+      if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") invalidate(); toast.error(messaggioEsitoEliminazione(esito, "la polizza")); return; }
       // Se era l'ultima polizza del cliente, ricalcola assicurazione_attiva = false
       const { count } = await supabase
         .from("assicurazioni_credito" as never)

@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { isSoloShowroom } from "@/lib/permessi-showroom";
 import { BadgeStatoPromessa } from "@/components/stato-promessa";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -82,7 +83,7 @@ export function puoModificareAzione(roles: string[], userId: string | null | und
 }
 
 /** Elimina un'azione rimuovendo prima gli allegati collegati (file + righe). */
-export async function eliminaAzioneConAllegati(azioneId: string): Promise<void> {
+export async function eliminaAzioneConAllegati(azioneId: string): Promise<{ esito: import("@/lib/esito-eliminazione").EsitoEliminazione; cosa: string }> {
   const { data: alleg, error: eAll } = await supabase
     .from("allegati")
     .select("id, storage_path")
@@ -90,17 +91,13 @@ export async function eliminaAzioneConAllegati(azioneId: string): Promise<void> 
     .eq("entita_id", azioneId);
   if (eAll) throw eAll;
   if (alleg && alleg.length > 0) {
-    const paths = alleg.map((a) => a.storage_path).filter(Boolean);
-    if (paths.length > 0) {
-      await supabase.storage.from(ALLEGATI_BUCKET).remove(paths);
-    }
-    const ids = alleg.map((a) => a.id);
-    const { error: eDelAll } = await supabase.from("allegati").delete().in("id", ids);
-    if (eDelAll) throw eDelAll;
+    const esito = await eliminaConEsito("allegati", alleg.map(a => a.id));
+    if (esito.tipo !== "eliminato") return { esito, cosa: "gli allegati dell'azione" };
+    const paths = alleg.map(a => a.storage_path).filter(Boolean);
+    if (paths.length) await supabase.storage.from(ALLEGATI_BUCKET).remove(paths);
   }
   // azioni_recupero_scadenze ha ON DELETE CASCADE
-  const { error } = await supabase.from("azioni_recupero").delete().eq("id", azioneId);
-  if (error) throw error;
+  return { esito: await eliminaConEsito("azioni_recupero", azioneId), cosa: "l'azione" };
 }
 
 export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda, onApriPromesse, senzaRiepilogo = false }: { senzaRiepilogo?: boolean; clienteId: string; onApriScheda?: () => void; onApriPromesse?: () => void }) {

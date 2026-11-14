@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -146,10 +147,10 @@ function RichiestaDetail() {
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("richieste_fido").delete().eq("id", richiestaId);
-      if (error) throw error;
+      return eliminaConEsito("richieste_fido", richiestaId);
     },
-    onSuccess: async () => {
+    onSuccess: async (esito) => {
+      if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") qc.invalidateQueries({ queryKey: ["richieste"] }); toast.error(messaggioEsitoEliminazione(esito, "la richiesta")); return; }
       toast.success("Richiesta eliminata");
       await Promise.all([
         qc.refetchQueries({ queryKey: ["richieste"], type: "active" }),
