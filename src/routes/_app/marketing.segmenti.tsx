@@ -39,6 +39,7 @@ import {
 import { SegmentiWhatsappTab } from "@/components/marketing/segmenti-whatsapp-tab";
 
 export const Route = createFileRoute("/_app/marketing/segmenti")({
+  head: () => ({ meta: [{ title: "Segmenti marketing — FidiManager" }, { name: "description", content: "Gestione dei segmenti e degli elenchi marketing MADE." }, { property: "og:title", content: "Segmenti marketing — FidiManager" }, { property: "og:description", content: "Gestione dei segmenti e degli elenchi marketing MADE." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: MarketingSegmentiPage,
 });
 

@@ -38,6 +38,7 @@ import {
 } from "@/lib/campagna-marketing.functions";
 
 export const Route = createFileRoute("/_app/marketing/campagne")({
+  head: () => ({ meta: [{ title: "Campagne email e WhatsApp — FidiManager" }, { name: "description", content: "Gestione delle campagne email e WhatsApp MADE." }, { property: "og:title", content: "Campagne email e WhatsApp — FidiManager" }, { property: "og:description", content: "Gestione delle campagne email e WhatsApp MADE." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: MarketingCampagnePage,
 });
 
@@ -696,11 +697,7 @@ type DestinatarioRiga = {
   clienti: { ragione_sociale: string } | null;
 };
 
-function chunkArray<T>(arr: T[], size: number): T[][] {
-  const out: T[][] = [];
-  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
-  return out;
-}
+
 
 const DEST_PAGE_SIZE = 100;
 

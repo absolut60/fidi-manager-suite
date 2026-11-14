@@ -58,6 +58,7 @@ type ProgressoRow = {
 
 
 export const Route = createFileRoute("/_app/marketing/invii")({
+  head: () => ({ meta: [{ title: "Invii marketing — FidiManager" }, { name: "description", content: "Stato degli invii delle campagne marketing MADE." }, { property: "og:title", content: "Invii marketing — FidiManager" }, { property: "og:description", content: "Stato degli invii delle campagne marketing MADE." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: InviiMarketingPage,
 });
 
@@ -527,7 +528,7 @@ function InviiMarketingPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy}>Indietro</AlertDialogCancel>
-            <AlertDialogAction disabled={busy} onClick={() => confermaElimina && doElimina(confermaElimina)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction disabled={busy} onClick={(e) => { e.preventDefault(); if (confermaElimina) void doElimina(confermaElimina); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Elimina
             </AlertDialogAction>
           </AlertDialogFooter>
