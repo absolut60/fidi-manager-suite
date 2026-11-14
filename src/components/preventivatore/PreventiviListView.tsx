@@ -27,6 +27,14 @@ import { NuovoPreventivoDialog } from "@/components/preventivatore/NuovoPreventi
 import { BadgeEvasione, BadgeStato, BadgeTipoDoc } from "@/components/preventivatore/BadgeTestata";
 import { SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 import { computeEvasione } from "@/lib/evasione";
+import { nomeLeadPreventivo } from "@/lib/soggetto-preventivo";
+
+function SoggettoElenco({ r }: { r: ElencoPreventivoItem }) {
+  return <div className="min-w-0">
+    <Testo className="font-medium">{r.lead_id ? nomeLeadPreventivo(r.lead) : r.cliente?.ragione_sociale}</Testo>
+    {r.lead_id ? <Badge variant="outline" className="mt-1 border-pv-blu/30 bg-pv-azzurro px-1.5 text-[10px] text-pv-blu">Lead</Badge> : r.cliente?.codice_gestionale && <span className="block font-mono text-[10px] text-muted-foreground">{r.cliente.codice_gestionale}</span>}
+  </div>;
+}
 
 const euro = (v: number | null | undefined) =>
   `€ ${formatNumeroIt(v ?? 0, { minDecimals: 2, maxDecimals: 2 })}`;
@@ -146,10 +154,7 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
         </TableCell>
         <TableCell className="px-2 py-2 align-top"><Testo className="font-medium">{r.titolo}</Testo></TableCell>
         <TableCell className="px-2 py-2 align-top">
-          <Testo className="font-medium">{r.cliente?.ragione_sociale}</Testo>
-          {r.cliente?.codice_gestionale && (
-            <span className="block font-mono text-[10px] text-muted-foreground">{r.cliente.codice_gestionale}</span>
-          )}
+          <SoggettoElenco r={r} />
         </TableCell>
         <TableCell className="px-2 py-2 align-top text-muted-foreground"><Testo>{r.cantiere?.nome}</Testo></TableCell>
         <TableCell className="px-2 py-2 align-top"><Testo>{r.creato_da_nome}</Testo></TableCell>
@@ -184,8 +189,8 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
             <Input
               value={search}
               onChange={(e) => setCampoLista("search", e.target.value)}
-              placeholder="Cerca per numero, titolo o codice cliente"
-              aria-label="Cerca per numero, titolo o codice cliente"
+              placeholder="Cerca per numero, titolo, cliente o lead"
+              aria-label="Cerca per numero, titolo, cliente o lead"
               className="h-10 pl-8 text-sm"
             />
           </div>
@@ -201,8 +206,8 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
             <Input
               value={search}
               onChange={(e) => setCampoLista("search", e.target.value)}
-              placeholder="Cerca per numero, titolo o codice cliente"
-              aria-label="Cerca per numero, titolo o codice cliente"
+              placeholder="Cerca per numero, titolo, cliente o lead"
+              aria-label="Cerca per numero, titolo, cliente o lead"
               className="pl-8"
             />
           </div>
@@ -281,15 +286,8 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
                       }
                       campi={[
                         {
-                          etichetta: "Cliente",
-                          valore: (
-                            <span className="break-words">
-                              {r.cliente?.ragione_sociale ?? "—"}
-                              {r.cliente?.codice_gestionale && (
-                                <span className="ml-1 font-mono text-[10px] text-muted-foreground">{r.cliente.codice_gestionale}</span>
-                              )}
-                            </span>
-                          ),
+                          etichetta: "Cliente/Lead",
+                          valore: <SoggettoElenco r={r} />,
                         },
                         { etichetta: "Totale", valore: <span className="font-semibold tabular-nums">{euro(r.totale)}</span> },
                         { etichetta: "Creato da", valore: r.creato_da_nome ?? "—" },
@@ -327,7 +325,7 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
                 <TableRow className="bg-pv-testa text-[11px] uppercase tracking-wide hover:bg-pv-testa">
                   <TableHead className="w-[7.5rem] px-2">Numero</TableHead>
                   <TableHead className="px-2">Titolo</TableHead>
-                  <TableHead className="px-2">Cliente</TableHead>
+                  <TableHead className="px-2">Cliente/Lead</TableHead>
                   <TableHead className="w-[8%] px-2">Cantiere</TableHead>
                   <TableHead className="w-[7%] px-2">Creato da</TableHead>
                   <TableHead className="w-[5.5rem] px-2">Data</TableHead>
