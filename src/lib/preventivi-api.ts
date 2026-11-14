@@ -438,48 +438,14 @@ export async function anteprimaProssimoNumero(
   return `${prefix}-${data}/${String(a).slice(-2)}`;
 }
 
-async function assegnaProssimoNumero(anno: number, tipo: TipoDocumento = "preventivo"): Promise<string> {
-  const rpcName = tipo === "ordine" ? "prossimo_numero_ordine" : "prossimo_numero_preventivo";
-  const prefix = tipo === "ordine" ? "ORD" : "PRV";
-  const { data, error } = await supabase.rpc(rpcName, { p_anno: anno });
-  if (error) throw error;
-  return `${prefix}-${data}/${String(anno).slice(-2)}`;
-}
-
 export async function createPreventivo(
-  row: PreventivoInsert,
+  row: Omit<PreventivoInsert, "numero">,
 ): Promise<{ preventivo: Preventivo; numeroRiassegnato: string | null }> {
-  const anno = new Date().getFullYear();
-  const tipo: TipoDocumento = (row.tipo as TipoDocumento) ?? "preventivo";
-  let numero = (row.numero ?? "").trim();
-  if (!numero) {
-    numero = await assegnaProssimoNumero(anno, tipo);
-  }
-  let reassignedTo: string | null = null;
-
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const payload = { ...row, numero };
-    const { data, error } = await supabase
-      .from("preventivi")
-      .insert(payload)
-      .select()
-      .single();
-    if (!error) {
-      return { preventivo: data, numeroRiassegnato: reassignedTo };
-    }
-    const isDup =
-      error.code === "23505" ||
-      /preventivi_numero_unique|duplicate key/i.test(error.message ?? "");
-    if (!isDup) {
-      console.error("[createPreventivo] Supabase error:", error);
-      throw new Error(
-        `${error.message}${error.details ? ` — ${error.details}` : ""}${error.hint ? ` (hint: ${error.hint})` : ""}${error.code ? ` [${error.code}]` : ""}`,
-      );
-    }
-    numero = await assegnaProssimoNumero(anno, tipo);
-    reassignedTo = numero;
-  }
-  throw new Error("Impossibile assegnare un numero libero dopo 5 tentativi");
+  // Anche eventuali chiamanti JavaScript obsoleti non possono passare un numero.
+  const { numero: _numeroIgnorato, ...payload } = row as PreventivoInsert;
+  const { data, error } = await supabase.from("preventivi").insert(payload).select().single();
+  if (error) throw new Error(`${error.message}${error.details ? ` — ${error.details}` : ""}${error.code ? ` [${error.code}]` : ""}`);
+  return { preventivo: data, numeroRiassegnato: null };
 }
 
 export async function updatePreventivo(id: string, patch: PreventivoUpdate): Promise<Preventivo> {

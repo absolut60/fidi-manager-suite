@@ -1576,6 +1576,13 @@
       "when": 1794692740916,
       "tag": "0224_fm71_preventivi_lead",
       "breakpoints": true
+    },
+    {
+      "idx": 225,
+      "version": "7",
+      "when": 1794695469261,
+      "tag": "0225_fm71_numero_non_modificabile",
+      "breakpoints": true
     }
   ]
 }

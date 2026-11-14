@@ -1,3 +1,8 @@
+# FM71 — Numero non modificabile, fetta 3d
+- [x] Migrazione 0225, registro 226: trigger con contatori esistenti per preventivi e ordini, blocco UPDATE salvo service_role; nessun backfill o cambio RLS. Numeri espliciti conservati per compatibilità con conversione e app precedente; vincolo UNIQUE invariato.
+- [x] Creazione/duplicazione senza numero, Testata in sola lettura, conversione ordine server invariata.
+- [x] SQL reale BEGIN/ROLLBACK: consecutività, UNIQUE, esplicito conservato, UPDATE negato, eccezione service_role, ordine e conversione; sei documenti e contatore invariati (firma e5b08bada19d04f83f55d4d8565c45b6). 890 test verdi, browser simulato 375/1280, screenshot controllati e pagina temporanea rimossa; documentazione aggiornata. Sezionale e riparti da futuri, non implementati. AGENTS root al limite: nota architetturale non aggiunta.
+
 # FM71 — Correzioni collaudo, fetta 3c
 - [x] Colonna unica e ricerca lead con lettura RLS, categoria obbligatoria nelle nuove scritture, pagamento cercabile condiviso, scheda lead sovrapposta. Nessun DB o permesso modificato.
 - [x] Test permanenti e browser simulato 375/1280: join/ricerca lead, categoria salvata, pagamento multi-parola/accenti, finestra senza nuova scheda né cambio URL; screenshot controllati. Pagina temporanea rimossa; documentazione aggiornata. AGENTS root al limite: regola non aggiunta.

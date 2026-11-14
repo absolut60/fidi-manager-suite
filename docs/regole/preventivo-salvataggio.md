@@ -5,3 +5,10 @@
 - Lo stato di salvataggio ("modifiche" | "salvataggio" | "errore" | "salvato") viene solo da `useStatoSalvataggioPreventivo` (`src/lib/use-stato-salvataggio-preventivo.ts`): badge, pulsante Salva e finestra d'uscita non hanno logiche proprie.
 - Ogni nuova scrittura della scheda (useMutation) deve avere `mutationKey: ["salva-preventivo", id]`, altrimenti badge e finestra d'uscita non la vedono.
 - La finestra d'uscita ("Modifiche non salvate") compare solo se `devoBloccareUscita(stato)` (modifiche, salvataggio o errore) e solo cambiando pagina: il cambio tab (`?tab=`, stesso pathname) non blocca mai. Chiusura/ricarica del browser usa la finestra generica del browser.
+
+## Numero del preventivo (FM71)
+- Preventivi e ordini riusano `contatori_preventivo`, con sequenze annuali distinte per tipo. Il trigger `preventivi_numero_assegnazione` chiama le RPC `prossimo_numero_preventivo` / `prossimo_numero_ordine` già esistenti (UPSERT atomico), formato `PRV-progressivo/aa` / `ORD-progressivo/aa`, anno corrente del database come il precedente percorso. Nessun secondo contatore, nessun backfill.
+- Creazione, duplicazione e alternative non inviano numero; `createPreventivo` elimina anche eventuali valori da chiamanti obsoleti. L'anteprima è soltanto informativa e non prenota un numero. Testata in sola lettura per tutti.
+- Numeri espliciti in INSERT sono conservati, con l'indice univoco esistente: compatibilità necessaria con la conversione ordine già server-side e con l'app pubblicata precedente. La conversione in ordine resta invariata e assegna con la stessa RPC atomica; nessuna doppia prenotazione.
+- `preventivi_numero_immutabile` rifiuta ogni cambio del numero in UPDATE con errore italiano, anche per amministratori; sola eccezione tecnica `service_role`. Numeri già esistenti invariati, nessuna modifica a policy o altri trigger.
+- Futuri, NON implementati: sezionale per punto vendita e impostazione «riparti da».
