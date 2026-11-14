@@ -97,7 +97,7 @@ export function NuovoPreventivoDialog({
   const ultimoClienteRef = useRef<string | null>(null);
   useEffect(() => {
     let attivo = true;
-    if (!clienteId) { setPagamento(""); return; }
+    if (!clienteId) { setPagamento(soggetto?.tipo === "lead" ? soggetto.lead.condizione_pagamento_cod ?? "" : ""); return; }
     const clienteCambiato = ultimoClienteRef.current !== clienteId;
     ultimoClienteRef.current = clienteId;
     fetchDatiClientePreventivo(clienteId).then((c) => {
@@ -110,11 +110,12 @@ export function NuovoPreventivoDialog({
       setModoCantiere("seleziona");
     }).catch((e: unknown) => { if (attivo) toast.error((e as Error).message || "Errore lettura cliente"); });
     return () => { attivo = false; };
-  }, [clienteId, isWriteOnly, profiloCodiceAgente]);
+  }, [clienteId, soggetto?.id, isWriteOnly, profiloCodiceAgente]);
 
   // Stessa fonte/cache di CondizioniClienteGamma: non riproporre la filiale dopo una modifica manuale.
   useEffect(() => {
     let attivo = true;
+    if (soggetto?.tipo === "lead") return;
     filialeManuale.current = false;
     setFiliale("");
     if (!clienteId) return;
@@ -181,7 +182,7 @@ export function NuovoPreventivoDialog({
             <Label>Soggetto *</Label>
             <SoggettoPreventivoPicker value={soggetto} riferimento={riferimento} onRiferimento={setRiferimento} consentiLead={!isOrdine} sedeId={stores.find(s => s.nome === filiale)?.id} onChange={v => {
               setSoggetto(v); setClienteId(v?.tipo === "cliente" ? v.id : null); setCantiereId(null);
-              if (v?.tipo === "lead") setPagamento(v.lead.condizione_pagamento_cod ?? "");
+              if (v?.tipo === "lead") { setPagamento(v.lead.condizione_pagamento_cod ?? ""); if (!isWriteOnly) setAgenteId(v.lead.agente_codice ?? (roles.includes("agente") ? profiloCodiceAgente ?? null : null)); }
             }}/>
           </div>
           <div className="grid gap-1.5">
