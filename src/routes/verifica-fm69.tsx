@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { PrezziCantiereDialog } from '@/components/prezzi-cantiere-dialog';
+import { ArticoloGammaPicker } from '@/components/preventivatore/ArticoloGammaPicker';
 import { ClienteCantieriTab } from '@/components/cliente-cantieri-tab';
 import { chiavePrezziCantiere, type CantiereListinoRow } from '@/lib/cantiere-listini-api';
 import type { CantiereRow } from '@/lib/cantieri';
@@ -25,5 +26,5 @@ function Verifica() {
  seed(['agenti-lookup'],[]);
  setReady(true);
  },[qc,user?.id]);
- return ready ? <div className="p-4"><Button onClick={()=>setOpen(true)}>Apri prezzi</Button><ClienteCantieriTab clienteId="cliente-fm69" /><PrezziCantiereDialog open={open} onOpenChange={setOpen} cantiere={c}/></div> : null;
+ return ready ? <div className="p-4"><Button onClick={()=>setOpen(true)}>Apri prezzi</Button><div className="max-w-md"><ArticoloGammaPicker soloCodice preventivoId="preventivo-prova" codice={null} descrizione={null} onChange={()=>{}} /></div><ClienteCantieriTab clienteId="cliente-fm69" /><PrezziCantiereDialog open={open} onOpenChange={setOpen} cantiere={c}/></div> : null;
 }
