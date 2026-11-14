@@ -60,6 +60,7 @@ import { NotificationsBell } from "@/components/notifications-bell";
 import { contaNonLette, notificheNonLetteQueryKey } from "@/lib/notifiche";
 import { useBadgeNotifiche } from "@/hooks/use-badge-notifiche";
 import { useBarraAScomparsa } from "@/hooks/use-barra-a-scomparsa";
+import { BarraBluContext } from "@/hooks/barra-blu-context";
 import { toast } from "sonner";
 import { haAccessoPreventivi, puoConsultarePreventivi, è_preventivista } from "@/lib/permessi-preventivi";
 
@@ -624,7 +625,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <main className="flex-1 min-w-0 lg:ml-64 pt-14 lg:pt-0">
         <BannerAttivaNotifiche />
-        <div className="p-4 sm:p-6 lg:p-8 pv-orizzontale:px-1 pv-orizzontale:py-2">{children}</div>
+        <BarraBluContext.Provider value={barraNascosta}>
+          <div className="p-4 sm:p-6 lg:p-8 pv-orizzontale:px-1 pv-orizzontale:py-2">{children}</div>
+        </BarraBluContext.Provider>
       </main>
 
     </div>

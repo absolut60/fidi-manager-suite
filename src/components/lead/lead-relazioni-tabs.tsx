@@ -1,6 +1,6 @@
 import { useSoloShowroom } from "@/hooks/use-solo-showroom";
 import { BadgePrezziDedicati } from "@/components/badge-prezzi-dedicati";
-import { useConteggiPrezziCantieri } from "@/lib/cantiere-listini-api";
+import { useConteggiPrezziCantieri, useCantieriModificabili } from "@/lib/cantiere-listini-api";
 import { eliminaConEsito, messaggioEliminazioneCantiere } from "@/lib/esito-eliminazione";
 import { useAuth } from "@/hooks/use-auth";
 import { è_preventivista, puoModificareRecordPreventivista } from "@/lib/permessi-preventivi";
@@ -243,7 +243,8 @@ export function LeadCantieriTab({
   const { roles, user } = useAuth();
   const preventivista = è_preventivista(roles);
   const permessoPreesistente = !preventivista || puoGestireLead(roles) || roles.includes("agente");
-  const modifica = (c: CantiereRow) => !soloShowroom && puoModificareRecordPreventivista(roles, c.created_by, user?.id, permessoPreesistente);
+  // Existing removal rule stays separate from the canonical edit permission.
+  const rimozione = (c: CantiereRow) => !soloShowroom && puoModificareRecordPreventivista(roles, c.created_by, user?.id, permessoPreesistente) && permessoPreesistente;
 
   const soggettoFisso = useMemo(
     () => ({
@@ -291,6 +292,7 @@ export function LeadCantieriTab({
   });
 
   const { data: conteggiPrezzi = {} } = useConteggiPrezziCantieri((data ?? []).map(c => c.id));
+  const { data: modificabili } = useCantieriModificabili((data ?? []).map(c => c.id));
   const editing = data?.find((c) => c.id === editId) ?? null;
 
   return (
@@ -337,8 +339,8 @@ export function LeadCantieriTab({
                   </div>
                   {c.descrizione && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{c.descrizione}</p>}
                 </div>
-                {modifica(c) && (
                 <div className="flex gap-1">
+                {modificabili?.has(c.id) && (
                 <Button
                   variant="ghost" size="icon" title="Modifica"
                   onClick={() => setEditId(c.id)}
@@ -346,7 +348,8 @@ export function LeadCantieriTab({
                 >
                   <Pencil className="size-4" />
                 </Button>
-                {permessoPreesistente && <Button
+                )}
+                {rimozione(c) && <Button
                   variant="ghost" size="icon"
                   onClick={() => {
                     const msg = c.cliente_id
@@ -359,7 +362,6 @@ export function LeadCantieriTab({
                   <Trash2 className="size-4" />
                 </Button>}
                 </div>
-                )}
               </div>
               {(c.indirizzo || c.citta) && (
                 <div className="mt-3 flex items-start gap-1.5 text-xs text-muted-foreground">

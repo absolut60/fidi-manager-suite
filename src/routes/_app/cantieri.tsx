@@ -9,12 +9,11 @@ import { AlertTriangle, Building2, MapPin, Pencil, Plus, Search } from "lucide-r
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { è_preventivista, puoModificareRecordPreventivista } from "@/lib/permessi-preventivi";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { BadgeProvvisorio } from "@/components/badge-provvisorio";
 import { BadgePrezziDedicati } from "@/components/badge-prezzi-dedicati";
-import { useConteggiPrezziCantieri } from "@/lib/cantiere-listini-api";
+import { useConteggiPrezziCantieri, useCantieriModificabili } from "@/lib/cantiere-listini-api";
 import { FILTRI_PROVVISORIO, passaFiltroProvvisorio } from "@/lib/cantieri-provvisori";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -64,8 +63,6 @@ function CantieriPage() {
   const qc = useQueryClient();
   const { roles, user } = useAuth();
   const { puoEliminareCantiere } = usePermessiCommerciale();
-  const preventivista = è_preventivista(roles);
-  const puoModificare = (c: CantiereRow) => puoModificareRecordPreventivista(roles, c.created_by, user?.id, !preventivista || isTrasversale || puoEliminareCantiere(c));
   const isTrasversale = roles.some((r) =>
     ["amministratore", "amministrazione", "direzione", "marketing", "store_manager", "responsabile_agenti"].includes(r),
   );
@@ -123,6 +120,8 @@ function CantieriPage() {
   });
 
   const { data: conteggiPrezzi = {} } = useConteggiPrezziCantieri(rows.map(c => c.id));
+  const { data: modificabili } = useCantieriModificabili(rows.map(c => c.id));
+  const puoModificare = (c: CantiereRow) => modificabili?.has(c.id) === true;
   const { data: mapsKey } = useChiaveMappe();
 
   const filtrati = useMemo(() => {
@@ -197,10 +196,10 @@ function CantieriPage() {
   }, [navigate]);
 
   const apriModifica = useCallback((c: CantiereRow) => {
-    if (!puoModificare(c)) { toast.info("Puoi modificare solo i cantieri creati da te"); return; }
+    if (!modificabili?.has(c.id)) { toast.info("Non hai i permessi per modificare questo cantiere."); return; }
     setInModifica(c);
     setDialogOpen(true);
-  }, [roles, user?.id, isTrasversale, puoEliminareCantiere]);
+  }, [modificabili]);
 
   const eliminaCantiere = useCallback(async (c: CantiereRow) => {
     const esito = await eliminaConEsito("cantieri", c.id);

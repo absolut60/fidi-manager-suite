@@ -4,7 +4,7 @@ import { eliminaConEsito, messaggioEliminazioneCantiere } from "@/lib/esito-elim
 import { CollegamentiCantiere } from "@/components/collegamenti-cantiere";
 import { PrezziCantiereDialog } from "@/components/prezzi-cantiere-dialog";
 import { BadgePrezziDedicati } from "@/components/badge-prezzi-dedicati";
-import { contaPrezziCantiere, chiaveConteggioPrezziCantiere } from "@/lib/cantiere-listini-api";
+import { contaPrezziCantiere, chiaveConteggioPrezziCantiere, chiaveCantieriModificabili, useCantieriModificabili, puoModificareCantiereDb } from "@/lib/cantiere-listini-api";
 import { provvisorioInizialeCantiere, nomeInizialeCantiere } from "@/lib/cantieri-provvisori";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -13,7 +13,6 @@ import { toast } from "sonner";
 import { Crosshair, MapPin, Navigation, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { è_preventivista, puoModificareRecordPreventivista } from "@/lib/permessi-preventivi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,6 +64,8 @@ export function CantiereDialog({
     ["amministratore", "amministrazione", "direzione", "marketing", "store_manager"].includes(r),
   );
   const forzaAgente = isAgente && !isTrasversale;
+  const { data: modificabili } = useCantieriModificabili(cantiere ? [cantiere.id] : [], cantiere, open);
+  const modificabile = !cantiere || modificabili?.has(cantiere.id) === true;
   const geocodifica = useServerFn(geocodificaCantiere);
   const { data: agentiFetch = [] } = useQuery({
     queryKey: ["agenti-lookup"],
@@ -80,6 +81,7 @@ export function CantiereDialog({
   const ricalcolaSede = useServerFn(ricalcolaSedeVicina);
 
   function invalida() {
+    qc.invalidateQueries({ queryKey: chiaveCantieriModificabili });
     qc.invalidateQueries({ queryKey: ["cantieri-lista"] });
     queryKeysExtra?.forEach((k) => qc.invalidateQueries({ queryKey: [...k] }));
   }
@@ -264,8 +266,8 @@ export function CantiereDialog({
   }
 
   async function salva() {
-    if (cantiere && !puoModificareRecordPreventivista(roles, cantiere.created_by, user?.id, !è_preventivista(roles) || isTrasversale || puoEliminareCantiere(cantiere))) {
-      toast.error("Puoi modificare solo i cantieri creati da te"); return;
+    if (cantiere && !(await puoModificareCantiereDb(cantiere))) {
+      toast.error("Non hai i permessi per modificare questo cantiere."); return;
     }
     if (!nome.trim()) { toast.error("Il nome del cantiere è obbligatorio"); return; }
     if (!soggetto) { toast.error("Seleziona un cliente o un lead"); return; }
@@ -529,7 +531,7 @@ export function CantiereDialog({
             />
           )}
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
-          <Button type="button" onClick={salva} disabled={saving || geoBusy}>
+          <Button type="button" onClick={salva} disabled={!modificabile || saving || geoBusy}>
             {saving ? "Salvataggio..." : cantiere ? "Salva" : "Crea"}
           </Button>
         </DialogFooter>

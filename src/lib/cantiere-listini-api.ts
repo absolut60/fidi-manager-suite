@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 import type { Database } from "@/integrations/supabase/types";
 import type { CantiereRow } from "@/lib/cantieri";
 import { eliminaConEsito } from "@/lib/esito-eliminazione";
@@ -65,6 +66,25 @@ export async function puoModificareCantiereDb(c: Pick<CantiereRow, "cliente_id" 
   const { data, error } = await supabase.rpc("auth_puo_modificare_cantiere", args as unknown as Database["public"]["Functions"]["auth_puo_modificare_cantiere"]["Args"]);
   if (error) throw error;
   return data === true;
+}
+export const chiaveCantieriModificabili = ["cantieri-modificabili"] as const;
+export async function cantieriModificabili(ids: readonly string[]): Promise<string[]> {
+  const unici = [...new Set(ids)].filter(Boolean);
+  if (!unici.length) return [];
+  const { data, error } = await supabase.rpc("cantieri_modificabili", { _ids: unici });
+  if (error) throw error;
+  return data ?? [];
+}
+export function useCantieriModificabili(ids: readonly string[], singolo?: CantiereRow | null, enabled = true) {
+  const { user } = useAuth();
+  const unici = [...new Set(ids)].filter(Boolean).sort();
+  return useQuery({
+    queryKey: [...chiaveCantieriModificabili, user?.id, unici, singolo ? [singolo.cliente_id, singolo.lead_id, singolo.agente_codice, singolo.created_by] : null],
+    enabled: enabled && unici.length > 0 && !!user,
+    queryFn: async () => new Set(singolo
+      ? await puoModificareCantiereDb(singolo) ? [singolo.id] : []
+      : await cantieriModificabili(unici)),
+  });
 }
 /** Customer engine values are proposals only. Missing price never invents one. */
 export function propostaPrezzoCantiere(p?: PrezzoClienteGamma | null) {
