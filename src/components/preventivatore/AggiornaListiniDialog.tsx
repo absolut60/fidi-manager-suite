@@ -3,7 +3,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { AnalisiAggiornaListini, DifferenzaListino } from "@/lib/preventivi-api";
-import { formatScontiGamma } from "@/lib/riga-preventivo";
+import { formatScontiGamma, prezzoNonDiListino, spunteInizialiListini } from "@/lib/riga-preventivo";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatNumeroIt } from "@/lib/numero-it";
 
@@ -17,7 +18,7 @@ export function AggiornaListiniDialog({ analisi, onClose, onApplica, inCorso }: 
   inCorso: boolean;
 }) {
   const [spunte, setSpunte] = useState<Set<string>>(new Set());
-  useEffect(() => { setSpunte(new Set(analisi?.differenze.map((d) => d.riga_id) ?? [])); }, [analisi]);
+  useEffect(() => { setSpunte(spunteInizialiListini(analisi?.differenze ?? [])); }, [analisi]);
   if (!analisi) return null;
   const riga = (label: string, a: string, b: string) => (
     <div className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-1 text-xs">
@@ -42,6 +43,7 @@ export function AggiornaListiniDialog({ analisi, onClose, onApplica, inCorso }: 
                 }} aria-label={`Aggiorna ${d.codice}`} />
                 <div className="min-w-0 space-y-0.5">
                   <div className="break-words text-sm"><span className="font-mono font-semibold">{d.codice}</span> {d.descrizione}</div>
+                  {prezzoNonDiListino(d.fonte_attuale) && <Badge variant="secondary" className="text-xs">Prezzo non di listino</Badge>}
                   {riga("Prezzo lordo", f4(c.attuali.prezzo_unit), f4(c.nuovi.prezzo_unit))}
                   {riga("Sconti", formatScontiGamma(c.attuali.sconti_gamma) || "—", formatScontiGamma(c.nuovi.sconti_gamma) || "—")}
                   {riga("Magg.%", formatNumeroIt(c.attuali.maggiorazione_perc), formatNumeroIt(c.nuovi.maggiorazione_perc))}
