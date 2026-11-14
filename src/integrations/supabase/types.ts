@@ -5890,6 +5890,7 @@ export type Database = {
           alternativa_di: string | null
           cantiere_descrizione: string | null
           cantiere_id: string | null
+          categoria_rif: string | null
           cliente_id: string | null
           condizione_pagamento_cod: string | null
           created_at: string
@@ -5900,6 +5901,8 @@ export type Database = {
           id: string
           iva_importo: number | null
           iva_perc: number | null
+          listino_rif: number | null
+          macrocategoria_rif: string | null
           note: string | null
           numero: string | null
           preventivo_origine_id: string | null
@@ -5919,6 +5922,7 @@ export type Database = {
           alternativa_di?: string | null
           cantiere_descrizione?: string | null
           cantiere_id?: string | null
+          categoria_rif?: string | null
           cliente_id?: string | null
           condizione_pagamento_cod?: string | null
           created_at?: string
@@ -5929,6 +5933,8 @@ export type Database = {
           id?: string
           iva_importo?: number | null
           iva_perc?: number | null
+          listino_rif?: number | null
+          macrocategoria_rif?: string | null
           note?: string | null
           numero?: string | null
           preventivo_origine_id?: string | null
@@ -5948,6 +5954,7 @@ export type Database = {
           alternativa_di?: string | null
           cantiere_descrizione?: string | null
           cantiere_id?: string | null
+          categoria_rif?: string | null
           cliente_id?: string | null
           condizione_pagamento_cod?: string | null
           created_at?: string
@@ -5958,6 +5965,8 @@ export type Database = {
           id?: string
           iva_importo?: number | null
           iva_perc?: number | null
+          listino_rif?: number | null
+          macrocategoria_rif?: string | null
           note?: string | null
           numero?: string | null
           preventivo_origine_id?: string | null
@@ -6000,6 +6009,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "preventivi_listino_rif_fkey"
+            columns: ["listino_rif"]
+            isOneToOne: false
+            referencedRelation: "listini_gamma"
+            referencedColumns: ["codice"]
           },
           {
             foreignKeyName: "preventivi_preventivo_origine_id_fkey"
@@ -10573,6 +10589,36 @@ export type Database = {
       peso_mese_fido: { Args: { _eta: number }; Returns: number }
       prezzi_preventivo_cliente: {
         Args: { _cliente_id: string; _codici: string[]; _data?: string }
+        Returns: {
+          articolo_codice: string
+          avvisi: string[]
+          costo_ultimo: number
+          deposito_codice: string
+          fonte_prezzo: string
+          listino: number
+          maggiorazione_perc: number
+          prezzo_base: number
+          prezzo_listino: number
+          prezzo_netto: number
+          regole: string[]
+          sc1: number
+          sc2: number
+          sc3: number
+          sc4: number
+          sc5: number
+          sc6: number
+          um: string
+        }[]
+      }
+      prezzi_preventivo_riferimento: {
+        Args: {
+          _categoria: string
+          _codici: string[]
+          _data?: string
+          _listino: number
+          _macrocategoria: string
+          _store_id: string
+        }
         Returns: {
           articolo_codice: string
           avvisi: string[]

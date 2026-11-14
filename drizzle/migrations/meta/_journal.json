@@ -1562,6 +1562,13 @@
       "when": 1794686203793,
       "tag": "0222_fm70_picker_apertura",
       "breakpoints": true
+    },
+    {
+      "idx": 223,
+      "version": "7",
+      "when": 1794689815785,
+      "tag": "0223_fm71_condizioni_riferimento",
+      "breakpoints": true
     }
   ]
 }
