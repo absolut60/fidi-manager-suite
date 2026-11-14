@@ -1,4 +1,7 @@
 # FM68 — Fetta A: visibilità preventivisti (solo database)
+## Cantiere preventivo — fetta 2 ridotta
+- [ ] Distanza esclusivamente salvata, helper/test; dialog con mappa esistente e fallback, nessuna nuova chiamata di distanza.
+- [ ] Test, schermate 375/1280, confronto file; Google reale non verificabile nel sandbox.
 ## Attività commerciali nel preventivo — fetta 1
 - [x] 0213: colonna/FK/indice e tre policy additive; 11 precedenti identiche (MD5 03e197c15551c44c79f6405ec3a4e955), nessuna impersonazione.
 - [x] Legame/autore solo in creazione, riquadro Testata con dialog condiviso e link calendario; Cantiere e gestori Testata invariati. Sede risolta dal nome esatto già fornito dalla RPC sul catalogo stores (nomi reali non duplicati), senza leggere clienti.
