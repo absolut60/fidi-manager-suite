@@ -1,5 +1,10 @@
 import { expect, test } from "bun:test";
-import { formatoDistanzaCantiere, linkIndicazioniCantiere } from "../src/lib/cantiere-distanza";
+import { formatoDistanzaCantiere, linkIndicazioniCantiere, nomeSedeBreve } from "../src/lib/cantiere-distanza";
+test("nome sede breve solo per visualizzazione", () => {
+  expect(nomeSedeBreve("SEDE DI CINISELLO BALSAMO")).toBe("Cinisello Balsamo");
+  expect(nomeSedeBreve(" SEDE DI CASOREZZO ")).toBe("Casorezzo");
+  expect(nomeSedeBreve("EMPOLI")).toBe("Empoli");
+});
 test("329.3 km e 202 minuti: una decimale italiana e ore/minuti", () => {
   expect(formatoDistanzaCantiere(329.3, 202)).toBe("329,3 km · 3 h 22 min");
 });
