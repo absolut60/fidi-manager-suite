@@ -1,4 +1,7 @@
 # FM68 — Fetta A: visibilità preventivisti (solo database)
+## Fetta C
+- [ ] CantiereDialog unico nel preventivo e nella creazione; opzioni iniziali/callback opt-in, stessi gestori e nessuna modifica DB.
+- [ ] Test e schermate 375/1280 della creazione/selezione; confronto dei gestori preventivo.
 ## Fetta B2
 - [x] Helper preventivista, Lead nel menu/guardie; modifica propria, nessun nuovo DELETE e link clienti sotto RLS. Cantieri già presente nel gruppo preventivi, deduplicazione invariata; mappa disabilita apertura di modifica altrui.
 - [x] 740 test; schermate simulate 375/1280 con record propri/altrui e cliente non visibile; nessuna modifica database. Creazione/salvataggio su account Pierpaolo reale non verificati: sessione disponibile di altro account, dati/ruoli intercettati soltanto nelle prove browser.

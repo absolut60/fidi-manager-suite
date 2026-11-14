@@ -39,7 +39,7 @@ export type SoggettoFisso = {
 };
 
 export function CantiereDialog({
-  open, onOpenChange, cantiere, agenti, soggettoFisso, queryKeysExtra,
+  open, onOpenChange, cantiere, agenti, soggettoFisso, queryKeysExtra, provvisorioIniziale = false, onSalvato,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -47,6 +47,8 @@ export function CantiereDialog({
   agenti?: Agente[];
   soggettoFisso?: SoggettoFisso;
   queryKeysExtra?: ReadonlyArray<readonly unknown[]>;
+  provvisorioIniziale?: boolean;
+  onSalvato?: (c: { id: string; nome: string; nuovo: boolean }) => void;
 }) {
   const qc = useQueryClient();
   const { user, roles } = useAuth();
@@ -195,13 +197,13 @@ export function CantiereDialog({
     setAgenteCodice(c?.agente_codice ?? "");
     setNote(c?.note ?? "");
     setAttivo(c?.attivo ?? true);
-    setProvvisorio(c?.provvisorio === true);
+    setProvvisorio(c ? c.provvisorio === true : provvisorioIniziale);
     setLat(c?.lat != null ? String(c.lat) : "");
     setLng(c?.lng != null ? String(c.lng) : "");
     setSedeTesto(c ? testoSedeVicina(c) : null);
     setSedeErrore(null);
     setCoordDaAutocomplete(false);
-  }, [open, cantiere, soggettoFisso]);
+  }, [open, cantiere, soggettoFisso, provvisorioIniziale]);
 
   // Precompila l'agente dal soggetto scelto
   useEffect(() => {
@@ -331,6 +333,7 @@ export function CantiereDialog({
         try { await ricalcolaSede({ data: { cantiere_id: id } }); } catch { /* non blocca */ }
         invalida();
       }
+      onSalvato?.({ id, nome: nome.trim(), nuovo: !cantiere });
       onOpenChange(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Salvataggio non riuscito");
