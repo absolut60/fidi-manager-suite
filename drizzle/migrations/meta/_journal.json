@@ -1499,6 +1499,13 @@
       "when": 1794665180641,
       "tag": "0213_fm68_attivita_preventivo",
       "breakpoints": true
+    },
+    {
+      "idx": 214,
+      "version": "7",
+      "when": 1794666572879,
+      "tag": "0214_fm68_attivita_legame_preventivo_restrittivo",
+      "breakpoints": true
     }
   ]
 }
