@@ -1,3 +1,7 @@
+# FM68 — Routes API e distanza sede cliente
+- [ ] Helper Routes unico, stessa selezione/salvataggio sede vicina; funzione autenticata senza scritture e distanza nel riquadro.
+- [ ] Test, una prova reale helper e schermate 375/1280.
+
 # FM68 — Fetta A: visibilità preventivisti (solo database)
 ## Cantiere preventivo — fetta 2 ridotta
 - [x] Distanza esclusivamente salvata, helper/test; dialog con mappa esistente opt-in compatta e fallback, nessuna nuova chiamata di distanza. Nome sede cliente risolto dal catalogo stores, coordinate sotto RLS.

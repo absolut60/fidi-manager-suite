@@ -1,5 +1,5 @@
 // Helper server-only del modulo cantieri: geocodifica Google e calcolo della
-// sede più vicina su strada (haversine per le candidate + Distance Matrix).
+// sede più vicina su strada (haversine per le candidate + Routes API).
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type Sb = SupabaseClient<any, any, any>;
@@ -145,6 +145,39 @@ export function haversineKm(a: { lat: number; lng: number }, b: { lat: number; l
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
+export type CoordinateStradali = { lat: number; lng: number };
+export type DistanzaStradale = { km: number; minuti: number };
+
+/** Routes JSON: risultati indicizzati per destinazione; nessuna persistenza. */
+export async function distanzaStradale(origine: CoordinateStradali, destinazioni: CoordinateStradali[]): Promise<Array<DistanzaStradale | null>> {
+  if (!destinazioni.length) return [];
+  const apiKey = process.env["GOOGLE_MAPS_API_KEY"];
+  if (!apiKey) throw new Error("Chiave Google Maps non configurata sul server.");
+  const waypoint = (c: CoordinateStradali) => ({ waypoint: { location: { latLng: { latitude: c.lat, longitude: c.lng } } } });
+  try {
+    const res = await fetch("https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix", {
+      method: "POST",
+      headers: { "X-Goog-Api-Key": apiKey, "X-Goog-FieldMask": "originIndex,destinationIndex,distanceMeters,duration,status,condition", "Content-Type": "application/json" },
+      body: JSON.stringify({ origins: [waypoint(origine)], destinations: destinazioni.map(waypoint), travelMode: "DRIVE", languageCode: "it" }),
+    });
+    if (!res.ok) throw new Error(`Errore Routes API (HTTP ${res.status}).`);
+    const json: unknown = await res.json();
+    if (!Array.isArray(json)) throw new Error("Risposta Routes API non valida.");
+    const out: Array<DistanzaStradale | null> = destinazioni.map(() => null);
+    for (const e of json) {
+      if (!e || e.originIndex !== 0 || !Number.isInteger(e.destinationIndex) || e.destinationIndex < 0 || e.destinationIndex >= out.length || e.condition !== "ROUTE_EXISTS" || (e.status?.code ?? 0) !== 0) continue;
+      const seconds = typeof e.duration === "string" && /^\d+(?:\.\d+)?s$/.test(e.duration) ? Number(e.duration.slice(0, -1)) : NaN;
+      if (typeof e.distanceMeters !== "number" || !Number.isFinite(e.distanceMeters) || e.distanceMeters < 0 || !Number.isFinite(seconds)) continue;
+      out[e.destinationIndex] = { km: e.distanceMeters / 1000, minuti: seconds / 60 };
+    }
+    return out;
+  } catch (e) {
+    // Non propagare errori fetch/provider che potrebbero contenere credenziali.
+    if (e instanceof Error && (/^Errore Routes API \(HTTP \d+\)\.$/.test(e.message) || e.message === "Risposta Routes API non valida.")) throw e;
+    throw new Error("Errore di rete verso Routes API: riprova.");
+  }
+}
+
 export type EsitoSede = {
   sede_id: string | null;
   sede_nome: string | null;
@@ -155,7 +188,7 @@ export type EsitoSede = {
 
 /**
  * Calcola la sede attiva più vicina su strada: 3 candidate per distanza in
- * linea d'aria, poi Distance Matrix (chiave SERVER) solo su quelle. Salva su cantieri.
+ * linea d'aria, poi Routes API (chiave SERVER) solo su quelle. Salva su cantieri.
  */
 export async function calcolaSedeVicina(supabase: Sb, cantiereId: string): Promise<EsitoSede> {
   const vuoto = (messaggio: string | null): EsitoSede => ({
@@ -179,46 +212,19 @@ export async function calcolaSedeVicina(supabase: Sb, cantiereId: string): Promi
     .sort((a, b) => a.aria - b.aria)
     .slice(0, 3);
 
-  const apiKey = process.env["GOOGLE_MAPS_API_KEY"];
   let scelta: { id: string; nome: string; km: number; minuti: number } | null = null;
   let messaggio: string | null = null;
-
-  if (!apiKey) {
-    messaggio = "Chiave Google Maps non configurata sul server.";
-  } else {
-    try {
-      const dest = candidate.map((s) => `${s.lat},${s.lng}`).join("|");
-      const url =
-        `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${origine.lat},${origine.lng}` +
-        `&destinations=${encodeURIComponent(dest)}&mode=driving&language=it&region=it&key=${apiKey}`;
-      const res = await fetch(url);
-      if (!res.ok) {
-        messaggio = `Errore Distance Matrix (HTTP ${res.status}).`;
-      } else {
-        const json = (await res.json()) as {
-          status: string;
-          error_message?: string;
-          rows?: Array<{ elements?: Array<{ status: string; distance?: { value: number }; duration?: { value: number } }> }>;
-        };
-        if (json.status !== "OK") {
-          messaggio = `Distance Matrix non disponibile (${json.status}). ${json.error_message ?? ""}`.trim();
-        } else {
-          const el = json.rows?.[0]?.elements ?? [];
-          el.forEach((e, i) => {
-            const cand = candidate[i];
-            if (!cand || e.status !== "OK" || !e.distance || !e.duration) return;
-            const km = e.distance.value / 1000;
-            if (!scelta || km < scelta.km) {
-              scelta = { id: cand.id, nome: cand.nome, km, minuti: Math.round(e.duration.value / 60) };
-            }
-          });
-          if (!scelta) messaggio = "Nessun percorso stradale trovato verso le sedi candidate.";
-        }
+  try {
+    const distanze = await distanzaStradale(origine, candidate);
+    distanze.forEach((d, i) => {
+      const cand = candidate[i];
+      if (d && cand && (!scelta || d.km < scelta.km)) {
+        scelta = { id: cand.id, nome: cand.nome, km: d.km, minuti: Math.round(d.minuti) };
       }
-    } catch (e) {
-      console.error("[sede-vicina] errore di rete", e);
-      messaggio = "Errore di rete verso Google Distance Matrix.";
-    }
+    });
+    if (!scelta) messaggio = "Nessun percorso stradale trovato verso le sedi candidate.";
+  } catch (e) {
+    messaggio = e instanceof Error ? e.message : "Distanza stradale non disponibile.";
   }
 
   const s = scelta as { id: string; nome: string; km: number; minuti: number } | null;
