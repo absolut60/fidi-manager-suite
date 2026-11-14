@@ -54,8 +54,7 @@ Altri avvisi: `articolo_senza_prezzo_su_listino`, `cliente_senza_listino`, `clie
 - `importo` è salvato con il segno: i totali di blocco sono SUM(importo), mai importo × segno.
 
 ## Punti aperti
-- Preventivi ai lead: la funzione interna accetta `_cliente_codice` NULL (livelli 3 e 6 saltati);
-  da FM71 esiste la funzione pubblica di riferimento; la scelta nell'interfaccia resta da realizzare.
+- Preventivi ai lead: creazione, Testata e prezzi disponibili da FM71 3b; PDF, blocco trasformazione in ordine e sezioni nelle schede restano alle fette successive.
 
 ## Condizioni di riferimento (FM71)
 

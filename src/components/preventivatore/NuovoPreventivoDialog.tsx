@@ -15,7 +15,6 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useNavigate } from "@tanstack/react-router";
-import { ClientePicker } from "./ClientePicker";
 import { CantierePicker } from "./CantierePicker";
 import { CantiereDialog } from "@/components/cantiere-dialog";
 import {
@@ -262,7 +261,7 @@ export function NuovoPreventivoDialog({
               <SelectContent className="max-w-[calc(100vw-2rem)]">
                 <SelectItem value="__none__">— Nessuna —</SelectItem>
                 {pagamento && !codiciPagamento.some((c) => c.cod === pagamento) && <SelectItem value={pagamento}>{pagamento}</SelectItem>}
-                {codiciPagamento.map((c) => <SelectItem key={c.cod} value={c.cod} className="whitespace-normal break-words">{c.cod} – {c.descrizione}</SelectItem>)}
+                {codiciPagamento.map((c) => <SelectItem key={c.cod} value={c.cod} className="whitespace-normal break-words">{c.descrizione} ({c.cod})</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

@@ -1,7 +1,9 @@
 # FM71 — Preventivi ai lead nell’app, fetta 3b
-- [ ] Selettore condiviso cliente/lead, lead rapido, creazione con riferimento obbligatorio, cambio soggetto e Testata.
-- [ ] Lettura lead con RLS, duplicazione e riserva giacenze senza cambi al dispatcher/PDF/ordini.
-- [ ] Test, browser 375/1280, documentazione e SHA; duplicazione su altro cliente dai lead resta aperta per fetta successiva.
+- [x] Selettore condiviso cliente/lead, lead rapido con defaults DB, creazione con riferimento obbligatorio, cambio soggetto e Testata lead con riferimento non disattivabile.
+- [x] Lettura lead e sua sede nella lettura documento con RLS, duplicazione lead e riserva giacenze; dispatcher/PDF/ordini invariati. Alternative lead non disponibili per vincolo SQL preesistente.
+- [x] 882 test verdi, browser con risposte simulate a 375/1280: creazione esistente/rapida, valori fissi, riferimento obbligatorio, pagamento proposto, Testata, cambio verso cliente, duplicazione e riserva. Zero errori; screenshot controllati; pagina temporanea rimossa. Documentazione aggiornata. AGENTS root al limite: nessuna regola aggiunta lì.
+- [ ] Prova autenticata reale: mint --self non trova account corrispondente, serve accesso operativo dall’anteprima. Nessun dato reale di prova creato.
+- [ ] Duplicazione su altro cliente da lead, alternative lead, PDF e blocco trasformazione: fette successive richieste dal proprietario, non implementate qui.
 
 # FM71 — Preventivi ai lead, fetta 3a (solo database)
 - [x] Migrazione 0224 applicata (registro 225 voci, 0000–0224): destinatari alternativi, condizioni lead, trigger riaggancio e sei dipendenze del gate aggiornate senza cambiare predicati o scritture.
