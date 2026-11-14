@@ -30,7 +30,9 @@ export async function contaPrezziCantiere(id: string): Promise<number> {
   return count ?? 0;
 }
 export async function puoModificareCantiereDb(c: Pick<CantiereRow, "cliente_id" | "lead_id" | "agente_codice" | "created_by">): Promise<boolean> {
-  const { data, error } = await supabase.rpc("auth_puo_modificare_cantiere", { _cliente_id: c.cliente_id, _lead_id: c.lead_id, _agente_codice: c.agente_codice, _created_by: c.created_by });
+  // Generated RPC args omit SQL nullability. Keep actual NULLs: empty IDs change the predicate.
+  const args = { _cliente_id: c.cliente_id, _lead_id: c.lead_id, _agente_codice: c.agente_codice, _created_by: c.created_by ?? null };
+  const { data, error } = await supabase.rpc("auth_puo_modificare_cantiere", args as unknown as Database["public"]["Functions"]["auth_puo_modificare_cantiere"]["Args"]);
   if (error) throw error;
   return data === true;
 }
