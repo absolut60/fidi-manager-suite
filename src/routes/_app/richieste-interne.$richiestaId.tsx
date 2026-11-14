@@ -32,6 +32,7 @@ import { BonificoAccontoCard } from "@/components/richieste-interne/bonifico-acc
 
 
 export const Route = createFileRoute("/_app/richieste-interne/$richiestaId")({
+  head: () => ({ meta: [{ title: "Richiesta interna — FidiManager" }, { name: "description", content: "Dettaglio e gestione della richiesta interna MADE." }, { property: "og:title", content: "Richiesta interna — FidiManager" }, { property: "og:description", content: "Dettaglio e gestione della richiesta interna MADE." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: DettaglioRichiesta,
 });
 

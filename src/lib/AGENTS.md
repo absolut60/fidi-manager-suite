@@ -18,6 +18,6 @@
 - Site-price editing uses only auth_puo_modificare_cantiere through puoModificareCantiereDb; proposals reuse the customer engine, and unit display/editing and discounts reuse riga-preventivo, preserving manual UM1 prices. Quote site-price notices reuse the RLS count key and PrezziCantiereDialog; only successful explicit site selection triggers a toast, and application/marking share prezzoConPrioritaCantiere/coincidePrezzoCantiere with the engine shape and cached opzioniPrezziCantiere.
 
 - Quote price provenance is written only by patchConFontePrezzo; automated paths supply priority source, manual sale-term edits are protected by spunteInizialiListini, and segnoPrezzoCantiere uses persisted source with NULL-only value fallback.
-- Verified deletes use esito-eliminazione exact counts against unique requested IDs; consumers update cache/navigate only on full success, so zero-row RLS deletes cannot masquerade as success. Quote notes retain their parent filter through the shared helper.
+- Verified deletes use esito-eliminazione with an optional injected client and exact counts (IDs or unchanged filtered server deletes); all cascades stop on incomplete steps and Storage follows verified attachment-row deletion, so denied deletes cannot remove parent/file or report success. Quote notes retain their parent filter.
 
 - Manual marketing cascades enumerate all visible child IDs in stable pages and verify full deletion before deleting the parent; partial recipient removal refreshes data and retains only surviving IDs, preventing false success.
