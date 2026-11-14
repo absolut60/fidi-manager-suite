@@ -1245,7 +1245,8 @@ export async function fetchPreventivoOrigine(
 }
 
 // FM65: condizioni Gamma del cliente (sola lettura) e prezzo dal motore. Il TS non ricalcola prezzi.
-export async function fetchCondizioniPreventivoCliente(cliente_id: string) {
+export type CondizioniPreventivoCliente = Database["public"]["Functions"]["condizioni_preventivo_cliente"]["Returns"][number];
+export async function fetchCondizioniPreventivoCliente(cliente_id: string): Promise<CondizioniPreventivoCliente | null> {
   const { data, error } = await supabase.rpc("condizioni_preventivo_cliente", { _cliente_id: cliente_id });
   if (error) throw error;
   return data?.[0] ?? null;

@@ -19,3 +19,13 @@ test("lettura client getChiaveMappe e cache chiave-mappe solo nell'hook canonico
   });
   expect(violations).toEqual([]);
 });
+
+test("il codice client non identifica stores tramite nome", () => {
+  const violations = files(src).flatMap((file) => {
+    const name = relative(src, file);
+    if (name.endsWith(".server.ts") || name.endsWith(".functions.ts")) return [];
+    const code = readFileSync(file, "utf8");
+    return /\.from\(\s*["']stores["']\s*\)(?:(?!;|\.from\().)*?\.eq\(\s*["']nome["']\s*,/s.test(code) ? [name] : [];
+  });
+  expect(violations).toEqual([]);
+});

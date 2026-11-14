@@ -22,7 +22,7 @@ import { BadgeProvvisorio } from "@/components/badge-provvisorio";
  * Riquadro Cantiere della Testata (FM65 B2): tre modi, tutti collegano un vero cantiere (onCantiere → cantiere_id).
  * cantiere_descrizione non viene più scritta: resta solo come fallback in lettura.
  */
-export function CantiereTestata({ prev, modificabile, onCantiere, clienteEtichetta, sedeClienteNome }: { prev: PreventivoConDettagli; modificabile: boolean; onCantiere: (id: string) => void; clienteEtichetta?: string; sedeClienteNome?: string }) {
+export function CantiereTestata({ prev, modificabile, onCantiere, clienteEtichetta, sedeClienteNome, sedeClienteId }: { prev: PreventivoConDettagli; modificabile: boolean; onCantiere: (id: string) => void; clienteEtichetta?: string; sedeClienteNome?: string; sedeClienteId?: string | null }) {
   const qc = useQueryClient();
   const soggettoFisso = useMemo(() => prev.cliente_id ? { tipo: "cliente" as const, id: prev.cliente_id, etichetta: clienteEtichetta || prev.cliente?.ragione_sociale || "Cliente" } : undefined, [prev.cliente_id, prev.cliente?.ragione_sociale, clienteEtichetta]);
   const c = prev.cantiere;
@@ -41,20 +41,20 @@ export function CantiereTestata({ prev, modificabile, onCantiere, clienteEtichet
     },
   });
   const { data: sedi = [] } = useQuery({
-    queryKey: ["sedi-cantiere-preventivo", geo?.sede_piu_vicina_id, sedeClienteNome],
+    queryKey: ["sedi-cantiere-preventivo", geo?.sede_piu_vicina_id, sedeClienteId],
     enabled: !!geo,
     queryFn: async () => {
       const select = "id, nome, indirizzo, cap, citta, provincia, telefono, lat, lng";
       const [vicina, cliente] = await Promise.all([
         geo?.sede_piu_vicina_id ? supabase.from("stores").select(select).eq("id", geo.sede_piu_vicina_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
-        sedeClienteNome && sedeClienteNome !== "—" ? supabase.from("stores").select(select).eq("nome", sedeClienteNome).maybeSingle() : Promise.resolve({ data: null, error: null }),
+        sedeClienteId ? supabase.from("stores").select(select).eq("id", sedeClienteId).maybeSingle() : Promise.resolve({ data: null, error: null }),
       ]);
       if (vicina.error || cliente.error) throw vicina.error || cliente.error;
       return [vicina.data, cliente.data].filter((s): s is SedeMappa => s != null);
     },
   });
   const vicina = sedi.find(s => s.id === geo?.sede_piu_vicina_id);
-  const sedeCliente = sedi.find(s => s.nome === sedeClienteNome);
+  const sedeCliente = sedi.find(s => s.id === sedeClienteId);
   const stessaSede = !!sedeCliente && sedeCliente.id === geo?.sede_piu_vicina_id;
   const fetchDistanza = useServerFn(distanzaCantiereSede);
   const { data: distanzaCliente, isFetching: caricaDistanza, error: erroreDistanza } = useQuery({
@@ -84,7 +84,7 @@ export function CantiereTestata({ prev, modificabile, onCantiere, clienteEtichet
           ? `Sede più vicina: ${vicina.nome}${stessaSede ? " (sede del cliente)" : ""} · ${formatoDistanzaCantiere(geo.sede_piu_vicina_km, geo.sede_piu_vicina_min)}`
           : "Distanza non ancora calcolata"}</p>}
       {geo?.lat != null && geo.lng != null && sedeCliente && !stessaSede && <p className="break-words text-xs text-muted-foreground">
-        Dalla sede del cliente ({sedeCliente.nome}): {caricaDistanza ? "Calcolo distanza…" : erroreDistanza ? "Distanza non disponibile." : distanzaCliente ? formatoDistanzaCantiere(distanzaCliente.km, Math.round(distanzaCliente.minuti)) : "Percorso non disponibile."}
+        Dalla sede del cliente ({sedeClienteNome || sedeCliente.nome}): {caricaDistanza ? "Calcolo distanza…" : erroreDistanza ? "Distanza non disponibile." : distanzaCliente ? formatoDistanzaCantiere(distanzaCliente.km, Math.round(distanzaCliente.minuti)) : "Percorso non disponibile."}
       </p>}
       {erroreGeo && <p className="text-xs text-muted-foreground">Posizione non disponibile.</p>}
     </div> : <p className="break-words text-sm">{storico || "Da definire"}</p>}
