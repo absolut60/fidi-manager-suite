@@ -1,7 +1,5 @@
 import { useId } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
-import { getChiaveMappe } from "@/lib/cantieri.functions";
+import { useChiaveMappe } from "@/hooks/use-chiave-mappe";
 import { normalizzaIndirizzo, residenzaDaIndirizzo, type ValoreIndirizzo, type LimitiIndirizzo } from "@/lib/blocco-indirizzo";
 import { IndirizzoAutocomplete } from "@/components/indirizzo-autocomplete";
 import { Input } from "@/components/ui/input";
@@ -24,8 +22,7 @@ export function BloccoIndirizzo({ value, onChange, onCoordinate, onScelto, disab
   residenzaUnica?: boolean;
 }) {
   const id = useId();
-  const chiaveMappe = useServerFn(getChiaveMappe);
-  const { data: mapsKey } = useQuery({ queryKey: ["chiave-mappe"], queryFn: async () => (await chiaveMappe()).key, staleTime: Infinity });
+  const { data: mapsKey } = useChiaveMappe();
   const cambia = (parziale: Partial<ValoreIndirizzo>) => { if (!disabled) onChange(normalizzaIndirizzo(parziale, limiti)); };
   const label = (campo: keyof ValoreIndirizzo, testo: string) => <Label htmlFor={`${id}-${campo}`}>{etichette?.[campo] ?? testo}{obbligatori?.[campo] ? " *" : ""}</Label>;
   return <div className={cn("grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-4", className)}>

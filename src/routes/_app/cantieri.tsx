@@ -3,7 +3,7 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ClientOnly } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
+import { useChiaveMappe } from "@/hooks/use-chiave-mappe";
 import { AlertTriangle, Building2, MapPin, Pencil, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,7 +25,6 @@ import { FiltriCollassabili, ElencoSchede, SchedaLista } from "@/components/list
 import { CantiereDialog } from "@/components/cantiere-dialog";
 import { BottoneElimina } from "@/components/conferma-eliminazione";
 import { usePermessiCommerciale } from "@/hooks/use-permessi-commerciale";
-import { getChiaveMappe } from "@/lib/cantieri.functions";
 import {
   CATEGORIE_CANTIERE, CATEGORIA_LABEL, GEO_CLASS, GEO_LABEL, GEO_STATI,
   indirizzoCompleto, nomeSoggettoCantiere, testoSedeVicina,
@@ -86,7 +85,6 @@ function CantieriPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [inModifica, setInModifica] = useState<CantiereRow | null>(null);
 
-  const chiaveMappe = useServerFn(getChiaveMappe);
   const { data: agenti = [] } = useQuery({
     queryKey: ["agenti-lookup"],
     queryFn: async () => {
@@ -121,11 +119,7 @@ function CantieriPage() {
     },
   });
 
-  const { data: mapsKey } = useQuery({
-    queryKey: ["google-maps-key"],
-    queryFn: async () => (await chiaveMappe()).key,
-    staleTime: 3_600_000,
-  });
+  const { data: mapsKey } = useChiaveMappe();
 
   const filtrati = useMemo(() => {
     const q = search.trim().toLowerCase();
