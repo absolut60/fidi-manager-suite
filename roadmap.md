@@ -1,6 +1,6 @@
 # FM68 — Sede cliente per ID
-- [ ] RPC condizioni: solo store_id in coda, stessi gate/grant.
-- [ ] Passaggio ID alle due sezioni, test statico anti-ricerca per nome, verifiche e diff.
+- [x] 0215: condizioni_preventivo_cliente aggiunge solo store_id UUID in coda e cl.store_id alla SELECT; definizione applicata confrontata, gate e grant identici.
+- [x] ID passato dalla pagina a Testata/Attività/Cantiere; ricerche stores per ID e cache per ID; tipo dalle Returns generate, test statico anti-nome, 780 test verdi e build OK. Nessuna impersonazione.
 
 # FM68 — Routes API e distanza sede cliente
 - [x] Helper Routes unico, query/candidate e UPDATE identici byte per byte; funzione autenticata senza scritture e distanza nel riquadro, riga unica per sede coincidente.
