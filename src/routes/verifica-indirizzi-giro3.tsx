@@ -5,7 +5,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { ModuloConsensoPrivacy } from "@/components/modulo-consenso-privacy";
 
 const Contatto = lazy(async () => {
-  const path = "/src/routes/_app/clienti.$clienteId.tsx";
+  const path = "/src/components/verifica-contatto-giro3.tsx";
   const module = await import(/* @vite-ignore */ path);
   return { default: module.EditContattoDialog };
 });
