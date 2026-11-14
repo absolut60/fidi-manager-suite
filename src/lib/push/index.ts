@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { supabase } from "@/integrations/supabase/client";
 
 export const VAPID_PUBLIC_KEY =
@@ -152,19 +153,22 @@ export async function unsubscribeFromPush(): Promise<{ ok: boolean; reason?: str
     const reg = await navigator.serviceWorker.ready;
     const sub = await reg.pushManager.getSubscription();
 
-    if (sub) {
-      await sub.unsubscribe();
-      await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
-    } else {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase
-          .from("push_subscriptions")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("platform", currentPlatform());
-      }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!sub && !user) return { ok: false, reason: "Sessione non disponibile" };
+    let lettura = supabase.from("push_subscriptions").select("id", { count: "exact", head: true });
+    if (sub) lettura = lettura.eq("endpoint", sub.endpoint);
+    else if (user) lettura = lettura.eq("user_id", user.id).eq("platform", currentPlatform());
+    const { count: richiesti, error } = await lettura;
+    if (error || richiesti === null) return { ok: false, reason: error?.message ?? "Conteggio notifiche non disponibile" };
+    // Nessuna riga da rimuovere è già lo stato desiderato; non è un DELETE negato.
+    if (richiesti > 0) {
+      const esito = await eliminaConEsito("push_subscriptions", {
+        richiesti,
+        filtro: q => sub ? q.eq("endpoint", sub.endpoint) : q.eq("user_id", user?.id ?? "").eq("platform", currentPlatform()),
+      });
+      if (esito.tipo !== "eliminato") return { ok: false, reason: messaggioEsitoEliminazione(esito, "le iscrizioni alle notifiche") };
     }
+    if (sub) await sub.unsubscribe();
 
     return { ok: true };
   } catch (e) {
@@ -181,7 +185,8 @@ export async function removeDeviceSubscription(
   }
 
   try {
-    await supabase.from("push_subscriptions").delete().eq("id", id);
+    const esito = await eliminaConEsito("push_subscriptions", id);
+    if (esito.tipo !== "eliminato") return { ok: false, reason: messaggioEsitoEliminazione(esito, "il dispositivo") };
 
     if ("serviceWorker" in navigator) {
       const reg = await navigator.serviceWorker.ready;

@@ -1,3 +1,6 @@
+# FM69 — Eliminazioni verificate, fetta 4b
+- [ ] Chat, scollegamento promesse, sostituzione ruoli, disattivazione push; fonte unica anche per DELETE già verificati, regola e guardia statica con eccezioni tecniche; test/suite e browser. Nessun DB o permesso.
+
 # FM69 — Eliminazioni verificate, fetta 4
 - [x] Interfaccia recupero/legale/piani/richieste e chiamante solleciti; server con client opzionale e filtri originali, conteggi DELETE reali e stop cascate; audit residui completato. 836 test e browser simulato 375/1280: allegati negati, azione mai cancellata e Storage intatto. Nessun DB; prestazioni reset massivo non provate per evitare cancellazioni reali.
 

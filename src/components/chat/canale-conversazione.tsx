@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -315,9 +316,13 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
 
   async function eliminaMessaggio(m: Messaggio) {
     if (m.allegato) {
+      const esito = await eliminaConEsito("allegati", m.allegato.id);
+      if (esito.tipo !== "eliminato") {
+        toast.error(messaggioEsitoEliminazione(esito, "l'allegato del messaggio"));
+        return;
+      }
       const { error: sErr } = await supabase.storage.from(BUCKET).remove([m.allegato.storage_path]);
       if (sErr) console.warn("[chat] rimozione file allegato fallita", sErr);
-      await supabase.from("allegati").delete().eq("id", m.allegato.id);
     }
     const { error } = await supabase
       .from("messaggi")
