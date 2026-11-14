@@ -1,5 +1,5 @@
 # FM70 — Ricerca articoli, fetta 1-bis
-- [ ] Applicare 0220: pg_trgm qualificato nello schema extensions, query senza varianti e varianti memorizzate bidirezionali; aggiornare backfill, test e documentazione, suite completa.
+- [x] Applicata 0220_fm70_ricerca_articoli_fix.sql: due extensions.similarity, query senza varianti, varianti memorizzate bidirezionali e backfill di 64.622 righe; trigger, firma ricerca, gate e prezzi invariati. Documentazione/test aggiornati. Riprodotto 42883 locale con pg_trgm in extensions, stessa chiamata codice ora passa; prove SQL complete e aggiuntive cm↔mm superate sul database isolato, normalizzazione e qualificazione verificate sul DB reale. Ricerca reale autenticata resta non verificabile con la sessione disponibile.
 
 # FM70 — Ricerca articoli, fetta 1
 - [x] Applicata 0219_fm70_ricerca_articoli_fetta1.sql: 64.622 testi valorizzati, indice GIN aggiunto senza rimozioni, matching multi-token, rilevanza e sede; impronte prezzi/RLS e blocco gate invariati.

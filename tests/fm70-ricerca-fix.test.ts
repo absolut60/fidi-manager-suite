@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 
 const prima = readFileSync("drizzle/migrations/0219_fm70_ricerca_articoli_fetta1.sql", "utf8");
 const fix = readFileSync("drizzle/migrations/0220_fm70_ricerca_articoli_fix.sql", "utf8");
-const ricerca = (sql: string) => sql.slice(sql.indexOf("FUNCTION public.cerca_articoli("), sql.indexOf("END; $function$;", sql.indexOf("FUNCTION public.cerca_articoli(")));
+const ricerca = (sql: string) => sql.slice(sql.indexOf("FUNCTION public.cerca_articoli(testo"), sql.indexOf("END; $function$;", sql.indexOf("FUNCTION public.cerca_articoli(testo")));
 
 describe("FM70 ricerca fix", () => {
   test("query senza varianti e pg_trgm qualificato: nessun altro cambio alla ricerca", () => {
