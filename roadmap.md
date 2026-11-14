@@ -1,3 +1,6 @@
+# FM69 — Eliminazioni verificate, fetta 4
+- [ ] Interfaccia recupero/legale/piani/richieste; server con client opzionale e conteggi reali; audit residui, suite e browser allegati negati. Nessun DB.
+
 # FM69 — Eliminazioni verificate, fetta 3
 - [x] Marketing/WhatsApp con esito unico; figli WhatsApp verificati prima del padre; parziali ricaricati e selezione residua. Browser simulato 375/1280: figli negati, padre mai chiamato; email 2 su 3 con residuo reale. Nessun DB.
 
