@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { distanzaCantiereSede } from "@/lib/cantieri.functions";
 import { Button } from "@/components/ui/button";
 import { CantiereDialog } from "@/components/cantiere-dialog";
 import { cn } from "@/lib/utils";
@@ -53,6 +55,18 @@ export function CantiereTestata({ prev, modificabile, onCantiere, clienteEtichet
   });
   const vicina = sedi.find(s => s.id === geo?.sede_piu_vicina_id);
   const sedeCliente = sedi.find(s => s.nome === sedeClienteNome);
+  const stessaSede = !!sedeCliente && sedeCliente.id === geo?.sede_piu_vicina_id;
+  const fetchDistanza = useServerFn(distanzaCantiereSede);
+  const { data: distanzaCliente, isFetching: caricaDistanza, error: erroreDistanza } = useQuery({
+    queryKey: ["distanza-cantiere-sede", c?.id, sedeCliente?.id, geo?.lat, geo?.lng],
+    enabled: !!c?.id && !!sedeCliente && !stessaSede && geo?.lat != null && geo?.lng != null,
+    staleTime: Infinity,
+    retry: false,
+    queryFn: () => {
+      if (!c?.id || !sedeCliente) return null;
+      return fetchDistanza({ data: { cantiere_id: c.id, store_id: sedeCliente.id } });
+    },
+  });
   const sediMappa = useMemo(() => Array.from(new Map(sedi.map(s => [s.id, { ...s, nome: `${s.nome}${s.id === sedeCliente?.id ? " (sede del cliente)" : ""}${s.id === geo?.sede_piu_vicina_id ? " (sede più vicina)" : ""}` }])).values()), [sedi, sedeCliente?.id, geo?.sede_piu_vicina_id]);
   const loc = c ? [[c.cap, c.citta].filter(Boolean).join(" "), c.provincia ? `(${c.provincia})` : ""].filter(Boolean).join(" ") : "";
 
@@ -67,8 +81,11 @@ export function CantiereTestata({ prev, modificabile, onCantiere, clienteEtichet
       {geo && <p className="break-words text-xs text-muted-foreground">{geo.lat == null || geo.lng == null
         ? "Posizione non disponibile: apri il cantiere e scegli l'indirizzo dai suggerimenti"
         : vicina && geo.sede_piu_vicina_km != null && geo.sede_piu_vicina_min != null
-          ? `Sede più vicina: ${vicina.nome} · ${formatoDistanzaCantiere(geo.sede_piu_vicina_km, geo.sede_piu_vicina_min)}`
+          ? `Sede più vicina: ${vicina.nome}${stessaSede ? " (sede del cliente)" : ""} · ${formatoDistanzaCantiere(geo.sede_piu_vicina_km, geo.sede_piu_vicina_min)}`
           : "Distanza non ancora calcolata"}</p>}
+      {geo?.lat != null && geo.lng != null && sedeCliente && !stessaSede && <p className="break-words text-xs text-muted-foreground">
+        Dalla sede del cliente ({sedeCliente.nome}): {caricaDistanza ? "Calcolo distanza…" : erroreDistanza ? "Distanza non disponibile." : distanzaCliente ? formatoDistanzaCantiere(distanzaCliente.km, Math.round(distanzaCliente.minuti)) : "Percorso non disponibile."}
+      </p>}
       {erroreGeo && <p className="text-xs text-muted-foreground">Posizione non disponibile.</p>}
     </div> : <p className="break-words text-sm">{storico || "Da definire"}</p>}
 

@@ -1,3 +1,7 @@
+# FM68 — Routes API e distanza sede cliente
+- [x] Helper Routes unico, query/candidate e UPDATE identici byte per byte; funzione autenticata senza scritture e distanza nel riquadro, riga unica per sede coincidente.
+- [x] 779 test verdi; una sola prova reale helper: 344.711 km, 213.0333 minuti; schermate simulate 375/1280 senza overflow/errori, pagina temporanea rimossa. Nessuna modifica DB o chiave client; flusso autenticato reale non verificato.
+
 # FM68 — Fetta A: visibilità preventivisti (solo database)
 ## Cantiere preventivo — fetta 2 ridotta
 - [x] Distanza esclusivamente salvata, helper/test; dialog con mappa esistente opt-in compatta e fallback, nessuna nuova chiamata di distanza. Nome sede cliente risolto dal catalogo stores, coordinate sotto RLS.

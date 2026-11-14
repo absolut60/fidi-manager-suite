@@ -6,4 +6,4 @@
 
 - Quote header places Document/Customer and Terms/Site in independent flex columns from lg, with Notes/Attachments on the final grid row, so unequal section heights never stretch the opposite column.
 - Quote customer indicators share one query key and the existing SemaforoPallino palette; only indicatore_cliente_preventivo supplies the stage and boolean flags, preventing financial-detail reads.
-- Quote site distances read persisted site coordinates/nearest-store values under RLS; the map dialog reuses CantieriMappa in opt-in compact mode, never recalculating distances or altering shared server geo helpers.
+- Quote sites read persisted nearest-store distances under RLS and fetch customer-store road distance without persistence through distanzaCantiereSede; identical stores show only the persisted row, and the map dialog reuses CantieriMappa in opt-in compact mode.
