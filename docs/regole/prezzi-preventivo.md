@@ -109,3 +109,26 @@ Altri avvisi: `articolo_senza_prezzo_su_listino`, `cliente_senza_listino`, `clie
 - Listino del cliente: ricavato richiamando `condizioni_preventivo_cliente(_cliente_id)` (stesso listino del motore prezzi); il riquadro Acquisto legge `articoli_gamma_listini` di quel listino.
 - Due costi distinti: "Costo ultimo (usato nel preventivo)" = `articoli_gamma.costo_ultimo`; "Costo netto da listino fornitore" = `articoli_gamma_listini.costo_acquisto`.
 - Giacenze dalla stessa fonte della scheda articolo (`_giacenze_articoli_catalogo`, righe `conta_totale`, aggregazione identica a `disponibilita_articolo`): sede del cliente (`clienti.store_id`), logistica comune, totale sedi (logistica esclusa), ordinato fornitori (sedi + logistica). Conto deposito/visione e altri depositi `conta_disponibilita='no'` esclusi.
+
+
+## Prezzi del cantiere (FM69)
+
+La tabella `public.cantiere_listini_speciali` contiene prezzi manuali senza date di validità, non importati da Gamma.
+
+| Colonna | Significato |
+|---|---|
+| `cantiere_id`, `cod_gamma` | Cantiere e codice Gamma, coppia univoca obbligatoria |
+| `descrizione` | Descrizione libera, proposta dal catalogo Gamma |
+| `prezzo_vendita_speciale` | **Prezzo lordo** unitario speciale, salvato in UM1 |
+| `sconti` | Fino a sei sconti percentuali in cascata (es. 17+5) |
+| `maggiorazione_perc` | Maggiorazione percentuale, predefinita 0 |
+| `costo_netto_speciale` | Costo unitario speciale facoltativo in UM1, destinato a sostituire il costo ultimo quando valorizzato |
+| `um_scelta` | Unità di presentazione UM1/UM2; valori persistiti sempre UM1 |
+| `note` | Note libere della riga |
+| `created_by`, `updated_by`, `created_at`, `updated_at` | Autori e date di audit |
+
+- Legge chi vede il cantiere tramite RLS; scrive chi può modificarlo, con fonte unica `public.auth_puo_modificare_cantiere` (`puoModificareCantiereDb` nell’app). Restano le restrittive esistenti.
+- La finestra `PrezziCantiereDialog` si apre dal cantiere senza cambiare pagina; tabella su tablet/PC, schede su telefono, salvataggio per riga. Il motore cliente propone lordo/sconti/maggiorazione; senza prezzo o accesso resta l’inserimento manuale. Netto e conversioni riusano `prezzoNettoRiga` e `rigaInUnita`.
+- Nel preventivo, la Testata mostra «N prezzi dedicati» solo se il conteggio RLS `contaPrezziCantiere` è positivo; il clic apre la stessa finestra, modificabile o in sola lettura secondo il cantiere. Aggiunte/eliminazioni aggiornano `chiaveConteggioPrezziCantiere`.
+- La scelta/cambio/creazione del cantiere dal preventivo mostra il toast informativo con azione «Vedi» se esistono prezzi dedicati; nessun toast all’apertura di un preventivo già salvato.
+- **L’applicazione dei prezzi del cantiere alle righe NON è ancora implementata.** Rimossa la vecchia logica che interpretava il lordo come netto, ignorava sconti/maggiorazione e usava il vecchio catalogo. «Aggiorna listini» applica soltanto le scelte del motore cliente e restituisce `{ aggiornate }`, senza riapplicazioni speciali né badge/colori di prezzo speciale.

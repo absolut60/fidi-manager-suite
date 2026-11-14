@@ -351,56 +351,11 @@ async function popolaNomiCreatoDa(items: ElencoPreventivoItem[]): Promise<void> 
   for (const it of items) it.creato_da_nome = it.creato_da ? (map.get(it.creato_da) ?? null) : null;
 }
 
-export interface PrezzoSpecialeCantiere {
-  cod_gamma: string;
-  costo_netto_speciale: number | null;
-  prezzo_vendita_speciale: number | null;
-}
-
-export type PrezziSpecialiMap = Map<
-  string,
-  { costo: number | null; prezzo: number | null }
->;
-
-export function buildPrezziSpecialiMap(list: PrezzoSpecialeCantiere[]): PrezziSpecialiMap {
-  const m: PrezziSpecialiMap = new Map();
-  for (const s of list) {
-    if (!s.cod_gamma) continue;
-    m.set(s.cod_gamma, {
-      costo: s.costo_netto_speciale == null ? null : Number(s.costo_netto_speciale),
-      prezzo: s.prezzo_vendita_speciale == null ? null : Number(s.prezzo_vendita_speciale),
-    });
-  }
-  return m;
-}
-
-export function statoPrezzoSpecialeRiga(
-  row: { prezzo_unit: number | null; costo: number | null; quantita: number | null },
-  cod_gamma: string | null | undefined,
-  map: PrezziSpecialiMap | null | undefined,
-): {
-  stato: "attivo" | "modificato";
-  special: { costo: number | null; prezzo: number | null };
-} | null {
-  if (!map || !cod_gamma) return null;
-  const sp = map.get(cod_gamma);
-  if (!sp) return null;
-  if (sp.costo == null && sp.prezzo == null) return null;
-  const q = Number(row.quantita ?? 0);
-  const costoUnit = q > 0 ? Number(row.costo ?? 0) / q : Number(row.costo ?? 0);
-  const prezzoUnit = Number(row.prezzo_unit ?? 0);
-  const EPS = 0.015;
-  const costoOk = sp.costo == null || Math.abs(costoUnit - sp.costo) <= EPS;
-  const prezzoOk = sp.prezzo == null || Math.abs(prezzoUnit - sp.prezzo) <= EPS;
-  return { stato: costoOk && prezzoOk ? "attivo" : "modificato", special: sp };
-}
-
 export interface PreventivoConDettagli extends Preventivo {
   cliente: ClienteRow | null;
   cantiere: CantierePreventivo | null;
   agente: { id: string; nome: string } | null;
   blocchi: BloccoConRighe[];
-  prezziSpeciali: PrezzoSpecialeCantiere[];
 }
 
 export interface BloccoConRighe extends Blocco {
@@ -424,16 +379,6 @@ const BLOCCHI_SELECT = `
     articolo:articoli (id, cod_gamma, descrizione, um, peso_unit)
   )
 `;
-
-async function fetchPrezziSpecialiCantiere(cantiere_id: string | null): Promise<PrezzoSpecialeCantiere[]> {
-  if (!cantiere_id) return [];
-  const { data, error } = await supabase
-    .from("cantiere_listini_speciali")
-    .select("cod_gamma, costo_netto_speciale, prezzo_vendita_speciale")
-    .eq("cantiere_id", cantiere_id);
-  if (error) throw error;
-  return (data ?? []).filter((r) => r.cod_gamma) as PrezzoSpecialeCantiere[];
-}
 
 export async function fetchPreventivo(id: string): Promise<PreventivoConDettagli> {
   const { data, error } = await supabase
@@ -470,7 +415,6 @@ export async function fetchPreventivo(id: string): Promise<PreventivoConDettagli
     const agRow = ag as unknown as { codice: string; descrizione: string } | null;
     if (agRow) p.agente = { id: agRow.codice, nome: agRow.descrizione };
   }
-  p.prezziSpeciali = await fetchPrezziSpecialiCantiere(p.cantiere_id);
   return p;
 }
 
@@ -785,7 +729,7 @@ export async function analizzaAggiornaListini(preventivo_id: string): Promise<An
 }
 
 /** Applica solo le righe spuntate; lo sconto extra (sconto_perc) non si tocca. */
-export async function applicaAggiornaListini(preventivo_id: string, scelte: DifferenzaListino[]): Promise<{ aggiornate: number; speciali: number }> {
+export async function applicaAggiornaListini(preventivo_id: string, scelte: DifferenzaListino[]): Promise<{ aggiornate: number }> {
   const prev = await fetchPreventivo(preventivo_id);
   const righe = new Map(prev.blocchi.flatMap((b) => b.righe.map((r) => [r.id, r] as const)));
   let aggiornate = 0;
@@ -807,10 +751,8 @@ export async function applicaAggiornaListini(preventivo_id: string, scelte: Diff
     if (error) throw error;
     aggiornate++;
   }
-  // Prezzi speciali del cantiere: applicati dopo il motore, come prima.
-  const { aggiornate: speciali } = await riapplicaPrezziSpecialiCantiere(preventivo_id);
   await ricalcolaTotaliPreventivo(preventivo_id, n(prev.iva_perc));
-  return { aggiornate, speciali };
+  return { aggiornate };
 }
 
 async function ricalcolaTotaliPreventivo(preventivo_id: string, iva: number): Promise<void> {
@@ -836,72 +778,6 @@ async function ricalcolaTotaliPreventivo(preventivo_id: string, iva: number): Pr
     totale: round2(tot * (1 + iva / 100)),
   }).eq("id", preventivo_id);
   if (totaleErrore) throw totaleErrore;
-}
-
-export async function riapplicaPrezziSpecialiCantiere(preventivo_id: string): Promise<{
-  aggiornate: number;
-}> {
-  const prev = await fetchPreventivo(preventivo_id);
-  if (!prev.cantiere_id) return { aggiornate: 0 };
-  const map = buildPrezziSpecialiMap(prev.prezziSpeciali ?? []);
-  if (map.size === 0) return { aggiornate: 0 };
-
-  let aggiornate = 0;
-  const bloccoIdsDirty = new Set<string>();
-
-  for (const b of prev.blocchi) {
-    for (const r of b.righe) {
-      if (isIntestazioneKit(r) || (r.tipo_riga !== "articolo_singolo" && r.tipo_riga !== "da_kit")) continue;
-      const cod = r.articolo?.cod_gamma;
-      if (!cod) continue;
-      const sp = map.get(cod);
-      if (!sp) continue;
-      if (sp.costo == null && sp.prezzo == null) continue;
-      const q = n(r.quantita);
-      const nuovoPrezzo = sp.prezzo != null ? sp.prezzo : n(r.prezzo_unit);
-      const costoUnitOld = q > 0 ? n(r.costo) / q : 0;
-      const nuovoCostoUnit = sp.costo != null ? sp.costo : costoUnitOld;
-      const importo = importoRiga({ ...r, prezzo_unit: nuovoPrezzo });
-      const { error } = await supabase
-        .from("righe_preventivo")
-        .update(patchConImporto(r, {
-          prezzo_unit: round2(nuovoPrezzo),
-          costo: costoRiga(nuovoCostoUnit, q),
-          vendita: round2(nuovoPrezzo * q),
-          importo,
-        }))
-        .eq("id", r.id);
-      if (error) throw error;
-      aggiornate++;
-      bloccoIdsDirty.add(b.id);
-    }
-  }
-
-  if (aggiornate === 0) return { aggiornate: 0 };
-
-  const { data: blocchi, error: bErr } = await supabase
-    .from("blocchi_preventivo")
-    .select("id, importo, righe:righe_preventivo(*)")
-    .eq("preventivo_id", preventivo_id);
-  if (bErr) throw bErr;
-  for (const bl of (blocchi ?? []) as unknown as { id: string; righe: Riga[] }[]) {
-    if (!bloccoIdsDirty.has(bl.id)) continue;
-    let totale = 0;
-    for (const r of bl.righe ?? []) {
-      if (!isRigaValorizzata(r)) continue;
-      totale += n(r.importo);
-    }
-    await supabase.from("blocchi_preventivo").update({ importo: round2(totale) }).eq("id", bl.id);
-  }
-  const tot = ((blocchi ?? []) as { importo: number | null }[]).reduce((s, b) => s + n(b.importo), 0);
-  const iva = n(prev.iva_perc);
-  await supabase.from("preventivi").update({
-    totale_imponibile: round2(tot),
-    iva_importo: round2(tot * iva / 100),
-    totale: round2(tot * (1 + iva / 100)),
-  }).eq("id", preventivo_id);
-
-  return { aggiornate };
 }
 
 export async function addBloccoVuoto(preventivo_id: string, ordineNext: number): Promise<Blocco> {

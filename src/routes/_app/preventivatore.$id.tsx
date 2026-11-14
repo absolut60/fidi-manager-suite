@@ -49,12 +49,11 @@ import {
   addBloccoVuoto,
   applicaScontoPiedeARighe,
   analizzaAggiornaListini, applicaAggiornaListini, type AnalisiAggiornaListini,
-  buildPrezziSpecialiMap,
   calcolaBlocco, calcolaTotaliPreventivo, deleteBlocco, deletePreventivo, duplicaPreventivo, fetchAgenti, fetchCliente, fetchOrdiniCollegati, fetchPreventivo, fetchPreventivoOrigine,
   fractionalOrder,
-  reorderBlocchi, ricalcolaBloccoSuNuovaQuantita, riapplicaPrezziSpecialiCantiere, STATI, STATI_LABEL, TIPI_DOC, TIPI_DOC_LABEL,
+  reorderBlocchi, ricalcolaBloccoSuNuovaQuantita, STATI, STATI_LABEL, TIPI_DOC, TIPI_DOC_LABEL,
   updateBlocco, updatePreventivo,
-  type BloccoConRighe, type PrezziSpecialiMap, type StatoPreventivo, type TipoDoc,
+  type BloccoConRighe, type StatoPreventivo, type TipoDoc,
 } from "@/lib/preventivi-api";
 
 
@@ -209,22 +208,12 @@ function PreventivoEditorPage() {
   const applicaListini = useMutation({ mutationKey: ["salva-preventivo", id],
     mutationFn: (scelte: AnalisiAggiornaListini["differenze"]) => applicaAggiornaListini(id, scelte),
     onSuccess: (res) => {
-      toast.success(`${res.aggiornate} righe aggiornate` + (res.speciali ? `, ${res.speciali} con prezzi speciali cantiere` : ""));
+      toast.success(`${res.aggiornate} righe aggiornate`);
       setAnalisiListini(null);
       invalidate();
     },
     onError: (e: unknown) => toast.error((e as Error).message),
   });
-
-  const riapplicaSpeciali = useMutation({ mutationKey: ["salva-preventivo", id],
-    mutationFn: () => riapplicaPrezziSpecialiCantiere(id),
-    onSuccess: (res) => {
-      if (res.aggiornate > 0) toast.success(`${res.aggiornate} righe aggiornate con prezzi speciali del cantiere`);
-      invalidate();
-    },
-    onError: (e: unknown) => toast.error((e as Error).message),
-  });
-
 
   const applicaSconto = useMutation({ mutationKey: ["salva-preventivo", id],
     mutationFn: async (perc: number) => {
@@ -279,12 +268,6 @@ function PreventivoEditorPage() {
     }
     return { costo, vendita, ...margineTotaliRighe({ totale: vendita, costo }) };
   }, [prev]);
-
-  const prezziSpecialiMap = useMemo<PrezziSpecialiMap>(
-    () => buildPrezziSpecialiMap(prev?.prezziSpeciali ?? []),
-    [prev?.prezziSpeciali],
-  );
-
 
   // Persist totali in DB automaticamente quando cambiano
   const saveTotali = useMutation({ mutationKey: ["salva-preventivo", id],
@@ -556,7 +539,7 @@ function PreventivoEditorPage() {
           <TabsList variant="linguette" className="w-full justify-start">
             {(['testata','corpo','piede'] as const).map(t=><TabsTrigger key={t} variant="linguette" value={t}>{t==='testata'?'Testata':t==='piede'?'Piede':`Corpo · ${prev.blocchi.length} blocchi`}</TabsTrigger>)}
           </TabsList>
-          <TabsContent value="testata"><TestataPreventivo prev={prev} cliente={clienteDati} modificabile={modificabile} statoEditabile={puoScrivere} agenti={agenti} principali={principali} haAlternative={haAlternative} listino={listino} categoria={categoria} sede={condizioni?.sede_nome||'—'} sedeClienteId={condizioni?.store_id??null} onSave={p=>save.mutate(p)} onCliente={()=>setClienteOpen(true)} onChangeCliente={onChangeCliente} onCantiere={cid=>save.mutate({cantiere_id:cid,cantiere_descrizione:null},{onSuccess:()=>riapplicaSpeciali.mutate()})}/></TabsContent>
+          <TabsContent value="testata"><TestataPreventivo prev={prev} cliente={clienteDati} modificabile={modificabile} statoEditabile={puoScrivere} agenti={agenti} principali={principali} haAlternative={haAlternative} listino={listino} categoria={categoria} sede={condizioni?.sede_nome||'—'} sedeClienteId={condizioni?.store_id??null} onSave={p=>save.mutate(p)} onCliente={()=>setClienteOpen(true)} onChangeCliente={onChangeCliente} onCantiere={async cid=>{await save.mutateAsync({cantiere_id:cid,cantiere_descrizione:null});}}/></TabsContent>
           <TabsContent value="corpo"><fieldset disabled={!modificabile} className={cn('min-w-0',!modificabile&&'readonly-mode')}>
             {/* ===== CORPO ===== */}
             <section className="flex flex-col gap-3">
@@ -582,7 +565,7 @@ function PreventivoEditorPage() {
                       </Card>
                     ) : (
                       prev.blocchi.map((b, idx) => (
-                        <BloccoCard key={b.id} blocco={b} index={idx} preventivoId={id} fascia={(prev.fascia_listino ?? "A") as FasciaListino} readOnly={!modificabile} prezziSpecialiMap={prezziSpecialiMap} clienteId={prev.cliente_id ?? null} scontoPiede={Number(prev.sconto_piede_perc ?? 0)} />
+                        <BloccoCard key={b.id} blocco={b} index={idx} preventivoId={id} fascia={(prev.fascia_listino ?? "A") as FasciaListino} readOnly={!modificabile} clienteId={prev.cliente_id ?? null} scontoPiede={Number(prev.sconto_piede_perc ?? 0)} />
                       ))
                     )}
                   </div>
@@ -639,8 +622,8 @@ function PreventivoEditorPage() {
 }
 
 function BloccoCard({
-  blocco, index, preventivoId, fascia, readOnly = false, prezziSpecialiMap, clienteId, scontoPiede,
-}: { blocco: BloccoConRighe; index: number; preventivoId: string; fascia: FasciaListino; readOnly?: boolean; prezziSpecialiMap?: PrezziSpecialiMap | null; clienteId: string | null; scontoPiede: number }) {
+  blocco, index, preventivoId, fascia, readOnly = false, clienteId, scontoPiede,
+}: { blocco: BloccoConRighe; index: number; preventivoId: string; fascia: FasciaListino; readOnly?: boolean; clienteId: string | null; scontoPiede: number }) {
   const qc = useQueryClient();
   const sortable = useSortable({ id: blocco.id });
   const style = {
@@ -765,7 +748,7 @@ function BloccoCard({
             </div>
           )}
 
-          <RigheTable blocco={blocco} preventivoId={preventivoId} fascia={fascia} readOnly={readOnly} prezziSpecialiMap={prezziSpecialiMap} clienteId={clienteId} scontoPiede={scontoPiede} />
+          <RigheTable blocco={blocco} preventivoId={preventivoId} fascia={fascia} readOnly={readOnly} clienteId={clienteId} scontoPiede={scontoPiede} />
         </CardContent>
       </Card>
     </div>
