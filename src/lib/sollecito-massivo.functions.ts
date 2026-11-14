@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -397,20 +398,16 @@ export const eliminaCampagnaSollecito = createServerFn({ method: "POST" })
       );
     }
 
-    // 1) destinatari (le azioni_recupero referenziate restano vive: nessuna FK)
-    const { error: e1 } = await supabase
-      .from("campagne_sollecito_destinatari")
-      .delete()
-      .eq("campagna_id", data.campagnaId);
-    if (e1) throw new Error(`Eliminazione destinatari fallita: ${e1.message}`);
-
-    // 2) campagna
-    const { error: e2 } = await supabase
-      .from("campagne_sollecito")
-      .delete()
-      .eq("id", data.campagnaId);
-    if (e2) throw new Error(`Eliminazione campagna fallita: ${e2.message}`);
-
-    return { ok: true, campagna_id: data.campagnaId };
+    const { count: richiesti, error: eConteggio } = await supabase.from("campagne_sollecito_destinatari").select("id", { count: "exact", head: true }).eq("campagna_id", data.campagnaId);
+    if (eConteggio || richiesti === null) throw new Error(eConteggio?.message ?? "Conteggio destinatari non disponibile");
+    let destinatariEliminati = 0;
+    if (richiesti > 0) {
+      const esito = await eliminaConEsito("campagne_sollecito_destinatari", { richiesti, filtro: q => q.eq("campagna_id", data.campagnaId) }, undefined, supabase);
+      if (esito.tipo !== "eliminato") throw new Error(messaggioEsitoEliminazione(esito, "i destinatari della campagna"));
+      destinatariEliminati = esito.eliminati ?? 0;
+    }
+    const esito = await eliminaConEsito("campagne_sollecito", data.campagnaId, undefined, supabase);
+    if (esito.tipo !== "eliminato") throw new Error(`${messaggioEsitoEliminazione(esito, "la campagna")} Destinatari già eliminati: ${destinatariEliminati}.`);
+    return { ok: true, campagna_id: data.campagnaId, destinatari_eliminati: destinatariEliminati, campagne_eliminate: esito.eliminati ?? 0 };
   });
 

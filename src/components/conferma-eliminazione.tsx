@@ -18,7 +18,7 @@ export function BottoneElimina({
 }: {
   titolo: string;
   descrizione: string;
-  onConferma: () => Promise<void> | void;
+  onConferma: () => Promise<void | boolean> | void | boolean;
   /** Se presente mostra il testo accanto all'icona. */
   etichetta?: string;
   variant?: "ghost" | "outline" | "destructive";
@@ -31,8 +31,8 @@ export function BottoneElimina({
   async function conferma() {
     setBusy(true);
     try {
-      await onConferma();
-      setOpen(false);
+      const esito = await onConferma();
+      if (esito !== false) setOpen(false);
     } finally {
       setBusy(false);
     }

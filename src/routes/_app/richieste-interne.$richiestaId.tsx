@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useRef } from "react";
@@ -31,6 +32,7 @@ import { BonificoAccontoCard } from "@/components/richieste-interne/bonifico-acc
 
 
 export const Route = createFileRoute("/_app/richieste-interne/$richiestaId")({
+  head: () => ({ meta: [{ title: "Richiesta interna — FidiManager" }, { name: "description", content: "Dettaglio e gestione della richiesta interna MADE." }, { property: "og:title", content: "Richiesta interna — FidiManager" }, { property: "og:description", content: "Dettaglio e gestione della richiesta interna MADE." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: DettaglioRichiesta,
 });
 
@@ -140,22 +142,19 @@ function DettaglioRichiesta() {
 
   async function elimina() {
     if (!r) return;
-    // Rimuovi prima i file dal bucket (per non lasciare orfani).
     try {
-      const { data: allegati } = await supabase
-        .from("richieste_interne_allegati")
-        .select("storage_path")
-        .eq("request_id", r.id);
-      const paths = (allegati ?? []).map((a) => a.storage_path).filter(Boolean) as string[];
-      if (paths.length > 0) {
-        const { error: rmErr } = await supabase.storage.from("richieste-allegati").remove(paths);
-        if (rmErr) console.warn("Rimozione file bucket fallita:", rmErr.message);
+      const { data: allegati, error } = await supabase.from("richieste_interne_allegati").select("id, storage_path").eq("request_id", r.id);
+      if (error) throw error;
+      if (allegati?.length) {
+        const esito = await eliminaConEsito("richieste_interne_allegati", allegati.map(a => a.id));
+        if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") refresh(); toast.error(messaggioEsitoEliminazione(esito, "gli allegati della richiesta")); return; }
+        const paths = allegati.map(a => a.storage_path).filter(Boolean);
+        if (paths.length) { const { error: rmErr } = await supabase.storage.from("richieste-allegati").remove(paths); if (rmErr) console.warn("Rimozione file bucket fallita:", rmErr.message); }
       }
-    } catch (e) {
-      console.warn("Cleanup bucket fallito:", e);
-    }
-    const { error } = await supabase.from("richieste_interne").delete().eq("id", r.id);
-    if (error) { toast.error("Errore: " + error.message); return; }
+      const esito = await eliminaConEsito("richieste_interne", r.id);
+      if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") refresh(); toast.error(messaggioEsitoEliminazione(esito, "la richiesta")); return; }
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Errore eliminazione"); return; }
+    setConfirmDelete(null);
     toast.success("Richiesta eliminata");
     qc.invalidateQueries({ queryKey: ["richieste-interne"] });
     router.history.back();
@@ -228,10 +227,11 @@ function DettaglioRichiesta() {
   }
 
   async function eliminaAllegato(a: any) {
+    const esito = await eliminaConEsito("richieste_interne_allegati", a.id);
+    if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") refresh(); toast.error(messaggioEsitoEliminazione(esito, "l'allegato")); return; }
     const { error: rmErr } = await supabase.storage.from("richieste-allegati").remove([a.storage_path]);
     if (rmErr) console.warn("Rimozione file fallita:", rmErr.message);
-    const { error } = await supabase.from("richieste_interne_allegati").delete().eq("id", a.id);
-    if (error) { toast.error("Errore: " + error.message); return; }
+    setAllegatoDaEliminare(null);
     toast.success("Allegato eliminato");
     refresh();
   }
@@ -615,7 +615,7 @@ const blocIter = (
             {confirmDelete === "one" ? (
               <Button variant="destructive" onClick={() => setConfirmDelete("two")}>Continua</Button>
             ) : (
-              <Button variant="destructive" onClick={async () => { setConfirmDelete(null); await elimina(); }}>
+              <Button variant="destructive" onClick={async () => { await elimina(); }}>
                 Elimina definitivamente
               </Button>
             )}
@@ -639,7 +639,6 @@ const blocIter = (
               variant="destructive"
               onClick={async () => {
                 const a = allegatoDaEliminare;
-                setAllegatoDaEliminare(null);
                 if (a) await eliminaAllegato(a);
               }}
             >

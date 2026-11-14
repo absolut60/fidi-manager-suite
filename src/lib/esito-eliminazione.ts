@@ -1,9 +1,14 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
 type ErroreEliminazione = { code?: string; message: string };
+type QueryEliminazione = PromiseLike<{ error: ErroreEliminazione | null; count: number | null }> & {
+  eq: (colonna: string, valore: string) => QueryEliminazione;
+  not: (colonna: string, operatore: string, valore: null) => QueryEliminazione;
+};
 export type EsitoEliminazione =
-  | { tipo: "eliminato" }
+  | { tipo: "eliminato"; eliminati?: number }
   | { tipo: "collegato" }
   | { tipo: "permessi" }
   | { tipo: "parziale"; eliminati: number; richiesti: number }
@@ -20,17 +25,20 @@ export function classificaEsitoEliminazione(error: ErroreEliminazione | null, co
 
 export async function eliminaConEsito(
   tabella: keyof Database["public"]["Tables"],
-  id: string | readonly string[],
+  id: string | readonly string[] | { richiesti: number; filtro: (query: QueryEliminazione) => QueryEliminazione },
   vincolo?: { preventivo_id: string },
+  client: SupabaseClient<Database> = supabase,
 ): Promise<EsitoEliminazione> {
-  const ids = [...new Set(typeof id === "string" ? [id] : id)];
-  if (!ids.length) return { tipo: "permessi" };
+  const filtro = typeof id === "object" && !Array.isArray(id) && "filtro" in id ? id : null;
+  const ids = filtro ? [] : [...new Set(typeof id === "string" ? [id] : Array.isArray(id) ? id : [])];
+  if (!filtro && !ids.length) return { tipo: "permessi" };
   try {
-    const query = vincolo && tabella === "preventivi_note"
-      ? supabase.from("preventivi_note").delete({ count: "exact" }).in("id", ids).eq("preventivo_id", vincolo.preventivo_id)
-      : supabase.from(tabella).delete({ count: "exact" }).in("id", ids);
+    const query = filtro ? filtro.filtro(client.from(tabella).delete({ count: "exact" })) : vincolo && tabella === "preventivi_note"
+      ? client.from("preventivi_note").delete({ count: "exact" }).in("id", ids).eq("preventivo_id", vincolo.preventivo_id)
+      : client.from(tabella).delete({ count: "exact" }).in("id", ids);
     const { error, count } = await query;
-    return classificaEsitoEliminazione(error, count, ids.length);
+    const esito = classificaEsitoEliminazione(error, count, filtro?.richiesti ?? ids.length);
+    return esito.tipo === "eliminato" ? { ...esito, eliminati: count ?? 0 } : esito;
   } catch (error) {
     return { tipo: "errore", messaggio: error instanceof Error ? error.message : "Errore di connessione" };
   }

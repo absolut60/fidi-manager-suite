@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 // Vista/gestione di un singolo piano di rientro (dentro la tab cliente):
 // - intestazione con stato, livello, totali
 // - elenco rate: conferma manuale pagamento, salta, badge "possibile pagamento rilevato"
@@ -102,29 +103,18 @@ export function PianoRientroDettaglio({ pianoId, onDeleted }: { pianoId: string;
       if (eA) throw eA;
       const paths = (allegatiRows ?? []).map((a) => a.storage_path).filter(Boolean);
 
-      // 2) rimuovi i file dallo storage (best-effort: se fallisce, non blocca)
-      if (paths.length > 0) {
+      // Righe verificate prima dei file; il piano solo dopo tutti gli allegati.
+      if (allegatiRows?.length) {
+        const esito = await eliminaConEsito("allegati", allegatiRows.map(a => a.id));
+        if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") { invalidateAll(); qc.invalidateQueries({ queryKey: ["allegati"] }); qc.invalidateQueries({ queryKey: ["piano-allegati-count", pianoId] }); } toast.error(messaggioEsitoEliminazione(esito, "gli allegati del piano")); return; }
+      }
+      if (paths.length) {
         const { error: eSt } = await supabase.storage.from(ALLEGATI_BUCKET).remove(paths);
         if (eSt) console.warn("Rimozione file allegati (storage):", eSt.message);
       }
-
-      // 3) rimuovi le righe allegati
-      if ((allegatiRows ?? []).length > 0) {
-        const { error: eAd } = await supabase
-          .from("allegati")
-          .delete()
-          .eq("entita_tipo", "piano_rientro")
-          .eq("entita_id", pianoId);
-        if (eAd) throw eAd;
-      }
-
-      // 4) elimina il piano — CASCADE su piani_rientro_rate, piani_rientro_documenti
-      //    e azioni_recupero (via piano_rientro_id). Nessuna scrittura su `scadenze`.
-      const { error: eP } = await supabase
-        .from("piani_rientro" as never)
-        .delete()
-        .eq("id", pianoId);
-      if (eP) throw eP;
+      // CASCADE rate, documenti e azioni; scadenze invariate.
+      const esito = await eliminaConEsito("piani_rientro", pianoId);
+      if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") invalidateAll(); toast.error(messaggioEsitoEliminazione(esito, "il piano")); return; }
 
       toast.success("Piano eliminato definitivamente");
       invalidateAll();

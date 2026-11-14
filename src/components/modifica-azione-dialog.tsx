@@ -1,3 +1,4 @@
+import { messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { useCallback, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -93,7 +94,11 @@ export function ModificaAzioneDialog({
     if (!canDelete || deleting) return;
     setDeleting(true);
     try {
-      await eliminaAzioneConAllegati(azione.id);
+      const { esito, cosa } = await eliminaAzioneConAllegati(azione.id);
+      if (esito.tipo !== "eliminato") {
+        if (esito.tipo === "parziale") { invalidaRecuperoCliente(qc, azione.cliente_id); qc.invalidateQueries({ queryKey: ["allegati"] }); }
+        toast.error(messaggioEsitoEliminazione(esito, cosa)); return;
+      }
       invalidaRecuperoCliente(qc, azione.cliente_id);
       toast.success("Azione eliminata");
       setDeleteOpen(false);
