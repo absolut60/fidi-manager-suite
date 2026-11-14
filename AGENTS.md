@@ -38,3 +38,5 @@
 - Recalculation progress in pages comes only from barraRicalcolo on the shared lock row, renewed with its phase by every step in fido-teorico-ricalcolo-passi.server, so automatic and manual runs look identical.
 - Showroom UI permissions live only in src/lib/permessi-showroom.ts (twin of auth_solo_showroom), so UI and RLS cannot diverge.
 - MADE_ARTICOLI_LISTINI_PQ: one import parsed only in browser (listini-gamma-parser); server reads staged JSON (xlsx crashed Worker).
+
+- Quote site-price notices reuse the RLS count key and PrezziCantiereDialog; only successful explicit site selection triggers a toast, and no site-price data is applied to quote lines until a dedicated implementation.

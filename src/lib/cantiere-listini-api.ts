@@ -53,3 +53,8 @@ export async function unitaPrezziCantiere(codici: string[]) {
   if (error) throw error;
   return data ?? [];
 }
+
+/** Count is user-RLS scoped; only an explicit selection can trigger a toast. */
+export function mostraAvvisoPrezziCantiere(conteggio: number | undefined, origine: "etichetta" | "scelta" | "apertura" = "etichetta"): boolean {
+  return origine !== "apertura" && conteggio != null && conteggio > 0;
+}

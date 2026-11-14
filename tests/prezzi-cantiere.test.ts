@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { propostaPrezzoCantiere } from "@/lib/cantiere-listini-api";
+import { propostaPrezzoCantiere, mostraAvvisoPrezziCantiere } from "@/lib/cantiere-listini-api";
 import { parseScontiGamma, prezzoNettoRiga, rigaInUnita } from "@/lib/riga-preventivo";
 
 describe("FM69 prezzi cantiere", () => {
@@ -25,5 +25,20 @@ describe("FM69 prezzi cantiere", () => {
     const v = rigaInUnita({ quantita: 1, prezzo_unit: 10, costo: 4, um_scelta: "um2" }, { um: "KG", um2: "NR", fattore_conversione: 25 }, { prezzo_unit: 300, costo_unit: 100 });
     expect(v.prezzo_unit).toBe(250);
     expect(v.patchUm1).toEqual({ prezzo_unit: 12, costo: 4 });
+  });
+});
+
+describe("FM69 avviso prezzi nel preventivo", () => {
+  it("mostra l’etichetta solo con prezzi visibili", () => {
+    expect(mostraAvvisoPrezziCantiere(0)).toBe(false);
+    expect(mostraAvvisoPrezziCantiere(undefined)).toBe(false);
+    expect(mostraAvvisoPrezziCantiere(3)).toBe(true);
+  });
+  it("la scelta di un cantiere con prezzi genera l’avviso", () => {
+    expect(mostraAvvisoPrezziCantiere(3, "scelta")).toBe(true);
+    expect(mostraAvvisoPrezziCantiere(0, "scelta")).toBe(false);
+  });
+  it("l’apertura di un preventivo salvato non genera avvisi", () => {
+    expect(mostraAvvisoPrezziCantiere(3, "apertura")).toBe(false);
   });
 });

@@ -18,6 +18,9 @@ import { CantierePicker } from "./CantierePicker";
 import { supabase } from "@/integrations/supabase/client";
 import type { CantiereRow, SedeMappa } from "@/lib/cantieri";
 import { formatoDistanzaCantiere, nomeSedeBreve } from "@/lib/cantiere-distanza";
+import { toast } from "sonner";
+import { PrezziCantiereDialog } from "@/components/prezzi-cantiere-dialog";
+import { chiaveConteggioPrezziCantiere, contaPrezziCantiere, mostraAvvisoPrezziCantiere } from "@/lib/cantiere-listini-api";
 import { MappaCantierePreventivo } from "./MappaCantierePreventivo";
 
 type Modo = "cliente" | "nuovo" | "provvisorio";
@@ -30,7 +33,7 @@ import { BadgeProvvisorio } from "@/components/badge-provvisorio";
  * Riquadro Cantiere della Testata (FM65 B2): tre modi, tutti collegano un vero cantiere (onCantiere → cantiere_id).
  * cantiere_descrizione non viene più scritta: resta solo come fallback in lettura.
  */
-export function CantiereTestata({ prev, modificabile, onCantiere, clienteEtichetta, sedeClienteNome, sedeClienteId }: { prev: PreventivoConDettagli; modificabile: boolean; onCantiere: (id: string) => void; clienteEtichetta?: string; sedeClienteNome?: string; sedeClienteId?: string | null }) {
+export function CantiereTestata({ prev, modificabile, onCantiere, clienteEtichetta, sedeClienteNome, sedeClienteId }: { prev: PreventivoConDettagli; modificabile: boolean; onCantiere: (id: string) => void | Promise<void>; clienteEtichetta?: string; sedeClienteNome?: string; sedeClienteId?: string | null }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { roles, user } = useAuth();
@@ -43,6 +46,22 @@ export function CantiereTestata({ prev, modificabile, onCantiere, clienteEtichet
   const [modo, setModo] = useState<Modo>("cliente");
   const [finestra, setFinestra] = useState(false);
   const [mappa, setMappa] = useState(false);
+  const [prezziId, setPrezziId] = useState<string | null>(null);
+  const { data: numeroPrezzi } = useQuery({
+    queryKey: chiaveConteggioPrezziCantiere(c?.id ?? ""),
+    queryFn: () => c ? contaPrezziCantiere(c.id) : 0,
+    enabled: !!c?.id,
+  });
+  const { data: cantierePrezzi } = useQuery({
+    queryKey: ["cantiere-preventivo-posizione", prezziId],
+    enabled: !!prezziId,
+    queryFn: async () => {
+      if (!prezziId) return null;
+      const { data, error } = await supabase.from("cantieri").select("*").eq("id", prezziId).maybeSingle();
+      if (error) throw error;
+      return data as CantiereRow | null;
+    },
+  });
   const { data: geo, error: erroreGeo } = useQuery({
     queryKey: ["cantiere-preventivo-posizione", c?.id], enabled: !!c?.id,
     queryFn: async () => {
@@ -83,7 +102,14 @@ export function CantiereTestata({ prev, modificabile, onCantiere, clienteEtichet
   const loc = c ? [[c.cap, c.citta].filter(Boolean).join(" "), c.provincia ? `(${c.provincia})` : ""].filter(Boolean).join(" ") : "";
 
   const scegli = (m: Modo) => { setModo(m); if (m !== "cliente") setFinestra(true); };
-  const collega = (id: string) => { onCantiere(id); setScelta(false); setFinestra(false); setModo("cliente"); };
+  const collega = async (id: string) => {
+    try { await onCantiere(id); } catch { return; } // The existing save handler reports failures.
+    setScelta(false); setFinestra(false); setModo("cliente");
+    try {
+      const n = await qc.fetchQuery({ queryKey: chiaveConteggioPrezziCantiere(id), queryFn: () => contaPrezziCantiere(id), staleTime: 0 });
+      if (mostraAvvisoPrezziCantiere(n, "scelta")) toast.info(`Questo cantiere ha ${n} prezzi dedicati`, { action: { label: "Vedi", onClick: () => setPrezziId(id) } });
+    } catch { /* An unavailable count must not block linking the site. */ }
+  };
 
   const apriCantiere = () => {
     const isTrasversale = roles.some(r => ["amministratore", "amministrazione", "direzione", "marketing", "store_manager", "responsabile_agenti"].includes(r));
@@ -100,6 +126,7 @@ export function CantiereTestata({ prev, modificabile, onCantiere, clienteEtichet
   </>}><div className="space-y-2">
     {c ? <div className="min-w-0 space-y-1 text-xs">
       <div className="flex min-w-0 flex-wrap items-center gap-2"><Button variant="link" className="h-auto min-h-10 min-w-0 justify-start whitespace-normal break-words p-0 text-left text-xs font-semibold text-foreground hover:text-primary hover:no-underline" onClick={apriCantiere}><span className="min-w-0 break-words">{c.nome || "—"}</span><ChevronRight className="size-3.5 shrink-0" aria-hidden/></Button>{c.provvisorio && <BadgeProvvisorio />}</div>
+      {mostraAvvisoPrezziCantiere(numeroPrezzi) && <Button type="button" variant="link" className="h-auto min-h-10 whitespace-normal p-0 text-xs text-pv-blu" onClick={() => setPrezziId(c.id)}>{numeroPrezzi} prezzi dedicati</Button>}
       {(c.indirizzo || loc) && <p className="flex items-start gap-1.5 text-muted-foreground"><MapPin className="mt-0.5 size-3 shrink-0" aria-hidden/><span className="min-w-0 break-words">{[c.indirizzo, loc].filter(Boolean).join(", ")}</span></p>}
       <div className="pt-1">
       {geo && rigaDistanza(stessaSede ? "Più vicina · di riferimento" : "Più vicina", geo.lat == null || geo.lng == null
@@ -119,6 +146,7 @@ export function CantiereTestata({ prev, modificabile, onCantiere, clienteEtichet
         {modo === "cliente" && <CantierePicker cliente_id={prev.cliente_id} value={prev.cantiere_id} onChange={collega} />}
         {c && <AzioneRiquadro icona={X} etichetta="Annulla cambio cantiere" onClick={() => { setScelta(false); setModo("cliente"); }}/>}
       </div>}
+    {prezziId && cantierePrezzi && <PrezziCantiereDialog open onOpenChange={o => { if (!o) setPrezziId(null); }} cantiere={cantierePrezzi}/>}
     {scheda && geo && <CantiereDialog open={scheda} onOpenChange={setScheda} cantiere={geo} queryKeysExtra={[["cantiere-preventivo-posizione", c?.id], ["preventivo", prev.id]]}/>}
     {mappa && geo && <MappaCantierePreventivo open={mappa} onOpenChange={setMappa} cantiere={geo} sedi={sediMappa} sedeCliente={sedeCliente}/>}
 

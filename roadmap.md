@@ -1,3 +1,7 @@
+# FM69 — Prezzi cantiere, fetta 2b
+- [ ] Rimuovere logica speciale legacy; avviso e dialog dal preventivo senza applicazione alle righe.
+- [ ] Documentazione, test completi e schermate 375/1280.
+
 # FM69 — Prezzi cantiere, fetta 2a
 - [x] API nuovo schema, dialog con ArticoloGammaPicker/prezzoNettoRiga/rigaInUnita, permesso RPC unico e conteggio dal cantiere; eliminata PrezziCantieriView e tab globale, corretto DELETE/scollegamento dal lead.
 - [x] 791 test pass; typecheck automatico/build OK. Schermate 375/1280 (anche 320/390/768/1920) senza overflow. Con risposte simulate: proposta singola chiamata, duplicati, salvataggi UM1/UM2, sconti invalidi, DELETE zero/successo, motore negato e sola lettura verificati. Nessun DB e preventivi-api invariata; flusso con prezzi reali non verificato.

@@ -44,9 +44,8 @@ import { ArticoloGammaPicker, type ArticoloGammaScelto } from "@/components/prev
 import { campiPrezzoDaMotore, costoRiga, formatScontiGamma, isIntestazioneKit, margineTotaliRighe, patchConImporto, parseScontiGamma, prezzoNettoRiga, rigaInUnita } from "@/lib/riga-preventivo";
 import {
   calcolaBlocco, deleteRiga, salvaPatchRigaCalcolata, fetchPrezzoClienteArticolo, fractionalOrder, insertRiga, reorderRighe,
-  statoPrezzoSpecialeRiga,
   TIPI_RIGA, TIPI_RIGA_LABEL, updateRiga,
-  type BloccoConRighe, type PreventivoConDettagli, type PrezziSpecialiMap, type Riga, type RigaUpdate, type TipoRiga,
+  type BloccoConRighe, type PreventivoConDettagli, type Riga, type RigaUpdate, type TipoRiga,
 } from "@/lib/preventivi-api";
 import type { FasciaListino } from "@/lib/articoli-api";
 import { formatNumeroIt } from "@/lib/numero-it";
@@ -58,7 +57,6 @@ export function RigheTable({
   preventivoId,
   fascia,
   readOnly = false,
-  prezziSpecialiMap,
   clienteId,
   scontoPiede = 0,
 }: {
@@ -66,7 +64,6 @@ export function RigheTable({
   preventivoId: string;
   fascia: FasciaListino;
   readOnly?: boolean;
-  prezziSpecialiMap?: PrezziSpecialiMap | null;
   clienteId: string | null;
   scontoPiede?: number;
 }) {
@@ -243,7 +240,6 @@ export function RigheTable({
     autoOpenPicker: r.id === pendingPickerId,
     onOpenArticolo: (aid: string) => setOpenArticoloId(aid),
     onOpenRiepilogo: clienteId ? () => setRiepilogoRigaId(r.id) : null,
-    prezziSpecialiMap: prezziSpecialiMap ?? null,
     calc: calcMap.get(r.id) ?? { importo: 0, costo: 0, vendita: 0, margine_perc: 0, peso: 0, importoEffettivo: 0 },
     onPatch: (patch: Parameters<typeof updateRiga>[1]) =>
       upd.mutate({ id: r.id, patch }),
@@ -434,7 +430,6 @@ type RigaProps = {
   onDelete: () => void;
   onAddAbove: (tipo: TipoRiga) => void;
   onAddBelow: (tipo: TipoRiga) => void;
-  prezziSpecialiMap?: PrezziSpecialiMap | null;
 };
 
 const fmt4 = (v: number) => formatNumeroIt(v, { minDecimals: 4, maxDecimals: 4 });
@@ -523,7 +518,7 @@ function adattaAltezza(el: HTMLTextAreaElement | null) {
 }
 
 function useCelleRiga(p: RigaProps) {
-  const { row, calc, readOnly, preventivoId, autoOpenPicker = false, onOpenArticolo, onPatch, onSceltaGamma, prezziSpecialiMap } = p;
+  const { row, calc, readOnly, preventivoId, autoOpenPicker = false, onOpenArticolo, onPatch, onSceltaGamma } = p;
   const tipo = row.tipo_riga;
   const intestazioneKit = isIntestazioneKit(row);
   const kitSenzaPrezzo = tipo === "da_kit" && !intestazioneKit && (row.prezzo_unit == null || !row.articolo_codice);
