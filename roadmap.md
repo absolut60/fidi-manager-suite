@@ -1,6 +1,8 @@
 # FM70 — Ricerca articoli, fetta 1
-- [ ] Migrazione unica: normalizzazione SQL, testo indicizzato, matching multi-token, rilevanza e sede giacenza; prezzi/gate/RLS invariati.
-- [ ] Parametri preventivo, regola documentata, prove SQL e TS, suite completa e verifica della ricerca.
+- [x] Applicata 0219_fm70_ricerca_articoli_fetta1.sql: 64.622 testi valorizzati, indice GIN aggiunto senza rimozioni, matching multi-token, rilevanza e sede; impronte prezzi/RLS e blocco gate invariati.
+- [x] Parametri preventivo rilevanza/30, pagina Articoli invariata; regola documentata e test SQL permanente. 843 test TS verdi; SQL completo superato sul database locale isolato con la migrazione applicata e gate/prezzo simulati, sei normalizzazioni anche sul DB reale. Browser picker reale isolato 375/1280 ricerca/selezione con risposte simulate, zero errori; nessuna pagina temporanea aggiunta. Build automatico OK, tipi rigenerati dalla piattaforma.
+- [ ] Verifica ricerca reale autenticata: sessione disponibile e strumento dati ricevono Accesso negato; nessun gate aggirato. Typecheck separato non disponibile nei risultati automatici (checks vuoto), nessuna esecuzione manuale.
+- [ ] Decisione sul limite dimensionale: la normalizzazione richiesta di 120x200 aggiunge anche 12x20; AND dei token esclude righe 1200x2000 con sola variante 120x200. Algoritmo richiesto conservato, limite documentato.
 
 # FM69 — Eliminazioni verificate, fetta 4b
 - [x] Chat/promesse/ruoli/push e chiamante notifiche verificati; contatto cliente e attività fornitore già verificati ricondotti alla fonte unica, righe prima dei file. Regola docs e guardia AST con eccezioni tecniche puntuali (19 DELETE) e Set/Map/URLSearchParams espliciti. 842 test; browser chat negata 375/1280, file e messaggio intatti, conferma aperta; pagina temporanea rimossa. Nessun DB/permesso.
