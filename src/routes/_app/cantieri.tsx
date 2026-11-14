@@ -1,5 +1,6 @@
 // Modulo commerciale — Cantieri: lista con stato geocodifica e mappa Google.
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
+import { eliminaConEsito, messaggioEliminazioneCantiere } from "@/lib/esito-eliminazione";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ClientOnly } from "@tanstack/react-router";
@@ -199,9 +200,9 @@ function CantieriPage() {
   }, [roles, user?.id, isTrasversale, puoEliminareCantiere]);
 
   const eliminaCantiere = useCallback(async (c: CantiereRow) => {
-    const { error } = await supabase.from("cantieri").delete().eq("id", c.id);
-    if (error) {
-      toast.error("Eliminazione non riuscita: non hai i permessi su questo cantiere.");
+    const esito = await eliminaConEsito("cantieri", c.id);
+    if (esito.tipo !== "eliminato") {
+      toast.error(messaggioEliminazioneCantiere(esito));
       return;
     }
     toast.success("Cantiere eliminato");
