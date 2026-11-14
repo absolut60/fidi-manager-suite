@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { BloccoIndirizzo } from "@/components/blocco-indirizzo";
 import { isSoloShowroom, puoModificareContattoClienteShowroom } from "@/lib/permessi-showroom";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -373,10 +374,10 @@ function ClienteDetail() {
           `Impossibile eliminare: il cliente ha ${count} richieste fido collegate. Disattivalo invece.`,
         );
       }
-      const { error } = await supabase.from("clienti").delete().eq("id", clienteId);
-      if (error) throw error;
+      return eliminaConEsito("clienti", clienteId);
     },
-    onSuccess: () => {
+    onSuccess: (esito) => {
+      if (esito.tipo !== "eliminato") { toast.error(messaggioEsitoEliminazione(esito, "il cliente")); return; }
       toast.success("Cliente eliminato definitivamente");
       qc.invalidateQueries({ queryKey: ["clienti"] });
       setOpenElimina(false);

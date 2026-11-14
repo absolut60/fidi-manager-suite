@@ -1,3 +1,6 @@
+# FM69 — Eliminazioni verificate, fetta 2a
+- [ ] Audit chiamanti, eliminazioni indicate e ordine allegati; suite e browser allegato/partecipanti parziale. Nessun DB.
+
 # FM69 — Eliminazioni verificate, fetta 1
 - [x] Fonte unica a conteggio esatto/id deduplicati, esito parziale e messaggi condivisi; opportunità/preventivi/note aggiornano solo dopo successo completo, note mantengono vincolo preventivo. 825 test superati, build e controlli automatici OK. Browser simulato 375/1280: DELETE count=exact senza righe restituite, negato mantiene riga/cache e opportunità, riuscito rimuove; nessun errore runtime. Prova permanente tests/eliminazioni-verificate.browser.py. Nessuna modifica DB o alle altre eliminazioni.
 

@@ -1,3 +1,4 @@
+import { messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -56,7 +57,7 @@ function ContenutoPrezziCantiere({ cantiere }: { cantiere: CantiereRow }) {
   }
   async function elimina(r: CantiereListinoRow) {
     const e = await deleteCantiereListino(r.id);
-    if (e.tipo !== "eliminato") { toast.error(e.tipo === "permessi" ? "Non hai i permessi per eliminare questo prezzo." : e.tipo === "errore" ? `Eliminazione non riuscita: ${e.messaggio}` : "Il prezzo è collegato e non si può eliminare."); return; }
+    if (e.tipo !== "eliminato") { toast.error(messaggioEsitoEliminazione(e, "questo prezzo")); return; }
     cambiaRows((qc.getQueryData<CantiereListinoRow[]>(chiavePrezziCantiere(cantiere.id)) ?? []).filter(x => x.id !== r.id)); toast.success("Prezzo eliminato");
   }
   const riga = (r: CantiereListinoRow, scheda: boolean) => { const a = gamma.find(x => x.codice === r.cod_gamma); const p = propostaPrezzoCantiere(prezzi.get(r.cod_gamma)); return <PrezziCantiereRiga key={r.id} row={r} gamma={a} listino={p.listino_cliente} costoUltimo={a?.costo_ultimo ?? p.costo_ultimo} modificabile={modificabile} scheda={scheda} onSalva={salva} onElimina={() => elimina(r)} />; };

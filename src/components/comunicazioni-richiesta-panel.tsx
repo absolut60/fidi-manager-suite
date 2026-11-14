@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { MessageCircle, Send, Pencil, Trash2, Check, X } from "lucide-react";
@@ -115,13 +116,10 @@ export function ComunicazioniRichiestaPanel({ richiestaId, richiestaCreatedBy, c
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("comunicazioni_richiesta")
-        .delete()
-        .eq("id", id);
-      if (error) throw error;
+      return eliminaConEsito("comunicazioni_richiesta", id);
     },
-    onSuccess: () => {
+    onSuccess: (esito) => {
+      if (esito.tipo !== "eliminato") { toast.error(messaggioEsitoEliminazione(esito, "il messaggio")); return; }
       qc.invalidateQueries({ queryKey: ["comunicazioni", richiestaId] });
       qc.invalidateQueries({ queryKey: ["msg-non-letti-richieste"] });
       qc.invalidateQueries({ queryKey: ["comunicazioni-non-lette"] });

@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -157,13 +158,10 @@ export function DettaglioPartecipanteDialog({
 
   const elimina = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
-        .from("eventi_partecipanti")
-        .delete()
-        .eq("id", partecipante.id);
-      if (error) throw error;
+      return eliminaConEsito("eventi_partecipanti", partecipante.id);
     },
-    onSuccess: async () => {
+    onSuccess: async (esito) => {
+      if (esito.tipo !== "eliminato") { toast.error(messaggioEsitoEliminazione(esito, "il partecipante")); return; }
       await invalida();
       onOpenChange(false);
       toast.success("Partecipante eliminato");

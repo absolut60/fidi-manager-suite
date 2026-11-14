@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -485,10 +486,10 @@ function EventoDettaglioPage() {
 
   const eliminaEvento = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("eventi").delete().eq("id", eventoId);
-      if (error) throw error;
+      return eliminaConEsito("eventi", eventoId);
     },
-    onSuccess: () => {
+    onSuccess: (esito) => {
+      if (esito.tipo !== "eliminato") { toast.error(messaggioEsitoEliminazione(esito, "l’evento")); return; }
       queryClient.invalidateQueries({ queryKey: ["eventi-lista"] });
       toast.success("Evento eliminato");
       navigate({ to: "/eventi" });
@@ -586,18 +587,17 @@ function EventoDettaglioPage() {
   const eliminaMassivo = useMutation({
     mutationFn: async () => {
       // Elimina SOLO le righe partecipante: lead, contatti e clienti restano intatti.
-      const { error } = await supabase
-        .from("eventi_partecipanti")
-        .delete()
-        .in("id", selezionatiValidi);
-      if (error) throw error;
-      return selezionatiValidi.length;
+      const ids = [...new Set(selezionatiValidi)];
+      const esito = await eliminaConEsito("eventi_partecipanti", ids);
+      return { esito, richiesti: ids.length };
     },
-    onSuccess: (n) => {
-      setSelezionati([]);
+    onSuccess: ({ esito, richiesti }) => {
+      if (esito.tipo !== "eliminato" && esito.tipo !== "parziale") { toast.error(messaggioEsitoEliminazione(esito, "i partecipanti")); return; }
+      if (esito.tipo === "eliminato") setSelezionati([]);
       queryClient.invalidateQueries({ queryKey: ["evento-partecipanti", eventoId] });
       queryClient.invalidateQueries({ queryKey: ["eventi-lista"] });
-      toast.success(`${n} partecipanti eliminati dall'evento`);
+      if (esito.tipo === "parziale") toast.error(messaggioEsitoEliminazione(esito, "i partecipanti"));
+      else toast.success(`${richiesti} partecipanti eliminati dall'evento`);
     },
     onError: (e: Error) => toast.error("Errore nell'eliminazione", { description: e.message }),
   });
