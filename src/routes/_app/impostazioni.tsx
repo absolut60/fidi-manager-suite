@@ -474,7 +474,7 @@ function GeocodificaSediButton() {
   );
 }
 
-function StoreDialog({ editing, onClose }: { editing: StoreRow | null; onClose: () => void }) {
+export function StoreDialog({ editing, onClose }: { editing: StoreRow | null; onClose: () => void }) {
   const qc = useQueryClient();
   const [form, setForm] = useState<StoreForm>({
     codice: editing?.codice ?? "",
