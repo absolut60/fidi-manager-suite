@@ -1,7 +1,7 @@
 # FM71 — Condizioni di riferimento lato app, fetta 2a
-- [ ] Fonte unica prezzi cliente/riferimento, sede prezzi solo dal preventivo e priorità cantiere invariata.
-- [ ] Allineare scelta righe, kit, analisi/applicazione listini, proposte prezzi cantiere e duplicazione; nessuna nuova scelta nella Testata.
-- [ ] Guardia RPC, test fonte unica/suite, verifiche browser 375/1280 e documentazione.
+- [x] Fonte unica prezzi-preventivo.ts: dispatcher cliente/riferimento, sede prezzi solo dal preventivo (anche NULL), data/codici e forma comune; priorità cantiere e fonte listino invariate. Nessuna modifica SQL.
+- [x] Scelta righe, kit, analisi listini e proposte prezzi cantiere allineati; applicazione usa la proposta analizzata senza nuova RPC. Duplicazione copia i tre riferimenti. Finestre cantiere dirette e annidate ricevono contesto prezzi, cache distinta per condizioni/sede/data; nessuna nuova scelta nella Testata.
+- [x] Guardia AST senza eccezioni, test dispatcher/sede NULL/priorità/duplicazione: 865 test verdi. Browser componenti reali con risposte simulate 375/1280: riga riferimento salvata e riletta con fonte listino, analisi/applicazione, kit prioritario cantiere e proposte finestra (4 RPC riferimento, zero cliente), screenshot controllati. Route temporanea rimossa; prova autenticata reale non eseguita. Build automatico OK; documentazione aggiornata.
 
 # FM71 — Condizioni di riferimento, fetta 1 (solo database)
 - [x] Applicata 0223_fm71_condizioni_riferimento.sql: tre colonne nullable/FK verificata e wrapper del motore esistente, gate/limite/grant identici; nessuna modifica UI o policy. Registro verificato: 224 voci 0000–0223. Impronte dei tre motori e di tutte le policy public identiche prima/dopo.
