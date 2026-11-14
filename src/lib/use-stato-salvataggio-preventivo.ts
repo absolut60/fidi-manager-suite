@@ -48,7 +48,9 @@ export function useStatoSalvataggioPreventivo(id: string) {
 
   /** Da mettere sul contenitore della scheda: input segna "aperta", uscita azzera (il blur salva già). */
   const contenitoreProps = useMemo(() => ({
-    onInputCapture: () => setCaselleAperte(true),
+    // Dopo gli onChange delle celle controllate: in capture React ripristina il
+    // vecchio value prima che la cella possa leggere il carattere appena scritto.
+    onInput: () => setCaselleAperte(true),
     onBlurCapture: () => setCaselleAperte(false),
   }), []);
 
