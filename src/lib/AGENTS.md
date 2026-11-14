@@ -22,3 +22,4 @@
 
 - Manual marketing cascades enumerate all visible child IDs in stable pages and verify full deletion before deleting the parent; partial recipient removal refreshes data and retains only surviving IDs, preventing false success.
 - Article search normalization lives only in public.normalizza_testo_ricerca and the Gamma search-text trigger; new searchable fields extend that trigger, not TS or matching, so quote relevance and catalog token search cannot diverge.
+- Quote branch/store identity is paired only by campiSedePreventivo for creation, header edits and duplication; picker stock consumes SQL totals in site-keyed infinite pages, preventing mismatched stock and stale pages across sites.

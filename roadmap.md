@@ -1,3 +1,6 @@
+# FM70 — Giacenze e risultati, fetta 3a
+- [x] Applicata 0221_fm70_preventivi_store_id.sql: 3 preventivi collegati su 4, quello senza filiale resta NULL; indice verificato. Salvataggi creazione/Testata/duplicazione tramite campiSedePreventivo; picker righe con sede preventivo, Prezzi cantiere con sede cliente. Giacenze UM1/logistica e totale SQL, pagine 30/60/65, reset su ricerca/sede, selezione e assenza giacenze senza sede verificati con risposte simulate a 375/1280 (schermate, zero errori). 847 test verdi, build OK. Nessuna modifica cerca_articoli/prezzi/RLS. Verifica autenticata reale tentata: editor non accessibile alla sessione disponibile.
+
 # FM70 — Ricerca articoli, fetta 1-bis
 - [x] Applicata 0220_fm70_ricerca_articoli_fix.sql: due extensions.similarity, query senza varianti, varianti memorizzate bidirezionali e backfill di 64.622 righe; trigger, firma ricerca, gate e prezzi invariati. Documentazione/test aggiornati. Riprodotto 42883 locale con pg_trgm in extensions, stessa chiamata codice ora passa; prove SQL complete e aggiuntive cm↔mm superate sul database isolato, normalizzazione e qualificazione verificate sul DB reale. Ricerca reale autenticata resta non verificabile con la sessione disponibile.
 

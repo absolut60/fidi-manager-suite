@@ -17,17 +17,21 @@ import { formatDate } from "@/lib/fidi";
 import { ExternalLink, FileText, HardHat, Percent, Paperclip, StickyNote, UserRound } from "lucide-react";
 import { RiquadroScheda } from "./RiquadroScheda";
 import { IndicatoreClientePreventivo } from "./IndicatoreClientePreventivo";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { campiSedePreventivo } from "@/lib/preventivo-creazione";
 
 export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agenti,principali,haAlternative,listino,categoria,sede,sedeClienteId,onSave,onCliente,onChangeCliente,onCantiere}: {
   prev: PreventivoConDettagli; cliente: DatiClientePreventivo|null|undefined; modificabile:boolean; statoEditabile:boolean; agenti:Agente[]; principali:{id:string;numero:string|null;titolo:string|null}[]; haAlternative:boolean; listino:string; categoria:string; sede:string; sedeClienteId?:string|null;
   onSave:(patch:PreventivoUpdate)=>void; onCliente:()=>void; onChangeCliente:(id:string)=>void; onCantiere:(id:string)=>void|Promise<void>;
 }) {
   const {data:codici=[]}=useCodiciPagamento();
+  const {data:stores=[]}=useQuery({queryKey:["stores-attivi"],queryFn:async()=>{const {data,error}=await supabase.from("stores").select("id, codice, nome").eq("attivo",true).order("codice");if(error)throw error;return data??[];}});
   const pagamento=prev.condizione_pagamento_cod||cliente?.condizione_pagamento_cod||'';
   const pagamentoDesc=codici.find(c=>c.cod===pagamento)?.descrizione||cliente?.condizione_pagamento_desc||'';
   const save=(patch:PreventivoUpdate)=>onSave({...(!prev.condizione_pagamento_cod&&pagamento?{condizione_pagamento_cod:pagamento}:{}),...patch});
   const field=(label:string,value:ReactNode,control:ReactNode,wide=false)=><div key={label} className={`min-w-0 grid content-start gap-1 ${wide?'col-span-2':''}`}><Label className="text-[11px] text-muted-foreground">{label}</Label>{modificabile?control:<div className="min-h-7 text-xs break-words whitespace-pre-wrap py-1">{value||'—'}</div>}</div>;
-  const text=(key:'numero'|'titolo'|'filiale',label:string,wide=false)=>field(label,prev[key],<Input aria-label={label} key={`${key}-${prev[key]}`} className="h-7 bg-card px-2 text-xs md:text-xs" defaultValue={prev[key]||''} onBlur={e=>{if((e.target.value||null)!==prev[key])save({[key]:e.target.value||null});}}/>,wide);
+  const text=(key:'numero'|'titolo',label:string,wide=false)=>field(label,prev[key],<Input aria-label={label} key={`${key}-${prev[key]}`} className="h-7 bg-card px-2 text-xs md:text-xs" defaultValue={prev[key]||''} onBlur={e=>{if((e.target.value||null)!==prev[key])save({[key]:e.target.value||null});}}/>,wide);
   const select=(label:string,value:string,options:{value:string;label:string}[],onChange:(v:string)=>void,disabled=false)=><Select value={value||'__none__'} onValueChange={onChange} disabled={disabled}><SelectTrigger aria-label={label} className="h-7 w-full min-w-0 bg-card px-2 text-xs [&>span]:truncate [&>span]:text-left"><SelectValue/></SelectTrigger><SelectContent className="max-w-[calc(100vw-2rem)]"><SelectItem value="__none__">—</SelectItem>{options.map(o=><SelectItem key={o.value} value={o.value} className="whitespace-normal break-words">{o.label}</SelectItem>)}</SelectContent></Select>;
   const agenteCliente=agenti.find(a=>a.id===cliente?.codice_agente)?.nome||cliente?.codice_agente||'';
   const identitaCliente=[cliente?.codice_gestionale,cliente?.ragione_sociale||prev.cliente?.ragione_sociale].filter(Boolean).join(' · ');
@@ -74,7 +78,7 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
         {field('Categoria',categoria,<div className="min-h-7 py-1 text-xs break-words">{categoria}</div>)}
         {field('Condizione di pagamento',pagamento?`${pagamentoDesc||pagamento} (${pagamento})`:'—',<div title="Proposta dal cliente (Gamma) · modificabile">{select('Condizione di pagamento',pagamento,codici.map(c=>({value:c.cod,label:`${c.descrizione||''} (${c.cod})`})),v=>save({condizione_pagamento_cod:v==='__none__'?null:v}))}</div>,true)}
         {field('IVA %',`${formatNumeroIt(prev.iva_perc||0)}%`,<Input aria-label="IVA %" className="h-7 bg-card px-2 text-xs md:text-xs" inputMode="decimal" defaultValue={formatNumeroIt(prev.iva_perc||0)} onBlur={e=>{const v=parseNumeroIt(e.target.value);if(v!==null&&v!==prev.iva_perc)save({iva_perc:v});}}/>)}
-        {text('filiale','Filiale')}
+        {field('Filiale',prev.filiale,select('Filiale',prev.store_id||'',stores.map(s=>({value:s.id,label:s.nome})),id=>save(campiSedePreventivo(stores.find(s=>s.id===id)??null))))}
       </div>
     </RiquadroScheda>
     <CantiereTestata prev={prev} modificabile={modificabile} onCantiere={onCantiere} clienteEtichetta={identitaCliente} sedeClienteNome={sede} sedeClienteId={sedeClienteId}/>

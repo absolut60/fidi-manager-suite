@@ -580,7 +580,7 @@ function PreventivoEditorPage() {
                       </Card>
                     ) : (
                       prev.blocchi.map((b, idx) => (
-                        <BloccoCard key={b.id} blocco={b} index={idx} preventivoId={id} fascia={(prev.fascia_listino ?? "A") as FasciaListino} readOnly={!modificabile} clienteId={prev.cliente_id ?? null} cantiereId={prev.cantiere_id} scontoPiede={Number(prev.sconto_piede_perc ?? 0)} />
+                        <BloccoCard key={b.id} blocco={b} index={idx} preventivoId={id} fascia={(prev.fascia_listino ?? "A") as FasciaListino} readOnly={!modificabile} clienteId={prev.cliente_id ?? null} cantiereId={prev.cantiere_id} sedeGiacenzaId={prev.store_id ?? null} sedeNome={prev.filiale} scontoPiede={Number(prev.sconto_piede_perc ?? 0)} />
                       ))
                     )}
                   </div>
@@ -638,8 +638,8 @@ function PreventivoEditorPage() {
 }
 
 function BloccoCard({
-  blocco, index, preventivoId, fascia, readOnly = false, clienteId, scontoPiede, cantiereId,
-}: { blocco: BloccoConRighe; index: number; preventivoId: string; fascia: FasciaListino; readOnly?: boolean; clienteId: string | null; scontoPiede: number; cantiereId: string | null }) {
+  blocco, index, preventivoId, fascia, readOnly = false, clienteId, scontoPiede, cantiereId, sedeGiacenzaId, sedeNome,
+}: { blocco: BloccoConRighe; index: number; preventivoId: string; fascia: FasciaListino; readOnly?: boolean; clienteId: string | null; scontoPiede: number; cantiereId: string | null; sedeGiacenzaId?: string | null; sedeNome?: string | null }) {
   const qc = useQueryClient();
   const sortable = useSortable({ id: blocco.id });
   const style = {
@@ -767,7 +767,7 @@ function BloccoCard({
             </div>
           )}
 
-          <RigheTable blocco={blocco} preventivoId={preventivoId} fascia={fascia} readOnly={readOnly} clienteId={clienteId} cantiereId={cantiereId} scontoPiede={scontoPiede} />
+          <RigheTable blocco={blocco} preventivoId={preventivoId} fascia={fascia} readOnly={readOnly} clienteId={clienteId} cantiereId={cantiereId} sedeGiacenzaId={sedeGiacenzaId} sedeNome={sedeNome} scontoPiede={scontoPiede} />
         </CardContent>
       </Card>
     </div>

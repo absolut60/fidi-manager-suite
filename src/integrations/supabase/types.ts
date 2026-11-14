@@ -5905,6 +5905,7 @@ export type Database = {
           preventivo_origine_id: string | null
           sconto_piede_perc: number
           stato: Database["public"]["Enums"]["stato_preventivo"]
+          store_id: string | null
           tipo: Database["public"]["Enums"]["tipo_documento"]
           tipo_doc: Database["public"]["Enums"]["tipo_doc_preventivo"]
           titolo: string | null
@@ -5933,6 +5934,7 @@ export type Database = {
           preventivo_origine_id?: string | null
           sconto_piede_perc?: number
           stato?: Database["public"]["Enums"]["stato_preventivo"]
+          store_id?: string | null
           tipo?: Database["public"]["Enums"]["tipo_documento"]
           tipo_doc?: Database["public"]["Enums"]["tipo_doc_preventivo"]
           titolo?: string | null
@@ -5961,6 +5963,7 @@ export type Database = {
           preventivo_origine_id?: string | null
           sconto_piede_perc?: number
           stato?: Database["public"]["Enums"]["stato_preventivo"]
+          store_id?: string | null
           tipo?: Database["public"]["Enums"]["tipo_documento"]
           tipo_doc?: Database["public"]["Enums"]["tipo_doc_preventivo"]
           titolo?: string | null
@@ -6003,6 +6006,13 @@ export type Database = {
             columns: ["preventivo_origine_id"]
             isOneToOne: false
             referencedRelation: "preventivi"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "preventivi_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]

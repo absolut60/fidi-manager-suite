@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ChevronDown, ChevronsUpDown, Search } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cercaArticoliPreventivo } from "@/lib/articoli-preventivo.functions";
 import { FiltriCatalogoArticoli } from "@/components/articoli/FiltriCatalogoArticoli";
-import { ricercaPreventivoAttiva } from "@/lib/catalogo-articoli";
+import { quantitaArticolo, ricercaPreventivoAttiva } from "@/lib/catalogo-articoli";
 import type { ScelteCascata } from "@/lib/filtri-catalogo-articoli";
 
 /** FM65 F4: filtri del selettore ricordati solo in memoria per il preventivo aperto (tutte le righe); un altro preventivo riparte vuoto. */
@@ -28,10 +28,12 @@ export interface ArticoloGammaScelto { codice: string; descrizione: string | nul
 
 /** FM65: selettore articoli del catalogo Gamma per la riga preventivo. Non mostra prezzi (seguono il cliente). */
 export function ArticoloGammaPicker({
-  codice, descrizione, onChange, autoOpen = false, disabled = false, soloCodice = false, preventivoId = null,
+  codice, descrizione, onChange, autoOpen = false, disabled = false, soloCodice = false, preventivoId = null, sedeGiacenzaId = null, sedeNome = null,
 }: {
   /** FM65 F4: chiave della memoria dei filtri (per preventivo). */
   preventivoId?: string | null;
+  sedeGiacenzaId?: string | null;
+  sedeNome?: string | null;
   codice: string | null;
   descrizione: string | null;
   onChange: (a: ArticoloGammaScelto) => void;
@@ -73,13 +75,19 @@ export function ArticoloGammaPicker({
     return () => window.clearTimeout(t);
   }, [q]);
 
-  const { data: items = [], isFetching } = useQuery({
-    queryKey: ["articoli-gamma-preventivo", qDeb, scelte],
-    queryFn: () => cerca({ data: { testo: qDeb, ...scelte } }),
+  const { data, isFetching, isFetchingNextPage, hasNextPage, fetchNextPage, isError } = useInfiniteQuery({
+    queryKey: ["articoli-gamma-preventivo", qDeb, scelte, sedeGiacenzaId],
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) => cerca({ data: { testo: qDeb, ...scelte, ...(sedeGiacenzaId ? { sede_giacenza: sedeGiacenzaId } : {}), offset: pageParam } }),
+    getNextPageParam: (lastPage, pages) => {
+      const caricati = pages.reduce((n, p) => n + p.length, 0);
+      return lastPage.length > 0 && caricati < Number(lastPage[0]?.totale ?? 0) ? caricati : undefined;
+    },
     enabled: open && attiva,
-    placeholderData: keepPreviousData,
     staleTime: 60_000,
   });
+  const items = data?.pages.flat() ?? [];
+  const totale = Number(data?.pages[0]?.[0]?.totale ?? 0);
 
   const label = codice ? (soloCodice ? codice : `${codice} · ${descrizione ?? ""}`) : null;
 
@@ -111,11 +119,12 @@ export function ArticoloGammaPicker({
             placeholder="Codice, descrizione o marca…" aria-label="Cerca articolo Gamma"
             className="h-9 border-0 px-0 text-sm focus-visible:ring-0" />
         </div>
+        {sedeNome && <div className="shrink-0 border-b px-2 py-1 text-xs text-muted-foreground break-words">Giacenze: {sedeNome}</div>}
         <div role="list" aria-label="Risultati articoli Gamma" className="min-h-0 max-h-[60dvh] overflow-y-auto overscroll-contain sm:max-h-[520px]">
           {!attiva ? (
             <div className="p-3 text-xs text-muted-foreground">Scrivi almeno 2 caratteri o scegli un filtro.</div>
           ) : items.length === 0 ? (
-            <div className="p-3 text-xs text-muted-foreground">{isFetching ? "Ricerca…" : "Nessun articolo trovato."}</div>
+            <div className="p-3 text-xs text-muted-foreground">{isFetching ? "Ricerca…" : isError ? "Ricerca non riuscita." : "Nessun articolo trovato."}</div>
           ) : items.map((a) => (
             <Button key={a.codice} type="button" variant="ghost"
               onClick={() => { onChange(a); setOpen(false); }}
@@ -124,10 +133,21 @@ export function ArticoloGammaPicker({
                 <span className="font-mono font-semibold">{a.codice}</span>
                 <span className="block break-words">{a.descrizione}{a.marca && <span className="font-semibold text-primary"> · {a.marca}</span>}</span>
               </span>
-              <span className="shrink-0 text-muted-foreground">{a.um ?? ""}</span>
+              <span className="shrink-0 text-right text-muted-foreground">
+                <span className="block">{a.um ?? ""}</span>
+                {sedeGiacenzaId && <>
+                  <span className={`block whitespace-nowrap ${Number(a.giacenza_sede) > 0 ? "font-bold text-foreground" : "text-muted-foreground"}`}>{Number(a.giacenza_sede) > 0 ? quantitaArticolo(Number(a.giacenza_sede), a.um) : "0"}</span>
+                  {Number(a.giacenza_logistica) > 0 && <span className="block whitespace-nowrap text-[11px]">+{quantitaArticolo(Number(a.giacenza_logistica))} log.</span>}
+                </>}
+              </span>
             </Button>
           ))}
         </div>
+        {attiva && data && <div className="flex shrink-0 flex-wrap items-center justify-between gap-1 border-t px-2 py-1 text-xs text-muted-foreground">
+          <span role="status">{items.length.toLocaleString("it-IT")} di {totale.toLocaleString("it-IT")}</span>
+          {hasNextPage && <Button type="button" variant="ghost" className="min-h-10 px-2 text-xs" disabled={isFetching} onClick={() => void fetchNextPage()}>{isFetchingNextPage ? "Caricamento…" : "Mostra altri 30"}</Button>}
+          {isError && <span role="alert">Caricamento non riuscito. Riprova.</span>}
+        </div>}
       </PopoverContent>
     </Popover>
   );
