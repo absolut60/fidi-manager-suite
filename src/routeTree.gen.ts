@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
+import { Route as Fm69VerificaRouteImport } from './routes/fm69-verifica'
 import { Route as IscrizioneWhatsappRouteImport } from './routes/iscrizione-whatsapp'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as VerificaCodiceRouteImport } from './routes/verifica-codice'
@@ -33,7 +34,6 @@ import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppDashboardCommercialeRouteImport } from './routes/_app/dashboard-commerciale'
 import { Route as AppFidiDashboardRouteImport } from './routes/_app/fidi-dashboard'
 import { Route as AppFidiProcessareRouteImport } from './routes/_app/fidi-processare'
-import { Route as AppFm69VerificaRouteImport } from './routes/_app/fm69-verifica'
 import { Route as AppIlMioProfiloRouteImport } from './routes/_app/il-mio-profilo'
 import { Route as AppImportExportRouteImport } from './routes/_app/import-export'
 import { Route as AppImpostazioniRouteImport } from './routes/_app/impostazioni'
@@ -111,6 +111,11 @@ const IndexRoute = IndexRouteImport.update({
 } as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Fm69VerificaRoute = Fm69VerificaRouteImport.update({
+  id: '/fm69-verifica',
+  path: '/fm69-verifica',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IscrizioneWhatsappRoute = IscrizioneWhatsappRouteImport.update({
@@ -223,11 +228,6 @@ const AppFidiDashboardRoute = AppFidiDashboardRouteImport.update({
 const AppFidiProcessareRoute = AppFidiProcessareRouteImport.update({
   id: '/fidi-processare',
   path: '/fidi-processare',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppFm69VerificaRoute = AppFm69VerificaRouteImport.update({
-  id: '/fm69-verifica',
-  path: '/fm69-verifica',
   getParentRoute: () => AppRoute,
 } as any)
 const AppIlMioProfiloRoute = AppIlMioProfiloRouteImport.update({
@@ -595,6 +595,7 @@ const ApiWebhooksD360TokenRoute = ApiWebhooksD360TokenRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/fm69-verifica': typeof Fm69VerificaRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
   '/verifica-codice': typeof VerificaCodiceRoute
@@ -617,7 +618,6 @@ export interface FileRoutesByFullPath {
   '/dashboard-commerciale': typeof AppDashboardCommercialeRoute
   '/fidi-dashboard': typeof AppFidiDashboardRoute
   '/fidi-processare': typeof AppFidiProcessareRoute
-  '/fm69-verifica': typeof AppFm69VerificaRoute
   '/il-mio-profilo': typeof AppIlMioProfiloRoute
   '/import-export': typeof AppImportExportRoute
   '/impostazioni': typeof AppImpostazioniRoute
@@ -690,6 +690,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/fm69-verifica': typeof Fm69VerificaRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
   '/verifica-codice': typeof VerificaCodiceRoute
@@ -712,7 +713,6 @@ export interface FileRoutesByTo {
   '/dashboard-commerciale': typeof AppDashboardCommercialeRoute
   '/fidi-dashboard': typeof AppFidiDashboardRoute
   '/fidi-processare': typeof AppFidiProcessareRoute
-  '/fm69-verifica': typeof AppFm69VerificaRoute
   '/il-mio-profilo': typeof AppIlMioProfiloRoute
   '/import-export': typeof AppImportExportRoute
   '/impostazioni': typeof AppImpostazioniRoute
@@ -784,6 +784,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
+  '/fm69-verifica': typeof Fm69VerificaRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
   '/verifica-codice': typeof VerificaCodiceRoute
@@ -806,7 +807,6 @@ export interface FileRoutesById {
   '/_app/dashboard-commerciale': typeof AppDashboardCommercialeRoute
   '/_app/fidi-dashboard': typeof AppFidiDashboardRoute
   '/_app/fidi-processare': typeof AppFidiProcessareRoute
-  '/_app/fm69-verifica': typeof AppFm69VerificaRoute
   '/_app/il-mio-profilo': typeof AppIlMioProfiloRoute
   '/_app/import-export': typeof AppImportExportRoute
   '/_app/impostazioni': typeof AppImpostazioniRoute
@@ -881,6 +881,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/fm69-verifica'
     | '/iscrizione-whatsapp'
     | '/login'
     | '/verifica-codice'
@@ -903,7 +904,6 @@ export interface FileRouteTypes {
     | '/dashboard-commerciale'
     | '/fidi-dashboard'
     | '/fidi-processare'
-    | '/fm69-verifica'
     | '/il-mio-profilo'
     | '/import-export'
     | '/impostazioni'
@@ -976,6 +976,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/fm69-verifica'
     | '/iscrizione-whatsapp'
     | '/login'
     | '/verifica-codice'
@@ -998,7 +999,6 @@ export interface FileRouteTypes {
     | '/dashboard-commerciale'
     | '/fidi-dashboard'
     | '/fidi-processare'
-    | '/fm69-verifica'
     | '/il-mio-profilo'
     | '/import-export'
     | '/impostazioni'
@@ -1069,6 +1069,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_app'
+    | '/fm69-verifica'
     | '/iscrizione-whatsapp'
     | '/login'
     | '/verifica-codice'
@@ -1091,7 +1092,6 @@ export interface FileRouteTypes {
     | '/_app/dashboard-commerciale'
     | '/_app/fidi-dashboard'
     | '/_app/fidi-processare'
-    | '/_app/fm69-verifica'
     | '/_app/il-mio-profilo'
     | '/_app/import-export'
     | '/_app/impostazioni'
@@ -1166,6 +1166,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
+  Fm69VerificaRoute: typeof Fm69VerificaRoute
   IscrizioneWhatsappRoute: typeof IscrizioneWhatsappRoute
   LoginRoute: typeof LoginRoute
   VerificaCodiceRoute: typeof VerificaCodiceRoute
@@ -1196,6 +1197,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fm69-verifica': {
+      id: '/fm69-verifica'
+      path: '/fm69-verifica'
+      fullPath: '/fm69-verifica'
+      preLoaderRoute: typeof Fm69VerificaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/iscrizione-whatsapp': {
@@ -1350,13 +1358,6 @@ declare module '@tanstack/react-router' {
       path: '/fidi-processare'
       fullPath: '/fidi-processare'
       preLoaderRoute: typeof AppFidiProcessareRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/fm69-verifica': {
-      id: '/_app/fm69-verifica'
-      path: '/fm69-verifica'
-      fullPath: '/fm69-verifica'
-      preLoaderRoute: typeof AppFm69VerificaRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/il-mio-profilo': {
@@ -1929,7 +1930,6 @@ interface AppRouteChildren {
   AppDashboardCommercialeRoute: typeof AppDashboardCommercialeRoute
   AppFidiDashboardRoute: typeof AppFidiDashboardRoute
   AppFidiProcessareRoute: typeof AppFidiProcessareRoute
-  AppFm69VerificaRoute: typeof AppFm69VerificaRoute
   AppIlMioProfiloRoute: typeof AppIlMioProfiloRoute
   AppImportExportRoute: typeof AppImportExportRoute
   AppImpostazioniRoute: typeof AppImpostazioniRoute
@@ -2002,7 +2002,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppDashboardCommercialeRoute: AppDashboardCommercialeRoute,
   AppFidiDashboardRoute: AppFidiDashboardRoute,
   AppFidiProcessareRoute: AppFidiProcessareRoute,
-  AppFm69VerificaRoute: AppFm69VerificaRoute,
   AppIlMioProfiloRoute: AppIlMioProfiloRoute,
   AppImportExportRoute: AppImportExportRoute,
   AppImpostazioniRoute: AppImpostazioniRoute,
@@ -2060,6 +2059,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
+  Fm69VerificaRoute: Fm69VerificaRoute,
   IscrizioneWhatsappRoute: IscrizioneWhatsappRoute,
   LoginRoute: LoginRoute,
   VerificaCodiceRoute: VerificaCodiceRoute,
