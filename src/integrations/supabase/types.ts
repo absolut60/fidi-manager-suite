@@ -1900,30 +1900,48 @@ export type Database = {
           cod_gamma: string
           costo_netto_speciale: number | null
           created_at: string
+          created_by: string | null
+          descrizione: string | null
           id: string
+          maggiorazione_perc: number
           note: string | null
           prezzo_vendita_speciale: number | null
+          sconti: number[]
+          um_scelta: string | null
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
           cantiere_id: string
           cod_gamma: string
           costo_netto_speciale?: number | null
           created_at?: string
+          created_by?: string | null
+          descrizione?: string | null
           id?: string
+          maggiorazione_perc?: number
           note?: string | null
           prezzo_vendita_speciale?: number | null
+          sconti?: number[]
+          um_scelta?: string | null
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           cantiere_id?: string
           cod_gamma?: string
           costo_netto_speciale?: number | null
           created_at?: string
+          created_by?: string | null
+          descrizione?: string | null
           id?: string
+          maggiorazione_perc?: number
           note?: string | null
           prezzo_vendita_speciale?: number | null
+          sconti?: number[]
+          um_scelta?: string | null
           updated_at?: string
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -8575,6 +8593,15 @@ export type Database = {
       auth_puo_gestire_legale: { Args: never; Returns: boolean }
       auth_puo_gestire_tesoreria: { Args: never; Returns: boolean }
       auth_puo_inviare_recupero: { Args: never; Returns: boolean }
+      auth_puo_modificare_cantiere: {
+        Args: {
+          _agente_codice: string
+          _cliente_id: string
+          _created_by: string
+          _lead_id: string
+        }
+        Returns: boolean
+      }
       auth_puo_modificare_contatto: {
         Args: { _cliente_id: string; _created_by: string; _lead_id: string }
         Returns: boolean
