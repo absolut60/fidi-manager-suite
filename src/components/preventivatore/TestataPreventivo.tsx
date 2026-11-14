@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select,SelectContent,SelectItem,SelectTrigger,SelectValue } from "@/components/ui/select";
 import { ClientePicker } from "./ClientePicker";
+import { AzioneRiquadro } from "./AzioneRiquadro";
 import { CantiereTestata } from "./CantiereTestata";
 import { useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
 import { STATI,STATI_LABEL,TIPI_DOC,TIPI_DOC_LABEL,type PreventivoConDettagli,type PreventivoUpdate,type DatiClientePreventivo,type Agente } from "@/lib/preventivi-api";
@@ -51,7 +52,7 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
         {field('Alternativa di',principali.find(p=>p.id===prev.alternativa_di)?.numero||'— Nessuna: è un preventivo principale',<div><Select value={prev.alternativa_di||'__none__'} disabled={haAlternative||prev.tipo!=='preventivo'} onValueChange={v=>save({alternativa_di:v==='__none__'?null:v})}><SelectTrigger aria-label="Alternativa di" className="h-7 w-full min-w-0 bg-card px-2 text-xs [&>span]:truncate [&>span]:text-left"><SelectValue/></SelectTrigger><SelectContent className="max-w-[calc(100vw-2rem)]"><SelectItem value="__none__">— Nessuna: è un preventivo principale</SelectItem>{principali.map(p=><SelectItem key={p.id} value={p.id}>{p.numero} {p.titolo?`· ${p.titolo}`:''}</SelectItem>)}</SelectContent></Select>{haAlternative&&<p className="text-xs text-muted-foreground mt-1">Ha alternative collegate</p>}</div>,true)}
       </div>
     </RiquadroScheda>
-    <RiquadroScheda titolo="Cliente" icona={UserRound} tono="azzurro" densita="compatta" intestazione={<div className="flex min-w-0 flex-wrap items-center gap-2"><h3 className="text-xs font-semibold">Cliente</h3>{etichettaSoggetto&&<span className="shrink-0 rounded-full border border-pv-blu/30 bg-pv-azzurro px-1.5 text-[10px] font-medium leading-4 text-pv-blu">{etichettaSoggetto}</span>}<IndicatoreClientePreventivo clienteId={prev.cliente_id}/></div>}>
+    <RiquadroScheda titolo="Cliente" icona={UserRound} tono="azzurro" densita="compatta" azioni={<AzioneRiquadro icona={ExternalLink} etichetta="Apri scheda cliente" onClick={onCliente}/>} intestazione={<div className="flex min-w-0 flex-wrap items-center gap-2"><h3 className="text-xs font-semibold">Cliente</h3>{etichettaSoggetto&&<span className="shrink-0 rounded-full border border-pv-blu/30 bg-pv-azzurro px-1.5 text-[10px] font-medium leading-4 text-pv-blu">{etichettaSoggetto}</span>}<IndicatoreClientePreventivo clienteId={prev.cliente_id}/></div>}>
       {modificabile?<div className="mb-2 [&>button]:h-7 [&>button]:min-h-7 [&>button]:w-full [&>button]:px-2 [&>button]:text-xs"><ClientePicker value={prev.cliente_id} onChange={onChangeCliente}/></div>:<p className="mb-2 break-words text-xs font-bold">{identitaCliente||'—'}</p>}
       <div className="grid grid-cols-2 gap-x-2 gap-y-2 lg:grid-cols-4">
         {datoCliente('P.IVA',cliente?.partita_iva,false,true)}
@@ -63,7 +64,6 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
         {datoCliente('PEC',cliente?.pec&&<a className="break-all text-pv-blu hover:underline" href={`mailto:${cliente.pec}`}>{cliente.pec}</a>)}
         {datoCliente('Email',cliente?.email&&<a className="break-all text-pv-blu hover:underline" href={`mailto:${cliente.email}`}>{cliente.email}</a>,true)}
         {datoCliente('Agente',agenteCliente)}
-        <div className="col-span-2 flex min-w-0 items-end"><Button variant="link" onClick={onCliente} className="h-7 max-w-full whitespace-normal p-0 text-left text-xs text-pv-blu">Apri scheda cliente<ExternalLink className="ml-1 size-3 shrink-0"/></Button></div>
       </div>
     </RiquadroScheda>
     </div>
@@ -77,11 +77,7 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
         {text('filiale','Filiale')}
       </div>
     </RiquadroScheda>
-    <RiquadroScheda titolo="Cantiere" icona={HardHat} tono="verde" densita="compatta">
-      <div className="[&>div]:space-y-1.5 [&_p]:text-xs [&_div.text-sm]:text-xs [&_button]:h-7 [&_button]:min-h-7 [&_button]:px-2 [&_button]:text-xs [&_button[role=combobox]]:w-full [&_div.space-y-2]:flex [&_div.space-y-2]:flex-col [&_div.space-y-2]:gap-1.5 [&_div.space-y-2]:space-y-0 [&_div[role=group]]:order-1 [&_div[role=group]]:flex-nowrap [&_div[role=group]_button]:px-1.5 [&_div[role=group]_button]:whitespace-normal [&_div[role=group]_button]:leading-tight [&_button[role=combobox]]:order-0">
-        <CantiereTestata prev={prev} modificabile={modificabile} onCantiere={onCantiere} clienteEtichetta={identitaCliente} sedeClienteNome={sede} sedeClienteId={sedeClienteId}/>
-      </div>
-    </RiquadroScheda>
+    <CantiereTestata prev={prev} modificabile={modificabile} onCantiere={onCantiere} clienteEtichetta={identitaCliente} sedeClienteNome={sede} sedeClienteId={sedeClienteId}/>
     </div>
     <RiquadroScheda titolo="Note" icona={StickyNote} tono="viola" densita="compatta">
       {modificabile?<Textarea aria-label="Note" rows={3} className="min-h-0 resize-none bg-card px-2 py-1 text-xs md:text-xs" defaultValue={prev.note||''} onBlur={e=>{if((e.target.value||null)!==prev.note)save({note:e.target.value||null});}}/>:<p className="whitespace-pre-wrap break-words text-xs">{prev.note||'—'}</p>}
