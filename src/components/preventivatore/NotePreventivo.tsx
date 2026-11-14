@@ -1,3 +1,4 @@
+import { messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
@@ -23,7 +24,10 @@ export function NotePreventivo({ id, modificabile }: { id: string; modificabile:
   });
   const elimina = useMutation({
     mutationKey: chiaveSalvaPreventivo(id), mutationFn: (notaId: string) => eliminaNotaPreventivo(id, notaId),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: chiaveNotePreventivo(id) }); setDaEliminare(null); },
+    onSuccess: (esito) => {
+      if (esito.tipo !== "eliminato") { toast.error(messaggioEsitoEliminazione(esito, "la nota")); return; }
+      qc.invalidateQueries({ queryKey: chiaveNotePreventivo(id) }); setDaEliminare(null);
+    },
     onError: (e: Error) => toast.error(e.message),
   });
   return <div className="mt-2 space-y-2">

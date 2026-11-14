@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 // Modulo commerciale (CRM) — lista opportunità con riepilogo pipeline, filtri e dialog crea/modifica.
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -142,9 +143,9 @@ function OpportunitaPage() {
   }
 
   async function elimina(o: OpportunitaRow) {
-    const { error } = await supabase.from("opportunita").delete().eq("id", o.id);
-    if (error) {
-      toast.error("Eliminazione non riuscita: non hai i permessi su questa opportunità.");
+    const esito = await eliminaConEsito("opportunita", o.id);
+    if (esito.tipo !== "eliminato") {
+      toast.error(messaggioEsitoEliminazione(esito, "l’opportunità"));
       return;
     }
     toast.success("Opportunità eliminata");

@@ -1,35 +1,51 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 
 type ErroreEliminazione = { code?: string; message: string };
 export type EsitoEliminazione =
   | { tipo: "eliminato" }
   | { tipo: "collegato" }
   | { tipo: "permessi" }
+  | { tipo: "parziale"; eliminati: number; richiesti: number }
   | { tipo: "errore"; messaggio: string };
 
-export function classificaEsitoEliminazione(
-  error: ErroreEliminazione | null,
-  righe: readonly { id: unknown }[] | null,
-): EsitoEliminazione {
+export function classificaEsitoEliminazione(error: ErroreEliminazione | null, conteggio: number | null, richiesti = 1): EsitoEliminazione {
   if (error?.code === "23503") return { tipo: "collegato" };
   if (error?.code === "42501") return { tipo: "permessi" };
   if (error) return { tipo: "errore", messaggio: error.message };
-  return { tipo: righe?.length ? "eliminato" : "permessi" };
+  if (!conteggio || richiesti <= 0) return { tipo: "permessi" };
+  if (conteggio === richiesti) return { tipo: "eliminato" };
+  return { tipo: "parziale", eliminati: conteggio, richiesti };
 }
 
 export async function eliminaConEsito(
-  tabella: "cantieri" | "cantiere_listini_speciali", id: string,
+  tabella: keyof Database["public"]["Tables"],
+  id: string | readonly string[],
+  vincolo?: { preventivo_id: string },
 ): Promise<EsitoEliminazione> {
+  const ids = [...new Set(typeof id === "string" ? [id] : id)];
+  if (!ids.length) return { tipo: "permessi" };
   try {
-    const { error, data } = await supabase.from(tabella).delete().eq("id", id).select("id");
-    return classificaEsitoEliminazione(error, data);
+    let query = supabase.from(tabella).delete({ count: "exact" }).in("id", ids);
+    if (vincolo) query = query.eq("preventivo_id", vincolo.preventivo_id);
+    const { error, count } = await query;
+    return classificaEsitoEliminazione(error, count, ids.length);
   } catch (error) {
     return { tipo: "errore", messaggio: error instanceof Error ? error.message : "Errore di connessione" };
   }
 }
 
+export function messaggioEsitoEliminazione(esito: EsitoEliminazione, cosa: string): string {
+  if (esito.tipo === "collegato") {
+    if (cosa === "questo cantiere") return "Il cantiere è usato in uno o più preventivi e non si può eliminare. Se non serve più, aprilo e togli la spunta «Cantiere attivo».";
+    return `${cosa.charAt(0).toUpperCase()}${cosa.slice(1)} è collegato ad altri dati e non si può eliminare.`;
+  }
+  if (esito.tipo === "permessi") return `Non hai i permessi per eliminare ${cosa}.`;
+  if (esito.tipo === "parziale") return `Eliminati ${esito.eliminati} su ${esito.richiesti}: per gli altri non hai i permessi.`;
+  if (esito.tipo === "errore") return `Eliminazione non riuscita: ${esito.messaggio}`;
+  return "";
+}
+
 export function messaggioEliminazioneCantiere(esito: Exclude<EsitoEliminazione, { tipo: "eliminato" }>): string {
-  if (esito.tipo === "collegato") return "Il cantiere è usato in uno o più preventivi e non si può eliminare. Se non serve più, aprilo e togli la spunta «Cantiere attivo».";
-  if (esito.tipo === "permessi") return "Non hai i permessi per eliminare questo cantiere.";
-  return `Eliminazione non riuscita: ${esito.messaggio}`;
+  return messaggioEsitoEliminazione(esito, "questo cantiere");
 }

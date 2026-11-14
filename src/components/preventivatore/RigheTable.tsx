@@ -1,3 +1,4 @@
+import { messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { opzioniPrezziCantiere } from "@/lib/cantiere-listini-api";
 import { CellaUm } from "@/components/cella-um";
 import { useEffect, useMemo, useState } from "react";
@@ -134,7 +135,10 @@ export function RigheTable({
   });
   const del = useMutation({ mutationKey: ["salva-preventivo", preventivoId],
     mutationFn: (id: string) => deleteRiga(id),
-    onSuccess: invalidate,
+    onSuccess: (esito) => {
+      if (esito.tipo !== "eliminato") { toast.error(messaggioEsitoEliminazione(esito, "la riga")); return; }
+      return invalidate();
+    },
     onError: (e: unknown) => toast.error((e as Error).message),
   });
   const ins = useMutation({ mutationKey: ["salva-preventivo", preventivoId],

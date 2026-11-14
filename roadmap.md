@@ -1,3 +1,6 @@
+# FM69 — Eliminazioni verificate, fetta 1
+- [ ] Fonte unica a conteggio, opportunità/preventivi/note; test e browser negato/riuscito. Nessun database.
+
 # FM69 — Aperti: cantieri, Testata e barra richieste
 - [x] Applicata 0218: gate consultazione condizioni/cantiere, DROP lite senza dipendenze, RPC batch modificabili.
 - [x] Matrici aal2 prima/dopo verificate con rollback: Daniele accede alle condizioni, altri invariati; RPC modificabili coerente con UPDATE per tutti e cinque. 824 test superati, controlli automatici/build OK. Browser con risposte simulate a 375/1280 e 740 orizzontale: una richiesta per lista, sola modifica autorizzata, barra a 8px quando nascosta e 64px al ritorno; nessuna scrittura reale. AGENTS root pieno: regola salvata in docs/regole/fonti-uniche.md.

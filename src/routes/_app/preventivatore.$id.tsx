@@ -1,3 +1,4 @@
+import { messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { opzioniPrezziCantiere } from "@/lib/cantiere-listini-api";
 import { BadgePrezziDedicati } from "@/components/badge-prezzi-dedicati";
 import { PrezziCantiereDialog } from "@/components/prezzi-cantiere-dialog";
@@ -175,8 +176,9 @@ function PreventivoEditorPage() {
 
   const delPrev = useMutation({
     mutationFn: () => deletePreventivo(id),
-    onSuccess: () => {
+    onSuccess: (esito) => {
       const isOrd = prev?.tipo === "ordine";
+      if (esito.tipo !== "eliminato") { toast.error(messaggioEsitoEliminazione(esito, isOrd ? "l’ordine" : "il preventivo")); return; }
       toast.success(isOrd ? "Ordine eliminato" : "Preventivo eliminato");
       navigate({ to: "/preventivatore" });
     },
@@ -670,7 +672,10 @@ function BloccoCard({
 
   const del = useMutation({ mutationKey: ["salva-preventivo", preventivoId],
     mutationFn: () => deleteBlocco(blocco.id),
-    onSuccess: invalidate,
+    onSuccess: (esito) => {
+      if (esito.tipo !== "eliminato") { toast.error(messaggioEsitoEliminazione(esito, "il blocco")); return; }
+      return invalidate();
+    },
     onError: (e: unknown) => toast.error((e as Error).message),
   });
 
