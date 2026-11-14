@@ -8669,6 +8669,7 @@ export type Database = {
         }[]
       }
       can_manage_email_assets: { Args: never; Returns: boolean }
+      cantieri_modificabili: { Args: { _ids: string[] }; Returns: string[] }
       categoria_scadenza: {
         Args: {
           _data_pagamento_effettiva: string
@@ -9038,21 +9039,6 @@ export type Database = {
         }[]
       }
       count_fidi_quasi_saturi: { Args: { _store_id?: string }; Returns: number }
-      crea_cantiere_lite: {
-        Args: {
-          _cap?: string
-          _citta?: string
-          _cliente_id: string
-          _indirizzo?: string
-          _nome: string
-          _provincia?: string
-          _provvisorio?: boolean
-        }
-        Returns: {
-          id: string
-          nome: string
-        }[]
-      }
       crea_lead_da_iscritto: { Args: { _id: string }; Returns: Json }
       crea_lead_da_partecipante: {
         Args: { _fonte_dettaglio?: string; _partecipante_id: string }
