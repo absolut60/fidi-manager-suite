@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { BloccoIndirizzo } from "@/components/blocco-indirizzo";
 import { FileCheck2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -226,14 +227,9 @@ export function ModuloConsensoPrivacy({
               onChange={(e) => setD("codice_fiscale", e.target.value.toUpperCase())}
             />
           </div>
-          <div className="space-y-1.5">
-            <Label>Residenza</Label>
-            <Input
-              value={dich.residenza}
-              onChange={(e) => setD("residenza", e.target.value)}
-              placeholder="Via, n°, CAP, Città (Prov.)"
-            />
-          </div>
+          <BloccoIndirizzo residenzaUnica value={{ indirizzo: dich.residenza, cap: "", citta: "", provincia: "" }}
+            onChange={(d) => { if (d.indirizzo !== undefined) setD("residenza", d.indirizzo); }}
+            etichette={{ indirizzo: "Residenza" }} placeholder="Via, n°, CAP, Città (Prov.)" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">

@@ -1,4 +1,7 @@
 # FM68 — Fetta A: visibilità preventivisti (solo database)
+## Indirizzi giro 3
+- [x] Cinque residenze con BloccoIndirizzo opt-in a campo unico, stessi stati e salvataggi; nessuna modifica DB/chiave. I suggerimenti uniscono via/CAP/città/provincia nel solo campo esistente.
+- [x] 752 test; salvataggi identici byte per byte; schermate simulate modifica contatto/privacy 375/1280, modifica manuale e payload privacy verificati; fallback senza chiave scrivibile. Google reale e scritture reali non provati; pagine temporanee rimosse. Residuo: attivita-commerciale-dialog.tsx:227 Luogo (indirizzo o sede), non toccato; città/provincia marketing sono filtri, invio massivo usa email/PEC. Modulo privacy pubblico solo in firma-privacy; iscrizioni non lo importano.
 ## Indirizzi giro 2
 - [x] Indirizzi cliente condivisi, nota Gamma; picker apre CantiereDialog con nome iniziale opt-in. Wrapper TS creaCantiereLite rimosso, funzione DB intatta.
 - [x] 749 test; salvataggi wizard/EditClienteDialog identici byte per byte; picker simulato testo→maschera→INSERT→selezione a 375/1280 senza errori. Screenshot verificati, pagina temporanea rimossa. Cinque campi residenza residui inventariati e non toccati; nessuna scrittura reale.
