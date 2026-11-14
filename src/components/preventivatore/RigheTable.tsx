@@ -197,12 +197,13 @@ export function RigheTable({
   // FM65: articolo dal catalogo Gamma, prezzo dal motore del cliente (nessun ricalcolo in TS).
   async function scegliArticoloGamma(r: Riga, a: ArticoloGammaScelto) {
     const quantita = Number(r.quantita ?? 1) || 1;
+    const dedicato = cantiereId ? (await qc.fetchQuery(opzioniPrezziCantiere(cantiereId))).find(p => p.cod_gamma === a.codice) : null;
     let prezzo = null;
     if (clienteId) {
       try {
         prezzo = await fetchPrezzoClienteArticolo(clienteId, a.codice);
       } catch (e) {
-        if (!dedicati.has(a.codice)) toast.warning(`Prezzo non disponibile: ${(e as Error).message}`);
+        if (!dedicato) toast.warning(`Prezzo non disponibile: ${(e as Error).message}`);
       }
     }
     upd.mutate({
@@ -215,7 +216,7 @@ export function RigheTable({
         um: a.um ?? prezzo?.um ?? null,
         quantita,
         vendita: null,
-        ...campiPrezzoDaMotore(prezzoConPrioritaCantiere(prezzo, dedicati.get(a.codice)).prezzo, quantita, scontoPiede),
+        ...campiPrezzoDaMotore(prezzoConPrioritaCantiere(prezzo, dedicato).prezzo, quantita, scontoPiede),
       },
     });
   }

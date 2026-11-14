@@ -39,7 +39,7 @@ describe("FM69 applicazione prezzi dedicati", () => {
     const r = { quantita: 2, prezzo_unit: 12, sconti_gamma: [10], maggiorazione_perc: 5, costo: 8, sconto_perc: 10 };
     const c = confrontoAggiornamento(r, prezzoConPrioritaCantiere(motore, cantiere).prezzo);
     expect(c?.nuovi).toEqual({ prezzo_unit: 6.5, sconti_gamma: [17,5], maggiorazione_perc: 2, costo_unit: 3.1 });
-    expect(c?.nettoNuovo).toBeCloseTo(4.7051055, 8);
+    expect(c?.nettoNuovo).toBeCloseTo(4.7049795, 8);
     expect(r.sconto_perc).toBe(10);
   });
 });
