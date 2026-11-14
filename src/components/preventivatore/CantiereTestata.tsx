@@ -93,7 +93,7 @@ export function CantiereTestata({ prev, modificabile, onCantiere, clienteEtichet
   const rigaDistanza = (etichetta: string, valore: ReactNode, riferimento = false) => <div className="grid min-w-0 grid-cols-[minmax(0,7.5rem)_minmax(0,1fr)] items-start gap-2 py-1">
     <span className="flex min-w-0 items-start gap-1.5 text-[11px] text-muted-foreground"><span className="shrink-0 pt-0.5">{riferimento ? <Navigation className="size-3"/> : <Store className="size-3"/>}</span><span className="break-words uppercase">{etichetta}</span></span>
     <span className="min-w-0 break-words text-xs">{valore}</span>
-  </div></RiquadroScheda>;
+  </div>;
   return <RiquadroScheda titolo="Cantiere" icona={HardHat} tono="verde" densita="compatta" azioni={<>
     {c && <AzioneRiquadro icona={MapPin} etichetta="Vedi sulla mappa" onClick={() => setMappa(true)}/>}
     {modificabile && <AzioneRiquadro icona={ArrowLeftRight} etichetta="Cambia cantiere" onClick={() => setScelta(true)}/>}
