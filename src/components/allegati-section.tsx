@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { useRef, useState, useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -190,12 +191,14 @@ export function AllegatiSection({
   const del = useMutation({
     mutationKey: entitaTipo === "preventivo" ? chiaveSalvaPreventivo(entitaId) : undefined,
     mutationFn: async (a: AllegatoRow) => {
-      const { error } = await supabase.from("allegati").delete().eq("id", a.id);
-      if (error) throw error;
+      const esito = await eliminaConEsito("allegati", a.id);
+      if (esito.tipo !== "eliminato") return esito;
       const { error: storageError } = await supabase.storage.from(ALLEGATI_BUCKET).remove([a.storage_path]);
-      if (storageError) throw storageError;
+      if (storageError) toast.error(`Eliminazione non riuscita: ${storageError.message}`);
+      return esito;
     },
-    onSuccess: () => {
+    onSuccess: (esito) => {
+      if (esito.tipo !== "eliminato") { toast.error(messaggioEsitoEliminazione(esito, "l’allegato")); return; }
       toast.success("Allegato eliminato");
       setToDelete(null);
       qc.invalidateQueries({ queryKey: key });
@@ -293,7 +296,7 @@ export function AllegatiSection({
           <AlertDialogFooter>
             <AlertDialogCancel>Annulla</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => toDelete && del.mutate(toDelete)}
+              onClick={(e) => { e.preventDefault(); if (toDelete) del.mutate(toDelete); }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Elimina

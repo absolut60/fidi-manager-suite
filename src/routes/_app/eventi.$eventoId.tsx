@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -54,6 +55,8 @@ export const Route = createFileRoute("/_app/eventi/$eventoId")({
       { name: "description", content: "Scheda evento con elenco e censimento dei partecipanti." },
       { property: "og:title", content: "Dettaglio evento — CRM MADE" },
       { property: "og:description", content: "Scheda evento con elenco e censimento dei partecipanti." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
 });
@@ -348,6 +351,7 @@ function EventoDettaglioPage() {
   }, [ricerca]);
 
   const [selezionati, setSelezionati] = useState<string[]>([]);
+  const [confermaEliminaMassivo, setConfermaEliminaMassivo] = useState(false);
   const [filtroStato, setFiltroStato] = useState<"tutti" | "attesi" | "presenti" | "no_show">("tutti");
   const [fRiconc, setFRiconc] = useState<"tutti" | "riconciliato" | "da_riconciliare">("tutti");
   const [fSulPosto, setFSulPosto] = useState<"tutti" | "solo">("tutti");
@@ -485,10 +489,10 @@ function EventoDettaglioPage() {
 
   const eliminaEvento = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("eventi").delete().eq("id", eventoId);
-      if (error) throw error;
+      return eliminaConEsito("eventi", eventoId);
     },
-    onSuccess: () => {
+    onSuccess: (esito) => {
+      if (esito.tipo !== "eliminato") { toast.error(messaggioEsitoEliminazione(esito, "l’evento")); return; }
       queryClient.invalidateQueries({ queryKey: ["eventi-lista"] });
       toast.success("Evento eliminato");
       navigate({ to: "/eventi" });
@@ -586,18 +590,17 @@ function EventoDettaglioPage() {
   const eliminaMassivo = useMutation({
     mutationFn: async () => {
       // Elimina SOLO le righe partecipante: lead, contatti e clienti restano intatti.
-      const { error } = await supabase
-        .from("eventi_partecipanti")
-        .delete()
-        .in("id", selezionatiValidi);
-      if (error) throw error;
-      return selezionatiValidi.length;
+      const ids = [...new Set(selezionatiValidi)];
+      const esito = await eliminaConEsito("eventi_partecipanti", ids);
+      return { esito, richiesti: ids.length };
     },
-    onSuccess: (n) => {
-      setSelezionati([]);
+    onSuccess: ({ esito, richiesti }) => {
+      if (esito.tipo !== "eliminato" && esito.tipo !== "parziale") { toast.error(messaggioEsitoEliminazione(esito, "i partecipanti")); return; }
+      if (esito.tipo === "eliminato") { setSelezionati([]); setConfermaEliminaMassivo(false); }
       queryClient.invalidateQueries({ queryKey: ["evento-partecipanti", eventoId] });
       queryClient.invalidateQueries({ queryKey: ["eventi-lista"] });
-      toast.success(`${n} partecipanti eliminati dall'evento`);
+      if (esito.tipo === "parziale") toast.error(messaggioEsitoEliminazione(esito, "i partecipanti"));
+      else toast.success(`${richiesti} partecipanti eliminati dall'evento`);
     },
     onError: (e: Error) => toast.error("Errore nell'eliminazione", { description: e.message }),
   });
@@ -943,7 +946,7 @@ function EventoDettaglioPage() {
             >
               {invioInCorso ? "Invio in corso…" : "Invia link privacy"}
             </Button>
-            <AlertDialog>
+            <AlertDialog open={confermaEliminaMassivo} onOpenChange={setConfermaEliminaMassivo}>
               <AlertDialogTrigger asChild>
                 <Button size="sm" variant="destructive" className="gap-1.5 ml-auto">
                   <Trash2 className="size-4" /> Elimina
@@ -961,7 +964,7 @@ function EventoDettaglioPage() {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Annulla</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => eliminaMassivo.mutate()}>Elimina</AlertDialogAction>
+                  <AlertDialogAction onClick={(e) => { e.preventDefault(); eliminaMassivo.mutate(); }}>Elimina</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
@@ -1413,7 +1416,7 @@ function EventoDettaglioPage() {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Annulla</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => eliminaEvento.mutate()}>Elimina</AlertDialogAction>
+                  <AlertDialogAction onClick={(e) => { e.preventDefault(); eliminaEvento.mutate(); }}>Elimina</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>

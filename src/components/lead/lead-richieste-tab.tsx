@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { isSoloShowroom } from "@/lib/permessi-showroom";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -170,10 +171,10 @@ export function LeadRichiesteTab({ leadId }: { leadId: string }) {
 
   const eliminaMut = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("lead_richieste").delete().eq("id", id);
-      if (error) throw error;
+      return eliminaConEsito("lead_richieste", id);
     },
-    onSuccess: () => {
+    onSuccess: (esito) => {
+      if (esito.tipo !== "eliminato") { toast.error(messaggioEsitoEliminazione(esito, "la richiesta")); return; }
       toast.success("Richiesta eliminata");
       invalida();
     },

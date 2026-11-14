@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
@@ -225,12 +226,13 @@ function TaskDetailPage() {
   }
 
   async function eliminaAllegato(a: any) {
+    const esito = await eliminaConEsito("allegati", a.id);
+    if (esito.tipo !== "eliminato") { toast.error(messaggioEsitoEliminazione(esito, "l’allegato")); return false; }
     const { error: rmErr } = await supabase.storage.from(ALLEGATI_BUCKET).remove([a.storage_path]);
     if (rmErr) console.warn("Rimozione file fallita:", rmErr.message);
-    const { error } = await supabase.from("allegati").delete().eq("id", a.id);
-    if (error) { toast.error("Errore: " + error.message); return; }
     toast.success("Allegato eliminato");
     refreshAllegati();
+    return true;
   }
 
   async function elimina() {
@@ -629,10 +631,9 @@ function TaskDetailPage() {
             <Button
               variant="destructive"
               onClick={async () => {
-                if (allegatoDaEliminare) {
-                  await eliminaAllegato(allegatoDaEliminare);
+                if (allegatoDaEliminare && await eliminaAllegato(allegatoDaEliminare)) {
+                  setAllegatoDaEliminare(null);
                 }
-                setAllegatoDaEliminare(null);
               }}
             >
               Elimina

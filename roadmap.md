@@ -1,3 +1,6 @@
+# FM69 — Eliminazioni verificate, fetta 2a
+- [x] Tutti i chiamanti della fetta 1 verificano l'esito; PrezziCantiereDialog ora usa anche messaggio unico. Casi indicati migrati, conferme negate restano aperte; task corregge Storage-prima-riga, AllegatiSection mantiene riga-prima-Storage con guardia. Partecipanti parziali aggiornano lista e preservano selezione residua. 827 test superati, build/controlli automatici OK; browser simulato 375/1280 negato/riuscito allegato (Storage intatto se negato) e partecipanti negati/2 su 3, nessun errore runtime. Prova permanente tests/eliminazioni-fetta2a.browser.py. Nessun DB o altre eliminazioni.
+
 # FM69 — Eliminazioni verificate, fetta 1
 - [x] Fonte unica a conteggio esatto/id deduplicati, esito parziale e messaggi condivisi; opportunità/preventivi/note aggiornano solo dopo successo completo, note mantengono vincolo preventivo. 825 test superati, build e controlli automatici OK. Browser simulato 375/1280: DELETE count=exact senza righe restituite, negato mantiene riga/cache e opportunità, riuscito rimuove; nessun errore runtime. Prova permanente tests/eliminazioni-verificate.browser.py. Nessuna modifica DB o alle altre eliminazioni.
 
