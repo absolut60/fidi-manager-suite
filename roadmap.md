@@ -1,3 +1,7 @@
+# FM71 — Testata condizioni di riferimento, fetta 2b
+- [ ] Interruttore, cataloghi con RLS utente, salvataggio completo/azzeramento e avviso dopo successo; badge condiviso Testata/Corpo. Nessun DB/PDF/ordine.
+- [ ] Test salvataggi/visibilità, suite completa e browser 375/1280; documentazione e SHA.
+
 # FM71 — Condizioni di riferimento lato app, fetta 2a
 - [x] Fonte unica prezzi-preventivo.ts: dispatcher cliente/riferimento, sede prezzi solo dal preventivo (anche NULL), data/codici e forma comune; priorità cantiere e fonte listino invariate. Nessuna modifica SQL.
 - [x] Scelta righe, kit, analisi listini e proposte prezzi cantiere allineati; applicazione usa la proposta analizzata senza nuova RPC. Duplicazione copia i tre riferimenti. Finestre cantiere dirette e annidate ricevono contesto prezzi, cache distinta per condizioni/sede/data; nessuna nuova scelta nella Testata.
