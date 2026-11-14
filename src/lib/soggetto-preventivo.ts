@@ -27,6 +27,6 @@ export function campiLeadRapido(input: z.input<typeof inputLeadRapido>, agente: 
 export function campiSoggettoPreventivo(soggetto: SoggettoPreventivo, riferimento: RiferimentoPreventivo) {
   if (soggetto.tipo === "cliente") return { cliente_id: soggetto.id, lead_id: null };
   const condizioni = campiRiferimentoPreventivo(true, riferimento);
-  if (!condizioni) throw new Error("Listino e macrocategoria di riferimento obbligatori per il lead");
+  if (!condizioni) throw new Error("Listino, macrocategoria e categoria obbligatori per il lead");
   return { cliente_id: null, lead_id: soggetto.id, ...condizioni };
 }

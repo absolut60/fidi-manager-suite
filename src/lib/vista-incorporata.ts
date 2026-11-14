@@ -10,6 +10,9 @@ export function vistaIncorporata(search: { vista?: unknown }) {
 export function urlClienteIncorporato(id: string) {
   return `/clienti/${encodeURIComponent(id)}?vista=${VISTA_INCORPORATA}`;
 }
+export function urlLeadIncorporato(id: string) {
+  return `/lead/${encodeURIComponent(id)}?vista=${VISTA_INCORPORATA}`;
+}
 /** Solo altre pagine della stessa app; tab, ancore, allegati e tel/mail restano invariati. */
 export function destinazioneFuoriFinestra(href: string, pagina: string): string | null {
   const corrente = new URL(pagina);

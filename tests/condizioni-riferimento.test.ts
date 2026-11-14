@@ -11,7 +11,12 @@ describe("FM71 Testata riferimento", () => {
   });
   test("listino obbligatorio", () => { expect(campiRiferimentoPreventivo(true, { ...valori, listino_rif: null })).toBeNull(); });
   test("macrocategoria obbligatoria", () => { expect(campiRiferimentoPreventivo(true, { ...valori, macrocategoria_rif: null })).toBeNull(); });
-  test("categoria facoltativa", () => { expect(campiRiferimentoPreventivo(true, { ...valori, categoria_rif: "" })).toEqual({ ...valori, categoria_rif: null }); });
+  test("categoria obbligatoria per nuove scritture", () => {
+    for (const categoria_rif of [null, "", "  "]) expect(campiRiferimentoPreventivo(true, { ...valori, categoria_rif })).toBeNull();
+  });
+  test("riferimento storico senza categoria resta leggibile", () => {
+    expect(testoRiferimentoPreventivo({ ...valori, categoria_rif: null })).not.toBeNull();
+  });
   test("badge assente senza listino", () => { expect(testoRiferimentoPreventivo({ ...valori, listino_rif: null })).toBeNull(); });
   test("badge presente con listino", () => { expect(testoRiferimentoPreventivo(valori)).not.toBeNull(); });
 });

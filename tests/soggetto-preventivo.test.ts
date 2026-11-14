@@ -14,6 +14,9 @@ describe("FM71 soggetto preventivo", () => {
   test("passaggio a cliente azzera sempre il lead", () => {
     expect(campiSoggettoPreventivo({ tipo: "cliente", id: "cliente-1" }, lead)).toEqual({ cliente_id: "cliente-1", lead_id: null });
   });
+  test("lead senza categoria non può essere creato o collegato", () => {
+    expect(() => campiSoggettoPreventivo({ tipo: "lead", id: lead.id, lead }, { ...lead, categoria_rif: null })).toThrow();
+  });
   test("lead rapido usa valori fissi e lascia stato, tipo e priorità ai default", () => {
     const v = campiLeadRapido({ ragione_sociale: " Nuova impresa ", store_id: null }, "7");
     expect(v).toMatchObject({ ragione_sociale: "Nuova impresa", fonte: "manuale", fonte_dettaglio: "preventivatore", agente_codice: "7", email: null, telefono: null });
