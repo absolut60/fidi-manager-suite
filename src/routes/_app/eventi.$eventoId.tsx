@@ -55,6 +55,8 @@ export const Route = createFileRoute("/_app/eventi/$eventoId")({
       { name: "description", content: "Scheda evento con elenco e censimento dei partecipanti." },
       { property: "og:title", content: "Dettaglio evento — CRM MADE" },
       { property: "og:description", content: "Scheda evento con elenco e censimento dei partecipanti." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
 });
