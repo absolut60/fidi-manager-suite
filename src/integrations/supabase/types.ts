@@ -6931,6 +6931,7 @@ export type Database = {
           costo: number | null
           created_at: string
           descrizione: string | null
+          fonte_prezzo: string | null
           id: string
           importo: number | null
           incidenza: number | null
@@ -6959,6 +6960,7 @@ export type Database = {
           costo?: number | null
           created_at?: string
           descrizione?: string | null
+          fonte_prezzo?: string | null
           id?: string
           importo?: number | null
           incidenza?: number | null
@@ -6987,6 +6989,7 @@ export type Database = {
           costo?: number | null
           created_at?: string
           descrizione?: string | null
+          fonte_prezzo?: string | null
           id?: string
           importo?: number | null
           incidenza?: number | null

@@ -1520,6 +1520,13 @@
       "when": 1794671640611,
       "tag": "0216_fm69_prezzi_cantiere_fetta1",
       "breakpoints": true
+    },
+    {
+      "idx": 217,
+      "version": "7",
+      "when": 1794676761666,
+      "tag": "0217_fm69_fonte_prezzo_riga",
+      "breakpoints": true
     }
   ]
 }

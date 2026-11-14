@@ -220,6 +220,7 @@ export function pesoRigaGamma(pesoNetto: number | string | null | undefined, qua
 const CAMPI_IMPORTO = ["quantita", "prezzo_unit", "sconti_gamma", "maggiorazione_perc", "sconto_perc", "segno", "costo"] as const;
 
 type RigaBase = {
+  fonte_prezzo?: string | null;
   tipo_riga?: string | null;
   articolo_id?: string | null; articolo_codice?: string | null;
   quantita?: number | null; prezzo_unit?: number | null; sconto_perc?: number | null;
@@ -227,14 +228,30 @@ type RigaBase = {
   incidenza?: number | null; peso?: number | null; peso_gamma_unit?: number | null;
 };
 
+export type FontePrezzo = "listino" | "cantiere" | "manuale";
+
+/** Sole writer of price provenance; automated paths provide the chosen engine source. */
+export function patchConFontePrezzo<P extends Partial<RigaBase>>(riga: RigaBase, patch: P, fonte?: "listino" | "cantiere"): P & { fonte_prezzo?: string | null } {
+  const tipo = patch.tipo_riga ?? riga.tipo_riga;
+  const scelta = tipo === "manuale" ? "manuale" : fonte ?? patch.fonte_prezzo ??
+    (["prezzo_unit", "sconti_gamma", "maggiorazione_perc"].some(k => k in patch) ? "manuale" : undefined);
+  return scelta === undefined ? patch : { ...patch, fonte_prezzo: scelta };
+}
+
+export const prezzoNonDiListino = (fonte: string | null | undefined) => fonte === "manuale";
+export function spunteInizialiListini<T extends { riga_id: string; fonte_attuale?: string | null }>(righe: readonly T[]): Set<string> {
+  return new Set(righe.filter(r => !prezzoNonDiListino(r.fonte_attuale)).map(r => r.riga_id));
+}
+
 /**
  * Aggiunge al patch l'importo ricalcolato (fonte unica). Se cambia la quantità e il costo
  * non è nel patch, il costo totale segue la quantità mantenendo il costo unitario.
  */
-export function patchConImporto<P extends Partial<RigaBase>>(riga: RigaBase, patch: P, Qb?: number | null): P & { importo?: number; costo?: number | null; quantita?: number | null; incidenza?: number | null; peso?: number | null } {
+export function patchConImporto<P extends Partial<RigaBase>>(riga: RigaBase, patch: P, Qb?: number | null): P & { fonte_prezzo?: string | null; importo?: number; costo?: number | null; quantita?: number | null; incidenza?: number | null; peso?: number | null } {
+  const conFonte = patchConFontePrezzo(riga, patch);
   const tipo = patch.tipo_riga ?? riga.tipo_riga;
-  if (!tipo || !isRigaValorizzata({ ...riga, ...patch, tipo_riga: tipo })) return patch;
-  const out: P & { importo?: number; costo?: number | null; quantita?: number | null; incidenza?: number | null; peso?: number | null } = { ...patch };
+  if (!tipo || !isRigaValorizzata({ ...riga, ...patch, tipo_riga: tipo })) return conFonte;
+  const out: P & { fonte_prezzo?: string | null; importo?: number; costo?: number | null; quantita?: number | null; incidenza?: number | null; peso?: number | null } = { ...conFonte };
   if ("incidenza" in patch) {
     const q = quantitaDaIncidenza(patch.incidenza, Qb);
     if (q != null) out.quantita = q;
@@ -273,6 +290,10 @@ export function coincidePrezzoCantiere(r: PrezzoRigaInput, c?: PrezzoDedicatoCan
     r4(num(r.prezzo_unit)) === r4(c.prezzo_vendita_speciale) &&
     stessiSconti((r.sconti_gamma ?? []).map(num).filter(s => s !== 0), c.sconti.map(num).filter(s => s !== 0)) &&
     r4(num(r.maggiorazione_perc)) === r4(c.maggiorazione_perc);
+}
+
+export function segnoPrezzoCantiere(r: PrezzoRigaInput & { fonte_prezzo?: string | null }, c?: PrezzoDedicatoCantiere | null): boolean {
+  return r.fonte_prezzo == null ? coincidePrezzoCantiere(r, c) : r.fonte_prezzo === "cantiere";
 }
 
 export interface ValoriPrezzoRiga {

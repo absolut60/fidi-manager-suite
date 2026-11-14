@@ -2,6 +2,7 @@ import asyncio,json,os,copy
 from pathlib import Path
 from playwright.async_api import async_playwright
 OUT=Path('/tmp/browser/fm69-applicazione')
+OUT.mkdir(parents=True, exist_ok=True)
 ID='11111111-1111-4111-8111-111111111111'
 CID='88888888-8888-4888-8888-888888888888'
 BID='33333333-3333-4333-8333-333333333333'
@@ -88,6 +89,8 @@ async def main():
    assert await marker.count()==0
    await page.get_by_role('button',name='Aggiorna listini',exact=True).click();await page.get_by_role('button',name='Confronta',exact=True).click();await page.wait_for_timeout(1000)
    await page.screenshot(path=str(OUT/f'confronto-{width}.png'))
+   assert not await page.get_by_role('dialog').get_by_role('checkbox',name='Aggiorna AKIBLUE12.1.A',exact=True).is_checked()
+   await page.get_by_role('dialog').get_by_role('checkbox',name='Aggiorna AKIBLUE12.1.A',exact=True).check()
    print('dialog',await page.get_by_role('dialog').inner_text())
    apply=page.get_by_role('dialog').get_by_role('button').filter(has_text='Applica');await apply.click();await page.wait_for_timeout(1000)
    assert rows[0]['prezzo_unit']==6.5 and rows[0]['sconto_perc']==10,rows

@@ -1,3 +1,7 @@
+# FM69 — Fonte prezzo e protezione listini
+- [x] Applicata 0217_fm69_fonte_prezzo_riga.sql, NULL storico senza backfill; fonte unica/copia duplicato, manuali non spuntate e segno persistito. Conversione ordine invariata: non copia la fonte.
+- [x] 821 test superati e build OK; browser simulato 375/1280: scelta articolo/kit, manuale non spuntato e badge, listino/NULL spuntati, manuale sotto costo con entrambe le indicazioni, ripristino volontario. Nessuna scrittura di dati reali.
+
 # FM69 — Applicazione prezzi cantiere
 - [x] Priorità unica, cache RLS condivisa, articoli/kit/listini, segno e finestra dal Corpo; documentazione aggiornata, nessun DB.
 - [x] 806 test pass, build OK; browser 375/1280 con risposte simulate: articolo dedicato 6,50/costo 3,10, listino 12, extra 10%, modifica manuale/segno e ripristino scelto, kit quantità 2/costo 6,20, una lettura prezzi. Nessuna scrittura reale.

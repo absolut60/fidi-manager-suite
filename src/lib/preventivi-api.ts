@@ -1,7 +1,7 @@
 import { getCantiereListini, type CantiereListinoRow } from "./cantiere-listini-api";
 import { copiaNotePreventivo } from "./preventivi-note";
 import { supabase } from "@/integrations/supabase/client";
-import { campiPrezzoDaMotore, prezzoConPrioritaCantiere, confrontoAggiornamento, costoRiga, importoRiga, isIntestazioneKit, isRigaValorizzata, marginePercRiga, pesoRigaGamma, patchConImporto, quantitaDaIncidenza, segnoRiga, type PrezzoClienteGamma, type UnitaGammaRiga } from "./riga-preventivo";
+import { campiPrezzoDaMotore, patchConFontePrezzo, prezzoConPrioritaCantiere, confrontoAggiornamento, costoRiga, importoRiga, isIntestazioneKit, isRigaValorizzata, marginePercRiga, pesoRigaGamma, patchConImporto, quantitaDaIncidenza, segnoRiga, type PrezzoClienteGamma, type UnitaGammaRiga } from "./riga-preventivo";
 import type { Database } from "@/integrations/supabase/types";
 import { round2 } from "./pricing";
 import {
@@ -588,6 +588,7 @@ export async function duplicaPreventivo(
         prezzo_unit: r.prezzo_unit,
         sconto_perc: r.sconto_perc,
         articolo_codice: r.articolo_codice,
+        fonte_prezzo: r.fonte_prezzo,
         sconti_gamma: r.sconti_gamma,
         maggiorazione_perc: r.maggiorazione_perc,
         segno: r.segno,
@@ -686,6 +687,8 @@ export interface DifferenzaListino {
   descrizione: string | null;
   quantita: number;
   aggiungiCodice: boolean;
+  fonte_attuale: string | null;
+  fonte_nuova: "listino" | "cantiere";
   confronto: NonNullable<ReturnType<typeof confrontoAggiornamento>>;
 }
 
@@ -717,12 +720,13 @@ export async function analizzaAggiornaListini(preventivo_id: string, prezziCanti
   let invariate = 0;
   let senza_prezzo = 0;
   for (const { r, codice, blocco_id } of candidate) {
-    const { prezzo: p } = prezzoConPrioritaCantiere(mappa.get(codice), dedicati.get(codice));
+    const { prezzo: p, fonte } = prezzoConPrioritaCantiere(mappa.get(codice), dedicati.get(codice));
     if (!p || p.prezzo_base == null) { senza_prezzo++; continue; }
     const confronto = confrontoAggiornamento(r, p);
     if (!confronto) { invariate++; continue; }
     differenze.push({
       riga_id: r.id, blocco_id, codice, descrizione: r.descrizione ?? r.articolo?.descrizione ?? null,
+      fonte_attuale: r.fonte_prezzo ?? null, fonte_nuova: fonte,
       quantita: n(r.quantita), aggiungiCodice: !r.articolo_codice, confronto,
     });
   }
@@ -747,7 +751,7 @@ export async function applicaAggiornaListini(preventivo_id: string, scelte: Diff
     };
     const { error } = await supabase
       .from("righe_preventivo")
-      .update(patchConImporto(r, campi))
+      .update(patchConImporto(r, patchConFontePrezzo(r, campi, d.fonte_nuova)))
       .eq("id", r.id);
     if (error) throw error;
     aggiornate++;
@@ -813,7 +817,8 @@ export async function addBloccoDaKit(args: {
     const incidenza = calcolaRigaKit(c, c.articolo, "A").incidenza_effettiva;
     const quantita = quantitaDaIncidenza(incidenza, qBaseEff) ?? 0;
     const codice = c.articolo?.cod_gamma ?? null;
-    const campi = campiPrezzoDaMotore(prezzoConPrioritaCantiere(codice ? prezzi.get(codice) : null, codice ? dedicati.get(codice) : null).prezzo, quantita, args.sconto_piede);
+    const scelta = prezzoConPrioritaCantiere(codice ? prezzi.get(codice) : null, codice ? dedicati.get(codice) : null);
+    const campi = patchConFontePrezzo({}, campiPrezzoDaMotore(scelta.prezzo, quantita, args.sconto_piede), scelta.fonte);
     return {
       tipo_riga: c.articolo_id == null ? "nota" as const : "da_kit" as const,
       articolo_id: c.articolo_id,
@@ -852,7 +857,7 @@ export async function addBloccoDaKit(args: {
 export async function insertRiga(row: RigaInsert): Promise<Riga> {
   const { data, error } = await supabase
     .from("righe_preventivo")
-    .insert(row)
+    .insert(patchConFontePrezzo({}, row))
     .select()
     .single();
   if (error) throw error;

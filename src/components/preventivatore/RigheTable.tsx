@@ -43,7 +43,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { EditableNumberCell } from "@/components/preventivatore/EditableNumberCell";
 import { ArticoloPicker } from "@/components/preventivatore/ArticoloPicker";
 import { ArticoloGammaPicker, type ArticoloGammaScelto } from "@/components/preventivatore/ArticoloGammaPicker";
-import { campiPrezzoDaMotore, prezzoConPrioritaCantiere, coincidePrezzoCantiere, costoRiga, formatScontiGamma, isIntestazioneKit, margineTotaliRighe, patchConImporto, parseScontiGamma, prezzoNettoRiga, rigaInUnita } from "@/lib/riga-preventivo";
+import { campiPrezzoDaMotore, prezzoConPrioritaCantiere, patchConFontePrezzo, segnoPrezzoCantiere, costoRiga, formatScontiGamma, isIntestazioneKit, margineTotaliRighe, patchConImporto, parseScontiGamma, prezzoNettoRiga, rigaInUnita } from "@/lib/riga-preventivo";
 import {
   calcolaBlocco, deleteRiga, salvaPatchRigaCalcolata, fetchPrezzoClienteArticolo, fractionalOrder, insertRiga, reorderRighe,
   TIPI_RIGA, TIPI_RIGA_LABEL, updateRiga,
@@ -206,9 +206,10 @@ export function RigheTable({
         if (!dedicato) toast.warning(`Prezzo non disponibile: ${(e as Error).message}`);
       }
     }
+    const scelta = prezzoConPrioritaCantiere(prezzo, dedicato);
     upd.mutate({
       id: r.id,
-      patch: {
+      patch: patchConFontePrezzo(r, {
         articolo_codice: a.codice,
         articolo_id: null,
         um_scelta: "um1",
@@ -216,8 +217,8 @@ export function RigheTable({
         um: a.um ?? prezzo?.um ?? null,
         quantita,
         vendita: null,
-        ...campiPrezzoDaMotore(prezzoConPrioritaCantiere(prezzo, dedicato).prezzo, quantita, scontoPiede),
-      },
+        ...campiPrezzoDaMotore(scelta.prezzo, quantita, scontoPiede),
+      }, scelta.fonte),
     });
   }
 
@@ -240,7 +241,7 @@ export function RigheTable({
 
   const righeProps = (r: (typeof blocco.righe)[number], idx: number) => ({
     row: r,
-    prezzoCantiere: coincidePrezzoCantiere(r, dedicati.get(r.articolo_codice ?? r.articolo?.cod_gamma ?? "")),
+    prezzoCantiere: segnoPrezzoCantiere(r, dedicati.get(r.articolo_codice ?? r.articolo?.cod_gamma ?? "")),
     idx,
     fascia,
     readOnly,

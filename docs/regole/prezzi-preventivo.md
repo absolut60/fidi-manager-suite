@@ -135,5 +135,12 @@ La tabella `public.cantiere_listini_speciali` contiene prezzi manuali senza date
 - Articolo singolo e componenti kit prendono subito lordo UM1, sconti e maggiorazione del cantiere presente. Inserire/cambiare il cantiere non modifica le righe esistenti: «Aggiorna listini» propone le differenze e applica soltanto quelle scelte.
 - Lo sconto extra `sconto_perc` resta applicato in cascata; il costo unitario è il costo speciale se valorizzato, altrimenti il costo ultimo del motore. Se entrambi mancano, il confronto conserva il costo salvato come prima.
 - Una lettura RLS per cantiere tramite `opzioniPrezziCantiere`, condivisa in cache tra pagina, righe e finestra; aggiunte/modifiche/eliminazioni invalidano la chiave.
-- `coincidePrezzoCantiere` confronta lordo, sconti e maggiorazione salvati in UM1 a quattro decimali, senza costo/sconto extra: se coincidono, lordo colorato e pallino con titolo «Prezzo cantiere»; se modificati divergono, il segno sparisce. Tabella e telefono riusano le stesse celle.
+- `segnoPrezzoCantiere` usa la fonte salvata; solo per fonte NULL riusa `coincidePrezzoCantiere` sui valori UM1. Tabella e telefono riusano le stesse celle.
 - Nel Corpo il badge cliccabile con conteggio apre la stessa finestra della Testata, anche in sola lettura.
+
+## Fonte del prezzo di riga (FM69)
+- `righe_preventivo.fonte_prezzo`: `listino`, `cantiere`, `manuale`, oppure NULL storico (trattato come listino); nessun backfill.
+- Unica scrittura in `patchConFontePrezzo`, accanto a `patchConImporto`: scelta articolo, componenti kit e aggiornamenti scelti registrano la fonte restituita da `prezzoConPrioritaCantiere`; modifiche a lordo, sconti Gamma o maggiorazione registrano `manuale`; righe di tipo manuale sono manuali. Extra/piede, quantità, incidenza, UM, descrizione e costo non cambiano la fonte.
+- Le differenze di «Aggiorna listini» portano fonte attuale e nuova: manuali inizialmente non spuntate con badge «Prezzo non di listino»; altre spuntate. L’operatore può selezionarle. Sotto costo rimane rosso, anche insieme al badge.
+- Il segno «Prezzo cantiere» segue `fonte_prezzo = 'cantiere'`; solo per NULL si confrontano lordo/sconti/maggiorazione con il prezzo dedicato attuale.
+- `duplicaPreventivo` copia la fonte, anche NULL. `trasforma_preventivo_in_ordine` resta invariata: non copia la nuova colonna, quindi le righe ordine risultano NULL; importi e condizioni restano copiati come prima.
