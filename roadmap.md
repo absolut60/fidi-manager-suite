@@ -1,6 +1,6 @@
 # FM69 — Ricerca unica, U.M. manuali e numeri
 - [x] Riprodotti due portali alla creazione: trigger tabella visibile e scheda nascosta ancorata a (0,4). Selettore condiviso verifica layout reale e chiude quando nascosto; U.M. manuale nel componente condiviso; slot numeri/icona fissi.
-- [ ] Verificare clic/autoOpen/scorrimento a 1280/900/375, prezzi del cantiere e suite completa.
+- [x] Clic/autoOpen e prezzi cantiere: un solo portale, 30 risultati e wheel funzionante a 1280/900/375; manuale modificabile e font 700, numeri allo stesso x. Test browser permanente fallisce con vecchio picker (2 ricerche) e passa col nuovo. 799 test pass; build OK. Risposte simulate, nessuna scrittura DB.
 
 # FM69 — Primo carattere nei campi del preventivo
 - [x] Riprodotto sulla pagina effettiva con risposte simulate: lordo/sconti/ricerca perdono il primo tasto, descrizione/Testata no. Capture ripristina il value prima di onChange; spostato il solo evento in bubble, nessuna modifica DB.
