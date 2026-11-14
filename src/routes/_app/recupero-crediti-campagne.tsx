@@ -29,6 +29,7 @@ import {
 
 
 export const Route = createFileRoute("/_app/recupero-crediti-campagne")({
+  head: () => ({ meta: [{ title: "Invii massivi solleciti — FidiManager" }, { name: "description", content: "Gestione delle campagne di sollecito e dei destinatari MADE." }, { property: "og:title", content: "Invii massivi solleciti — FidiManager" }, { property: "og:description", content: "Gestione delle campagne di sollecito e dei destinatari MADE." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: CampagnePage,
 });
 
@@ -92,12 +93,12 @@ function CampagnePage() {
     try {
       await elimina({ data: { campagnaId: id } });
       toast.success("Campagna eliminata. I solleciti inviati restano in scheda cliente.");
+      setConfermaElimina(null);
       qc.invalidateQueries({ queryKey: ["campagne-sollecito"] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Errore");
     } finally {
       setBusy(false);
-      setConfermaElimina(null);
     }
   }
 
@@ -270,7 +271,7 @@ function CampagnePage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy}>Indietro</AlertDialogCancel>
-            <AlertDialogAction disabled={busy} onClick={() => confermaElimina && doElimina(confermaElimina)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction disabled={busy} onClick={(e) => { e.preventDefault(); if (confermaElimina) void doElimina(confermaElimina); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Elimina
             </AlertDialogAction>
           </AlertDialogFooter>
