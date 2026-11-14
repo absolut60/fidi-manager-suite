@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { normalizzaIndirizzo } from "../src/lib/blocco-indirizzo";
+import { normalizzaIndirizzo, residenzaDaIndirizzo } from "../src/lib/blocco-indirizzo";
 test("Provincia sempre in maiuscolo", () => {
   expect(normalizzaIndirizzo({ provincia: "fi" })).toEqual({ provincia: "FI" });
 });
@@ -12,4 +12,14 @@ test("Lead conserva i limiti 200/10/100/5 anche sui suggerimenti", () => {
 });
 test("Le modifiche parziali non sovrascrivono gli altri campi", () => {
   expect(normalizzaIndirizzo({ citta: "Empoli" })).toEqual({ citta: "Empoli" });
+});
+test("La residenza unica include via, CAP, città e provincia senza nuovi campi salvati", () => {
+  expect(residenzaDaIndirizzo({ indirizzo: "Via Roma 45", cap: "50053", citta: "Empoli", provincia: "fi" })).toBe("Via Roma 45 50053 Empoli (FI)");
+});
+test("La residenza unica non inventa parti assenti", () => {
+  expect(residenzaDaIndirizzo({ indirizzo: "Via Roma 45", cap: "", citta: "", provincia: "" })).toBe("Via Roma 45");
+});
+test("La residenza unica rispetta il limite esistente di 200 caratteri", () => {
+  const indirizzo = residenzaDaIndirizzo({ indirizzo: "a".repeat(195), cap: "50053", citta: "Empoli", provincia: "fi" });
+  expect(normalizzaIndirizzo({ indirizzo }, { indirizzo: 200 }).indirizzo).toBe("a".repeat(195) + " 5005");
 });

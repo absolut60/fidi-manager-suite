@@ -1,4 +1,7 @@
 # FM68 — Fetta A: visibilità preventivisti (solo database)
+## Indirizzi giro 3
+- [ ] Cinque residenze con BloccoIndirizzo opt-in a campo unico, stessi stati e salvataggi; nessuna modifica DB/chiave.
+- [ ] Test, confronto byte per byte, schermate simulate modifica contatto/privacy 375/1280, fallback pubblico e inventario finale.
 ## Indirizzi giro 2
 - [x] Indirizzi cliente condivisi, nota Gamma; picker apre CantiereDialog con nome iniziale opt-in. Wrapper TS creaCantiereLite rimosso, funzione DB intatta.
 - [x] 749 test; salvataggi wizard/EditClienteDialog identici byte per byte; picker simulato testo→maschera→INSERT→selezione a 375/1280 senza errori. Screenshot verificati, pagina temporanea rimossa. Cinque campi residenza residui inventariati e non toccati; nessuna scrittura reale.
