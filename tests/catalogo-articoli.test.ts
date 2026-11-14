@@ -1,7 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { FILTRI_ARTICOLI, VALORE_LOGISTICA, parametriArticoli, ordinamentoArticoliValido } from "../src/lib/catalogo-articoli";
+import { FILTRI_ARTICOLI, VALORE_LOGISTICA, parametriArticoli, parametriArticoliPreventivo, ordinamentoArticoliValido } from "../src/lib/catalogo-articoli";
 const CAMBIAGO = "c434096f-3bf0-45ce-ab7e-e631992fe13a";
 describe("catalogo Gamma", () => {
+  test("FM70: preventivo per rilevanza, 30 risultati, testo non normalizzato nel TS", () => {
+    expect(parametriArticoliPreventivo("  Lastra 12,5 1200X2000  ")).toMatchObject({
+      testo: "Lastra 12,5 1200X2000", _ordina: "rilevanza", limite: 30, offset: 0, solo_gamma: true,
+    });
+  });
   test("Lombardia 10, codice crescente e 100 righe predefinite", () => {
     expect(parametriArticoli(FILTRI_ARTICOLI)).toMatchObject({ listino: 10, limite: 100, offset: 0, _ordina: "codice", _direzione: "asc" });
   });

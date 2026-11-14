@@ -1534,6 +1534,13 @@
       "when": 1794677808097,
       "tag": "0218_fm69_cantieri_modificabili_consultazione_testata",
       "breakpoints": true
+    },
+    {
+      "idx": 219,
+      "version": "7",
+      "when": 1794683359074,
+      "tag": "0219_fm70_ricerca_articoli_fetta1",
+      "breakpoints": true
     }
   ]
 }

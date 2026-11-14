@@ -45,13 +45,13 @@ export const STATI_ARTICOLI = [
   { valore: "solo_preventivatore", label: "Solo preventivatore" },
 ];
 
-/** FM65 F4: parametri di cerca_articoli per la ricerca articolo del preventivo (30 righe Gamma per codice). */
+/** FM70 F1: ricerca articolo del preventivo (30 righe Gamma per rilevanza; normalizzazione solo SQL). */
 export function parametriArticoliPreventivo(testo: string, scelte?: Partial<ScelteCascata>) {
   const c = parametriRicerca({ famiglie: scelte?.famiglie ?? [], coppie: scelte?.coppie ?? [], marche: scelte?.marche ?? [] });
   return {
     testo: testo.trim(), famiglie: c.famiglie, sottofamiglie: [] as string[], marche: c.marche, fornitori: [] as string[],
     stati: ["in_uso", "in_esaurimento"], disponibile_in: [] as string[], disponibile_logistica: false,
-    _ordina: "codice", _direzione: "asc", limite: 30, offset: 0,
+    _ordina: "rilevanza", _direzione: "asc", limite: 30, offset: 0,
     coppie: c.coppie, solo_gamma: true, // FM65 F1: righe non Gamma escluse prima del limite
   };
 }

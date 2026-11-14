@@ -642,6 +642,7 @@ export type Database = {
           premio_fornitore: string | null
           sottofamiglia: string | null
           stato_gamma: string | null
+          testo_ricerca: string | null
           ultima_sincronizzazione: string | null
           um: string | null
           um2: string | null
@@ -674,6 +675,7 @@ export type Database = {
           premio_fornitore?: string | null
           sottofamiglia?: string | null
           stato_gamma?: string | null
+          testo_ricerca?: string | null
           ultima_sincronizzazione?: string | null
           um?: string | null
           um2?: string | null
@@ -706,6 +708,7 @@ export type Database = {
           premio_fornitore?: string | null
           sottofamiglia?: string | null
           stato_gamma?: string | null
+          testo_ricerca?: string | null
           ultima_sincronizzazione?: string | null
           um?: string | null
           um2?: string | null
@@ -8696,6 +8699,7 @@ export type Database = {
         Args: {
           _direzione?: string
           _ordina?: string
+          _sede_giacenza?: string
           coppie?: string[]
           disponibile_in?: string[]
           disponibile_logistica?: boolean
@@ -10535,6 +10539,7 @@ export type Database = {
       }
       normalizza_numero_it: { Args: { _raw: string }; Returns: string }
       normalizza_ragione_sociale: { Args: { _s: string }; Returns: string }
+      normalizza_testo_ricerca: { Args: { _t: string }; Returns: string }
       opzioni_fornitori: { Args: never; Returns: Json }
       osserva_ricollegamento_scadenze: {
         Args: { _importazione_id: string }
