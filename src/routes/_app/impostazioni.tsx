@@ -1,3 +1,4 @@
+import { BloccoIndirizzo } from "@/components/blocco-indirizzo";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -636,24 +637,7 @@ function StoreDialog({ editing, onClose }: { editing: StoreRow | null; onClose: 
             <Input id="ragione_sociale_sede" value={form.ragione_sociale_sede} onChange={(e) => setForm({ ...form, ragione_sociale_sede: e.target.value })} />
           </div>
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="indirizzo">Indirizzo</Label>
-          <Input id="indirizzo" value={form.indirizzo} onChange={(e) => setForm({ ...form, indirizzo: e.target.value })} />
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="cap">CAP</Label>
-            <Input id="cap" value={form.cap} onChange={(e) => setForm({ ...form, cap: e.target.value })} />
-          </div>
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label htmlFor="citta">Città</Label>
-            <Input id="citta" value={form.citta} onChange={(e) => setForm({ ...form, citta: e.target.value })} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="provincia">Provincia</Label>
-            <Input id="provincia" maxLength={2} value={form.provincia} onChange={(e) => setForm({ ...form, provincia: e.target.value.toUpperCase() })} placeholder="MI" />
-          </div>
-        </div>
+        <BloccoIndirizzo value={{ indirizzo: form.indirizzo ?? "", cap: form.cap ?? "", citta: form.citta ?? "", provincia: form.provincia ?? "" }} onChange={(d) => setForm((p) => ({ ...p, ...d }))} limiti={{ provincia: 2 }} />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label htmlFor="telefono">Telefono</Label>

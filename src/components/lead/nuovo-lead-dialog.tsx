@@ -1,3 +1,4 @@
+import { BloccoIndirizzo } from "@/components/blocco-indirizzo";
 import { isSoloShowroom } from "@/lib/permessi-showroom";
 import { ClienteVisibileLink } from "./cliente-visibile-link";
 import { useEffect, useState } from "react";
@@ -271,24 +272,7 @@ export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
           <Label className="text-xs">Cellulare</Label>
           <Input value={f.cellulare} maxLength={30} onChange={(e) => set("cellulare", e.target.value)} />
         </div>
-        <div>
-          <Label className="text-xs">Indirizzo</Label>
-          <Input value={f.indirizzo} maxLength={200} onChange={(e) => set("indirizzo", e.target.value)} />
-        </div>
-        <div>
-          <Label className="text-xs">Città</Label>
-          <Input value={f.citta} maxLength={100} onChange={(e) => set("citta", e.target.value)} />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label className="text-xs">CAP</Label>
-            <Input value={f.cap} maxLength={10} onChange={(e) => set("cap", e.target.value)} />
-          </div>
-          <div>
-            <Label className="text-xs">Provincia</Label>
-            <Input value={f.provincia} maxLength={5} onChange={(e) => set("provincia", e.target.value)} />
-          </div>
-        </div>
+        <BloccoIndirizzo value={f} onChange={(d) => setF((p) => ({ ...p, ...d }))} limiti={{ indirizzo: 200, citta: 100, cap: 10, provincia: 5 }} className="sm:col-span-2 [&_label]:text-xs" />
         <div>
           <Label className="text-xs">Fonte</Label>
           <Select value={f.fonte} onValueChange={(v) => set("fonte", v as LeadFonte)}>
