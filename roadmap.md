@@ -1,7 +1,7 @@
 # FM71 — Condizioni di riferimento, fetta 1 (solo database)
-- [ ] Migrazione additiva 0223: tre colonne nullable e wrapper del motore esistente, gate/limite/grant identici; nessuna modifica UI o policy.
-- [ ] Test SQL A.N./INTECH/DELEO e gate, suite completa, verifica impronte e registro 0000–0223.
-- [ ] Documentazione della fonte unica e delle condizioni commerciali di riferimento.
+- [x] Applicata 0223_fm71_condizioni_riferimento.sql: tre colonne nullable/FK verificata e wrapper del motore esistente, gate/limite/grant identici; nessuna modifica UI o policy. Registro verificato: 224 voci 0000–0223. Impronte dei tre motori e di tutte le policy public identiche prima/dopo.
+- [x] SQL A.N. 3,7503, INTECH cliente 3,4700/riferimento senza accordi, DELEO deposito CA 4,8000, gate 42501 e limite 500/501 superati nel database isolato con copie dei dati e dei cinque corpi funzione reali; solo has_role/auth.uid simulati. Esecuzione sul DB reale impedita da SET ROLE authenticated negato, nessun grant ampliato.
+- [x] Documentazione aggiornata e regola commerciale salvata. Quattro test permanenti del contratto SQL aggiunti; suite completa da verificare nella chiusura.
 
 # FM70 — Selettore più largo, filtri e sede di riserva, fetta 3c
 - [x] Picker 96vw/max 780px, filtri sempre visibili in riga da sm e impilati su telefono, colonna giacenza non comprimibile. Sede cliente di riserva solo di lettura tramite sedeGiacenzePreventivo, apertura/ricerca condividono le props. Precompilazione modificabile del nuovo preventivo già presente e conservata. 853 test verdi; browser con risposte simulate a 320/375/390/768/1280/1920: larghezza, filtri, giacenze sede riserva, badge, apertura, pagine 30/60/65 e selezione, zero errori; screenshot 375/1280 controllati. Pagina temporanea rimossa. Nessuna modifica DB/prezzi/ricerca/permessi; verifica reale autenticata non eseguita.
