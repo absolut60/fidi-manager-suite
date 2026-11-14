@@ -31,7 +31,7 @@ import { BadgeProvvisorio } from "@/components/badge-provvisorio";
  * Riquadro Cantiere della Testata (FM65 B2): tre modi, tutti collegano un vero cantiere (onCantiere → cantiere_id).
  * cantiere_descrizione non viene più scritta: resta solo come fallback in lettura.
  */
-export function CantiereTestata({ prev, modificabile, onCantiere, clienteEtichetta, sedeClienteNome, sedeClienteId }: { prev: PreventivoConDettagli; modificabile: boolean; onCantiere: (id: string) => void | Promise<void>; clienteEtichetta?: string; sedeClienteNome?: string; sedeClienteId?: string | null }) {
+export function CantiereTestata({ prev, modificabile, onCantiere, clienteEtichetta, sedeClienteNome, sedeClienteId, badgeRiferimento }: { prev: PreventivoConDettagli; modificabile: boolean; onCantiere: (id: string) => void | Promise<void>; clienteEtichetta?: string; sedeClienteNome?: string; sedeClienteId?: string | null; badgeRiferimento?: ReactNode }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [scheda, setScheda] = useState(false);
@@ -122,7 +122,7 @@ export function CantiereTestata({ prev, modificabile, onCantiere, clienteEtichet
   </>}><div className="space-y-2">
     {c ? <div className="min-w-0 space-y-1 text-xs">
       <div className="flex min-w-0 flex-wrap items-center gap-2"><Button variant="link" className="h-auto min-h-10 min-w-0 justify-start whitespace-normal break-words p-0 text-left text-xs font-semibold text-foreground hover:text-primary hover:no-underline" onClick={apriCantiere}><span className="min-w-0 break-words">{c.nome || "—"}</span><ChevronRight className="size-3.5 shrink-0" aria-hidden/></Button>{c.provvisorio && <BadgeProvvisorio />}</div>
-      <BadgePrezziDedicati conteggio={numeroPrezzi} mostraNumero onClick={() => setPrezziId(c.id)} />
+      <div className="flex min-w-0 flex-wrap items-center gap-2"><BadgePrezziDedicati conteggio={numeroPrezzi} mostraNumero onClick={() => setPrezziId(c.id)} />{badgeRiferimento}</div>
       {(c.indirizzo || loc) && <p className="flex items-start gap-1.5 text-muted-foreground"><MapPin className="mt-0.5 size-3 shrink-0" aria-hidden/><span className="min-w-0 break-words">{[c.indirizzo, loc].filter(Boolean).join(", ")}</span></p>}
       <div className="pt-1">
       {geo && rigaDistanza(stessaSede ? "Più vicina · di riferimento" : "Più vicina", geo.lat == null || geo.lng == null
@@ -133,7 +133,7 @@ export function CantiereTestata({ prev, modificabile, onCantiere, clienteEtichet
       {geo?.lat != null && geo.lng != null && sedeCliente && !stessaSede && rigaDistanza("Di riferimento", caricaDistanza ? "Calcolo distanza…" : erroreDistanza ? "Distanza non disponibile." : distanzaCliente ? `${nomeSedeBreve(sedeClienteNome || sedeCliente.nome)} · ${formatoDistanzaCantiere(distanzaCliente.km, Math.round(distanzaCliente.minuti))}` : "Percorso non disponibile.", true)}
       {erroreGeo && rigaDistanza("Più vicina", "Posizione non disponibile.")}
       </div>
-    </div> : <p className="break-words text-xs">{storico || "Da definire"}</p>}
+    </div> : <div className="space-y-2"><p className="break-words text-xs">{storico || "Da definire"}</p>{badgeRiferimento}</div>}
 
     {modificabile && scelta && <div className="space-y-2">
         <div role="group" aria-label="Modo cantiere" className="flex flex-wrap gap-1">
