@@ -23,6 +23,8 @@ import {
 } from "./clienti-api";
 import { testoPerFiltroOr } from "@/lib/ricerca-sicura";
 import { campiSedePreventivo } from "./preventivo-creazione";
+import type { LeadPreventivo } from "./soggetto-preventivo";
+import { LEAD_PREVENTIVO_SELECT } from "./lead-preventivo-api";
 
 export type Preventivo = Database["public"]["Tables"]["preventivi"]["Row"];
 export type PreventivoInsert = Database["public"]["Tables"]["preventivi"]["Insert"];
@@ -356,6 +358,7 @@ async function popolaNomiCreatoDa(items: ElencoPreventivoItem[]): Promise<void> 
 }
 
 export interface PreventivoConDettagli extends Preventivo {
+  lead: LeadPreventivo | null;
   cliente: ClienteRow | null;
   cantiere: CantierePreventivo | null;
   agente: { id: string; nome: string } | null;
@@ -387,7 +390,7 @@ const BLOCCHI_SELECT = `
 export async function fetchPreventivo(id: string): Promise<PreventivoConDettagli> {
   const { data, error } = await supabase
     .from("preventivi")
-    .select(`*, blocchi:blocchi_preventivo(${BLOCCHI_SELECT})`)
+    .select(`*, lead:lead!preventivi_lead_id_fkey(${LEAD_PREVENTIVO_SELECT}), blocchi:blocchi_preventivo(${BLOCCHI_SELECT})`)
     .eq("id", id)
     .single();
   if (error) throw error;
@@ -514,6 +517,7 @@ export async function duplicaPreventivo(
   const mode = options.mode ?? "stesso_cliente";
   const nuovoCliente = mode === "nuovo_cliente";
   const src = await fetchPreventivo(sourceId);
+  if (src.lead_id && nuovoCliente) throw new Error("La duplicazione su altro cliente è disponibile solo per preventivi a cliente");
   if (src.tipo !== "preventivo") {
     throw new Error("Solo i preventivi possono essere duplicati");
   }
@@ -540,6 +544,7 @@ export async function duplicaPreventivo(
     data: oggi,
     validita: src.validita,
     cliente_id: nuovoCliente ? nuovoClienteRow?.id : src.cliente_id,
+    lead_id: nuovoCliente ? null : src.lead_id,
     cantiere_id: nuovoCliente ? null : src.cantiere_id,
     agente_codice: nuovoCliente ? nuovoClienteRow?.codice_agente : src.agente_codice,
     ...campiSedePreventivo(nuovoCliente ? { id: condizioniNuovoCliente?.store_id ?? null, nome: condizioniNuovoCliente?.sede_nome ?? null } : { id: src.store_id, nome: src.filiale }),

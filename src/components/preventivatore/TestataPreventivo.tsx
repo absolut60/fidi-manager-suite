@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select,SelectContent,SelectItem,SelectTrigger,SelectValue } from "@/components/ui/select";
-import { ClientePicker } from "./ClientePicker";
 import { AzioneRiquadro } from "./AzioneRiquadro";
 import { CantiereTestata } from "./CantiereTestata";
 import { useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
@@ -22,8 +21,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { campiSedePreventivo } from "@/lib/preventivo-creazione";
 import { CondizioniRiferimento } from "./CondizioniRiferimento";
 import type { CataloghiRiferimento, RiferimentoPreventivo } from "@/lib/condizioni-riferimento";
+import { nomeLeadPreventivo } from "@/lib/soggetto-preventivo";
 
-export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agenti,principali,haAlternative,listino,categoria,sede,sedeClienteId,onSave,onCliente,onChangeCliente,onCantiere,cataloghiRiferimento,erroreCataloghi,caricamentoCataloghi,onRiferimento,badgeRiferimento}: {
+export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agenti,principali,haAlternative,listino,categoria,sede,sedeClienteId,onSave,onCliente,onChangeCliente,onCantiere,cataloghiRiferimento,erroreCataloghi,caricamentoCataloghi,onRiferimento,badgeRiferimento,onCambiaSoggetto}: {
+  onCambiaSoggetto?: () => void;
   cataloghiRiferimento?: CataloghiRiferimento; erroreCataloghi?: string; caricamentoCataloghi: boolean; onRiferimento: (patch: RiferimentoPreventivo) => Promise<void>; badgeRiferimento?: ReactNode;
   prev: PreventivoConDettagli; cliente: DatiClientePreventivo|null|undefined; modificabile:boolean; statoEditabile:boolean; agenti:Agente[]; principali:{id:string;numero:string|null;titolo:string|null}[]; haAlternative:boolean; listino:string; categoria:string; sede:string; sedeClienteId?:string|null;
   onSave:(patch:PreventivoUpdate)=>void; onCliente:()=>void; onChangeCliente:(id:string)=>void; onCantiere:(id:string)=>void|Promise<void>;
@@ -37,7 +38,7 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
   const text=(key:'numero'|'titolo',label:string,wide=false)=>field(label,prev[key],<Input aria-label={label} key={`${key}-${prev[key]}`} className="h-7 bg-card px-2 text-xs md:text-xs" defaultValue={prev[key]||''} onBlur={e=>{if((e.target.value||null)!==prev[key])save({[key]:e.target.value||null});}}/>,wide);
   const select=(label:string,value:string,options:{value:string;label:string}[],onChange:(v:string)=>void,disabled=false)=><Select value={value||'__none__'} onValueChange={onChange} disabled={disabled}><SelectTrigger aria-label={label} className="h-7 w-full min-w-0 bg-card px-2 text-xs [&>span]:truncate [&>span]:text-left"><SelectValue/></SelectTrigger><SelectContent className="max-w-[calc(100vw-2rem)]"><SelectItem value="__none__">—</SelectItem>{options.map(o=><SelectItem key={o.value} value={o.value} className="whitespace-normal break-words">{o.label}</SelectItem>)}</SelectContent></Select>;
   const agenteCliente=agenti.find(a=>a.id===cliente?.codice_agente)?.nome||cliente?.codice_agente||'';
-  const identitaCliente=[cliente?.codice_gestionale,cliente?.ragione_sociale||prev.cliente?.ragione_sociale].filter(Boolean).join(' · ');
+  const identitaCliente=prev.lead_id ? nomeLeadPreventivo(prev.lead) : [cliente?.codice_gestionale,cliente?.ragione_sociale||prev.cliente?.ragione_sociale].filter(Boolean).join(' · ');
   const indirizzo=[cliente?.indirizzo,[cliente?.cap,cliente?.citta,cliente?.provincia&&`(${cliente.provincia})`].filter(Boolean).join(' ')].filter(Boolean).join(', ');
   const datoCliente=(etichetta:string,valore:ReactNode,ampio=false,mono=false)=><div className={`min-w-0 space-y-1 ${ampio?'col-span-2':''}`}><p className="text-[11px] text-muted-foreground">{etichetta}</p><div className={`break-words text-xs ${mono?'font-mono':''}`}>{valore||'—'}</div></div>;
   const etichettaSoggetto=cliente?.tipo_soggetto==='persona_fisica'?'Privato':cliente?.tipo_soggetto==='azienda'?'Azienda':null;
@@ -59,9 +60,10 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
         {field('Alternativa di',principali.find(p=>p.id===prev.alternativa_di)?.numero||'— Nessuna: è un preventivo principale',<div><Select value={prev.alternativa_di||'__none__'} disabled={haAlternative||prev.tipo!=='preventivo'} onValueChange={v=>save({alternativa_di:v==='__none__'?null:v})}><SelectTrigger aria-label="Alternativa di" className="h-7 w-full min-w-0 bg-card px-2 text-xs [&>span]:truncate [&>span]:text-left"><SelectValue/></SelectTrigger><SelectContent className="max-w-[calc(100vw-2rem)]"><SelectItem value="__none__">— Nessuna: è un preventivo principale</SelectItem>{principali.map(p=><SelectItem key={p.id} value={p.id}>{p.numero} {p.titolo?`· ${p.titolo}`:''}</SelectItem>)}</SelectContent></Select>{haAlternative&&<p className="text-xs text-muted-foreground mt-1">Ha alternative collegate</p>}</div>,true)}
       </div>
     </RiquadroScheda>
-    <RiquadroScheda titolo="Cliente" icona={UserRound} tono="azzurro" densita="compatta" azioni={<AzioneRiquadro icona={ExternalLink} etichetta="Apri scheda cliente" onClick={onCliente}/>} intestazione={<div className="flex min-w-0 flex-wrap items-center gap-2"><h3 className="text-xs font-semibold">Cliente</h3>{etichettaSoggetto&&<span className="shrink-0 rounded-full border border-pv-blu/30 bg-pv-azzurro px-1.5 text-[10px] font-medium leading-4 text-pv-blu">{etichettaSoggetto}</span>}<IndicatoreClientePreventivo clienteId={prev.cliente_id}/></div>}>
-      {modificabile?<div className="mb-2 [&>button]:h-7 [&>button]:min-h-7 [&>button]:w-full [&>button]:px-2 [&>button]:text-xs"><ClientePicker value={prev.cliente_id} onChange={onChangeCliente}/></div>:<p className="mb-2 break-words text-xs font-bold">{identitaCliente||'—'}</p>}
-      <div className="grid grid-cols-2 gap-x-2 gap-y-2 lg:grid-cols-4">
+    <RiquadroScheda titolo={prev.lead_id ? "Lead" : "Cliente"} icona={UserRound} tono="azzurro" densita="compatta" azioni={<AzioneRiquadro icona={ExternalLink} etichetta={prev.lead_id ? "Apri scheda lead" : "Apri scheda cliente"} onClick={onCliente}/>} intestazione={<div className="flex min-w-0 flex-wrap items-center gap-2"><h3 className="text-xs font-semibold">{prev.lead_id ? "Lead" : "Cliente"}</h3>{etichettaSoggetto&&<span className="shrink-0 rounded-full border border-pv-blu/30 bg-pv-azzurro px-1.5 text-[10px] font-medium leading-4 text-pv-blu">{etichettaSoggetto}</span>}<IndicatoreClientePreventivo clienteId={prev.cliente_id}/></div>}>
+      <p className="mb-2 break-words text-xs font-bold">{identitaCliente||'—'}</p>
+      {modificabile && <Button type="button" size="sm" variant="outline" onClick={onCambiaSoggetto}>Cambia soggetto</Button>}
+      {prev.lead_id ? <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">{datoCliente('Telefono',prev.lead?.telefono)}{datoCliente('Email',prev.lead?.email)}{datoCliente('Sede MADE',prev.lead?.sede?.nome)}</div> : <div className="grid grid-cols-2 gap-x-2 gap-y-2 lg:grid-cols-4">
         {datoCliente('P.IVA',cliente?.partita_iva,false,true)}
         {datoCliente('C.F.',cliente?.codice_fiscale,false,true)}
         {datoCliente('Sede legale',indirizzo,true)}
@@ -71,15 +73,15 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
         {datoCliente('PEC',cliente?.pec&&<a className="break-all text-pv-blu hover:underline" href={`mailto:${cliente.pec}`}>{cliente.pec}</a>)}
         {datoCliente('Email',cliente?.email&&<a className="break-all text-pv-blu hover:underline" href={`mailto:${cliente.email}`}>{cliente.email}</a>,true)}
         {datoCliente('Agente',agenteCliente)}
-      </div>
+      </div>}
     </RiquadroScheda>
     </div>
     <div className="flex min-w-0 flex-col gap-2">
     <RiquadroScheda titolo="Condizioni commerciali" icona={Percent} tono="arancio" densita="compatta">
       <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
-        {field('Listino del cliente',listino,<div className="min-h-7 py-1 text-xs">{listino}</div>)}
-        {field('Categoria del cliente',categoria,<div className="min-h-7 py-1 text-xs break-words">{categoria}</div>)}
-        <CondizioniRiferimento key={`${prev.id}:${prev.listino_rif}:${prev.macrocategoria_rif}:${prev.categoria_rif}`} riferimento={prev} cataloghi={cataloghiRiferimento} errore={erroreCataloghi} caricamento={caricamentoCataloghi} modificabile={modificabile} onSave={onRiferimento}/>
+        {!prev.lead_id && field('Listino del cliente',listino,<div className="min-h-7 py-1 text-xs">{listino}</div>)}
+        {!prev.lead_id && field('Categoria del cliente',categoria,<div className="min-h-7 py-1 text-xs break-words">{categoria}</div>)}
+        <CondizioniRiferimento key={`${prev.id}:${prev.listino_rif}:${prev.macrocategoria_rif}:${prev.categoria_rif}`} obbligatorio={!!prev.lead_id} riferimento={prev} cataloghi={cataloghiRiferimento} errore={erroreCataloghi} caricamento={caricamentoCataloghi} modificabile={modificabile} onSave={onRiferimento}/>
         {field('Condizione di pagamento',pagamento?`${pagamentoDesc||pagamento} (${pagamento})`:'—',<div title="Proposta dal cliente (Gamma) · modificabile">{select('Condizione di pagamento',pagamento,codici.map(c=>({value:c.cod,label:`${c.descrizione||''} (${c.cod})`})),v=>save({condizione_pagamento_cod:v==='__none__'?null:v}))}</div>,true)}
         {field('IVA %',`${formatNumeroIt(prev.iva_perc||0)}%`,<Input aria-label="IVA %" className="h-7 bg-card px-2 text-xs md:text-xs" inputMode="decimal" defaultValue={formatNumeroIt(prev.iva_perc||0)} onBlur={e=>{const v=parseNumeroIt(e.target.value);if(v!==null&&v!==prev.iva_perc)save({iva_perc:v});}}/>)}
         {field('Filiale',prev.filiale,select('Filiale',prev.store_id||'',stores.map(s=>({value:s.id,label:s.nome})),id=>save(campiSedePreventivo(stores.find(s=>s.id===id)??null))))}

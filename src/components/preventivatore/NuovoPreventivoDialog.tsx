@@ -15,7 +15,6 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useNavigate } from "@tanstack/react-router";
-import { ClientePicker } from "./ClientePicker";
 import { CantierePicker } from "./CantierePicker";
 import { CantiereDialog } from "@/components/cantiere-dialog";
 import {
@@ -25,6 +24,9 @@ import {
 } from "@/lib/preventivi-api";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
+import { SoggettoPreventivoPicker } from "./SoggettoPreventivoPicker";
+import { campiSoggettoPreventivo, riferimentoVuoto, type SoggettoPreventivo } from "@/lib/soggetto-preventivo";
+import { campiRiferimentoPreventivo } from "@/lib/condizioni-riferimento";
 
 export function NuovoPreventivoDialog({
   open, onOpenChange, tipo = "preventivo",
@@ -33,6 +35,8 @@ export function NuovoPreventivoDialog({
   const navigate = useNavigate();
   const today = new Date().toISOString().slice(0, 10);
   const [clienteId, setClienteId] = useState<string | null>(null);
+  const [soggetto, setSoggetto] = useState<SoggettoPreventivo | null>(null);
+  const [riferimento, setRiferimento] = useState(riferimentoVuoto);
   const [cantiereId, setCantiereId] = useState<string | null>(null);
   const [modoCantiere, setModoCantiere] = useState<"seleziona" | "crea" | "provvisorio">("seleziona");
   const { data: clienteCantiere } = useQuery({ queryKey: ["cliente-preventivo-dati", clienteId], queryFn: () => clienteId ? fetchDatiClientePreventivo(clienteId) : null, enabled: !!clienteId });
@@ -92,7 +96,7 @@ export function NuovoPreventivoDialog({
   const ultimoClienteRef = useRef<string | null>(null);
   useEffect(() => {
     let attivo = true;
-    if (!clienteId) { setPagamento(""); return; }
+    if (!clienteId) { setPagamento(soggetto?.tipo === "lead" ? soggetto.lead.condizione_pagamento_cod ?? "" : ""); return; }
     const clienteCambiato = ultimoClienteRef.current !== clienteId;
     ultimoClienteRef.current = clienteId;
     fetchDatiClientePreventivo(clienteId).then((c) => {
@@ -105,11 +109,12 @@ export function NuovoPreventivoDialog({
       setModoCantiere("seleziona");
     }).catch((e: unknown) => { if (attivo) toast.error((e as Error).message || "Errore lettura cliente"); });
     return () => { attivo = false; };
-  }, [clienteId, isWriteOnly, profiloCodiceAgente]);
+  }, [clienteId, soggetto?.id, isWriteOnly, profiloCodiceAgente]);
 
   // Stessa fonte/cache di CondizioniClienteGamma: non riproporre la filiale dopo una modifica manuale.
   useEffect(() => {
     let attivo = true;
+    if (soggetto?.tipo === "lead") return;
     filialeManuale.current = false;
     setFiliale("");
     if (!clienteId) return;
@@ -127,11 +132,12 @@ export function NuovoPreventivoDialog({
 
   const create = useMutation({
     mutationFn: async () => {
+      if (!soggetto) throw new Error("Scegli un cliente o un lead");
       const numeroFinal = numero.trim(); // se vuoto, createPreventivo assegnerà
       const dataFinal = data || today;
       const tipoDocFinal: TipoDoc = tipoDoc || "PREVENTIVO";
       return creaConPrimoBlocco(() => createPreventivo({
-        cliente_id: clienteId,
+        ...campiSoggettoPreventivo(soggetto, riferimento),
         cantiere_id: cantiereId,
         cantiere_descrizione: null,
         agente_codice: agenteId,
@@ -172,8 +178,11 @@ export function NuovoPreventivoDialog({
             <Input id="nuovo-preventivo-titolo" value={titolo} onChange={(e) => setTitolo(e.target.value)} placeholder="Titolo del preventivo" />
           </div>
           <div className="grid gap-1.5">
-            <Label>Cliente *</Label>
-            <ClientePicker value={clienteId} onChange={setClienteId} />
+            <Label>Soggetto *</Label>
+            <SoggettoPreventivoPicker value={soggetto} riferimento={riferimento} onRiferimento={setRiferimento} consentiLead={!isOrdine} sedeId={stores.find(s => s.nome === filiale)?.id} onChange={v => {
+              setSoggetto(v); setClienteId(v?.tipo === "cliente" ? v.id : null); setCantiereId(null);
+              if (v?.tipo === "lead") { setPagamento(v.lead.condizione_pagamento_cod ?? ""); if (!isWriteOnly) setAgenteId(v.lead.agente_codice ?? (roles.includes("agente") ? profiloCodiceAgente ?? null : null)); }
+            }}/>
           </div>
           <div className="grid gap-1.5">
             <Label>Cantiere</Label>
@@ -244,7 +253,7 @@ export function NuovoPreventivoDialog({
               </Select>
             </div>
           </div>
-          <CondizioniClienteGamma clienteId={clienteId} />
+          {soggetto?.tipo !== "lead" && <CondizioniClienteGamma clienteId={clienteId} />}
           <div className="grid gap-1.5 min-w-0">
             <Label>Condizione di pagamento</Label>
             <Select value={pagamento || "__none__"} onValueChange={(v) => setPagamento(v === "__none__" ? "" : v)}>
@@ -252,7 +261,7 @@ export function NuovoPreventivoDialog({
               <SelectContent className="max-w-[calc(100vw-2rem)]">
                 <SelectItem value="__none__">— Nessuna —</SelectItem>
                 {pagamento && !codiciPagamento.some((c) => c.cod === pagamento) && <SelectItem value={pagamento}>{pagamento}</SelectItem>}
-                {codiciPagamento.map((c) => <SelectItem key={c.cod} value={c.cod} className="whitespace-normal break-words">{c.cod} – {c.descrizione}</SelectItem>)}
+                {codiciPagamento.map((c) => <SelectItem key={c.cod} value={c.cod} className="whitespace-normal break-words">{c.descrizione} ({c.cod})</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -293,7 +302,7 @@ export function NuovoPreventivoDialog({
         )}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
-          <Button onClick={() => create.mutate()} disabled={!clienteId || create.isPending || writeOnlyMissingCodice}>
+          <Button onClick={() => create.mutate()} disabled={!soggetto || (soggetto.tipo === "lead" && !campiRiferimentoPreventivo(true,riferimento)) || create.isPending || writeOnlyMissingCodice}>
             Crea {labelDoc}
           </Button>
         </DialogFooter>

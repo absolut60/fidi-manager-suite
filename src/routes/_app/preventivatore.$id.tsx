@@ -79,6 +79,9 @@ import { RigheTable } from "@/components/preventivatore/RigheTable";
 import { GeneraDocumentoDialog } from "@/components/preventivatore/GeneraDocumentoDialog";
 import { ClientePicker } from "@/components/preventivatore/ClientePicker";
 import { TrasformaInOrdineDialog } from "@/components/preventivatore/TrasformaInOrdineDialog";
+import { SoggettoPreventivoPicker } from "@/components/preventivatore/SoggettoPreventivoPicker";
+import { campiSoggettoPreventivo, nomeLeadPreventivo, riferimentoVuoto, type SoggettoPreventivo } from "@/lib/soggetto-preventivo";
+import { campiRiferimentoPreventivo } from "@/lib/condizioni-riferimento";
 
 export const Route = createFileRoute("/_app/preventivatore/$id")({
   validateSearch: zodValidator(z.object({tab:fallback(z.string(),'corpo').default('corpo')})),
@@ -98,6 +101,9 @@ function PreventivoEditorPage() {
   const tab=['testata','corpo','piede'].includes(tabUrl)?tabUrl:'corpo';
   const [clienteOpen,setClienteOpen]=useState(false);
   const [prezziOpen, setPrezziOpen] = useState(false);
+  const [soggettoOpen, setSoggettoOpen] = useState(false);
+  const [soggettoScelto, setSoggettoScelto] = useState<SoggettoPreventivo | null>(null);
+  const [riferimentoScelto, setRiferimentoScelto] = useState<RiferimentoPreventivo>(riferimentoVuoto);
   const [eliminaOpen,setEliminaOpen]=useState(false);
   const {data:codiciPagamento=[]}=useCodiciPagamento();
   const qc = useQueryClient();
@@ -359,7 +365,25 @@ function PreventivoEditorPage() {
   const fmt = (n: number) =>
     formatNumeroIt(n, { minDecimals: 2, maxDecimals: 2 });
   const cliente = prev.cliente;
-  const sedeGiacenze = sedeGiacenzePreventivo(prev, condizioni);
+  const sedeGiacenze = sedeGiacenzePreventivo(prev, prev.lead_id ? { store_id: prev.lead?.store_id ?? null, sede_nome: prev.lead?.sede?.nome ?? null } : condizioni);
+  const apriSoggetto = () => {
+    setSoggettoScelto(prev.lead_id && prev.lead ? { tipo: "lead", id: prev.lead_id, lead: prev.lead } : prev.cliente_id ? { tipo: "cliente", id: prev.cliente_id } : null);
+    setRiferimentoScelto({ listino_rif: prev.listino_rif, macrocategoria_rif: prev.macrocategoria_rif, categoria_rif: prev.categoria_rif });
+    setSoggettoOpen(true);
+  };
+  const apriSchedaSoggetto = () => { if (prev.lead_id) window.open(`/lead/${prev.lead_id}`, "_blank", "noopener,noreferrer"); else setClienteOpen(true); };
+  const salvaSoggetto = async () => {
+    if (!soggettoScelto) return;
+    try {
+      const c = soggettoScelto.tipo === "cliente" ? await fetchDatiClientePreventivo(soggettoScelto.id) : null;
+      await save.mutateAsync({ ...campiSoggettoPreventivo(soggettoScelto, riferimentoScelto), cantiere_id: null, alternativa_di: null,
+        agente_codice: soggettoScelto.tipo === "lead" ? soggettoScelto.lead.agente_codice : c?.codice_agente ?? null,
+        ...(soggettoScelto.tipo === "lead" ? { condizione_pagamento_cod: soggettoScelto.lead.condizione_pagamento_cod } : {}),
+      });
+      setSoggettoOpen(false);
+      if (prev.blocchi.some(b => b.righe.length)) toast.info("Le righe esistenti non cambiano: usa Aggiorna listini per vedere le differenze");
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Soggetto non salvato"); }
+  };
   const cantiere = prev.cantiere;
   const cantiereDescrizione =
     (prev as { cantiere_descrizione?: string | null }).cantiere_descrizione ?? null;
@@ -372,7 +396,7 @@ function PreventivoEditorPage() {
   const categoria=condizioni?.macrocategoria ? [condizioni.macrocategoria_label,condizioni.categoria_label].filter(Boolean).join(' – ') : '—';
   const pagamentoCod=prev.condizione_pagamento_cod||clienteDati?.condizione_pagamento_cod||'';
   const pagamentoDesc=codiciPagamento.find(c=>c.cod===pagamentoCod)?.descrizione||clienteDati?.condizione_pagamento_desc||'';
-  const riepilogo:RiepilogoPreventivo={cliente:[clienteDati?.codice_gestionale,clienteDati?.ragione_sociale||cliente?.ragione_sociale].filter(Boolean).join(' · ')||'—',cantiere:cantiere?.nome?`${cantiere.nome}${cantiere.provvisorio?' (provvisorio)':''}`:(cantiereDescrizione||'Da definire'),listino,categoria,pagamento:pagamentoCod?`${pagamentoDesc||pagamentoCod} (${pagamentoCod})`:'—',validita:prev.validita?formatDate(prev.validita):'—',imponibile:totali.imponibile_netto,marginePerc:margineTotale.perc,margineEuro:margineTotale.euro};
+  const riepilogo:RiepilogoPreventivo={cliente:prev.lead_id ? `Lead · ${nomeLeadPreventivo(prev.lead)}` : [clienteDati?.codice_gestionale,clienteDati?.ragione_sociale||cliente?.ragione_sociale].filter(Boolean).join(' · ')||'—',cantiere:cantiere?.nome?`${cantiere.nome}${cantiere.provvisorio?' (provvisorio)':''}`:(cantiereDescrizione||'Da definire'),listino,categoria,pagamento:pagamentoCod?`${pagamentoDesc||pagamentoCod} (${pagamentoCod})`:'—',validita:prev.validita?formatDate(prev.validita):'—',imponibile:totali.imponibile_netto,marginePerc:margineTotale.perc,margineEuro:margineTotale.euro};
   const cambiaTab=(v:string)=>navigate({to:'/preventivatore/$id',params:{id},search:(old)=>({...old,tab:v}),replace:true});
 
   return (
@@ -451,7 +475,7 @@ function PreventivoEditorPage() {
                       <DialogDescription className="whitespace-normal break-words">
                         Scegli come duplicare. In tutti i casi verrà creato un nuovo numero progressivo, con data di oggi e stato bozza.
                         <br /><br />
-                        <strong>Stesso cliente</strong>: copia di testata, blocchi e righe (stesso cliente, cantiere e agente); gli allegati non vengono copiati.
+                        <strong>{prev.lead_id ? "Stesso lead" : "Stesso cliente"}</strong>: copia di testata, blocchi e righe (stesso cliente, cantiere e agente); gli allegati non vengono copiati.
                         <br />
                         <strong>Come alternativa</strong>: stessa copia, collegata come alternativa al preventivo principale (lettera B, C…).
                         <br />
@@ -463,14 +487,14 @@ function PreventivoEditorPage() {
                   {duplicaStep === "scelta" ? (
                     <DialogFooter className="flex-col gap-2 sm:flex-row sm:flex-wrap sm:space-x-0 [&>button]:min-h-10 [&>button]:w-full sm:[&>button]:w-auto">
                       <Button onClick={() => duplica.mutate({ mode: "stesso_cliente" })}>
-                        Stesso cliente
+                        {prev.lead_id ? "Stesso lead" : "Stesso cliente"}
                       </Button>
-                      <Button variant="outline" disabled={duplica.isPending} onClick={() => duplica.mutate({ mode: "alternativa" })}>
+                      <Button variant="outline" disabled={duplica.isPending || !!prev.lead_id} onClick={() => duplica.mutate({ mode: "alternativa" })}>
                         Come alternativa
                       </Button>
-                      <Button variant="outline" onClick={() => setDuplicaStep("seleziona-cliente")}>
+                      {!prev.lead_id && <Button variant="outline" onClick={() => setDuplicaStep("seleziona-cliente")}>
                         Nuovo cliente
-                      </Button>
+                      </Button>}
                       <Button variant="outline" onClick={() => setDuplicaOpen(false)}>Annulla</Button>
                     </DialogFooter>
                   ) : (
@@ -513,7 +537,7 @@ function PreventivoEditorPage() {
         </div>
 
         <div className="flex min-w-0 flex-col gap-3" {...salvataggio.contenitoreProps}>
-        <FasciaPreventivo dati={riepilogo} titolo={prev.titolo} clienteId={prev.cliente_id} onCliente={()=>setClienteOpen(true)}/>
+        <FasciaPreventivo leadId={prev.lead_id} dati={riepilogo} titolo={prev.titolo} clienteId={prev.cliente_id} onCliente={apriSchedaSoggetto}/>
         {puoScrivere && !modificabile && (
           <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
             <Lock className="size-4 shrink-0" />
@@ -564,7 +588,7 @@ function PreventivoEditorPage() {
           <TabsList variant="linguette" className="w-full justify-start">
             {(['testata','corpo','piede'] as const).map(t=><TabsTrigger key={t} variant="linguette" value={t}>{t==='testata'?'Testata':t==='piede'?'Piede':`Corpo · ${prev.blocchi.length} blocchi`}</TabsTrigger>)}
           </TabsList>
-          <TabsContent value="testata"><TestataPreventivo prev={prev} cliente={clienteDati} modificabile={modificabile} statoEditabile={puoScrivere} agenti={agenti} principali={principali} haAlternative={haAlternative} listino={listino} categoria={categoria} sede={condizioni?.sede_nome||'—'} sedeClienteId={condizioni?.store_id??null} onSave={p=>save.mutate(p)} cataloghiRiferimento={cataloghiRiferimento.data} erroreCataloghi={cataloghiRiferimento.error?.message} caricamentoCataloghi={cataloghiRiferimento.isLoading} onRiferimento={salvaRiferimento} badgeRiferimento={<BadgeCondizioniRiferimento riferimento={prev} cataloghi={cataloghiRiferimento.data}/>} onCliente={()=>setClienteOpen(true)} onChangeCliente={onChangeCliente} onCantiere={async cid=>{await save.mutateAsync({cantiere_id:cid,cantiere_descrizione:null});}}/></TabsContent>
+          <TabsContent value="testata"><TestataPreventivo prev={prev} cliente={clienteDati} modificabile={modificabile} statoEditabile={puoScrivere} agenti={agenti} principali={principali} haAlternative={haAlternative} listino={listino} categoria={categoria} sede={condizioni?.sede_nome||'—'} sedeClienteId={condizioni?.store_id??null} onSave={p=>save.mutate(p)} cataloghiRiferimento={cataloghiRiferimento.data} erroreCataloghi={cataloghiRiferimento.error?.message} caricamentoCataloghi={cataloghiRiferimento.isLoading} onRiferimento={salvaRiferimento} badgeRiferimento={<BadgeCondizioniRiferimento riferimento={prev} cataloghi={cataloghiRiferimento.data}/>} onCliente={apriSchedaSoggetto} onChangeCliente={onChangeCliente} onCambiaSoggetto={apriSoggetto} onCantiere={async cid=>{await save.mutateAsync({cantiere_id:cid,cantiere_descrizione:null});}}/></TabsContent>
           <TabsContent value="corpo"><div className="mb-2 flex min-w-0 flex-wrap items-center gap-2"><BadgePrezziDedicati conteggio={prezziCantiere.length} mostraNumero onClick={() => setPrezziOpen(true)} /><BadgeCondizioniRiferimento riferimento={prev} cataloghi={cataloghiRiferimento.data}/></div><fieldset disabled={!modificabile} className={cn('min-w-0',!modificabile&&'readonly-mode')}>
             {/* ===== CORPO ===== */}
             <section className="flex flex-col gap-3">
@@ -619,6 +643,10 @@ function PreventivoEditorPage() {
         onEsci={() => uscita.proceed?.()}
         onResta={() => uscita.reset?.()}
       />
+      <Dialog open={soggettoOpen} onOpenChange={setSoggettoOpen}><DialogContent className="max-h-[90dvh] min-w-0 max-w-2xl overflow-y-auto"><DialogHeader><DialogTitle>Cambia soggetto</DialogTitle></DialogHeader>
+        <SoggettoPreventivoPicker value={soggettoScelto} onChange={setSoggettoScelto} sedeId={prev.store_id} riferimento={riferimentoScelto} onRiferimento={setRiferimentoScelto}/>
+        <DialogFooter><Button variant="outline" onClick={() => setSoggettoOpen(false)}>Annulla</Button><Button disabled={save.isPending || !soggettoScelto || (soggettoScelto.tipo === "lead" && !campiRiferimentoPreventivo(true,riferimentoScelto))} onClick={salvaSoggetto}>Salva soggetto</Button></DialogFooter>
+      </DialogContent></Dialog>
       {clienteOpen && clienteDati && <ClientePreventivoDialog cliente={clienteDati} onClose={()=>setClienteOpen(false)}/>}
       <AlertDialog open={eliminaOpen} onOpenChange={setEliminaOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Eliminare il documento?</AlertDialogTitle><AlertDialogDescription>Tutti i blocchi e le righe verranno eliminati. Irreversibile.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Annulla</AlertDialogCancel><AlertDialogAction onClick={()=>delPrev.mutate()}>Elimina</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
 

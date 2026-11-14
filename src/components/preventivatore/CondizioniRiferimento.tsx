@@ -4,11 +4,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { campiRiferimentoPreventivo, type CataloghiRiferimento, type RiferimentoPreventivo } from "@/lib/condizioni-riferimento";
 
-export function CondizioniRiferimento({ riferimento, cataloghi, errore, caricamento, modificabile, onSave }: {
+export function CondizioniRiferimento({ riferimento, cataloghi, errore, caricamento, modificabile, onSave, obbligatorio = false, onValori }: {
+  obbligatorio?: boolean; onValori?: (valori: RiferimentoPreventivo) => void;
   riferimento: RiferimentoPreventivo; cataloghi?: CataloghiRiferimento; errore?: string; caricamento: boolean; modificabile: boolean;
   onSave: (patch: RiferimentoPreventivo) => Promise<void>;
 }) {
-  const [attivo, setAttivo] = useState(riferimento.listino_rif != null);
+  const [attivo, setAttivo] = useState(obbligatorio || riferimento.listino_rif != null);
   const [valori, setValori] = useState(riferimento);
   const [salvando, setSalvando] = useState(false);
   const [erroreSalvataggio, setErroreSalvataggio] = useState(false);
@@ -21,7 +22,7 @@ export function CondizioniRiferimento({ riferimento, cataloghi, errore, caricame
   };
   const cambia = (patch: Partial<RiferimentoPreventivo>) => {
     const nuovi = { ...valori, ...patch };
-    setValori(nuovi); void salva(true, nuovi);
+    setValori(nuovi); onValori?.(nuovi); void salva(true, nuovi);
   };
   const selettore = (etichetta: string, valore: string, opzioni: { valore: string; label: string }[], obbligatorio = false) => <div className="grid min-w-0 gap-1">
     <Label className="text-xs text-muted-foreground">{etichetta}{obbligatorio ? " *" : ""}</Label>
@@ -35,7 +36,7 @@ export function CondizioniRiferimento({ riferimento, cataloghi, errore, caricame
     </SelectContent></Select>
   </div>;
   return <div className="col-span-2 min-w-0 space-y-2 border-t pt-2">
-    <Label className="flex min-h-10 items-center gap-2 text-xs"><Switch aria-label="Condizioni di riferimento" checked={attivo} disabled={!modificabile || salvando} onCheckedChange={v => {
+    <Label className="flex min-h-10 items-center gap-2 text-xs"><Switch aria-label="Condizioni di riferimento" checked={attivo} disabled={obbligatorio || !modificabile || salvando} onCheckedChange={v => {
       setAttivo(v);
       if (!v) { setValori({ listino_rif: null, macrocategoria_rif: null, categoria_rif: null }); void salva(false, valori); }
     }}/><span>Condizioni di riferimento</span></Label>
