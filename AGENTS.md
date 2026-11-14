@@ -39,4 +39,3 @@
 - Showroom UI permissions live only in src/lib/permessi-showroom.ts (twin of auth_solo_showroom), so UI and RLS cannot diverge.
 - MADE_ARTICOLI_LISTINI_PQ: one import parsed only in browser (listini-gamma-parser); server reads staged JSON (xlsx crashed Worker).
 
-- Quote site-price priority and sale-term marking share riga-preventivo helpers and opzioniPrezziCantiere cache, so articles, kits and selected list updates agree without duplicating formulas.
