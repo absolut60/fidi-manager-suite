@@ -15,6 +15,15 @@ export type CodicePagamentoDb = { cod: string; descrizione: string | null };
 
 type CatalogoPagamento = readonly CodicePagamentoDb[] | null | undefined;
 
+export function filtraCodiciPagamento(codici: CatalogoPagamento, ricerca: string): CodicePagamentoDb[] {
+  const normalizza = (v: string) => v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("it-IT");
+  const parole = normalizza(ricerca).trim().split(/\s+/).filter(Boolean);
+  return (codici ?? []).filter(c => {
+    const testo = normalizza(`${c.cod} ${c.descrizione ?? ""}`);
+    return parole.every(parola => testo.includes(parola));
+  });
+}
+
 function trovaCodicePagamento(codici: CatalogoPagamento, cod: string | null | undefined) {
   const codice = cod?.trim().toUpperCase();
   return codice ? codici?.find((c) => c.cod.trim().toUpperCase() === codice) : undefined;
@@ -69,22 +78,22 @@ export function CondizionePagamentoRichiestaSelect({
   value,
   onChange,
   size = "default",
+  ariaLabel,
+  descFallback,
 }: {
   value: string;
   onChange: (cod: string) => void;
   size?: "default" | "sm";
+  ariaLabel?: string;
+  descFallback?: string | null;
 }) {
   const { data: codici } = useCodiciPagamento();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const sm = size === "sm";
 
-  const filtrati = (codici ?? []).filter((c) => {
-    const q = search.trim().toLowerCase();
-    if (!q) return true;
-    return c.cod.toLowerCase().includes(q) || (c.descrizione ?? "").toLowerCase().includes(q);
-  });
-  const etichetta = etichettaCondizionePagamento(codici, value);
+  const filtrati = filtraCodiciPagamento(codici, search);
+  const etichetta = etichettaCondizionePagamento(codici, value, descFallback);
 
   function scegli(cod: string) {
     onChange(cod);
@@ -93,19 +102,20 @@ export function CondizionePagamentoRichiestaSelect({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover modal open={open} onOpenChange={v => { setOpen(v); if (!v) setSearch(""); }}>
       <PopoverTrigger asChild>
         <Button
           type="button"
           variant="outline"
           role="combobox"
+          aria-label={ariaLabel}
           aria-expanded={open}
           title={value ? etichetta : undefined}
           className={sm ? "h-10 min-w-0 w-full justify-between px-2 font-normal text-xs" : "min-w-0 w-full justify-between font-normal"}
         >
-          <span className={value ? "min-w-0 flex items-baseline gap-1" : "min-w-0 truncate text-muted-foreground"}>
+          <span className={value ? "min-w-0 whitespace-normal break-words text-left" : "min-w-0 truncate text-muted-foreground"}>
             {value
-              ? <><span className="truncate">{descrizioneCodicePagamento(codici, value)}</span><span className="shrink-0 font-mono text-xs text-muted-foreground">{descrizioneCodicePagamento(codici, value) ? `(${value.trim()})` : value.trim()}</span></>
+              ? etichetta
               : sm ? "—" : "Seleziona condizione di pagamento…"}
           </span>
           <ChevronsUpDown className={`${sm ? "ml-1" : "ml-2"} size-4 shrink-0 opacity-50`} />

@@ -24,7 +24,7 @@ import {
 import { testoPerFiltroOr } from "@/lib/ricerca-sicura";
 import { campiSedePreventivo } from "./preventivo-creazione";
 import type { LeadPreventivo } from "./soggetto-preventivo";
-import { LEAD_PREVENTIVO_SELECT } from "./lead-preventivo-api";
+import { LEAD_PREVENTIVO_SELECT, cercaLeadPreventivo } from "./lead-preventivo-api";
 
 export type Preventivo = Database["public"]["Tables"]["preventivi"]["Row"];
 export type PreventivoInsert = Database["public"]["Tables"]["preventivi"]["Insert"];
@@ -232,6 +232,7 @@ export interface PreventiviFilters {
 }
 
 export interface PreventivoListItem extends Preventivo {
+  lead: Pick<LeadPreventivo, "id" | "ragione_sociale" | "nome" | "cognome" | "store_id"> | null;
   cliente: { id: string; ragione_sociale: string } | null;
   cantiere: { id: string; nome: string } | null;
   blocchi?: {
@@ -283,6 +284,7 @@ export interface ElencoPreventivi {
 }
 
 const SELECT_ELENCO = `*,
+       lead:lead!preventivi_lead_id_fkey(id,ragione_sociale,nome,cognome,store_id),
        cantiere:cantieri(id, nome),
        blocchi:blocchi_preventivo(righe:righe_preventivo(tipo_riga, quantita, qta_ordinata))`;
 
@@ -302,11 +304,10 @@ export async function fetchElencoPreventivi(f: ElencoPreventiviFilters): Promise
   if (f.search?.trim()) {
     const s = testoPerFiltroOr(f.search);
     const parti = [`numero.ilike.%${s}%`, `titolo.ilike.%${s}%`];
-    const clienti = await cercaClientiPreventivo(f.search.trim());
-    const ids = clienti
-      .filter((c) => (c.codice_gestionale ?? "").toLowerCase().includes(f.search!.trim().toLowerCase()))
-      .map((c) => c.id);
+    const [clienti, lead] = await Promise.all([cercaClientiPreventivo(f.search.trim()), cercaLeadPreventivo(f.search.trim())]);
+    const ids = clienti.map(c => c.id);
     if (ids.length) parti.push(`cliente_id.in.(${ids.join(",")})`);
+    if (lead.length) parti.push(`lead_id.in.(${lead.map(l => l.id).join(",")})`);
     q = q.or(parti.join(","));
   }
   const { data, error } = await q;

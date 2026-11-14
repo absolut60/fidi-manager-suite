@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select,SelectContent,SelectItem,SelectTrigger,SelectValue } from "@/components/ui/select";
 import { AzioneRiquadro } from "./AzioneRiquadro";
 import { CantiereTestata } from "./CantiereTestata";
-import { useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
+import { useCodiciPagamento, CondizionePagamentoRichiestaSelect, etichettaCondizionePagamento } from "@/components/condizione-pagamento-richiesta-select";
 import { STATI,STATI_LABEL,TIPI_DOC,TIPI_DOC_LABEL,type PreventivoConDettagli,type PreventivoUpdate,type DatiClientePreventivo,type Agente } from "@/lib/preventivi-api";
 import { formatNumeroIt,parseNumeroIt } from "@/lib/numero-it";
 import { formatDate } from "@/lib/fidi";
@@ -82,7 +82,7 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
         {!prev.lead_id && field('Listino del cliente',listino,<div className="min-h-7 py-1 text-xs">{listino}</div>)}
         {!prev.lead_id && field('Categoria del cliente',categoria,<div className="min-h-7 py-1 text-xs break-words">{categoria}</div>)}
         <CondizioniRiferimento key={`${prev.id}:${prev.listino_rif}:${prev.macrocategoria_rif}:${prev.categoria_rif}`} obbligatorio={!!prev.lead_id} riferimento={prev} cataloghi={cataloghiRiferimento} errore={erroreCataloghi} caricamento={caricamentoCataloghi} modificabile={modificabile} onSave={onRiferimento}/>
-        {field('Condizione di pagamento',pagamento?`${pagamentoDesc||pagamento} (${pagamento})`:'—',<div title="Proposta dal cliente (Gamma) · modificabile">{select('Condizione di pagamento',pagamento,codici.map(c=>({value:c.cod,label:`${c.descrizione||''} (${c.cod})`})),v=>save({condizione_pagamento_cod:v==='__none__'?null:v}))}</div>,true)}
+        {field('Condizione di pagamento',etichettaCondizionePagamento(codici,pagamento,cliente?.condizione_pagamento_desc),<CondizionePagamentoRichiestaSelect ariaLabel="Condizione di pagamento" size="sm" value={pagamento} descFallback={cliente?.condizione_pagamento_desc} onChange={v=>save({condizione_pagamento_cod:v||null})}/>,true)}
         {field('IVA %',`${formatNumeroIt(prev.iva_perc||0)}%`,<Input aria-label="IVA %" className="h-7 bg-card px-2 text-xs md:text-xs" inputMode="decimal" defaultValue={formatNumeroIt(prev.iva_perc||0)} onBlur={e=>{const v=parseNumeroIt(e.target.value);if(v!==null&&v!==prev.iva_perc)save({iva_perc:v});}}/>)}
         {field('Filiale',prev.filiale,select('Filiale',prev.store_id||'',stores.map(s=>({value:s.id,label:s.nome})),id=>save(campiSedePreventivo(stores.find(s=>s.id===id)??null))))}
       </div>

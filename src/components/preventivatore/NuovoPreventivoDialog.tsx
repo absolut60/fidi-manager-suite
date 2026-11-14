@@ -1,5 +1,5 @@
 import { CondizioniClienteGamma } from "@/components/preventivatore/CondizioniClienteGamma";
-import { useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
+import { CondizionePagamentoRichiestaSelect } from "@/components/condizione-pagamento-richiesta-select";
 import { campiSedePreventivo, riallineaValidita, validitaProposta } from "@/lib/preventivo-creazione";
 import { creaConPrimoBlocco } from "@/lib/nuovo-preventivo";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -46,7 +46,6 @@ export function NuovoPreventivoDialog({
   const filialeManuale = useRef(false);
   const [titolo, setTitolo] = useState("");
   const [pagamento, setPagamento] = useState("");
-  const { data: codiciPagamento = [] } = useCodiciPagamento();
   const [tipoDoc, setTipoDoc] = useState<TipoDoc>("PREVENTIVO");
   const [numero, setNumero] = useState("");
   const [data, setData] = useState(today);
@@ -256,14 +255,7 @@ export function NuovoPreventivoDialog({
           {soggetto?.tipo !== "lead" && <CondizioniClienteGamma clienteId={clienteId} />}
           <div className="grid gap-1.5 min-w-0">
             <Label>Condizione di pagamento</Label>
-            <Select value={pagamento || "__none__"} onValueChange={(v) => setPagamento(v === "__none__" ? "" : v)}>
-              <SelectTrigger aria-label="Condizione di pagamento" className="h-auto min-h-10 w-full min-w-0 [&>span]:whitespace-normal [&>span]:text-left [&>span]:break-words"><SelectValue placeholder="Seleziona condizione di pagamento" /></SelectTrigger>
-              <SelectContent className="max-w-[calc(100vw-2rem)]">
-                <SelectItem value="__none__">— Nessuna —</SelectItem>
-                {pagamento && !codiciPagamento.some((c) => c.cod === pagamento) && <SelectItem value={pagamento}>{pagamento}</SelectItem>}
-                {codiciPagamento.map((c) => <SelectItem key={c.cod} value={c.cod} className="whitespace-normal break-words">{c.descrizione} ({c.cod})</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <CondizionePagamentoRichiestaSelect ariaLabel="Condizione di pagamento" value={pagamento} onChange={setPagamento} />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {!isOrdine && (

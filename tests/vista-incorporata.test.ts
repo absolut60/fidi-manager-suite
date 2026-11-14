@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { destinazioneFuoriFinestra, urlClienteIncorporato, vistaIncorporata, vistaSearchSchema } from "../src/lib/vista-incorporata";
+import { destinazioneFuoriFinestra, urlClienteIncorporato, urlLeadIncorporato, vistaIncorporata, vistaSearchSchema } from "../src/lib/vista-incorporata";
 
 describe("FM67 vista incorporata", () => {
   test("solo vista=incorporata abilita la presentazione senza menu", () => {
@@ -8,6 +8,9 @@ describe("FM67 vista incorporata", () => {
   });
   test("iframe cliente richiede la vista incorporata", () => {
     expect(urlClienteIncorporato("cliente-1")).toBe("/clienti/cliente-1?vista=incorporata");
+  });
+  test("iframe lead resta same-origin in vista incorporata", () => {
+    expect(urlLeadIncorporato("lead-1")).toBe("/lead/lead-1?vista=incorporata");
   });
   test("cambio tab resta nella scheda", () => {
     expect(destinazioneFuoriFinestra("?vista=incorporata&tab=anagrafica","https://app.test/clienti/1?vista=incorporata")).toBeNull();

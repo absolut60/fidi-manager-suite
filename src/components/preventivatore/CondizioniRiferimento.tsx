@@ -43,13 +43,13 @@ export function CondizioniRiferimento({ riferimento, cataloghi, errore, caricame
     {attivo && <>
       {errore && <p role="alert" className="text-xs text-destructive">{errore}</p>}
       {caricamento && <p className="text-xs text-muted-foreground">Caricamento condizioni…</p>}
-      {cataloghi && (!cataloghi.listini.length || !cataloghi.macrocategorie.length) && <p role="alert" className="text-xs text-destructive">Listini o macrocategorie non disponibili per questo utente.</p>}
+      {cataloghi && (!cataloghi.listini.length || !cataloghi.macrocategorie.length || !cataloghi.categorie.length) && <p role="alert" className="text-xs text-destructive">Listini, macrocategorie o categorie non disponibili per questo utente.</p>}
       <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
         {selettore("Listino di riferimento", valori.listino_rif?.toString() ?? "", cataloghi?.listini.map(c => ({ valore: c.codice.toString(), label: `${c.codice} — ${c.descrizione}` })) ?? [], true)}
         {selettore("Macrocategoria di riferimento", valori.macrocategoria_rif ?? "", cataloghi?.macrocategorie.map(c => ({ valore: c.codice, label: c.label })) ?? [], true)}
-        {selettore("Categoria di riferimento", valori.categoria_rif ?? "", cataloghi?.categorie.map(c => ({ valore: c.codice, label: c.label })) ?? [])}
+        {selettore("Categoria di riferimento", valori.categoria_rif ?? "", cataloghi?.categorie.map(c => ({ valore: c.codice, label: c.label })) ?? [], true)}
       </div>
-      {!campiRiferimentoPreventivo(true, valori) && <p className="text-xs text-muted-foreground">Listino e macrocategoria obbligatori.</p>}
+      {!campiRiferimentoPreventivo(true, valori) && <p className="text-xs text-muted-foreground">Listino, macrocategoria e categoria obbligatori.</p>}
     </>}
     {erroreSalvataggio && <p role="alert" className="text-xs text-destructive">Condizioni non salvate.</p>}
   </div>;

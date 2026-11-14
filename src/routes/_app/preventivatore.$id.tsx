@@ -11,6 +11,7 @@ import { TestataPreventivo } from '@/components/preventivatore/TestataPreventivo
 import { PiedePreventivo } from '@/components/preventivatore/PiedePreventivo';
 import { BadgeTestata } from '@/components/preventivatore/BadgeTestata';
 import { ClientePreventivoDialog } from '@/components/preventivatore/ClientePreventivoDialog';
+import { LeadPreventivoDialog } from '@/components/preventivatore/LeadPreventivoDialog';
 import { Tabs,TabsList,TabsTrigger,TabsContent } from '@/components/ui/tabs';
 import { DropdownMenu,DropdownMenuTrigger,DropdownMenuContent,DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
@@ -100,6 +101,7 @@ function PreventivoEditorPage() {
   const {tab: tabUrl}=Route.useSearch();
   const tab=['testata','corpo','piede'].includes(tabUrl)?tabUrl:'corpo';
   const [clienteOpen,setClienteOpen]=useState(false);
+  const [leadOpen,setLeadOpen]=useState(false);
   const [prezziOpen, setPrezziOpen] = useState(false);
   const [soggettoOpen, setSoggettoOpen] = useState(false);
   const [soggettoScelto, setSoggettoScelto] = useState<SoggettoPreventivo | null>(null);
@@ -371,7 +373,7 @@ function PreventivoEditorPage() {
     setRiferimentoScelto({ listino_rif: prev.listino_rif, macrocategoria_rif: prev.macrocategoria_rif, categoria_rif: prev.categoria_rif });
     setSoggettoOpen(true);
   };
-  const apriSchedaSoggetto = () => { if (prev.lead_id) window.open(`/lead/${prev.lead_id}`, "_blank", "noopener,noreferrer"); else setClienteOpen(true); };
+  const apriSchedaSoggetto = () => { if (prev.lead_id) setLeadOpen(true); else setClienteOpen(true); };
   const salvaSoggetto = async () => {
     if (!soggettoScelto) return;
     try {
@@ -648,6 +650,7 @@ function PreventivoEditorPage() {
         <DialogFooter><Button variant="outline" onClick={() => setSoggettoOpen(false)}>Annulla</Button><Button disabled={save.isPending || !soggettoScelto || (soggettoScelto.tipo === "lead" && !campiRiferimentoPreventivo(true,riferimentoScelto))} onClick={salvaSoggetto}>Salva soggetto</Button></DialogFooter>
       </DialogContent></Dialog>
       {clienteOpen && clienteDati && <ClientePreventivoDialog cliente={clienteDati} onClose={()=>setClienteOpen(false)}/>}
+      {leadOpen && prev.lead && <LeadPreventivoDialog lead={prev.lead} onClose={()=>setLeadOpen(false)}/>}
       <AlertDialog open={eliminaOpen} onOpenChange={setEliminaOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Eliminare il documento?</AlertDialogTitle><AlertDialogDescription>Tutti i blocchi e le righe verranno eliminati. Irreversibile.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Annulla</AlertDialogCancel><AlertDialogAction onClick={()=>delPrev.mutate()}>Elimina</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
 
       {prezziOpen && cantierePrezzi && <PrezziCantiereDialog condizioniPrezzi={prev} open onOpenChange={setPrezziOpen} cantiere={cantierePrezzi} />}

@@ -10,7 +10,7 @@ export type CataloghiRiferimento = {
 /** Ogni scrittura comprende tutte le condizioni; una scelta incompleta non si salva. */
 export function campiRiferimentoPreventivo(attivo: boolean, valori: RiferimentoPreventivo): RiferimentoPreventivo | null {
   if (!attivo) return { listino_rif: null, macrocategoria_rif: null, categoria_rif: null };
-  if (valori.listino_rif == null || !valori.macrocategoria_rif) return null;
+  if (valori.listino_rif == null || !valori.macrocategoria_rif?.trim() || !valori.categoria_rif?.trim()) return null;
   return { listino_rif: valori.listino_rif, macrocategoria_rif: valori.macrocategoria_rif, categoria_rif: valori.categoria_rif || null };
 }
 
