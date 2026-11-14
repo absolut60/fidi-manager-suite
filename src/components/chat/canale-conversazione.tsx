@@ -337,6 +337,7 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
         x.id === m.id ? { ...x, eliminato_at: new Date().toISOString(), allegato: null } : x
       )
     );
+    setMessaggioDaEliminare(null);
     toast.success("Messaggio eliminato");
   }
 
@@ -533,7 +534,6 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
               variant="destructive"
               onClick={async () => {
                 const m = messaggioDaEliminare;
-                setMessaggioDaEliminare(null);
                 if (m) await eliminaMessaggio(m);
               }}
             >

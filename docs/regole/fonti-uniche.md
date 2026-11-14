@@ -5,6 +5,7 @@ Estratto dal knowledge di progetto il 08/10/2026 (sessione 40). Si aggiorna modi
 ## 11. Fonti uniche e regole da FM37–FM39
  
 - Ogni campo indirizzo usa BloccoIndirizzo.
+- Ogni eliminazione usa eliminaConEsito (src/lib/esito-eliminazione.ts) e messaggioEsitoEliminazione; righe prima dei file; padre solo dopo figli eliminati tutti. Le sole eccezioni tecniche (rollback, pulizie import/lock/iscrizioni push obsolete) sono elencate puntualmente in tests/eliminazioni-fonte-unica.test.ts.
 - **Chi può modificare un cantiere (FM69):** solo `auth_puo_modificare_cantiere` (DB) via `cantieri_modificabili` / `puoModificareCantiereDb`; nessuna lista di ruoli nel TS per la modifica. Le regole di eliminazione, creazione e visibilità dei filtri restano separate.
 
 - **Incasso reale (`isPagatoReale`):** data_pagamento_effettiva IS NOT NULL AND importo_pagato > 0; invariato per incassi, DSO e classificazione dei pagamenti.

@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -93,18 +94,16 @@ export const eliminaAttivitaFornitore = createServerFn({ method: "POST" })
     const all = await sb.from("allegati").select("id, storage_path").eq("entita_tipo", "attivita_fornitore").eq("entita_id", data.id);
     if (all.error) throw new Error(`Lettura allegati fallita: ${all.error.message}. Nulla è stato eliminato.`);
     const righe = all.data ?? [];
+    if (righe.length) {
+      const esito = await eliminaConEsito("allegati", righe.map(r => r.id), undefined, sb);
+      if (esito.tipo !== "eliminato") throw new Error(messaggioEsitoEliminazione(esito, "gli allegati dell'attività"));
+    }
     const percorsi = righe.map(r => r.storage_path).filter(Boolean);
     if (percorsi.length) {
       const rm = await sb.storage.from("allegati").remove(percorsi);
       if (rm.error) throw new Error(`Eliminazione dei file allegati fallita: ${rm.error.message}. L'attività non è stata eliminata.`);
     }
-    if (righe.length) {
-      const del = await sb.from("allegati").delete().in("id", righe.map(r => r.id)).select("id");
-      if (del.error) throw new Error(`Eliminazione degli allegati fallita: ${del.error.message}. L'attività non è stata eliminata.`);
-      if ((del.data?.length ?? 0) < righe.length) throw new Error("Non è stato possibile eliminare tutti gli allegati. L'attività non è stata eliminata.");
-    }
-    const res = await sb.from("attivita_fornitore").delete().eq("id", data.id).in("origine", ["manuale", "invio"]).select("id");
-    if (res.error) throw new Error(res.error.message);
-    if (!res.data?.length) throw new Error("Attività non eliminabile");
+    const esito = await eliminaConEsito("attivita_fornitore", { richiesti: 1, filtro: q => q.eq("id", data.id).in("origine", ["manuale", "invio"]) }, undefined, sb);
+    if (esito.tipo !== "eliminato") throw new Error(messaggioEsitoEliminazione(esito, "l'attività del fornitore"));
     return { ok: true };
   });

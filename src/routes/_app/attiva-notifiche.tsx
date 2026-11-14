@@ -25,6 +25,8 @@ export const Route = createFileRoute("/_app/attiva-notifiche")({
         content:
           "Procedura guidata per attivare le notifiche push di FidiManager su questo dispositivo.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { property: "og:title", content: "Attiva le notifiche · FidiManager" },
       {
         property: "og:description",
@@ -138,7 +140,8 @@ function AttivaNotifichePage() {
 
   async function handleDisattiva() {
     setBusy(true);
-    await unsubscribeFromPush();
+    const esito = await unsubscribeFromPush();
+    if (!esito.ok) { toast.error(esito.reason ?? "Disattivazione non riuscita"); setBusy(false); return; }
     setDone(false);
     await ricarica();
     setBusy(false);
