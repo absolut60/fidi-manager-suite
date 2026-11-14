@@ -115,7 +115,7 @@ function CalendarioCommercialePage() {
       const { data, error } = await supabase
         .from("attivita_commerciale")
         .select(
-          "id, tipo, titolo, descrizione, data_pianificata, data_svolgimento, completata, esito, agente_codice, operatore_id, store_id, opportunita_id, cliente_id, lead_id, luogo, indirizzo, cap, citta, provincia, sede_riferimento_id, sede_riferimento:sede_riferimento_id(nome), note, created_at, opportunita:opportunita_id(titolo), clienti:cliente_id(ragione_sociale), lead:lead_id(ragione_sociale, nome, cognome)",
+          "id, tipo, titolo, descrizione, data_pianificata, data_svolgimento, completata, esito, agente_codice, operatore_id, store_id, opportunita_id, cliente_id, lead_id, luogo, indirizzo, cap, citta, provincia, sede_riferimento_id, sede_riferimento:stores!attivita_commerciale_sede_riferimento_id_fkey(nome), note, created_at, opportunita:opportunita_id(titolo), clienti:cliente_id(ragione_sociale), lead:lead_id(ragione_sociale, nome, cognome)",
         )
         .not("data_pianificata", "is", null)
         .gte("data_pianificata", range!.start)

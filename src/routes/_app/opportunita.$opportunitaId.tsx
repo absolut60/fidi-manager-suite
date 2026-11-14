@@ -81,7 +81,7 @@ function DettaglioOpportunita() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("attivita_commerciale")
-        .select("*, sede_riferimento:sede_riferimento_id(nome)")
+        .select("*, sede_riferimento:stores!attivita_commerciale_sede_riferimento_id_fkey(nome)")
         .eq("opportunita_id", opportunitaId)
         .order("data_pianificata", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false })
