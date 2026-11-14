@@ -28,6 +28,7 @@ export const TIPO_ATTIVITA_CLASS: Record<TipoAttivita, string> = {
 
 export type AttivitaRow = {
   id: string;
+  preventivo_id?: string | null;
   opportunita_id: string | null;
   cliente_id: string | null;
   lead_id: string | null;
@@ -57,6 +58,19 @@ export function fmtDataOra(v: string | null | undefined): string {
   return new Date(v).toLocaleString("it-IT", {
     day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
   });
+}
+
+/** Il legame e l'autore sono inviati soltanto creando dal preventivo. */
+export function legamePreventivoAttivita(attivita: Pick<AttivitaRow, "id"> | null | undefined, preventivoId: string | null | undefined, operatoreId: string | null | undefined): { preventivo_id?: string; operatore_id?: string } {
+  if (attivita || !preventivoId) return {};
+  if (!operatoreId) throw new Error("Accedi per registrare l'attività del preventivo");
+  return { preventivo_id: preventivoId, operatore_id: operatoreId };
+}
+
+/** Data crescente, svolgimento come fallback, senza alterare l'elenco originale. */
+export function ordinaAttivitaPreventivo<T extends Pick<AttivitaRow, "data_pianificata" | "data_svolgimento" | "created_at">>(attivita: T[]): T[] {
+  const data = (a: T) => new Date(a.data_pianificata || a.data_svolgimento || a.created_at).getTime();
+  return [...attivita].sort((a, b) => data(a) - data(b));
 }
 
 type AmbitoAttivita = {

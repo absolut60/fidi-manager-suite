@@ -930,6 +930,7 @@ export type Database = {
           note: string | null
           operatore_id: string | null
           opportunita_id: string | null
+          preventivo_id: string | null
           provincia: string | null
           sede_riferimento_id: string | null
           store_id: string | null
@@ -955,6 +956,7 @@ export type Database = {
           note?: string | null
           operatore_id?: string | null
           opportunita_id?: string | null
+          preventivo_id?: string | null
           provincia?: string | null
           sede_riferimento_id?: string | null
           store_id?: string | null
@@ -980,6 +982,7 @@ export type Database = {
           note?: string | null
           operatore_id?: string | null
           opportunita_id?: string | null
+          preventivo_id?: string | null
           provincia?: string | null
           sede_riferimento_id?: string | null
           store_id?: string | null
@@ -1014,6 +1017,13 @@ export type Database = {
             columns: ["opportunita_id"]
             isOneToOne: false
             referencedRelation: "opportunita"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attivita_commerciale_preventivo_id_fkey"
+            columns: ["preventivo_id"]
+            isOneToOne: false
+            referencedRelation: "preventivi"
             referencedColumns: ["id"]
           },
           {

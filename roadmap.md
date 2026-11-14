@@ -1,4 +1,8 @@
 # FM68 — Fetta A: visibilità preventivisti (solo database)
+## Attività commerciali nel preventivo — fetta 1
+- [ ] Colonna/FK/indice e tre policy additive; confronto verbatim prima/dopo senza impersonazione.
+- [ ] Legame in sola creazione, riquadro Testata con dialog condiviso e link calendario; Cantiere invariato.
+- [ ] Test, schermate simulate 375/1280, verifica flusso e diff dei soli file.
 ## Attività commerciali — indirizzo e sede di riferimento
 - [x] 0212 additiva, cinque colonne nullable e FK/indice; tipi rigenerati. Undici policy identiche (MD5 03e197c15551c44c79f6405ec3a4e955), store_id preservato in modifica, luogo storico non inviato.
 - [x] BloccoIndirizzo e sede manuale prevalente; storeIdAttivita/sedeInizialeAttivita e luogoAttivita condivisi. Calendario (tooltip/dettaglio) e opportunità aggiornati; nessun altro lettore/export attività trovato.

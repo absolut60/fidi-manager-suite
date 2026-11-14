@@ -1492,6 +1492,13 @@
       "when": 1794664023781,
       "tag": "0212_fm68_attivita_commerciale_indirizzo_sede",
       "breakpoints": true
+    },
+    {
+      "idx": 213,
+      "version": "7",
+      "when": 1794665180641,
+      "tag": "0213_fm68_attivita_preventivo",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,28 @@
 import { describe, expect, test } from "bun:test";
-import { luogoAttivita, sedeInizialeAttivita, storeIdAttivita } from "../src/lib/attivita-commerciale";
+import { legamePreventivoAttivita, ordinaAttivitaPreventivo, luogoAttivita, sedeInizialeAttivita, storeIdAttivita } from "../src/lib/attivita-commerciale";
+
+describe("Attività del preventivo", () => {
+  test("creazione lega preventivo e operatore corrente", () => {
+    expect(legamePreventivoAttivita(null, "prv-161", "operatore-corrente")).toEqual({ preventivo_id: "prv-161", operatore_id: "operatore-corrente" });
+  });
+  test("modifica non invia preventivo_id né cambia autore", () => {
+    expect(legamePreventivoAttivita({ id: "attivita-salvata" }, "altro-preventivo", "altro-autore")).toEqual({});
+  });
+  test("gli altri contesti mantengono il default DB dell'operatore", () => {
+    expect(legamePreventivoAttivita(null, null, "operatore-corrente")).toEqual({});
+  });
+  test("creazione dal preventivo richiede l'utente corrente", () => {
+    expect(() => legamePreventivoAttivita(null, "prv-161", null)).toThrow();
+  });
+  test("ordina per pianificata con fallback svolgimento senza mutare input", () => {
+    const righe = [
+      { id: "tardi", data_pianificata: "2026-11-20T10:00:00Z", data_svolgimento: null, created_at: "2026-11-01T10:00:00Z" },
+      { id: "presto", data_pianificata: null, data_svolgimento: "2026-11-14T10:00:00Z", created_at: "2026-11-01T10:00:00Z" },
+    ];
+    expect(ordinaAttivitaPreventivo(righe).map(a => a.id)).toEqual(["presto", "tardi"]);
+    expect(righe.map(a => a.id)).toEqual(["tardi", "presto"]);
+  });
+});
 
 describe("Ambito e sede attività commerciale", () => {
   test("modifica dal calendario conserva store_id anche con contesto vuoto", () => {
