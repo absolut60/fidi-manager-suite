@@ -1541,6 +1541,13 @@
       "when": 1794683359074,
       "tag": "0219_fm70_ricerca_articoli_fetta1",
       "breakpoints": true
+    },
+    {
+      "idx": 220,
+      "version": "7",
+      "when": 1794684215775,
+      "tag": "0220_fm70_ricerca_articoli_fix",
+      "breakpoints": true
     }
   ]
 }

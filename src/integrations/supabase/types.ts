@@ -10539,7 +10539,10 @@ export type Database = {
       }
       normalizza_numero_it: { Args: { _raw: string }; Returns: string }
       normalizza_ragione_sociale: { Args: { _s: string }; Returns: string }
-      normalizza_testo_ricerca: { Args: { _t: string }; Returns: string }
+      normalizza_testo_ricerca: {
+        Args: { _t: string; _varianti?: boolean }
+        Returns: string
+      }
       opzioni_fornitori: { Args: never; Returns: Json }
       osserva_ricollegamento_scadenze: {
         Args: { _importazione_id: string }
