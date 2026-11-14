@@ -55,7 +55,17 @@ Altri avvisi: `articolo_senza_prezzo_su_listino`, `cliente_senza_listino`, `clie
 
 ## Punti aperti
 - Preventivi ai lead: la funzione interna accetta `_cliente_codice` NULL (livelli 3 e 6 saltati);
-  manca la funzione pubblica e la scelta di listino/sede per il lead.
+  da FM71 esiste la funzione pubblica di riferimento; la scelta nell'interfaccia resta da realizzare.
+
+## Condizioni di riferimento (FM71)
+
+- `preventivi.listino_rif` (smallint, FK `listini_gamma.codice`), `macrocategoria_rif` e `categoria_rif` (text) sono facoltative e senza backfill. Questa fetta prepara solo il database: l'app continua a usare le condizioni del cliente.
+- `public.prezzi_preventivo_riferimento(_listino, _macrocategoria, _categoria, _store_id, _codici, _data DEFAULT CURRENT_DATE)` restituisce la stessa forma di `prezzi_preventivo_cliente`, con identico gate `auth_ha_accesso_preventivi()`, limite massimo di 500 codici, STABLE SECURITY DEFINER, search_path public ed EXECUTE authenticated/service_role (mai PUBLIC/anon).
+- Fonte unica del calcolo: il wrapper chiama solo `_prezzo_preventivo_articoli`, passando listino/categorie/sede di riferimento e NULL per sottocategoria, codice cliente e listino più articoli. Nessuna formula duplicata.
+- Con riferimento attivo si ignorano **tutti** gli accordi personali Gamma: cliente/famiglia (50), listino più articoli (60), cliente/articolo (90), oltre alla sottocategoria. Restano le condizioni della categoria di riferimento (20).
+- I prezzi di deposito (55) restano validi e usano **la sede passata come parametro**, destinata a essere la sede del preventivo, non necessariamente quella del cliente.
+- I prezzi del cantiere restano **sempre prioritari lato app** tramite la fonte unica già esistente; questa fetta non modifica tale applicazione né le righe salvate.
+- Prove permanenti: `tests/sql/fm71-condizioni-riferimento.sql` (A.N. 3,7503, INTECH senza accordo 3,4700, deposito Cambiago 4,8000, gate 42501 e limite 500).
 
 ## Testata e riga articolo (FM65 fetta 2b-1)
 - Nel preventivo non si sceglie più la fascia A/B/C/SOCI: la testata mostra in sola lettura "Listino" e "Categoria" del cliente da `public.condizioni_preventivo_cliente` (gate `auth_ha_accesso_preventivi`). La colonna `fascia_listino` resta solo per kit e "Aggiorna listini" fino alla fetta 2b-2.
