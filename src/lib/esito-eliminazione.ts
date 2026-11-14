@@ -26,8 +26,9 @@ export async function eliminaConEsito(
   const ids = [...new Set(typeof id === "string" ? [id] : id)];
   if (!ids.length) return { tipo: "permessi" };
   try {
-    let query = supabase.from(tabella).delete({ count: "exact" }).in("id", ids);
-    if (vincolo) query = query.eq("preventivo_id", vincolo.preventivo_id);
+    const query = vincolo && tabella === "preventivi_note"
+      ? supabase.from("preventivi_note").delete({ count: "exact" }).in("id", ids).eq("preventivo_id", vincolo.preventivo_id)
+      : supabase.from(tabella).delete({ count: "exact" }).in("id", ids);
     const { error, count } = await query;
     return classificaEsitoEliminazione(error, count, ids.length);
   } catch (error) {
