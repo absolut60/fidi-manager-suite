@@ -151,6 +151,26 @@ export interface PrezzoClienteGamma {
   avvisi?: string[] | null;
 }
 
+export interface PrezzoDedicatoCantiere {
+  prezzo_vendita_speciale: number | null;
+  sconti: readonly number[];
+  maggiorazione_perc: number;
+  costo_netto_speciale: number | null;
+}
+
+/** Override UM1 engine fields, never duplicate the row formulas. */
+export function prezzoConPrioritaCantiere(motore: PrezzoClienteGamma | null | undefined, cantiere?: PrezzoDedicatoCantiere | null): { prezzo: PrezzoClienteGamma | null; fonte: "cantiere" | "listino" } {
+  if (!cantiere) return { prezzo: motore ?? null, fonte: "listino" };
+  const s = cantiere.sconti;
+  return { fonte: "cantiere", prezzo: {
+    ...motore, prezzo_base: cantiere.prezzo_vendita_speciale,
+    sc1: s[0] ?? 0, sc2: s[1] ?? 0, sc3: s[2] ?? 0,
+    sc4: s[3] ?? 0, sc5: s[4] ?? 0, sc6: s[5] ?? 0,
+    maggiorazione_perc: cantiere.maggiorazione_perc,
+    costo_ultimo: cantiere.costo_netto_speciale ?? motore?.costo_ultimo ?? null,
+  } };
+}
+
 /** Slot sc1..sc6 diversi da 0, nell'ordine. */
 export function scontiDaSlot(p: PrezzoClienteGamma): number[] {
   return [p.sc1, p.sc2, p.sc3, p.sc4, p.sc5, p.sc6].map(num).filter((s) => s !== 0);
@@ -246,6 +266,14 @@ export function patchConImporto<P extends Partial<RigaBase>>(riga: RigaBase, pat
 const r4 = (v: number) => Math.round(v * 10000) / 10000;
 const stessiSconti = (a: readonly number[], b: readonly number[]) =>
   a.length === b.length && a.every((v, i) => r4(v) === r4(b[i]));
+
+/** Match sale terms in saved UM1, regardless of extra discount or cost. */
+export function coincidePrezzoCantiere(r: PrezzoRigaInput, c?: PrezzoDedicatoCantiere | null): boolean {
+  return !!c && r.prezzo_unit != null && c.prezzo_vendita_speciale != null &&
+    r4(num(r.prezzo_unit)) === r4(c.prezzo_vendita_speciale) &&
+    stessiSconti((r.sconti_gamma ?? []).map(num).filter(s => s !== 0), c.sconti.map(num).filter(s => s !== 0)) &&
+    r4(num(r.maggiorazione_perc)) === r4(c.maggiorazione_perc);
+}
 
 export interface ValoriPrezzoRiga {
   prezzo_unit: number | null;
