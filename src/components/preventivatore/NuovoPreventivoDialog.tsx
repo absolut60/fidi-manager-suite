@@ -2,7 +2,7 @@ import { CondizioniClienteGamma } from "@/components/preventivatore/CondizioniCl
 import { useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
 import { riallineaValidita, validitaProposta } from "@/lib/preventivo-creazione";
 import { creaConPrimoBlocco } from "@/lib/nuovo-preventivo";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -17,7 +17,7 @@ import {
 import { useNavigate } from "@tanstack/react-router";
 import { ClientePicker } from "./ClientePicker";
 import { CantierePicker } from "./CantierePicker";
-import { NuovoCantiereForm } from "./NuovoCantiereForm";
+import { CantiereDialog } from "@/components/cantiere-dialog";
 import {
   createPreventivo, addBloccoVuoto, fetchAgenti, fetchDatiClientePreventivo, fetchCondizioniPreventivoCliente, anteprimaProssimoNumero,
   TIPI_DOC, TIPI_DOC_LABEL,
@@ -35,6 +35,8 @@ export function NuovoPreventivoDialog({
   const [clienteId, setClienteId] = useState<string | null>(null);
   const [cantiereId, setCantiereId] = useState<string | null>(null);
   const [modoCantiere, setModoCantiere] = useState<"seleziona" | "crea" | "provvisorio">("seleziona");
+  const { data: clienteCantiere } = useQuery({ queryKey: ["cliente-preventivo-dati", clienteId], queryFn: () => clienteId ? fetchDatiClientePreventivo(clienteId) : null, enabled: !!clienteId });
+  const soggettoFisso = useMemo(() => clienteId ? { tipo: "cliente" as const, id: clienteId, etichetta: [clienteCantiere?.codice_gestionale, clienteCantiere?.ragione_sociale].filter(Boolean).join(" · ") || "Cliente" } : undefined, [clienteId, clienteCantiere?.codice_gestionale, clienteCantiere?.ragione_sociale]);
   const [agenteId, setAgenteId] = useState<string | null>(null);
   const [filiale, setFiliale] = useState("");
   const filialeManuale = useRef(false);
@@ -186,6 +188,8 @@ export function NuovoPreventivoDialog({
                   type="button"
                   size="sm"
                   variant={modoCantiere === m ? "default" : "outline"}
+                  disabled={m !== "seleziona" && !clienteId}
+                  title={m !== "seleziona" && !clienteId ? "Prima seleziona un cliente" : undefined}
                   onClick={() => {
                     setModoCantiere(m);
                   }}
@@ -194,17 +198,14 @@ export function NuovoPreventivoDialog({
                 </Button>
               ))}
             </div>
-            {modoCantiere === "provvisorio" ? (
-              <div className="grid gap-2 rounded-md border p-3">
-                <NuovoCantiereForm clienteId={clienteId} provvisorio onCreato={(c) => { setCantiereId(c.id); setModoCantiere("seleziona"); }} />
-              </div>
-            ) : modoCantiere === "crea" ? (
-              <div className="grid gap-2 rounded-md border p-3">
-                <NuovoCantiereForm clienteId={clienteId} onCreato={(c) => { setCantiereId(c.id); setModoCantiere("seleziona"); }} />
-              </div>
-            ) : (
-              <CantierePicker cliente_id={clienteId} value={cantiereId} onChange={setCantiereId} />
-            )}
+            <CantierePicker cliente_id={clienteId} value={cantiereId} onChange={setCantiereId} />
+            {modoCantiere !== "seleziona" && soggettoFisso && <CantiereDialog
+              open={open}
+              onOpenChange={(o) => { if (!o) setModoCantiere("seleziona"); }}
+              soggettoFisso={soggettoFisso}
+              provvisorioIniziale={modoCantiere === "provvisorio"}
+              onSalvato={(c) => { setCantiereId(c.id); setModoCantiere("seleziona"); qc.invalidateQueries({ queryKey: ["cantieri-lite", clienteId] }); }}
+            />}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="grid gap-1.5">

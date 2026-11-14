@@ -3,6 +3,10 @@
  * Fonte unica per filtro lista e conteggi marketing (i provvisori non si contano).
  */
 export type FiltroProvvisorio = "tutti" | "provvisori" | "confermati";
+/** L'opzione iniziale vale solo in creazione; in modifica prevale il dato salvato. */
+export function provvisorioInizialeCantiere(cantiere: { provvisorio?: boolean | null } | null | undefined, iniziale = false): boolean {
+  return cantiere ? cantiere.provvisorio === true : iniziale;
+}
 export const FILTRI_PROVVISORIO: Array<{ valore: FiltroProvvisorio; label: string }> = [
   { valore: "tutti", label: "Provvisori e confermati" },
   { valore: "provvisori", label: "Solo provvisori" },

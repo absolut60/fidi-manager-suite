@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { CantiereDialog } from "@/components/cantiere-dialog";
 import { cn } from "@/lib/utils";
 import type { PreventivoConDettagli } from "@/lib/preventivi-api";
 import { CantierePicker } from "./CantierePicker";
-import { NuovoCantiereForm } from "./NuovoCantiereForm";
 
 type Modo = "cliente" | "nuovo" | "provvisorio";
 const MODI: [Modo, string][] = [["cliente", "Cantiere del cliente"], ["nuovo", "+ Nuovo cantiere"], ["provvisorio", "Provvisorio"]];
@@ -16,7 +16,9 @@ import { BadgeProvvisorio } from "@/components/badge-provvisorio";
  * Riquadro Cantiere della Testata (FM65 B2): tre modi, tutti collegano un vero cantiere (onCantiere → cantiere_id).
  * cantiere_descrizione non viene più scritta: resta solo come fallback in lettura.
  */
-export function CantiereTestata({ prev, modificabile, onCantiere }: { prev: PreventivoConDettagli; modificabile: boolean; onCantiere: (id: string) => void }) {
+export function CantiereTestata({ prev, modificabile, onCantiere, clienteEtichetta }: { prev: PreventivoConDettagli; modificabile: boolean; onCantiere: (id: string) => void; clienteEtichetta?: string }) {
+  const qc = useQueryClient();
+  const soggettoFisso = useMemo(() => prev.cliente_id ? { tipo: "cliente" as const, id: prev.cliente_id, etichetta: clienteEtichetta || prev.cliente?.ragione_sociale || "Cliente" } : undefined, [prev.cliente_id, prev.cliente?.ragione_sociale, clienteEtichetta]);
   const c = prev.cantiere;
   const storico = (prev as { cantiere_descrizione?: string | null }).cantiere_descrizione ?? null;
   const [scelta, setScelta] = useState(!c);
@@ -38,20 +40,18 @@ export function CantiereTestata({ prev, modificabile, onCantiere }: { prev: Prev
       ? <Button size="sm" variant="outline" className="bg-card" onClick={() => setScelta(true)}>Cambia</Button>
       : <div className="space-y-2">
         <div role="group" aria-label="Modo cantiere" className="flex flex-wrap gap-1">
-          {MODI.map(([m, l]) => <Button key={m} type="button" size="sm" variant={modo === m ? "default" : "outline"} className={cn(modo !== m && "bg-card")} onClick={() => scegli(m)}>{l}</Button>)}
+          {MODI.map(([m, l]) => <Button key={m} type="button" size="sm" variant={modo === m ? "default" : "outline"} className={cn(modo !== m && "bg-card")} disabled={m !== "cliente" && !prev.cliente_id} title={m !== "cliente" && !prev.cliente_id ? "Prima seleziona un cliente" : undefined} onClick={() => scegli(m)}>{l}</Button>)}
         </div>
         {modo === "cliente" && <CantierePicker cliente_id={prev.cliente_id} value={prev.cantiere_id} onChange={collega} />}
         {c && <Button size="sm" variant="ghost" onClick={() => { setScelta(false); setModo("cliente"); }}>Annulla</Button>}
       </div>)}
 
-    <Dialog open={finestra} onOpenChange={(o) => { setFinestra(o); if (!o) setModo("cliente"); }}>
-      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{modo === "provvisorio" ? "Cantiere provvisorio" : "Nuovo cantiere"}</DialogTitle>
-          <DialogDescription>{modo === "provvisorio" ? "Viene salvato fra i cantieri del cliente con il segno provvisorio." : "Viene salvato fra i cantieri del cliente e collegato al preventivo."}</DialogDescription>
-        </DialogHeader>
-        <NuovoCantiereForm key={modo} clienteId={prev.cliente_id} provvisorio={modo === "provvisorio"} onCreato={(n) => collega(n.id)} />
-      </DialogContent>
-    </Dialog>
+    {finestra && soggettoFisso && <CantiereDialog
+      open={finestra}
+      onOpenChange={(o) => { setFinestra(o); if (!o) setModo("cliente"); }}
+      soggettoFisso={soggettoFisso}
+      provvisorioIniziale={modo === "provvisorio"}
+      onSalvato={(n) => { collega(n.id); qc.invalidateQueries({ queryKey: ["cantieri-lite", prev.cliente_id] }); }}
+    />}
   </div>;
 }
