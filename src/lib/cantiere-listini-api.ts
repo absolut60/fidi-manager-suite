@@ -8,6 +8,7 @@ import { campiPrezzoDaMotore, prezzoNettoRiga, type PrezzoClienteGamma } from "@
 export type CantiereListinoRow = Database["public"]["Tables"]["cantiere_listini_speciali"]["Row"];
 export type CantiereListinoInput = Pick<CantiereListinoRow, "cantiere_id" | "cod_gamma" | "descrizione" | "prezzo_vendita_speciale" | "sconti" | "maggiorazione_perc" | "costo_netto_speciale" | "um_scelta" | "note"> & { id?: string };
 export const chiavePrezziCantiere = (id: string) => ["prezzi-cantiere", id] as const;
+export const opzioniPrezziCantiere = (id: string) => ({ queryKey: chiavePrezziCantiere(id), queryFn: () => getCantiereListini(id), staleTime: Infinity });
 export const chiaveConteggioPrezziCantiere = (id: string) => ["prezzi-cantiere-conteggio", id] as const;
 export const chiaveConteggiPrezziCantieri = ["prezzi-cantiere-conteggio"] as const;
 type LettoreConteggi = (ids: string[]) => Promise<Array<{ cantiere_id: string }>>;
