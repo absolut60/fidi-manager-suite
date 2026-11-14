@@ -7,6 +7,23 @@ import type { EsitoGeocodifica, EsitoSede } from "@/lib/cantieri-geo.server";
 
 const inputGeo = z.object({ cantiere_id: z.string().uuid() });
 
+/** Distanza dalla sede al cantiere: letture RLS, nessuna scrittura. */
+export const distanzaCantiereSede = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => inputGeo.extend({ store_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const [cantiere, sede] = await Promise.all([
+      context.supabase.from("cantieri").select("lat, lng").eq("id", data.cantiere_id).maybeSingle(),
+      context.supabase.from("stores").select("lat, lng").eq("id", data.store_id).maybeSingle(),
+    ]);
+    if (cantiere.error || sede.error || !cantiere.data || !sede.data) throw new Error("Cantiere o sede non accessibile.");
+    const c = cantiere.data;
+    const s = sede.data;
+    if (c.lat == null || c.lng == null || s.lat == null || s.lng == null) throw new Error("Posizione non disponibile.");
+    const { distanzaStradale } = await import("@/lib/cantieri-geo.server");
+    return (await distanzaStradale({ lat: s.lat, lng: s.lng }, [{ lat: c.lat, lng: c.lng }]))[0] ?? null;
+  });
+
 export type { EsitoGeocodifica, EsitoSede };
 
 /** Geocodifica un cantiere, salva lat/lng + stato e ricalcola la sede più vicina. */
