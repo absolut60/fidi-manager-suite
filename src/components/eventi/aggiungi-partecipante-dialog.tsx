@@ -1,3 +1,4 @@
+import { BloccoIndirizzo } from "@/components/blocco-indirizzo";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -420,24 +421,7 @@ export function AggiungiPartecipanteDialog({
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="np-ind">Indirizzo</Label>
-                  <Input id="np-ind" value={campi.indirizzo} onChange={(e) => set({ indirizzo: e.target.value })} />
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="np-citta">Città</Label>
-                    <Input id="np-citta" value={campi.citta} onChange={(e) => set({ citta: e.target.value })} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="np-cap">CAP</Label>
-                    <Input id="np-cap" value={campi.cap} onChange={(e) => set({ cap: e.target.value })} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="np-prov">Provincia</Label>
-                    <Input id="np-prov" value={campi.provincia} onChange={(e) => set({ provincia: e.target.value })} />
-                  </div>
-                </div>
+                <BloccoIndirizzo value={campi} onChange={set} />
 
                 <div className="space-y-1.5">
                   <Label htmlFor="np-note">Note</Label>

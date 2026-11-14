@@ -1,4 +1,7 @@
 # FM68 — Fetta A: visibilità preventivisti (solo database)
+## Indirizzi giro 1
+- [x] BloccoIndirizzo condiviso in cantiere, nuovo/modifica lead, partecipante e sede; chiave e salvataggi invariati, limiti preservati e provincia maiuscola. Regola aggiunta a fonti-uniche.
+- [x] 747 test; cinque gestori identici byte per byte; schermate nuovo lead/sede 375/1280 con suggerimenti Google simulati, compilazione/modifica manuale, fallback e disabled verificati. Nessuna scrittura DB né verifica Google reale; pagina temporanea rimossa, CantierePicker intatto.
 ## Fetta C
 - [x] Tre usi NuovoCantiereForm sostituiti con CantiereDialog, form eliminato; opzioni iniziali/callback opt-in, stessi gestori e nessuna modifica DB. CantierePicker conserva l'uso di crea_cantiere_lite.
 - [x] 743 test; schermate simulate 375/1280, normale/provvisorio, annullamento, cliente fisso e selezione dopo INSERT simulato. Gestori della pagina, Testata e creazione preventivo identici; pagina temporanea rimossa. Nessuna prova di scrittura su preventivo reale.

@@ -1,3 +1,4 @@
+import { BloccoIndirizzo } from "@/components/blocco-indirizzo";
 import { eliminaLeadConFile } from "@/lib/lead-elimina.functions";
 import { isSoloShowroom } from "@/lib/permessi-showroom";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -823,40 +824,7 @@ function LeadDettaglioPage() {
                     onChange={(e) => set("cellulare", e.target.value)}
                   />
                 </div>
-                <div>
-                  <Label className="text-xs">Indirizzo</Label>
-                  <Input
-                    value={f.indirizzo}
-                    maxLength={200}
-                    onChange={(e) => set("indirizzo", e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Città</Label>
-                  <Input
-                    value={f.citta}
-                    maxLength={100}
-                    onChange={(e) => set("citta", e.target.value)}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs">CAP</Label>
-                    <Input
-                      value={f.cap}
-                      maxLength={10}
-                      onChange={(e) => set("cap", e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Prov.</Label>
-                    <Input
-                      value={f.provincia}
-                      maxLength={5}
-                      onChange={(e) => set("provincia", e.target.value)}
-                    />
-                  </div>
-                </div>
+                <BloccoIndirizzo value={f} onChange={(d) => setF((p) => p ? { ...p, ...d } : p)} limiti={{ indirizzo: 200, citta: 100, cap: 10, provincia: 5 }} etichette={{ provincia: "Prov." }} className="sm:col-span-2 [&_label]:text-xs" />
 
                 <div>
                   <Label className="text-xs">Stato</Label>

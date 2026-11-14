@@ -3,6 +3,8 @@
 Estratto dal knowledge di progetto il 08/10/2026 (sessione 40). Si aggiorna modificando questo file.
 
 ## 11. Fonti uniche e regole da FM37–FM39
+ 
+- Ogni campo indirizzo usa BloccoIndirizzo.
 
 - **Incasso reale (`isPagatoReale`):** data_pagamento_effettiva IS NOT NULL AND importo_pagato > 0; invariato per incassi, DSO e classificazione dei pagamenti.
 - **Eccezione esplicita: ricostruzione aperto Gamma per il picco fido (Andrea, 01/11/2026).** Fonte unica `public.esposizione_picco_cliente(uuid[],integer)`: al giorno D somma importo_scadenza se data_documento <= D e data_pagamento_effettiva è NULL oppure > D, esclusi `public.is_anticipo(numero_documento)`. NON verifica importo_pagato > 0: ricostruisce l'aperto del totale rischio Gamma, non classifica un incasso reale. Considera tutti i pagamenti, non solo RiBa; eventi aggregati e somma cumulata, nessun prodotto giorni × scadenze. In caso di massimi uguali restituisce il primo giorno del massimo nella finestra. Esposizione importata autoritativa: si aggiunge solo aperto_picco − aperto_oggi, con pavimento all'esposizione attuale. Divergenze informative, non bloccanti.

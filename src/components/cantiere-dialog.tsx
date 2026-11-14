@@ -20,8 +20,8 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SoggettoCombobox, type SoggettoSelezionato } from "@/components/soggetto-combobox";
-import { geocodificaCantiere, getChiaveMappe, ricalcolaSedeVicina } from "@/lib/cantieri.functions";
-import { IndirizzoAutocomplete } from "@/components/indirizzo-autocomplete";
+import { geocodificaCantiere, ricalcolaSedeVicina } from "@/lib/cantieri.functions";
+import { BloccoIndirizzo } from "@/components/blocco-indirizzo";
 import { BottoneElimina } from "@/components/conferma-eliminazione";
 import { usePermessiCommerciale } from "@/hooks/use-permessi-commerciale";
 import {
@@ -60,12 +60,6 @@ export function CantiereDialog({
   );
   const forzaAgente = isAgente && !isTrasversale;
   const geocodifica = useServerFn(geocodificaCantiere);
-  const chiaveMappe = useServerFn(getChiaveMappe);
-  const { data: mapsKey } = useQuery({
-    queryKey: ["chiave-mappe"],
-    queryFn: async () => (await chiaveMappe()).key,
-    staleTime: Infinity,
-  });
   const { data: agentiFetch = [] } = useQuery({
     queryKey: ["agenti-lookup"],
     enabled: !agenti,
@@ -378,44 +372,20 @@ export function CantiereDialog({
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-            <div className="space-y-1.5 sm:col-span-4">
-              <Label>Indirizzo</Label>
-              <IndirizzoAutocomplete
-                apiKey={mapsKey}
-                value={indirizzo}
-                onChange={setIndirizzo}
-                placeholder="Via Roma 10"
-                onScelto={(d) => {
-                  setIndirizzo(d.indirizzo);
-                  if (d.cap) setCap(d.cap);
-                  if (d.citta) setCitta(d.citta);
-                  if (d.provincia) setProvincia(d.provincia);
-                  if (d.lat != null && d.lng != null) {
-                    setLat(String(d.lat));
-                    setLng(String(d.lng));
-                    setCoordDaAutocomplete(true);
-                  }
-                  toast.success("Indirizzo compilato dai suggerimenti Google");
-                }}
-              />
-              <p className="text-xs text-muted-foreground">
-                Inizia a scrivere e scegli l'indirizzo suggerito per compilare tutto e posizionare il cantiere.
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <Label>CAP</Label>
-              <Input value={cap} onChange={(e) => setCap(e.target.value)} />
-            </div>
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label>Città</Label>
-              <Input value={citta} onChange={(e) => setCitta(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Prov.</Label>
-              <Input value={provincia} onChange={(e) => setProvincia(e.target.value)} />
-            </div>
-          </div>
+          <BloccoIndirizzo
+            value={{ indirizzo, cap, citta, provincia }}
+            onChange={(d) => {
+              if (d.indirizzo !== undefined) setIndirizzo(d.indirizzo);
+              if (d.cap !== undefined) setCap(d.cap);
+              if (d.citta !== undefined) setCitta(d.citta);
+              if (d.provincia !== undefined) setProvincia(d.provincia);
+            }}
+            etichette={{ provincia: "Prov." }}
+            placeholder="Via Roma 10"
+            descrizione="Inizia a scrivere e scegli l'indirizzo suggerito per compilare tutto e posizionare il cantiere."
+            onCoordinate={(lat, lng) => { setLat(String(lat)); setLng(String(lng)); setCoordDaAutocomplete(true); }}
+            onScelto={() => toast.success("Indirizzo compilato dai suggerimenti Google")}
+          />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
