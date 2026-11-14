@@ -4,7 +4,7 @@
 - Il prezzo di vendita nel preventivo segue il **cliente**, non la sede di chi fa il preventivo:
   listino Gamma scritto per il cliente (`clienti_condizioni_gamma.listino`) e prezzi per deposito
   della **sede del cliente** (`clienti.store_id`).
-- Il TypeScript **non ricalcola prezzi**: usa sempre `public.prezzi_preventivo_cliente(_cliente_id, _codici, _data)`.
+- Il TypeScript **non ricalcola prezzi**: ogni lettura passa da `src/lib/prezzi-preventivo.ts`, che sceglie il motore cliente o riferimento.
 - Il calcolo sta in `public._prezzo_preventivo_articoli` (solo service_role). Il prezzo da listino/deposito
   viene sempre da `public._prezzo_vendita_articoli` (fonte unica, non duplicata).
 - `prezzi_preventivo_cliente` è SECURITY DEFINER perché l'RLS (FM64) limita i listini alla sede
@@ -59,7 +59,11 @@ Altri avvisi: `articolo_senza_prezzo_su_listino`, `cliente_senza_listino`, `clie
 
 ## Condizioni di riferimento (FM71)
 
-- `preventivi.listino_rif` (smallint, FK `listini_gamma.codice`), `macrocategoria_rif` e `categoria_rif` (text) sono facoltative e senza backfill. Questa fetta prepara solo il database: l'app continua a usare le condizioni del cliente.
+- `preventivi.listino_rif` (smallint, FK `listini_gamma.codice`), `macrocategoria_rif` e `categoria_rif` (text) sono facoltative e senza backfill. Da fetta 2a l'app usa il riferimento già salvato; tendine e interruttore della Testata restano fuori da questa fetta.
+- Fonte unica app: `fetchPrezziPreventivo` in `src/lib/prezzi-preventivo.ts`; se `listino_rif IS NOT NULL` chiama il riferimento con categorie, codici, data e **store_id del preventivo**, anche NULL (nessun deposito). Mai riserva cliente per i prezzi: quella vale solo per le giacenze FM70. Altrimenti usa il motore cliente. La forma restituita non cambia.
+- Scelta articolo, kit, analisi di «Aggiorna listini» e proposte della finestra prezzi cantiere passano dal dispatcher; l'applicazione conserva i valori e la fonte della proposta analizzata, senza una seconda lettura prezzi. Duplicazione copia tutti i tre campi riferimento. Fuori dal preventivo, la finestra cantiere usa il contesto cliente come prima; il riepilogo cliente mantiene la propria lettura attraverso lo stesso dispatcher, senza modificare `riepilogo_articolo_preventivo`.
+- `prezzoConPrioritaCantiere` resta invariato sopra entrambi i motori; `fonte_prezzo` della riga è **listino** anche col riferimento, salvo il prezzo cantiere prioritario. Cache delle proposte cantiere separate per condizioni/sede/data, evitando riuso tra motori diversi.
+- Guardia AST `tests/prezzi-fonte-unica.test.ts`: nessuna chiamata diretta alle due RPC fuori dal dispatcher; nessuna eccezione tecnica necessaria.
 - `public.prezzi_preventivo_riferimento(_listino, _macrocategoria, _categoria, _store_id, _codici, _data DEFAULT CURRENT_DATE)` restituisce la stessa forma di `prezzi_preventivo_cliente`, con identico gate `auth_ha_accesso_preventivi()`, limite massimo di 500 codici, STABLE SECURITY DEFINER, search_path public ed EXECUTE authenticated/service_role (mai PUBLIC/anon).
 - Fonte unica del calcolo: il wrapper chiama solo `_prezzo_preventivo_articoli`, passando listino/categorie/sede di riferimento e NULL per sottocategoria, codice cliente e listino più articoli. Nessuna formula duplicata.
 - Con riferimento attivo si ignorano **tutti** gli accordi personali Gamma: cliente/famiglia (50), listino più articoli (60), cliente/articolo (90), oltre alla sottocategoria. Restano le condizioni della categoria di riferimento (20).
