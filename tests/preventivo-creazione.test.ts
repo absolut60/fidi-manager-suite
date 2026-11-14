@@ -1,8 +1,24 @@
 import { describe, expect, test } from "bun:test";
-import { campiSedePreventivo, letteraPreventivo, lettereElenco, riallineaValidita, validitaProposta } from "../src/lib/preventivo-creazione";
+import { campiSedePreventivo, sedeGiacenzePreventivo, letteraPreventivo, lettereElenco, riallineaValidita, validitaProposta } from "../src/lib/preventivo-creazione";
 import { inUnita } from "../src/lib/scheda-articolo";
 
 describe("FM65 R1a", () => {
+  test("FM70 3c: la sede preventivo prevale sulla riserva cliente", () => {
+    expect(sedeGiacenzePreventivo({ store_id: "sede-preventivo", filiale: "Cambiago" }, { store_id: "sede-cliente", sede_nome: "Cinisello" }))
+      .toEqual({ sedeGiacenzaId: "sede-preventivo", sedeNome: "Cambiago" });
+  });
+  test("FM70 3c: filiale NULL usa sede cliente solo per giacenze senza modificare il preventivo", () => {
+    const prev = { store_id: null, filiale: null };
+    expect(sedeGiacenzePreventivo(prev, { store_id: "sede-cliente", sede_nome: "Cinisello" }))
+      .toEqual({ sedeGiacenzaId: "sede-cliente", sedeNome: "Cinisello" });
+    expect(prev).toEqual({ store_id: null, filiale: null });
+  });
+  test("FM70 3c: senza entrambe le sedi nessuna giacenza, anche con nome storico", () => {
+    expect(sedeGiacenzePreventivo({ store_id: null, filiale: "Storica" }, undefined))
+      .toEqual({ sedeGiacenzaId: null, sedeNome: null });
+    expect(sedeGiacenzePreventivo({ store_id: null, filiale: null }, { store_id: null, sede_nome: "Storica" }))
+      .toEqual({ sedeGiacenzaId: null, sedeNome: null });
+  });
   test("FM70: nome filiale e ID sede insieme, anche su azzeramento e copia storica", () => {
     expect(campiSedePreventivo({ id: "c434096f-3bf0-45ce-ab7e-e631992fe13a", nome: "Cambiago" })).toEqual({ filiale: "Cambiago", store_id: "c434096f-3bf0-45ce-ab7e-e631992fe13a" });
     expect(campiSedePreventivo(null)).toEqual({ filiale: null, store_id: null });

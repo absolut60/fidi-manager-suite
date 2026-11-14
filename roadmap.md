@@ -1,3 +1,6 @@
+# FM70 — Selettore più largo, filtri e sede di riserva, fetta 3c
+- [ ] Allargare picker e mostrare sempre filtri; sede cliente solo per giacenze se manca la sede preventivo; verificare precompilazione modificabile già esistente, test e browser 375/1280.
+
 # FM70 — Apertura picker, fetta 3b
 - [x] Applicata 0222_fm70_picker_apertura.sql; funzione/gate/grant verificati sul DB reale, owner authenticated non-BYPASSRLS e nessun CREATE schema residuo, così EXISTS cantieri rispetta le policy. Apertura cantiere/recenti, badge condiviso anche nella ricerca e passaggio cantiere dalle righe; Prezzi cantiere invariato. 850 test verdi; migrazione e SQL permanente eseguiti su DB isolato con fixture: gate negato, cantiere nascosto/visibile, 15 distinti propri, altrui/inattivi/doppioni esclusi, giacenze sede/logistica. Browser simulato 375/1280: apertura, scelta recente, badge ricerca, pagine, vuoto e cambio sede, screenshot e zero errori. Build OK. Verifica autenticata reale resta limitata dalla sessione disponibile (editor in caricamento nella fetta 3a); nessuna modifica a cerca_articoli/prezzi/policy esistenti.
 

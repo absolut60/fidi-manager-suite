@@ -13,6 +13,7 @@ import { DropdownMenu,DropdownMenuTrigger,DropdownMenuContent,DropdownMenuItem }
 import { supabase } from '@/integrations/supabase/client';
 import { useCodiciPagamento } from '@/components/condizione-pagamento-richiesta-select';
 import { fetchDatiClientePreventivo, fetchCondizioniPreventivoCliente } from '@/lib/preventivi-api';
+import { sedeGiacenzePreventivo } from '@/lib/preventivo-creazione';
 import { formatDate } from '@/lib/fidi';
 import { MoreHorizontal } from 'lucide-react';
 import { fallback, zodValidator } from '@tanstack/zod-adapter';
@@ -350,6 +351,7 @@ function PreventivoEditorPage() {
   const fmt = (n: number) =>
     formatNumeroIt(n, { minDecimals: 2, maxDecimals: 2 });
   const cliente = prev.cliente;
+  const sedeGiacenze = sedeGiacenzePreventivo(prev, condizioni);
   const cantiere = prev.cantiere;
   const cantiereDescrizione =
     (prev as { cantiere_descrizione?: string | null }).cantiere_descrizione ?? null;
@@ -580,7 +582,7 @@ function PreventivoEditorPage() {
                       </Card>
                     ) : (
                       prev.blocchi.map((b, idx) => (
-                        <BloccoCard key={b.id} blocco={b} index={idx} preventivoId={id} fascia={(prev.fascia_listino ?? "A") as FasciaListino} readOnly={!modificabile} clienteId={prev.cliente_id ?? null} cantiereId={prev.cantiere_id} sedeGiacenzaId={prev.store_id ?? null} sedeNome={prev.filiale} scontoPiede={Number(prev.sconto_piede_perc ?? 0)} />
+                        <BloccoCard key={b.id} blocco={b} index={idx} preventivoId={id} fascia={(prev.fascia_listino ?? "A") as FasciaListino} readOnly={!modificabile} clienteId={prev.cliente_id ?? null} cantiereId={prev.cantiere_id} {...sedeGiacenze} scontoPiede={Number(prev.sconto_piede_perc ?? 0)} />
                       ))
                     )}
                   </div>
