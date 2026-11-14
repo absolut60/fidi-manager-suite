@@ -1,4 +1,7 @@
 # FM68 — Fetta A: visibilità preventivisti (solo database)
+## Indirizzi giro 2
+- [ ] Indirizzi cliente condivisi, nota Gamma; picker apre CantiereDialog con nome iniziale e rimuove solo wrapper TS inutilizzato.
+- [ ] Test, confronto salvataggi cliente, prova picker e schermate 375/1280; inventario residui.
 ## Indirizzi giro 1
 - [x] BloccoIndirizzo condiviso in cantiere, nuovo/modifica lead, partecipante e sede; chiave e salvataggi invariati, limiti preservati e provincia maiuscola. Regola aggiunta a fonti-uniche.
 - [x] 747 test; cinque gestori identici byte per byte; schermate nuovo lead/sede 375/1280 con suggerimenti Google simulati, compilazione/modifica manuale, fallback e disabled verificati. Nessuna scrittura DB né verifica Google reale; pagina temporanea rimossa, CantierePicker intatto.
