@@ -1,4 +1,5 @@
 import type { Database } from "@/integrations/supabase/types";
+import { è_preventivista } from "@/lib/permessi-preventivi";
 
 export type LeadStato = Database["public"]["Enums"]["lead_stato"];
 export type LeadTipo = Database["public"]["Enums"]["lead_tipo"];
@@ -37,7 +38,7 @@ export function puoGestireLead(roles: readonly string[]): boolean {
  */
 export function puoAccedereLead(roles: readonly string[]): boolean {
   // FM56: lo showroom vede (e crea/modifica) i lead della sua sede; filtro della RLS.
-  return puoGestireLead(roles) || roles.includes("agente") || roles.includes("showroom");
+  return puoGestireLead(roles) || roles.includes("agente") || roles.includes("showroom") || è_preventivista(roles);
 }
 
 export const LEAD_STATI: LeadStato[] = [

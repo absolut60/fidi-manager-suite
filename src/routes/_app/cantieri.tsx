@@ -8,6 +8,7 @@ import { AlertTriangle, Building2, MapPin, Pencil, Plus, Search } from "lucide-r
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { è_preventivista, puoModificareRecordPreventivista } from "@/lib/permessi-preventivi";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { BadgeProvvisorio } from "@/components/badge-provvisorio";
@@ -61,6 +62,8 @@ function CantieriPage() {
   const qc = useQueryClient();
   const { roles, user } = useAuth();
   const { puoEliminareCantiere } = usePermessiCommerciale();
+  const preventivista = è_preventivista(roles);
+  const puoModificare = (c: CantiereRow) => puoModificareRecordPreventivista(roles, c.created_by, user?.id, !preventivista || isTrasversale || puoEliminareCantiere(c));
   const isTrasversale = roles.some((r) =>
     ["amministratore", "amministrazione", "direzione", "marketing", "store_manager", "responsabile_agenti"].includes(r),
   );
@@ -196,9 +199,10 @@ function CantieriPage() {
   }, [navigate]);
 
   const apriModifica = useCallback((c: CantiereRow) => {
+    if (!puoModificare(c)) { toast.info("Puoi modificare solo i cantieri creati da te"); return; }
     setInModifica(c);
     setDialogOpen(true);
-  }, []);
+  }, [roles, user?.id, isTrasversale, puoEliminareCantiere]);
 
   const eliminaCantiere = useCallback(async (c: CantiereRow) => {
     const { error } = await supabase.from("cantieri").delete().eq("id", c.id);
@@ -296,9 +300,9 @@ function CantieriPage() {
                           <Button variant="ghost" size="sm" onClick={() => mostraSuMappa(c)}>
                             <MapPin className="size-4 mr-1.5" /> Mappa
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => apriModifica(c)}>
+                          {puoModificare(c) && <Button variant="ghost" size="sm" onClick={() => apriModifica(c)}>
                             <Pencil className="size-4 mr-1.5" /> Modifica
-                          </Button>
+                          </Button>}
                           {puoEliminareCantiere(c) && (
                             <BottoneElimina
                               etichetta="Elimina"
@@ -367,9 +371,9 @@ function CantieriPage() {
                               >
                                 <MapPin className="size-4" />
                               </Button>
-                              <Button variant="ghost" size="icon" title="Modifica" onClick={() => apriModifica(c)}>
+                              {puoModificare(c) && <Button variant="ghost" size="icon" title="Modifica" onClick={() => apriModifica(c)}>
                                 <Pencil className="size-4" />
-                              </Button>
+                              </Button>}
                               {puoEliminareCantiere(c) && (
                                 <BottoneElimina
                                   titolo="Eliminare questo cantiere?"

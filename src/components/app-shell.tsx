@@ -61,7 +61,7 @@ import { contaNonLette, notificheNonLetteQueryKey } from "@/lib/notifiche";
 import { useBadgeNotifiche } from "@/hooks/use-badge-notifiche";
 import { useBarraAScomparsa } from "@/hooks/use-barra-a-scomparsa";
 import { toast } from "sonner";
-import { haAccessoPreventivi, puoConsultarePreventivi } from "@/lib/permessi-preventivi";
+import { haAccessoPreventivi, puoConsultarePreventivi, è_preventivista } from "@/lib/permessi-preventivi";
 
 type NavGroupKey =
   | "generale"
@@ -350,6 +350,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (soloShowroom) return voceMenuVisibileShowroom(item, hasAccessoPreventivi || (!!item.consultabile && consultaPreventivi));
     if (isOnlyMarketingEventi) return item.to === "/eventi";
     if (isOnlyAgente) return AGENTE_WHITELIST.has(item.to);
+    if (item.to === "/lead" && è_preventivista(userRoles)) return true;
     if (!item.roles) return true;
     if (item.roles.includes("admin") && isAdmin) return true;
     if (item.roles.includes("agente") && isAgente) return true;

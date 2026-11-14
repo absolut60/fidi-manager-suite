@@ -1,4 +1,7 @@
 # FM68 — Fetta A: visibilità preventivisti (solo database)
+## Fetta B2
+- [ ] Helper preventivista, Lead nel menu/guardie; modifica propria, nessun nuovo DELETE e link clienti sotto RLS.
+- [ ] Test e schermate con dati simulati; nessuna modifica database.
 ## Fetta B1
 - [x] 0211 indicatore sintetico con fonti SQL canoniche; due punti del preventivo con pallino condiviso e chiave query unica. 736 test verdi.
 - [x] Schermate con dati simulati 375/1280 e telefono orizzontale; nessun overflow 320/375/740/768/1280/1920, pagina temporanea rimossa.

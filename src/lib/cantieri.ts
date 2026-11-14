@@ -65,6 +65,7 @@ export type SedeMappa = {
 
 export type CantiereRow = {
   id: string;
+  created_by?: string | null;
   nome: string;
   descrizione: string | null;
   provvisorio?: boolean | null;
