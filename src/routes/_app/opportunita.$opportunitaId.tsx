@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 // Scheda dettaglio opportunità commerciale + sezione Attività (appuntamenti, visite, chiamate…).
 import { useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -104,9 +105,9 @@ function DettaglioOpportunita() {
   }
 
   async function elimina() {
-    const { error } = await supabase.from("opportunita").delete().eq("id", opportunitaId);
-    if (error) {
-      toast.error("Eliminazione non riuscita: non hai i permessi su questa opportunità.");
+    const esito = await eliminaConEsito("opportunita", opportunitaId);
+    if (esito.tipo !== "eliminato") {
+      toast.error(messaggioEsitoEliminazione(esito, "l’opportunità"));
       return;
     }
     toast.success("Opportunità eliminata");

@@ -1,3 +1,4 @@
+import { eliminaConEsito } from "./esito-eliminazione";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -25,8 +26,7 @@ export async function salvaNotaPreventivo(preventivoId: string, nota: { id?: str
   return data;
 }
 export async function eliminaNotaPreventivo(preventivoId: string, id: string) {
-  const { error } = await supabase.from("preventivi_note").delete().eq("id", id).eq("preventivo_id", preventivoId);
-  if (error) throw error;
+  return eliminaConEsito("preventivi_note", id, { preventivo_id: preventivoId });
 }
 export async function copiaNotePreventivo(sourceId: string, destinationId: string) {
   const note = await fetchNotePreventivo(sourceId);

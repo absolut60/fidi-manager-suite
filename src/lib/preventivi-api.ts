@@ -1,3 +1,4 @@
+import { eliminaConEsito } from "./esito-eliminazione";
 import { getCantiereListini, type CantiereListinoRow } from "./cantiere-listini-api";
 import { copiaNotePreventivo } from "./preventivi-note";
 import { supabase } from "@/integrations/supabase/client";
@@ -487,8 +488,7 @@ export async function updatePreventivo(id: string, patch: PreventivoUpdate): Pro
 }
 
 export async function deletePreventivo(id: string) {
-  const { error } = await supabase.from("preventivi").delete().eq("id", id);
-  if (error) throw error;
+  return eliminaConEsito("preventivi", id);
 }
 
 /**
@@ -633,8 +633,7 @@ export async function updateBlocco(id: string, patch: BloccoUpdate): Promise<Blo
 }
 
 export async function deleteBlocco(id: string) {
-  const { error } = await supabase.from("blocchi_preventivo").delete().eq("id", id);
-  if (error) throw error;
+  return eliminaConEsito("blocchi_preventivo", id);
 }
 
 export async function applicaScontoPiedeARighe(
@@ -897,8 +896,7 @@ export async function salvaPatchRigaCalcolata(id: string, calcolata: RigaUpdate,
 }
 
 export async function deleteRiga(id: string) {
-  const { error } = await supabase.from("righe_preventivo").delete().eq("id", id);
-  if (error) throw error;
+  return eliminaConEsito("righe_preventivo", id);
 }
 
 export async function ricalcolaBloccoSuNuovaQuantita(

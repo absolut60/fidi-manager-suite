@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 // Dialog creazione / modifica opportunità commerciale.
 // Riusa SoggettoCombobox (ricerca unica clienti + lead) e i componenti UI esistenti.
 import { BadgeProvvisorio } from "@/components/badge-provvisorio";
@@ -244,9 +245,9 @@ export function OpportunitaDialog({
 
   async function elimina() {
     if (!opportunita?.id) return;
-    const { error } = await supabase.from("opportunita").delete().eq("id", opportunita.id);
-    if (error) {
-      toast.error("Eliminazione non riuscita: non hai i permessi su questa opportunità.");
+    const esito = await eliminaConEsito("opportunita", opportunita.id);
+    if (esito.tipo !== "eliminato") {
+      toast.error(messaggioEsitoEliminazione(esito, "l’opportunità"));
       return;
     }
     toast.success("Opportunità eliminata");
