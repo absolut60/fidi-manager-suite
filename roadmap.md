@@ -1,3 +1,8 @@
+# FM71 — Preventivi ai lead, fetta 3a (solo database)
+- [x] Migrazione 0224 applicata (registro 225 voci, 0000–0224): destinatari alternativi, condizioni lead, trigger riaggancio e sei dipendenze del gate aggiornate senza cambiare predicati o scritture.
+- [x] Firme reali prima/dopo identiche con claims aal2: amministratore 30c9d579 e store_manager 485baff2 (anche amministratore) entrambi 5 / 78b9b1f3a5a8d70c4dfd48da2a1ca5f6; agente 7: 0 / NULL (string_agg vuoto). Non simulati ruoli puri diversi dagli account reali.
+- [x] Test SQL sul DB reale in BEGIN/ROLLBACK: CHECK, riaggancio, tutti gli altri campi invariati, solo transizione NULL→cliente, RLS agente proprio/altrui e gate per ID. 876 test verdi, build OK; documentazione aggiornata, nessuna interfaccia. Root AGENTS.md al limite: nessuna nuova regola aggiunta lì.
+
 # FM71 — Testata condizioni di riferimento, fetta 2b
 - [x] Interruttore, cataloghi con RLS utente, salvataggio completo/azzeramento e avviso dopo successo; badge condiviso Testata/Corpo, anche senza cantiere. Nessun DB/PDF/ordine.
 - [x] 872 test verdi; browser componenti reali con risposte simulate 375/1280: tre campi salvati e riletti, categoria facoltativa, badge in entrambi i punti, NULL su azzeramento, diniego senza falso successo né righe modificate. Screenshot controllati, niente overflow anche 320/390/768/1920; route temporanea rimossa. Documentazione aggiornata. Regola architetturale root non salvata: AGENTS.md al limite.
