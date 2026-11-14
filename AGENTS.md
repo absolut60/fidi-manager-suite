@@ -39,3 +39,5 @@
 - Showroom UI permissions live only in src/lib/permessi-showroom.ts (twin of auth_solo_showroom), so UI and RLS cannot diverge.
 - MADE_ARTICOLI_LISTINI_PQ: one import parsed only in browser (listini-gamma-parser); server reads staged JSON (xlsx crashed Worker).
 
+
+- Manual marketing cascades enumerate all visible child IDs in stable pages and verify full deletion before deleting the parent; partial recipient removal refreshes data and retains only surviving IDs, preventing false success.
