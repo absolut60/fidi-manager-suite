@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -227,10 +228,10 @@ function MarketingCampagnePage() {
 
   const elimina = useMutation({
     mutationFn: async (c: Campagna) => {
-      const { error } = await supabase.from("campagne_email_marketing").delete().eq("id", c.id);
-      if (error) throw error;
+      return eliminaConEsito("campagne_email_marketing", c.id);
     },
-    onSuccess: () => {
+    onSuccess: (esito) => {
+      if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") qc.invalidateQueries({ queryKey: ["campagne_email_marketing"] }); toast.error(messaggioEsitoEliminazione(esito, "la campagna")); return; }
       toast.success("Campagna eliminata");
       setDeleting(null);
       qc.invalidateQueries({ queryKey: ["campagne_email_marketing"] });
@@ -410,7 +411,7 @@ function MarketingCampagnePage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annulla</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deleting && elimina.mutate(deleting)}>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); if (deleting) elimina.mutate(deleting); }}>
               Elimina
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -749,10 +750,10 @@ function DestinatariCampagnaDialog({
 
   const rimuovi = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("campagne_email_destinatari").delete().eq("id", id);
-      if (error) throw error;
+      return eliminaConEsito("campagne_email_destinatari", id);
     },
-    onSuccess: () => {
+    onSuccess: (esito) => {
+      if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") qc.invalidateQueries({ queryKey: ["campagne-email-destinatari"] }); toast.error(messaggioEsitoEliminazione(esito, "il destinatario")); return; }
       toast.success("Destinatario rimosso");
       qc.invalidateQueries({ queryKey: ["campagne-email-destinatari"] });
     },
@@ -761,13 +762,12 @@ function DestinatariCampagnaDialog({
 
   const rimuoviSelezionati = useMutation({
     mutationFn: async () => {
-      for (const part of chunkArray(Array.from(selezionati), 200)) {
-        const { error } = await supabase.from("campagne_email_destinatari").delete().in("id", part);
-        if (error) throw error;
-      }
+      const ids = Array.from(selezionati);
+      return { esito: await eliminaConEsito("campagne_email_destinatari", ids), richiesti: ids.length };
     },
-    onSuccess: () => {
-      toast.success(`${selezionati.size.toLocaleString("it-IT")} destinatari rimossi`);
+    onSuccess: ({ esito, richiesti }) => {
+      if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") qc.invalidateQueries({ queryKey: ["campagne-email-destinatari"] }); toast.error(messaggioEsitoEliminazione(esito, "i destinatari")); return; }
+      toast.success(`${richiesti.toLocaleString("it-IT")} destinatari rimossi`);
       setSelezionati(new Set());
       setConfermaMultipla(false);
       qc.invalidateQueries({ queryKey: ["campagne-email-destinatari"] });

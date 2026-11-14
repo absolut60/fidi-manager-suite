@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { filtroElenco } from "@/lib/filtro-elenco";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
@@ -736,11 +737,10 @@ function MarketingSegmentiPage() {
 
   const eliminaSegmento = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("segmenti_marketing").delete().eq("id", id);
-      if (error) throw error;
-      return id;
+      return { id, esito: await eliminaConEsito("segmenti_marketing", id) };
     },
-    onSuccess: (id) => {
+    onSuccess: ({ id, esito }) => {
+      if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") { qc.invalidateQueries({ queryKey: ["segmenti-marketing"] }); qc.invalidateQueries({ queryKey: ["segmenti-marketing-conteggi"] }); } toast.error(messaggioEsitoEliminazione(esito, "il segmento")); return; }
       toast.success("Segmento eliminato");
       setListaStatica((p) => (p && p.id === id ? null : p));
       qc.invalidateQueries({ queryKey: ["segmenti-marketing"] });

@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { puoAccedereMarketing } from "@/lib/ruoli-marketing";
@@ -139,15 +140,15 @@ function InviiMarketingPage() {
   async function doElimina(id: string) {
     setBusy(true);
     try {
-      const { error } = await supabase.from("campagne_email_marketing").delete().eq("id", id);
-      if (error) throw new Error(error.message);
+      const esito = await eliminaConEsito("campagne_email_marketing", id);
+      if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") qc.invalidateQueries({ queryKey: ["campagne-marketing-invii"] }); toast.error(messaggioEsitoEliminazione(esito, "la campagna")); return; }
       toast.success("Campagna eliminata insieme ai destinatari associati.");
+      setConfermaElimina(null);
       qc.invalidateQueries({ queryKey: ["campagne-marketing-invii"] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Errore");
     } finally {
       setBusy(false);
-      setConfermaElimina(null);
     }
   }
 

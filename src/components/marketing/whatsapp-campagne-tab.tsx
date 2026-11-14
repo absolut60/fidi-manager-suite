@@ -1,3 +1,5 @@
+import { leggiTutteLeRighe } from "@/lib/leggi-tutte-le-righe";
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MessageCircle, Plus, Pencil, Trash2, Copy, Users, X, Search, Send, RotateCw } from "lucide-react";
@@ -286,13 +288,16 @@ export function WhatsAppCampagneTab() {
 
   const elimina = useMutation({
     mutationFn: async (c: CampagnaWa) => {
-      // La FK è ON DELETE SET NULL: rimuovo prima i messaggi, poi la campagna.
-      const { error: e1 } = await supabase.from("messaggi_whatsapp").delete().eq("campagna_id", c.id);
-      if (e1) throw e1;
-      const { error: e2 } = await supabase.from("campagne_whatsapp").delete().eq("id", c.id);
-      if (e2) throw e2;
+      // La FK è ON DELETE SET NULL: tutti i messaggi devono essere eliminati prima del padre.
+      const figli = await leggiTutteLeRighe<{ id: string }>((da, a) => supabase.from("messaggi_whatsapp").select("id").eq("campagna_id", c.id).order("id").range(da, a));
+      if (figli.length) {
+        const esito = await eliminaConEsito("messaggi_whatsapp", figli.map(r => r.id));
+        if (esito.tipo !== "eliminato") return { esito, cosa: "i messaggi della campagna", figliNegati: true };
+      }
+      return { esito: await eliminaConEsito("campagne_whatsapp", c.id), cosa: "la campagna", figliNegati: false };
     },
-    onSuccess: () => {
+    onSuccess: ({ esito, cosa, figliNegati }) => {
+      if (esito.tipo !== "eliminato") { if (figliNegati || esito.tipo === "parziale") { invalida(); qc.invalidateQueries({ queryKey: ["messaggi_whatsapp"] }); } toast.error(messaggioEsitoEliminazione(esito, cosa)); return; }
       toast.success("Campagna eliminata");
       setDeleting(null);
       invalida();
@@ -860,10 +865,10 @@ function DestinatariWhatsappDialog({
 
   const rimuovi = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("messaggi_whatsapp").delete().eq("id", id);
-      if (error) throw error;
+      return eliminaConEsito("messaggi_whatsapp", id);
     },
-    onSuccess: () => {
+    onSuccess: (esito) => {
+      if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") qc.invalidateQueries({ queryKey: ["messaggi_whatsapp"] }); toast.error(messaggioEsitoEliminazione(esito, "il destinatario")); return; }
       toast.success("Destinatario rimosso");
       qc.invalidateQueries({ queryKey: ["messaggi_whatsapp"] });
     },
@@ -872,13 +877,12 @@ function DestinatariWhatsappDialog({
 
   const rimuoviSelezionati = useMutation({
     mutationFn: async () => {
-      for (const part of chunkArray(Array.from(selezionati), 200)) {
-        const { error } = await supabase.from("messaggi_whatsapp").delete().in("id", part);
-        if (error) throw error;
-      }
+      const ids = Array.from(selezionati);
+      return { esito: await eliminaConEsito("messaggi_whatsapp", ids), richiesti: ids.length };
     },
-    onSuccess: () => {
-      toast.success(`${selezionati.size.toLocaleString("it-IT")} destinatari rimossi`);
+    onSuccess: ({ esito, richiesti }) => {
+      if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") qc.invalidateQueries({ queryKey: ["messaggi_whatsapp"] }); toast.error(messaggioEsitoEliminazione(esito, "i destinatari")); return; }
+      toast.success(`${richiesti.toLocaleString("it-IT")} destinatari rimossi`);
       setSelezionati(new Set());
       setConfermaMultipla(false);
       qc.invalidateQueries({ queryKey: ["messaggi_whatsapp"] });
