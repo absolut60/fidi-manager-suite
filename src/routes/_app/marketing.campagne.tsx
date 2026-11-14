@@ -760,10 +760,10 @@ function DestinatariCampagnaDialog({
   const rimuoviSelezionati = useMutation({
     mutationFn: async () => {
       const ids = Array.from(selezionati);
-      return { esito: await eliminaConEsito("campagne_email_destinatari", ids), richiesti: ids.length };
+      return { esito: await eliminaConEsito("campagne_email_destinatari", ids), richiesti: ids.length, ids };
     },
-    onSuccess: ({ esito, richiesti }) => {
-      if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") qc.invalidateQueries({ queryKey: ["campagne-email-destinatari"] }); toast.error(messaggioEsitoEliminazione(esito, "i destinatari")); return; }
+    onSuccess: async ({ esito, richiesti, ids }) => {
+      if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") { await qc.invalidateQueries({ queryKey: ["campagne-email-destinatari"] }); const { data, error } = await supabase.from("campagne_email_destinatari").select("id").in("id", ids); if (!error && data) setSelezionati(new Set(data.map(r => r.id))); } toast.error(messaggioEsitoEliminazione(esito, "i destinatari")); return; }
       toast.success(`${richiesti.toLocaleString("it-IT")} destinatari rimossi`);
       setSelezionati(new Set());
       setConfermaMultipla(false);
