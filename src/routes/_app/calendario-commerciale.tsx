@@ -1,7 +1,7 @@
 import { puoModificareAttivitaCommerciale } from "@/lib/permessi-showroom";
 // Calendario commerciale (CRM): attività pianificate su griglia mese/settimana/giorno.
 // Riusa il pattern del calendario recupero crediti (FullCalendar) con fonte dati attivita_commerciale.
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import FullCalendar from "@fullcalendar/react";
@@ -58,6 +58,7 @@ const TIPI: Array<{ value: TipoAttivita; label: string; color: string }> = [
 ];
 
 type AttivitaCalendario = AttivitaRow & {
+  preventivo?: { numero: string | null } | null;
   opportunita?: { titolo: string | null } | null;
   clienti?: { ragione_sociale: string | null } | null;
   lead?: { ragione_sociale: string | null; nome: string | null; cognome: string | null } | null;
@@ -115,7 +116,7 @@ function CalendarioCommercialePage() {
       const { data, error } = await supabase
         .from("attivita_commerciale")
         .select(
-          "id, tipo, titolo, descrizione, data_pianificata, data_svolgimento, completata, esito, agente_codice, operatore_id, store_id, opportunita_id, cliente_id, lead_id, luogo, indirizzo, cap, citta, provincia, sede_riferimento_id, sede_riferimento:stores!attivita_commerciale_sede_riferimento_id_fkey(nome), note, created_at, opportunita:opportunita_id(titolo), clienti:cliente_id(ragione_sociale), lead:lead_id(ragione_sociale, nome, cognome)",
+          "id, tipo, titolo, descrizione, data_pianificata, data_svolgimento, completata, esito, agente_codice, operatore_id, store_id, opportunita_id, cliente_id, lead_id, preventivo_id, preventivo:preventivo_id(numero), luogo, indirizzo, cap, citta, provincia, sede_riferimento_id, sede_riferimento:stores!attivita_commerciale_sede_riferimento_id_fkey(nome), note, created_at, opportunita:opportunita_id(titolo), clienti:cliente_id(ragione_sociale), lead:lead_id(ragione_sociale, nome, cognome)",
         )
         .not("data_pianificata", "is", null)
         .gte("data_pianificata", range!.start)
@@ -385,6 +386,7 @@ function CalendarioCommercialePage() {
                 {aperta.esito && <div><span className="text-muted-foreground">Esito: </span>{aperta.esito}</div>}
                 {luogoAttivita(aperta) && <div className="break-words"><span className="text-muted-foreground">Luogo: </span>{luogoAttivita(aperta)}</div>}
                 {aperta.note && <div><span className="text-muted-foreground">Note: </span>{aperta.note}</div>}
+                {aperta.preventivo_id && aperta.preventivo && <Link to="/preventivatore/$id" params={{ id: aperta.preventivo_id }} search={{ tab: "testata" }} className="inline-flex min-h-10 items-center gap-1.5 text-primary hover:underline"><ExternalLink className="size-3.5"/>Preventivo {aperta.preventivo.numero || "—"}</Link>}
               </div>
               <DialogFooter className="flex-wrap gap-2">
                 {aperta.opportunita_id && (

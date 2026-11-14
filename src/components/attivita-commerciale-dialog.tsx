@@ -1,6 +1,6 @@
 // Dialog registrazione / modifica attività commerciale (appuntamenti, visite, chiamate…).
 import { useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -16,9 +16,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SoggettoCombobox, type SoggettoSelezionato } from "@/components/soggetto-combobox";
 import { Badge } from "@/components/ui/badge";
 import { BloccoIndirizzo } from "@/components/blocco-indirizzo";
-import { TIPI_ATTIVITA, TIPO_ATTIVITA_LABEL, sedeInizialeAttivita, storeIdAttivita, type AttivitaRow, type TipoAttivita } from "@/lib/attivita-commerciale";
+import { TIPI_ATTIVITA, TIPO_ATTIVITA_LABEL, legamePreventivoAttivita, sedeInizialeAttivita, storeIdAttivita, type AttivitaRow, type TipoAttivita } from "@/lib/attivita-commerciale";
+import { chiaveSalvaPreventivo } from "@/lib/use-stato-salvataggio-preventivo";
+import type { Database } from "@/integrations/supabase/types";
 
 type Contesto = {
+  preventivo_id?: string | null;
   opportunita_id?: string | null;
   cliente_id?: string | null;
   lead_id?: string | null;
@@ -69,6 +72,16 @@ export function AttivitaCommercialeDialog({
   const [saving, setSaving] = useState(false);
   const [soggetto, setSoggetto] = useState<SoggettoSelezionato | null>(null);
   const [soggettoMeta, setSoggettoMeta] = useState<{ agente_codice: string | null; store_id: string | null }>({ agente_codice: null, store_id: null });
+  const preventivoId = attivita ? attivita.preventivo_id : contesto.preventivo_id;
+  const scrittura = useMutation({
+    mutationKey: preventivoId ? chiaveSalvaPreventivo(preventivoId) : ["salva-attivita-commerciale"],
+    mutationFn: async (payload: Database["public"]["Tables"]["attivita_commerciale"]["Insert"]) => {
+      const { error } = attivita
+        ? await supabase.from("attivita_commerciale").update(payload).eq("id", attivita.id)
+        : await supabase.from("attivita_commerciale").insert(payload);
+      if (error) throw error;
+    },
+  });
 
   const ambito = { attivita, contestoStoreId: contesto.store_id, soggettoScelto: !!soggetto, soggettoStoreId: soggettoMeta.store_id };
   const sedeRiferimentoId = sedeInizialeAttivita({ ...ambito, sceltaManuale: sedeManuale });
@@ -150,10 +163,13 @@ export function AttivitaCommercialeDialog({
     const clienteId = soggetto?.tipo === "cliente" ? soggetto.id : (contesto.cliente_id ?? null);
     const leadId = soggetto?.tipo === "lead" ? soggetto.id : (contesto.lead_id ?? null);
     const opportunitaId = soggetto ? null : (contesto.opportunita_id ?? null);
-    if (!opportunitaId && !clienteId && !leadId) {
+    if (!opportunitaId && !clienteId && !leadId && !preventivoId) {
       toast.error("Seleziona un cliente o un lead");
       return;
     }
+    let legame: ReturnType<typeof legamePreventivoAttivita>;
+    try { legame = legamePreventivoAttivita(attivita, contesto.preventivo_id, user?.id); }
+    catch (e) { toast.error(e instanceof Error ? e.message : "Impossibile registrare l'attività"); return; }
     setSaving(true);
     // In modifica l'agente resta quello salvato; la forzatura vale solo in creazione
     const agenteCodice = attivita
@@ -162,6 +178,7 @@ export function AttivitaCommercialeDialog({
         ? (mioCodice || null)
         : (soggetto ? soggettoMeta.agente_codice : (contesto.agente_codice ?? null));
     const payload = {
+      ...legame,
       opportunita_id: opportunitaId,
       cliente_id: clienteId,
       lead_id: leadId,
@@ -183,11 +200,9 @@ export function AttivitaCommercialeDialog({
       store_id: storeIdAttivita(ambito),
     };
 
-    const { error } = attivita
-      ? await supabase.from("attivita_commerciale").update(payload).eq("id", attivita.id)
-      : await supabase.from("attivita_commerciale").insert(payload);
-    setSaving(false);
-    if (error) { toast.error(error.message); return; }
+    try { await scrittura.mutateAsync(payload); }
+    catch (e) { toast.error(e instanceof Error ? e.message : "Errore nel salvataggio dell'attività"); return; }
+    finally { setSaving(false); }
     toast.success(attivita ? "Attività aggiornata" : "Attività registrata");
     qc.invalidateQueries({ queryKey: ["attivita-commerciale"] });
     onSaved?.();
@@ -200,7 +215,7 @@ export function AttivitaCommercialeDialog({
         <DialogHeader>
           <DialogTitle>{attivita ? "Modifica attività" : "Registra attività"}</DialogTitle>
           <DialogDescription>
-            Appuntamenti, visite, chiamate ed esiti collegati all'opportunità.
+            {preventivoId ? "Appuntamenti, visite, chiamate ed esiti collegati al preventivo." : "Appuntamenti, visite, chiamate ed esiti collegati all'opportunità."}
           </DialogDescription>
         </DialogHeader>
 

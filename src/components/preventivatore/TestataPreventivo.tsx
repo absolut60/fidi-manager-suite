@@ -1,5 +1,6 @@
 import { AllegatiSection } from "@/components/allegati-section";
 import { NotePreventivo } from "./NotePreventivo";
+import { AttivitaPreventivo } from "./AttivitaPreventivo";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -89,5 +90,6 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
     <RiquadroScheda titolo="Allegati" icona={Paperclip} tono="grigio" densita="compatta" className="[&>header]:hidden">
       <AllegatiSection entitaTipo="preventivo" entitaId={prev.id} clienteId={null} canEdit={modificabile} eliminaTutti={modificabile} compact/>
     </RiquadroScheda>
+    <AttivitaPreventivo id={prev.id} clienteId={prev.cliente_id} agenteCodice={prev.agente_codice} sedeNome={sede} modificabile={modificabile}/>
   </section>;
 }
