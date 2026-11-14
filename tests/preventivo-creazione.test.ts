@@ -1,8 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { letteraPreventivo, lettereElenco, riallineaValidita, validitaProposta } from "../src/lib/preventivo-creazione";
+import { campiSedePreventivo, letteraPreventivo, lettereElenco, riallineaValidita, validitaProposta } from "../src/lib/preventivo-creazione";
 import { inUnita } from "../src/lib/scheda-articolo";
 
 describe("FM65 R1a", () => {
+  test("FM70: nome filiale e ID sede insieme, anche su azzeramento e copia storica", () => {
+    expect(campiSedePreventivo({ id: "c434096f-3bf0-45ce-ab7e-e631992fe13a", nome: "Cambiago" })).toEqual({ filiale: "Cambiago", store_id: "c434096f-3bf0-45ce-ab7e-e631992fe13a" });
+    expect(campiSedePreventivo(null)).toEqual({ filiale: null, store_id: null });
+    expect(campiSedePreventivo({ id: null, nome: "Filiale storica" })).toEqual({ filiale: "Filiale storica", store_id: null });
+  });
   test("validità proposta sette giorni dopo la data", () => {
     expect(validitaProposta("2026-11-13")).toBe("2026-11-20");
     expect(validitaProposta("2026-12-28")).toBe("2027-01-04");
