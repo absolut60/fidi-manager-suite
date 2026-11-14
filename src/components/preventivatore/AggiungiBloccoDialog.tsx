@@ -1,3 +1,4 @@
+import { opzioniPrezziCantiere } from "@/lib/cantiere-listini-api";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -18,7 +19,7 @@ import { toast } from "sonner";
 import { parseNumeroIt } from "@/lib/numero-it";
 
 export function AggiungiBloccoDialog({
-  open, onOpenChange, preventivoId, lastOrdine, clienteId, scontoPiede = 0,
+  open, onOpenChange, preventivoId, lastOrdine, clienteId, scontoPiede = 0, cantiereId,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -27,8 +28,10 @@ export function AggiungiBloccoDialog({
   lastOrdine: number;
   clienteId: string | null;
   scontoPiede?: number;
+  cantiereId?: string | null;
 }) {
   const qc = useQueryClient();
+  const { data: dedicati = [] } = useQuery({ ...opzioniPrezziCantiere(cantiereId ?? ""), enabled: !!cantiereId });
   const [tab, setTab] = useState<"kit" | "vuoto">("kit");
   const [famiglia, setFamiglia] = useState<string>("ALL");
   const [kitId, setKitId] = useState<string | null>(null);
@@ -43,15 +46,18 @@ export function AggiungiBloccoDialog({
   const filtered = kits.filter((k) => famiglia === "ALL" || k.famiglia === famiglia);
 
   const addKit = useMutation({
-    mutationFn: () =>
-      addBloccoDaKit({
+    mutationFn: async () => {
+      if (!kitId) throw new Error("Scegli un kit");
+      return addBloccoDaKit({
         preventivo_id: preventivoId,
-        kit_id: kitId!,
+        kit_id: kitId,
+        prezzi_cantiere: cantiereId ? await qc.fetchQuery(opzioniPrezziCantiere(cantiereId)) : [],
         quantita_base: parseNumeroIt(quantita) ?? 0,
         cliente_id: clienteId,
         sconto_piede: scontoPiede,
         ordine: fractionalOrder(lastOrdine, null),
-      }),
+      });
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["preventivo", preventivoId] });
       onOpenChange(false);
@@ -81,7 +87,7 @@ export function AggiungiBloccoDialog({
             <TabsTrigger value="vuoto">Blocco vuoto</TabsTrigger>
           </TabsList>
           <TabsContent value="kit" className="space-y-3">
-            {!clienteId && <p role="alert" className="text-sm font-semibold text-destructive">Scegli prima il cliente: i prezzi del kit arrivano dalle sue condizioni Gamma.</p>}
+            {!clienteId && !dedicati.length && <p role="alert" className="text-sm font-semibold text-destructive">Scegli prima il cliente: i prezzi del kit arrivano dalle sue condizioni Gamma.</p>}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="grid gap-1.5">
                 <Label>Famiglia</Label>
@@ -136,7 +142,7 @@ export function AggiungiBloccoDialog({
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
           {tab === "kit" ? (
-            <Button onClick={() => addKit.mutate()} disabled={!kitId || !clienteId || addKit.isPending}>
+            <Button onClick={() => addKit.mutate()} disabled={!kitId || (!clienteId && !dedicati.length) || addKit.isPending}>
               Aggiungi kit
             </Button>
           ) : (

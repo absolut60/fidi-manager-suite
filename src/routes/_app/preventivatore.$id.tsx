@@ -1,3 +1,7 @@
+import { opzioniPrezziCantiere } from "@/lib/cantiere-listini-api";
+import { BadgePrezziDedicati } from "@/components/badge-prezzi-dedicati";
+import { PrezziCantiereDialog } from "@/components/prezzi-cantiere-dialog";
+import type { CantiereRow } from "@/lib/cantieri";
 import { FasciaPreventivo, type RiepilogoPreventivo } from '@/components/preventivatore/FasciaPreventivo';
 import { TestataPreventivo } from '@/components/preventivatore/TestataPreventivo';
 import { PiedePreventivo } from '@/components/preventivatore/PiedePreventivo';
@@ -88,6 +92,7 @@ function PreventivoEditorPage() {
   const {tab: tabUrl}=Route.useSearch();
   const tab=['testata','corpo','piede'].includes(tabUrl)?tabUrl:'corpo';
   const [clienteOpen,setClienteOpen]=useState(false);
+  const [prezziOpen, setPrezziOpen] = useState(false);
   const [eliminaOpen,setEliminaOpen]=useState(false);
   const {data:codiciPagamento=[]}=useCodiciPagamento();
   const qc = useQueryClient();
@@ -112,6 +117,14 @@ function PreventivoEditorPage() {
     queryKey: ["preventivo", id],
     queryFn: () => fetchPreventivo(id),
   });
+
+  const { data: prezziCantiere = [] } = useQuery({ ...opzioniPrezziCantiere(prev?.cantiere_id ?? ""), enabled: !!prev?.cantiere_id });
+  const { data: cantierePrezzi } = useQuery({ queryKey: ["cantiere-preventivo-posizione", prev?.cantiere_id], enabled: prezziOpen && !!prev?.cantiere_id, queryFn: async () => {
+    if (!prev?.cantiere_id) return null;
+    const { data, error } = await supabase.from("cantieri").select("*").eq("id", prev.cantiere_id).maybeSingle();
+    if (error) throw error;
+    return data as CantiereRow | null;
+  } });
 
   const { data: agenti = [] } = useQuery({ queryKey: ["agenti"], queryFn: fetchAgenti });
 
@@ -194,7 +207,7 @@ function PreventivoEditorPage() {
 
   const [analisiListini, setAnalisiListini] = useState<AnalisiAggiornaListini | null>(null);
   const aggiornaListini = useMutation({ mutationKey: ["salva-preventivo", id],
-    mutationFn: () => analizzaAggiornaListini(id),
+    mutationFn: async () => analizzaAggiornaListini(id, prev?.cantiere_id ? await qc.fetchQuery(opzioniPrezziCantiere(prev.cantiere_id)) : []),
     onSuccess: (res) => {
       if (res.differenze.length === 0) {
         toast.success(`Nessuna differenza: ${res.invariate} righe già aggiornate` +
@@ -540,7 +553,7 @@ function PreventivoEditorPage() {
             {(['testata','corpo','piede'] as const).map(t=><TabsTrigger key={t} variant="linguette" value={t}>{t==='testata'?'Testata':t==='piede'?'Piede':`Corpo · ${prev.blocchi.length} blocchi`}</TabsTrigger>)}
           </TabsList>
           <TabsContent value="testata"><TestataPreventivo prev={prev} cliente={clienteDati} modificabile={modificabile} statoEditabile={puoScrivere} agenti={agenti} principali={principali} haAlternative={haAlternative} listino={listino} categoria={categoria} sede={condizioni?.sede_nome||'—'} sedeClienteId={condizioni?.store_id??null} onSave={p=>save.mutate(p)} onCliente={()=>setClienteOpen(true)} onChangeCliente={onChangeCliente} onCantiere={async cid=>{await save.mutateAsync({cantiere_id:cid,cantiere_descrizione:null});}}/></TabsContent>
-          <TabsContent value="corpo"><fieldset disabled={!modificabile} className={cn('min-w-0',!modificabile&&'readonly-mode')}>
+          <TabsContent value="corpo"><div className="mb-2"><BadgePrezziDedicati conteggio={prezziCantiere.length} mostraNumero onClick={() => setPrezziOpen(true)} /></div><fieldset disabled={!modificabile} className={cn('min-w-0',!modificabile&&'readonly-mode')}>
             {/* ===== CORPO ===== */}
             <section className="flex flex-col gap-3">
 
@@ -565,7 +578,7 @@ function PreventivoEditorPage() {
                       </Card>
                     ) : (
                       prev.blocchi.map((b, idx) => (
-                        <BloccoCard key={b.id} blocco={b} index={idx} preventivoId={id} fascia={(prev.fascia_listino ?? "A") as FasciaListino} readOnly={!modificabile} clienteId={prev.cliente_id ?? null} scontoPiede={Number(prev.sconto_piede_perc ?? 0)} />
+                        <BloccoCard key={b.id} blocco={b} index={idx} preventivoId={id} fascia={(prev.fascia_listino ?? "A") as FasciaListino} readOnly={!modificabile} clienteId={prev.cliente_id ?? null} cantiereId={prev.cantiere_id} scontoPiede={Number(prev.sconto_piede_perc ?? 0)} />
                       ))
                     )}
                   </div>
@@ -597,13 +610,14 @@ function PreventivoEditorPage() {
       {clienteOpen && clienteDati && <ClientePreventivoDialog cliente={clienteDati} onClose={()=>setClienteOpen(false)}/>}
       <AlertDialog open={eliminaOpen} onOpenChange={setEliminaOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Eliminare il documento?</AlertDialogTitle><AlertDialogDescription>Tutti i blocchi e le righe verranno eliminati. Irreversibile.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Annulla</AlertDialogCancel><AlertDialogAction onClick={()=>delPrev.mutate()}>Elimina</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
 
+      {prezziOpen && cantierePrezzi && <PrezziCantiereDialog open onOpenChange={setPrezziOpen} cantiere={cantierePrezzi} />}
       <AggiungiBloccoDialog
         open={addBloccoOpen}
         onOpenChange={setAddBloccoOpen}
         preventivoId={id}
         fascia={(prev.fascia_listino ?? "A") as FasciaListino}
         clienteId={prev.cliente_id ?? null}
-        scontoPiede={Number(prev.sconto_piede_perc ?? 0)}
+        cantiereId={prev.cantiere_id} scontoPiede={Number(prev.sconto_piede_perc ?? 0)}
         lastOrdine={lastOrdine}
       />
 
@@ -622,8 +636,8 @@ function PreventivoEditorPage() {
 }
 
 function BloccoCard({
-  blocco, index, preventivoId, fascia, readOnly = false, clienteId, scontoPiede,
-}: { blocco: BloccoConRighe; index: number; preventivoId: string; fascia: FasciaListino; readOnly?: boolean; clienteId: string | null; scontoPiede: number }) {
+  blocco, index, preventivoId, fascia, readOnly = false, clienteId, scontoPiede, cantiereId,
+}: { blocco: BloccoConRighe; index: number; preventivoId: string; fascia: FasciaListino; readOnly?: boolean; clienteId: string | null; scontoPiede: number; cantiereId: string | null }) {
   const qc = useQueryClient();
   const sortable = useSortable({ id: blocco.id });
   const style = {
@@ -748,7 +762,7 @@ function BloccoCard({
             </div>
           )}
 
-          <RigheTable blocco={blocco} preventivoId={preventivoId} fascia={fascia} readOnly={readOnly} clienteId={clienteId} scontoPiede={scontoPiede} />
+          <RigheTable blocco={blocco} preventivoId={preventivoId} fascia={fascia} readOnly={readOnly} clienteId={clienteId} cantiereId={cantiereId} scontoPiede={scontoPiede} />
         </CardContent>
       </Card>
     </div>

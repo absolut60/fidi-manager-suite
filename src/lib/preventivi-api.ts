@@ -1,6 +1,7 @@
+import { getCantiereListini, type CantiereListinoRow } from "./cantiere-listini-api";
 import { copiaNotePreventivo } from "./preventivi-note";
 import { supabase } from "@/integrations/supabase/client";
-import { campiPrezzoDaMotore, confrontoAggiornamento, costoRiga, importoRiga, isIntestazioneKit, isRigaValorizzata, marginePercRiga, pesoRigaGamma, patchConImporto, quantitaDaIncidenza, segnoRiga, type PrezzoClienteGamma, type UnitaGammaRiga } from "./riga-preventivo";
+import { campiPrezzoDaMotore, prezzoConPrioritaCantiere, confrontoAggiornamento, costoRiga, importoRiga, isIntestazioneKit, isRigaValorizzata, marginePercRiga, pesoRigaGamma, patchConImporto, quantitaDaIncidenza, segnoRiga, type PrezzoClienteGamma, type UnitaGammaRiga } from "./riga-preventivo";
 import type { Database } from "@/integrations/supabase/types";
 import { round2 } from "./pricing";
 import {
@@ -697,9 +698,9 @@ export interface AnalisiAggiornaListini {
 }
 
 /** FM65: confronta le righe articolo/kit con il motore prezzi del cliente (UNA chiamata). */
-export async function analizzaAggiornaListini(preventivo_id: string): Promise<AnalisiAggiornaListini> {
+export async function analizzaAggiornaListini(preventivo_id: string, prezziCantiere?: CantiereListinoRow[]): Promise<AnalisiAggiornaListini> {
   const prev = await fetchPreventivo(preventivo_id);
-  if (!prev.cliente_id) throw new Error("Scegli prima il cliente: i prezzi arrivano dalle sue condizioni Gamma.");
+  const dedicati = new Map((prezziCantiere ?? (prev.cantiere_id ? await getCantiereListini(prev.cantiere_id) : [])).map(p => [p.cod_gamma, p]));
   const candidate: { r: BloccoConRighe["righe"][number]; codice: string; blocco_id: string }[] = [];
   let senza_codice = 0;
   let non_articolo = 0;
@@ -711,12 +712,12 @@ export async function analizzaAggiornaListini(preventivo_id: string): Promise<An
       candidate.push({ r, codice, blocco_id: b.id });
     }
   }
-  const mappa = await fetchPrezziClienteArticoli(prev.cliente_id, candidate.map((c) => c.codice));
+  const mappa = prev.cliente_id ? await fetchPrezziClienteArticoli(prev.cliente_id, candidate.map((c) => c.codice)).catch(e => { if (!dedicati.size) throw e; return new Map(); }) : new Map();
   const differenze: DifferenzaListino[] = [];
   let invariate = 0;
   let senza_prezzo = 0;
   for (const { r, codice, blocco_id } of candidate) {
-    const p = mappa.get(codice);
+    const { prezzo: p } = prezzoConPrioritaCantiere(mappa.get(codice), dedicati.get(codice));
     if (!p || p.prezzo_base == null) { senza_prezzo++; continue; }
     const confronto = confrontoAggiornamento(r, p);
     if (!confronto) { invariate++; continue; }
@@ -797,11 +798,13 @@ export async function addBloccoDaKit(args: {
   ordine: number;
   cliente_id: string | null;
   sconto_piede: number;
+  prezzi_cantiere?: CantiereListinoRow[];
 }): Promise<Blocco> {
-  if (!args.cliente_id) throw new Error("Scegli prima il cliente: i prezzi del kit arrivano dalle sue condizioni Gamma.");
+  const dedicati = new Map((args.prezzi_cantiere ?? []).map(p => [p.cod_gamma, p]));
+  if (!args.cliente_id && !dedicati.size) throw new Error("Scegli prima il cliente: i prezzi del kit arrivano dalle sue condizioni Gamma.");
   const kit = await fetchKit(args.kit_id);
   const codici = kit.componenti.map((c) => c.articolo?.cod_gamma).filter((c): c is string => !!c);
-  const prezzi = await fetchPrezziClienteArticoli(args.cliente_id, codici);
+  const prezzi = args.cliente_id ? await fetchPrezziClienteArticoli(args.cliente_id, codici).catch(e => { if (!dedicati.size) throw e; return new Map(); }) : new Map();
   const pesi = await fetchPesiGamma(codici);
 
   const qBaseEff = args.quantita_base > 0 ? args.quantita_base : 1;
@@ -810,7 +813,7 @@ export async function addBloccoDaKit(args: {
     const incidenza = calcolaRigaKit(c, c.articolo, "A").incidenza_effettiva;
     const quantita = quantitaDaIncidenza(incidenza, qBaseEff) ?? 0;
     const codice = c.articolo?.cod_gamma ?? null;
-    const campi = campiPrezzoDaMotore(codice ? prezzi.get(codice) : null, quantita, args.sconto_piede);
+    const campi = campiPrezzoDaMotore(prezzoConPrioritaCantiere(codice ? prezzi.get(codice) : null, codice ? dedicati.get(codice) : null).prezzo, quantita, args.sconto_piede);
     return {
       tipo_riga: c.articolo_id == null ? "nota" as const : "da_kit" as const,
       articolo_id: c.articolo_id,

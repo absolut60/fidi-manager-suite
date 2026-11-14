@@ -1,3 +1,4 @@
+import { opzioniPrezziCantiere } from "@/lib/cantiere-listini-api";
 import { CellaUm } from "@/components/cella-um";
 import { useEffect, useMemo, useState } from "react";
 import { ArticoloDettaglioDialog } from "@/components/preventivatore/ArticoloDettaglioDialog";
@@ -27,7 +28,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -42,7 +43,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { EditableNumberCell } from "@/components/preventivatore/EditableNumberCell";
 import { ArticoloPicker } from "@/components/preventivatore/ArticoloPicker";
 import { ArticoloGammaPicker, type ArticoloGammaScelto } from "@/components/preventivatore/ArticoloGammaPicker";
-import { campiPrezzoDaMotore, costoRiga, formatScontiGamma, isIntestazioneKit, margineTotaliRighe, patchConImporto, parseScontiGamma, prezzoNettoRiga, rigaInUnita } from "@/lib/riga-preventivo";
+import { campiPrezzoDaMotore, prezzoConPrioritaCantiere, coincidePrezzoCantiere, costoRiga, formatScontiGamma, isIntestazioneKit, margineTotaliRighe, patchConImporto, parseScontiGamma, prezzoNettoRiga, rigaInUnita } from "@/lib/riga-preventivo";
 import {
   calcolaBlocco, deleteRiga, salvaPatchRigaCalcolata, fetchPrezzoClienteArticolo, fractionalOrder, insertRiga, reorderRighe,
   TIPI_RIGA, TIPI_RIGA_LABEL, updateRiga,
@@ -60,6 +61,7 @@ export function RigheTable({
   readOnly = false,
   clienteId,
   scontoPiede = 0,
+  cantiereId,
 }: {
   blocco: BloccoConRighe;
   preventivoId: string;
@@ -67,10 +69,13 @@ export function RigheTable({
   readOnly?: boolean;
   clienteId: string | null;
   scontoPiede?: number;
+  cantiereId?: string | null;
 }) {
   const [openArticoloId, setOpenArticoloId] = useState<string | null>(null);
   const [pendingPickerId, setPendingPickerId] = useState<string | null>(null);
   const qc = useQueryClient();
+  const { data: prezziCantiere = [] } = useQuery({ ...opzioniPrezziCantiere(cantiereId ?? ""), enabled: !!cantiereId });
+  const dedicati = useMemo(() => new Map(prezziCantiere.map(p => [p.cod_gamma, p])), [prezziCantiere]);
   const invalidate = () => qc.invalidateQueries({ queryKey: ["preventivo", preventivoId] });
 
   useEffect(() => {
@@ -197,7 +202,7 @@ export function RigheTable({
       try {
         prezzo = await fetchPrezzoClienteArticolo(clienteId, a.codice);
       } catch (e) {
-        toast.warning(`Prezzo non disponibile: ${(e as Error).message}`);
+        if (!dedicati.has(a.codice)) toast.warning(`Prezzo non disponibile: ${(e as Error).message}`);
       }
     }
     upd.mutate({
@@ -210,7 +215,7 @@ export function RigheTable({
         um: a.um ?? prezzo?.um ?? null,
         quantita,
         vendita: null,
-        ...campiPrezzoDaMotore(prezzo, quantita, scontoPiede),
+        ...campiPrezzoDaMotore(prezzoConPrioritaCantiere(prezzo, dedicati.get(a.codice)).prezzo, quantita, scontoPiede),
       },
     });
   }
@@ -234,6 +239,7 @@ export function RigheTable({
 
   const righeProps = (r: (typeof blocco.righe)[number], idx: number) => ({
     row: r,
+    prezzoCantiere: coincidePrezzoCantiere(r, dedicati.get(r.articolo_codice ?? r.articolo?.cod_gamma ?? "")),
     idx,
     fascia,
     readOnly,
@@ -415,6 +421,7 @@ function AddRowMenu({
 
 
 type RigaProps = {
+  prezzoCantiere: boolean;
   row: BloccoConRighe["righe"][number];
   idx: number;
   calc: ReturnType<typeof calcolaBlocco>["righe"][number]["calc"];
@@ -570,8 +577,11 @@ function useCelleRiga(p: RigaProps) {
       </div>
     ),
     lordo: (
-      <EditableNumberCell value={unita.prezzo_unit} decimali={4}
-        onCommit={(v) => salvaInUnita({ prezzo_unit: v })} />
+      <span className={cn("relative block", p.prezzoCantiere && "text-pv-verde [&_input]:text-pv-verde")} title={p.prezzoCantiere ? "Prezzo cantiere" : undefined}>
+        {p.prezzoCantiere && <span aria-hidden className="pointer-events-none absolute left-0 top-1/2 size-1 -translate-y-1/2 rounded-full bg-pv-verde" />}
+        <EditableNumberCell value={unita.prezzo_unit} decimali={4}
+          onCommit={(v) => salvaInUnita({ prezzo_unit: v })} />
+      </span>
     ),
     sconti: <ScontiCell value={row.sconti_gamma} onCommit={(v) => onPatch({ sconti_gamma: v })} />,
     magg: (

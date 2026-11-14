@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ArticoloGammaPicker, type ArticoloGammaScelto } from "@/components/preventivatore/ArticoloGammaPicker";
 import { PrezziCantiereRiga, COLONNE_PREZZI_CANTIERE } from "@/components/prezzi-cantiere-riga";
-import { chiavePrezziCantiere, chiaveConteggiPrezziCantieri, getCantiereListini, upsertCantiereListino, deleteCantiereListino, puoModificareCantiereDb, unitaPrezziCantiere, propostaPrezzoCantiere, type CantiereListinoRow } from "@/lib/cantiere-listini-api";
+import { opzioniPrezziCantiere, chiavePrezziCantiere, chiaveConteggiPrezziCantieri, getCantiereListini, upsertCantiereListino, deleteCantiereListino, puoModificareCantiereDb, unitaPrezziCantiere, propostaPrezzoCantiere, type CantiereListinoRow } from "@/lib/cantiere-listini-api";
 import { fetchPrezziClienteArticoli } from "@/lib/preventivi-api";
 import type { CantiereRow } from "@/lib/cantieri";
 import type { PrezzoClienteGamma } from "@/lib/riga-preventivo";
@@ -17,7 +17,7 @@ function ContenutoPrezziCantiere({ cantiere }: { cantiere: CantiereRow }) {
   const qc = useQueryClient();
   const { user } = useAuth();
   const [adding, setAdding] = useState(false);
-  const { data: rows = [], isPending, error } = useQuery({ queryKey: chiavePrezziCantiere(cantiere.id), queryFn: () => getCantiereListini(cantiere.id) });
+  const { data: rows = [], isPending, error } = useQuery(opzioniPrezziCantiere(cantiere.id));
   const { data: modificabile = false, error: permessoError } = useQuery({ queryKey: ["prezzi-cantiere-modifica", user?.id, cantiere.id, cantiere.cliente_id, cantiere.lead_id, cantiere.agente_codice, cantiere.created_by], queryFn: () => puoModificareCantiereDb(cantiere), retry: false });
   const codici = rows.map(r => r.cod_gamma);
   const { data: gamma = [] } = useQuery({ queryKey: ["prezzi-cantiere-unita", cantiere.id, codici], queryFn: () => unitaPrezziCantiere(codici), enabled: !!codici.length });
@@ -31,7 +31,7 @@ function ContenutoPrezziCantiere({ cantiere }: { cantiere: CantiereRow }) {
     return cached;
   }, enabled: !!codici.length, retry: false });
   function focus(cod: string) { requestAnimationFrame(() => { const el = [document.getElementById(`prezzo-mobile-${cod}`), document.getElementById(`prezzo-desktop-${cod}`)].find(e => e && e.getClientRects().length); el?.scrollIntoView({ block: "center", behavior: "smooth" }); el?.querySelector("input")?.focus(); }); }
-  function cambiaRows(next: CantiereListinoRow[]) { qc.setQueryData(chiavePrezziCantiere(cantiere.id), next); void qc.invalidateQueries({ queryKey: chiaveConteggiPrezziCantieri }); }
+  function cambiaRows(next: CantiereListinoRow[]) { qc.setQueryData(chiavePrezziCantiere(cantiere.id), next); void qc.invalidateQueries({ queryKey: chiavePrezziCantiere(cantiere.id) }); void qc.invalidateQueries({ queryKey: chiaveConteggiPrezziCantieri }); }
   async function aggiungi(a: ArticoloGammaScelto) {
     if (!modificabile || adding) return;
     const presente = rows.find(r => r.cod_gamma === a.codice);
@@ -52,6 +52,7 @@ function ContenutoPrezziCantiere({ cantiere }: { cantiere: CantiereRow }) {
   async function salva(r: CantiereListinoRow) {
     const saved = await upsertCantiereListino({ id: r.id, cantiere_id: r.cantiere_id, cod_gamma: r.cod_gamma, descrizione: r.descrizione, prezzo_vendita_speciale: r.prezzo_vendita_speciale, sconti: r.sconti, maggiorazione_perc: r.maggiorazione_perc, costo_netto_speciale: r.costo_netto_speciale, um_scelta: r.um_scelta, note: r.note });
     qc.setQueryData<CantiereListinoRow[]>(chiavePrezziCantiere(cantiere.id), old => old?.map(x => x.id === saved.id ? saved : x));
+    void qc.invalidateQueries({ queryKey: chiavePrezziCantiere(cantiere.id) });
   }
   async function elimina(r: CantiereListinoRow) {
     const e = await deleteCantiereListino(r.id);
