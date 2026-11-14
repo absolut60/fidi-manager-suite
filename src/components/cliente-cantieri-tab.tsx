@@ -1,4 +1,5 @@
 import { useSoloShowroom } from "@/hooks/use-solo-showroom";
+import { eliminaConEsito, messaggioEliminazioneCantiere } from "@/lib/esito-eliminazione";
 import { BadgeProvvisorio } from "@/components/badge-provvisorio";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -67,16 +68,16 @@ export function ClienteCantieriTab({
   });
 
   const delMut = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("cantieri").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
+    mutationFn: (id: string) => eliminaConEsito("cantieri", id),
+    onSuccess: (esito) => {
+      if (esito.tipo !== "eliminato") {
+        toast.error(messaggioEliminazioneCantiere(esito));
+        return;
+      }
       toast.success("Cantiere eliminato");
       qc.invalidateQueries({ queryKey });
       qc.invalidateQueries({ queryKey: ["cantieri-lista"] });
     },
-    onError: () => toast.error("Eliminazione non riuscita: non hai i permessi su questo cantiere."),
   });
 
   const editingCantiere = data?.find((c) => c.id === editId) ?? null;

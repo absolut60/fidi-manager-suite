@@ -1,5 +1,7 @@
 // Dialog creazione / modifica cantiere con geocodifica automatica dell'indirizzo.
 import { Switch } from "@/components/ui/switch";
+import { eliminaConEsito, messaggioEliminazioneCantiere } from "@/lib/esito-eliminazione";
+import { CollegamentiCantiere } from "@/components/collegamenti-cantiere";
 import { provvisorioInizialeCantiere, nomeInizialeCantiere } from "@/lib/cantieri-provvisori";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -130,9 +132,9 @@ export function CantiereDialog({
 
   async function elimina() {
     if (!cantiere?.id) return;
-    const { error } = await supabase.from("cantieri").delete().eq("id", cantiere.id);
-    if (error) {
-      toast.error("Eliminazione non riuscita: non hai i permessi su questo cantiere.");
+    const esito = await eliminaConEsito("cantieri", cantiere.id);
+    if (esito.tipo !== "eliminato") {
+      toast.error(messaggioEliminazioneCantiere(esito));
       return;
     }
     toast.success("Cantiere eliminato");
@@ -487,6 +489,8 @@ export function CantiereDialog({
               {sedeErrore && <p className="text-sm text-destructive">{sedeErrore}</p>}
             </div>
           )}
+
+          {open && cantiere && <CollegamentiCantiere cantiereId={cantiere.id} onChiudi={() => onOpenChange(false)} />}
 
           <div className="space-y-1.5">
             <Label>Note</Label>
