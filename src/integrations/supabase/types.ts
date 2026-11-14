@@ -4593,11 +4593,13 @@ export type Database = {
           assegnato_a: string | null
           assegnato_il: string | null
           cap: string | null
+          categoria_rif: string | null
           cellulare: string | null
           citta: string | null
           cliente_id: string | null
           codice_fiscale: string | null
           cognome: string | null
+          condizione_pagamento_cod: string | null
           conversione_tipo: string | null
           convertito_da: string | null
           convertito_il: string | null
@@ -4609,6 +4611,8 @@ export type Database = {
           hubspot_id: string | null
           id: string
           indirizzo: string | null
+          listino_rif: number | null
+          macrocategoria_rif: string | null
           mestiere_id: string | null
           motivo_perdita: string | null
           nome: string | null
@@ -4633,11 +4637,13 @@ export type Database = {
           assegnato_a?: string | null
           assegnato_il?: string | null
           cap?: string | null
+          categoria_rif?: string | null
           cellulare?: string | null
           citta?: string | null
           cliente_id?: string | null
           codice_fiscale?: string | null
           cognome?: string | null
+          condizione_pagamento_cod?: string | null
           conversione_tipo?: string | null
           convertito_da?: string | null
           convertito_il?: string | null
@@ -4649,6 +4655,8 @@ export type Database = {
           hubspot_id?: string | null
           id?: string
           indirizzo?: string | null
+          listino_rif?: number | null
+          macrocategoria_rif?: string | null
           mestiere_id?: string | null
           motivo_perdita?: string | null
           nome?: string | null
@@ -4673,11 +4681,13 @@ export type Database = {
           assegnato_a?: string | null
           assegnato_il?: string | null
           cap?: string | null
+          categoria_rif?: string | null
           cellulare?: string | null
           citta?: string | null
           cliente_id?: string | null
           codice_fiscale?: string | null
           cognome?: string | null
+          condizione_pagamento_cod?: string | null
           conversione_tipo?: string | null
           convertito_da?: string | null
           convertito_il?: string | null
@@ -4689,6 +4699,8 @@ export type Database = {
           hubspot_id?: string | null
           id?: string
           indirizzo?: string | null
+          listino_rif?: number | null
+          macrocategoria_rif?: string | null
           mestiere_id?: string | null
           motivo_perdita?: string | null
           nome?: string | null
@@ -4721,6 +4733,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "lead_listino_rif_fkey"
+            columns: ["listino_rif"]
+            isOneToOne: false
+            referencedRelation: "listini_gamma"
+            referencedColumns: ["codice"]
           },
           {
             foreignKeyName: "lead_mestiere_id_fkey"
@@ -5901,6 +5920,8 @@ export type Database = {
           id: string
           iva_importo: number | null
           iva_perc: number | null
+          lead_id: string | null
+          lead_origine_id: string | null
           listino_rif: number | null
           macrocategoria_rif: string | null
           note: string | null
@@ -5933,6 +5954,8 @@ export type Database = {
           id?: string
           iva_importo?: number | null
           iva_perc?: number | null
+          lead_id?: string | null
+          lead_origine_id?: string | null
           listino_rif?: number | null
           macrocategoria_rif?: string | null
           note?: string | null
@@ -5965,6 +5988,8 @@ export type Database = {
           id?: string
           iva_importo?: number | null
           iva_perc?: number | null
+          lead_id?: string | null
+          lead_origine_id?: string | null
           listino_rif?: number | null
           macrocategoria_rif?: string | null
           note?: string | null
@@ -6009,6 +6034,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "preventivi_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "lead"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "preventivi_lead_origine_id_fkey"
+            columns: ["lead_origine_id"]
+            isOneToOne: false
+            referencedRelation: "lead"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "preventivi_listino_rif_fkey"
@@ -8678,6 +8717,7 @@ export type Database = {
           _agente_codice: string
           _cantiere_id: string
           _cliente_id: string
+          _lead_id: string
         }
         Returns: boolean
       }
