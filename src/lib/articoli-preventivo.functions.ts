@@ -2,6 +2,16 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { parametriArticoliPreventivo } from "./catalogo-articoli";
+import { inputArticoliAperturaPicker, parametriArticoliAperturaPicker } from "./articoli-picker-apertura";
+
+export const articoliAperturaPicker = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { cantiere_id?: string; sede_giacenza?: string }) => inputArticoliAperturaPicker.parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await context.supabase.rpc("articoli_picker_apertura", parametriArticoliAperturaPicker(data));
+    if (error) throw new Error(error.message);
+    return rows ?? [];
+  });
 
 /** FM65: articoli Gamma attivi per il selettore della riga preventivo (senza prezzo: il prezzo segue il cliente). */
 export const cercaArticoliPreventivo = createServerFn({ method: "POST" })

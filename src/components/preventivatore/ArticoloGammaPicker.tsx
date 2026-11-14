@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ChevronDown, ChevronsUpDown, Search } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cercaArticoliPreventivo } from "@/lib/articoli-preventivo.functions";
+import { articoliAperturaPicker, cercaArticoliPreventivo } from "@/lib/articoli-preventivo.functions";
+import { BadgePrezzoCantiere } from "@/components/badge-prezzi-dedicati";
 import { FiltriCatalogoArticoli } from "@/components/articoli/FiltriCatalogoArticoli";
 import { quantitaArticolo, ricercaPreventivoAttiva } from "@/lib/catalogo-articoli";
 import type { ScelteCascata } from "@/lib/filtri-catalogo-articoli";
@@ -28,12 +29,13 @@ export interface ArticoloGammaScelto { codice: string; descrizione: string | nul
 
 /** FM65: selettore articoli del catalogo Gamma per la riga preventivo. Non mostra prezzi (seguono il cliente). */
 export function ArticoloGammaPicker({
-  codice, descrizione, onChange, autoOpen = false, disabled = false, soloCodice = false, preventivoId = null, sedeGiacenzaId = null, sedeNome = null,
+  codice, descrizione, onChange, autoOpen = false, disabled = false, soloCodice = false, preventivoId = null, sedeGiacenzaId = null, sedeNome = null, cantiereId = null,
 }: {
   /** FM65 F4: chiave della memoria dei filtri (per preventivo). */
   preventivoId?: string | null;
   sedeGiacenzaId?: string | null;
   sedeNome?: string | null;
+  cantiereId?: string | null;
   codice: string | null;
   descrizione: string | null;
   onChange: (a: ArticoloGammaScelto) => void;
@@ -46,10 +48,21 @@ export function ArticoloGammaPicker({
   const [q, setQ] = useState("");
   const [qDeb, setQDeb] = useState("");
   const cerca = useServerFn(cercaArticoliPreventivo);
+  const apertura = useServerFn(articoliAperturaPicker);
   const [scelte, setScelte] = useFiltriPicker(preventivoId);
   const [filtriAperti, setFiltriAperti] = useState(false);
   const nFiltri = scelte.famiglie.length + scelte.coppie.length + scelte.marche.length;
   const attiva = ricercaPreventivoAttiva(qDeb, scelte);
+  const { data: suggeriti = [], isFetching: caricaApertura, isError: erroreApertura } = useQuery({
+    queryKey: ["articoli-picker-apertura", cantiereId, sedeGiacenzaId],
+    queryFn: () => apertura({ data: { ...(cantiereId ? { cantiere_id: cantiereId } : {}), ...(sedeGiacenzaId ? { sede_giacenza: sedeGiacenzaId } : {}) } }),
+    // Also load on a directly opened active search, so site-price badges are accurate.
+    enabled: open && (!attiva || !!cantiereId),
+    staleTime: 60_000,
+  });
+  const delCantiere = suggeriti.filter(a => a.gruppo === "cantiere");
+  const recenti = suggeriti.filter(a => a.gruppo === "recente");
+  const codiciCantiere = new Set(delCantiere.map(a => a.codice));
 
   // Responsive copies stay mounted; only a laid-out trigger may own a portal.
   // Observe layout, not a duplicated breakpoint (including landscape/tablet rules).
@@ -90,6 +103,23 @@ export function ArticoloGammaPicker({
   const totale = Number(data?.pages[0]?.[0]?.totale ?? 0);
 
   const label = codice ? (soloCodice ? codice : `${codice} · ${descrizione ?? ""}`) : null;
+  const riga = (a: ArticoloGammaScelto & { giacenza_sede: number | null; giacenza_logistica: number | null }) => (
+    <Button key={a.codice} type="button" variant="ghost"
+      onClick={() => { onChange(a); setOpen(false); }}
+      className="grid h-auto w-full grid-cols-[minmax(0,1fr)_auto] gap-x-2 gap-y-0 whitespace-normal rounded-none border-b px-2 py-1.5 text-left text-xs hover:bg-accent">
+      <span className="min-w-0">
+        <span className="font-mono font-semibold">{a.codice}</span>
+        <span className="block break-words">{a.descrizione}{a.marca && <span className="font-semibold text-primary"> · {a.marca}</span>}{codiciCantiere.has(a.codice) && <> <BadgePrezzoCantiere /></>}</span>
+      </span>
+      <span className="shrink-0 text-right text-muted-foreground">
+        <span className="block">{a.um ?? ""}</span>
+        {sedeGiacenzaId && <>
+          <span className={`block whitespace-nowrap ${Number(a.giacenza_sede) > 0 ? "font-bold text-foreground" : "text-muted-foreground"}`}>{Number(a.giacenza_sede) > 0 ? quantitaArticolo(Number(a.giacenza_sede), a.um) : "0"}</span>
+          {Number(a.giacenza_logistica) > 0 && <span className="block whitespace-nowrap text-[11px]">+{quantitaArticolo(Number(a.giacenza_logistica))} log.</span>}
+        </>}
+      </span>
+    </Button>
+  );
 
   return (
     <Popover modal open={open} onOpenChange={(next) => setOpen(next && !disabled && !!triggerRef.current?.getClientRects().length)}>
@@ -122,26 +152,14 @@ export function ArticoloGammaPicker({
         {sedeNome && <div className="shrink-0 border-b px-2 py-1 text-xs text-muted-foreground break-words">Giacenze: {sedeNome}</div>}
         <div role="list" aria-label="Risultati articoli Gamma" className="min-h-0 max-h-[60dvh] overflow-y-auto overscroll-contain sm:max-h-[520px]">
           {!attiva ? (
-            <div className="p-3 text-xs text-muted-foreground">Scrivi almeno 2 caratteri o scegli un filtro.</div>
+            <>
+              {delCantiere.length > 0 && <><p className="px-2 py-1 text-xs font-semibold text-muted-foreground">Prezzi del cantiere</p>{delCantiere.map(riga)}</>}
+              {recenti.length > 0 && <><p className="px-2 py-1 text-xs font-semibold text-muted-foreground">Usati di recente</p>{recenti.map(riga)}</>}
+              {suggeriti.length === 0 && <div className="p-3 text-xs text-muted-foreground">{caricaApertura ? "Caricamento…" : erroreApertura ? "Caricamento non riuscito." : "Scrivi almeno 2 caratteri o scegli un filtro."}</div>}
+            </>
           ) : items.length === 0 ? (
             <div className="p-3 text-xs text-muted-foreground">{isFetching ? "Ricerca…" : isError ? "Ricerca non riuscita." : "Nessun articolo trovato."}</div>
-          ) : items.map((a) => (
-            <Button key={a.codice} type="button" variant="ghost"
-              onClick={() => { onChange(a); setOpen(false); }}
-              className="grid h-auto w-full grid-cols-[minmax(0,1fr)_auto] gap-x-2 gap-y-0 whitespace-normal rounded-none border-b px-2 py-1.5 text-left text-xs hover:bg-accent">
-              <span className="min-w-0">
-                <span className="font-mono font-semibold">{a.codice}</span>
-                <span className="block break-words">{a.descrizione}{a.marca && <span className="font-semibold text-primary"> · {a.marca}</span>}</span>
-              </span>
-              <span className="shrink-0 text-right text-muted-foreground">
-                <span className="block">{a.um ?? ""}</span>
-                {sedeGiacenzaId && <>
-                  <span className={`block whitespace-nowrap ${Number(a.giacenza_sede) > 0 ? "font-bold text-foreground" : "text-muted-foreground"}`}>{Number(a.giacenza_sede) > 0 ? quantitaArticolo(Number(a.giacenza_sede), a.um) : "0"}</span>
-                  {Number(a.giacenza_logistica) > 0 && <span className="block whitespace-nowrap text-[11px]">+{quantitaArticolo(Number(a.giacenza_logistica))} log.</span>}
-                </>}
-              </span>
-            </Button>
-          ))}
+          ) : items.map(riga)}
         </div>
         {attiva && data && <div className="flex shrink-0 flex-wrap items-center justify-between gap-1 border-t px-2 py-1 text-xs text-muted-foreground">
           <span role="status">{items.length.toLocaleString("it-IT")} di {totale.toLocaleString("it-IT")}</span>
