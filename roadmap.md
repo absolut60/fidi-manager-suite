@@ -1,3 +1,7 @@
+# FM69 — Prezzi cantiere, fetta 2a
+- [ ] API nuovo schema, dialog con picker/calcoli condivisi, apertura dal cantiere; rimozione tab globale e correzione rimozione dal lead.
+- [ ] Test e schermate 375/1280; nessun DB e preventivi-api invariata.
+
 # FM69 — Prezzi cantiere, fetta 1 (solo database)
 - [x] Applicata 0216_fm69_prezzi_cantiere_fetta1; schema prezzi manuali, fonte unica modifica cantiere e policy. Nessuna modifica UI; riferimenti esistenti invariati, tipi rigenerati automaticamente.
 - [x] Matrici transazionali 7 utenti × 4 cantieri con aal2: UPDATE prima/dopo identici; INSERT/SELECT prezzi verificati. Nessun utente solo showroom presente. Test SQL permanente superato, 785 test applicativi verdi, build OK; schema/grant/restrittive verificati e nessun dato residuo.
