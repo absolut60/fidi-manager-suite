@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ChevronDown, ChevronsUpDown, Search } from "lucide-react";
@@ -40,6 +40,7 @@ export function ArticoloGammaPicker({
   soloCodice?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const [q, setQ] = useState("");
   const [qDeb, setQDeb] = useState("");
   const cerca = useServerFn(cercaArticoliPreventivo);
@@ -48,7 +49,25 @@ export function ArticoloGammaPicker({
   const nFiltri = scelte.famiglie.length + scelte.coppie.length + scelte.marche.length;
   const attiva = ricercaPreventivoAttiva(qDeb, scelte);
 
-  useEffect(() => { if (autoOpen) setOpen(true); }, [autoOpen]);
+  // Responsive copies stay mounted; only a laid-out trigger may own a portal.
+  // Observe layout, not a duplicated breakpoint (including landscape/tablet rules).
+  useEffect(() => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    let autoOpenConsumed = false;
+    const aggiorna = () => {
+      const visibile = trigger.getClientRects().length > 0;
+      if (!visibile) setOpen(false);
+      else if (autoOpen && !disabled && !autoOpenConsumed) {
+        autoOpenConsumed = true;
+        setOpen(true);
+      }
+    };
+    const observer = new ResizeObserver(aggiorna);
+    observer.observe(trigger);
+    aggiorna();
+    return () => observer.disconnect();
+  }, [autoOpen, disabled]);
   useEffect(() => {
     const t = window.setTimeout(() => setQDeb(q.trim()), 300);
     return () => window.clearTimeout(t);
@@ -65,9 +84,9 @@ export function ArticoloGammaPicker({
   const label = codice ? (soloCodice ? codice : `${codice} · ${descrizione ?? ""}`) : null;
 
   return (
-    <Popover modal open={open} onOpenChange={setOpen}>
+    <Popover modal open={open} onOpenChange={(next) => setOpen(next && !disabled && !!triggerRef.current?.getClientRects().length)}>
       <PopoverTrigger asChild>
-        <Button variant={soloCodice ? "ghost" : "outline"} role="combobox" disabled={disabled}
+        <Button ref={triggerRef} variant={soloCodice ? "ghost" : "outline"} role="combobox" disabled={disabled}
           title={label ?? undefined}
           className={soloCodice ? "h-auto min-h-[26px] w-full justify-start rounded border border-transparent bg-transparent whitespace-normal px-1.5 py-1 text-left font-mono text-xs shadow-none hover:border-input hover:bg-transparent focus:border-ring focus:bg-card focus-visible:ring-0" : "h-auto min-h-8 w-full justify-between whitespace-normal px-2 py-1 text-left font-mono text-xs"}>
           <span className={soloCodice ? "min-w-0 break-all whitespace-normal" : "line-clamp-2 min-w-0 break-words"}>{label ?? (soloCodice ? "Scegli codice…" : "Cerca articolo Gamma…")}</span>
