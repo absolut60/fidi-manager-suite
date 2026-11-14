@@ -1,3 +1,7 @@
+# FM68 — Sede cliente per ID
+- [ ] RPC condizioni: solo store_id in coda, stessi gate/grant.
+- [ ] Passaggio ID alle due sezioni, test statico anti-ricerca per nome, verifiche e diff.
+
 # FM68 — Routes API e distanza sede cliente
 - [x] Helper Routes unico, query/candidate e UPDATE identici byte per byte; funzione autenticata senza scritture e distanza nel riquadro, riga unica per sede coincidente.
 - [x] 779 test verdi; una sola prova reale helper: 344.711 km, 213.0333 minuti; schermate simulate 375/1280 senza overflow/errori, pagina temporanea rimossa. Nessuna modifica DB o chiave client; flusso autenticato reale non verificato.
