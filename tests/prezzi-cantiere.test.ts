@@ -1,8 +1,34 @@
 import { describe, expect, it } from "bun:test";
-import { propostaPrezzoCantiere, mostraAvvisoPrezziCantiere } from "@/lib/cantiere-listini-api";
+import { propostaPrezzoCantiere, mostraAvvisoPrezziCantiere, contaPrezziCantieri, testoPrezziDedicati } from "@/lib/cantiere-listini-api";
 import { parseScontiGamma, prezzoNettoRiga, rigaInUnita } from "@/lib/riga-preventivo";
 
 describe("FM69 prezzi cantiere", () => {
+  it("un prezzo è singolare, due prezzi sono plurali", () => {
+    expect(testoPrezziDedicati(1)).toBe("1 prezzo dedicato");
+    expect(testoPrezziDedicati(2)).toBe("2 prezzi dedicati");
+  });
+  it("conteggia tutti gli ID con una sola lettura, senza duplicati", async () => {
+    const chiamate: string[][] = [];
+    const risultato = await contaPrezziCantieri(["a", "b", "a", "c"], async ids => {
+      chiamate.push(ids);
+      return [{ cantiere_id: "a" }, { cantiere_id: "a" }, { cantiere_id: "b" }];
+    });
+    expect(chiamate).toEqual([["a", "b", "c"]]);
+    expect(risultato).toEqual({ a: 2, b: 1, c: 0 });
+  });
+  it("suddivide 501 cantieri in blocchi di massimo 500", async () => {
+    const chiamate: string[][] = [];
+    const ids = Array.from({ length: 501 }, (_, i) => `c${i}`);
+    const risultato = await contaPrezziCantieri(ids, async blocco => { chiamate.push(blocco); return blocco.map(cantiere_id => ({ cantiere_id })); });
+    expect(chiamate.map(c => c.length)).toEqual([500, 1]);
+    expect(Object.keys(risultato)).toHaveLength(501);
+    expect(risultato.c500).toBe(1);
+  });
+  it("nessun cantiere non esegue letture", async () => {
+    let chiamate = 0;
+    expect(await contaPrezziCantieri([], async () => { chiamate++; return []; })).toEqual({});
+    expect(chiamate).toBe(0);
+  });
   it("interpreta 17+5 e riusa il netto in cascata con maggiorazione", () => {
     const s = parseScontiGamma("17+5");
     expect(s).toEqual([17, 5]);

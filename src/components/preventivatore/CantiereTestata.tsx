@@ -20,7 +20,8 @@ import type { CantiereRow, SedeMappa } from "@/lib/cantieri";
 import { formatoDistanzaCantiere, nomeSedeBreve } from "@/lib/cantiere-distanza";
 import { toast } from "sonner";
 import { PrezziCantiereDialog } from "@/components/prezzi-cantiere-dialog";
-import { chiaveConteggioPrezziCantiere, contaPrezziCantiere, mostraAvvisoPrezziCantiere } from "@/lib/cantiere-listini-api";
+import { BadgePrezziDedicati } from "@/components/badge-prezzi-dedicati";
+import { chiaveConteggioPrezziCantiere, contaPrezziCantiere, mostraAvvisoPrezziCantiere, testoPrezziDedicati } from "@/lib/cantiere-listini-api";
 import { MappaCantierePreventivo } from "./MappaCantierePreventivo";
 
 type Modo = "cliente" | "nuovo" | "provvisorio";
@@ -107,7 +108,7 @@ export function CantiereTestata({ prev, modificabile, onCantiere, clienteEtichet
     setScelta(false); setFinestra(false); setModo("cliente");
     try {
       const n = await qc.fetchQuery({ queryKey: chiaveConteggioPrezziCantiere(id), queryFn: () => contaPrezziCantiere(id), staleTime: 0 });
-      if (mostraAvvisoPrezziCantiere(n, "scelta")) toast.info(`Questo cantiere ha ${n} prezzi dedicati`, { action: { label: "Vedi", onClick: () => setPrezziId(id) } });
+      if (mostraAvvisoPrezziCantiere(n, "scelta")) toast.info(`Questo cantiere ha ${testoPrezziDedicati(n)}`, { action: { label: "Vedi", onClick: () => setPrezziId(id) } });
     } catch { /* An unavailable count must not block linking the site. */ }
   };
 
@@ -126,7 +127,7 @@ export function CantiereTestata({ prev, modificabile, onCantiere, clienteEtichet
   </>}><div className="space-y-2">
     {c ? <div className="min-w-0 space-y-1 text-xs">
       <div className="flex min-w-0 flex-wrap items-center gap-2"><Button variant="link" className="h-auto min-h-10 min-w-0 justify-start whitespace-normal break-words p-0 text-left text-xs font-semibold text-foreground hover:text-primary hover:no-underline" onClick={apriCantiere}><span className="min-w-0 break-words">{c.nome || "—"}</span><ChevronRight className="size-3.5 shrink-0" aria-hidden/></Button>{c.provvisorio && <BadgeProvvisorio />}</div>
-      {mostraAvvisoPrezziCantiere(numeroPrezzi) && <Button type="button" variant="link" className="h-auto min-h-10 whitespace-normal p-0 text-xs text-pv-blu" onClick={() => setPrezziId(c.id)}>{numeroPrezzi} prezzi dedicati</Button>}
+      <BadgePrezziDedicati conteggio={numeroPrezzi} mostraNumero onClick={() => setPrezziId(c.id)} />
       {(c.indirizzo || loc) && <p className="flex items-start gap-1.5 text-muted-foreground"><MapPin className="mt-0.5 size-3 shrink-0" aria-hidden/><span className="min-w-0 break-words">{[c.indirizzo, loc].filter(Boolean).join(", ")}</span></p>}
       <div className="pt-1">
       {geo && rigaDistanza(stessaSede ? "Più vicina · di riferimento" : "Più vicina", geo.lat == null || geo.lng == null

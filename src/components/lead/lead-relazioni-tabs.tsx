@@ -1,4 +1,6 @@
 import { useSoloShowroom } from "@/hooks/use-solo-showroom";
+import { BadgePrezziDedicati } from "@/components/badge-prezzi-dedicati";
+import { useConteggiPrezziCantieri } from "@/lib/cantiere-listini-api";
 import { eliminaConEsito, messaggioEliminazioneCantiere } from "@/lib/esito-eliminazione";
 import { useAuth } from "@/hooks/use-auth";
 import { è_preventivista, puoModificareRecordPreventivista } from "@/lib/permessi-preventivi";
@@ -288,6 +290,7 @@ export function LeadCantieriTab({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const { data: conteggiPrezzi = {} } = useConteggiPrezziCantieri((data ?? []).map(c => c.id));
   const editing = data?.find((c) => c.id === editId) ?? null;
 
   return (
@@ -327,8 +330,9 @@ export function LeadCantieriTab({
             <Card key={c.id} className="p-4">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-semibold truncate">{c.nome}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="min-w-0 break-words font-semibold">{c.nome}</p>
+                    <BadgePrezziDedicati conteggio={conteggiPrezzi[c.id]} />
                     {c.attivo ? <Badge className="bg-success/15 text-success">Attivo</Badge> : <Badge variant="outline">Chiuso</Badge>}
                   </div>
                   {c.descrizione && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{c.descrizione}</p>}

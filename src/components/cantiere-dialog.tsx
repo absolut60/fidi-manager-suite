@@ -3,6 +3,7 @@ import { Switch } from "@/components/ui/switch";
 import { eliminaConEsito, messaggioEliminazioneCantiere } from "@/lib/esito-eliminazione";
 import { CollegamentiCantiere } from "@/components/collegamenti-cantiere";
 import { PrezziCantiereDialog } from "@/components/prezzi-cantiere-dialog";
+import { BadgePrezziDedicati } from "@/components/badge-prezzi-dedicati";
 import { contaPrezziCantiere, chiaveConteggioPrezziCantiere } from "@/lib/cantiere-listini-api";
 import { provvisorioInizialeCantiere, nomeInizialeCantiere } from "@/lib/cantieri-provvisori";
 import { useEffect, useState } from "react";
@@ -350,7 +351,7 @@ export function CantiereDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[calc(100%-1.5rem)] max-w-3xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{cantiere ? "Modifica cantiere" : "Nuovo cantiere"}</DialogTitle>
+          <DialogTitle className="flex flex-wrap items-center gap-2 pr-6">{cantiere ? "Modifica cantiere" : "Nuovo cantiere"}{cantiere && <BadgePrezziDedicati conteggio={numeroPrezzi} />}</DialogTitle>
           <DialogDescription>
             L'indirizzo viene geocodificato automaticamente per posizionare il cantiere sulla mappa.
           </DialogDescription>

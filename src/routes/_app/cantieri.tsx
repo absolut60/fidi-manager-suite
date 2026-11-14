@@ -13,6 +13,8 @@ import { è_preventivista, puoModificareRecordPreventivista } from "@/lib/permes
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { BadgeProvvisorio } from "@/components/badge-provvisorio";
+import { BadgePrezziDedicati } from "@/components/badge-prezzi-dedicati";
+import { useConteggiPrezziCantieri } from "@/lib/cantiere-listini-api";
 import { FILTRI_PROVVISORIO, passaFiltroProvvisorio } from "@/lib/cantieri-provvisori";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -120,6 +122,7 @@ function CantieriPage() {
     },
   });
 
+  const { data: conteggiPrezzi = {} } = useConteggiPrezziCantieri(rows.map(c => c.id));
   const { data: mapsKey } = useChiaveMappe();
 
   const filtrati = useMemo(() => {
@@ -273,7 +276,7 @@ function CantieriPage() {
                   return (
                     <SchedaLista
                       key={c.id}
-                      titolo={<span className="inline-flex flex-wrap items-center gap-2">{c.nome}{c.provvisorio && <BadgeProvvisorio />}</span>}
+                      titolo={<span className="inline-flex flex-wrap items-center gap-2">{c.nome}{c.provvisorio && <BadgeProvvisorio />}<BadgePrezziDedicati conteggio={conteggiPrezzi[c.id]} /></span>}
                       badge={
                         c.attivo === false
                           ? <Badge variant="outline">Chiuso</Badge>
@@ -335,6 +338,7 @@ function CantieriPage() {
                           <TableCell className="font-medium">
                             {c.nome}
                             {c.provvisorio && <span className="ml-2 inline-block align-middle"><BadgeProvvisorio /></span>}
+                            <span className="ml-2 inline-block align-middle"><BadgePrezziDedicati conteggio={conteggiPrezzi[c.id]} /></span>
                             {c.categoria && (
                               <span className="ml-2 text-xs text-muted-foreground">
                                 {CATEGORIA_LABEL[c.categoria] ?? c.categoria}
