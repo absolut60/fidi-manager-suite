@@ -17,7 +17,8 @@ export function PrezziCantiereDialog({ open, onOpenChange, cantiere, condizioniP
 }
 function ContenutoPrezziCantiere({ cantiere, condizioniPrezzi }: { cantiere: CantiereRow; condizioniPrezzi?: CondizioniPrezziPreventivo }) {
   const condizioni = condizioniPrezzi ?? condizioniPrezziCliente(cantiere.cliente_id);
-  const chiaveProposta = (codice: string) => ["prezzi-cantiere-proposta", cantiere.id, condizioni, codice];
+  const chiaveCondizioni = [condizioni.cliente_id, condizioni.listino_rif, condizioni.macrocategoria_rif, condizioni.categoria_rif, condizioni.store_id, condizioni.data];
+  const chiaveProposta = (codice: string) => ["prezzi-cantiere-proposta", cantiere.id, chiaveCondizioni, codice];
   const qc = useQueryClient();
   const { user } = useAuth();
   const [adding, setAdding] = useState(false);
@@ -26,7 +27,7 @@ function ContenutoPrezziCantiere({ cantiere, condizioniPrezzi }: { cantiere: Can
   const { data: modificabile = false, error: permessoError } = useQuery({ queryKey: ["prezzi-cantiere-modifica", user?.id, cantiere.id, cantiere.cliente_id, cantiere.lead_id, cantiere.agente_codice, cantiere.created_by], queryFn: () => puoModificareCantiereDb(cantiere), retry: false });
   const codici = rows.map(r => r.cod_gamma);
   const { data: gamma = [] } = useQuery({ queryKey: ["prezzi-cantiere-unita", cantiere.id, codici], queryFn: () => unitaPrezziCantiere(codici), enabled: !!codici.length });
-  const { data: prezzi = new Map<string, PrezzoClienteGamma>() } = useQuery({ queryKey: ["prezzi-cantiere-listino", cantiere.id, condizioni, codici], queryFn: async () => {
+  const { data: prezzi = new Map<string, PrezzoClienteGamma>() } = useQuery({ queryKey: ["prezzi-cantiere-listino", cantiere.id, chiaveCondizioni, codici], queryFn: async () => {
     const cached = new Map<string, PrezzoClienteGamma>();
     const mancanti: string[] = [];
     for (const cod of codici) { const p = qc.getQueryData<PrezzoClienteGamma | null>(chiaveProposta(cod)); if (p === undefined) mancanti.push(cod); else if (p) cached.set(cod, p); }
