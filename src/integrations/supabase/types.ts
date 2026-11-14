@@ -8534,6 +8534,7 @@ export type Database = {
         }[]
       }
       auth_mfa_ok: { Args: never; Returns: boolean }
+      auth_preventivista: { Args: never; Returns: boolean }
       auth_puo_accedere_marketing: { Args: never; Returns: boolean }
       auth_puo_aggiornare_cerved: { Args: never; Returns: boolean }
       auth_puo_eliminare_contatti_clienti: { Args: never; Returns: boolean }
