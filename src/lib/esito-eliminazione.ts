@@ -5,6 +5,7 @@ import type { Database } from "@/integrations/supabase/types";
 type ErroreEliminazione = { code?: string; message: string };
 type QueryEliminazione = PromiseLike<{ error: ErroreEliminazione | null; count: number | null }> & {
   eq: (colonna: string, valore: string) => QueryEliminazione;
+  in: (colonna: string, valori: readonly string[]) => QueryEliminazione;
   not: (colonna: string, operatore: string, valore: null) => QueryEliminazione;
 };
 export type EsitoEliminazione =

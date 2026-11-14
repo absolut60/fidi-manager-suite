@@ -429,9 +429,8 @@ function ClienteDetail() {
 
   const deleteContatto = useMutation({
     mutationFn: async (id: string) => {
-      const { data, error } = await supabase.from("contatti").delete().eq("id", id).select("id");
-      if (error) throw new Error(erroreScritturaContatto(error, "eliminare"));
-      if (!data || data.length === 0) throw new Error("Non hai il permesso di eliminare questo contatto");
+      const esito = await eliminaConEsito("contatti", id);
+      if (esito.tipo !== "eliminato") throw new Error(messaggioEsitoEliminazione(esito, "il contatto"));
     },
     onSuccess: () => {
       toast.success("Contatto eliminato");

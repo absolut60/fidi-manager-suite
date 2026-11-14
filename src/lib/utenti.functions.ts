@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { erroreSedeObbligatoria } from "@/lib/permessi-showroom";
 import { valutaEsitoEmail } from "@/lib/email-esito";
 import { assertSessioneAal2 } from "@/lib/sessione-aal2.server";
@@ -130,8 +131,12 @@ export const creaUtente = createServerFn({ method: "POST" })
     if (data.attivo === false) await applicaBanAttivo(userId, false);
 
     // Sostituisci i ruoli con quelli scelti
-    const { error: eDel } = await supabaseAdmin.from("user_roles").delete().eq("user_id", userId);
-    if (eDel) throw new Error(eDel.message);
+    const { count: vecchiRuoli, error: eConteggio } = await supabaseAdmin.from("user_roles").select("id", { count: "exact", head: true }).eq("user_id", userId);
+    if (eConteggio || vecchiRuoli === null) throw new Error(eConteggio?.message ?? "Conteggio ruoli non disponibile");
+    if (vecchiRuoli > 0) {
+      const esito = await eliminaConEsito("user_roles", { richiesti: vecchiRuoli, filtro: q => q.eq("user_id", userId) }, undefined, supabaseAdmin);
+      if (esito.tipo !== "eliminato") throw new Error(`${messaggioEsitoEliminazione(esito, "i ruoli precedenti")} I nuovi ruoli non sono stati inseriti.`);
+    }
     const { error: eIns } = await supabaseAdmin
       .from("user_roles")
       .insert(data.ruoli.map((role) => ({ user_id: userId, role: role as AppRole })));
@@ -407,8 +412,12 @@ export const updateUtenteRuoli = createServerFn({ method: "POST" })
     if (eProf) throw new Error(eProf.message);
     await applicaBanAttivo(data.userId, data.attivo);
 
-    const { error: eDel } = await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId);
-    if (eDel) throw new Error(eDel.message);
+    const { count: vecchiRuoli, error: eConteggio } = await supabaseAdmin.from("user_roles").select("id", { count: "exact", head: true }).eq("user_id", data.userId);
+    if (eConteggio || vecchiRuoli === null) throw new Error(eConteggio?.message ?? "Conteggio ruoli non disponibile");
+    if (vecchiRuoli > 0) {
+      const esito = await eliminaConEsito("user_roles", { richiesti: vecchiRuoli, filtro: q => q.eq("user_id", data.userId) }, undefined, supabaseAdmin);
+      if (esito.tipo !== "eliminato") throw new Error(`${messaggioEsitoEliminazione(esito, "i ruoli precedenti")} I nuovi ruoli non sono stati inseriti.`);
+    }
     const { error: eIns } = await supabaseAdmin
       .from("user_roles")
       .insert(data.ruoli.map((role) => ({ user_id: data.userId, role: role as AppRole })));

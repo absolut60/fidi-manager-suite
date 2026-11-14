@@ -1,3 +1,6 @@
+# FM69 — Eliminazioni verificate, fetta 4b
+- [x] Chat/promesse/ruoli/push e chiamante notifiche verificati; contatto cliente e attività fornitore già verificati ricondotti alla fonte unica, righe prima dei file. Regola docs e guardia AST con eccezioni tecniche puntuali (19 DELETE) e Set/Map/URLSearchParams espliciti. 842 test; browser chat negata 375/1280, file e messaggio intatti, conferma aperta; pagina temporanea rimossa. Nessun DB/permesso.
+
 # FM69 — Eliminazioni verificate, fetta 4
 - [x] Interfaccia recupero/legale/piani/richieste e chiamante solleciti; server con client opzionale e filtri originali, conteggi DELETE reali e stop cascate; audit residui completato. 836 test e browser simulato 375/1280: allegati negati, azione mai cancellata e Storage intatto. Nessun DB; prestazioni reset massivo non provate per evitare cancellazioni reali.
 

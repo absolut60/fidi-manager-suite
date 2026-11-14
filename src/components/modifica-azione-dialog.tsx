@@ -1,4 +1,4 @@
-import { messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { useCallback, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -193,9 +193,22 @@ export function ModificaAzioneDialog({
         const daTogliere = [...scadIniziali].filter((id) => scadVisibili.has(id) && !scadSel.has(id));
         const daAggiungere = [...scadSel].filter((id) => !scadIniziali.has(id));
         if (daTogliere.length > 0) {
-          const { error: eDel } = await supabase.from("azioni_recupero_scadenze")
-            .delete().eq("azione_id", azione.id).in("scadenza_id", daTogliere);
-          if (eDel) throw eDel;
+          const esito = await eliminaConEsito("azioni_recupero_scadenze", {
+            richiesti: daTogliere.length,
+            filtro: q => q.eq("azione_id", azione.id).in("scadenza_id", daTogliere),
+          });
+          if (esito.tipo !== "eliminato") {
+            invalidaRecuperoCliente(qc, azione.cliente_id);
+            for (const k of ["promesse-pagamento", "promesse-previsione", "scadenziario-paginata-v1", "scadenziario-totali-v1", "scadenziario-all-ids", "scadenziario-per-store", "scadenziario-previsione-coperture"]) qc.invalidateQueries({ queryKey: [k] });
+            const { data: collegamenti, error: eLettura } = await supabase.from("azioni_recupero_scadenze").select("scadenza_id").eq("azione_id", azione.id);
+            if (!eLettura && collegamenti) {
+              const ids = new Set(collegamenti.map(r => r.scadenza_id));
+              setScadIniziali(ids);
+              setScadSel(new Set(ids));
+            }
+            toast.error(messaggioEsitoEliminazione(esito, "i collegamenti alle scadenze"));
+            return;
+          }
         }
         if (daAggiungere.length > 0) {
           const { error: eIns } = await supabase.from("azioni_recupero_scadenze")
