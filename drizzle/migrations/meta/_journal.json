@@ -1478,6 +1478,13 @@
       "when": 1794656987557,
       "tag": "0210_fm68_preventivisti_visibilita_gruppo",
       "breakpoints": true
+    },
+    {
+      "idx": 211,
+      "version": "7",
+      "when": 1794657372285,
+      "tag": "0211_fm68_indicatore_cliente_preventivo",
+      "breakpoints": true
     }
   ]
 }
