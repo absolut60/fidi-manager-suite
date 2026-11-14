@@ -1,3 +1,5 @@
+import { leggiTutteLeRighe } from "@/lib/leggi-tutte-le-righe";
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { assertSessioneAal2 } from "@/lib/sessione-aal2.server";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -55,64 +57,25 @@ export const eseguiCleanupRecupero = createServerFn({ method: "POST" })
     }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // 1) Allegati azioni: raccogli path e cancella file dal bucket
-    const { data: alleg, error: eAll } = await supabaseAdmin
-      .from("allegati")
-      .select("id, storage_path")
-      .eq("entita_tipo", "azione_recupero");
-    if (eAll) throw new Error(eAll.message);
-
-    const allegatiCount = alleg?.length ?? 0;
-    const paths = (alleg ?? []).map((a: any) => a.storage_path).filter(Boolean);
-    let fileRimossi = 0;
-    if (paths.length > 0) {
-      // batch di 100 per evitare payload eccessivi
+    const conteggi = { azioni_eliminate: 0, campagne_eliminate: 0, destinatari_eliminati: 0, allegati_eliminati: 0, file_rimossi: 0 };
+    const alleg = await leggiTutteLeRighe<{ id: string; storage_path: string }>((da, a) => supabaseAdmin.from("allegati").select("id, storage_path").eq("entita_tipo", "azione_recupero").order("id").range(da, a));
+    if (alleg.length) {
+      const esito = await eliminaConEsito("allegati", { richiesti: alleg.length, filtro: q => q.eq("entita_tipo", "azione_recupero") }, undefined, supabaseAdmin);
+      if (esito.tipo !== "eliminato") throw new Error(messaggioEsitoEliminazione(esito, "gli allegati delle azioni"));
+      conteggi.allegati_eliminati = esito.eliminati ?? 0;
+      const paths = alleg.map(a => a.storage_path).filter(Boolean);
       for (let i = 0; i < paths.length; i += 100) {
-        const batch = paths.slice(i, i + 100);
-        const { error } = await supabaseAdmin.storage.from("allegati").remove(batch);
-        if (!error) fileRimossi += batch.length;
+        const { data: rimossi, error } = await supabaseAdmin.storage.from("allegati").remove(paths.slice(i, i + 100));
+        if (!error) conteggi.file_rimossi += rimossi?.length ?? 0;
       }
-      const { error: eDelAll } = await supabaseAdmin
-        .from("allegati")
-        .delete()
-        .eq("entita_tipo", "azione_recupero");
-      if (eDelAll) throw new Error(eDelAll.message);
     }
-
-    // 2) Conta + cancella azioni (azioni_recupero_scadenze CASCADE)
-    const { count: azioniCount } = await supabaseAdmin
-      .from("azioni_recupero")
-      .select("id", { count: "exact", head: true });
-    const { error: eAz } = await supabaseAdmin
-      .from("azioni_recupero")
-      .delete()
-      .not("id", "is", null);
-    if (eAz) throw new Error(eAz.message);
-
-    // 3) Campagne (destinatari prima per sicurezza)
-    const { count: destCount } = await supabaseAdmin
-      .from("campagne_sollecito_destinatari")
-      .select("id", { count: "exact", head: true });
-    const { error: eDest } = await supabaseAdmin
-      .from("campagne_sollecito_destinatari")
-      .delete()
-      .not("id", "is", null);
-    if (eDest) throw new Error(eDest.message);
-
-    const { count: campCount } = await supabaseAdmin
-      .from("campagne_sollecito")
-      .select("id", { count: "exact", head: true });
-    const { error: eCamp } = await supabaseAdmin
-      .from("campagne_sollecito")
-      .delete()
-      .not("id", "is", null);
-    if (eCamp) throw new Error(eCamp.message);
-
-    return {
-      azioni_eliminate: azioniCount ?? 0,
-      campagne_eliminate: campCount ?? 0,
-      destinatari_eliminati: destCount ?? 0,
-      allegati_eliminati: allegatiCount,
-      file_rimossi: fileRimossi,
-    };
+    for (const [tabella, campo] of [["azioni_recupero", "azioni_eliminate"], ["campagne_sollecito_destinatari", "destinatari_eliminati"], ["campagne_sollecito", "campagne_eliminate"]] as const) {
+      const { count: richiesti, error } = await supabaseAdmin.from(tabella).select("id", { count: "exact", head: true });
+      if (error || richiesti === null) throw new Error(error?.message ?? "Conteggio non disponibile");
+      if (!richiesti) continue;
+      const esito = await eliminaConEsito(tabella, { richiesti, filtro: q => q.not("id", "is", null) }, undefined, supabaseAdmin);
+      if (esito.tipo !== "eliminato") throw new Error(`${messaggioEsitoEliminazione(esito, tabella === "azioni_recupero" ? "le azioni" : tabella === "campagne_sollecito" ? "le campagne" : "i destinatari")} Già eliminati: ${conteggi.allegati_eliminati} allegati, ${conteggi.azioni_eliminate} azioni, ${conteggi.destinatari_eliminati} destinatari, ${conteggi.campagne_eliminate} campagne.`);
+      conteggi[campo] = esito.eliminati ?? 0;
+    }
+    return conteggi;
   });
