@@ -277,7 +277,7 @@ function IscrizioneEventoPage() {
           <img
             src={`data:image/png;base64,${LOGO_MADE_BASE64}`}
             alt="MADE"
-            className="h-12 w-auto mx-auto mb-4"
+            className="w-[341px] max-w-full h-auto mx-auto mb-4"
             style={{ aspectRatio: "490 / 69" }}
           />
           <h1 className="text-2xl font-bold tracking-tight">Iscrizione all&apos;evento</h1>
