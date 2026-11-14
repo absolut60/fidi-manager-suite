@@ -215,7 +215,7 @@ export function AttivitaCommercialeDialog({
         <DialogHeader>
           <DialogTitle>{attivita ? "Modifica attività" : "Registra attività"}</DialogTitle>
           <DialogDescription>
-            Appuntamenti, visite, chiamate ed esiti collegati all'opportunità.
+            {preventivoId ? "Appuntamenti, visite, chiamate ed esiti collegati al preventivo." : "Appuntamenti, visite, chiamate ed esiti collegati all'opportunità."}
           </DialogDescription>
         </DialogHeader>
 
