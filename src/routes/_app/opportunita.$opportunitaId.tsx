@@ -18,7 +18,7 @@ import {
   STATO_LABEL, STATO_CLASS, TIPO_LABEL, fmtEuro, fmtData, nomeSoggetto, type OpportunitaRow,
 } from "@/lib/opportunita";
 import {
-  TIPO_ATTIVITA_LABEL, TIPO_ATTIVITA_CLASS, fmtDataOra, type AttivitaRow,
+  TIPO_ATTIVITA_LABEL, TIPO_ATTIVITA_CLASS, fmtDataOra, luogoAttivita, type AttivitaRow,
 } from "@/lib/attivita-commerciale";
 
 export const Route = createFileRoute("/_app/opportunita/$opportunitaId")({
@@ -28,6 +28,8 @@ export const Route = createFileRoute("/_app/opportunita/$opportunitaId")({
       { name: "description", content: "Dettaglio dell'opportunità commerciale e attività collegate." },
       { property: "og:title", content: "Dettaglio opportunità — FidiManager" },
       { property: "og:description", content: "Dettaglio dell'opportunità commerciale e attività collegate." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: DettaglioOpportunita,
@@ -79,7 +81,7 @@ function DettaglioOpportunita() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("attivita_commerciale")
-        .select("*")
+        .select("*, sede_riferimento:stores!attivita_commerciale_sede_riferimento_id_fkey(nome)")
         .eq("opportunita_id", opportunitaId)
         .order("data_pianificata", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false })
@@ -207,7 +209,7 @@ function DettaglioOpportunita() {
                     <span>Pianificata: {fmtDataOra(a.data_pianificata)}</span>
                     {a.completata && <span>Svolta: {fmtDataOra(a.data_svolgimento)}</span>}
                     {a.esito && <span>Esito: {a.esito}</span>}
-                    {a.luogo && <span>Luogo: {a.luogo}</span>}
+                    {luogoAttivita(a) && <span className="break-words">Luogo: {luogoAttivita(a)}</span>}
                   </div>
                   {a.note && <div className="mt-1 text-sm">{a.note}</div>}
                 </div>

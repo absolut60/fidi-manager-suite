@@ -1485,6 +1485,13 @@
       "when": 1794657372285,
       "tag": "0211_fm68_indicatore_cliente_preventivo",
       "breakpoints": true
+    },
+    {
+      "idx": 212,
+      "version": "7",
+      "when": 1794664023781,
+      "tag": "0212_fm68_attivita_commerciale_indirizzo_sede",
+      "breakpoints": true
     }
   ]
 }

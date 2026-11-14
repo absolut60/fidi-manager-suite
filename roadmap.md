@@ -1,4 +1,8 @@
 # FM68 — Fetta A: visibilità preventivisti (solo database)
+## Attività commerciali — indirizzo e sede di riferimento
+- [x] 0212 additiva, cinque colonne nullable e FK/indice; tipi rigenerati. Undici policy identiche (MD5 03e197c15551c44c79f6405ec3a4e955), store_id preservato in modifica, luogo storico non inviato.
+- [x] BloccoIndirizzo e sede manuale prevalente; storeIdAttivita/sedeInizialeAttivita e luogoAttivita condivisi. Calendario (tooltip/dettaglio) e opportunità aggiornati; nessun altro lettore/export attività trovato.
+- [x] 764 test bun; salva identico byte per byte esclusi soli campi richiesti. Schermate creazione/modifica 375/1280, compilazione e salvataggi/rilettura simulati; calendario con metadati tardivi e nessun overflow 320/390/768/1280/1920. Sessione reale apre calendario, nessuna scrittura reale né Google reale provati. Pagina temporanea eliminata.
 ## Indirizzi giro 3
 - [x] Cinque residenze con BloccoIndirizzo opt-in a campo unico, stessi stati e salvataggi; nessuna modifica DB/chiave. I suggerimenti uniscono via/CAP/città/provincia nel solo campo esistente.
 - [x] 752 test; salvataggi identici byte per byte; schermate simulate modifica contatto/privacy 375/1280, modifica manuale e payload privacy verificati; fallback senza chiave scrivibile. Google reale e scritture reali non provati; pagine temporanee rimosse. Residuo: attivita-commerciale-dialog.tsx:227 Luogo (indirizzo o sede), non toccato; città/provincia marketing sono filtri, invio massivo usa email/PEC. Modulo privacy pubblico solo in firma-privacy; iscrizioni non lo importano.

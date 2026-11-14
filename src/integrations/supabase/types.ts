@@ -914,6 +914,8 @@ export type Database = {
       attivita_commerciale: {
         Row: {
           agente_codice: string | null
+          cap: string | null
+          citta: string | null
           cliente_id: string | null
           completata: boolean
           created_at: string
@@ -922,11 +924,14 @@ export type Database = {
           descrizione: string | null
           esito: string | null
           id: string
+          indirizzo: string | null
           lead_id: string | null
           luogo: string | null
           note: string | null
           operatore_id: string | null
           opportunita_id: string | null
+          provincia: string | null
+          sede_riferimento_id: string | null
           store_id: string | null
           tipo: Database["public"]["Enums"]["tipo_attivita_commerciale"]
           titolo: string
@@ -934,6 +939,8 @@ export type Database = {
         }
         Insert: {
           agente_codice?: string | null
+          cap?: string | null
+          citta?: string | null
           cliente_id?: string | null
           completata?: boolean
           created_at?: string
@@ -942,11 +949,14 @@ export type Database = {
           descrizione?: string | null
           esito?: string | null
           id?: string
+          indirizzo?: string | null
           lead_id?: string | null
           luogo?: string | null
           note?: string | null
           operatore_id?: string | null
           opportunita_id?: string | null
+          provincia?: string | null
+          sede_riferimento_id?: string | null
           store_id?: string | null
           tipo?: Database["public"]["Enums"]["tipo_attivita_commerciale"]
           titolo: string
@@ -954,6 +964,8 @@ export type Database = {
         }
         Update: {
           agente_codice?: string | null
+          cap?: string | null
+          citta?: string | null
           cliente_id?: string | null
           completata?: boolean
           created_at?: string
@@ -962,11 +974,14 @@ export type Database = {
           descrizione?: string | null
           esito?: string | null
           id?: string
+          indirizzo?: string | null
           lead_id?: string | null
           luogo?: string | null
           note?: string | null
           operatore_id?: string | null
           opportunita_id?: string | null
+          provincia?: string | null
+          sede_riferimento_id?: string | null
           store_id?: string | null
           tipo?: Database["public"]["Enums"]["tipo_attivita_commerciale"]
           titolo?: string
@@ -999,6 +1014,13 @@ export type Database = {
             columns: ["opportunita_id"]
             isOneToOne: false
             referencedRelation: "opportunita"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attivita_commerciale_sede_riferimento_id_fkey"
+            columns: ["sede_riferimento_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
           {

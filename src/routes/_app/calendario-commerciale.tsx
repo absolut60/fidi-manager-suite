@@ -31,7 +31,7 @@ import {
 import { AttivitaCommercialeDialog } from "@/components/attivita-commerciale-dialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { TooltipDettaglio } from "@/components/tooltip-dettaglio";
-import { TIPO_ATTIVITA_LABEL, fmtDataOra, type AttivitaRow, type TipoAttivita } from "@/lib/attivita-commerciale";
+import { TIPO_ATTIVITA_LABEL, fmtDataOra, luogoAttivita, type AttivitaRow, type TipoAttivita } from "@/lib/attivita-commerciale";
 
 export const Route = createFileRoute("/_app/calendario-commerciale")({
   head: () => ({
@@ -115,7 +115,7 @@ function CalendarioCommercialePage() {
       const { data, error } = await supabase
         .from("attivita_commerciale")
         .select(
-          "id, tipo, titolo, descrizione, data_pianificata, data_svolgimento, completata, esito, agente_codice, operatore_id, store_id, opportunita_id, cliente_id, lead_id, luogo, note, created_at, opportunita:opportunita_id(titolo), clienti:cliente_id(ragione_sociale), lead:lead_id(ragione_sociale, nome, cognome)",
+          "id, tipo, titolo, descrizione, data_pianificata, data_svolgimento, completata, esito, agente_codice, operatore_id, store_id, opportunita_id, cliente_id, lead_id, luogo, indirizzo, cap, citta, provincia, sede_riferimento_id, sede_riferimento:stores!attivita_commerciale_sede_riferimento_id_fkey(nome), note, created_at, opportunita:opportunita_id(titolo), clienti:cliente_id(ragione_sociale), lead:lead_id(ragione_sociale, nome, cognome)",
         )
         .not("data_pianificata", "is", null)
         .gte("data_pianificata", range!.start)
@@ -338,6 +338,7 @@ function CalendarioCommercialePage() {
                     {a.agente_codice && <div>Assegnatario: {assegnatario?.descrizione || a.agente_codice}</div>}
                     <div>Stato: {a.completata ? "Fatto" : "Da fare"}</div>
                     {a.esito && <div>Esito: {a.esito}</div>}
+                    {luogoAttivita(a) && <div className="break-words">{luogoAttivita(a)}</div>}
                     <div className="line-clamp-6 whitespace-pre-line break-words opacity-90">
                       {[a.descrizione?.trim(), a.note?.trim()].filter(Boolean).join("\n") || "Nessuna descrizione o nota"}
                     </div>
@@ -382,7 +383,7 @@ function CalendarioCommercialePage() {
                   {aperta.completata ? `Fatto (${fmtDataOra(aperta.data_svolgimento)})` : "Da fare"}
                 </div>
                 {aperta.esito && <div><span className="text-muted-foreground">Esito: </span>{aperta.esito}</div>}
-                {aperta.luogo && <div><span className="text-muted-foreground">Luogo: </span>{aperta.luogo}</div>}
+                {luogoAttivita(aperta) && <div className="break-words"><span className="text-muted-foreground">Luogo: </span>{luogoAttivita(aperta)}</div>}
                 {aperta.note && <div><span className="text-muted-foreground">Note: </span>{aperta.note}</div>}
               </div>
               <DialogFooter className="flex-wrap gap-2">
