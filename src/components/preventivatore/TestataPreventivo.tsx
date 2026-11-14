@@ -79,7 +79,7 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
     </RiquadroScheda>
     <RiquadroScheda titolo="Cantiere" icona={HardHat} tono="verde" densita="compatta">
       <div className="[&>div]:space-y-1.5 [&_p]:text-xs [&_div.text-sm]:text-xs [&_button]:h-7 [&_button]:min-h-7 [&_button]:px-2 [&_button]:text-xs [&_button[role=combobox]]:w-full [&_div.space-y-2]:flex [&_div.space-y-2]:flex-col [&_div.space-y-2]:gap-1.5 [&_div.space-y-2]:space-y-0 [&_div[role=group]]:order-1 [&_div[role=group]]:flex-nowrap [&_div[role=group]_button]:px-1.5 [&_div[role=group]_button]:whitespace-normal [&_div[role=group]_button]:leading-tight [&_button[role=combobox]]:order-0">
-        <CantiereTestata prev={prev} modificabile={modificabile} onCantiere={onCantiere} clienteEtichetta={identitaCliente}/>
+        <CantiereTestata prev={prev} modificabile={modificabile} onCantiere={onCantiere} clienteEtichetta={identitaCliente} sedeClienteNome={sede}/>
       </div>
     </RiquadroScheda>
     </div>

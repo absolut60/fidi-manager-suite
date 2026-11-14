@@ -40,7 +40,7 @@ function sedeSvg(colore: string): string {
 }
 
 export default function CantieriMappa({
-  apiKey, cantieri, sedi = [], onApri, focusId, onFocusFatto, puoAprire,
+  apiKey, cantieri, sedi = [], onApri, focusId, onFocusFatto, puoAprire, compatta = false,
 }: {
   apiKey: string;
   cantieri: CantiereRow[];
@@ -49,6 +49,7 @@ export default function CantieriMappa({
   focusId?: string | null;
   onFocusFatto?: () => void;
   puoAprire?: (c: CantiereRow) => boolean;
+  compatta?: boolean;
 }) {
   const divRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any>(null);
@@ -59,6 +60,7 @@ export default function CantieriMappa({
   const focusFattoRef = useRef<string | null>(null);
   const [pronta, setPronta] = useState(false);
   const [mostraSedi, setMostraSedi] = useState(true);
+  const [errore, setErrore] = useState(false);
 
   // --- Marker dei cantieri -------------------------------------------------
   useEffect(() => {
@@ -77,6 +79,7 @@ export default function CantieriMappa({
               style: window.google.maps.MapTypeControlStyle?.HORIZONTAL_BAR,
             },
             streetViewControl: false,
+            ...(compatta ? { clickableIcons: false } : {}),
           });
           infoRef.current = new window.google.maps.InfoWindow();
         }
@@ -123,7 +126,8 @@ export default function CantieriMappa({
               btn.textContent = "Sola lettura";
               btn.title = "Puoi modificare solo i cantieri creati da te";
             }
-            div.append(h, s, a, sede, btn);
+            div.append(h, s, a, sede);
+            if (!compatta) div.append(btn);
             infoRef.current.setContent(div);
             infoRef.current.open({ map, anchor: marker });
           };
@@ -141,9 +145,9 @@ export default function CantieriMappa({
         }
         setPronta(true);
       })
-      .catch(() => {});
+      .catch(() => { if (!annullato) setErrore(true); });
     return () => { annullato = true; };
-  }, [apiKey, cantieri, onApri, puoAprire]);
+  }, [apiKey, cantieri, onApri, puoAprire, compatta]);
 
   // --- Marker dei punti vendita (non filtrati per agente) ------------------
   useEffect(() => {
@@ -193,7 +197,12 @@ export default function CantieriMappa({
       });
       sediMarkersRef.current.push(marker);
     });
-  }, [pronta, sedi, mostraSedi]);
+    if (compatta) {
+      const bounds = new window.google.maps.LatLngBounds();
+      [...cantieri, ...sedi].forEach(p => { if (p.lat != null && p.lng != null) bounds.extend({ lat: p.lat, lng: p.lng }); });
+      map.fitBounds(bounds, 40);
+    }
+  }, [pronta, sedi, mostraSedi, compatta, cantieri]);
 
   // --- Focus su un cantiere (da lista / da scheda cliente) -----------------
   // Applicato una sola volta per id: il parametro resta nell'URL, così l'InfoWindow
@@ -213,14 +222,15 @@ export default function CantieriMappa({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
+      {!compatta && <div className="flex items-center gap-2">
         <Switch id="mostra-sedi" checked={mostraSedi} onCheckedChange={setMostraSedi} />
         <Label htmlFor="mostra-sedi" className="text-sm font-normal cursor-pointer">
           Mostra punti vendita ({sedi.length})
         </Label>
-      </div>
-      <div ref={divRef} className="h-[420px] sm:h-[520px] lg:h-[600px] w-full rounded-md border" />
-      <div className="flex flex-wrap gap-3 text-xs">
+      </div>}
+      {errore && <p role="status" className="text-sm text-muted-foreground">Mappa non disponibile. Puoi aprire le indicazioni in Google Maps.</p>}
+      <div ref={divRef} className={compatta ? "h-[50vh] min-h-64 w-full rounded-md border" : "h-[420px] sm:h-[520px] lg:h-[600px] w-full rounded-md border"} />
+      {!compatta && <div className="flex flex-wrap gap-3 text-xs">
         {Object.keys(CATEGORIA_LABEL).map((k) => (
           <span key={k} className="flex items-center gap-1.5">
             <span className="inline-block size-3 rounded-full" style={{ background: CATEGORIA_COLORE[k] }} />
@@ -234,7 +244,7 @@ export default function CantieriMappa({
           />
           Punti vendita MADE
         </span>
-      </div>
+      </div>}
     </div>
   );
 }
