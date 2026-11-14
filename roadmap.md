@@ -1,5 +1,6 @@
 # FM69 — Primo carattere nei campi del preventivo
-- [ ] Riprodurre nei campi reali, individuare la causa, preservare indicatore/Salva/uscita, test di regressione e suite completa.
+- [x] Riprodotto sulla pagina effettiva con risposte simulate: lordo/sconti/ricerca perdono il primo tasto, descrizione/Testata no. Capture ripristina il value prima di onChange; spostato il solo evento in bubble, nessuna modifica DB.
+- [x] Test browser permanente fallisce intercettando il vecchio hook e passa col nuovo; campi, Salva, indicatore e uscita/Resta verificati, screenshot 375/1280. 799 test pass, build e controlli automatici OK. JSDOM da solo non riproduce il difetto; regressione provata in Chromium. Sessione reale senza preventivi: nessuna scrittura reale.
 
 # FM69 — Correzioni dopo prova Andrea
 - [x] Righe compatte, CellaUm condivisa, ricerca con portale modale scorrevole e badge/conteggi RLS batch da 500 ID in tutte le viste richieste; invalidazione condivisa e plurali corretti.
