@@ -1464,6 +1464,13 @@
       "when": 1794600457523,
       "tag": "0208_fm67_preventivi_note_allegati",
       "breakpoints": true
+    },
+    {
+      "idx": 209,
+      "version": "7",
+      "when": 1794654308737,
+      "tag": "0209_fm68_dati_cliente_preventivo_cf_tipo",
+      "breakpoints": true
     }
   ]
 }

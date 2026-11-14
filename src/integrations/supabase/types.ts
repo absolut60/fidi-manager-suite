@@ -9078,6 +9078,7 @@ export type Database = {
           cellulare: string
           citta: string
           codice_agente: string
+          codice_fiscale: string
           codice_gestionale: string
           condizione_pagamento_cod: string
           condizione_pagamento_desc: string
@@ -9089,6 +9090,7 @@ export type Database = {
           provincia: string
           ragione_sociale: string
           telefono: string
+          tipo_soggetto: string
         }[]
       }
       decidi_candidato_riconciliazione: {
