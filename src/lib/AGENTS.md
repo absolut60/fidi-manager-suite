@@ -15,3 +15,4 @@
 - Quote note and attachment mutations use chiaveSalvaPreventivo; their edit controls use the existing preventivoModificabile result, so the save badge and exit guard include these writes.
 - Estimator UI access uses è_preventivista and puoModificareRecordPreventivista; full lead-management gates remain separate, and customer links check direct customer RLS rather than quote-lite RPC access.
 - Road distances use only distanzaStradale (Routes JSON); nearest-store recalculation keeps its existing queries/update, while quote customer-store distances use authenticated RLS reads without persistence.
+- Site-price editing uses only auth_puo_modificare_cantiere through puoModificareCantiereDb; proposals reuse the customer engine, and unit display/editing and discounts reuse riga-preventivo, preserving manual UM1 prices without changing quote special-price readers.

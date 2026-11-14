@@ -1,4 +1,5 @@
 import { useSoloShowroom } from "@/hooks/use-solo-showroom";
+import { eliminaConEsito, messaggioEliminazioneCantiere } from "@/lib/esito-eliminazione";
 import { useAuth } from "@/hooks/use-auth";
 import { è_preventivista, puoModificareRecordPreventivista } from "@/lib/permessi-preventivi";
 import { puoGestireLead } from "@/lib/lead-costanti";
@@ -270,10 +271,14 @@ export function LeadCantieriTab({
   // Righe già collegate a un cliente: si scollega soltanto il lead.
   const delMut = useMutation({
     mutationFn: async (c: { id: string; cliente_id: string | null }) => {
-      const { error } = c.cliente_id
-        ? await supabase.from("cantieri").update({ lead_id: null }).eq("id", c.id)
-        : await supabase.from("cantieri").delete().eq("id", c.id);
-      if (error) throw error;
+      if (c.cliente_id) {
+        const { error, data } = await supabase.from("cantieri").update({ lead_id: null }).eq("id", c.id).select("id");
+        if (error) throw error;
+        if (!data?.length) throw new Error("Non hai i permessi per modificare questo cantiere.");
+      } else {
+        const esito = await eliminaConEsito("cantieri", c.id);
+        if (esito.tipo !== "eliminato") throw new Error(messaggioEliminazioneCantiere(esito));
+      }
     },
     onSuccess: () => {
       toast.success("Cantiere rimosso dal lead");

@@ -18,7 +18,7 @@ export function classificaEsitoEliminazione(
 }
 
 export async function eliminaConEsito(
-  tabella: "cantieri", id: string,
+  tabella: "cantieri" | "cantiere_listini_speciali", id: string,
 ): Promise<EsitoEliminazione> {
   try {
     const { error, data } = await supabase.from(tabella).delete().eq("id", id).select("id");
