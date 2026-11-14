@@ -21,6 +21,7 @@ import {
   type Agente,
 } from "./clienti-api";
 import { testoPerFiltroOr } from "@/lib/ricerca-sicura";
+import { campiSedePreventivo } from "./preventivo-creazione";
 
 export type Preventivo = Database["public"]["Tables"]["preventivi"]["Row"];
 export type PreventivoInsert = Database["public"]["Tables"]["preventivi"]["Insert"];
@@ -533,13 +534,14 @@ export async function duplicaPreventivo(
 
   const oggi = new Date().toISOString().slice(0, 10);
   if (nuovoCliente && !nuovoClienteRow) throw new Error("Cliente del duplicato non trovato");
+  const condizioniNuovoCliente = nuovoCliente && nuovoClienteRow ? await fetchCondizioniPreventivoCliente(nuovoClienteRow.id) : null;
   const { preventivo: nuovo } = await createPreventivo({
     data: oggi,
     validita: src.validita,
     cliente_id: nuovoCliente ? nuovoClienteRow?.id : src.cliente_id,
     cantiere_id: nuovoCliente ? null : src.cantiere_id,
     agente_codice: nuovoCliente ? nuovoClienteRow?.codice_agente : src.agente_codice,
-    filiale: nuovoCliente ? null : src.filiale,
+    ...campiSedePreventivo(nuovoCliente ? { id: condizioniNuovoCliente?.store_id ?? null, nome: condizioniNuovoCliente?.sede_nome ?? null } : { id: src.store_id, nome: src.filiale }),
     fascia_listino: src.fascia_listino, // FM65: colonna non più usata per i prezzi
     tipo_doc: src.tipo_doc,
     stato: "bozza",

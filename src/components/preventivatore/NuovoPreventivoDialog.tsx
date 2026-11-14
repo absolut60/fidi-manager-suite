@@ -1,6 +1,6 @@
 import { CondizioniClienteGamma } from "@/components/preventivatore/CondizioniClienteGamma";
 import { useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
-import { riallineaValidita, validitaProposta } from "@/lib/preventivo-creazione";
+import { campiSedePreventivo, riallineaValidita, validitaProposta } from "@/lib/preventivo-creazione";
 import { creaConPrimoBlocco } from "@/lib/nuovo-preventivo";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -135,7 +135,7 @@ export function NuovoPreventivoDialog({
         cantiere_id: cantiereId,
         cantiere_descrizione: null,
         agente_codice: agenteId,
-        filiale: filiale || null,
+        ...campiSedePreventivo(stores.find(s => s.nome === filiale) ?? null),
         titolo: titolo.trim() || null,
         condizione_pagamento_cod: pagamento || null,
         tipo_doc: tipoDocFinal,
