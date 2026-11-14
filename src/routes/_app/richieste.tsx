@@ -1,4 +1,5 @@
 import { AccessoAreaFidi } from "@/components/accesso-area-fidi";
+import { useBarraBluNascosta } from "@/hooks/barra-blu-context";
 import { createFileRoute, useNavigate, Outlet, useMatchRoute, Link } from "@tanstack/react-router";
 import { leggiTutteLeRighe } from "@/lib/leggi-tutte-le-righe";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -743,7 +744,7 @@ function InApprovazioneTab({
 }: {
   rows: any[]; righeCodaNonFiltrate: any[]; loading: boolean; canApprove: boolean; ordina: OrdinaRichieste; onChanged: () => void;
 }) {
-
+  const barraNascosta = useBarraBluNascosta();
   const { user, roles } = useAuth();
   const navigate = useNavigate();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -861,7 +862,7 @@ function InApprovazioneTab({
       ) : (
         <Card className="p-2 sm:p-3">
           {canApprove && selected.size > 0 && (
-            <div className="flex flex-wrap items-center justify-between gap-3 p-3 mb-2 bg-primary/5 rounded-md sticky top-16 lg:top-2 z-10">
+            <div data-barra-richieste data-nascosta={barraNascosta} className="flex flex-wrap items-center justify-between gap-3 p-3 mb-2 bg-primary/5 rounded-md sticky top-16 pv-orizzontale:data-[nascosta=true]:top-2 lg:top-2 z-10 transition-[top] duration-200">
               <p className="text-sm font-medium min-w-0">
                 {selected.size} selezionate · {formatEuro(filtered.filter((r) => selected.has(r.id)).reduce((s, r) => s + Number(r.importo_richiesto), 0))}
               </p>
