@@ -7,10 +7,23 @@ DECLARE
 BEGIN
   ASSERT public.normalizza_testo_ricerca('12,5')='12.5', 'Decimale 12,5';
   ASSERT public.normalizza_testo_ricerca('1200X2000')='1200x2000 120x200', 'Dimensioni: aggiunge, non sostituisce';
-  ASSERT public.normalizza_testo_ricerca('  120 X 200   12,5  ')='120x200 12.5 12x20', 'Spazi, x e minuscole';
-  ASSERT public.normalizza_testo_ricerca('1201x2000 90x100 12.5x2000')='1201x2000 90x100 12.5x2000', 'Niente varianti non ammesse';
+  ASSERT public.normalizza_testo_ricerca('  120 X 200   12,5  ')='120x200 12.5 12x20 1200x2000', 'Spazi, x e minuscole';
+  ASSERT public.normalizza_testo_ricerca('120x200')='120x200 12x20 1200x2000', 'Varianti bidirezionali memorizzate';
+  ASSERT public.normalizza_testo_ricerca('120x200',false)='120x200', 'Query senza varianti';
+  ASSERT public.normalizza_testo_ricerca('90x100')='90x100 900x1000', 'Conversione centimetri';
+  ASSERT public.normalizza_testo_ricerca('1201x2000 12.5x2000 120x200.5')='1201x2000 12.5x2000 120x200.5', 'Niente varianti non ammesse o decimali';
   ASSERT public.normalizza_testo_ricerca('1200x2000 1000x3000')='1200x2000 1000x3000 120x200 100x300', 'Tutte le coppie';
   ASSERT public.normalizza_testo_ricerca(NULL)='', 'NULL';
+  ASSERT to_regprocedure('extensions.similarity(text,text)') IS NOT NULL, 'pg_trgm nello schema reale';
+  -- La stessa misura deve trovare il testo originariamente espresso nell'altra unità.
+  ASSERT EXISTS(SELECT 1 FROM public.cerca_articoli(testo=>'120x200',solo_gamma=>true,limite=>200) c
+    JOIN public.articoli_gamma g ON g.codice=c.codice
+    WHERE public.normalizza_testo_ricerca(g.descrizione,false) LIKE '%1200x2000%'
+      AND public.normalizza_testo_ricerca(g.descrizione,false) NOT LIKE '%120x200%'), 'cm trova articolo in mm';
+  ASSERT EXISTS(SELECT 1 FROM public.cerca_articoli(testo=>'1200x2000',solo_gamma=>true,limite=>200) c
+    JOIN public.articoli_gamma g ON g.codice=c.codice
+    WHERE public.normalizza_testo_ricerca(g.descrizione,false) LIKE '%120x200%'
+      AND public.normalizza_testo_ricerca(g.descrizione,false) NOT LIKE '%1200x2000%'), 'mm trova articolo in cm';
 
   SELECT count(*) INTO _n FROM public.cerca_articoli(testo=>'lastra gyproc 13',solo_gamma=>true,limite=>200);
   ASSERT _n>0, 'Multi-parola trova lastra gyproc 13';
