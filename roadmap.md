@@ -1,3 +1,6 @@
+# FM69 — Fonte prezzo e protezione listini
+- [ ] Migrazione additiva, fonte unica e copia duplicato; selezione manuali/badge e segno; test/browser 375/1280. Conversione ordine invariata.
+
 # FM69 — Applicazione prezzi cantiere
 - [x] Priorità unica, cache RLS condivisa, articoli/kit/listini, segno e finestra dal Corpo; documentazione aggiornata, nessun DB.
 - [x] 806 test pass, build OK; browser 375/1280 con risposte simulate: articolo dedicato 6,50/costo 3,10, listino 12, extra 10%, modifica manuale/segno e ripristino scelto, kit quantità 2/costo 6,20, una lettura prezzi. Nessuna scrittura reale.

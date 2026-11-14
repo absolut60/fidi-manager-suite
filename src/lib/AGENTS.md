@@ -16,3 +16,5 @@
 - Estimator UI access uses è_preventivista and puoModificareRecordPreventivista; full lead-management gates remain separate, and customer links check direct customer RLS rather than quote-lite RPC access.
 - Road distances use only distanzaStradale (Routes JSON); nearest-store recalculation keeps its existing queries/update, while quote customer-store distances use authenticated RLS reads without persistence.
 - Site-price editing uses only auth_puo_modificare_cantiere through puoModificareCantiereDb; proposals reuse the customer engine, and unit display/editing and discounts reuse riga-preventivo, preserving manual UM1 prices. Quote site-price notices reuse the RLS count key and PrezziCantiereDialog; only successful explicit site selection triggers a toast, and application/marking share prezzoConPrioritaCantiere/coincidePrezzoCantiere with the engine shape and cached opzioniPrezziCantiere.
+
+- Quote price provenance is written only by patchConFontePrezzo; automated paths supply priority source, manual sale-term edits are protected by spunteInizialiListini, and segnoPrezzoCantiere uses persisted source with NULL-only value fallback.
