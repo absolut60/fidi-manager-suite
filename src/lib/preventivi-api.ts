@@ -97,6 +97,13 @@ export async function fetchDatiClientePreventivo(id: string): Promise<DatiClient
   return data?.[0] ?? null;
 }
 
+export type IndicatoreClientePreventivo = Database["public"]["Functions"]["indicatore_cliente_preventivo"]["Returns"][number];
+export async function fetchIndicatoreClientePreventivo(id: string): Promise<IndicatoreClientePreventivo | null> {
+  const { data, error } = await supabase.rpc("indicatore_cliente_preventivo", { _cliente_id: id });
+  if (error) throw error;
+  return data?.[0] ?? null;
+}
+
 export async function cercaClientiPreventivo(q: string) {
   const { data, error } = await supabase.rpc("cerca_clienti_preventivo", { _q: q });
   if (error) throw error;

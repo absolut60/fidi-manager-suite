@@ -10406,6 +10406,15 @@ export type Database = {
           chunks_totali: number
         }[]
       }
+      indicatore_cliente_preventivo: {
+        Args: { _cliente_id: string }
+        Returns: {
+          bloccato: boolean
+          in_legale: boolean
+          scaduto_presente: boolean
+          stadio: string
+        }[]
+      }
       invia_comunicazione_richiesta: {
         Args: { _destinatario: string; _richiesta_id: string; _testo: string }
         Returns: Json

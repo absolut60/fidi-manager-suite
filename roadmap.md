@@ -1,4 +1,9 @@
 # FM68 — Fetta A: visibilità preventivisti (solo database)
+## Fetta B1
+- [x] 0211 indicatore sintetico con fonti SQL canoniche; due punti del preventivo con pallino condiviso e chiave query unica. 736 test verdi.
+- [x] Schermate con dati simulati 375/1280 e telefono orizzontale; nessun overflow 320/375/740/768/1280/1920, pagina temporanea rimossa.
+- [ ] RPC impersonata Pierpaolo aal2 fuori sede/diniego: sandbox_exec non può SET ROLE authenticated né EXECUTE della RPC; nessun grant ampliato. Sessione reale mostra elenco preventivi vuoto, quindi flusso reale non verificato.
+
 - [x] 0210: helper e nove policy additive su cantieri, contatti e lead; nessuna apertura clienti o dati finanziari/legali. Unica dipendenza diretta: consensi_log su contatti, con gate originali invariati; nessuna cascata finanziaria/legale.
 - [x] Quindici controlli SQL superati: policy applicate, default, grant e impronte di tutte le policy/funzioni preesistenti invariate. Nessuna modifica TypeScript manuale; tipi rigenerati automaticamente dalla piattaforma. Prove di scrittura con sessione utente non eseguite.
 

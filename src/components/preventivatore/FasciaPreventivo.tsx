@@ -1,11 +1,12 @@
 import { ExternalLink } from "lucide-react";
 import { formatNumeroIt } from "@/lib/numero-it";
+import { IndicatoreClientePreventivo } from "./IndicatoreClientePreventivo";
 
 export interface RiepilogoPreventivo {
   cliente: string; cantiere: string; listino: string; categoria: string; pagamento: string; validita: string;
   imponibile: number; marginePerc: number; margineEuro: number;
 }
-export function FasciaPreventivo({ dati, titolo, onCliente }: { dati: RiepilogoPreventivo; titolo?: string | null; onCliente: () => void }) {
+export function FasciaPreventivo({ dati, titolo, onCliente, clienteId }: { dati: RiepilogoPreventivo; titolo?: string | null; onCliente: () => void; clienteId?: string | null }) {
   const fmt = (n: number) => formatNumeroIt(n, { minDecimals: 2, maxDecimals: 2 });
   const etichetta = "block text-[10.5px] font-semibold uppercase tracking-wide text-foreground/75";
   const voce = (label: string, value: string) => (
@@ -20,9 +21,9 @@ export function FasciaPreventivo({ dati, titolo, onCliente }: { dati: RiepilogoP
       <div className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_auto] pv-orizzontale:grid-cols-1!">
         <div className="min-w-0">
           <span className={`${etichetta} pv-orizzontale:hidden`}>Cliente</span>
-          <button type="button" onClick={onCliente} className="inline-flex max-w-full items-start gap-1 text-left pv-orizzontale:items-center text-sm font-semibold text-pv-blu underline-offset-2 hover:underline">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1"><button type="button" onClick={onCliente} className="inline-flex max-w-full items-start gap-1 text-left pv-orizzontale:items-center text-sm font-semibold text-pv-blu underline-offset-2 hover:underline">
             <span className="min-w-0 break-words pv-orizzontale:truncate">{dati.cliente}</span><ExternalLink className="mt-0.5 size-3 shrink-0" />
-          </button>
+          </button><IndicatoreClientePreventivo clienteId={clienteId}/></div>
         </div>
         {voce("Cantiere", dati.cantiere)}
         {voce("Validità", dati.validita)}
