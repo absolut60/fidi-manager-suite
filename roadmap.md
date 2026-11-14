@@ -1,3 +1,7 @@
+# FM69 — Correzioni dopo prova Andrea
+- [ ] Righe compatte, U.M. condivisa, ricerca scorrevole e badge/conteggi batch in tutte le viste richieste.
+- [ ] Test completi e verifica visiva 375/1280; nessuna modifica DB.
+
 # FM69 — Prezzi cantiere, fetta 2b
 - [x] Rimossi lettore/mappa/stato/riapplicazione legacy e tutti gli usi; Aggiorna listini ritorna solo aggiornate; avviso RLS e dialog esistente dal preventivo, toast solo dopo scelta salvata.
 - [x] Documentazione FM69 aggiornata; 794 test pass, build OK; screenshot 375/1280 con dati simulati, nessun overflow, apertura dialog, conteggio dopo DELETE e toast Vedi verificati. Pagina temporanea rimossa; verifica con sessione reale non disponibile, nessuna scrittura DB.

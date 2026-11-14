@@ -65,7 +65,7 @@ export function ArticoloGammaPicker({
   const label = codice ? (soloCodice ? codice : `${codice} · ${descrizione ?? ""}`) : null;
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover modal open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant={soloCodice ? "ghost" : "outline"} role="combobox" disabled={disabled}
           title={label ?? undefined}
@@ -74,8 +74,8 @@ export function ArticoloGammaPicker({
           {!soloCodice && <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[min(92vw,520px)] p-0" align="start">
-        <div className="border-b px-2 py-1.5">
+      <PopoverContent className="flex max-h-[min(90dvh,var(--radix-popover-content-available-height))] w-[min(92vw,520px)] flex-col overflow-hidden p-0" align="start" collisionPadding={12}>
+        <div className="shrink-0 border-b px-2 py-1.5">
           <div className="flex items-center gap-2">
             <Button type="button" variant="ghost" size="sm" aria-expanded={filtriAperti} onClick={() => setFiltriAperti(!filtriAperti)}
               className="h-9 min-w-0 flex-1 justify-between px-2 text-xs font-medium">
@@ -86,13 +86,13 @@ export function ArticoloGammaPicker({
           </div>
           {filtriAperti && <div className="grid grid-cols-1 gap-2 pt-1.5"><FiltriCatalogoArticoli scelte={scelte} onChange={setScelte} /></div>}
         </div>
-        <div className="flex items-center gap-2 border-b px-2 py-1.5">
+        <div className="flex shrink-0 items-center gap-2 border-b px-2 py-1.5">
           <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)}
             placeholder="Codice, descrizione o marca…" aria-label="Cerca articolo Gamma"
             className="h-9 border-0 px-0 text-sm focus-visible:ring-0" />
         </div>
-        <div className="max-h-80 overflow-y-auto">
+        <div role="list" aria-label="Risultati articoli Gamma" className="min-h-0 max-h-[60dvh] overflow-y-auto overscroll-contain sm:max-h-[520px]">
           {!attiva ? (
             <div className="p-3 text-xs text-muted-foreground">Scrivi almeno 2 caratteri o scegli un filtro.</div>
           ) : items.length === 0 ? (
@@ -100,11 +100,11 @@ export function ArticoloGammaPicker({
           ) : items.map((a) => (
             <Button key={a.codice} type="button" variant="ghost"
               onClick={() => { onChange(a); setOpen(false); }}
-              className="grid h-auto w-full grid-cols-[minmax(0,1fr)_auto] gap-2 whitespace-normal rounded-none border-b px-2 py-2 text-left text-xs hover:bg-accent">
+              className="grid h-auto w-full grid-cols-[minmax(0,1fr)_auto] gap-x-2 gap-y-0 whitespace-normal rounded-none border-b px-2 py-1.5 text-left text-xs hover:bg-accent">
               <span className="min-w-0">
                 <span className="font-mono font-semibold">{a.codice}</span>
                 <span className="block break-words">{a.descrizione}</span>
-                {a.marca && <span className="block font-semibold text-primary">{a.marca}</span>}
+                {a.marca && <span className="font-semibold text-primary"> · {a.marca}</span>}
               </span>
               <span className="shrink-0 text-muted-foreground">{a.um ?? ""}</span>
             </Button>
