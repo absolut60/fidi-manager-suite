@@ -1,3 +1,8 @@
+# FM71 — Preventivi ai lead nell’app, fetta 3b
+- [ ] Selettore condiviso cliente/lead, lead rapido, creazione con riferimento obbligatorio, cambio soggetto e Testata.
+- [ ] Lettura lead con RLS, duplicazione e riserva giacenze senza cambi al dispatcher/PDF/ordini.
+- [ ] Test, browser 375/1280, documentazione e SHA; duplicazione su altro cliente dai lead resta aperta per fetta successiva.
+
 # FM71 — Preventivi ai lead, fetta 3a (solo database)
 - [x] Migrazione 0224 applicata (registro 225 voci, 0000–0224): destinatari alternativi, condizioni lead, trigger riaggancio e sei dipendenze del gate aggiornate senza cambiare predicati o scritture.
 - [x] Firme reali prima/dopo identiche con claims aal2: amministratore 30c9d579 e store_manager 485baff2 (anche amministratore) entrambi 5 / 78b9b1f3a5a8d70c4dfd48da2a1ca5f6; agente 7: 0 / NULL (string_agg vuoto). Non simulati ruoli puri diversi dagli account reali.
