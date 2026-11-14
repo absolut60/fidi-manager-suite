@@ -1,3 +1,6 @@
+# FM69 — Eliminazioni verificate, fetta 3
+- [x] Marketing/WhatsApp con esito unico; figli WhatsApp verificati prima del padre; parziali ricaricati e selezione residua. Browser simulato 375/1280: figli negati, padre mai chiamato; email 2 su 3 con residuo reale. Nessun DB.
+
 # FM69 — Eliminazioni verificate, fetta 2b
 - [x] Template, listini acquisto, kit/componenti, aree e membri chat usano esito/messaggio unico; audit completo dei tre chiamanti API, conferme negate aperte e parziali ricaricati. Chat elimina gli ID dei membri letti con RLS e ricarica selezione reale anche dopo aggiunte/rimozioni fallite senza falso successo. 829 test superati, build/controlli automatici OK; browser simulato template/componente kit negato-riuscito a 375/1280, nessun errore runtime. Prova permanente tests/eliminazioni-fetta2b.browser.py. Nessun DB, marketing/WhatsApp/recupero invariati.
 

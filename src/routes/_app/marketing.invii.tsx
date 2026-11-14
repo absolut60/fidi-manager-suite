@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { puoAccedereMarketing } from "@/lib/ruoli-marketing";
@@ -57,6 +58,7 @@ type ProgressoRow = {
 
 
 export const Route = createFileRoute("/_app/marketing/invii")({
+  head: () => ({ meta: [{ title: "Invii marketing — FidiManager" }, { name: "description", content: "Stato degli invii delle campagne marketing MADE." }, { property: "og:title", content: "Invii marketing — FidiManager" }, { property: "og:description", content: "Stato degli invii delle campagne marketing MADE." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: InviiMarketingPage,
 });
 
@@ -139,15 +141,15 @@ function InviiMarketingPage() {
   async function doElimina(id: string) {
     setBusy(true);
     try {
-      const { error } = await supabase.from("campagne_email_marketing").delete().eq("id", id);
-      if (error) throw new Error(error.message);
+      const esito = await eliminaConEsito("campagne_email_marketing", id);
+      if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") qc.invalidateQueries({ queryKey: ["campagne-marketing-invii"] }); toast.error(messaggioEsitoEliminazione(esito, "la campagna")); return; }
       toast.success("Campagna eliminata insieme ai destinatari associati.");
+      setConfermaElimina(null);
       qc.invalidateQueries({ queryKey: ["campagne-marketing-invii"] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Errore");
     } finally {
       setBusy(false);
-      setConfermaElimina(null);
     }
   }
 
@@ -526,7 +528,7 @@ function InviiMarketingPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy}>Indietro</AlertDialogCancel>
-            <AlertDialogAction disabled={busy} onClick={() => confermaElimina && doElimina(confermaElimina)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction disabled={busy} onClick={(e) => { e.preventDefault(); if (confermaElimina) void doElimina(confermaElimina); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Elimina
             </AlertDialogAction>
           </AlertDialogFooter>

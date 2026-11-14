@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { filtroElenco } from "@/lib/filtro-elenco";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
@@ -38,6 +39,7 @@ import {
 import { SegmentiWhatsappTab } from "@/components/marketing/segmenti-whatsapp-tab";
 
 export const Route = createFileRoute("/_app/marketing/segmenti")({
+  head: () => ({ meta: [{ title: "Segmenti marketing — FidiManager" }, { name: "description", content: "Gestione dei segmenti e degli elenchi marketing MADE." }, { property: "og:title", content: "Segmenti marketing — FidiManager" }, { property: "og:description", content: "Gestione dei segmenti e degli elenchi marketing MADE." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: MarketingSegmentiPage,
 });
 
@@ -736,11 +738,10 @@ function MarketingSegmentiPage() {
 
   const eliminaSegmento = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("segmenti_marketing").delete().eq("id", id);
-      if (error) throw error;
-      return id;
+      return { id, esito: await eliminaConEsito("segmenti_marketing", id) };
     },
-    onSuccess: (id) => {
+    onSuccess: ({ id, esito }) => {
+      if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") { qc.invalidateQueries({ queryKey: ["segmenti-marketing"] }); qc.invalidateQueries({ queryKey: ["segmenti-marketing-conteggi"] }); } toast.error(messaggioEsitoEliminazione(esito, "il segmento")); return; }
       toast.success("Segmento eliminato");
       setListaStatica((p) => (p && p.id === id ? null : p));
       qc.invalidateQueries({ queryKey: ["segmenti-marketing"] });

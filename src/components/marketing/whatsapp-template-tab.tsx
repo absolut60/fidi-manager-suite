@@ -1,3 +1,4 @@
+import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 // Tab WhatsApp della pagina Campagne: lista template Meta + editor con anteprima bolla.
 // Nessuna chiamata alle API Meta in questo strato: "Invia in approvazione" setta solo lo stato.
 import { useMemo, useRef, useState } from "react";
@@ -153,10 +154,9 @@ export function WhatsAppTemplateTab() {
 
   const elimina = useMutation({
     mutationFn: async (t: WaTemplate) => {
-      const { error } = await supabase.from("whatsapp_template").delete().eq("id", t.id);
-      if (error) throw error;
+      return eliminaConEsito("whatsapp_template", t.id);
     },
-    onSuccess: () => { toast.success("Template eliminato"); setDeleting(null); invalida(); },
+    onSuccess: (esito) => { if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") invalida(); toast.error(messaggioEsitoEliminazione(esito, "il template")); return; } toast.success("Template eliminato"); setDeleting(null); invalida(); },
     onError: (e: any) => toast.error(e?.message ?? "Errore eliminazione"),
   });
 
@@ -268,7 +268,7 @@ export function WhatsAppTemplateTab() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annulla</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deleting && elimina.mutate(deleting)}>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); if (deleting) elimina.mutate(deleting); }}>
               Elimina
             </AlertDialogAction>
           </AlertDialogFooter>
