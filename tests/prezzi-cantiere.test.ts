@@ -1,6 +1,48 @@
 import { describe, expect, it } from "bun:test";
 import { propostaPrezzoCantiere, mostraAvvisoPrezziCantiere, contaPrezziCantieri, testoPrezziDedicati } from "@/lib/cantiere-listini-api";
-import { parseScontiGamma, prezzoNettoRiga, rigaInUnita } from "@/lib/riga-preventivo";
+import { parseScontiGamma, prezzoNettoRiga, rigaInUnita, prezzoConPrioritaCantiere, coincidePrezzoCantiere, campiPrezzoDaMotore, confrontoAggiornamento } from "@/lib/riga-preventivo";
+
+describe("FM69 applicazione prezzi dedicati", () => {
+  const motore = { prezzo_base: 12, sc1: 10, sc2: 0, sc3: 0, sc4: 0, sc5: 0, sc6: 0, maggiorazione_perc: 5, costo_ultimo: 4 };
+  const cantiere = { prezzo_vendita_speciale: 6.5, sconti: [17, 5], maggiorazione_perc: 2, costo_netto_speciale: 3.1 };
+  it("il cantiere prevale su tutti gli slot del motore e usa costo speciale", () => {
+    expect(prezzoConPrioritaCantiere(motore, cantiere)).toEqual({ fonte: "cantiere", prezzo: { prezzo_base: 6.5, sc1: 17, sc2: 5, sc3: 0, sc4: 0, sc5: 0, sc6: 0, maggiorazione_perc: 2, costo_ultimo: 3.1 } });
+  });
+  it("senza motore applica il cantiere", () => {
+    expect(campiPrezzoDaMotore(prezzoConPrioritaCantiere(null, cantiere).prezzo, 2, 0)).toMatchObject({ prezzo_unit: 6.5, costo: 6.2, sconti_gamma: [17,5], maggiorazione_perc: 2 });
+  });
+  it("senza costo speciale conserva il costo ultimo, anche zero speciale è valido", () => {
+    expect(prezzoConPrioritaCantiere(motore, { ...cantiere, costo_netto_speciale: null }).prezzo?.costo_ultimo).toBe(4);
+    expect(prezzoConPrioritaCantiere(motore, { ...cantiere, costo_netto_speciale: 0 }).prezzo?.costo_ultimo).toBe(0);
+    expect(prezzoConPrioritaCantiere(null, { ...cantiere, costo_netto_speciale: null }).prezzo?.costo_ultimo).toBeNull();
+  });
+  it("senza cantiere ritorna lo stesso motore e gli stessi campi", () => {
+    expect(prezzoConPrioritaCantiere(motore).prezzo).toBe(motore);
+    expect(prezzoConPrioritaCantiere(null)).toEqual({ prezzo: null, fonte: "listino" });
+    expect(campiPrezzoDaMotore(prezzoConPrioritaCantiere(motore).prezzo, 2, 3)).toEqual(campiPrezzoDaMotore(motore, 2, 3));
+  });
+  it("lo sconto a piede resta in cascata sopra il cantiere", () => {
+    const r = campiPrezzoDaMotore(prezzoConPrioritaCantiere(motore, cantiere).prezzo, 2, 10);
+    expect(r.sconto_perc).toBe(10);
+    expect(r.importo).toBe(9.41);
+  });
+  it("il segno confronta lordo/sconti/maggiorazione, non extra o costo", () => {
+    const r = { prezzo_unit: 6.5, sconti_gamma: [17,5,0], maggiorazione_perc: 2, sconto_perc: 10 };
+    expect(coincidePrezzoCantiere(r, cantiere)).toBe(true);
+    expect(coincidePrezzoCantiere({ ...r, prezzo_unit: 6.462 }, cantiere)).toBe(false);
+    expect(coincidePrezzoCantiere({ ...r, sconti_gamma: [17] }, cantiere)).toBe(false);
+    expect(coincidePrezzoCantiere({ ...r, maggiorazione_perc: 3 }, cantiere)).toBe(false);
+    expect(coincidePrezzoCantiere(r, null)).toBe(false);
+    expect(coincidePrezzoCantiere({ ...r, prezzo_unit: null }, cantiere)).toBe(false);
+  });
+  it("Aggiorna listini propone la differenza cantiere conservando l’extra", () => {
+    const r = { quantita: 2, prezzo_unit: 12, sconti_gamma: [10], maggiorazione_perc: 5, costo: 8, sconto_perc: 10 };
+    const c = confrontoAggiornamento(r, prezzoConPrioritaCantiere(motore, cantiere).prezzo);
+    expect(c?.nuovi).toEqual({ prezzo_unit: 6.5, sconti_gamma: [17,5], maggiorazione_perc: 2, costo_unit: 3.1 });
+    expect(c?.nettoNuovo).toBeCloseTo(4.7051055, 8);
+    expect(r.sconto_perc).toBe(10);
+  });
+});
 
 describe("FM69 prezzi cantiere", () => {
   it("un prezzo è singolare, due prezzi sono plurali", () => {
