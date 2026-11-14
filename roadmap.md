@@ -1,6 +1,6 @@
 # FM69 — Prezzi cantiere, fetta 2a
-- [ ] API nuovo schema, dialog con picker/calcoli condivisi, apertura dal cantiere; rimozione tab globale e correzione rimozione dal lead.
-- [ ] Test e schermate 375/1280; nessun DB e preventivi-api invariata.
+- [x] API nuovo schema, dialog con ArticoloGammaPicker/prezzoNettoRiga/rigaInUnita, permesso RPC unico e conteggio dal cantiere; eliminata PrezziCantieriView e tab globale, corretto DELETE/scollegamento dal lead.
+- [x] 791 test pass; typecheck automatico/build OK. Schermate 375/1280 (anche 320/390/768/1920) senza overflow. Con risposte simulate: proposta singola chiamata, duplicati, salvataggi UM1/UM2, sconti invalidi, DELETE zero/successo, motore negato e sola lettura verificati. Nessun DB e preventivi-api invariata; flusso con prezzi reali non verificato.
 
 # FM69 — Prezzi cantiere, fetta 1 (solo database)
 - [x] Applicata 0216_fm69_prezzi_cantiere_fetta1; schema prezzi manuali, fonte unica modifica cantiere e policy. Nessuna modifica UI; riferimenti esistenti invariati, tipi rigenerati automaticamente.
