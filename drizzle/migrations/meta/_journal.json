@@ -1513,6 +1513,13 @@
       "when": 1794667474971,
       "tag": "0215_fm68_condizioni_preventivo_store_id",
       "breakpoints": true
+    },
+    {
+      "idx": 216,
+      "version": "7",
+      "when": 1794671640611,
+      "tag": "0216_fm69_prezzi_cantiere_fetta1",
+      "breakpoints": true
     }
   ]
 }

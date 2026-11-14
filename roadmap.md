@@ -1,3 +1,7 @@
+# FM69 — Prezzi cantiere, fetta 1 (solo database)
+- [x] Applicata 0216_fm69_prezzi_cantiere_fetta1; schema prezzi manuali, fonte unica modifica cantiere e policy. Nessuna modifica UI; riferimenti esistenti invariati, tipi rigenerati automaticamente.
+- [x] Matrici transazionali 7 utenti × 4 cantieri con aal2: UPDATE prima/dopo identici; INSERT/SELECT prezzi verificati. Nessun utente solo showroom presente. Test SQL permanente superato, 785 test applicativi verdi, build OK; schema/grant/restrittive verificati e nessun dato residuo.
+
 # FM69 — Eliminazioni e collegamenti cantieri
 - [x] Esito unico nei tre DELETE; collegamenti sotto RLS nel dialog e navigazione incorporata. Permessi e query lista invariati; nessuna modifica DB.
 - [x] 785 test, typecheck senza errori e build OK; schermate 320/375/390/768/1280/1920 senza overflow, messaggi zero righe/FK/errore/successo e navigazione normale/incorporata verificati con risposte simulate. Sessione reale: lista vuota; nessuna cancellazione reale. Inventario altre eliminazioni completato senza modificarle.
