@@ -3,6 +3,16 @@ export function campiSedePreventivo(sede: { id: string | null; nome: string | nu
   return { filiale: sede?.nome ?? null, store_id: sede?.id ?? null };
 }
 
+/** FM70 3c: riserva solo di lettura per le giacenze, mai campi da salvare. */
+export function sedeGiacenzePreventivo(
+  preventivo: { store_id: string | null; filiale: string | null },
+  cliente: { store_id: string | null; sede_nome: string | null } | null | undefined,
+) {
+  return preventivo.store_id
+    ? { sedeGiacenzaId: preventivo.store_id, sedeNome: preventivo.filiale }
+    : { sedeGiacenzaId: cliente?.store_id ?? null, sedeNome: cliente?.store_id ? cliente.sede_nome : null };
+}
+
 /** FM65 R1a: gemella di public.lettera_preventivo, con elenco completo dei fratelli. */
 export function letteraPreventivo(documento: { id: string; alternativa_di: string | null }, alternative: readonly { id: string; created_at: string }[]): string {
   if (!documento.alternativa_di) return "A";

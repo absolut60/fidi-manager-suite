@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ChevronDown, ChevronsUpDown, Search } from "lucide-react";
+import { ChevronsUpDown, Search } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,7 +50,6 @@ export function ArticoloGammaPicker({
   const cerca = useServerFn(cercaArticoliPreventivo);
   const apertura = useServerFn(articoliAperturaPicker);
   const [scelte, setScelte] = useFiltriPicker(preventivoId);
-  const [filtriAperti, setFiltriAperti] = useState(false);
   const nFiltri = scelte.famiglie.length + scelte.coppie.length + scelte.marche.length;
   const attiva = ricercaPreventivoAttiva(qDeb, scelte);
   const { data: suggeriti = [], isFetching: caricaApertura, isError: erroreApertura } = useQuery({
@@ -111,7 +110,7 @@ export function ArticoloGammaPicker({
         <span className="font-mono font-semibold">{a.codice}</span>
         <span className="block break-words">{a.descrizione}{a.marca && <span className="font-semibold text-primary"> · {a.marca}</span>}{codiciCantiere.has(a.codice) && <> <BadgePrezzoCantiere /></>}</span>
       </span>
-      <span className="shrink-0 text-right text-muted-foreground">
+      <span className="min-w-16 shrink-0 whitespace-nowrap text-right text-muted-foreground">
         <span className="block">{a.um ?? ""}</span>
         {sedeGiacenzaId && <>
           <span className={`block whitespace-nowrap ${Number(a.giacenza_sede) > 0 ? "font-bold text-foreground" : "text-muted-foreground"}`}>{Number(a.giacenza_sede) > 0 ? quantitaArticolo(Number(a.giacenza_sede), a.um) : "0"}</span>
@@ -131,17 +130,12 @@ export function ArticoloGammaPicker({
           {!soloCodice && <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="flex max-h-[min(90dvh,var(--radix-popover-content-available-height))] w-[min(92vw,520px)] flex-col overflow-hidden p-0" align="start" collisionPadding={12}>
+      <PopoverContent className="flex max-h-[min(90dvh,var(--radix-popover-content-available-height))] w-[min(96vw,780px)] flex-col overflow-hidden p-0" align="start" collisionPadding={6}>
         <div className="shrink-0 border-b px-2 py-1.5">
-          <div className="flex items-center gap-2">
-            <Button type="button" variant="ghost" size="sm" aria-expanded={filtriAperti} onClick={() => setFiltriAperti(!filtriAperti)}
-              className="h-9 min-w-0 flex-1 justify-between px-2 text-xs font-medium">
-              <span>Filtri ({nFiltri})</span>
-              <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform ${filtriAperti ? "rotate-180" : ""}`} />
-            </Button>
-            {nFiltri > 0 && <Button type="button" variant="ghost" size="sm" className="h-9 shrink-0 px-2 text-xs" onClick={() => setScelte(NESSUN_FILTRO)}>Azzera filtri</Button>}
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 [&>*]:min-w-0">
+            <FiltriCatalogoArticoli scelte={scelte} onChange={setScelte} />
           </div>
-          {filtriAperti && <div className="grid grid-cols-1 gap-2 pt-1.5"><FiltriCatalogoArticoli scelte={scelte} onChange={setScelte} /></div>}
+          {nFiltri > 0 && <div className="flex justify-end"><Button type="button" variant="ghost" size="sm" className="min-h-10 px-2 text-xs" onClick={() => setScelte(NESSUN_FILTRO)}>Azzera filtri</Button></div>}
         </div>
         <div className="flex shrink-0 items-center gap-2 border-b px-2 py-1.5">
           <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
