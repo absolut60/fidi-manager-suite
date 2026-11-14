@@ -22,5 +22,5 @@
 
 - Manual marketing cascades enumerate all visible child IDs in stable pages and verify full deletion before deleting the parent; partial recipient removal refreshes data and retains only surviving IDs, preventing false success.
 - Article search normalization lives only in public.normalizza_testo_ricerca and the Gamma search-text trigger; new searchable fields extend that trigger, not TS or matching, so quote relevance and catalog token search cannot diverge.
-- Quote branch/store identity is paired only by campiSedePreventivo for creation, header edits and duplication; picker stock consumes SQL totals in site-keyed infinite pages, preventing mismatched stock and stale pages across sites.
+- Quote branch/store identity is paired only by campiSedePreventivo for creation, header edits and duplication; sedeGiacenzePreventivo resolves picker stock with the existing customer-terms DTO only when the quote has no store ID, without persistence or per-row reads. Stock consumes SQL totals in site-keyed infinite pages, preventing mismatched stock and stale pages across sites.
 - Picker opening groups come only from articoli_picker_apertura (non-BYPASSRLS owner to enforce existing site policies); client-safe UUID schema/mapping and shared result rendering prevent divergent permissions, stock and site-price badges.
