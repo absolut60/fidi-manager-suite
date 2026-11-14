@@ -6,13 +6,15 @@ import { parametriArticoliPreventivo } from "./catalogo-articoli";
 /** FM65: articoli Gamma attivi per il selettore della riga preventivo (senza prezzo: il prezzo segue il cliente). */
 export const cercaArticoliPreventivo = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { testo: string; famiglie?: string[]; coppie?: string[]; marche?: string[] }) => z.object({ testo: z.string().max(200),
+  .inputValidator((input: { testo: string; famiglie?: string[]; coppie?: string[]; marche?: string[]; sede_giacenza?: string; offset?: number }) => z.object({ testo: z.string().max(200),
+    sede_giacenza: z.string().uuid().optional(), offset: z.number().int().nonnegative().optional(),
     famiglie: z.array(z.string().max(100)).max(500).default([]), coppie: z.array(z.string().max(200)).max(2000).default([]), marche: z.array(z.string().max(100)).max(2000).default([]) }).parse(input))
   .handler(async ({ data, context }) => {
     // FM65 F4: filtri a cascata (famiglie/coppie/marche) tradotti da parametriRicerca dentro parametriArticoliPreventivo.
-    const { data: rows, error } = await context.supabase.rpc("cerca_articoli", parametriArticoliPreventivo(data.testo, data));
+    const { data: rows, error } = await context.supabase.rpc("cerca_articoli", parametriArticoliPreventivo(data.testo, { ...data, sedeGiacenza: data.sede_giacenza }));
     if (error) throw new Error(error.message);
     return (rows ?? [])
       .filter((r) => r.origine === "gamma") // rete di sicurezza: con solo_gamma non arrivano altre righe
-      .map((r) => ({ codice: r.codice, descrizione: r.descrizione, marca: r.marca, um: r.um }));
+      .map((r) => ({ codice: r.codice, descrizione: r.descrizione, marca: r.marca, um: r.um,
+        giacenza_sede: r.giacenza_sede, giacenza_logistica: r.giacenza_logistica, totale: r.totale }));
   });

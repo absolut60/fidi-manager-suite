@@ -1,3 +1,8 @@
+/** FM70: identità sede scritta sempre insieme al nome della filiale. */
+export function campiSedePreventivo(sede: { id: string | null; nome: string | null } | null) {
+  return { filiale: sede?.nome ?? null, store_id: sede?.id ?? null };
+}
+
 /** FM65 R1a: gemella di public.lettera_preventivo, con elenco completo dei fratelli. */
 export function letteraPreventivo(documento: { id: string; alternativa_di: string | null }, alternative: readonly { id: string; created_at: string }[]): string {
   if (!documento.alternativa_di) return "A";
