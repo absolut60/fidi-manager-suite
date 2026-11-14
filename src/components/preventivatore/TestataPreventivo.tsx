@@ -17,8 +17,8 @@ import { ExternalLink, FileText, HardHat, Percent, Paperclip, StickyNote, UserRo
 import { RiquadroScheda } from "./RiquadroScheda";
 import { IndicatoreClientePreventivo } from "./IndicatoreClientePreventivo";
 
-export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agenti,principali,haAlternative,listino,categoria,sede,onSave,onCliente,onChangeCliente,onCantiere}: {
-  prev: PreventivoConDettagli; cliente: DatiClientePreventivo|null|undefined; modificabile:boolean; statoEditabile:boolean; agenti:Agente[]; principali:{id:string;numero:string|null;titolo:string|null}[]; haAlternative:boolean; listino:string; categoria:string; sede:string;
+export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agenti,principali,haAlternative,listino,categoria,sede,sedeClienteId,onSave,onCliente,onChangeCliente,onCantiere}: {
+  prev: PreventivoConDettagli; cliente: DatiClientePreventivo|null|undefined; modificabile:boolean; statoEditabile:boolean; agenti:Agente[]; principali:{id:string;numero:string|null;titolo:string|null}[]; haAlternative:boolean; listino:string; categoria:string; sede:string; sedeClienteId?:string|null;
   onSave:(patch:PreventivoUpdate)=>void; onCliente:()=>void; onChangeCliente:(id:string)=>void; onCantiere:(id:string)=>void;
 }) {
   const {data:codici=[]}=useCodiciPagamento();
@@ -79,7 +79,7 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
     </RiquadroScheda>
     <RiquadroScheda titolo="Cantiere" icona={HardHat} tono="verde" densita="compatta">
       <div className="[&>div]:space-y-1.5 [&_p]:text-xs [&_div.text-sm]:text-xs [&_button]:h-7 [&_button]:min-h-7 [&_button]:px-2 [&_button]:text-xs [&_button[role=combobox]]:w-full [&_div.space-y-2]:flex [&_div.space-y-2]:flex-col [&_div.space-y-2]:gap-1.5 [&_div.space-y-2]:space-y-0 [&_div[role=group]]:order-1 [&_div[role=group]]:flex-nowrap [&_div[role=group]_button]:px-1.5 [&_div[role=group]_button]:whitespace-normal [&_div[role=group]_button]:leading-tight [&_button[role=combobox]]:order-0">
-        <CantiereTestata prev={prev} modificabile={modificabile} onCantiere={onCantiere} clienteEtichetta={identitaCliente} sedeClienteNome={sede}/>
+        <CantiereTestata prev={prev} modificabile={modificabile} onCantiere={onCantiere} clienteEtichetta={identitaCliente} sedeClienteNome={sede} sedeClienteId={sedeClienteId}/>
       </div>
     </RiquadroScheda>
     </div>
@@ -90,6 +90,6 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
     <RiquadroScheda titolo="Allegati" icona={Paperclip} tono="grigio" densita="compatta" className="[&>header]:hidden">
       <AllegatiSection entitaTipo="preventivo" entitaId={prev.id} clienteId={null} canEdit={modificabile} eliminaTutti={modificabile} compact/>
     </RiquadroScheda>
-    <AttivitaPreventivo id={prev.id} clienteId={prev.cliente_id} agenteCodice={prev.agente_codice} sedeNome={sede} modificabile={modificabile}/>
+    <AttivitaPreventivo id={prev.id} clienteId={prev.cliente_id} agenteCodice={prev.agente_codice} sedeNome={sede} sedeClienteId={sedeClienteId} modificabile={modificabile}/>
   </section>;
 }

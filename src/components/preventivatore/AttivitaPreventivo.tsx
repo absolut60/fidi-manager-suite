@@ -7,18 +7,18 @@ import { AttivitaCommercialeDialog } from "@/components/attivita-commerciale-dia
 import { fmtDataOra, luogoAttivita, ordinaAttivitaPreventivo, TIPO_ATTIVITA_LABEL, type AttivitaRow } from "@/lib/attivita-commerciale";
 import { RiquadroScheda } from "./RiquadroScheda";
 
-export function AttivitaPreventivo({ id, clienteId, agenteCodice, sedeNome, modificabile }: {
-  id: string; clienteId: string | null; agenteCodice: string | null; sedeNome: string; modificabile: boolean;
+export function AttivitaPreventivo({ id, clienteId, agenteCodice, sedeNome, sedeClienteId, modificabile }: {
+  id: string; clienteId: string | null; agenteCodice: string | null; sedeNome: string; sedeClienteId?: string | null; modificabile: boolean;
 }) {
   const [aperto, setAperto] = useState(false);
   const [selezionata, setSelezionata] = useState<AttivitaRow | null>(null);
-  // La RPC condizioni restituisce il nome esatto della sede, non il suo UUID.
-  // Risoluzione sul catalogo sedi, senza aprire la riga cliente o usare la sede dell'operatore.
+  // Identità dalla RPC condizioni; verifica sul catalogo sedi con RLS, mai per nome.
   const { data: sede, isPending: sedeInCaricamento, error: erroreSede } = useQuery({
-    queryKey: ["sede-attivita-preventivo", sedeNome],
-    enabled: modificabile && !!sedeNome && sedeNome !== "—",
+    queryKey: ["sede-attivita-preventivo", sedeClienteId],
+    enabled: modificabile && !!sedeClienteId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("stores").select("id").eq("nome", sedeNome).maybeSingle();
+      if (!sedeClienteId) return null;
+      const { data, error } = await supabase.from("stores").select("id").eq("id", sedeClienteId).maybeSingle();
       if (error) throw error;
       if (!data) throw new Error("Sede del cliente non disponibile");
       return data;
@@ -57,7 +57,7 @@ export function AttivitaPreventivo({ id, clienteId, agenteCodice, sedeNome, modi
       })}
     </div>
     {erroreSede && <p role="alert" className="text-xs text-destructive">Impossibile caricare la sede del cliente.</p>}
-    {modificabile && <Button variant="ghost" size="sm" className="min-h-10 text-xs" disabled={!!erroreSede || (sedeNome !== "—" && sedeInCaricamento)} onClick={() => { setSelezionata(null); setAperto(true); }}><Plus className="size-3.5"/>Registra attività</Button>}
+    {modificabile && <Button variant="ghost" size="sm" className="min-h-10 text-xs" disabled={!!erroreSede || (!!sedeClienteId && sedeInCaricamento)} onClick={() => { setSelezionata(null); setAperto(true); }}><Plus className="size-3.5"/>Registra attività</Button>}
     {modificabile && aperto && <AttivitaCommercialeDialog open={aperto} onOpenChange={setAperto} attivita={selezionata} contesto={selezionata ? {
       preventivo_id: selezionata.preventivo_id, cliente_id: selezionata.cliente_id, lead_id: selezionata.lead_id,
       opportunita_id: selezionata.opportunita_id, agente_codice: selezionata.agente_codice, store_id: selezionata.store_id,
