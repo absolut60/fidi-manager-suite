@@ -37,7 +37,7 @@ BEGIN
   PERFORM set_config('request.jwt.claims','{"role":"service_role"}',true);
   UPDATE public.preventivi SET numero='FM71-SERVICE-TEST' WHERE id=p1;
   IF NOT EXISTS(SELECT 1 FROM public.preventivi WHERE id=p1 AND numero='FM71-SERVICE-TEST') THEN RAISE EXCEPTION 'Eccezione service_role non rispettata'; END IF;
-  IF firma IS DISTINCT FROM (SELECT md5(string_agg(id::text||':'||coalesce(numero,'<NULL>'),'|' ORDER BY id)) FROM public.preventivi WHERE titolo NOT LIKE 'FM71 TEST%') THEN RAISE EXCEPTION 'Numeri esistenti modificati'; END IF;
+  IF firma IS DISTINCT FROM (SELECT md5(string_agg(id::text||':'||coalesce(numero,'<NULL>'),'|' ORDER BY id)) FROM public.preventivi WHERE titolo IS NULL OR titolo NOT LIKE 'FM71 TEST%') THEN RAISE EXCEPTION 'Numeri esistenti modificati'; END IF;
 END;
 $test$;
 ROLLBACK;
