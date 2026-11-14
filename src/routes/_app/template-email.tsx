@@ -75,7 +75,7 @@ function TemplateEmailPage() {
       return eliminaConEsito("template_email", id);
     },
     onSuccess: (esito) => {
-      if (esito.tipo !== "eliminato") { toast.error(messaggioEsitoEliminazione(esito, "il template")); return; }
+      if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") qc.invalidateQueries({ queryKey: ["template_email"] }); toast.error(messaggioEsitoEliminazione(esito, "il template")); return; }
       toast.success("Template eliminato");
       qc.invalidateQueries({ queryKey: ["template_email"] });
       setDeleting(null);

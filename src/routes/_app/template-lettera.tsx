@@ -77,7 +77,7 @@ function TemplateLetteraPage() {
       return eliminaConEsito("template_lettera", id);
     },
     onSuccess: (esito) => {
-      if (esito.tipo !== "eliminato") { toast.error(messaggioEsitoEliminazione(esito, "il template")); return; }
+      if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") qc.invalidateQueries({ queryKey: ["template_lettera"] }); toast.error(messaggioEsitoEliminazione(esito, "il template")); return; }
       toast.success("Template eliminato");
       qc.invalidateQueries({ queryKey: ["template_lettera"] });
       setDeleting(null);

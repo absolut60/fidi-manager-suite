@@ -386,7 +386,7 @@ function MembriDialog({ area, onClose }: { area: AreaRow; onClose: () => void })
       return eliminaConEsito("area_membri", id);
     },
     onSuccess: (esito) => {
-      if (esito.tipo !== "eliminato") { toast.error(messaggioEsitoEliminazione(esito, "il membro dell’area")); return; }
+      if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") invalida(); toast.error(messaggioEsitoEliminazione(esito, "il membro dell’area")); return; }
       toast.success("Persona rimossa"); invalida();
     },
     onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Errore"),

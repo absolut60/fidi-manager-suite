@@ -113,7 +113,7 @@ function KitEditorPage() {
   const delRow = useMutation({
     mutationFn: (rowId: string) => deleteComponente(rowId),
     onSuccess: (esito) => {
-      if (esito.tipo !== "eliminato") { toast.error(messaggioEsitoEliminazione(esito, "il componente")); return; }
+      if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") invalidate(); toast.error(messaggioEsitoEliminazione(esito, "il componente")); return; }
       return invalidate();
     },
     onError: (e: unknown) => toast.error((e as Error).message),
@@ -131,7 +131,7 @@ function KitEditorPage() {
   const delKit = useMutation({
     mutationFn: () => deleteKit(id),
     onSuccess: (esito) => {
-      if (esito.tipo !== "eliminato") { toast.error(messaggioEsitoEliminazione(esito, "il kit")); return; }
+      if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") invalidate(); toast.error(messaggioEsitoEliminazione(esito, "il kit")); return; }
       toast.success("Kit eliminato");
       navigate({ to: "/kit" });
     },

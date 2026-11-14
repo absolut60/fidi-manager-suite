@@ -92,7 +92,7 @@ export function ListinoAcquistoSection({
   const delMut = useMutation({
     mutationFn: deleteListinoAcquisto,
     onSuccess: (esito) => {
-      if (esito.tipo !== "eliminato") { toast.error(messaggioEsitoEliminazione(esito, "il listino di acquisto")); return; }
+      if (esito.tipo !== "eliminato") { if (esito.tipo === "parziale") qc.invalidateQueries({ queryKey: ["listini_acquisto", articoloId] }); toast.error(messaggioEsitoEliminazione(esito, "il listino di acquisto")); return; }
       return qc.invalidateQueries({ queryKey: ["listini_acquisto", articoloId] });
     },
   });
