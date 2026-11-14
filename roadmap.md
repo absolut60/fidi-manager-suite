@@ -1,3 +1,7 @@
+# FM70 — Ricerca articoli, fetta 1
+- [ ] Migrazione unica: normalizzazione SQL, testo indicizzato, matching multi-token, rilevanza e sede giacenza; prezzi/gate/RLS invariati.
+- [ ] Parametri preventivo, regola documentata, prove SQL e TS, suite completa e verifica della ricerca.
+
 # FM69 — Eliminazioni verificate, fetta 4b
 - [x] Chat/promesse/ruoli/push e chiamante notifiche verificati; contatto cliente e attività fornitore già verificati ricondotti alla fonte unica, righe prima dei file. Regola docs e guardia AST con eccezioni tecniche puntuali (19 DELETE) e Set/Map/URLSearchParams espliciti. 842 test; browser chat negata 375/1280, file e messaggio intatti, conferma aperta; pagina temporanea rimossa. Nessun DB/permesso.
 
