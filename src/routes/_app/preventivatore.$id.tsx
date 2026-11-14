@@ -475,7 +475,7 @@ function PreventivoEditorPage() {
                       <DialogDescription className="whitespace-normal break-words">
                         Scegli come duplicare. In tutti i casi verrà creato un nuovo numero progressivo, con data di oggi e stato bozza.
                         <br /><br />
-                        <strong>Stesso cliente</strong>: copia di testata, blocchi e righe (stesso cliente, cantiere e agente); gli allegati non vengono copiati.
+                        <strong>{prev.lead_id ? "Stesso lead" : "Stesso cliente"}</strong>: copia di testata, blocchi e righe (stesso cliente, cantiere e agente); gli allegati non vengono copiati.
                         <br />
                         <strong>Come alternativa</strong>: stessa copia, collegata come alternativa al preventivo principale (lettera B, C…).
                         <br />
@@ -537,7 +537,7 @@ function PreventivoEditorPage() {
         </div>
 
         <div className="flex min-w-0 flex-col gap-3" {...salvataggio.contenitoreProps}>
-        <FasciaPreventivo dati={riepilogo} titolo={prev.titolo} clienteId={prev.cliente_id} onCliente={apriSchedaSoggetto}/>
+        <FasciaPreventivo leadId={prev.lead_id} dati={riepilogo} titolo={prev.titolo} clienteId={prev.cliente_id} onCliente={apriSchedaSoggetto}/>
         {puoScrivere && !modificabile && (
           <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
             <Lock className="size-4 shrink-0" />
