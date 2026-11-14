@@ -45,6 +45,7 @@ import { testoPerFiltroOr } from "@/lib/ricerca-sicura";
 
 
 export const Route = createFileRoute("/_app/lead/")({
+  head: () => ({ meta: [{ title: "Lead — FidiManager" }, { name: "description", content: "Elenco dei lead MADE e contatti potenziali." }, { property: "og:title", content: "Lead — FidiManager" }, { property: "og:description", content: "Elenco dei lead MADE e contatti potenziali." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: LeadListaPage,
 });
 
@@ -776,7 +777,7 @@ function LeadListaPage() {
                           etichetta: "Cliente",
                           valore: l.cliente_id ? (
                             <span className="min-w-0 break-words">
-                              {l.cliente?.ragione_sociale ?? "Scheda cliente"}
+                              {l.cliente?.ragione_sociale ?? "Cliente non accessibile"}
                               {l.conversione_tipo === "contatto_cliente" && (
                                 <span className="block text-xs text-muted-foreground">come contatto</span>
                               )}
@@ -869,7 +870,7 @@ function LeadListaPage() {
                       <>
                         <TableCell className="text-xs">{formatData(l.convertito_il)}</TableCell>
                         <TableCell className="text-xs" onClick={(e) => e.stopPropagation()}>
-                          {l.cliente_id ? (
+                          {l.cliente_id && l.cliente ? (
                             <Link
                               to="/clienti/$clienteId"
                               params={{ clienteId: l.cliente_id }}
@@ -877,7 +878,7 @@ function LeadListaPage() {
                             >
                               {l.cliente?.ragione_sociale ?? "Scheda cliente"}
                             </Link>
-                          ) : null}
+                          ) : l.cliente_id ? <span aria-disabled="true" title="Scheda cliente fuori dal tuo ambito" className="text-muted-foreground">Cliente non accessibile</span> : null}
                           {l.cliente_id && l.conversione_tipo === "contatto_cliente" && (
                             <div className="text-xs text-muted-foreground">come contatto</div>
                           )}

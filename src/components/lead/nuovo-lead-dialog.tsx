@@ -1,4 +1,5 @@
 import { isSoloShowroom } from "@/lib/permessi-showroom";
+import { ClienteVisibileLink } from "./cliente-visibile-link";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -212,9 +213,9 @@ export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
                     Lead {d.etichetta}
                   </Link>
                 ) : d.linkId ? (
-                  <Link to="/clienti/$clienteId" params={{ clienteId: d.linkId }} className="underline font-medium">
+                  <ClienteVisibileLink clienteId={d.linkId} className="underline font-medium">
                     {d.entita === "cliente" ? "Cliente" : "Contatto"} {d.etichetta}
-                  </Link>
+                  </ClienteVisibileLink>
                 ) : (
                   <span className="font-medium">
                     {d.entita === "cliente" ? "Cliente" : "Contatto"} {d.etichetta}

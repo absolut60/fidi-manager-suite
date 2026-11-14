@@ -94,8 +94,11 @@ import {
   type LeadAmbito,
 } from "@/lib/lead-costanti";
 import { CollegaLeadClienteDialog } from "@/components/lead/collega-lead-cliente-dialog";
+import { ClienteVisibileLink } from "@/components/lead/cliente-visibile-link";
+import { puoModificareRecordPreventivista } from "@/lib/permessi-preventivi";
 
 export const Route = createFileRoute("/_app/lead/$leadId")({
+  head: () => ({ meta: [{ title: "Scheda lead — FidiManager" }, { name: "description", content: "Anagrafica, contatti e cantieri del lead MADE." }, { property: "og:title", content: "Scheda lead — FidiManager" }, { property: "og:description", content: "Anagrafica, contatti e cantieri del lead MADE." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: LeadDettaglioPage,
 });
 
@@ -205,6 +208,7 @@ function LeadDettaglioPage() {
   };
 
   const [f, setF] = useState<Form | null>(null);
+  const canEdit = !soloShowroom ? puoModificareRecordPreventivista(roles, lead?.created_by, user?.id, puoModificareLeadDb === true) : puoModificareLeadDb === true;
   const [editMode, setEditMode] = useState(false);
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setF((p) => (p ? { ...p, [k]: v } : p));
 
@@ -243,7 +247,7 @@ function LeadDettaglioPage() {
 
   const saveMut = useMutation({
     mutationFn: async () => {
-      if (!f || !lead) return;
+      if (!f || !lead || !canEdit) return;
       const payload = {
         tipo_soggetto: f.tipo_soggetto || null,
         ragione_sociale: f.ragione_sociale.trim() || null,
@@ -271,8 +275,9 @@ function LeadDettaglioPage() {
         prossima_azione_nota: f.prossima_azione_nota.trim() || null,
         note: f.note.trim() || null,
       };
-      const { error } = await supabase.from("lead").update(payload).eq("id", leadId);
+      const { data: updated, error } = await supabase.from("lead").update(payload).eq("id", leadId).select("id");
       if (error) throw error;
+      if (!updated?.length) throw new Error("Non hai il permesso di modificare questo lead");
       const mestiereDa = (mestieri ?? []).find((m) => m.id === (lead.mestiere_id ?? ""))?.codice ?? null;
       const mestiereA = (mestieri ?? []).find((m) => m.id === f.mestiere_id)?.codice ?? null;
       if ((lead.mestiere_id ?? "") !== f.mestiere_id) {
@@ -406,7 +411,7 @@ function LeadDettaglioPage() {
     );
   }
 
-  if (isLoading || !f) return <Skeleton className="h-64 w-full" />;
+  if (isLoading) return <Skeleton className="h-64 w-full" />;
 
   if (!lead) {
     return (
@@ -420,6 +425,7 @@ function LeadDettaglioPage() {
   }
 
   const isContattoCliente = lead.conversione_tipo === "contatto_cliente";
+  if (!f) return <Skeleton className="h-64 w-full" />;
 
   return (
     <div className="space-y-6">
@@ -440,13 +446,12 @@ function LeadDettaglioPage() {
               {formatData(lead.created_at)}
             </span>
             {lead.cliente_id && (
-              <Link
-                to="/clienti/$clienteId"
-                params={{ clienteId: lead.cliente_id }}
+              <ClienteVisibileLink
+                clienteId={lead.cliente_id}
                 className="text-xs underline"
               >
                 Cliente collegato
-              </Link>
+              </ClienteVisibileLink>
             )}
             {lead.cliente_id && isContattoCliente && (
               <span className="text-xs text-muted-foreground">collegato come contatto</span>
@@ -556,15 +561,15 @@ function LeadDettaglioPage() {
                 Salva
               </Button>
             </>
-          ) : (
+          ) : canEdit ? (
             <Button className="gap-1.5" onClick={() => setEditMode(true)}>
               <Pencil className="size-4" /> Modifica
             </Button>
-          )}
+          ) : null}
         </div>
       </div>
 
-      <Card className="p-3">
+      {puoModificareLeadDb === true && <Card className="p-3">
         <LeadAzioniStato
           leadId={leadId}
           stato={lead.stato}
@@ -572,7 +577,7 @@ function LeadDettaglioPage() {
           profili={profili ?? []}
           operatoreId={user?.id ?? null}
         />
-      </Card>
+      </Card>}
 
       <Dialog
         open={!!duplicati}

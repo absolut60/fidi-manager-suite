@@ -6,6 +6,11 @@
 // puoScriverePreventivi    ↔ public.auth_puo_scrivere_preventivo() senza il controllo per agente (lo fa il DB)
 // puoGestireAnagrafichePreventivi ↔ public.auth_puo_gestire_anagrafiche_prev() (kit, listini, articoli)
 type Ruoli = readonly string[];
+/** FM68: gemello di public.auth_preventivista(); non concede accesso ai clienti. */
+export const è_preventivista = (roles: Ruoli) => roles.includes("preventivi_write") || roles.includes("preventivi_manage");
+/** Le aggiunte della 0210 consentono UPDATE solo al creatore; i permessi precedenti restano validi. */
+export const puoModificareRecordPreventivista = (roles: Ruoli, createdBy: string | null | undefined, userId: string | null | undefined, permessoPreesistente: boolean) =>
+  permessoPreesistente || (è_preventivista(roles) && !!userId && createdBy === userId);
 const RUOLI_PREVENTIVI = ["amministratore", "preventivi_manage", "preventivi_write", "preventivi_read"];
 export const haAccessoPreventivi = (r: Ruoli) => r.some((x) => RUOLI_PREVENTIVI.includes(x));
 export const puoConsultarePreventivi = (r: Ruoli) => haAccessoPreventivi(r) || r.includes("store_manager") || r.includes("showroom");

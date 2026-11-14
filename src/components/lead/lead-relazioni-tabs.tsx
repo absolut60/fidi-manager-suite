@@ -1,4 +1,8 @@
 import { useSoloShowroom } from "@/hooks/use-solo-showroom";
+import { useAuth } from "@/hooks/use-auth";
+import { è_preventivista, puoModificareRecordPreventivista } from "@/lib/permessi-preventivi";
+import { puoGestireLead } from "@/lib/lead-costanti";
+import { ClienteVisibileLink } from "./cliente-visibile-link";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -40,7 +44,7 @@ export function useLeadContatti(leadId: string, enabled = true) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("contatti")
-        .select("id, cliente_id, nome, cognome, email, telefono, cellulare, ruolo, privacy_firmata, data_firma, pdf_privacy_url, consenso_profilazione, consenso_marketing_media, consenso_marketing_diretto, richiesta_privacy_generata_il, richiesta_privacy_inviata_il, richiesta_privacy_aperta_il")
+        .select("id, created_by, cliente_id, nome, cognome, email, telefono, cellulare, ruolo, privacy_firmata, data_firma, pdf_privacy_url, consenso_profilazione, consenso_marketing_media, consenso_marketing_diretto, richiesta_privacy_generata_il, richiesta_privacy_inviata_il, richiesta_privacy_aperta_il")
         .eq("lead_id", leadId)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -50,6 +54,7 @@ export function useLeadContatti(leadId: string, enabled = true) {
 }
 
 export function LeadContattiTab({ leadId, clienteId }: { leadId: string; clienteId: string | null }) {
+  const { roles, user } = useAuth();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [canale, setCanale] = useState<CanalePrivacy | null>(null);
@@ -198,20 +203,19 @@ export function LeadContattiTab({ leadId, clienteId }: { leadId: string; cliente
                 {c.email && <div>{c.email}</div>}
                 {(c.telefono || c.cellulare) && <div>{c.telefono || c.cellulare}</div>}
               </div>
-              <div className="mt-3 pt-3 border-t">
+              {puoModificareRecordPreventivista(roles, c.created_by, user?.id, !è_preventivista(roles) || puoGestireLead(roles)) && <div className="mt-3 pt-3 border-t">
                 <ContattoPrivacyAzioni
                   contatto={c}
                   onRefresh={() => qc.invalidateQueries({ queryKey: ["lead-contatti", leadId] })}
                 />
-              </div>
+              </div>}
               {c.cliente_id && (
-                <Link
-                  to="/clienti/$clienteId"
-                  params={{ clienteId: c.cliente_id }}
+                <ClienteVisibileLink
+                  clienteId={c.cliente_id}
                   className="text-xs underline mt-2 inline-block"
                 >
                   Vai al cliente
-                </Link>
+                </ClienteVisibileLink>
               )}
             </Card>
           ))}
@@ -233,6 +237,10 @@ export function LeadCantieriTab({
   const [editId, setEditId] = useState<string | null>(null);
   // FM56: cantieri in sola lettura per lo showroom (RESTRICTIVE su cantieri).
   const soloShowroom = useSoloShowroom();
+  const { roles, user } = useAuth();
+  const preventivista = è_preventivista(roles);
+  const permessoPreesistente = !preventivista || puoGestireLead(roles) || roles.includes("agente");
+  const modifica = (c: CantiereRow) => !soloShowroom && puoModificareRecordPreventivista(roles, c.created_by, user?.id, permessoPreesistente);
 
   const soggettoFisso = useMemo(
     () => ({
@@ -320,7 +328,7 @@ export function LeadCantieriTab({
                   </div>
                   {c.descrizione && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{c.descrizione}</p>}
                 </div>
-                {!soloShowroom && (
+                {modifica(c) && (
                 <div className="flex gap-1">
                 <Button
                   variant="ghost" size="icon" title="Modifica"
@@ -329,7 +337,7 @@ export function LeadCantieriTab({
                 >
                   <Pencil className="size-4" />
                 </Button>
-                <Button
+                {permessoPreesistente && <Button
                   variant="ghost" size="icon"
                   onClick={() => {
                     const msg = c.cliente_id
@@ -340,7 +348,7 @@ export function LeadCantieriTab({
                   className="text-muted-foreground hover:text-destructive"
                 >
                   <Trash2 className="size-4" />
-                </Button>
+                </Button>}
                 </div>
                 )}
               </div>
