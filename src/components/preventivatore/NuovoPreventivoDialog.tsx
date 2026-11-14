@@ -25,6 +25,9 @@ import {
 } from "@/lib/preventivi-api";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
+import { SoggettoPreventivoPicker } from "./SoggettoPreventivoPicker";
+import { campiSoggettoPreventivo, riferimentoVuoto, type SoggettoPreventivo } from "@/lib/soggetto-preventivo";
+import { campiRiferimentoPreventivo } from "@/lib/condizioni-riferimento";
 
 export function NuovoPreventivoDialog({
   open, onOpenChange, tipo = "preventivo",
@@ -33,6 +36,8 @@ export function NuovoPreventivoDialog({
   const navigate = useNavigate();
   const today = new Date().toISOString().slice(0, 10);
   const [clienteId, setClienteId] = useState<string | null>(null);
+  const [soggetto, setSoggetto] = useState<SoggettoPreventivo | null>(null);
+  const [riferimento, setRiferimento] = useState(riferimentoVuoto);
   const [cantiereId, setCantiereId] = useState<string | null>(null);
   const [modoCantiere, setModoCantiere] = useState<"seleziona" | "crea" | "provvisorio">("seleziona");
   const { data: clienteCantiere } = useQuery({ queryKey: ["cliente-preventivo-dati", clienteId], queryFn: () => clienteId ? fetchDatiClientePreventivo(clienteId) : null, enabled: !!clienteId });
@@ -127,11 +132,12 @@ export function NuovoPreventivoDialog({
 
   const create = useMutation({
     mutationFn: async () => {
+      if (!soggetto) throw new Error("Scegli un cliente o un lead");
       const numeroFinal = numero.trim(); // se vuoto, createPreventivo assegnerà
       const dataFinal = data || today;
       const tipoDocFinal: TipoDoc = tipoDoc || "PREVENTIVO";
       return creaConPrimoBlocco(() => createPreventivo({
-        cliente_id: clienteId,
+        ...campiSoggettoPreventivo(soggetto, riferimento),
         cantiere_id: cantiereId,
         cantiere_descrizione: null,
         agente_codice: agenteId,
@@ -172,8 +178,11 @@ export function NuovoPreventivoDialog({
             <Input id="nuovo-preventivo-titolo" value={titolo} onChange={(e) => setTitolo(e.target.value)} placeholder="Titolo del preventivo" />
           </div>
           <div className="grid gap-1.5">
-            <Label>Cliente *</Label>
-            <ClientePicker value={clienteId} onChange={setClienteId} />
+            <Label>Soggetto *</Label>
+            <SoggettoPreventivoPicker value={soggetto} riferimento={riferimento} onRiferimento={setRiferimento} consentiLead={!isOrdine} sedeId={stores.find(s => s.nome === filiale)?.id} onChange={v => {
+              setSoggetto(v); setClienteId(v?.tipo === "cliente" ? v.id : null); setCantiereId(null);
+              if (v?.tipo === "lead") setPagamento(v.lead.condizione_pagamento_cod ?? "");
+            }}/>
           </div>
           <div className="grid gap-1.5">
             <Label>Cantiere</Label>
@@ -244,7 +253,7 @@ export function NuovoPreventivoDialog({
               </Select>
             </div>
           </div>
-          <CondizioniClienteGamma clienteId={clienteId} />
+          {soggetto?.tipo !== "lead" && <CondizioniClienteGamma clienteId={clienteId} />}
           <div className="grid gap-1.5 min-w-0">
             <Label>Condizione di pagamento</Label>
             <Select value={pagamento || "__none__"} onValueChange={(v) => setPagamento(v === "__none__" ? "" : v)}>
@@ -293,7 +302,7 @@ export function NuovoPreventivoDialog({
         )}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
-          <Button onClick={() => create.mutate()} disabled={!clienteId || create.isPending || writeOnlyMissingCodice}>
+          <Button onClick={() => create.mutate()} disabled={!soggetto || (soggetto.tipo === "lead" && !campiRiferimentoPreventivo(true,riferimento)) || create.isPending || writeOnlyMissingCodice}>
             Crea {labelDoc}
           </Button>
         </DialogFooter>
