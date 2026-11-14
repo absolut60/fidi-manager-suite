@@ -1,3 +1,7 @@
+# FM71 — Correzioni collaudo, fetta 3c
+- [ ] Colonna unica e ricerca lead con lettura RLS, categoria obbligatoria nelle nuove scritture, pagamento cercabile condiviso, scheda lead sovrapposta.
+- [ ] Test permanenti, suite completa e browser simulato 375/1280; documentazione e resoconto SHA/file.
+
 # FM71 — Preventivi ai lead nell’app, fetta 3b
 - [x] Selettore condiviso cliente/lead, lead rapido con defaults DB, creazione con riferimento obbligatorio, cambio soggetto e Testata lead con riferimento non disattivabile.
 - [x] Lettura lead e sua sede nella lettura documento con RLS, duplicazione lead e riserva giacenze; dispatcher/PDF/ordini invariati. Alternative lead non disponibili per vincolo SQL preesistente.
