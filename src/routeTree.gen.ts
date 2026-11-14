@@ -33,6 +33,7 @@ import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppDashboardCommercialeRouteImport } from './routes/_app/dashboard-commerciale'
 import { Route as AppFidiDashboardRouteImport } from './routes/_app/fidi-dashboard'
 import { Route as AppFidiProcessareRouteImport } from './routes/_app/fidi-processare'
+import { Route as AppFm69CheckRouteImport } from './routes/_app/fm69-check'
 import { Route as AppIlMioProfiloRouteImport } from './routes/_app/il-mio-profilo'
 import { Route as AppImportExportRouteImport } from './routes/_app/import-export'
 import { Route as AppImpostazioniRouteImport } from './routes/_app/impostazioni'
@@ -222,6 +223,11 @@ const AppFidiDashboardRoute = AppFidiDashboardRouteImport.update({
 const AppFidiProcessareRoute = AppFidiProcessareRouteImport.update({
   id: '/fidi-processare',
   path: '/fidi-processare',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFm69CheckRoute = AppFm69CheckRouteImport.update({
+  id: '/fm69-check',
+  path: '/fm69-check',
   getParentRoute: () => AppRoute,
 } as any)
 const AppIlMioProfiloRoute = AppIlMioProfiloRouteImport.update({
@@ -611,6 +617,7 @@ export interface FileRoutesByFullPath {
   '/dashboard-commerciale': typeof AppDashboardCommercialeRoute
   '/fidi-dashboard': typeof AppFidiDashboardRoute
   '/fidi-processare': typeof AppFidiProcessareRoute
+  '/fm69-check': typeof AppFm69CheckRoute
   '/il-mio-profilo': typeof AppIlMioProfiloRoute
   '/import-export': typeof AppImportExportRoute
   '/impostazioni': typeof AppImpostazioniRoute
@@ -705,6 +712,7 @@ export interface FileRoutesByTo {
   '/dashboard-commerciale': typeof AppDashboardCommercialeRoute
   '/fidi-dashboard': typeof AppFidiDashboardRoute
   '/fidi-processare': typeof AppFidiProcessareRoute
+  '/fm69-check': typeof AppFm69CheckRoute
   '/il-mio-profilo': typeof AppIlMioProfiloRoute
   '/import-export': typeof AppImportExportRoute
   '/impostazioni': typeof AppImpostazioniRoute
@@ -798,6 +806,7 @@ export interface FileRoutesById {
   '/_app/dashboard-commerciale': typeof AppDashboardCommercialeRoute
   '/_app/fidi-dashboard': typeof AppFidiDashboardRoute
   '/_app/fidi-processare': typeof AppFidiProcessareRoute
+  '/_app/fm69-check': typeof AppFm69CheckRoute
   '/_app/il-mio-profilo': typeof AppIlMioProfiloRoute
   '/_app/import-export': typeof AppImportExportRoute
   '/_app/impostazioni': typeof AppImpostazioniRoute
@@ -894,6 +903,7 @@ export interface FileRouteTypes {
     | '/dashboard-commerciale'
     | '/fidi-dashboard'
     | '/fidi-processare'
+    | '/fm69-check'
     | '/il-mio-profilo'
     | '/import-export'
     | '/impostazioni'
@@ -988,6 +998,7 @@ export interface FileRouteTypes {
     | '/dashboard-commerciale'
     | '/fidi-dashboard'
     | '/fidi-processare'
+    | '/fm69-check'
     | '/il-mio-profilo'
     | '/import-export'
     | '/impostazioni'
@@ -1080,6 +1091,7 @@ export interface FileRouteTypes {
     | '/_app/dashboard-commerciale'
     | '/_app/fidi-dashboard'
     | '/_app/fidi-processare'
+    | '/_app/fm69-check'
     | '/_app/il-mio-profilo'
     | '/_app/import-export'
     | '/_app/impostazioni'
@@ -1338,6 +1350,13 @@ declare module '@tanstack/react-router' {
       path: '/fidi-processare'
       fullPath: '/fidi-processare'
       preLoaderRoute: typeof AppFidiProcessareRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/fm69-check': {
+      id: '/_app/fm69-check'
+      path: '/fm69-check'
+      fullPath: '/fm69-check'
+      preLoaderRoute: typeof AppFm69CheckRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/il-mio-profilo': {
@@ -1910,6 +1929,7 @@ interface AppRouteChildren {
   AppDashboardCommercialeRoute: typeof AppDashboardCommercialeRoute
   AppFidiDashboardRoute: typeof AppFidiDashboardRoute
   AppFidiProcessareRoute: typeof AppFidiProcessareRoute
+  AppFm69CheckRoute: typeof AppFm69CheckRoute
   AppIlMioProfiloRoute: typeof AppIlMioProfiloRoute
   AppImportExportRoute: typeof AppImportExportRoute
   AppImpostazioniRoute: typeof AppImpostazioniRoute
@@ -1982,6 +2002,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppDashboardCommercialeRoute: AppDashboardCommercialeRoute,
   AppFidiDashboardRoute: AppFidiDashboardRoute,
   AppFidiProcessareRoute: AppFidiProcessareRoute,
+  AppFm69CheckRoute: AppFm69CheckRoute,
   AppIlMioProfiloRoute: AppIlMioProfiloRoute,
   AppImportExportRoute: AppImportExportRoute,
   AppImpostazioniRoute: AppImpostazioniRoute,
