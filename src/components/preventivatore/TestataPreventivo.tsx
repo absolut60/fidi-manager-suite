@@ -29,7 +29,8 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
   const agenteCliente=agenti.find(a=>a.id===cliente?.codice_agente)?.nome||cliente?.codice_agente||'';
   const identitaCliente=[cliente?.codice_gestionale,cliente?.ragione_sociale||prev.cliente?.ragione_sociale].filter(Boolean).join(' · ');
   const indirizzo=[cliente?.indirizzo,[cliente?.cap,cliente?.citta,cliente?.provincia&&`(${cliente.provincia})`].filter(Boolean).join(' ')].filter(Boolean).join(', ');
-  const datoCliente=(etichetta:string,valore:ReactNode,ampio=false)=><div className={`min-w-0 space-y-1 ${ampio?'col-span-2':''}`}><p className="text-[11px] text-muted-foreground">{etichetta}</p><div className="break-words text-xs">{valore||'—'}</div></div>;
+  const datoCliente=(etichetta:string,valore:ReactNode,ampio=false,mono=false)=><div className={`min-w-0 space-y-1 ${ampio?'col-span-2':''}`}><p className="text-[11px] text-muted-foreground">{etichetta}</p><div className={`break-words text-xs ${mono?'font-mono':''}`}>{valore||'—'}</div></div>;
+  const etichettaSoggetto=cliente?.tipo_soggetto==='persona_fisica'?'Privato':cliente?.tipo_soggetto==='azienda'?'Azienda':null;
   const due="grid grid-cols-2 gap-x-2 gap-y-1.5 lg:grid-cols-5";
   return <section className="grid grid-cols-1 gap-2 py-2 lg:grid-cols-[minmax(0,62fr)_minmax(0,38fr)]">
     <div className="flex min-w-0 flex-col gap-2">
