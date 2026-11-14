@@ -1,3 +1,4 @@
+import { fetchPrezziPreventivo, condizioniPrezziCliente, type CondizioniPrezziPreventivo } from "@/lib/prezzi-preventivo";
 import { messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -6,15 +7,18 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { ArticoloGammaPicker, type ArticoloGammaScelto } from "@/components/preventivatore/ArticoloGammaPicker";
 import { PrezziCantiereRiga, COLONNE_PREZZI_CANTIERE } from "@/components/prezzi-cantiere-riga";
 import { opzioniPrezziCantiere, chiavePrezziCantiere, chiaveConteggiPrezziCantieri, upsertCantiereListino, deleteCantiereListino, puoModificareCantiereDb, unitaPrezziCantiere, propostaPrezzoCantiere, type CantiereListinoRow } from "@/lib/cantiere-listini-api";
-import { fetchCondizioniPreventivoCliente, fetchPrezziClienteArticoli } from "@/lib/preventivi-api";
+import { fetchCondizioniPreventivoCliente } from "@/lib/preventivi-api";
 import type { CantiereRow } from "@/lib/cantieri";
 import type { PrezzoClienteGamma } from "@/lib/riga-preventivo";
 import { useAuth } from "@/hooks/use-auth";
 
-export function PrezziCantiereDialog({ open, onOpenChange, cantiere }: { open: boolean; onOpenChange: (v: boolean) => void; cantiere: CantiereRow }) {
-  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="flex h-dvh max-h-dvh w-full max-w-none flex-col gap-3 overflow-hidden rounded-none p-3 sm:h-auto sm:max-h-[92dvh] sm:w-[calc(100%-2rem)] sm:max-w-[1600px] sm:rounded-lg sm:p-4"><DialogHeader className="shrink-0 pr-8"><DialogTitle>Prezzi del cantiere</DialogTitle><DialogDescription className="break-words">{cantiere.nome}</DialogDescription></DialogHeader>{open && <ContenutoPrezziCantiere key={cantiere.id} cantiere={cantiere} />}</DialogContent></Dialog>;
+export function PrezziCantiereDialog({ open, onOpenChange, cantiere, condizioniPrezzi }: { condizioniPrezzi?: CondizioniPrezziPreventivo; open: boolean; onOpenChange: (v: boolean) => void; cantiere: CantiereRow }) {
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="flex h-dvh max-h-dvh w-full max-w-none flex-col gap-3 overflow-hidden rounded-none p-3 sm:h-auto sm:max-h-[92dvh] sm:w-[calc(100%-2rem)] sm:max-w-[1600px] sm:rounded-lg sm:p-4"><DialogHeader className="shrink-0 pr-8"><DialogTitle>Prezzi del cantiere</DialogTitle><DialogDescription className="break-words">{cantiere.nome}</DialogDescription></DialogHeader>{open && <ContenutoPrezziCantiere key={cantiere.id} cantiere={cantiere} condizioniPrezzi={condizioniPrezzi} />}</DialogContent></Dialog>;
 }
-function ContenutoPrezziCantiere({ cantiere }: { cantiere: CantiereRow }) {
+function ContenutoPrezziCantiere({ cantiere, condizioniPrezzi }: { cantiere: CantiereRow; condizioniPrezzi?: CondizioniPrezziPreventivo }) {
+  const condizioni = condizioniPrezzi ?? condizioniPrezziCliente(cantiere.cliente_id);
+  const chiaveCondizioni = [condizioni.cliente_id, condizioni.listino_rif, condizioni.macrocategoria_rif, condizioni.categoria_rif, condizioni.store_id, condizioni.data];
+  const chiaveProposta = (codice: string) => ["prezzi-cantiere-proposta", cantiere.id, chiaveCondizioni, codice];
   const qc = useQueryClient();
   const { user } = useAuth();
   const [adding, setAdding] = useState(false);
@@ -23,12 +27,12 @@ function ContenutoPrezziCantiere({ cantiere }: { cantiere: CantiereRow }) {
   const { data: modificabile = false, error: permessoError } = useQuery({ queryKey: ["prezzi-cantiere-modifica", user?.id, cantiere.id, cantiere.cliente_id, cantiere.lead_id, cantiere.agente_codice, cantiere.created_by], queryFn: () => puoModificareCantiereDb(cantiere), retry: false });
   const codici = rows.map(r => r.cod_gamma);
   const { data: gamma = [] } = useQuery({ queryKey: ["prezzi-cantiere-unita", cantiere.id, codici], queryFn: () => unitaPrezziCantiere(codici), enabled: !!codici.length });
-  const { data: prezzi = new Map<string, PrezzoClienteGamma>() } = useQuery({ queryKey: ["prezzi-cantiere-listino", cantiere.id, codici], queryFn: async () => {
+  const { data: prezzi = new Map<string, PrezzoClienteGamma>() } = useQuery({ queryKey: ["prezzi-cantiere-listino", cantiere.id, chiaveCondizioni, codici], queryFn: async () => {
     const cached = new Map<string, PrezzoClienteGamma>();
     const mancanti: string[] = [];
-    for (const cod of codici) { const p = qc.getQueryData<PrezzoClienteGamma | null>(["prezzi-cantiere-proposta", cantiere.id, cod]); if (p === undefined) mancanti.push(cod); else if (p) cached.set(cod, p); }
-    if (cantiere.cliente_id && mancanti.length) {
-      try { const batch = await fetchPrezziClienteArticoli(cantiere.cliente_id, mancanti); for (const cod of mancanti) { const p = batch.get(cod) ?? null; qc.setQueryData(["prezzi-cantiere-proposta", cantiere.id, cod], p); if (p) cached.set(cod, p); } } catch { for (const cod of mancanti) qc.setQueryData(["prezzi-cantiere-proposta", cantiere.id, cod], null); }
+    for (const cod of codici) { const p = qc.getQueryData<PrezzoClienteGamma | null>(chiaveProposta(cod)); if (p === undefined) mancanti.push(cod); else if (p) cached.set(cod, p); }
+    if ((condizioni.listino_rif != null || condizioni.cliente_id) && mancanti.length) {
+      try { const batch = await fetchPrezziPreventivo(condizioni, mancanti); for (const cod of mancanti) { const p = batch.get(cod) ?? null; qc.setQueryData(chiaveProposta(cod), p); if (p) cached.set(cod, p); } } catch { for (const cod of mancanti) qc.setQueryData(chiaveProposta(cod), null); }
     }
     return cached;
   }, enabled: !!codici.length, retry: false });
@@ -41,8 +45,8 @@ function ContenutoPrezziCantiere({ cantiere }: { cantiere: CantiereRow }) {
     setAdding(true);
     try {
       let prezzo: PrezzoClienteGamma | null = null;
-      if (cantiere.cliente_id) { try { prezzo = (await fetchPrezziClienteArticoli(cantiere.cliente_id, [a.codice])).get(a.codice) ?? null; } catch { /* No engine access: manual entry remains available. */ } }
-      qc.setQueryData(["prezzi-cantiere-proposta", cantiere.id, a.codice], prezzo);
+      if (condizioni.listino_rif != null || condizioni.cliente_id) { try { prezzo = (await fetchPrezziPreventivo(condizioni, [a.codice])).get(a.codice) ?? null; } catch { /* No engine access: manual entry remains available. */ } }
+      qc.setQueryData(chiaveProposta(a.codice), prezzo);
       const proposta = propostaPrezzoCantiere(prezzo);
       const r = await upsertCantiereListino({ cantiere_id: cantiere.id, cod_gamma: a.codice, descrizione: a.descrizione, prezzo_vendita_speciale: proposta.prezzo_vendita_speciale, sconti: proposta.sconti, maggiorazione_perc: proposta.maggiorazione_perc, costo_netto_speciale: null, um_scelta: "um1", note: null });
       cambiaRows([...(qc.getQueryData<CantiereListinoRow[]>(chiavePrezziCantiere(cantiere.id)) ?? []), r]); focus(a.codice);

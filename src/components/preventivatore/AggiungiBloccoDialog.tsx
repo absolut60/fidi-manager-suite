@@ -1,3 +1,4 @@
+import type { CondizioniPrezziPreventivo } from "@/lib/prezzi-preventivo";
 import { opzioniPrezziCantiere } from "@/lib/cantiere-listini-api";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -19,8 +20,9 @@ import { toast } from "sonner";
 import { parseNumeroIt } from "@/lib/numero-it";
 
 export function AggiungiBloccoDialog({
-  open, onOpenChange, preventivoId, lastOrdine, clienteId, scontoPiede = 0, cantiereId,
+  open, onOpenChange, preventivoId, lastOrdine, clienteId, scontoPiede = 0, cantiereId, condizioniPrezzi,
 }: {
+  condizioniPrezzi: CondizioniPrezziPreventivo;
   open: boolean;
   onOpenChange: (v: boolean) => void;
   preventivoId: string;
@@ -54,6 +56,7 @@ export function AggiungiBloccoDialog({
         prezzi_cantiere: cantiereId ? await qc.fetchQuery(opzioniPrezziCantiere(cantiereId)) : [],
         quantita_base: parseNumeroIt(quantita) ?? 0,
         cliente_id: clienteId,
+        condizioni_prezzi: condizioniPrezzi,
         sconto_piede: scontoPiede,
         ordine: fractionalOrder(lastOrdine, null),
       });
@@ -87,7 +90,7 @@ export function AggiungiBloccoDialog({
             <TabsTrigger value="vuoto">Blocco vuoto</TabsTrigger>
           </TabsList>
           <TabsContent value="kit" className="space-y-3">
-            {!clienteId && !dedicati.length && <p role="alert" className="text-sm font-semibold text-destructive">Scegli prima il cliente: i prezzi del kit arrivano dalle sue condizioni Gamma.</p>}
+            {condizioniPrezzi.listino_rif == null && !clienteId && !dedicati.length && <p role="alert" className="text-sm font-semibold text-destructive">Scegli prima il cliente: i prezzi del kit arrivano dalle sue condizioni Gamma.</p>}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="grid gap-1.5">
                 <Label>Famiglia</Label>
@@ -142,7 +145,7 @@ export function AggiungiBloccoDialog({
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
           {tab === "kit" ? (
-            <Button onClick={() => addKit.mutate()} disabled={!kitId || (!clienteId && !dedicati.length) || addKit.isPending}>
+            <Button onClick={() => addKit.mutate()} disabled={!kitId || (condizioniPrezzi.listino_rif == null && !clienteId && !dedicati.length) || addKit.isPending}>
               Aggiungi kit
             </Button>
           ) : (

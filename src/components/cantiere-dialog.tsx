@@ -1,4 +1,5 @@
 // Dialog creazione / modifica cantiere con geocodifica automatica dell'indirizzo.
+import type { CondizioniPrezziPreventivo } from "@/lib/prezzi-preventivo";
 import { Switch } from "@/components/ui/switch";
 import { eliminaConEsito, messaggioEliminazioneCantiere } from "@/lib/esito-eliminazione";
 import { CollegamentiCantiere } from "@/components/collegamenti-cantiere";
@@ -44,8 +45,9 @@ export type SoggettoFisso = {
 };
 
 export function CantiereDialog({
-  open, onOpenChange, cantiere, agenti, soggettoFisso, queryKeysExtra, provvisorioIniziale = false, onSalvato, nomeIniziale = "",
+  open, onOpenChange, cantiere, agenti, soggettoFisso, queryKeysExtra, provvisorioIniziale = false, onSalvato, nomeIniziale = "", condizioniPrezzi,
 }: {
+  condizioniPrezzi?: CondizioniPrezziPreventivo;
   open: boolean;
   onOpenChange: (v: boolean) => void;
   cantiere?: CantiereRow | null;
@@ -499,7 +501,7 @@ export function CantiereDialog({
 
           {open && cantiere && <CollegamentiCantiere cantiereId={cantiere.id} onChiudi={() => onOpenChange(false)} />}
           {cantiere && <Button type="button" variant="outline" onClick={() => setPrezziOpen(true)}>Prezzi del cantiere ({numeroPrezzi ?? "…"})</Button>}
-          {open && cantiere && <PrezziCantiereDialog key={cantiere.id} open={prezziOpen} onOpenChange={setPrezziOpen} cantiere={cantiere} />}
+          {open && cantiere && <PrezziCantiereDialog condizioniPrezzi={condizioniPrezzi} key={cantiere.id} open={prezziOpen} onOpenChange={setPrezziOpen} cantiere={cantiere} />}
 
           <div className="space-y-1.5">
             <Label>Note</Label>

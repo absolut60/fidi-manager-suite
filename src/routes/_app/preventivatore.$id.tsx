@@ -1,3 +1,4 @@
+import type { CondizioniPrezziPreventivo } from "@/lib/prezzi-preventivo";
 import { messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { opzioniPrezziCantiere } from "@/lib/cantiere-listini-api";
 import { BadgePrezziDedicati } from "@/components/badge-prezzi-dedicati";
@@ -582,7 +583,7 @@ function PreventivoEditorPage() {
                       </Card>
                     ) : (
                       prev.blocchi.map((b, idx) => (
-                        <BloccoCard key={b.id} blocco={b} index={idx} preventivoId={id} fascia={(prev.fascia_listino ?? "A") as FasciaListino} readOnly={!modificabile} clienteId={prev.cliente_id ?? null} cantiereId={prev.cantiere_id} {...sedeGiacenze} scontoPiede={Number(prev.sconto_piede_perc ?? 0)} />
+                        <BloccoCard condizioniPrezzi={prev} key={b.id} blocco={b} index={idx} preventivoId={id} fascia={(prev.fascia_listino ?? "A") as FasciaListino} readOnly={!modificabile} clienteId={prev.cliente_id ?? null} cantiereId={prev.cantiere_id} {...sedeGiacenze} scontoPiede={Number(prev.sconto_piede_perc ?? 0)} />
                       ))
                     )}
                   </div>
@@ -614,8 +615,9 @@ function PreventivoEditorPage() {
       {clienteOpen && clienteDati && <ClientePreventivoDialog cliente={clienteDati} onClose={()=>setClienteOpen(false)}/>}
       <AlertDialog open={eliminaOpen} onOpenChange={setEliminaOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Eliminare il documento?</AlertDialogTitle><AlertDialogDescription>Tutti i blocchi e le righe verranno eliminati. Irreversibile.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Annulla</AlertDialogCancel><AlertDialogAction onClick={()=>delPrev.mutate()}>Elimina</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
 
-      {prezziOpen && cantierePrezzi && <PrezziCantiereDialog open onOpenChange={setPrezziOpen} cantiere={cantierePrezzi} />}
+      {prezziOpen && cantierePrezzi && <PrezziCantiereDialog condizioniPrezzi={prev} open onOpenChange={setPrezziOpen} cantiere={cantierePrezzi} />}
       <AggiungiBloccoDialog
+        condizioniPrezzi={prev}
         open={addBloccoOpen}
         onOpenChange={setAddBloccoOpen}
         preventivoId={id}
@@ -640,8 +642,8 @@ function PreventivoEditorPage() {
 }
 
 function BloccoCard({
-  blocco, index, preventivoId, fascia, readOnly = false, clienteId, scontoPiede, cantiereId, sedeGiacenzaId, sedeNome,
-}: { blocco: BloccoConRighe; index: number; preventivoId: string; fascia: FasciaListino; readOnly?: boolean; clienteId: string | null; scontoPiede: number; cantiereId: string | null; sedeGiacenzaId?: string | null; sedeNome?: string | null }) {
+  blocco, index, preventivoId, fascia, readOnly = false, clienteId, scontoPiede, cantiereId, sedeGiacenzaId, sedeNome, condizioniPrezzi,
+}: { condizioniPrezzi: CondizioniPrezziPreventivo; blocco: BloccoConRighe; index: number; preventivoId: string; fascia: FasciaListino; readOnly?: boolean; clienteId: string | null; scontoPiede: number; cantiereId: string | null; sedeGiacenzaId?: string | null; sedeNome?: string | null }) {
   const qc = useQueryClient();
   const sortable = useSortable({ id: blocco.id });
   const style = {
@@ -769,7 +771,7 @@ function BloccoCard({
             </div>
           )}
 
-          <RigheTable blocco={blocco} preventivoId={preventivoId} fascia={fascia} readOnly={readOnly} clienteId={clienteId} cantiereId={cantiereId} sedeGiacenzaId={sedeGiacenzaId} sedeNome={sedeNome} scontoPiede={scontoPiede} />
+          <RigheTable condizioniPrezzi={condizioniPrezzi} blocco={blocco} preventivoId={preventivoId} fascia={fascia} readOnly={readOnly} clienteId={clienteId} cantiereId={cantiereId} sedeGiacenzaId={sedeGiacenzaId} sedeNome={sedeNome} scontoPiede={scontoPiede} />
         </CardContent>
       </Card>
     </div>
