@@ -505,7 +505,7 @@ function PreventivoEditorPage() {
         </div>
 
         <div className="flex min-w-0 flex-col gap-3" {...salvataggio.contenitoreProps}>
-        <FasciaPreventivo dati={riepilogo} titolo={prev.titolo} onCliente={()=>setClienteOpen(true)}/>
+        <FasciaPreventivo dati={riepilogo} titolo={prev.titolo} clienteId={prev.cliente_id} onCliente={()=>setClienteOpen(true)}/>
         {puoScrivere && !modificabile && (
           <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
             <Lock className="size-4 shrink-0" />

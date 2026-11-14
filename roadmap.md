@@ -1,4 +1,8 @@
 # FM68 — Fetta A: visibilità preventivisti (solo database)
+## Fetta B1
+- [ ] 0211 indicatore sintetico con fonti SQL canoniche; due punti del preventivo con pallino condiviso.
+- [ ] bun test, RPC aal2 Pierpaolo fuori sede/diniego, schermate 375/1280 e telefono orizzontale.
+
 - [x] 0210: helper e nove policy additive su cantieri, contatti e lead; nessuna apertura clienti o dati finanziari/legali. Unica dipendenza diretta: consensi_log su contatti, con gate originali invariati; nessuna cascata finanziaria/legale.
 - [x] Quindici controlli SQL superati: policy applicate, default, grant e impronte di tutte le policy/funzioni preesistenti invariate. Nessuna modifica TypeScript manuale; tipi rigenerati automaticamente dalla piattaforma. Prove di scrittura con sessione utente non eseguite.
 

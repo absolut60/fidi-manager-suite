@@ -14,6 +14,7 @@ import { formatNumeroIt,parseNumeroIt } from "@/lib/numero-it";
 import { formatDate } from "@/lib/fidi";
 import { ExternalLink, FileText, HardHat, Percent, Paperclip, StickyNote, UserRound } from "lucide-react";
 import { RiquadroScheda } from "./RiquadroScheda";
+import { IndicatoreClientePreventivo } from "./IndicatoreClientePreventivo";
 
 export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agenti,principali,haAlternative,listino,categoria,sede,onSave,onCliente,onChangeCliente,onCantiere}: {
   prev: PreventivoConDettagli; cliente: DatiClientePreventivo|null|undefined; modificabile:boolean; statoEditabile:boolean; agenti:Agente[]; principali:{id:string;numero:string|null;titolo:string|null}[]; haAlternative:boolean; listino:string; categoria:string; sede:string;
@@ -49,7 +50,7 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
         {field('Alternativa di',principali.find(p=>p.id===prev.alternativa_di)?.numero||'— Nessuna: è un preventivo principale',<div><Select value={prev.alternativa_di||'__none__'} disabled={haAlternative||prev.tipo!=='preventivo'} onValueChange={v=>save({alternativa_di:v==='__none__'?null:v})}><SelectTrigger aria-label="Alternativa di" className="h-7 w-full min-w-0 bg-card px-2 text-xs [&>span]:truncate [&>span]:text-left"><SelectValue/></SelectTrigger><SelectContent className="max-w-[calc(100vw-2rem)]"><SelectItem value="__none__">— Nessuna: è un preventivo principale</SelectItem>{principali.map(p=><SelectItem key={p.id} value={p.id}>{p.numero} {p.titolo?`· ${p.titolo}`:''}</SelectItem>)}</SelectContent></Select>{haAlternative&&<p className="text-xs text-muted-foreground mt-1">Ha alternative collegate</p>}</div>,true)}
       </div>
     </RiquadroScheda>
-    <RiquadroScheda titolo="Cliente" icona={UserRound} tono="azzurro" densita="compatta" intestazione={<div className="flex min-w-0 items-center gap-2"><h3 className="text-xs font-semibold">Cliente</h3>{etichettaSoggetto&&<span className="shrink-0 rounded-full border border-pv-blu/30 bg-pv-azzurro px-1.5 text-[10px] font-medium leading-4 text-pv-blu">{etichettaSoggetto}</span>}</div>}>
+    <RiquadroScheda titolo="Cliente" icona={UserRound} tono="azzurro" densita="compatta" intestazione={<div className="flex min-w-0 flex-wrap items-center gap-2"><h3 className="text-xs font-semibold">Cliente</h3>{etichettaSoggetto&&<span className="shrink-0 rounded-full border border-pv-blu/30 bg-pv-azzurro px-1.5 text-[10px] font-medium leading-4 text-pv-blu">{etichettaSoggetto}</span>}<IndicatoreClientePreventivo clienteId={prev.cliente_id}/></div>}>
       {modificabile?<div className="mb-2 [&>button]:h-7 [&>button]:min-h-7 [&>button]:w-full [&>button]:px-2 [&>button]:text-xs"><ClientePicker value={prev.cliente_id} onChange={onChangeCliente}/></div>:<p className="mb-2 break-words text-xs font-bold">{identitaCliente||'—'}</p>}
       <div className="grid grid-cols-2 gap-x-2 gap-y-2 lg:grid-cols-4">
         {datoCliente('P.IVA',cliente?.partita_iva,false,true)}

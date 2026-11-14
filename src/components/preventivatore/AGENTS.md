@@ -5,3 +5,4 @@
 - Quote tabs persist in validated URL search state; row code/description are separate and desktop/mobile cells share the same unit-aware controls.- The quote article picker reuses FiltriCatalogoArticoli; its cascade choices live only in an in-memory store keyed by quote id (never DB/localStorage), so all rows of one quote share them and another quote starts empty.
 
 - Quote header places Document/Customer and Terms/Site in independent flex columns from lg, with Notes/Attachments on the final grid row, so unequal section heights never stretch the opposite column.
+- Quote customer indicators share one query key and the existing SemaforoPallino palette; only indicatore_cliente_preventivo supplies the stage and boolean flags, preventing financial-detail reads.
