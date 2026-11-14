@@ -1,6 +1,6 @@
 # FM68 — Pulizia Cliente e Cantiere
-- [ ] Azioni intestazione condivise, nome apre scheda autorizzata o elenco con focus, distanze compatte e nomi brevi.
-- [ ] Test e schermate 375/1280 normale/coincidente/sola lettura, query e permessi invariati.
+- [x] AzioneRiquadro condivisa; nome apre CantiereDialog con regola di modifica dell’elenco, altrimenti /cantieri?tab=lista&focus=id; distanze compatte e nomeSedeBreve solo visuale.
+- [x] 781 test; schermate 375/1280 normale/coincidente/sola lettura, aria-label/tooltip, mappa e scheda simulati, nessun overflow/errori. Pagina temporanea rimossa; nessun DB/query/permessi cambiati.
 
 # FM68 — Sede cliente per ID
 - [x] 0215: condizioni_preventivo_cliente aggiunge solo store_id UUID in coda e cl.store_id alla SELECT; definizione applicata confrontata, gate e grant identici.
