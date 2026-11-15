@@ -1,6 +1,6 @@
 # FM72 — Assegnazione interna preventivi, fetta ①b
-- [ ] Riquadro condiviso, salvataggio verificato dei soli due campi e nomi da catalogo utenti condiviso; filtro Per me persistente e badge elenco, nessuna notifica client o modifica DB/prezzi.
-- [ ] Test regole/query, suite completa, schermate 375/1280 e documentazione.
+- [x] AssegnazionePreventivo in Testata, responsabile/cop ie ricercabili con chip rimovibili, UPDATE verificato dei soli due campi e chiave salvataggio condivisa; catalogo utenti con query unica in cache, filtro Per me persistente e badge/nome nelle righe. Nessuna notifica client o modifica DB/prezzi/RLS/trigger; documentazione e regola tecnica nella AGENTS di area (root oltre budget).
+- [x] 899 test verdi: filtro responsabile/copie, AND con ricerca, lettura completa dei campi e gate confermati/ordini/ruoli. Browser con risposte simulate 320/375/390/768/1280/1920: PATCH limitato ai due campi, rilettura assegnazione, ricerca copie, sola lettura, filtro persistente al ricaricamento, zero INSERT notifiche, zero query per riga e overflow. Screenshot 375/1280 controllati, pagina temporanea rimossa; build OK. Salvataggio autenticato reale non verificato: sessione operativa non disponibile.
 
 # FM72 — Assegnazione interna preventivi, fetta ①a
 - [x] Applicata 0226_fm72_assegnazione_preventivi.sql: responsabile nullable senza FK e copie UUID[] con indici, trigger best-effort unico. Catalogo preventivo_assegnato inserito separatamente dalla struttura, raggruppamento per destinatario/tipo e link elenco /preventivatore/. Impronte RLS, gate/prezzi/contatori, task/raggruppamento e quattro trigger precedenti identiche. Regola tecnica documentata nella sezione Assegnazione interna; AGENTS root oltre budget, non modificato.
