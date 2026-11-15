@@ -56,3 +56,23 @@ test('corpo del modello in testo modificabile', async () => {
   const { htmlInTestoSemplice } = await import('@/lib/invio-preventivo-email-core');
   expect(htmlInTestoSemplice('<p>Gentile A &amp; B,</p>\n<p>riga1<br/>d&#39;accordo</p>')).toBe("Gentile A & B,\n\nriga1\nd'accordo");
 });
+
+test('stato dopo invio: solo bozza diventa inviato', async () => {
+  const { statoDopoInvioPreventivo } = await import('@/lib/invio-preventivo-email-core');
+  expect(statoDopoInvioPreventivo('bozza')).toBe('inviato');
+  expect(statoDopoInvioPreventivo('inviato')).toBeNull();
+  expect(statoDopoInvioPreventivo('confermato')).toBeNull();
+  expect(statoDopoInvioPreventivo(null)).toBeNull();
+});
+test('attività registrata: email completata con destinatari, operatore e copia archiviata', async () => {
+  const { attivitaInvioPreventivo } = await import('@/lib/invio-preventivo-email-core');
+  const r = attivitaInvioPreventivo({
+    preventivo: { id: 'p1', numero: 'PRV-167/26', cliente_id: null, lead_id: 'l1', agente_codice: '7', store_id: 's1' },
+    operatoreId: 'u1', oggetto: 'Preventivo PRV-167/26 — Bagno', htmlArchivio: '<html>copia</html>',
+    to: ['a@b.it'], cc: ['c@d.it', 'e@f.it'], bcc: [], quando: '2026-11-15T23:00:00.000Z',
+  });
+  expect(r).toMatchObject({ tipo: 'email', completata: true, preventivo_id: 'p1', lead_id: 'l1', cliente_id: null, store_id: 's1', agente_codice: '7', operatore_id: 'u1',
+    email_destinatario: 'a@b.it', email_cc: 'c@d.it, e@f.it', email_bcc: null, email_oggetto: 'Preventivo PRV-167/26 — Bagno', email_corpo_html: '<html>copia</html>',
+    data_svolgimento: '2026-11-15T23:00:00.000Z' });
+  expect(attivitaInvioPreventivo({ preventivo: { id: 'p', numero: null, cliente_id: 'c', lead_id: 'l', agente_codice: null, store_id: null }, operatoreId: 'u', oggetto: 'o', htmlArchivio: 'h', to: ['a@b.it'], cc: [], bcc: [], quando: 'x' }).lead_id).toBeNull();
+});

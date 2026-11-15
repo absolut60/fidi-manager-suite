@@ -29,6 +29,7 @@ export const TIPO_ATTIVITA_CLASS: Record<TipoAttivita, string> = {
 export type AttivitaRow = {
   id: string;
   preventivo_id?: string | null;
+  email_destinatario?: string | null; email_cc?: string | null; email_bcc?: string | null; email_oggetto?: string | null; email_corpo_html?: string | null;
   opportunita_id: string | null;
   cliente_id: string | null;
   lead_id: string | null;

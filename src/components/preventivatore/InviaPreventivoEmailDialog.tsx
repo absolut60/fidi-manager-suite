@@ -1,7 +1,7 @@
 // Fetta 2: finestra "Invia per email" del preventivo (stile dell'email libera del recupero).
 // Invio solo tramite inviaPreventivoPerEmail; nessun tracciamento né cambio stato qui (fetta 3).
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { FileText, Loader2, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,6 +30,7 @@ export function InviaPreventivoEmailDialog({ open, onOpenChange, prev, blob, fil
   open: boolean; onOpenChange: (v: boolean) => void; prev: PreventivoConDettagli; blob: Blob | null; fileName: string;
 }) {
   const { profilo } = useAuth();
+  const qc = useQueryClient();
   const nomeOperatore = `${profilo?.nome ?? ""} ${profilo?.cognome ?? ""}`.trim() || "Operatore";
   const [to, setTo] = useState("");
   const [cc, setCc] = useState<string[]>([]);
@@ -100,9 +101,12 @@ export function InviaPreventivoEmailDialog({ open, onOpenChange, prev, blob, fil
     if (!blob || !pronto) return;
     setSending(true);
     try {
-      await inviaPreventivoPerEmail({ preventivoId: prev.id, pdf: blob, nomeFile: fileName, oggetto: oggetto.trim(), corpo, to: [to.trim()], cc, bcc });
-      toast.success(`Preventivo inviato a ${to.trim()}`);
+      const r = await inviaPreventivoPerEmail({ preventivoId: prev.id, pdf: blob, nomeFile: fileName, oggetto: oggetto.trim(), corpo, to: [to.trim()], cc, bcc });
       onOpenChange(false);
+      toast.success(`Preventivo inviato a ${r.destinatari.join(", ")}${r.statoNuovo ? " · stato: Inviato" : ""}`);
+      r.avvisi.forEach(a => toast.warning(a));
+      void qc.invalidateQueries({ queryKey: ["preventivo", prev.id] });
+      void qc.invalidateQueries({ queryKey: ["attivita-commerciale", "preventivo", prev.id] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Invio non riuscito");
     } finally { setSending(false); }
