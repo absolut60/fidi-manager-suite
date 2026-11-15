@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IscrizioneWhatsappRouteImport } from './routes/iscrizione-whatsapp'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as TmpIvaRouteImport } from './routes/tmp-iva'
 import { Route as VerificaCodiceRouteImport } from './routes/verifica-codice'
 import { Route as AppAlertFidiRouteImport } from './routes/_app/alert-fidi'
 import { Route as AppApprovazioniRouteImport } from './routes/_app/approvazioni'
@@ -120,6 +121,11 @@ const IscrizioneWhatsappRoute = IscrizioneWhatsappRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TmpIvaRoute = TmpIvaRouteImport.update({
+  id: '/tmp-iva',
+  path: '/tmp-iva',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VerificaCodiceRoute = VerificaCodiceRouteImport.update({
@@ -591,6 +597,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
+  '/tmp-iva': typeof TmpIvaRoute
   '/verifica-codice': typeof VerificaCodiceRoute
   '/alert-fidi': typeof AppAlertFidiRoute
   '/approvazioni': typeof AppApprovazioniRoute
@@ -685,6 +692,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
+  '/tmp-iva': typeof TmpIvaRoute
   '/verifica-codice': typeof VerificaCodiceRoute
   '/alert-fidi': typeof AppAlertFidiRoute
   '/approvazioni': typeof AppApprovazioniRoute
@@ -778,6 +786,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
+  '/tmp-iva': typeof TmpIvaRoute
   '/verifica-codice': typeof VerificaCodiceRoute
   '/_app/alert-fidi': typeof AppAlertFidiRoute
   '/_app/approvazioni': typeof AppApprovazioniRoute
@@ -874,6 +883,7 @@ export interface FileRouteTypes {
     | '/'
     | '/iscrizione-whatsapp'
     | '/login'
+    | '/tmp-iva'
     | '/verifica-codice'
     | '/alert-fidi'
     | '/approvazioni'
@@ -968,6 +978,7 @@ export interface FileRouteTypes {
     | '/'
     | '/iscrizione-whatsapp'
     | '/login'
+    | '/tmp-iva'
     | '/verifica-codice'
     | '/alert-fidi'
     | '/approvazioni'
@@ -1060,6 +1071,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/iscrizione-whatsapp'
     | '/login'
+    | '/tmp-iva'
     | '/verifica-codice'
     | '/_app/alert-fidi'
     | '/_app/approvazioni'
@@ -1156,6 +1168,7 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   IscrizioneWhatsappRoute: typeof IscrizioneWhatsappRoute
   LoginRoute: typeof LoginRoute
+  TmpIvaRoute: typeof TmpIvaRoute
   VerificaCodiceRoute: typeof VerificaCodiceRoute
   ConsensiTokenRoute: typeof ConsensiTokenRoute
   FirmaPrivacyTokenRoute: typeof FirmaPrivacyTokenRoute
@@ -1198,6 +1211,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tmp-iva': {
+      id: '/tmp-iva'
+      path: '/tmp-iva'
+      fullPath: '/tmp-iva'
+      preLoaderRoute: typeof TmpIvaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/verifica-codice': {
@@ -2041,6 +2061,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   IscrizioneWhatsappRoute: IscrizioneWhatsappRoute,
   LoginRoute: LoginRoute,
+  TmpIvaRoute: TmpIvaRoute,
   VerificaCodiceRoute: VerificaCodiceRoute,
   ConsensiTokenRoute: ConsensiTokenRoute,
   FirmaPrivacyTokenRoute: FirmaPrivacyTokenRoute,
