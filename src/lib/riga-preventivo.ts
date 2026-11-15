@@ -334,3 +334,11 @@ export function confrontoAggiornamento(
   const nettoNuovo = prezzoNettoRiga({ ...nuovi, sconto_perc: riga.sconto_perc });
   return { attuali, nuovi, nettoNuovo, sottoCosto: nuovi.costo_unit != null && nettoNuovo < nuovi.costo_unit };
 }
+
+/**
+ * FM75 F2a — Riga raccoglitore di fornitura e posa (showroom): codice articolo Gamma che inizia per PEF
+ * (PEF, PEF2, PEF3, PEFCAR, PEFEDI, PEFFOV, PEFSER). Regola per riga, stile isRiBa.
+ */
+export function isRaccoglitorePosa(codice: string | null | undefined): boolean {
+  return typeof codice === 'string' && /^PEF/i.test(codice);
+}
