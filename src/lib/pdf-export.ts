@@ -128,10 +128,9 @@ function drawHeader(doc: jsPDF, titolo: string, prev: PreventivoConDettagli, bra
     { lbl: "DATA",         val: fmtData(prev.data),          x: colData },
     { lbl: "VALIDITÀ",     val: fmtData(prev.validita),      x: colVal },
   ];
-  const R2 = [
-    { lbl: "AGENTE",  val: (prev.agente?.nome ?? "—").slice(0, 22), x: colDoc },
-    { lbl: "FILIALE", val: (prev.filiale ?? "—").slice(0, 18),       x: colVal },
-  ];
+  const R2 = prev.agente?.nome
+    ? [{ lbl: "AGENTE", val: prev.agente.nome.slice(0, 22), x: colDoc }]
+    : [];
   for (const c of R1) {
     doc.setFont("helvetica", "bold"); doc.setFontSize(5.8); doc.setTextColor(...LABEL_COL);
     doc.text(c.lbl, c.x, by + 5, { align: "right" });
