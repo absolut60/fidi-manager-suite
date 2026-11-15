@@ -284,13 +284,14 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
                           <span className="font-mono">{r.numero ?? "—"}</span>
                           {alt.length > 0 && <> <EtichettaLettera lettera="A" alternativa={false} /></>}
                           {r.titolo && <span className="font-medium"> · {r.titolo}</span>}
+                          {!isOrdine && r.assegnato_a && r.assegnato_a !== user?.id && <span className="mt-1 block break-words text-xs font-normal text-muted-foreground">{nomeAssegnato(r.assegnato_a, utentiAssegnabili)}</span>}
                         </span>
                       }
                       badge={
                         <span className="flex flex-wrap justify-end gap-1">
                           <BadgeStato stato={r.stato} className="px-2 text-[11px]" />
                           <BadgeEvasione stato={evasioneDi(r)} className="px-2 text-[11px]" />
-                          {!isOrdine && etichettaAssegnazione(r)}
+                          {!isOrdine && r.assegnato_a === user?.id && <Badge variant="outline" className="text-xs">Per te</Badge>}
                         </span>
                       }
                       campi={[
