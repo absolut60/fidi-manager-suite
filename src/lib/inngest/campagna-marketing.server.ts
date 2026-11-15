@@ -281,7 +281,7 @@ export const invioCampagnaMarketing = inngest.createFunction(
             let agente = "";
             let categoria = "";
             let sede: DatiSede | null = null;
-    let inlineLogoBase64: string | undefined;
+            let inlineLogoBase64: string | undefined;
 
             if (d.cliente_id) {
               const { data: cli } = await supabaseAdmin
@@ -352,7 +352,7 @@ export const invioCampagnaMarketing = inngest.createFunction(
               html: htmlFinale,
               fromName: "MADE Distribuzione",
               inlineLogo: true,
-      ...(inlineLogoBase64 ? { inlineLogoBase64 } : {}),
+              ...(inlineLogoBase64 ? { inlineLogoBase64 } : {}),
               ...(allegati.length ? { attachments: allegati } : {}),
               ...(cfg.emailOperatore && isEmailValida(cfg.emailOperatore) ? { replyTo: cfg.emailOperatore } : {}),
             });

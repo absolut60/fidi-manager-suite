@@ -373,7 +373,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
               .maybeSingle();
 
             let sede: DatiSede | null = null;
-    let inlineLogoBase64: string | undefined;
+            let inlineLogoBase64: string | undefined;
             if (cliente?.store_id) {
               const { data: store } = await supabaseAdmin
                 .from("stores")
@@ -472,7 +472,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
               fromName: "Recupero Crediti MADE",
               replyTo: cfg.emailOperatore ?? undefined,
               inlineLogo: true,
-      ...(inlineLogoBase64 ? { inlineLogoBase64 } : {}),
+              ...(inlineLogoBase64 ? { inlineLogoBase64 } : {}),
             });
 
             if (!sendRes.ok) {
