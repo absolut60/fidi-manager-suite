@@ -95,6 +95,8 @@ import { RuoloSelect } from "@/components/ruolo-select";
 import { CondizionePagamentoSelect } from "@/components/condizione-pagamento-select";
 import { CategoriaSelect } from "@/components/categoria-select";
 import { vistaIncorporata } from "@/lib/vista-incorporata";
+import { PreventiviSoggettoTab } from "@/components/preventivatore/PreventiviSoggettoTab";
+import { puoConsultarePreventivi } from "@/lib/permessi-preventivi";
 
 const TAB_VALUES = [
   "riepilogo",
@@ -103,6 +105,7 @@ const TAB_VALUES = [
   "marketing",
   "cantieri",
   "commerciale",
+  "preventivi",
   "storico",
   "cerved",
   "scadenziario",
@@ -607,6 +610,7 @@ function ClienteDetail() {
           <TabsTrigger value="marketing">Marketing</TabsTrigger>
           <TabsTrigger value="cantieri">Cantieri</TabsTrigger>
           <TabsTrigger value="commerciale">Commerciale</TabsTrigger>
+          {puoConsultarePreventivi(roles as string[]) && <TabsTrigger value="preventivi">Preventivi</TabsTrigger>}
           <TabsTrigger value="storico">Fido</TabsTrigger>
           <TabsTrigger value="cerved">Cerved</TabsTrigger>
           <TabsTrigger value="scadenziario">Scadenziario</TabsTrigger>
@@ -850,6 +854,12 @@ function ClienteDetail() {
           />
           </SectionErrorBoundary>
         </TabsContent>
+
+        {puoConsultarePreventivi(roles as string[]) && <TabsContent value="preventivi">
+          <SectionErrorBoundary nome="Preventivi">
+            <PreventiviSoggettoTab soggetto={{ tipo: "cliente", id: clienteId, etichetta: cliente.ragione_sociale }}/>
+          </SectionErrorBoundary>
+        </TabsContent>}
 
         <TabsContent value="storico">
           <SectionErrorBoundary nome="Fido">

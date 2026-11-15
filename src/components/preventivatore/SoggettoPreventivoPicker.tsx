@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ export function SoggettoPreventivoPicker({ value, onChange, sedeId, riferimento,
   sedeId?: string | null; riferimento: RiferimentoPreventivo; onRiferimento: (v: RiferimentoPreventivo) => void; consentiLead?: boolean;
 }) {
   const [tipo, setTipo] = useState<"cliente" | "lead">(value?.tipo ?? "cliente");
+  useEffect(() => { if (value) setTipo(value.tipo); }, [value?.tipo]);
   const [open, setOpen] = useState(false); const [testo, setTesto] = useState("");
   const [nuovo, setNuovo] = useState(false);
   const [form, setForm] = useState({ ragione_sociale: "", nome: "", cognome: "", telefono: "", email: "", store_id: sedeId ?? null as string | null });
