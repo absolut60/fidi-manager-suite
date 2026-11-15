@@ -1,3 +1,7 @@
+# FM76 — Branding per sede, fetta 3
+- [ ] Collegare i quattro PDF a stores tramite preventivi.store_id, senza riserva cliente; helper logo privato e piede con ripieghi.
+- [ ] Test completi e confronto PDF precedente; documentare file, sede identificata e limiti del collaudo.
+
 # FM76 — Branding per sede, fetta 2
 - [x] Collegati logo sede a recupero singolo, massivo (inclusi promemoria manuali), promemoria automatici e campagne cliente; anteprime firmate dalla lettura sede condivisa, archivio con data URL durevole solo per logo personalizzato. Generici/interni/fornitori/assicurazione/privacy restano MADE.
 - [x] Payload inline opzionale nella funzione email esistente; 964 test verdi, fallback con 12 impronte HTML precedenti (quattro varianti), compilazione OK; cornici simulate Playwright 375/1280 controllate. Ricognizione e file in docs/regole/branding-email.md. Nessuna migrazione/dato/policy modificato.
