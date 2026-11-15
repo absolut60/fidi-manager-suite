@@ -3,7 +3,11 @@
 Fonte unica TypeScript: `riepilogoIva` in `src/lib/calcolo-iva.ts`.
 Gemello SQL documentato: `public.calcola_riepilogo_iva(p_preventivo_id)` (migrazione 0234). Ogni modifica va fatta in entrambi, con i test (`tests/calcolo-iva.test.ts`, `tests/sql/fm75-riepilogo-iva.sql`).
 
-Stato: **non collegato ai totali**. Fino a F3c i totali del preventivo restano calcolati su `iva_perc`.
+Stato (F3d): **fonte dei totali persistiti** (`preventivi.totale_imponibile`, `iva_importo`, `totale`).
+
+- TypeScript: l'unico punto che produce i totali è `totaliDocumento` (`calcolo-iva.ts`, basato su `riepilogoIva`), usato da `ricalcolaTotaliPreventivo` (salvataggio righe, aggiornamento listini, ricalcolo blocco) e da `calcolaTotaliPreventivo` (totali a schermo salvati dalla pagina, PDF). La duplicazione copia i totali della sorgente.
+- SQL: `trasforma_preventivo_in_ordine` calcola i totali dell'ordine con `calcola_riepilogo_iva` (migrazione 0235).
+- Non regressione: in `ordinaria` senza override di riga c'è un solo gruppo ad aliquota `iva_perc`, quindi il risultato coincide con il vecchio conto imponibile × `iva_perc` (provato in `tests/calcolo-iva.test.ts` e `tests/sql/fm75-totali-ordine-iva.sql`). I documenti esistenti non sono stati ricalcolati.
 
 ## Regimi (`preventivi.regime_iva`)
 

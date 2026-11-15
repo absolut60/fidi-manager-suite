@@ -151,4 +151,4 @@ Numeri da `get_dashboard_fidi_gruppi`, liste da `get_clienti_dashboard_fidi_ids`
 - **Profilo di pagamento del fido teorico:** dal FM59 fetta 3 usa la stessa regola per riga e gli ultimi 12 mesi (vedi sezione "Profilo di pagamento del fido teorico"); `coefficiente_comportamento` non è stato toccato.
 
 ## Riepilogo IVA del preventivo (FM75 F3b)
-Fonte unica TS `riepilogoIva` (`src/lib/calcolo-iva.ts`), gemello SQL `public.calcola_riepilogo_iva(uuid)`. Regole in `docs/regole/calcolo-iva.md`. Non ancora collegato ai totali (fino a F3c resta `iva_perc`).
+Fonte unica TS `riepilogoIva` (`src/lib/calcolo-iva.ts`), gemello SQL `public.calcola_riepilogo_iva(uuid)`. Regole in `docs/regole/calcolo-iva.md`. Dal F3d è la fonte dei totali persistiti: `totaliDocumento` in TS (ogni scrittura di totale_imponibile/iva_importo/totale), `calcola_riepilogo_iva` in `trasforma_preventivo_in_ordine`.
