@@ -28,6 +28,8 @@ import { BadgeEvasione, BadgeStato, BadgeTipoDoc } from "@/components/preventiva
 import { SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 import { computeEvasione } from "@/lib/evasione";
 import { nomeLeadPreventivo } from "@/lib/soggetto-preventivo";
+import { useUtentiAssegnabili } from '@/lib/use-utenti-assegnabili';
+import { nomeAssegnato } from '@/lib/assegnazione-preventivo';
 
 function SoggettoElenco({ r }: { r: ElencoPreventivoItem }) {
   return <div className="min-w-0">
@@ -74,7 +76,7 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
   const puoScrivere = puoScriverePreventivi(roles as string[]);
   const { filtri: FV, setCampo: setCampoLista } = useFiltriPagina(isOrdine ? "ordini" : "preventivatore", {
     search: "", clienteId: [] as string[], stato: [] as string[], tipoDoc: [] as string[],
-    creatoDa: [] as string[], mostraAlternative: true,
+    creatoDa: [] as string[], mostraAlternative: true, perMe: false,
   }, { userId: user?.id, valida: { clienteId: Array.isArray, stato: Array.isArray, tipoDoc: Array.isArray, creatoDa: Array.isArray } });
   const search = FV.search;
   const clienteId = FV.clienteId;
@@ -82,6 +84,11 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
   const tipoDoc = FV.tipoDoc as TipoDoc[];
   const creatoDa = FV.creatoDa;
   const mostraAlternative = FV.mostraAlternative !== false;
+  const perMe = FV.perMe === true;
+  const { data: utentiAssegnabili = [] } = useUtentiAssegnabili();
+  const etichettaAssegnazione = (r: ElencoPreventivoItem) => r.assegnato_a === user?.id
+    ? <Badge variant="outline" className="text-xs">Per te</Badge>
+    : r.assegnato_a ? <span className="block break-words text-xs text-muted-foreground">{nomeAssegnato(r.assegnato_a, utentiAssegnabili)}</span> : null;
   const [dSearch, setDSearch] = useState(() => FV.search);
   const [openNew, setOpenNew] = useState(false);
   const [mostraFiltri, setMostraFiltri] = useState(false);
@@ -93,8 +100,8 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
   }, [search]);
 
   const filters = useMemo(
-    () => ({ search: dSearch, cliente_id: clienteId, stato, tipo_doc: tipoDoc, creato_da: creatoDa, tipo }),
-    [dSearch, clienteId, stato, tipoDoc, creatoDa, tipo],
+    () => ({ search: dSearch, cliente_id: clienteId, stato, tipo_doc: tipoDoc, creato_da: creatoDa, tipo, per_me: !isOrdine && perMe ? user?.id : null }),
+    [dSearch, clienteId, stato, tipoDoc, creatoDa, tipo, isOrdine, perMe, user?.id],
   );
 
   const { data, isLoading } = useQuery({
@@ -152,7 +159,7 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
             {!alternativa && haAlt && <EtichettaLettera lettera={lettera} alternativa={false} />}
           </div>
         </TableCell>
-        <TableCell className="px-2 py-2 align-top"><Testo className="font-medium">{r.titolo}</Testo></TableCell>
+        <TableCell className="px-2 py-2 align-top"><Testo className="font-medium">{r.titolo}</Testo>{!isOrdine && etichettaAssegnazione(r)}</TableCell>
         <TableCell className="px-2 py-2 align-top">
           <SoggettoElenco r={r} />
         </TableCell>
@@ -183,6 +190,7 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
           )}
         </div>
 
+        {!isOrdine && <div className="flex min-h-10 items-center gap-2"><Switch id="preventivi-per-me" checked={perMe} disabled={!user} onCheckedChange={v => setCampoLista('perMe', v)}/><Label htmlFor="preventivi-per-me" className="text-sm">Per me</Label></div>}
         <div className="flex items-center gap-2 lg:hidden">
           <div className="relative min-w-0 flex-1">
             <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -276,12 +284,14 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
                           <span className="font-mono">{r.numero ?? "—"}</span>
                           {alt.length > 0 && <> <EtichettaLettera lettera="A" alternativa={false} /></>}
                           {r.titolo && <span className="font-medium"> · {r.titolo}</span>}
+                          {!isOrdine && r.assegnato_a && r.assegnato_a !== user?.id && <span className="mt-1 block break-words text-xs font-normal text-muted-foreground">{nomeAssegnato(r.assegnato_a, utentiAssegnabili)}</span>}
                         </span>
                       }
                       badge={
                         <span className="flex flex-wrap justify-end gap-1">
                           <BadgeStato stato={r.stato} className="px-2 text-[11px]" />
                           <BadgeEvasione stato={evasioneDi(r)} className="px-2 text-[11px]" />
+                          {!isOrdine && r.assegnato_a === user?.id && <Badge variant="outline" className="text-xs">Per te</Badge>}
                         </span>
                       }
                       campi={[

@@ -10,3 +10,4 @@
 - Customer store identity for quote activities/sites comes only from condizioni_preventivo_cliente.store_id; names are display-only and store catalog lookups use IDs to survive renames and duplicate names.
 - Quote card header actions use AzioneRiquadro through RiquadroScheda azioni, keeping icon size, tooltip and accessible labels consistent.
 - Shared Gamma picker portals open only for laid-out triggers and close when hidden, so responsive copies never open duplicate searches or duplicate CSS breakpoint logic.
+- Quote assignment uses AssegnazionePreventivo and the shared assignable-user query; writes contain only assignment fields and share the quote save key, while notifications remain exclusively SQL-trigger-owned to avoid duplicates.

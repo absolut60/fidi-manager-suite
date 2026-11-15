@@ -25,6 +25,7 @@ import { testoPerFiltroOr } from "@/lib/ricerca-sicura";
 import { campiSedePreventivo } from "./preventivo-creazione";
 import type { LeadPreventivo } from "./soggetto-preventivo";
 import { LEAD_PREVENTIVO_SELECT, cercaLeadPreventivo } from "./lead-preventivo-api";
+import { filtroPreventiviPerMe } from './assegnazione-preventivo';
 
 export type Preventivo = Database["public"]["Tables"]["preventivi"]["Row"];
 export type PreventivoInsert = Database["public"]["Tables"]["preventivi"]["Insert"];
@@ -269,6 +270,7 @@ export async function fetchPreventivi(f: PreventiviFilters): Promise<PreventivoL
 /** FM65 Punto 5: filtri dell'elenco, applicati SOLO ai principali. */
 export interface ElencoPreventiviFilters extends PreventiviFilters {
   creato_da?: string[];
+  per_me?: string | null;
 }
 
 export interface ElencoPreventivoItem extends Omit<PreventivoListItem, "cliente"> {
@@ -308,7 +310,9 @@ export async function fetchElencoPreventivi(f: ElencoPreventiviFilters): Promise
     const ids = clienti.map(c => c.id);
     if (ids.length) parti.push(`cliente_id.in.(${ids.join(",")})`);
     if (lead.length) parti.push(`lead_id.in.(${lead.map(l => l.id).join(",")})`);
-    q = q.or(parti.join(","));
+    q = q.or(f.per_me ? `and(or(${parti.join(',')}),or(${filtroPreventiviPerMe(f.per_me)}))` : parti.join(','));
+  } else if (f.per_me) {
+    q = q.or(filtroPreventiviPerMe(f.per_me));
   }
   const { data, error } = await q;
   if (error) throw error;
