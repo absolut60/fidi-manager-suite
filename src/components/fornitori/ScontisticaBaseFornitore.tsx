@@ -25,10 +25,9 @@ export function ScontisticaBaseFornitore({ fornitoreId }: { fornitoreId: string 
   const cascata = parseCascata(testo);
   const mutation = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.from("fornitori")
-        .update({ sconti_base: cascata && cascata.length ? cascata : null }).eq("id", fornitoreId).select("id");
-      if (error) throw error;
-      if (!data?.length) throw new Error("Non hai i permessi per modificare la scontistica di questo fornitore");
+      // Funzione dedicata: modifica solo sconti_base (permesso più ampio dell'UPDATE generico del fornitore).
+      const { error } = await supabase.rpc("aggiorna_sconti_base_fornitore", { _id: fornitoreId, _sconti: cascata ?? [] });
+      if (error) throw new Error(error.code === "42501" ? "Non hai i permessi per modificare la scontistica di questo fornitore" : error.message);
     },
     onSuccess: async () => { toast.success("Scontistica di base salvata"); await qc.invalidateQueries({ queryKey: chiave }); },
     onError: (e) => toast.error((e as Error).message),

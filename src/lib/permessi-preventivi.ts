@@ -17,6 +17,8 @@ export const puoConsultarePreventivi = (r: Ruoli) => haAccessoPreventivi(r) || r
 export const puoVedereFornitori = (r: Ruoli) => puoConsultarePreventivi(r) || r.includes("amministrazione");
 export const puoScriverePreventivi = (r: Ruoli) => r.some((x) => ["amministratore", "preventivi_manage", "preventivi_write", "responsabile_showroom"].includes(x));
 export const puoGestireAnagrafichePreventivi = (r: Ruoli) => r.some((x) => x === "amministratore" || x === "preventivi_manage");
+/** Scontistica di base del fornitore: gemello SQL auth_puo_modificare_sconti_base_fornitore(); salvataggio solo via aggiorna_sconti_base_fornitore. */
+export const puoModificareScontiBaseFornitore = (r: Ruoli) => puoGestireAnagrafichePreventivi(r) || r.includes("responsabile_showroom");
 
 /** Scrittura legata al proprio agente solo in assenza di altri ruoli che concedono scrittura. */
 export const scritturaPreventiviVincolataAgente = (r: Ruoli) =>

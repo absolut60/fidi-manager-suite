@@ -27,6 +27,8 @@ import { LetteraFornitoreDialog } from "./LetteraFornitoreDialog";
 import { chiaveAttivita } from "./AttivitaFornitore";
 import { ContattiFornitoreTab } from "./ContattiFornitore";
 import { ScontisticaBaseFornitore } from "./ScontisticaBaseFornitore";
+import { useAuth } from "@/hooks/use-auth";
+import { puoModificareScontiBaseFornitore } from "@/lib/permessi-preventivi";
 import { MarcaFornitoreCampo, SottocategoriaFornitoreCampo } from "./CampiMarcaSottocategoria";
 import { useContattiFornitore, personePrincipali, nomeContatto, suggerimentiContattiEmail, type ContattoFornitore } from "@/lib/contatti-fornitore";
 
@@ -91,6 +93,8 @@ export function SchedaFornitore({ fornitore: f, tab, onTabChange, statoArticoli 
   </div>;
 }
 function RiepilogoFornitore({ fornitore: f, vaiAlTab, persone }: { fornitore: DettaglioFornitore; vaiAlTab: (t: TabSchedaFornitore) => void; persone: ContattoFornitore[] }) {
+  const { roles } = useAuth();
+  const puoScontiBase = puoModificareScontiBaseFornitore(roles as string[]);
   const link = "inline-flex min-h-8 items-center break-all text-primary hover:underline";
   const principali = [{ l: "Tel.", v: f.telefono || f.cellulare, p: "tel:" }, { l: "Email", v: f.email, p: "mailto:" }, { l: "PEC", v: f.pec, p: "mailto:" }].filter(c => c.v?.trim());
   return <>
@@ -109,7 +113,7 @@ function RiepilogoFornitore({ fornitore: f, vaiAlTab, persone }: { fornitore: De
       <Sezione titolo="Contatti principali" icon={Phone}>{principali.length ? <dl className="space-y-1">{principali.map(c => <div key={c.l} className="flex min-w-0 items-baseline gap-2"><dt className="w-12 shrink-0 text-xs font-medium uppercase text-muted-foreground">{c.l}</dt><dd className="min-w-0"><a className={link} href={`${c.p}${c.v!.trim()}`}>{c.v}</a></dd></div>)}</dl> : <p className="text-sm text-muted-foreground">Nessun contatto in Gamma</p>}
         <PersoneRiepilogo persone={persone} vai={() => vaiAlTab("contatti")} /></Sezione>
       <Sezione titolo="Note interne" icon={FileText}><NoteFornitore fornitore={f} /></Sezione>
-      {f.puo_modificare_note && <Sezione titolo="Scontistica di base" icon={FileText}><ScontisticaBaseFornitore fornitoreId={f.id} /></Sezione>}
+      {puoScontiBase && <Sezione titolo="Scontistica di base" icon={FileText}><ScontisticaBaseFornitore fornitoreId={f.id} /></Sezione>}
     </div>
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"><ConvenzioneCard fornitore={f} /><UltimaAttivitaCard fornitoreId={f.id} vai={() => vaiAlTab("attivita")} /></div>
   </>;
