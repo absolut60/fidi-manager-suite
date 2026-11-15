@@ -23,10 +23,18 @@ export const inviaEmailPreventivo = createServerFn({ method: "POST" })
 
     const { data: prev, error: ePrev } = await supabase
       .from("preventivi")
-      .select("id, numero, titolo, validita, totale, store_id, cliente:clienti(ragione_sociale), lead:lead!preventivi_lead_id_fkey(ragione_sociale,nome,cognome)")
+      .select("id, numero, titolo, validita, totale, store_id, cliente_id, lead:lead!preventivi_lead_id_fkey(ragione_sociale,nome,cognome)")
       .eq("id", data.preventivoId).maybeSingle();
     if (ePrev) throw new Error(`Lettura preventivo fallita: ${ePrev.message}`);
     if (!prev) throw new Error("Preventivo non trovato");
+
+    // Nome cliente dalla stessa RPC del preventivatore (i preventivisti non leggono la tabella clienti).
+    let cliente: { ragione_sociale: string | null } | null = null;
+    if (prev.cliente_id) {
+      const { data: dc, error: eCli } = await supabase.rpc("dati_cliente_preventivo", { _id: prev.cliente_id });
+      if (eCli) throw new Error(`Lettura cliente fallita: ${eCli.message}`);
+      cliente = { ragione_sociale: dc?.[0]?.ragione_sociale ?? null };
+    }
 
     let bytes: Uint8Array;
     try { const bin = atob(data.pdf.base64); bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i); }
@@ -44,7 +52,7 @@ export const inviaEmailPreventivo = createServerFn({ method: "POST" })
 
     const email = costruisciEmailPreventivo({
       oggetto: data.oggetto, corpo: data.corpo,
-      ragioneSociale: nomeIntestatarioPdf(prev as never),
+      ragioneSociale: nomeIntestatarioPdf({ cliente, lead: prev.lead }),
       preventivo: { numero: prev.numero, titolo: prev.titolo, validita: prev.validita, totale_ivato: prev.totale == null ? null : Number(prev.totale), sede: sede?.nome ?? null },
       sede, mittente: { nome: nomeOperatore, email: emailOperatore },
     });
