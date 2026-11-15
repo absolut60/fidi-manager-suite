@@ -11,8 +11,9 @@ import { FileText, FileBarChart, Package, Truck, Download, FileSpreadsheet } fro
 import type { PreventivoConDettagli } from "@/lib/preventivi-api";
 import {
   exportPreventivoPdf, exportPropostaRapidaPdf, exportListaMaterialiPdf, exportListaFornitorePdf,
-  COLONNE_RIGHE_DEFAULT, type ColonneRighePdf,
+  COLONNE_RIGHE_DEFAULT, type ColonneRighePdf, type EsposizionePrezziPdf,
 } from "@/lib/pdf-export";
+import { lineaPreventivo } from "@/lib/linee-preventivo";
 import { exportListaMaterialiXlsx, exportListaFornitoreXlsx } from "@/lib/excel-export";
 import { AnteprimaPdfDialog } from "./AnteprimaPdfDialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -62,6 +63,10 @@ export function GeneraDocumentoDialog({
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<{ blob: Blob; fileName: string } | null>(null);
   const [colonne, setColonne] = useState<ColonneRighePdf>(COLONNE_RIGHE_DEFAULT);
+  const [esposizione, setEsposizione] = useState<EsposizionePrezziPdf>("listino");
+  const vistaCommerciale = lineaPreventivo(prev.linea).blocchi.righeStampabili;
+  const PREZZI_DA_ESPOSIZIONE: (keyof ColonneRighePdf)[] = ["prezzo_unit", "sconto", "prezzo_scontato"];
+  const colonneScelta = vistaCommerciale ? COLONNE_LABEL.filter(c => !PREZZI_DA_ESPOSIZIONE.includes(c.key)) : COLONNE_LABEL;
 
   const isOrdine = prev.tipo === "ordine";
   const docDa = isOrdine ? "dall'ordine" : "dal preventivo";
@@ -98,7 +103,7 @@ export function GeneraDocumentoDialog({
       if (formato === "pdf") {
         let result: { blob: Blob; fileName: string };
         if (sel === "PREVENTIVO") {
-          result = await exportPreventivoPdf(prev, { colonne });
+          result = await exportPreventivoPdf(prev, { colonne, esposizionePrezzi: esposizione });
           await salvaPreferenze();
         }
         else if (sel === "PROPOSTA_RAPIDA") result = await exportPropostaRapidaPdf(prev);
@@ -160,8 +165,24 @@ export function GeneraDocumentoDialog({
               <p className="mb-3 text-xs text-muted-foreground">
                 Cod. Gamma, Descrizione e Subtotale del blocco sono sempre stampati.
               </p>
+              {vistaCommerciale && (
+                <div className="mb-3">
+                  <div className="mb-1.5 text-xs font-medium">Esposizione prezzi</div>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Esposizione prezzi">
+                    {([
+                      { v: "listino", l: "Listino + sconto + netto" },
+                      { v: "netto", l: "Solo prezzo netto" },
+                    ] as const).map(o => (
+                      <Button key={o.v} type="button" role="radio" aria-checked={esposizione === o.v}
+                        variant={esposizione === o.v ? "default" : "outline"} className="min-h-10 justify-start"
+                        onClick={() => setEsposizione(o.v)}>{o.l}</Button>
+                    ))}
+                  </div>
+                  <p className="mt-1.5 text-xs text-muted-foreground">Le righe nascoste sono incluse nella riga posa; ricarico, costo e margine non sono mai stampati.</p>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-2">
-                {COLONNE_LABEL.map(({ key, label }) => (
+                {colonneScelta.map(({ key, label }) => (
                   <Label
                     key={key}
                     htmlFor={`col-${key}`}
