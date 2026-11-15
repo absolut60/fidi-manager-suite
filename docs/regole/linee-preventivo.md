@@ -74,3 +74,7 @@ Ogni linea nel catalogo (`src/lib/linee-preventivo.ts`, campo `blocchi`) dichiar
 `LINEE_PREVENTIVO[linea].stampa` = `{ payoff, banda, testataBlocchi }` è l'unica fonte dei parametri di stampa: `pdf-export.ts` non confronta mai il codice linea. Sistema MADE, Edilizia e Fotovoltaico: payoff, banda "IL NUOVO MODO DI COSTRUIRE" e testata di blocco completa (PDF invariati, verificati pixel per pixel). Showroom: solo logo in testata, nessuna banda, blocchi con il solo titolo (e i subtotali di riga).
 
 Totali dei PDF: sempre `calcolaTotaliPreventivo(..., regime_iva)` e `riepilogoIvaDocumento` (righe da `righeIvaDaBlocchi`, base unica di `totaliDocumento`/`riepilogoIva`). Nel PDF ufficiale, con regime diverso da `ordinaria` (qualunque linea) il piede mostra imponibile/IVA per aliquota e, nel regime BS, totale intervento, beni significativi e quota al 22%; in `ordinaria` il piede è quello storico.
+
+## Attivazione Showroom (F7)
+
+`LINEE_PREVENTIVO.showroom.attiva = true` (Sistema MADE e Showroom attive; Edilizia e Fotovoltaico spente). Gate verificati con documenti showroom reali in `tests/sql/f7-showroom-attiva.sql` (rollback): showroom semplice vede sede ∩ linee e non scrive; store manager vede tutte le linee della propria sede; preventivista vede/crea solo le linee abilitate e non può spostare un documento su una linea non abilitata; responsabile_showroom vede e scrive le linee abilitate di tutte le sedi. Il margine € sotto Marg.% è mostrato su tutte le linee.
