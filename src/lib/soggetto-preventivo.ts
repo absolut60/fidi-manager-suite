@@ -22,6 +22,13 @@ export function nomeIntestatarioPdf(prev: { cliente?: { ragione_sociale: string 
   if (prev.cliente) return prev.cliente.ragione_sociale ?? "—";
   return prev.lead ? nomeLeadPreventivo(prev.lead) : "—";
 }
+/** Nome file dei documenti del preventivo: slug del cliente o del lead, "cliente" se manca il soggetto. */
+export function nomeFileDocumentoPreventivo(prev: Parameters<typeof nomeIntestatarioPdf>[0] & { numero?: string | null }, tipo: string, ext = "pdf") {
+  const num = (prev.numero ?? "senza-numero").replace(/[^A-Za-z0-9_-]+/g, "_");
+  const nome = nomeIntestatarioPdf(prev);
+  const sog = (nome === "—" ? "cliente" : nome).replace(/[^A-Za-z0-9_-]+/g, "_").slice(0, 30);
+  return `${tipo}_${num}_${sog}.${ext}`;
+}
 export function campiLeadRapido(input: z.input<typeof inputLeadRapido>, agente: string | null) {
   const v = inputLeadRapido.parse(input);
   return { ...v, ragione_sociale: v.ragione_sociale || null, nome: v.nome || null, cognome: v.cognome || null,

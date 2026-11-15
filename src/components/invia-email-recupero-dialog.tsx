@@ -18,6 +18,7 @@ import { classificaScadenza } from "@/lib/scadenze";
 import { isEmailValida } from "@/lib/email-validazione";
 import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
 import { ReminderControls, defaultReminderFor, creaFollowUp, type ReminderState } from "@/components/reminder-controls";
+import { isTemplateRecupero } from "@/lib/invio-preventivo-email-core";
 import { CampoCopie, type DestinatarioCopia } from "@/components/email-recupero/campo-copie";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -180,7 +181,7 @@ export function InviaEmailRecuperoDialog({
     enabled: open && puoInviare,
   });
   const templatesInvio = useMemo(
-    () => (templates ?? []).filter((t) => t.tipo !== "promemoria_scadenza"),
+    () => (templates ?? []).filter((t) => t.tipo !== "promemoria_scadenza" && isTemplateRecupero(t)),
     [templates],
   );
 

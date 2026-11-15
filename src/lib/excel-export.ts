@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
 
 import type { PreventivoConDettagli } from "./preventivi-api";
+import { nomeFileDocumentoPreventivo } from "./soggetto-preventivo";
 
 import {
   aggregaMateriali,
@@ -10,13 +11,7 @@ import {
 } from "./output-api";
 import { salvaWorkbook } from "@/lib/salva-workbook";
 
-function fileName(prev: PreventivoConDettagli, tipo: string) {
-  const num = (prev.numero ?? "senza-numero").replace(/[^A-Za-z0-9_-]+/g, "_");
-  const cli = (prev.cliente?.ragione_sociale ?? "cliente")
-    .replace(/[^A-Za-z0-9_-]+/g, "_")
-    .slice(0, 30);
-  return `${tipo}_${num}_${cli}.xlsx`;
-}
+const fileName = (prev: PreventivoConDettagli, tipo: string) => nomeFileDocumentoPreventivo(prev, tipo, "xlsx");
 
 export async function exportListaMaterialiXlsx(prev: PreventivoConDettagli) {
   const base = aggregaMateriali(prev.blocchi);

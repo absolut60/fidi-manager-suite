@@ -1,4 +1,4 @@
-import { nomeIntestatarioPdf } from "./soggetto-preventivo";
+import { nomeFileDocumentoPreventivo, nomeIntestatarioPdf } from "./soggetto-preventivo";
 import jsPDF from "jspdf";
 import { prezzoNettoRiga, rigaInUnita, formatScontiGamma, isIntestazioneKit } from "./riga-preventivo";
 import autoTable from "jspdf-autotable";
@@ -322,11 +322,7 @@ function drawRiepilogoIvaPdf(doc: jsPDF, r: RiepilogoIva, tx: number, ty: number
   doc.setTextColor(...NAVY); doc.text(fmtEur(r.totale), tx + tw - 4, yy + 1.5, { align: "right" });
 }
 
-function fileName(prev: PreventivoConDettagli, tipo: string, ext = "pdf") {
-  const num = (prev.numero ?? "senza-numero").replace(/[^A-Za-z0-9_-]+/g, "_");
-  const cli = (prev.cliente?.ragione_sociale ?? "cliente").replace(/[^A-Za-z0-9_-]+/g, "_").slice(0, 30);
-  return `${tipo}_${num}_${cli}.${ext}`;
-}
+const fileName = (prev: PreventivoConDettagli, tipo: string, ext = "pdf") => nomeFileDocumentoPreventivo(prev, tipo, ext);
 
 export interface ColonneRighePdf {
   um: boolean;
