@@ -8774,6 +8774,14 @@ export type Database = {
         Returns: number
       }
       calcola_livello_fido: { Args: { _importo: number }; Returns: number }
+      calcola_riepilogo_iva: {
+        Args: { p_preventivo_id: string }
+        Returns: {
+          aliquota: number
+          imponibile: number
+          iva: number
+        }[]
+      }
       calcola_scaduto: { Args: { _ant: number; _ssa: number }; Returns: number }
       calcola_semaforo_affidabilita_batch: {
         Args: { _ids: string[] }
