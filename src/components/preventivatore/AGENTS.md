@@ -4,7 +4,7 @@
 - The quote client overlay checks the client SELECT through user RLS before embedding the existing client page; denied access renders only the dedicated quote-client DTO.
 - Quote tabs persist in validated URL search state; row code/description are separate and desktop/mobile cells share the same unit-aware controls.- The quote article picker reuses FiltriCatalogoArticoli; its cascade choices live only in an in-memory store keyed by quote id (never DB/localStorage), so all rows of one quote share them and another quote starts empty.
 
-- Quote header places Document/Customer and Terms/Site in independent flex columns from lg, with Notes/Attachments on the final grid row, so unequal section heights never stretch the opposite column.
+- Quote header uses equal-width, start-aligned desktop columns in logical DOM order, with Notes/Attachments paired and activities in a single column; reference badges belong to commercial terms, keeping site data separate.
 - Quote customer indicators share one query key and the existing SemaforoPallino palette; only indicatore_cliente_preventivo supplies the stage and boolean flags, preventing financial-detail reads.
 - Quote sites read persisted nearest-store distances under RLS and fetch customer-store road distance without persistence through distanzaCantiereSede; identical stores show only the persisted row, and the map dialog reuses CantieriMappa in opt-in compact mode.
 - Customer store identity for quote activities/sites comes only from condizioni_preventivo_cliente.store_id; names are display-only and store catalog lookups use IDs to survive renames and duplicate names.

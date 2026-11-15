@@ -43,7 +43,7 @@ export function AttivitaPreventivo({ id, clienteId, agenteCodice, sedeNome, sede
       return ordinaAttivitaPreventivo(righe);
     },
   });
-  return <RiquadroScheda titolo={`Attività commerciali (${attivita.length})`} icona={CalendarClock} tono="azzurro" densita="compatta" className="lg:col-span-2">
+  return <RiquadroScheda titolo={`Attività commerciali (${attivita.length})`} icona={CalendarClock} tono="azzurro" densita="compatta" className="lg:col-start-2 lg:row-start-3">
     {isPending && <p className="text-xs text-muted-foreground">Caricamento attività…</p>}
     {error && <p role="alert" className="text-xs text-destructive">Impossibile caricare le attività.</p>}
     {!isPending && !error && !attivita.length && <p className="text-xs text-muted-foreground">Nessuna attività registrata.</p>}
@@ -53,7 +53,7 @@ export function AttivitaPreventivo({ id, clienteId, agenteCodice, sedeNome, sede
           <div className="min-w-0 space-y-1"><p className="break-words"><span className="text-muted-foreground">{TIPO_ATTIVITA_LABEL[a.tipo]} · </span><span className="font-semibold">{a.titolo}</span></p>{luogoAttivita(a) && <p className="break-words text-muted-foreground">{luogoAttivita(a)}</p>}{a.esito && <p className="break-words">Esito: {a.esito}</p>}</div>
           <div className="min-w-0 space-y-1 text-muted-foreground"><p>Pianificata: {fmtDataOra(a.data_pianificata)}</p>{a.data_svolgimento && <p>Svolta: {fmtDataOra(a.data_svolgimento)}</p>}<p className="font-medium text-foreground">{a.completata ? "Completata" : "Da svolgere"}</p></div>
         </>;
-        const stile = "grid w-full min-w-0 grid-cols-1 gap-2 py-3 text-left text-xs lg:grid-cols-[minmax(0,1fr)_minmax(0,18rem)]";
+        const stile = "grid w-full min-w-0 grid-cols-1 gap-2 py-3 text-left text-xs xl:grid-cols-2";
         const riga = modificabile
           ? <Button variant="ghost" className={`${stile} h-auto justify-start whitespace-normal rounded-none px-0`} onClick={() => { setSelezionata(a); setAperto(true); }}>{contenuto}</Button>
           : <div className={stile}>{contenuto}</div>;
