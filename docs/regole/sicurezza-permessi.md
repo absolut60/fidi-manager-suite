@@ -92,6 +92,13 @@ Estratto dal knowledge di progetto il 08/10/2026 (sessione 40). Si aggiorna modi
 - Showroom vede l'area fidi (`RUOLI_VEDONO_FIDI`) ma non propone; accede ai lead (`puoAccedereLead`) ma non li gestisce; `tipiAzioneConsentiti` restituisce `[]` (recupero in sola lettura).
 - Nella scheda Commerciale lo showroom ha "Registra attività" al posto di "Nuova opportunità".
 
+### Responsabile showroom — gemelli TS (FM72 ④b)
+
+- `haRuoloShowroom` riconosce `showroom` e `responsabile_showroom`; `isSoloShowroom` è il gemello di `auth_solo_showroom()` aggiornata nella 0231: uno dei due ruoli e nessuno dei `RUOLI_SUPERANO_SHOWROOM` (elenco invariato). Menu e altre funzioni showroom si applicano attraverso la stessa fonte unica, senza nuove schermate.
+- Il responsabile opera su tutte le sedi; `erroreSedeObbligatoria` resta invariata: il nuovo ruolo non richiede sede. Il perimetro effettivo è imposto dal database.
+- `puoConsultarePreventivi` e `puoScriverePreventivi` in `src/lib/permessi-preventivi.ts` includono `responsabile_showroom`, gemelli dei gate SQL aggiornati nella ④a. Linee abilitate e altri limiti restano controllati dal database e dal selettore linee esistente.
+- `scritturaPreventiviVincolataAgente` e `writeOnlyMissingCodice` sono la fonte unica del vincolo agente nella creazione: `preventivi_write` senza codice è bloccato solo se nessun altro ruolo concede scrittura. `responsabile_showroom`, anche insieme a `preventivi_write`, non richiede codice agente; amministratore e preventivi_manage restano esenti. Nessuna modifica SQL, prezzi o permessi ulteriori.
+
 ## Cerved (FM57)
 
 - Chi può collegare/aggiornare Cerved: fonte unica `puoAggiornareCerved` (`src/lib/permessi-cerved.ts`, ruoli amministratore, amministrazione, recupero_crediti), gemello SQL `public.auth_puo_aggiornare_cerved()`.

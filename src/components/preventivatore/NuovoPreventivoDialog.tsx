@@ -31,6 +31,7 @@ import type { SoggettoTabPreventivi } from "@/lib/preventivi-soggetto";
 import { LEAD_PREVENTIVO_SELECT } from "@/lib/lead-preventivo-api";
 import { selettoreLineaCreazione, type LineaPreventivo } from "@/lib/linee-preventivo";
 import { useLineeUtente } from "@/lib/use-linee-utente";
+import { scritturaPreventiviVincolataAgente, writeOnlyMissingCodice as mancaCodiceAgenteScrittura } from "@/lib/permessi-preventivi";
 
 export function NuovoPreventivoDialog({
   open, onOpenChange, tipo = "preventivo", soggettoIniziale,
@@ -62,9 +63,9 @@ export function NuovoPreventivoDialog({
   const [lineaScelta, setLineaScelta] = useState<LineaPreventivo | null>(null);
   const linea = lineaScelta && statoLinea.linee.some(l => l.codice === lineaScelta) ? lineaScelta : statoLinea.iniziale;
   const lineaNonDisponibile = lineeProfilo.isSuccess && statoLinea.bloccaCreazione;
-  const isWriteOnly = roles.includes("preventivi_write") && !roles.includes("amministratore") && !roles.includes("preventivi_manage");
+  const isWriteOnly = scritturaPreventiviVincolataAgente(roles);
   const profiloCodiceAgente = profilo ? (profilo as unknown as Record<string, unknown>).codice_agente as string | null | undefined : undefined;
-  const writeOnlyMissingCodice = isWriteOnly && !profiloCodiceAgente;
+  const writeOnlyMissingCodice = mancaCodiceAgenteScrittura(roles, profiloCodiceAgente);
 
   const leadIniziale = useQuery({
     queryKey: ["lead-preventivo-iniziale", soggettoIniziale?.id],

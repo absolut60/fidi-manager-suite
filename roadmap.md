@@ -1,3 +1,7 @@
+# FM72 — Responsabile showroom, tappa ④b (solo frontend)
+- [x] Allineati gemelli showroom/preventivi; blocco codice agente e vincolo agente derivati dal gate di scrittura condiviso, inclusi ruoli misti. Nessuna migrazione o modifica SQL/prezzi; sede obbligatoria e menu invariati. Documentazione aggiornata e regola tecnica nella AGENTS di area (root oltre budget).
+- [x] 30 test mirati e suite completa 920 test verdi con il runner Bun già usato dal progetto (nessuna dipendenza Vitest aggiunta). Browser con dati simulati: preventivi_write senza codice bloccato, responsabile solo e con preventivi_write non bloccati; screenshot 375/1280 controllati, nessun overflow pagina a 320/375/390/768/1280/1920 né errori browser. Pagina temporanea rimossa; nessun salvataggio reale effettuato.
+
 # FM72 — Responsabile showroom, tappa ④a (solo database)
 - [x] Applicate 0230 enum e 0231 perimetro; registro 232 voci contigue. Helper showroom_sede_ok anche sulla restrittiva INSERT lead. Firme invariate, nessuna assegnazione del ruolo. Unica modifica app: etichetta nel Record esaustivo RUOLI_LABEL, necessaria dopo rigenerazione enum per evitare TS2741; nessuna schermata o gate TS modificato.
 - [x] Test SQL reali aal2 con rollback superati: lead/clienti su due sedi, lettura 0/5 per linea, INSERT consentito/negato, divieti fido/clienti, showroom di sede e conteggi admin 5/store manager 3. Zero fixture residue, corpi applicati identici al file; impronte funzioni non coinvolte, policy non-showroom e tutti i trigger identiche. Documentazione aggiornata, suite 911 test verdi.

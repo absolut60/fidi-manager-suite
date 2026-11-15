@@ -38,3 +38,8 @@
 - Fonte unica del perimetro showroom: `public.showroom_sede_ok(store_id)`, usata dalle policy lead showroom (anche INSERT restrittiva) e dai relativi helper. Gli altri ruoli mantengono i propri confronti di sede.
 - Preventivi in lettura e scrittura su tutte le sedi, solo nelle linee abilitate; il limite agente resta invariato. `auth_consulta_preventivi` include il nuovo ruolo.
 - Migrazioni separate per commit dell'enum e uso del valore: `0230_fm72_responsabile_showroom_enum.sql`, `0231_fm72_responsabile_showroom_perimetro.sql`. Test: `tests/sql/fm72-tappa4-responsabile-showroom.sql`, transazione aal2 con rollback. Nessuna modifica all'interfaccia in questa fetta.
+
+### Tappa ④b — gemelli TS (solo frontend)
+
+- I gemelli in `permessi-showroom.ts` e `permessi-preventivi.ts` riconoscono il nuovo ruolo; dettagli in `sicurezza-permessi.md`. Il responsabile, anche insieme a preventivi_write, non viene bloccato dalla mancanza del codice agente nella creazione.
+- Il selettore delle linee abilitate resta identico; il database mantiene il controllo effettivo della linea. Nessuna migrazione o nuova schermata.
