@@ -1,6 +1,7 @@
 # FM72 — Tab Preventivi nelle schede soggetto, fetta 1
-- [ ] Componente condiviso con letture RLS cliente/lead e provenienza separata; creazione preselezionata, tab dopo Commerciale e documentazione.
-- [ ] Test query, suite completa e verifica browser 375/1280; nessuna migrazione o modifica prezzi/permessi.
+- [x] Componente condiviso con letture RLS cliente/lead e provenienza separata; creazione preselezionata, tab dopo Commerciale e documentazione. Nessuna migrazione o modifica prezzi/permessi. Root AGENTS al limite: regola tecnica documentata solo nella sezione FM72 richiesta.
+- [x] Test query e suite completa: 891 verdi. Browser simulato 320/375/390/768/1280/1920: gruppi separati, cliente/lead preselezionati, categoria obbligatoria, link documento e assenza overflow; screenshot 375/1280 controllati, pagina temporanea rimossa.
+- [ ] Verifica autenticata delle schede e creazione reale: sessione personale non disponibile (--self non trova account Andrea); pagina documento richiede login. Nessun dato reale creato.
 
 # FM71 — Numero non modificabile, fetta 3d
 - [x] Migrazione 0225, registro 226: trigger con contatori esistenti per preventivi e ordini, blocco UPDATE salvo service_role; nessun backfill o cambio RLS. Numeri espliciti conservati per compatibilità con conversione e app precedente; vincolo UNIQUE invariato.
