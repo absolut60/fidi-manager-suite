@@ -33,7 +33,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BellRing } from "lucide-react";
 import { ProvaCervedCard } from "@/components/impostazioni/prova-cerved-card";
-import { SediBranding } from "@/components/impostazioni/sedi-branding";
+import { LoghiSede } from "@/components/impostazioni/loghi-sede";
 import { sanificaDocumentoHtml, SANDBOX_ANTEPRIMA } from "@/lib/html-sicuro";
 
 
@@ -123,8 +123,6 @@ function ImpostazioniPage() {
         </Dialog>
       </div>
 
-
-      {!loading && role === 'amministratore' && <SediBranding />}
 
       <ConfigurazioniCard />
 
@@ -619,7 +617,7 @@ function StoreDialog({ editing, onClose }: { editing: StoreRow | null; onClose: 
   }
 
   return (
-    <DialogContent>
+    <DialogContent className="max-h-[90vh] w-[calc(100vw-1rem)] max-w-3xl overflow-y-auto p-4 sm:p-6">
       <DialogHeader>
         <DialogTitle>{editing ? "Modifica punto vendita" : "Nuovo punto vendita"}</DialogTitle>
         <DialogDescription>Compila i dati del punto vendita.</DialogDescription>
@@ -700,6 +698,10 @@ function StoreDialog({ editing, onClose }: { editing: StoreRow | null; onClose: 
           </div>
         </div>
 
+        <div className="space-y-2 rounded-md border p-3">
+          <Label>Loghi sede</Label>
+          {editing ? <LoghiSede storeId={editing.id} /> : <p className="text-sm text-muted-foreground">Salva prima la sede, poi potrai caricare i loghi.</p>}
+        </div>
         <DialogFooter>
           {editing && (
             <Button type="button" variant="outline" className="mr-auto gap-1.5" onClick={() => deleteMutation.mutate()}>
