@@ -13,7 +13,7 @@ DECLARE
 BEGIN
   SELECT s.id INTO vuota FROM public.stores s
    WHERE NOT EXISTS (SELECT 1 FROM public.preventivi p WHERE p.store_id=s.id) LIMIT 1;
-  SELECT codice_agente INTO agente FROM public.agenti LIMIT 1;
+  SELECT codice INTO agente FROM public.agenti LIMIT 1;
   IF (SELECT count(*) FROM public.preventivi) <> 5 THEN RAISE EXCEPTION 'Dati di partenza cambiati: aggiornare i conteggi attesi'; END IF;
   IF EXISTS (SELECT 1 FROM auth.users WHERE id=u) THEN RAISE EXCEPTION 'UUID fixture già usato'; END IF;
 
