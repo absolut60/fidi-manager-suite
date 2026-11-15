@@ -1604,6 +1604,13 @@
       "when": 1794736060514,
       "tag": "0228_fm72_tappa3_linee_profilo",
       "breakpoints": true
+    },
+    {
+      "idx": 229,
+      "version": "7",
+      "when": 1794736438215,
+      "tag": "0229_fm72_tappa3_linee_campi_protetti",
+      "breakpoints": true
     }
   ]
 }
