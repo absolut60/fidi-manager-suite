@@ -2,7 +2,9 @@ import jsPDF from "jspdf";
 import { prezzoNettoRiga, rigaInUnita, formatScontiGamma, isIntestazioneKit } from "./riga-preventivo";
 import autoTable from "jspdf-autotable";
 import type { PreventivoConDettagli } from "./preventivi-api";
-import { calcolaTotaliPreventivo, calcolaBlocco } from "./preventivi-api";
+import { calcolaTotaliPreventivo, calcolaBlocco, riepilogoIvaDocumento } from "./preventivi-api";
+import { lineaPreventivo } from "./linee-preventivo";
+import { REGIMI_IVA, type RiepilogoIva } from "./calcolo-iva";
 import {
   aggregaMateriali, arricchisciMateriali, arrotondaPerFornitore, buildBlocchiOutput,
   fetchArticoliPerOrdine,
@@ -74,9 +76,12 @@ function drawHeader(doc: jsPDF, titolo: string, prev: PreventivoConDettagli, bra
   doc.setFont("helvetica", "bold"); doc.setFontSize(18);
   doc.setTextColor(...NAVY);
   doc.text(titolo.toUpperCase(), w - 14, 13, { align: "right" });
-  doc.setFont("helvetica", "normal"); doc.setFontSize(6.5);
-  doc.setTextColor(...GRIGIO);
-  doc.text("Distribuzione sistemi a secco  |  cartongesso, profili, isolanti, controsoffitti", w - 14, 18.5, { align: "right" });
+  const { payoff } = lineaPreventivo(prev.linea).stampa;
+  if (payoff) {
+    doc.setFont("helvetica", "normal"); doc.setFontSize(6.5);
+    doc.setTextColor(...GRIGIO);
+    doc.text(payoff, w - 14, 18.5, { align: "right" });
+  }
 
   const by = 26;
   const bh = 34;
@@ -218,7 +223,8 @@ function drawHeader(doc: jsPDF, titolo: string, prev: PreventivoConDettagli, bra
   return headerEnd;
 }
 
-function drawFooter(doc: jsPDF, branding: BrandingPdf) {
+function drawFooter(doc: jsPDF, branding: BrandingPdf, prev: PreventivoConDettagli) {
+  const { banda } = lineaPreventivo(prev.linea).stampa;
   const w = doc.internal.pageSize.getWidth();
   const h = doc.internal.pageSize.getHeight();
   const pages = doc.getNumberOfPages();
@@ -230,7 +236,7 @@ function drawFooter(doc: jsPDF, branding: BrandingPdf) {
     doc.setPage(i);
     const isLast = i === pages;
 
-    if (isLast) {
+    if (isLast && banda) {
       const bandY = h - FOOTER_H - BAND_GAP - BAND_H;
       doc.setFillColor(...COBALT);
       doc.rect(0, bandY, w, BAND_H, "F");
@@ -239,12 +245,10 @@ function drawFooter(doc: jsPDF, branding: BrandingPdf) {
       doc.setFont("helvetica", "bold");
 
       doc.setFontSize(10);
-      doc.text("IL NUOVO MODO", 14, bandY + 5);
-      doc.text("DI COSTRUIRE.", 14, bandY + 9);
+      banda.titolo.slice(0, 2).forEach((t, k) => doc.text(t, 14, bandY + 5 + k * 4));
 
       doc.setFontSize(5);
-      doc.text("Tecnologie leggere, risultati solidi", 14, bandY + 13.5);
-      doc.text("il sistema a secco che guarda al futuro.", 14, bandY + 16.3);
+      banda.sottotitolo.slice(0, 2).forEach((t, k) => doc.text(t, 14, bandY + 13.5 + k * 2.8));
 
       doc.setFont("helvetica", "normal");
     }
@@ -273,6 +277,47 @@ function drawFooter(doc: jsPDF, branding: BrandingPdf) {
     doc.setFontSize(6);
     doc.text(`Pag. ${i} / ${pages}`, w - 14, h - 5, { align: "right" });
   }
+}
+
+function etichettaRegime(r: RiepilogoIva): string {
+  return REGIMI_IVA.find(x => x.value === r.regime)?.label ?? r.regime;
+}
+
+/** F6: piede del PDF ufficiale nei regimi agevolati — stesse voci di RiepilogoIvaPreventivo. */
+function drawRiepilogoIvaPdf(doc: jsPDF, r: RiepilogoIva, tx: number, ty: number, tw: number) {
+  const pct = (n: number) => `${fmtNum(n, n % 1 === 0 ? 0 : 2)}%`;
+  const righe: { lbl: string; val: string }[] = [];
+  for (const v of r.voci) {
+    righe.push({ lbl: `Imponibile ${pct(v.aliquota)}`, val: fmtEur(v.imponibile) });
+    righe.push({ lbl: `IVA ${pct(v.aliquota)}`, val: fmtEur(v.iva) });
+  }
+  if (r.dettaglioBs) {
+    righe.push({ lbl: "Totale intervento", val: fmtEur(r.dettaglioBs.totaleIntervento) });
+    righe.push({ lbl: "Beni significativi", val: fmtEur(r.dettaglioBs.totaleBeni) });
+    righe.push({ lbl: "Quota al 22% (concorrenza)", val: fmtEur(r.dettaglioBs.quota22) });
+  }
+  righe.push({ lbl: "IVA totale", val: fmtEur(r.ivaTotale) });
+  const boxH = 11 + 4 + righe.length * 4.6 + 7;
+  doc.setDrawColor(...GRIGIO_BD); doc.setLineWidth(0.3);
+  doc.rect(tx, ty, tw, boxH, "D");
+  doc.setFillColor(...NAVY); doc.rect(tx, ty, tw, 11, "F");
+  doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(255, 255, 255);
+  doc.text("Totale", tx + 3, ty + 7.5);
+  doc.text(fmtEur(r.imponibileTotale), tx + tw - 4, ty + 7.5, { align: "right" });
+  doc.setFont("helvetica", "normal"); doc.setFontSize(6.5); doc.setTextColor(...GRIGIO);
+  doc.text(`Regime IVA: ${etichettaRegime(r)}`, tx + 3, ty + 14.5);
+  let yy = ty + 19;
+  doc.setFontSize(8);
+  for (const riga of righe) {
+    doc.setTextColor(...GRIGIO); doc.text(riga.lbl, tx + 3, yy);
+    doc.setTextColor(...NAVY); doc.text(riga.val, tx + tw - 4, yy, { align: "right" });
+    yy += 4.6;
+  }
+  doc.setDrawColor(...GRIGIO_BD); doc.setLineWidth(0.1);
+  doc.line(tx + 2, yy - 2.6, tx + tw - 2, yy - 2.6);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...GRIGIO); doc.text("Totale con IVA", tx + 3, yy + 1.5);
+  doc.setTextColor(...NAVY); doc.text(fmtEur(r.totale), tx + tw - 4, yy + 1.5, { align: "right" });
 }
 
 function fileName(prev: PreventivoConDettagli, tipo: string, ext = "pdf") {
@@ -306,17 +351,20 @@ export async function exportPreventivoPdf(prev: PreventivoConDettagli, opzioni: 
   const headerEnd = drawHeader(doc, prev.tipo === "ordine" ? "Ordine" : "Preventivo", prev, branding, "sistema");
 
   const blocchi = buildBlocchiOutput(prev);
+  const stampa = lineaPreventivo(prev.linea).stampa;
   const USABLE = w - 28;
   let y = Math.max(62, headerEnd + 4);
 
   for (const b of blocchi) {
     autoTable(doc, {
       startY: y,
-      head: [[
+      head: [stampa.testataBlocchi ? [
         { content: b.rif || "—", styles: { halign: "left", font: "courier", fontStyle: "bold" } },
         { content: b.descrizione, styles: { halign: "left" } },
         { content: `${fmtNum(b.quantita, 2)} ${b.um}`, styles: { halign: "right" } },
         { content: `${fmtEur(b.prezzo_um)} /${b.um}`, styles: { halign: "right" } },
+      ] : [
+        { content: b.descrizione, styles: { halign: "left" } },
       ]],
       body: [],
       theme: "plain",
@@ -325,11 +373,11 @@ export async function exportPreventivoPdf(prev: PreventivoConDettagli, opzioni: 
         cellPadding: { top: 2, bottom: 2, left: 2, right: 2 },
         lineColor: GRIGIO_BD, lineWidth: 0.15,
       },
-      columnStyles: {
+      columnStyles: stampa.testataBlocchi ? {
         0: { cellWidth: 24 },
         2: { cellWidth: 32 },
         3: { cellWidth: 36 },
-      },
+      } : {},
       margin: { left: 14, right: 14, bottom: 30, top: 20 },
     });
     y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
@@ -503,13 +551,11 @@ export async function exportPreventivoPdf(prev: PreventivoConDettagli, opzioni: 
   y += 5;
 
   const ivaPerc = Number(prev.iva_perc ?? 22);
-  const tot = calcolaTotaliPreventivo(
-    prev.blocchi.map((bl) => ({
-      righe: bl.righe, quantita_base: bl.quantita_base, prezzo_um: bl.prezzo_um, importo: bl.importo,
-    })),
-    ivaPerc,
-    0,
-  );
+  const blocchiTot = prev.blocchi.map((bl) => ({
+    righe: bl.righe, quantita_base: bl.quantita_base, prezzo_um: bl.prezzo_um, importo: bl.importo,
+  }));
+  const tot = calcolaTotaliPreventivo(blocchiTot, ivaPerc, 0, prev.regime_iva);
+  const riepilogo = riepilogoIvaDocumento(blocchiTot, ivaPerc, prev.regime_iva);
 
   const DISCLAIMER =
     "I prezzi si intendono franco filiale MADE — IVA esclusa. " +
@@ -519,6 +565,13 @@ export async function exportPreventivoPdf(prev: PreventivoConDettagli, opzioni: 
   doc.setFont("helvetica", "italic"); doc.setFontSize(6.8); doc.setTextColor(...GRIGIO);
   const discLines = doc.splitTextToSize(DISCLAIMER, 78);
   doc.text(discLines, 14, y + 1);
+
+  if (riepilogo.regime !== "ordinaria") {
+    drawRiepilogoIvaPdf(doc, riepilogo, w - 14 - 80, y, 80);
+    drawFooter(doc, branding, prev);
+    const nomeAgev = fileName(prev, prev.tipo === "ordine" ? "ordine" : "preventivo");
+    return { blob: doc.output("blob") as Blob, fileName: nomeAgev };
+  }
 
   const boxH = 26;
   const tw = 80; const tx = w - 14 - tw; const ty = y;
@@ -541,7 +594,7 @@ export async function exportPreventivoPdf(prev: PreventivoConDettagli, opzioni: 
   doc.text("Totale con IVA", tx + 3, ty + 22.5);
   doc.setTextColor(...NAVY); doc.text(fmtEur(tot.totale), tx + tw - 4, ty + 22.5, { align: "right" });
 
-  drawFooter(doc, branding);
+  drawFooter(doc, branding, prev);
   const name = fileName(prev, prev.tipo === "ordine" ? "ordine" : "preventivo");
   return { blob: doc.output("blob") as Blob, fileName: name };
 }
@@ -586,13 +639,11 @@ export async function exportPropostaRapidaPdf(prev: PreventivoConDettagli) {
   y += 5;
 
   const ivaPerc = Number(prev.iva_perc ?? 22);
-  const tot = calcolaTotaliPreventivo(
-    prev.blocchi.map((bl) => ({
-      righe: bl.righe, quantita_base: bl.quantita_base, prezzo_um: bl.prezzo_um, importo: bl.importo,
-    })),
-    ivaPerc,
-    0,
-  );
+  const blocchiTot = prev.blocchi.map((bl) => ({
+    righe: bl.righe, quantita_base: bl.quantita_base, prezzo_um: bl.prezzo_um, importo: bl.importo,
+  }));
+  const tot = calcolaTotaliPreventivo(blocchiTot, ivaPerc, 0, prev.regime_iva);
+  const riepilogo = riepilogoIvaDocumento(blocchiTot, ivaPerc, prev.regime_iva);
 
   const DISCLAIMER =
     "I prezzi si intendono franco filiale MADE — IVA esclusa. " +
@@ -613,7 +664,7 @@ export async function exportPropostaRapidaPdf(prev: PreventivoConDettagli) {
   doc.text(fmtEur(tot.imponibile_netto), tx + tw - 4, ty + 7.5, { align: "right" });
 
   doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(...GRIGIO);
-  doc.text(`IVA ${ivaPerc}%`, tx + 3, ty + 16);
+  doc.text(riepilogo.regime === "ordinaria" ? `IVA ${ivaPerc}%` : `IVA ${etichettaRegime(riepilogo)}`, tx + 3, ty + 16);
   doc.setTextColor(...NAVY); doc.text(fmtEur(tot.iva), tx + tw - 4, ty + 16, { align: "right" });
 
   doc.setDrawColor(...GRIGIO_BD); doc.setLineWidth(0.1);
@@ -623,7 +674,7 @@ export async function exportPropostaRapidaPdf(prev: PreventivoConDettagli) {
   doc.text("Totale con IVA", tx + 3, ty + 22.5);
   doc.setTextColor(...NAVY); doc.text(fmtEur(tot.totale), tx + tw - 4, ty + 22.5, { align: "right" });
 
-  drawFooter(doc, branding);
+  drawFooter(doc, branding, prev);
   const name = fileName(prev, "proposta-rapida");
   return { blob: doc.output("blob") as Blob, fileName: name };
 }
@@ -663,7 +714,7 @@ export async function exportListaMaterialiPdf(prev: PreventivoConDettagli) {
     margin: { left: 14, right: 14, bottom: 30, top: 20 },
   });
 
-  drawFooter(doc, branding);
+  drawFooter(doc, branding, prev);
   const name = fileName(prev, "lista-materiali");
   return { blob: doc.output("blob") as Blob, fileName: name };
 }
@@ -720,7 +771,7 @@ export async function exportListaFornitorePdf(prev: PreventivoConDettagli) {
     }
   }
 
-  drawFooter(doc, branding);
+  drawFooter(doc, branding, prev);
   const name = fileName(prev, "ordine-fornitore");
   return { blob: doc.output("blob") as Blob, fileName: name };
 }
