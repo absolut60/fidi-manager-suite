@@ -1,0 +1,2 @@
+ALTER TABLE public.template_email DROP CONSTRAINT template_email_tipo_check;
+ALTER TABLE public.template_email ADD CONSTRAINT template_email_tipo_check CHECK (tipo = ANY (ARRAY['sollecito_1'::text, 'sollecito_2'::text, 'messa_in_mora'::text, 'libero'::text, 'promemoria_scadenza'::text, 'reminder_rata_piano'::text, 'invio_preventivo'::text]));

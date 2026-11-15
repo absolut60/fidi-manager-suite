@@ -106,10 +106,37 @@ export function buildElencoScadenzeHtml(
   </table>`;
 }
 
+/** Variabili dell'invio preventivo: presenti solo per il tipo "invio_preventivo". */
+export type DatiPreventivoEmail = {
+  numero: string | null;
+  titolo: string | null;
+  validita: string | null;
+  totale_ivato: number | null;
+  sede: string | null;
+};
+
+export const PLACEHOLDERS_PREVENTIVO: { key: keyof DatiPreventivoEmail | "ragione_sociale" | "nome_operatore"; label: string; descr: string }[] = [
+  { key: "numero", label: "{{numero}}", descr: "Numero del preventivo" },
+  { key: "titolo", label: "{{titolo}}", descr: "Titolo del preventivo" },
+  { key: "validita", label: "{{validita}}", descr: "Data di validità del preventivo" },
+  { key: "totale_ivato", label: "{{totale_ivato}}", descr: "Totale del preventivo IVA inclusa" },
+  { key: "sede", label: "{{sede}}", descr: "Sede del preventivo" },
+  { key: "ragione_sociale", label: "{{ragione_sociale}}", descr: "Cliente o lead del preventivo" },
+  { key: "nome_operatore", label: "{{nome_operatore}}", descr: "Nome dell'operatore" },
+];
+
+export const TEMPLATE_INVIO_PREVENTIVO_DEFAULT = {
+  nome: "Invio preventivo",
+  tipo: "invio_preventivo",
+  oggetto: "Preventivo {{numero}} — {{titolo}}",
+  corpo: "<p>Gentile {{ragione_sociale}},</p>\n<p>come d'accordo, Le inviamo in allegato il preventivo {{numero}} ({{titolo}}), per un totale di {{totale_ivato}} IVA inclusa, valido fino al {{validita}}.</p>\n<p>Restiamo a disposizione per qualsiasi chiarimento.</p>\n<p>Cordiali saluti,<br/>{{nome_operatore}}<br/>{{sede}}</p>",
+} as const;
+
 export type DatiTemplate = {
   ragione_sociale: string;
   scadenze: ScadenzaSollecito[];
   nome_operatore: string;
+  preventivo?: DatiPreventivoEmail;
 };
 
 export type RenderedTemplate = { oggetto: string; corpo: string };
@@ -140,6 +167,17 @@ export function renderTemplate(
     data_oggi: formatDateIt(new Date()),
     nome_operatore: dati.nome_operatore ?? "",
   };
+  // Variabili del preventivo aggiunte solo se presenti: gli altri tipi restano identici.
+  if (dati.preventivo) {
+    const p = dati.preventivo;
+    Object.assign(values, {
+      numero: p.numero ?? "",
+      titolo: p.titolo ?? "",
+      validita: formatDateIt(p.validita),
+      totale_ivato: p.totale_ivato == null ? "" : formatEuro(p.totale_ivato),
+      sede: p.sede ?? "",
+    });
+  }
   const valoriHtml = Object.fromEntries(Object.entries(values).map(([key, value]) => [
     key, key === "elenco_scadenze" ? value : escapeHtml(value),
   ]));

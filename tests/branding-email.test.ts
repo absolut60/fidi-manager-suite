@@ -240,3 +240,17 @@ test('non regressione: 12 HTML senza logo identici byte per byte al codice prece
     }
   }
 });
+
+test('sede del preventivo per store_id: lettura sede, logo e ripiego MADE', async () => {
+  const { sedeEmailDaStoreId } = await import('@/lib/branding-email');
+  const letti: string[] = [];
+  const lettore = (riga: unknown) => ({ from(t: string) { expect(t).toBe('stores'); return { select() { return { eq(_c: string, id: string) { letti.push(id); return { async maybeSingle() { return { data: riga, error: null }; } }; } }; } }; } }) as never;
+  const { client, calls } = storage();
+  const ok = await sedeEmailDaStoreId('sede-prev', lettore({ ...sede, nome: 'SEDE DI LISSONE' }), client, 'invio');
+  expect(letti).toEqual(['sede-prev']);
+  expect(ok.inlineLogoBase64).toBe('iVBORw0KGgoA/w==');
+  expect(ok.sede?.nome).toBe('SEDE DI LISSONE');
+  expect(calls).toEqual(['download:sedi/test/logo-email.png']);
+  expect(await sedeEmailDaStoreId(null, lettore(sede), client, 'invio')).toEqual({ sede: null });
+  expect(await sedeEmailDaStoreId('x', lettore(null), client, 'anteprima')).toEqual({ sede: null });
+});

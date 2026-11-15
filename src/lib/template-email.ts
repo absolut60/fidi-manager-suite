@@ -6,6 +6,8 @@ import { logoEmailAnteprima } from "@/lib/branding-email";
 // Re-export delle funzioni pure (rendering) dal modulo isomorfo.
 export {
   PLACEHOLDERS,
+  PLACEHOLDERS_PREVENTIVO,
+  TEMPLATE_INVIO_PREVENTIVO_DEFAULT,
   formatEuro,
   formatDateIt,
   buildElencoScadenzeHtml,

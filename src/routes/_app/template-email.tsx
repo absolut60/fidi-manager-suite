@@ -28,7 +28,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { PLACEHOLDERS, renderTemplate, caricaDatiCliente, caricaSedeCliente, wrapEmailHtml, type TemplateEmail } from "@/lib/template-email";
+import { PLACEHOLDERS, PLACEHOLDERS_PREVENTIVO, renderTemplate, caricaDatiCliente, caricaSedeCliente, wrapEmailHtml, type TemplateEmail } from "@/lib/template-email";
 import { sanificaHtml } from "@/lib/html-sicuro";
 
 export const Route = createFileRoute("/_app/template-email")({
@@ -42,6 +42,7 @@ const TIPI: { value: string; label: string }[] = [
   { value: "sollecito_2", label: "Sollecito 2" },
   { value: "messa_in_mora", label: "Messa in mora" },
   { value: "libero", label: "Libero" },
+  { value: "invio_preventivo", label: "Invio preventivo" },
 ];
 
 function TipoLabel({ tipo }: { tipo: string }) {
@@ -276,7 +277,7 @@ function TemplateDialog({
             <div className="space-y-2">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">Placeholder disponibili</Label>
               <div className="flex flex-wrap gap-2">
-                {PLACEHOLDERS.map((p) => (
+                {(tipo === "invio_preventivo" ? PLACEHOLDERS_PREVENTIVO.map(p => ({ ...p, soloCorpo: false })) : PLACEHOLDERS).map((p) => (
                   <button
                     key={p.key}
                     type="button"
