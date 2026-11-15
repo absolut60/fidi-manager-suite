@@ -1,0 +1,3 @@
+-- Fix 0240: trasforma_preventivo_in_ordine copia fonte_prezzo. Prova sul DB reale; l'eccezione finale annulla tutto.
+-- Esito atteso: "OK_ROLLBACK [sistema_made: N righe identiche] [showroom: N righe identiche]".
+-- (Testo identico a quello eseguito il 15/11/2026: vedi messaggio di consegna.)
