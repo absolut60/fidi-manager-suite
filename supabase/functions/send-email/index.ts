@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import nodemailer from "npm:nodemailer@6.9.16";
 import { LOGO_MADE_BASE64, mascheraEmail, mascheraEmailNelLog } from "./logo-made.ts";
+import { contenutoLogoInline } from "./inline-logo.ts";
 
 // Content-ID fisso usato dal template (<img src="cid:logoMade">).
 // Senza trattini per evitare bug di parser legacy.
@@ -66,6 +67,7 @@ interface EmailPayload {
   fromName?: string;
   attachments?: EmailAttachment[];
   inlineLogo?: boolean; // se true, allega il logo MADE come inline CID "logoMade"
+  inlineLogoBase64?: string; // PNG della sede; assente = logo MADE invariato
 }
 
 function sanitizeDisplayName(s: string | undefined | null): string {
@@ -219,10 +221,11 @@ serve(async (req) => {
       auth: { user, pass },
     });
 
-    const inlineAttachments = payload.inlineLogo
+    const logoInline = contenutoLogoInline(payload.inlineLogo, payload.inlineLogoBase64, LOGO_MADE_BASE64);
+    const inlineAttachments = logoInline !== null
       ? [{
           filename: "logo-made.png",
-          content: LOGO_MADE_BASE64,
+          content: logoInline,
           encoding: "base64" as const,
           contentType: "image/png",
           cid: LOGO_CID, // -> Content-ID: <logoMade>

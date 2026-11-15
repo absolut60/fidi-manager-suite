@@ -19,6 +19,7 @@ export async function sendEmailViaEdge(payload: {
   // Se true, la edge allega logo-made.png inline con cid "logoMade"
   // (richiesto quando il corpo HTML usa <img src="cid:logoMade">).
   inlineLogo?: boolean;
+  inlineLogoBase64?: string;
   // Display-name mittente (l'indirizzo resta quello SMTP autenticato lato edge).
   fromName?: string;
   // Reply-To: quando l'utente risponde alla mail arriva a questa casella.

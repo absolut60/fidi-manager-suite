@@ -27,6 +27,7 @@ export interface SendEmailOptions {
     contentType: string;
   }>;
   inlineLogo?: boolean;
+  inlineLogoBase64?: string;
 }
 
 /**

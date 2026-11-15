@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { classificaScadenza } from "@/lib/scadenze";
 import type { DatiSede as DatiSedeRender } from "@/lib/template-email-render";
+import { logoEmailAnteprima } from "@/lib/branding-email";
 
 // Re-export delle funzioni pure (rendering) dal modulo isomorfo.
 export {
@@ -75,11 +76,12 @@ export async function caricaSedeCliente(clienteId: string): Promise<DatiSedeRend
   if (!cli?.store_id) return null;
   const { data: store } = await supabase
     .from("stores")
-    .select("nome, insegna, indirizzo, cap, citta, provincia, telefono")
+    .select("nome, insegna, indirizzo, cap, citta, provincia, telefono, logo_email_path")
     .eq("id", cli.store_id)
     .maybeSingle();
   if (!store) return null;
   return {
+    ...await logoEmailAnteprima(store, supabase),
     nome: store.nome ?? null,
     insegna: (store as { insegna?: string | null }).insegna ?? null,
     indirizzo: store.indirizzo ?? null,

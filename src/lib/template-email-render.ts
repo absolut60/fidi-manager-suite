@@ -253,6 +253,7 @@ export const LOGO_EMAIL_URL =
 export const FROM_NAME_ISTITUZIONALE = "Recupero Crediti MADE";
 
 export type DatiSede = {
+  logoEmailUrl?: string | null;
   nome: string | null;        // es. "SEDE DI LISSONE"
   insegna: string | null;     // es. "CMV | MADE"
   indirizzo: string | null;
@@ -444,7 +445,7 @@ export function wrapEmailHtml(
   // hanno problemi con i trattini nel Content-ID). Bypassa i proxy aziendali
   // che bloccano immagini remote.
   // In anteprima (default) usiamo l'URL pubblico, perche cid: non viene risolto nel browser.
-  const imgSrc = opts?.useCid ? "cid:logoMade" : LOGO_EMAIL_URL;
+  const imgSrc = opts?.useCid ? "cid:logoMade" : escapeHtml(datiSede?.logoEmailUrl || LOGO_EMAIL_URL);
 
   const cfg = getLivelloConfig(opts?.tipo ?? null);
   const labelStyle = cfg.uppercase
