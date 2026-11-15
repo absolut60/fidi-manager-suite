@@ -123,7 +123,7 @@ export function RigheTable({
         const riga = blocco.righe.find((r) => r.id === id);
         if (!prev || !riga) { await updateRiga(id, patch); await invalidate(); return; }
         const calcolata = patchConImporto(riga, patch, blocco.quantita_base);
-        await salvaPatchRigaCalcolata(id, calcolata, preventivoId, Number(prev.iva_perc ?? 22));
+        await salvaPatchRigaCalcolata(id, calcolata, preventivoId, { iva_perc: prev.iva_perc ?? 22, regime_iva: prev.regime_iva });
       }
       if (import.meta.env.DEV) console.debug(`[preventivo] salvataggio riga ${Math.round(performance.now() - t0)} ms`);
     },

@@ -293,6 +293,7 @@ function PreventivoEditorPage() {
       })),
       Number(prev.iva_perc ?? 22),
       0,
+      prev.regime_iva,
     );
   }, [prev]);
 
