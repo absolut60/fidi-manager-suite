@@ -4,6 +4,7 @@
 DO $$
 DECLARE p uuid:=gen_random_uuid(); b uuid:=gen_random_uuid(); esito text;
 BEGIN
+  PERFORM set_config('request.jwt.claims', json_build_object('sub',(SELECT user_id FROM public.user_roles WHERE role='amministratore' LIMIT 1),'role','authenticated','aal','aal2')::text, true);
   INSERT INTO public.preventivi (id,tipo,data,titolo,regime_iva,iva_perc) VALUES (p,'preventivo',CURRENT_DATE,'FM75 F3b prova','agevolata_10_bs',22);
   INSERT INTO public.blocchi_preventivo (id,preventivo_id,descrizione,ordine) VALUES (b,p,'B',0);
   INSERT INTO public.righe_preventivo (blocco_id,tipo_riga,descrizione,quantita,prezzo_unit,importo,ordine,bene_significativo) VALUES
