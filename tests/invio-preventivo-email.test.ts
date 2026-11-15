@@ -32,3 +32,27 @@ test('destinatari: validi, ripetuti, oltre 10', () => {
   expect(inputInvioPreventivo.safeParse({ ...base, to: Array.from({ length: 11 }, (_, i) => `x${i}@b.it`) }).success).toBe(false);
   expect(inputInvioPreventivo.safeParse({ ...base, to: [] }).success).toBe(false);
 });
+
+test('selettori del recupero e invio massivo escludono solo il modello preventivo', async () => {
+  const { isTemplateRecupero, templateInvioPreventivo } = await import('@/lib/invio-preventivo-email-core');
+  const lista = [{ tipo: 'sollecito_1' }, { tipo: 'invio_preventivo' }, { tipo: 'libero' }, { tipo: 'promemoria_scadenza' }];
+  expect(lista.filter(isTemplateRecupero).map(t => t.tipo)).toEqual(['sollecito_1', 'libero', 'promemoria_scadenza']);
+  expect(templateInvioPreventivo([...lista, { tipo: 'invio_preventivo', attivo: false }]).length).toBe(1);
+});
+test('destinatario proposto: prima email valorizzata del cliente, altrimenti email del lead', async () => {
+  const { destinatarioPropostoPreventivo } = await import('@/lib/invio-preventivo-email-core');
+  expect(destinatarioPropostoPreventivo({ email: ' ', email_2: null, email_3: 'c@d.it', pec: 'p@pec.it' }, null)).toBe('c@d.it');
+  expect(destinatarioPropostoPreventivo({ email: null, email_2: '', email_3: null, pec: 'p@pec.it' }, null)).toBe('p@pec.it');
+  expect(destinatarioPropostoPreventivo(null, { email: 'lead@x.it' })).toBe('lead@x.it');
+  expect(destinatarioPropostoPreventivo(null, null)).toBe('');
+});
+test('nome file: slug del lead o del cliente, "cliente" senza soggetto', async () => {
+  const { nomeFileDocumentoPreventivo } = await import('@/lib/soggetto-preventivo');
+  expect(nomeFileDocumentoPreventivo({ numero: 'PRV-167/26', cliente: null, lead: { ragione_sociale: 'PIPPO SRL', nome: null, cognome: null } }, 'preventivo')).toBe('preventivo_PRV-167_26_PIPPO_SRL.pdf');
+  expect(nomeFileDocumentoPreventivo({ numero: 'PRV-1/26', cliente: { ragione_sociale: 'Rossi & C. SpA' }, lead: null }, 'lista-materiali', 'xlsx')).toBe('lista-materiali_PRV-1_26_Rossi_C_SpA.xlsx');
+  expect(nomeFileDocumentoPreventivo({ numero: null, cliente: null, lead: null }, 'preventivo')).toBe('preventivo_senza-numero_cliente.pdf');
+});
+test('corpo del modello in testo modificabile', async () => {
+  const { htmlInTestoSemplice } = await import('@/lib/invio-preventivo-email-core');
+  expect(htmlInTestoSemplice('<p>Gentile A &amp; B,</p>\n<p>riga1<br/>d&#39;accordo</p>')).toBe("Gentile A & B,\n\nriga1\nd'accordo");
+});
