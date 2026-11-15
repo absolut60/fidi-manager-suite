@@ -23,6 +23,7 @@ import {
   StickyNote,
   Link2,
   ArrowLeftRight,
+  CreditCard,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -98,6 +99,9 @@ import { CollegaLeadClienteDialog } from "@/components/lead/collega-lead-cliente
 import { ClienteVisibileLink } from "@/components/lead/cliente-visibile-link";
 import { puoModificareRecordPreventivista, puoConsultarePreventivi } from "@/lib/permessi-preventivi";
 import { PreventiviSoggettoTab } from "@/components/preventivatore/PreventiviSoggettoTab";
+import { LeadCondizioniCommerciali } from "@/components/lead/lead-condizioni-commerciali";
+import { campiCondizioniCommercialiLead, type CondizioniCommercialiLead } from "@/lib/lead-condizioni-commerciali";
+import { opzioniCataloghiRiferimento } from "@/lib/condizioni-riferimento";
 
 export const Route = createFileRoute("/_app/lead/$leadId")({
   head: () => ({ meta: [{ title: "Scheda lead — FidiManager" }, { name: "description", content: "Anagrafica, contatti e cantieri del lead MADE." }, { property: "og:title", content: "Scheda lead — FidiManager" }, { property: "og:description", content: "Anagrafica, contatti e cantieri del lead MADE." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -106,7 +110,7 @@ export const Route = createFileRoute("/_app/lead/$leadId")({
 
 const NESSUNO = "__none__";
 
-type Form = {
+type Form = Partial<CondizioniCommercialiLead> & {
   tipo_soggetto: string;
   ragione_sociale: string;
   nome: string;
@@ -212,6 +216,8 @@ function LeadDettaglioPage() {
   const [f, setF] = useState<Form | null>(null);
   const canEdit = !soloShowroom ? puoModificareRecordPreventivista(roles, lead?.created_by, user?.id, puoModificareLeadDb === true) : puoModificareLeadDb === true;
   const [editMode, setEditMode] = useState(false);
+  const condizioniVisibili = puoConsultarePreventivi(roles);
+  const [riferimentoAttivo, setRiferimentoAttivo] = useState(false);
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setF((p) => (p ? { ...p, [k]: v } : p));
 
   const buildForm = (l: NonNullable<typeof lead>): Form => ({
@@ -239,11 +245,13 @@ function LeadDettaglioPage() {
     prossima_azione_tipo: l.prossima_azione_tipo ?? "",
     prossima_azione_nota: l.prossima_azione_nota ?? "",
     note: l.note ?? "",
+    ...(condizioniVisibili ? { condizione_pagamento_cod: l.condizione_pagamento_cod, listino_rif: l.listino_rif, macrocategoria_rif: l.macrocategoria_rif, categoria_rif: l.categoria_rif } : {}),
   });
 
   useEffect(() => {
     if (!lead) return;
     setF(buildForm(lead));
+    setRiferimentoAttivo(lead.listino_rif != null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lead]);
 
@@ -276,6 +284,7 @@ function LeadDettaglioPage() {
         prossima_azione_tipo: f.prossima_azione_tipo.trim() || null,
         prossima_azione_nota: f.prossima_azione_nota.trim() || null,
         note: f.note.trim() || null,
+        ...campiCondizioniCommercialiLead(roles, riferimentoAttivo, { condizione_pagamento_cod: f.condizione_pagamento_cod ?? null, listino_rif: f.listino_rif ?? null, macrocategoria_rif: f.macrocategoria_rif ?? null, categoria_rif: f.categoria_rif ?? null }),
       };
       const { data: updated, error } = await supabase.from("lead").update(payload).eq("id", leadId).select("id");
       if (error) throw error;
@@ -300,6 +309,11 @@ function LeadDettaglioPage() {
       qc.invalidateQueries({ queryKey: ["lead", leadId] });
       qc.invalidateQueries({ queryKey: ["lead-storico", leadId] });
       qc.invalidateQueries({ queryKey: ["lead-lista"] });
+      if (condizioniVisibili) {
+        qc.invalidateQueries({ queryKey: opzioniCataloghiRiferimento.queryKey });
+        qc.invalidateQueries({ queryKey: ["lead-preventivo-iniziale", leadId] });
+        qc.invalidateQueries({ queryKey: ["lead-preventivo-search"] });
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -737,6 +751,10 @@ function LeadDettaglioPage() {
                 </LeadSection>
               </div>
 
+              {condizioniVisibili && <LeadSection title="Condizioni commerciali" icon={CreditCard} variant="amber">
+                <LeadCondizioniCommerciali valori={lead}/>
+              </LeadSection>}
+
               {lead.note && (
                 <LeadSection title="Note" icon={StickyNote} variant="muted">
                   <p className="text-sm whitespace-pre-wrap">{lead.note}</p>
@@ -744,6 +762,7 @@ function LeadDettaglioPage() {
               )}
             </div>
           ) : (
+            <div className="space-y-3">
             <Card className="p-4 sm:p-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <div>
@@ -996,6 +1015,10 @@ function LeadDettaglioPage() {
                 </div>
               </div>
             </Card>
+            {condizioniVisibili && <LeadSection title="Condizioni commerciali" icon={CreditCard} variant="amber">
+              <LeadCondizioniCommerciali modifica valori={{ condizione_pagamento_cod: f.condizione_pagamento_cod ?? null, listino_rif: f.listino_rif ?? null, macrocategoria_rif: f.macrocategoria_rif ?? null, categoria_rif: f.categoria_rif ?? null }} onAttivo={setRiferimentoAttivo} onValori={patch => setF(prev => prev ? { ...prev, ...patch } : prev)}/>
+            </LeadSection>}
+            </div>
           )}
         </TabsContent>
 

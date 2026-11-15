@@ -4,7 +4,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { campiRiferimentoPreventivo, type CataloghiRiferimento, type RiferimentoPreventivo } from "@/lib/condizioni-riferimento";
 
-export function CondizioniRiferimento({ riferimento, cataloghi, errore, caricamento, modificabile, onSave, obbligatorio = false, onValori }: {
+export function CondizioniRiferimento({ riferimento, cataloghi, errore, caricamento, modificabile, onSave, obbligatorio = false, onValori, onAttivo }: {
+  onAttivo?: (attivo: boolean) => void;
   obbligatorio?: boolean; onValori?: (valori: RiferimentoPreventivo) => void;
   riferimento: RiferimentoPreventivo; cataloghi?: CataloghiRiferimento; errore?: string; caricamento: boolean; modificabile: boolean;
   onSave: (patch: RiferimentoPreventivo) => Promise<void>;
@@ -38,6 +39,7 @@ export function CondizioniRiferimento({ riferimento, cataloghi, errore, caricame
   return <div className="col-span-2 min-w-0 space-y-2 border-t pt-2">
     <Label className="flex min-h-10 items-center gap-2 text-xs"><Switch aria-label="Condizioni di riferimento" checked={attivo} disabled={obbligatorio || !modificabile || salvando} onCheckedChange={v => {
       setAttivo(v);
+      onAttivo?.(v);
       if (!v) { setValori({ listino_rif: null, macrocategoria_rif: null, categoria_rif: null }); void salva(false, valori); }
     }}/><span>Condizioni di riferimento</span></Label>
     {attivo && <>

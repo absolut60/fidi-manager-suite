@@ -1,3 +1,6 @@
+# FM72 — Condizioni commerciali lead, fetta 2
+- [ ] Sezione vista/modifica con gate consultazione, payload condizionale e riferimento vuoto/completo; documentazione, test e browser.
+
 # FM72 — Tab Preventivi nelle schede soggetto, fetta 1
 - [x] Componente condiviso con letture RLS cliente/lead e provenienza separata; creazione preselezionata, tab dopo Commerciale e documentazione. Nessuna migrazione o modifica prezzi/permessi. Root AGENTS al limite: regola tecnica documentata solo nella sezione FM72 richiesta.
 - [x] Test query e suite completa: 891 verdi. Browser simulato 320/375/390/768/1280/1920: gruppi separati, cliente/lead preselezionati, categoria obbligatoria, link documento e assenza overflow; screenshot 375/1280 controllati, pagina temporanea rimossa.
