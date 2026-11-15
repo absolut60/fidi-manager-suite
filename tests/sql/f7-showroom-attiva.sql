@@ -24,7 +24,8 @@ BEGIN
   SET LOCAL ROLE authenticated;
   SELECT count(*) INTO n FROM public.preventivi; 
   IF n<>1 OR NOT EXISTS(SELECT 1 FROM public.preventivi WHERE id=p_lis) THEN RESET ROLE; RAISE EXCEPTION 'KO1 showroom Lissone {showroom}: visti %',n; END IF;
-  IF NOT public.auth_puo_scrivere_preventivo_id(p_lis) OR public.auth_puo_scrivere_preventivo_id(p_cin) THEN RESET ROLE; RAISE EXCEPTION 'KO1 scrittura per sede'; END IF;
+  -- Il ruolo showroom semplice consulta soltanto (auth_puo_scrivere_preventivo non lo include).
+  IF public.auth_puo_scrivere_preventivo_id(p_lis) OR public.auth_puo_scrivere_preventivo_id(p_cin) THEN RESET ROLE; RAISE EXCEPTION 'KO1 showroom semplice scrive'; END IF;
   RESET ROLE;
   -- scrittura fuori sede negata anche come UPDATE diretto
   SET LOCAL ROLE authenticated;
@@ -96,6 +97,9 @@ BEGIN
   SELECT count(*) INTO n FROM public.preventivi;
   RESET ROLE;
   IF n<>2 THEN RAISE EXCEPTION 'KO5 responsabile showroom: attesi 2, visti %',n; END IF;
+  SET LOCAL ROLE authenticated;
+  IF NOT public.auth_puo_scrivere_preventivo_id(p_lis) OR NOT public.auth_puo_scrivere_preventivo_id(p_cin) THEN RESET ROLE; RAISE EXCEPTION 'KO5 responsabile non scrive showroom'; END IF;
+  RESET ROLE;
 
   RAISE EXCEPTION 'F7_OK: tutti i casi superati (rollback)';
 END;
