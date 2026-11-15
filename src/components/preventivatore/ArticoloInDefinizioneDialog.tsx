@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { formatNumeroIt, parseNumeroIt } from "@/lib/numero-it";
 import { rigaInUnita } from "@/lib/riga-preventivo";
 import type { updateRiga } from "@/lib/preventivi-api";
+import type { ArticoloGammaScelto } from "@/components/preventivatore/ArticoloGammaPicker";
 import { X } from "lucide-react";
 
 type Patch = Parameters<typeof updateRiga>[1];
@@ -20,8 +21,10 @@ const fmt4 = (v: number | null | undefined) => (v == null ? "" : formatNumeroIt(
 const vuotoNull = (s: string) => (s.trim() === "" ? null : s.trim());
 
 /** FM75 F4b: finestra della riga manuale showroom ("articolo in definizione"). Salva solo dati via onPatch. */
-export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch }: {
+export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch, onSceltaGamma }: {
   open: boolean; onOpenChange: (o: boolean) => void; row: RigaManuale; onPatch: (p: Patch) => void;
+  /** F4c: percorso esistente di cambio articolo Gamma della riga. */
+  onSceltaGamma: (a: ArticoloGammaScelto) => void;
 }) {
   const [fornitoreId, setFornitoreId] = useState<string | null>(null);
   const [cerca, setCerca] = useState("");
@@ -57,6 +60,33 @@ export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch }
       if (error) throw error; return data ?? [];
     },
   });
+
+  // F4c: aggancio al catalogo dal codice fornitore (dopo una pausa di digitazione o all'uscita dal campo).
+  const [codiceCercato, setCodiceCercato] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setCodiceCercato(codice.trim()), 600);
+    return () => clearTimeout(t);
+  }, [codice]);
+  const aCatalogo = useQuery({
+    queryKey: ["aggancio-codice-fornitore", codiceCercato, fornitoreId], enabled: open && codiceCercato.length > 0,
+    queryFn: async () => {
+      const esatto = codiceCercato.replace(/[\\%_]/g, (c) => `\\${c}`);
+      let q = supabase.from("articoli_gamma_fornitori").select("articolo_codice").ilike("codice_articolo_fornitore", esatto);
+      if (fornitoreId) q = q.eq("fornitore_id", fornitoreId);
+      const { data, error } = await q.limit(5);
+      if (error) throw error;
+      const codici = [...new Set((data ?? []).map((r) => r.articolo_codice))];
+      if (!codici.length) return [];
+      const { data: art, error: e2 } = await supabase.from("articoli_gamma")
+        .select("codice, descrizione, stato_gamma, um, marca_codice").in("codice", codici);
+      if (e2) throw e2;
+      return art ?? [];
+    },
+  });
+  const usaArticolo = (a: { codice: string; descrizione: string | null; um: string | null; marca_codice: string | null }) => {
+    onSceltaGamma({ codice: a.codice, descrizione: a.descrizione, um: a.um, marca: a.marca_codice });
+    onOpenChange(false);
+  };
 
   const costoNum = parseNumeroIt(costo);
   const listinoNum = parseNumeroIt(listino);
@@ -111,8 +141,24 @@ export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch }
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="grid gap-1.5"><Label htmlFor="aid-marca">Marca</Label><Input id="aid-marca" value={marca} onChange={(e) => setMarca(e.target.value)} /></div>
-            <div className="grid gap-1.5"><Label htmlFor="aid-cod">Codice articolo fornitore</Label><Input id="aid-cod" value={codice} onChange={(e) => setCodice(e.target.value)} /></div>
+            <div className="grid gap-1.5"><Label htmlFor="aid-cod">Codice articolo fornitore</Label><Input id="aid-cod" value={codice} onChange={(e) => setCodice(e.target.value)} onBlur={() => setCodiceCercato(codice.trim())} /></div>
           </div>
+          {(aCatalogo.data ?? []).length > 0 && (
+            <div className="grid gap-2 rounded-md border border-l-4 border-l-primary bg-muted/30 p-3">
+              <p className="text-sm font-semibold">Articolo già a catalogo</p>
+              {aCatalogo.data!.map((a) => (
+                <div key={a.codice} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <div className="min-w-0 flex-1 text-sm">
+                    <span className="font-mono font-semibold">{a.codice}</span>
+                    <span className="break-words"> — {a.descrizione ?? "senza descrizione"}</span>
+                    {a.stato_gamma && <span className="text-muted-foreground"> · {a.stato_gamma}</span>}
+                  </div>
+                  <Button type="button" size="sm" variant="secondary" className="min-h-10 shrink-0" onClick={() => usaArticolo(a)}>Usa questo articolo</Button>
+                </div>
+              ))}
+              <p className="text-xs text-muted-foreground">Facoltativo: puoi ignorarlo e restare sulla riga manuale.</p>
+            </div>
+          )}
           <div className="grid gap-1.5">
             <Label htmlFor="aid-desc">Descrizione *</Label>
             <textarea id="aid-desc" rows={3} value={descrizione} onChange={(e) => setDescrizione(e.target.value)}

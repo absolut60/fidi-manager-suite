@@ -230,6 +230,8 @@ export function RigheTable({
     upd.mutate({
       id: r.id,
       patch: patchConFontePrezzo(r, {
+        // F4c: la riga manuale agganciata al catalogo diventa riga articolo.
+        ...(r.tipo_riga === "manuale" ? { tipo_riga: "articolo_singolo" as const } : {}),
         articolo_codice: a.codice,
         articolo_id: null,
         um_scelta: "um1",
@@ -732,7 +734,7 @@ function MatitaArticoloInDefinizione(p: RigaProps) {
         title="Articolo in definizione" aria-label="Modifica articolo in definizione">
         <Pencil className="h-3.5 w-3.5" />
       </Button>
-      {open && <ArticoloInDefinizioneDialog open={open} onOpenChange={setOpen} row={p.row} onPatch={p.onPatch} />}
+      {open && <ArticoloInDefinizioneDialog open={open} onOpenChange={setOpen} row={p.row} onPatch={p.onPatch} onSceltaGamma={p.onSceltaGamma} />}
     </>
   );
 }
