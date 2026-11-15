@@ -1,3 +1,7 @@
+# FM72 — Responsabile showroom, tappa ④a (solo database)
+- [ ] Enum in migrazione separata, helper sede e soli gate/policy showroom richiesti.
+- [ ] Test SQL reali transazionali con aal2, non regressione e impronte oggetti intoccati; documentazione e suite.
+
 # FM72 — Linea del preventivo, fetta ②
 - [x] Applicata 0227_fm72_linea_preventivo.sql: enum, colonna NOT NULL/default e indice; registro coerente 228 voci 0000–0227. SQL reale BEGIN/ROLLBACK verifica enum/colonna/default/indice e INSERT con numero esplicito per isolare il gate del contatore (INSERT senza numero negato dalla sessione tecnica); cinque documenti Sistema MADE, zero fixture residue, trigger identici. Nessuna policy/gate/prezzo modificati.
 - [x] Catalogo unico e BadgeLinea in elenco incluse alternative, scheda accanto al numero e tab soggetto; filtro multiplo persistente nascosto/non applicato finché solo una linea attiva. Creazione omette linea, duplicazioni/alternative la copiano tramite opzione interna. Nuova fonte unica documentata in docs/regole/linee-preventivo.md; root AGENTS oltre budget, regola non aggiunta lì.
