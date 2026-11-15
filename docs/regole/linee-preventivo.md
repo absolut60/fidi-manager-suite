@@ -19,6 +19,7 @@
 | preventivi_manage / write / read | tutte le sedi, solo linee abilitate |
 | store_manager | solo la propria sede (`profili.store_id`), tutte le linee |
 | showroom | propria sede ∩ linee abilitate |
+| responsabile_showroom | tutte le sedi ∩ linee abilitate, lettura e scrittura |
 
 - Sopra il perimetro resta identico il limite agente (`agente_vede_record`), da cui sono esenti amministratore e preventivi_manage. Direzione non è inclusa. `auth_consulta_preventivi` (gate di listini/catalogo/fornitori) non cambia.
 - Cambi voluti: lo store manager vede solo la propria sede; lo showroom solo propria sede e linee abilitate.
@@ -30,3 +31,10 @@
 - Gestione utenti: sezione "Linee preventivatore" nella modifica utente (quattro linee dal catalogo, quelle non attive con "— non ancora attiva"), almeno una obbligatoria, predefinita limitata alle abilitate e riallineata con `riallineaPredefinitaProfilo`. Salvataggio via `updateUtenteRuoli` (solo amministratore).
 - Creazione: `NuovoPreventivoDialog` legge la propria riga di profili (`useLineeUtente`) e usa `selettoreLineaCreazione` (`lineeUtente` = abilitate ∩ attive; `lineaPredefinitaEffettiva`). Più linee → selettore; una → nessun selettore; nessuna → "Crea" disabilitato con messaggio.
 - Regola: la creazione da dialog passa SEMPRE la linea dell'utente a `createPreventivo(row, { linea })`; duplicazioni e alternative passano la linea dell'origine; una `linea` dentro `row` è sempre ignorata.
+
+### Tappa ④a — responsabile showroom (solo database)
+
+- `responsabile_showroom` eredita permessi e divieti showroom senza vincolo di sede e senza sede richiesta nel profilo; nessun ruolo assegnato automaticamente.
+- Fonte unica del perimetro showroom: `public.showroom_sede_ok(store_id)`, usata dalle policy lead showroom (anche INSERT restrittiva) e dai relativi helper. Gli altri ruoli mantengono i propri confronti di sede.
+- Preventivi in lettura e scrittura su tutte le sedi, solo nelle linee abilitate; il limite agente resta invariato. `auth_consulta_preventivi` include il nuovo ruolo.
+- Migrazioni separate per commit dell'enum e uso del valore: `0230_fm72_responsabile_showroom_enum.sql`, `0231_fm72_responsabile_showroom_perimetro.sql`. Test: `tests/sql/fm72-tappa4-responsabile-showroom.sql`, transazione aal2 con rollback. Nessuna modifica all'interfaccia in questa fetta.

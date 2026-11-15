@@ -11099,6 +11099,7 @@ export type Database = {
         Returns: boolean
       }
       showroom_lead_della_sede: { Args: { _lead_id: string }; Returns: boolean }
+      showroom_sede_ok: { Args: { _store_id: string }; Returns: boolean }
       sostituisci_regole_prezzo_gamma: {
         Args: { _importazione: string; _righe: Json; _tabella: string }
         Returns: Json
@@ -11262,6 +11263,7 @@ export type Database = {
         | "recupero_crediti"
         | "tesoreria"
         | "showroom"
+        | "responsabile_showroom"
       categoria_allegato:
         | "capitolato"
         | "disegni"
@@ -11585,6 +11587,7 @@ export const Constants = {
         "recupero_crediti",
         "tesoreria",
         "showroom",
+        "responsabile_showroom",
       ],
       categoria_allegato: [
         "capitolato",
