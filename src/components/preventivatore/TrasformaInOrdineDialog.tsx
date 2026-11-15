@@ -17,6 +17,8 @@ import {
   type SelezioneTrasformazione,
 } from "@/lib/preventivi-api";
 import { cn } from "@/lib/utils";
+import { lineaPreventivo } from "@/lib/linee-preventivo";
+import { datiMancantiRigaGamma } from "@/lib/articolo-in-definizione";
 
 type Stato = {
   // per riga: quantità da ordinare ora + selezione
@@ -85,6 +87,7 @@ export function TrasformaInOrdineDialog({
         if (righe.length) selezione.push({ blocco_id: b.id, righe });
       }
       if (!selezione.length) throw new Error("Seleziona almeno una riga con quantità > 0");
+      if (righeIncomplete.length) throw new Error("Completa i dati delle righe non pronte per Gamma");
       return trasformaPreventivoInOrdine(prev.id, selezione);
     },
     onSuccess: (newId) => {
@@ -94,6 +97,20 @@ export function TrasformaInOrdineDialog({
     },
     onError: (e: unknown) => toast.error((e as Error).message),
   });
+
+  // FM75 F4c: prontezza per Gamma delle righe manuali selezionate (solo linee con articoloInDefinizione).
+  const conDefinizione = lineaPreventivo(prev.linea).blocchi.articoloInDefinizione;
+  const righeIncomplete = useMemo(() => {
+    if (!conDefinizione) return [];
+    const out: { id: string; descrizione: string; mancano: string[] }[] = [];
+    for (const b of prev.blocchi) for (const r of b.righe) {
+      const s = stato.righe[r.id];
+      if (!s?.selected || s.qta <= 0) continue;
+      const mancano = datiMancantiRigaGamma(r);
+      if (mancano.length) out.push({ id: r.id, descrizione: r.descrizione || "senza descrizione", mancano });
+    }
+    return out;
+  }, [conDefinizione, prev.blocchi, stato.righe]);
 
   function setRiga(id: string, patch: Partial<{ selected: boolean; qta: number }>) {
     setStato((s) => ({
@@ -227,6 +244,16 @@ export function TrasformaInOrdineDialog({
           })}
         </div>
 
+        {righeIncomplete.length > 0 && (
+          <div role="alert" className="mx-3 mb-2 rounded-md border border-l-4 border-destructive/40 border-l-destructive bg-destructive/5 p-3 text-sm">
+            <p className="font-semibold text-destructive">Righe non pronte per Gamma: completa i dati prima di creare l'ordine</p>
+            <ul className="mt-1 grid gap-0.5">
+              {righeIncomplete.map((r) => (
+                <li key={r.id} className="break-words">Riga: {r.descrizione} — mancano: {r.mancano.join(", ")}</li>
+              ))}
+            </ul>
+          </div>
+        )}
         <DialogFooter className="border-t bg-muted/20 p-3">
           <div className="mr-auto flex items-center gap-3 text-sm">
             <span className="text-muted-foreground">{numRigheSel} righe</span>
@@ -237,7 +264,7 @@ export function TrasformaInOrdineDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={trasforma.isPending}>
             Annulla
           </Button>
-          <Button onClick={() => trasforma.mutate()} disabled={trasforma.isPending || numRigheSel === 0}>
+          <Button onClick={() => trasforma.mutate()} disabled={trasforma.isPending || numRigheSel === 0 || righeIncomplete.length > 0}>
             {trasforma.isPending ? (
               <>
                 <Loader2 className="mr-1 h-4 w-4 animate-spin" /> Creazione…
