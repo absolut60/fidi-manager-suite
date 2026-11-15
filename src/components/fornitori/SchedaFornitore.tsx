@@ -93,6 +93,8 @@ export function SchedaFornitore({ fornitore: f, tab, onTabChange, statoArticoli 
   </div>;
 }
 function RiepilogoFornitore({ fornitore: f, vaiAlTab, persone }: { fornitore: DettaglioFornitore; vaiAlTab: (t: TabSchedaFornitore) => void; persone: ContattoFornitore[] }) {
+  const { roles } = useAuth();
+  const puoScontiBase = puoModificareScontiBaseFornitore(roles as string[]);
   const link = "inline-flex min-h-8 items-center break-all text-primary hover:underline";
   const principali = [{ l: "Tel.", v: f.telefono || f.cellulare, p: "tel:" }, { l: "Email", v: f.email, p: "mailto:" }, { l: "PEC", v: f.pec, p: "mailto:" }].filter(c => c.v?.trim());
   return <>
