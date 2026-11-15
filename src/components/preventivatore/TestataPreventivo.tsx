@@ -22,6 +22,7 @@ import { campiSedePreventivo } from "@/lib/preventivo-creazione";
 import { CondizioniRiferimento } from "./CondizioniRiferimento";
 import type { CataloghiRiferimento, RiferimentoPreventivo } from "@/lib/condizioni-riferimento";
 import { nomeLeadPreventivo } from "@/lib/soggetto-preventivo";
+import { AssegnazionePreventivo } from './AssegnazionePreventivo';
 
 export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agenti,principali,haAlternative,listino,categoria,sede,sedeClienteId,onSave,onCliente,onChangeCliente,onCantiere,cataloghiRiferimento,erroreCataloghi,caricamentoCataloghi,onRiferimento,badgeRiferimento,onCambiaSoggetto}: {
   onCambiaSoggetto?: () => void;
@@ -77,6 +78,7 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
     </RiquadroScheda>
     </div>
     <div className="flex min-w-0 flex-col gap-2">
+    <AssegnazionePreventivo prev={prev} modificabile={modificabile}/>
     <RiquadroScheda titolo="Condizioni commerciali" icona={Percent} tono="arancio" densita="compatta">
       <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
         {!prev.lead_id && field('Listino del cliente',listino,<div className="min-h-7 py-1 text-xs">{listino}</div>)}
