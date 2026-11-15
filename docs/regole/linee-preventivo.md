@@ -48,8 +48,8 @@
 
 Ogni linea nel catalogo (`src/lib/linee-preventivo.ts`, campo `blocchi`) dichiara:
 
-| Linea | bloccoConMisure | bloccoDaKit | righeStampabili |
-|---|---|---|---|
+| Linea | bloccoConMisure | bloccoDaKit | righeStampabili | regimiIva |
+|---|---|---|---|---|
 | Sistema MADE | sì | sì | no |
 | Showroom | no | no | sì |
 | Edilizia | sì | sì | no |
