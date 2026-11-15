@@ -30,6 +30,8 @@ import { computeEvasione } from "@/lib/evasione";
 import { nomeLeadPreventivo } from "@/lib/soggetto-preventivo";
 import { useUtentiAssegnabili } from '@/lib/use-utenti-assegnabili';
 import { nomeAssegnato } from '@/lib/assegnazione-preventivo';
+import { lineeAttive, mostraFiltroLinee } from '@/lib/linee-preventivo';
+import { BadgeLinea } from './BadgeLinea';
 
 function SoggettoElenco({ r }: { r: ElencoPreventivoItem }) {
   return <div className="min-w-0">
@@ -76,13 +78,14 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
   const puoScrivere = puoScriverePreventivi(roles as string[]);
   const { filtri: FV, setCampo: setCampoLista } = useFiltriPagina(isOrdine ? "ordini" : "preventivatore", {
     search: "", clienteId: [] as string[], stato: [] as string[], tipoDoc: [] as string[],
-    creatoDa: [] as string[], mostraAlternative: true, perMe: false,
-  }, { userId: user?.id, valida: { clienteId: Array.isArray, stato: Array.isArray, tipoDoc: Array.isArray, creatoDa: Array.isArray } });
+    creatoDa: [] as string[], linea: [] as string[], mostraAlternative: true, perMe: false,
+  }, { userId: user?.id, valida: { clienteId: Array.isArray, stato: Array.isArray, tipoDoc: Array.isArray, creatoDa: Array.isArray, linea: Array.isArray } });
   const search = FV.search;
   const clienteId = FV.clienteId;
   const stato = FV.stato as StatoPreventivo[];
   const tipoDoc = FV.tipoDoc as TipoDoc[];
   const creatoDa = FV.creatoDa;
+  const linea = FV.linea;
   const mostraAlternative = FV.mostraAlternative !== false;
   const perMe = FV.perMe === true;
   const { data: utentiAssegnabili = [] } = useUtentiAssegnabili();
@@ -92,7 +95,7 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
   const [dSearch, setDSearch] = useState(() => FV.search);
   const [openNew, setOpenNew] = useState(false);
   const [mostraFiltri, setMostraFiltri] = useState(false);
-  const nFiltriAttivi = [clienteId, stato, tipoDoc, creatoDa].filter((l) => l.length > 0).length;
+  const nFiltriAttivi = [clienteId, stato, tipoDoc, creatoDa, ...(mostraFiltroLinee ? [linea] : [])].filter((l) => l.length > 0).length;
 
   useEffect(() => {
     const t = setTimeout(() => setDSearch(search), 300);
@@ -100,8 +103,8 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
   }, [search]);
 
   const filters = useMemo(
-    () => ({ search: dSearch, cliente_id: clienteId, stato, tipo_doc: tipoDoc, creato_da: creatoDa, tipo, per_me: !isOrdine && perMe ? user?.id : null }),
-    [dSearch, clienteId, stato, tipoDoc, creatoDa, tipo, isOrdine, perMe, user?.id],
+    () => ({ search: dSearch, cliente_id: clienteId, stato, tipo_doc: tipoDoc, creato_da: creatoDa, linea: mostraFiltroLinee ? linea : [], tipo, per_me: !isOrdine && perMe ? user?.id : null }),
+    [dSearch, clienteId, stato, tipoDoc, creatoDa, linea, tipo, isOrdine, perMe, user?.id],
   );
 
   const { data, isLoading } = useQuery({
@@ -158,6 +161,7 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
             <span className="font-mono font-medium">{r.numero ?? "—"}</span>
             {!alternativa && haAlt && <EtichettaLettera lettera={lettera} alternativa={false} />}
           </div>
+          <BadgeLinea linea={r.linea} className="mt-1" />
         </TableCell>
         <TableCell className="px-2 py-2 align-top"><Testo className="font-medium">{r.titolo}</Testo>{!isOrdine && etichettaAssegnazione(r)}</TableCell>
         <TableCell className="px-2 py-2 align-top">
@@ -245,6 +249,7 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
             opzioni={opzioniCreatoDa}
             selezionati={creatoDa} onChange={(v) => setCampoLista("creatoDa", v)}
           />
+          {mostraFiltroLinee && <FiltroMultiplo etichetta="Linea" testoTutti="Tutte le linee" className="h-10 text-sm lg:w-48" opzioni={lineeAttive().map(l => ({ valore: l.codice, label: l.etichetta }))} selezionati={linea} onChange={v => setCampoLista('linea', v)} />}
           <div className="flex h-10 items-center gap-2 px-1">
             <Switch
               id={`mostra-alternative-${tipo}`}
@@ -289,6 +294,7 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
                       }
                       badge={
                         <span className="flex flex-wrap justify-end gap-1">
+                          <BadgeLinea linea={r.linea} />
                           <BadgeStato stato={r.stato} className="px-2 text-[11px]" />
                           <BadgeEvasione stato={evasioneDi(r)} className="px-2 text-[11px]" />
                           {!isOrdine && r.assegnato_a === user?.id && <Badge variant="outline" className="text-xs">Per te</Badge>}
@@ -315,7 +321,7 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
                               >
                                 <CornerDownRight className="size-3 shrink-0 text-muted-foreground" aria-hidden />
                                 <EtichettaLettera lettera={lettere.get(a.id) ?? "?"} alternativa />
-                                <span className="min-w-0 flex-1 break-words font-mono">{a.numero ?? "—"}</span>
+                                <span className="min-w-0 flex-1 break-words"><span className="block font-mono">{a.numero ?? "—"}</span><BadgeLinea linea={a.linea} className="mt-1" /></span>
                                 <BadgeStato stato={a.stato} className="shrink-0 px-2 text-[10px]" />
                                 <span className="shrink-0 tabular-nums text-muted-foreground">{euro(a.totale)}</span>
                               </button>

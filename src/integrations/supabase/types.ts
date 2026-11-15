@@ -5924,6 +5924,7 @@ export type Database = {
           iva_perc: number | null
           lead_id: string | null
           lead_origine_id: string | null
+          linea: Database["public"]["Enums"]["linea_preventivo"]
           listino_rif: number | null
           macrocategoria_rif: string | null
           note: string | null
@@ -5960,6 +5961,7 @@ export type Database = {
           iva_perc?: number | null
           lead_id?: string | null
           lead_origine_id?: string | null
+          linea?: Database["public"]["Enums"]["linea_preventivo"]
           listino_rif?: number | null
           macrocategoria_rif?: string | null
           note?: string | null
@@ -5996,6 +5998,7 @@ export type Database = {
           iva_perc?: number | null
           lead_id?: string | null
           lead_origine_id?: string | null
+          linea?: Database["public"]["Enums"]["linea_preventivo"]
           listino_rif?: number | null
           macrocategoria_rif?: string | null
           note?: string | null
@@ -11295,6 +11298,11 @@ export type Database = {
         | "convertito"
         | "perso"
       lead_tipo: "potenziale_cliente" | "richiesta_specifica"
+      linea_preventivo:
+        | "sistema_made"
+        | "showroom"
+        | "edilizia"
+        | "fotovoltaico"
       stato_articolo: "attivo" | "potenziale"
       stato_importazione:
         | "in_elaborazione"
@@ -11620,6 +11628,12 @@ export const Constants = {
         "perso",
       ],
       lead_tipo: ["potenziale_cliente", "richiesta_specifica"],
+      linea_preventivo: [
+        "sistema_made",
+        "showroom",
+        "edilizia",
+        "fotovoltaico",
+      ],
       stato_articolo: ["attivo", "potenziale"],
       stato_importazione: [
         "in_elaborazione",
