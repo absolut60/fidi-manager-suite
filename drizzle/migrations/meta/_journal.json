@@ -1618,6 +1618,13 @@
       "when": 1794737736975,
       "tag": "0230_fm72_responsabile_showroom_enum",
       "breakpoints": true
+    },
+    {
+      "idx": 231,
+      "version": "7",
+      "when": 1794737771761,
+      "tag": "0231_fm72_responsabile_showroom_perimetro",
+      "breakpoints": true
     }
   ]
 }
