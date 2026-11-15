@@ -35,7 +35,7 @@ export function RiepilogoIvaPreventivo({ regime, ivaPerc, blocchi }: { regime: u
       <div className="flex justify-between gap-3 py-1.5"><span className="text-muted-foreground">IVA totale</span><strong className="tabular-nums">{euro(r.ivaTotale)}</strong></div>
       <div className="flex justify-between gap-3 font-semibold"><span>Totale con IVA</span><span className="tabular-nums">{euro(r.totale)}</span></div>
       {avvisi.map(a => (
-        <p key={a} role="status" className="flex items-start gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-2 py-1.5 text-xs text-amber-800">
+        <p key={a} role="status" className="flex items-start gap-1.5 rounded-md border-l-4 border-l-pv-giallo bg-pv-giallo-tenue px-2 py-1.5 text-xs">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /><span className="min-w-0 break-words">{a}</span>
         </p>
       ))}

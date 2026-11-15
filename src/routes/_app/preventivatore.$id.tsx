@@ -1,3 +1,4 @@
+import { RiepilogoIvaPreventivo } from "@/components/preventivatore/RiepilogoIvaPreventivo";
 import type { CondizioniPrezziPreventivo } from "@/lib/prezzi-preventivo";
 import { messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { opzioniPrezziCantiere } from "@/lib/cantiere-listini-api";
@@ -624,7 +625,7 @@ function PreventivoEditorPage() {
                       </Card>
                     ) : (
                       prev.blocchi.map((b, idx) => (
-                        <BloccoCard linea={prev.linea} condizioniPrezzi={prev} key={b.id} blocco={b} index={idx} preventivoId={id} fascia={(prev.fascia_listino ?? "A") as FasciaListino} readOnly={!modificabile} clienteId={prev.cliente_id ?? null} cantiereId={prev.cantiere_id} {...sedeGiacenze} scontoPiede={Number(prev.sconto_piede_perc ?? 0)} />
+                        <BloccoCard linea={prev.linea} regimeIva={prev.regime_iva} condizioniPrezzi={prev} key={b.id} blocco={b} index={idx} preventivoId={id} fascia={(prev.fascia_listino ?? "A") as FasciaListino} readOnly={!modificabile} clienteId={prev.cliente_id ?? null} cantiereId={prev.cantiere_id} {...sedeGiacenze} scontoPiede={Number(prev.sconto_piede_perc ?? 0)} />
                       ))
                     )}
                   </div>
@@ -642,7 +643,7 @@ function PreventivoEditorPage() {
               )}
             </section>
             </fieldset></TabsContent>
-          <TabsContent value="piede"><PiedePreventivo dati={riepilogo} iva={totali.iva} totale={totali.totale} ivaPerc={Number(prev.iva_perc??22)} sconto={Number(prev.sconto_piede_perc??0)} modificabile={modificabile} inCorso={applicaSconto.isPending} onSconto={v=>applicaSconto.mutate(v)} onTestata={()=>cambiaTab('testata')}/></TabsContent>
+          <TabsContent value="piede"><PiedePreventivo dati={riepilogo} iva={totali.iva} totale={totali.totale} ivaPerc={Number(prev.iva_perc??22)} sconto={Number(prev.sconto_piede_perc??0)} modificabile={modificabile} inCorso={applicaSconto.isPending} onSconto={v=>applicaSconto.mutate(v)} onTestata={()=>cambiaTab('testata')} riepilogoIva={lineaPreventivo(prev.linea).blocchi.regimiIva ? <RiepilogoIvaPreventivo regime={prev.regime_iva} ivaPerc={prev.iva_perc} blocchi={prev.blocchi}/> : undefined}/></TabsContent>
         </Tabs>
         </div>
       </div>
@@ -675,7 +676,7 @@ function PreventivoEditorPage() {
 
       <AggiornaListiniDialog analisi={analisiListini} onClose={() => setAnalisiListini(null)}
         onApplica={(sc) => applicaListini.mutate(sc)} inCorso={applicaListini.isPending} />
-      {vistaOpen && <VistaCommercialeDialog open onOpenChange={setVistaOpen} blocchi={prev.blocchi} />}
+      {vistaOpen && <VistaCommercialeDialog open onOpenChange={setVistaOpen} blocchi={prev.blocchi} riepilogoIva={lineaPreventivo(prev.linea).blocchi.regimiIva ? <RiepilogoIvaPreventivo regime={prev.regime_iva} ivaPerc={prev.iva_perc} blocchi={prev.blocchi}/> : undefined} />}
       <GeneraDocumentoDialog open={outputOpen} onOpenChange={setOutputOpen} prev={prev} />
       {prev.tipo === "preventivo" && (
         <TrasformaInOrdineDialog
@@ -689,8 +690,8 @@ function PreventivoEditorPage() {
 }
 
 function BloccoCard({
-  blocco, index, preventivoId, fascia, readOnly = false, clienteId, scontoPiede, cantiereId, sedeGiacenzaId, sedeNome, condizioniPrezzi, linea,
-}: { linea: unknown; condizioniPrezzi: CondizioniPrezziPreventivo; blocco: BloccoConRighe; index: number; preventivoId: string; fascia: FasciaListino; readOnly?: boolean; clienteId: string | null; scontoPiede: number; cantiereId: string | null; sedeGiacenzaId?: string | null; sedeNome?: string | null }) {
+  blocco, index, preventivoId, fascia, readOnly = false, clienteId, scontoPiede, cantiereId, sedeGiacenzaId, sedeNome, condizioniPrezzi, linea, regimeIva,
+}: { linea: unknown; regimeIva?: string | null; condizioniPrezzi: CondizioniPrezziPreventivo; blocco: BloccoConRighe; index: number; preventivoId: string; fascia: FasciaListino; readOnly?: boolean; clienteId: string | null; scontoPiede: number; cantiereId: string | null; sedeGiacenzaId?: string | null; sedeNome?: string | null }) {
   const qc = useQueryClient();
   const conMisure = lineaPreventivo(linea).blocchi.bloccoConMisure;
   const sortable = useSortable({ id: blocco.id });
@@ -821,7 +822,7 @@ function BloccoCard({
             </div>
           )}
 
-          <RigheTable linea={linea} condizioniPrezzi={condizioniPrezzi} blocco={blocco} preventivoId={preventivoId} fascia={fascia} readOnly={readOnly} clienteId={clienteId} cantiereId={cantiereId} sedeGiacenzaId={sedeGiacenzaId} sedeNome={sedeNome} scontoPiede={scontoPiede} />
+          <RigheTable linea={linea} regimeIva={regimeIva} condizioniPrezzi={condizioniPrezzi} blocco={blocco} preventivoId={preventivoId} fascia={fascia} readOnly={readOnly} clienteId={clienteId} cantiereId={cantiereId} sedeGiacenzaId={sedeGiacenzaId} sedeNome={sedeNome} scontoPiede={scontoPiede} />
         </CardContent>
       </Card>
     </div>

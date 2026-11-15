@@ -4,12 +4,13 @@ import { vistaCommerciale } from "@/lib/vista-commerciale";
 import type { BloccoConRighe } from "@/lib/preventivi-api";
 import { formatNumeroIt } from "@/lib/numero-it";
 import { cn } from "@/lib/utils";
+import type { ReactNode } from "react";
 
 const euro = (v: number) => `€ ${formatNumeroIt(v, { minDecimals: 2, maxDecimals: 2 })}`;
 const perOrdine = <T extends { ordine?: number | null }>(a: T[]) => [...a].sort((x, y) => Number(x.ordine ?? 0) - Number(y.ordine ?? 0));
 
 /** FM75 F2c: anteprima della vista commerciale; usa solo vistaCommerciale (docs/regole/vista-commerciale.md). */
-export function VistaCommercialeDialog({ open, onOpenChange, blocchi }: { open: boolean; onOpenChange: (v: boolean) => void; blocchi: BloccoConRighe[] }) {
+export function VistaCommercialeDialog({ open, onOpenChange, blocchi, riepilogoIva }: { open: boolean; onOpenChange: (v: boolean) => void; blocchi: BloccoConRighe[]; riepilogoIva?: ReactNode }) {
   const vista = useMemo(() => vistaCommerciale(perOrdine(blocchi).map(b => ({ ...b, righe: perOrdine(b.righe) }))), [blocchi]);
   const gruppo = vista.raccoglitori[0];
   const ciSonoNascoste = blocchi.some(b => b.righe.some(r => r.stampabile === false));
@@ -55,6 +56,7 @@ export function VistaCommercialeDialog({ open, onOpenChange, blocchi }: { open: 
           <span>Totale documento</span>
           <span className="font-mono">{euro(vista.totaleStampato)}</span>
         </div>
+        {riepilogoIva && <div className="border-t pt-3">{riepilogoIva}</div>}
       </DialogContent>
     </Dialog>
   );
