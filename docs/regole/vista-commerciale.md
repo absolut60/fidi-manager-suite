@@ -15,3 +15,9 @@ Totale stampato = totale vero (somma degli importi delle righe), al centesimo: i
 
 ## Evoluzione (F3)
 L'output espone `raccoglitori: GruppoRaccoglitore[]` (gruppo "nascoste → raccoglitore", chiave). Oggi c'è al massimo un gruppo (`posa`); con F3 (beni significativi) ci saranno più raccoglitori per natura fiscale, ognuno con le proprie nascoste, senza cambiare la forma dell'output.
+
+## Stampa (F6 fetta 2)
+
+Nelle linee con `blocchi.righeStampabili` il PDF ufficiale e la Proposta rapida stampano solo tramite `vistaCommerciale`: righe nascoste assorbite nel raccoglitore PEF, sotto-totali (`subtotaleStampato` delle righe `sotto_totale`, calcolato nella fonte unica) e totali di blocco sugli importi stampati; blocchi interamente nascosti omessi. Gli importi di riga passati alla vista sono quelli canonici di `calcolaBlocco`, la stessa base dei totali e del riepilogo IVA, che resta sull'insieme completo delle righe (stesso totale, stessa natura fiscale). Lista materiali e Lista fornitore restano complete.
+
+Esposizione prezzi (solo PDF ufficiale, per documento): "listino + sconto + netto" oppure "solo netto". Le righe con leva ricarico/prezzo manuale e il raccoglitore che assorbe righe nascoste non espongono listino né sconto (il raccoglitore mostra solo l'importo). Ricarico, costo e margine non sono mai stampati.
