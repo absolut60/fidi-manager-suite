@@ -1695,6 +1695,13 @@
       "when": 1794779185162,
       "tag": "0241_sconti_base_fornitore_rpc",
       "breakpoints": true
+    },
+    {
+      "idx": 242,
+      "version": "7",
+      "when": 1794782829452,
+      "tag": "0242_template_email_tipo_invio_preventivo",
+      "breakpoints": true
     }
   ]
 }
