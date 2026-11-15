@@ -4,6 +4,7 @@ import autoTable from "jspdf-autotable";
 import type { PreventivoConDettagli } from "./preventivi-api";
 import { calcolaTotaliPreventivo, calcolaBlocco, riepilogoIvaDocumento } from "./preventivi-api";
 import { lineaPreventivo } from "./linee-preventivo";
+import { vistaCommerciale, type RigaVista } from "./vista-commerciale";
 import { REGIMI_IVA, type RiepilogoIva } from "./calcolo-iva";
 import {
   aggregaMateriali, arricchisciMateriali, arrotondaPerFornitore, buildBlocchiOutput,
@@ -339,8 +340,34 @@ export const COLONNE_RIGHE_DEFAULT: ColonneRighePdf = {
   um: true, quantita: true, prezzo_unit: true, sconto: true, prezzo_scontato: true, importo: true,
 };
 
+/** F6 fetta 2: esposizione prezzi nelle linee con righe stampabili (Showroom). */
+export type EsposizionePrezziPdf = "listino" | "netto";
+
 export interface PreventivoPdfOptions {
   colonne?: Partial<ColonneRighePdf>;
+  /** Solo linee con blocchi.righeStampabili; ignorata altrove. Predefinita "listino". */
+  esposizionePrezzi?: EsposizionePrezziPdf;
+}
+
+type BloccoOut = ReturnType<typeof buildBlocchiOutput>[number];
+
+/**
+ * F6 fetta 2: vista commerciale per i documenti cliente, null se la linea non la prevede.
+ * Importi di riga dal calcolo canonico (calcolaBlocco), la stessa base dei totali.
+ */
+function vistaStampa(prev: PreventivoConDettagli, blocchi: BloccoOut[]) {
+  if (!lineaPreventivo(prev.linea).blocchi.righeStampabili) return null;
+  const vista = vistaCommerciale(blocchi.map((b) => {
+    const calc = new Map(calcolaBlocco(b.righe).righe.map((x) => [x.id, x.calc.importo]));
+    return { id: b.id, righe: b.righe.map((r) => ({ ...r, importo: calc.get(r.id) ?? 0, _id: r.id })) };
+  }));
+  const righe = new Map<string, RigaVista>();
+  const blocco = new Map<string, { subtotale: number; vuoto: boolean }>();
+  vista.blocchi.forEach((vb, i) => {
+    blocco.set(blocchi[i].id, { subtotale: vb.subtotaleStampato, vuoto: vb.vuoto });
+    for (const vr of vb.righe) righe.set((vr.riga as { _id: string })._id, vr as RigaVista);
+  });
+  return { righe, blocco, assorbe: new Set(vista.raccoglitori.filter((g) => g.nascoste.length).map((g) => (g.raccoglitore as { _id: string })._id)) };
 }
 
 export async function exportPreventivoPdf(prev: PreventivoConDettagli, opzioni: PreventivoPdfOptions = {}) {
@@ -352,10 +379,16 @@ export async function exportPreventivoPdf(prev: PreventivoConDettagli, opzioni: 
 
   const blocchi = buildBlocchiOutput(prev);
   const stampa = lineaPreventivo(prev.linea).stampa;
+  const vista = vistaStampa(prev, blocchi);
+  if (vista) {
+    const netto = opzioni.esposizionePrezzi === "netto";
+    col.prezzo_unit = !netto; col.sconto = !netto; col.prezzo_scontato = true;
+  }
   const USABLE = w - 28;
   let y = Math.max(62, headerEnd + 4);
 
   for (const b of blocchi) {
+    if (vista?.blocco.get(b.id)?.vuoto) continue;
     autoTable(doc, {
       startY: y,
       head: [stampa.testataBlocchi ? [
@@ -414,6 +447,8 @@ export async function exportPreventivoPdf(prev: PreventivoConDettagli, opzioni: 
     for (const x of calcBl.righe) subMap.set(x.id, x.calc.importoEffettivo);
 
     for (const r of b.righe) {
+      const vr = vista?.righe.get(r.id);
+      if (vista && !vr) continue; // riga nascosta: assorbita dal raccoglitore
       if (r.tipo_riga === "nota" || isIntestazioneKit(r)) {
         body.push([{
           content: r.descrizione ?? "",
@@ -444,7 +479,7 @@ export async function exportPreventivoPdf(prev: PreventivoConDettagli, opzioni: 
         continue;
       }
       if (r.tipo_riga === "sotto_totale") {
-        const sub = subMap.get(r.id) ?? 0;
+        const sub = vr ? vr.subtotaleStampato ?? 0 : subMap.get(r.id) ?? 0;
         if (ncols >= 2 && col.importo) {
           body.push([
             {
@@ -497,10 +532,21 @@ export async function exportPreventivoPdf(prev: PreventivoConDettagli, opzioni: 
       ];
       if (col.um) row.push(mostrata.um ?? r.um ?? r.articolo?.um ?? "");
       if (col.quantita) row.push(hasQta ? fmtNum(mostrata.quantita ?? 0, 2) : "");
+      if (!vista) {
       if (col.prezzo_unit) row.push(hasPrezzo ? `€ ${fmtNum(prezzo, 4)}` : "");
       if (col.sconto) row.push([formatScontiGamma(r.sconti_gamma), sc > 0 ? `extra ${fmtNum(sc, 2)}%` : ""].filter(Boolean).join(" / ") || "—");
       if (col.prezzo_scontato) row.push(hasPrezzo ? `€ ${fmtNum(prezzoScontato, 4)}` : "");
       if (col.importo) row.push(r.importo != null ? fmtEur(Number(r.importo)) : "");
+      } else {
+        // Raccoglitore che assorbe righe nascoste: solo importo (il prezzo unitario non lo spiegherebbe).
+        const assorbe = vista.assorbe.has(r.id);
+        // Leva ricarico/prezzo manuale: nessun listino da esporre, solo il netto.
+        const senzaListino = assorbe || r.leva_prezzo === "ricarico" || r.leva_prezzo === "prezzo_manuale";
+        if (col.prezzo_unit) row.push(hasPrezzo && !senzaListino ? `€ ${fmtNum(prezzo, 4)}` : "");
+        if (col.sconto) row.push(senzaListino ? "" : [formatScontiGamma(r.sconti_gamma), sc > 0 ? `extra ${fmtNum(sc, 2)}%` : ""].filter(Boolean).join(" / "));
+        if (col.prezzo_scontato) row.push(hasPrezzo && !assorbe ? `€ ${fmtNum(prezzoScontato, 4)}` : "");
+        if (col.importo) row.push(fmtEur(vr?.importoStampato ?? 0));
+      }
       body.push(row);
     }
     if (body.length) {
@@ -532,7 +578,7 @@ export async function exportPreventivoPdf(prev: PreventivoConDettagli, opzioni: 
     }
 
     doc.setFont("helvetica", "bold"); doc.setFontSize(8.5); doc.setTextColor(...NAVY);
-    doc.text(`Totale ${fmtEur(b.importo)}`, w - 14, y + 5, { align: "right" });
+    doc.text(`Totale ${fmtEur(vista?.blocco.get(b.id)?.subtotale ?? b.importo)}`, w - 14, y + 5, { align: "right" });
     doc.setFont("helvetica", "normal");
     y += 8;
 
@@ -608,7 +654,8 @@ export async function exportPropostaRapidaPdf(prev: PreventivoConDettagli) {
 
   const blocchi = buildBlocchiOutput(prev);
   const { testataBlocchi } = lineaPreventivo(prev.linea).stampa;
-  const body = blocchi.map((b) => testataBlocchi ? [
+  const vistaR = vistaStampa(prev, blocchi);
+  const body = blocchi.filter((b) => !vistaR?.blocco.get(b.id)?.vuoto).map((b) => ({ ...b, importo: vistaR?.blocco.get(b.id)?.subtotale ?? b.importo })).map((b) => testataBlocchi ? [
     b.rif || "—",
     b.descrizione,
     `${fmtNum(b.quantita, 2)} ${b.um}`,

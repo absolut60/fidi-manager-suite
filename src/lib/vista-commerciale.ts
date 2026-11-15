@@ -22,6 +22,8 @@ export interface RigaVista<R extends RigaVistaInput = RigaVistaInput> {
   importoStampato: number;
   /** Chiave del gruppo raccoglitore se questa riga è un raccoglitore, altrimenti null. */
   raccoglitore: string | null;
+  /** Solo righe tipo_riga 'sotto_totale': somma degli importi stampati dal sotto-totale precedente (nel blocco). */
+  subtotaleStampato?: number;
 }
 export interface BloccoVista<B extends BloccoVistaInput = BloccoVistaInput> {
   blocco: B;
@@ -72,12 +74,17 @@ export function vistaCommerciale<B extends BloccoVistaInput>(blocchi: readonly B
 
   let centStampato = 0;
   const vista = blocchi.map(blocco => {
-    let sub = 0;
+    let sub = 0, segmento = 0;
     const righe: RigaVista<R>[] = [];
     for (const r of blocco.righe as R[]) {
       if (nascosta(r)) continue;
+      if (r.tipo_riga === 'sotto_totale') {
+        righe.push({ riga: r, importoStampato: 0, raccoglitore: null, subtotaleStampato: euro(segmento) });
+        segmento = 0;
+        continue;
+      }
       const c = r === raccoglitore ? cent(r.importo) + centNascoste : cent(r.importo);
-      sub += c;
+      sub += c; segmento += c;
       righe.push({ riga: r, importoStampato: euro(c), raccoglitore: r === raccoglitore ? 'posa' : null });
     }
     centStampato += sub;
