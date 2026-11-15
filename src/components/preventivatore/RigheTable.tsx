@@ -253,6 +253,7 @@ export function RigheTable({
 
   const righeProps = (r: (typeof blocco.righe)[number], idx: number) => ({
     row: r,
+    conMisure,
     prezzoCantiere: segnoPrezzoCantiere(r, dedicati.get(r.articolo_codice ?? r.articolo?.cod_gamma ?? "")),
     idx,
     fascia,
@@ -284,7 +285,7 @@ export function RigheTable({
       {/* Da 1024 px: tabella. Sotto: schede compatte con gli stessi campi. */}
       <div className="hidden max-w-full overflow-x-auto pv-tabella:block">
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        <table className={cn("w-full table-fixed", conMisure ? "min-w-[1470px]" : "min-w-[1410px]", " border-separate border-spacing-0 text-xs">
+        <table className={cn("w-full table-fixed", conMisure ? "min-w-[1470px]" : "min-w-[1410px]", "border-separate border-spacing-0 text-xs")}>
           <thead>
             <tr className="whitespace-nowrap bg-pv-testa text-[10px] uppercase tracking-wide text-muted-foreground [&>th]:bg-pv-testa [&>th]:border-b">
               <th className="w-[18px] px-1 py-1.5 sticky left-0 z-10"></th>
