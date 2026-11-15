@@ -1,6 +1,7 @@
 # FM76 — Branding per sede, fetta 3
-- [ ] Collegare i quattro PDF a stores tramite preventivi.store_id, senza riserva cliente; helper logo privato e piede con ripieghi.
-- [ ] Test completi e confronto PDF precedente; documentare file, sede identificata e limiti del collaudo.
+- [x] Collegati i quattro PDF a stores tramite preventivi.store_id, senza riserva cliente; fonte unica branding-pdf, download utente privato e piede con campi presenti. Sede senza logo/contatti conserva il piede precedente.
+- [x] 970 test verdi, compilazione OK; otto confronti raster PDF precedenti identici pixel per pixel (senza sede e sede senza logo/contatti, documenti di prova senza righe). Logo quadrato e piede verificati sui PDF di prova; file e limiti in docs/regole/branding-pdf.md.
+- [ ] Collaudo autenticato download/PDF con logo reale: account personale non disponibile e nessun logo configurato nella verifica precedente; nessuna modifica ai dati reali.
 
 # FM76 — Branding per sede, fetta 2
 - [x] Collegati logo sede a recupero singolo, massivo (inclusi promemoria manuali), promemoria automatici e campagne cliente; anteprime firmate dalla lettura sede condivisa, archivio con data URL durevole solo per logo personalizzato. Generici/interni/fornitori/assicurazione/privacy restano MADE.
