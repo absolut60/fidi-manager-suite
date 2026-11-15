@@ -559,6 +559,7 @@ function LeadDettaglioPage() {
                 className="gap-1.5"
                 onClick={() => {
                   setF(buildForm(lead));
+                  setRiferimentoAttivo(lead.listino_rif != null);
                   setEditMode(false);
                 }}
               >
