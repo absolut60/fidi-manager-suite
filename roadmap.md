@@ -1,3 +1,7 @@
+# FM72 — Assegnazione interna preventivi, fetta ①a
+- [ ] Migrazione additiva, catalogo notifica separato dalla struttura, trigger best-effort unico; nessun cambio RLS/gate/prezzi/contatori.
+- [ ] Test SQL sul database reale in BEGIN/ROLLBACK, suite completa, verifica registro e documentazione.
+
 # FM72 — Condizioni commerciali lead, fetta 2
 - [x] Sezione vista/modifica con gate consultazione, payload condizionale e riferimento vuoto/completo; cataloghi/componenti condivisi, nessuna migrazione o modifica RLS/prezzi/creazione preventivo. Documentazione aggiornata; regola tecnica nella sezione FM72 (AGENTS root pieno).
 - [x] 894 test verdi; componente reale con risposte simulate a 320/375/390/768/1280/1920: vista cataloghi, ricerca pagamento, incompleto senza PATCH, completo, spegnimento tre NULL e payload senza campi per altri ruoli. Screenshot 375/1280 controllati, pagina temporanea rimossa.
