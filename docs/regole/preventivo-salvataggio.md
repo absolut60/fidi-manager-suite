@@ -12,3 +12,10 @@
 - Numeri espliciti in INSERT sono conservati, con l'indice univoco esistente: compatibilità necessaria con la conversione ordine già server-side e con l'app pubblicata precedente. La conversione in ordine resta invariata e assegna con la stessa RPC atomica; nessuna doppia prenotazione.
 - `preventivi_numero_immutabile` rifiuta ogni cambio del numero in UPDATE con errore italiano, anche per amministratori; sola eccezione tecnica `service_role`. Numeri già esistenti invariati, nessuna modifica a policy o altri trigger.
 - Futuri, NON implementati: sezionale per punto vendita e impostazione «riparti da».
+
+## Assegnazione interna (FM72)
+
+- `preventivi.assegnato_a` è il responsabile interno facoltativo (UUID senza FK); `assegnati_copia` è l'elenco delle copie (UUID[], vuoto per default). L'assegnazione segnala «pronto per te», non autorizza: visibilità e scrittura restano governate dalle RLS e dai gate esistenti.
+- Fonte unica delle notifiche: `trg_notifica_assegnazione_preventivo` → `public.notifica_assegnazione_preventivo()`, AFTER INSERT / UPDATE dei due campi. Notifica il nuovo responsabile e le sole copie aggiunte, mai `auth.uid()`; rimozioni, campi invariati e altri aggiornamenti non notificano. Errori isolati con EXCEPTION / RAISE WARNING: il documento si salva comunque.
+- `preventivo_assegnato` riusa il raggruppamento canonico FM34 per destinatario e tipo, senza chiave per documento; il catalogo punta a `/preventivatore/` per i gruppi. Notifica singola con numero/titolo (massimo 120 caratteri), link al documento e metadata `preventivo_id`. La voce di catalogo è un inserimento dati separato dalla migrazione strutturale `0226_fm72_assegnazione_preventivi.sql`.
+- Prove permanenti in `tests/sql/fm72-assegnazione-preventivi.sql`: impersonazione authenticated aal2, BEGIN/ROLLBACK, destinatari di fixture senza account e nessun dato/contatore persistente.

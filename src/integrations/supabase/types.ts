@@ -5907,6 +5907,8 @@ export type Database = {
         Row: {
           agente_codice: string | null
           alternativa_di: string | null
+          assegnati_copia: string[]
+          assegnato_a: string | null
           cantiere_descrizione: string | null
           cantiere_id: string | null
           categoria_rif: string | null
@@ -5941,6 +5943,8 @@ export type Database = {
         Insert: {
           agente_codice?: string | null
           alternativa_di?: string | null
+          assegnati_copia?: string[]
+          assegnato_a?: string | null
           cantiere_descrizione?: string | null
           cantiere_id?: string | null
           categoria_rif?: string | null
@@ -5975,6 +5979,8 @@ export type Database = {
         Update: {
           agente_codice?: string | null
           alternativa_di?: string | null
+          assegnati_copia?: string[]
+          assegnato_a?: string | null
           cantiere_descrizione?: string | null
           cantiere_id?: string | null
           categoria_rif?: string | null
