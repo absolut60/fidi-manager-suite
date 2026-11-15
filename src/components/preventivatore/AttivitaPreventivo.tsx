@@ -69,7 +69,7 @@ export function AttivitaPreventivo({ id, clienteId, agenteCodice, sedeNome, sede
     <Dialog open={!!emailVista} onOpenChange={v => !v && setEmailVista(null)}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Email inviata</DialogTitle></DialogHeader>
-        {emailVista && <EmailInviataView destinatario={emailVista.email_destinatario} oggetto={emailVista.email_oggetto} corpoHtml={emailVista.email_corpo_html} cc={emailVista.email_cc} bcc={emailVista.email_bcc} />}
+        {emailVista && <EmailInviataView destinatario={emailVista.email_destinatario ?? null} oggetto={emailVista.email_oggetto ?? null} corpoHtml={emailVista.email_corpo_html ?? null} cc={emailVista.email_cc} bcc={emailVista.email_bcc} />}
       </DialogContent>
     </Dialog>
   </RiquadroScheda>;
