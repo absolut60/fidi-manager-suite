@@ -26,6 +26,7 @@ import { campiSedePreventivo } from "./preventivo-creazione";
 import type { LeadPreventivo } from "./soggetto-preventivo";
 import { LEAD_PREVENTIVO_SELECT, cercaLeadPreventivo } from "./lead-preventivo-api";
 import { filtroPreventiviPerMe } from './assegnazione-preventivo';
+import type { LineaPreventivo } from './linee-preventivo';
 
 export type Preventivo = Database["public"]["Tables"]["preventivi"]["Row"];
 export type PreventivoInsert = Database["public"]["Tables"]["preventivi"]["Insert"];
@@ -230,6 +231,7 @@ export interface PreventiviFilters {
   stato?: StatoPreventivo[];
   tipo_doc?: TipoDoc[];
   tipo?: TipoDocumento | null;
+  linea?: string[];
 }
 
 export interface PreventivoListItem extends Preventivo {
@@ -256,6 +258,7 @@ export async function fetchPreventivi(f: PreventiviFilters): Promise<PreventivoL
   if (f.cliente_id?.length) q = q.in("cliente_id", f.cliente_id);
   if (f.stato?.length) q = q.in("stato", f.stato);
   if (f.tipo_doc?.length) q = q.in("tipo_doc", f.tipo_doc);
+  if (f.linea?.length) q = q.in("linea", f.linea as LineaPreventivo[]);
   if (f.search?.trim()) {
     const s = testoPerFiltroOr(f.search);
     q = q.or(`numero.ilike.%${s}%`);
@@ -303,6 +306,7 @@ export async function fetchElencoPreventivi(f: ElencoPreventiviFilters): Promise
   if (f.stato?.length) q = q.in("stato", f.stato);
   if (f.tipo_doc?.length) q = q.in("tipo_doc", f.tipo_doc);
   if (f.creato_da?.length) q = q.in("creato_da", f.creato_da);
+  if (f.linea?.length) q = q.in("linea", f.linea as LineaPreventivo[]);
   if (f.search?.trim()) {
     const s = testoPerFiltroOr(f.search);
     const parti = [`numero.ilike.%${s}%`, `titolo.ilike.%${s}%`];
@@ -443,10 +447,12 @@ export async function anteprimaProssimoNumero(
 }
 
 export async function createPreventivo(
-  row: Omit<PreventivoInsert, "numero">,
+  row: Omit<PreventivoInsert, "numero" | "linea">,
+  copia?: { linea: LineaPreventivo },
 ): Promise<{ preventivo: Preventivo; numeroRiassegnato: string | null }> {
   // Anche eventuali chiamanti JavaScript obsoleti non possono passare un numero.
-  const { numero: _numeroIgnorato, ...payload } = row as PreventivoInsert;
+  const { numero: _numeroIgnorato, linea: _lineaIgnorata, ...campi } = row as PreventivoInsert;
+  const payload = copia ? { ...campi, linea: copia.linea } : campi;
   const { data, error } = await supabase.from("preventivi").insert(payload).select().single();
   if (error) throw new Error(`${error.message}${error.details ? ` — ${error.details}` : ""}${error.code ? ` [${error.code}]` : ""}`);
   return { preventivo: data, numeroRiassegnato: null };
@@ -536,7 +542,7 @@ export async function duplicaPreventivo(
     totale_imponibile: src.totale_imponibile,
     iva_importo: src.iva_importo,
     totale: src.totale,
-  });
+  }, { linea: src.linea });
 
   for (const b of src.blocchi) {
     const { data: nb, error: bErr } = await supabase

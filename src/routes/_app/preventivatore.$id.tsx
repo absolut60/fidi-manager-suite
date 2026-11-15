@@ -3,6 +3,7 @@ import { messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { opzioniPrezziCantiere } from "@/lib/cantiere-listini-api";
 import { BadgePrezziDedicati } from "@/components/badge-prezzi-dedicati";
 import { BadgeCondizioniRiferimento } from "@/components/preventivatore/BadgeCondizioniRiferimento";
+import { BadgeLinea } from '@/components/preventivatore/BadgeLinea';
 import { opzioniCataloghiRiferimento, type RiferimentoPreventivo } from "@/lib/condizioni-riferimento";
 import { PrezziCantiereDialog } from "@/components/prezzi-cantiere-dialog";
 import type { CantiereRow } from "@/lib/cantieri";
@@ -411,6 +412,7 @@ function PreventivoEditorPage() {
             <h1 className="text-xl font-semibold">
               {prev.numero ?? (prev.tipo === "ordine" ? "Nuovo ordine" : "Nuovo preventivo")}
             </h1>
+            <BadgeLinea linea={prev.linea} />
             <BadgeTestata prev={prev} />
             {prev.alternativa_di && <Link to="/preventivatore/$id" params={{id:prev.alternativa_di}} search={{tab:'corpo'}} className="text-xs bg-warning/20 text-warning-foreground border border-warning px-2 py-1 rounded">Alt. {lettera||'…'} di {principali.find(p=>p.id===prev.alternativa_di)?.numero||'preventivo principale'}</Link>}
           </div>
