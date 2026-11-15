@@ -1,7 +1,7 @@
 # FM72 — Linea del preventivo, fetta ②
-- [ ] Migrazione additiva enum/colonna/default/indice, senza cambiare policy, trigger o prezzi; verifica SQL con rollback e registro.
-- [ ] Catalogo unico, badge elenco/scheda/tab soggetto, filtro multiplo persistente solo con più linee attive; duplicazioni/alternative conservano la linea.
-- [ ] Test catalogo, guardia confronti, salvataggi e suite completa; screenshot 375/1280 e documentazione.
+- [x] Applicata 0227_fm72_linea_preventivo.sql: enum, colonna NOT NULL/default e indice; registro coerente 228 voci 0000–0227. SQL reale BEGIN/ROLLBACK verifica enum/colonna/default/indice e INSERT con numero esplicito per isolare il gate del contatore (INSERT senza numero negato dalla sessione tecnica); cinque documenti Sistema MADE, zero fixture residue, trigger identici. Nessuna policy/gate/prezzo modificati.
+- [x] Catalogo unico e BadgeLinea in elenco incluse alternative, scheda accanto al numero e tab soggetto; filtro multiplo persistente nascosto/non applicato finché solo una linea attiva. Creazione omette linea, duplicazioni/alternative la copiano tramite opzione interna. Nuova fonte unica documentata in docs/regole/linee-preventivo.md; root AGENTS oltre budget, regola non aggiunta lì.
+- [x] Suite 905 test verdi: catalogo/fallback/linee attive, guardia AST, creazione/copia e filtro OR; build OK. Browser simulato 320/375/390/768/1280/1920: badge e alternative presenti, filtro nascosto, nessun overflow/errori; screenshot 375/1280 controllati, pagina temporanea rimossa. Collaudo autenticato non disponibile: account del richiedente non trovato da --self; nessun account altrui utilizzato.
 
 # FM72 — Assegnazione interna preventivi, fetta ①b
 - [x] AssegnazionePreventivo in Testata, responsabile/cop ie ricercabili con chip rimovibili, UPDATE verificato dei soli due campi e chiave salvataggio condivisa; catalogo utenti con query unica in cache, filtro Per me persistente e badge/nome nelle righe. Nessuna notifica client o modifica DB/prezzi/RLS/trigger; documentazione e regola tecnica nella AGENTS di area (root oltre budget).
