@@ -1597,6 +1597,13 @@
       "when": 1794734172860,
       "tag": "0227_fm72_linea_preventivo",
       "breakpoints": true
+    },
+    {
+      "idx": 228,
+      "version": "7",
+      "when": 1794736060514,
+      "tag": "0228_fm72_tappa3_linee_profilo",
+      "breakpoints": true
     }
   ]
 }
