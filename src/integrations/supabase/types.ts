@@ -9374,6 +9374,15 @@ export type Database = {
           storage_path: string
         }[]
       }
+      email_cliente_preventivo: {
+        Args: { _preventivo_id: string }
+        Returns: {
+          email: string
+          email_2: string
+          email_3: string
+          pec: string
+        }[]
+      }
       esperienza_pagamento_batch: {
         Args: { _ids: string[] }
         Returns: {
@@ -9856,6 +9865,17 @@ export type Database = {
           n_clienti: number
           n_con_fido: number
           n_riduzioni: number
+        }[]
+      }
+      get_destinatari_copia_preventivo: {
+        Args: { _preventivo_id: string }
+        Returns: {
+          cognome: string
+          email: string
+          nome: string
+          pertinente: boolean
+          ruolo: string
+          user_id: string
         }[]
       }
       get_destinatari_copia_recupero: {

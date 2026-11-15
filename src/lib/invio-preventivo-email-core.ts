@@ -43,3 +43,26 @@ export function costruisciEmailPreventivo(args: {
     htmlArchivio: wrapEmailHtml(base.corpo, args.sede, args.mittente, opts),
   };
 }
+
+export const TIPO_TEMPLATE_INVIO_PREVENTIVO = "invio_preventivo";
+/** Modelli ammessi nei selettori del recupero e dell'invio massivo: mai quelli d'invio preventivo. */
+export const isTemplateRecupero = (t: { tipo: string | null }) => t.tipo !== TIPO_TEMPLATE_INVIO_PREVENTIVO;
+export const templateInvioPreventivo = <T extends { tipo: string | null; attivo?: boolean | null }>(lista: readonly T[]) =>
+  lista.filter(t => t.tipo === TIPO_TEMPLATE_INVIO_PREVENTIVO && t.attivo !== false);
+
+/** Destinatario proposto: cliente → prima valorizzata tra email, email_2, email_3, PEC; lead → la sua email. */
+export function destinatarioPropostoPreventivo(
+  cliente: { email?: string | null; email_2?: string | null; email_3?: string | null; pec?: string | null } | null | undefined,
+  lead: { email?: string | null } | null | undefined,
+): string {
+  const candidati = cliente ? [cliente.email, cliente.email_2, cliente.email_3, cliente.pec] : [lead?.email];
+  return candidati.map(e => (e ?? "").trim()).find(Boolean) ?? "";
+}
+
+/** Corpo HTML del modello → testo modificabile (il server rimette gli a capo). */
+export function htmlInTestoSemplice(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n").replace(/<\/p>\s*/gi, "\n\n").replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&")
+    .replace(/\n{3,}/g, "\n\n").trim();
+}

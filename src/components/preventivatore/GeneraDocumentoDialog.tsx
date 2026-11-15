@@ -16,6 +16,9 @@ import {
 import { lineaPreventivo } from "@/lib/linee-preventivo";
 import { exportListaMaterialiXlsx, exportListaFornitoreXlsx } from "@/lib/excel-export";
 import { AnteprimaPdfDialog } from "./AnteprimaPdfDialog";
+import { InviaPreventivoEmailDialog } from "./InviaPreventivoEmailDialog";
+import { useAuth } from "@/hooks/use-auth";
+import { puoScriverePreventivi } from "@/lib/permessi-preventivi";
 import { supabase } from "@/integrations/supabase/client";
 
 type Modalita = "PREVENTIVO" | "PROPOSTA_RAPIDA" | "LISTA_MATERIALI" | "LISTA_FORNITORE";
@@ -62,6 +65,9 @@ export function GeneraDocumentoDialog({
   const [sel, setSel] = useState<Modalita>("PREVENTIVO");
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<{ blob: Blob; fileName: string } | null>(null);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const { roles } = useAuth();
+  const puoInviare = puoScriverePreventivi(roles as string[]);
   const [colonne, setColonne] = useState<ColonneRighePdf>(COLONNE_RIGHE_DEFAULT);
   const [esposizione, setEsposizione] = useState<EsposizionePrezziPdf>("listino");
   const vistaCommerciale = lineaPreventivo(prev.linea).blocchi.righeStampabili;
@@ -221,7 +227,11 @@ export function GeneraDocumentoDialog({
         onOpenChange={(v) => { if (!v) setPreview(null); }}
         blob={preview?.blob ?? null}
         fileName={preview?.fileName ?? ""}
+        onInviaEmail={puoInviare ? () => setEmailOpen(true) : undefined}
       />
+      {puoInviare && (
+        <InviaPreventivoEmailDialog open={emailOpen && preview !== null} onOpenChange={setEmailOpen} prev={prev} blob={preview?.blob ?? null} fileName={preview?.fileName ?? ""} />
+      )}
     </>
   );
 }

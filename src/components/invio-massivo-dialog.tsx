@@ -1,3 +1,4 @@
+import { isTemplateRecupero } from "@/lib/invio-preventivo-email-core";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -201,7 +202,7 @@ export function InvioMassivoDialog({
       }
       const { data, error } = await q.order("nome");
       if (error) throw error;
-      return data as TemplateEmail[];
+      return (data as TemplateEmail[]).filter(isTemplateRecupero);
     },
     enabled: open && puoInviare,
   });
