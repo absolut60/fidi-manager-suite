@@ -5,8 +5,8 @@ CREATE TEMP TABLE t AS SELECT gen_random_uuid() p, gen_random_uuid() b, gen_rand
 INSERT INTO public.preventivi (id, tipo, data, titolo) SELECT p, 'preventivo', CURRENT_DATE, 'FM75 prova' FROM t;
 INSERT INTO public.blocchi_preventivo (id, preventivo_id, descrizione, ordine) SELECT b, p, 'B', 0 FROM t;
 INSERT INTO public.righe_preventivo (id, blocco_id, tipo_riga, descrizione, quantita, prezzo_unit, importo, ordine, stampabile)
-  SELECT r1, b, 'manuale', 'visibile', 2, 10, 20, 1, true FROM t UNION ALL
-  SELECT r2, b, 'manuale', 'nascosta', 3, 5, 15, 2, false FROM t;
+  SELECT r1, b, 'manuale'::public.tipo_riga_preventivo, 'visibile', 2, 10, 20, 1, true FROM t UNION ALL
+  SELECT r2, b, 'manuale'::public.tipo_riga_preventivo, 'nascosta', 3, 5, 15, 2, false FROM t;
 SELECT r.descrizione, r.stampabile, (r.descrizione='visibile') = r.stampabile AS ok
 FROM t, public.righe_preventivo r JOIN public.blocchi_preventivo bb ON bb.id = r.blocco_id
 WHERE bb.preventivo_id = public.trasforma_preventivo_in_ordine(t.p, jsonb_build_array(jsonb_build_object('blocco_id', t.b,
