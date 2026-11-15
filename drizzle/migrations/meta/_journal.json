@@ -1653,6 +1653,13 @@
       "when": 1794771165060,
       "tag": "0235_fm75_ordine_totali_regime_iva",
       "breakpoints": true
+    },
+    {
+      "idx": 236,
+      "version": "7",
+      "when": 1794771486832,
+      "tag": "0236_fm75_righe_articolo_in_definizione",
+      "breakpoints": true
     }
   ]
 }

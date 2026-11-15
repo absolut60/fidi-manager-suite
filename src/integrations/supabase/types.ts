@@ -7016,14 +7016,18 @@ export type Database = {
           articolo_id: string | null
           bene_significativo: boolean
           blocco_id: string
+          codice_articolo_fornitore: string | null
           costo: number | null
           created_at: string
           descrizione: string | null
           fonte_prezzo: string | null
+          fornitore_id: string | null
           id: string
           importo: number | null
           incidenza: number | null
+          listino_fornitore: number | null
           maggiorazione_perc: number
+          marca: string | null
           margine: number | null
           ordine: number
           peso: number | null
@@ -7048,14 +7052,18 @@ export type Database = {
           articolo_id?: string | null
           bene_significativo?: boolean
           blocco_id: string
+          codice_articolo_fornitore?: string | null
           costo?: number | null
           created_at?: string
           descrizione?: string | null
           fonte_prezzo?: string | null
+          fornitore_id?: string | null
           id?: string
           importo?: number | null
           incidenza?: number | null
+          listino_fornitore?: number | null
           maggiorazione_perc?: number
+          marca?: string | null
           margine?: number | null
           ordine?: number
           peso?: number | null
@@ -7080,14 +7088,18 @@ export type Database = {
           articolo_id?: string | null
           bene_significativo?: boolean
           blocco_id?: string
+          codice_articolo_fornitore?: string | null
           costo?: number | null
           created_at?: string
           descrizione?: string | null
           fonte_prezzo?: string | null
+          fornitore_id?: string | null
           id?: string
           importo?: number | null
           incidenza?: number | null
+          listino_fornitore?: number | null
           maggiorazione_perc?: number
+          marca?: string | null
           margine?: number | null
           ordine?: number
           peso?: number | null
@@ -7119,6 +7131,13 @@ export type Database = {
             columns: ["blocco_id"]
             isOneToOne: false
             referencedRelation: "blocchi_preventivo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "righe_preventivo_fornitore_id_fkey"
+            columns: ["fornitore_id"]
+            isOneToOne: false
+            referencedRelation: "fornitori"
             referencedColumns: ["id"]
           },
           {
