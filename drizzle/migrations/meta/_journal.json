@@ -1709,6 +1709,13 @@
       "when": 1794783186700,
       "tag": "0243_invio_preventivo_destinatari",
       "breakpoints": true
+    },
+    {
+      "idx": 244,
+      "version": "7",
+      "when": 1794783627563,
+      "tag": "0244_attivita_commerciale_email_archiviata",
+      "breakpoints": true
     }
   ]
 }

@@ -925,6 +925,11 @@ export type Database = {
           data_pianificata: string | null
           data_svolgimento: string | null
           descrizione: string | null
+          email_bcc: string | null
+          email_cc: string | null
+          email_corpo_html: string | null
+          email_destinatario: string | null
+          email_oggetto: string | null
           esito: string | null
           id: string
           indirizzo: string | null
@@ -951,6 +956,11 @@ export type Database = {
           data_pianificata?: string | null
           data_svolgimento?: string | null
           descrizione?: string | null
+          email_bcc?: string | null
+          email_cc?: string | null
+          email_corpo_html?: string | null
+          email_destinatario?: string | null
+          email_oggetto?: string | null
           esito?: string | null
           id?: string
           indirizzo?: string | null
@@ -977,6 +987,11 @@ export type Database = {
           data_pianificata?: string | null
           data_svolgimento?: string | null
           descrizione?: string | null
+          email_bcc?: string | null
+          email_cc?: string | null
+          email_corpo_html?: string | null
+          email_destinatario?: string | null
+          email_oggetto?: string | null
           esito?: string | null
           id?: string
           indirizzo?: string | null
