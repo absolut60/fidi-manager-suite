@@ -33,10 +33,19 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BellRing } from "lucide-react";
 import { ProvaCervedCard } from "@/components/impostazioni/prova-cerved-card";
+import { SediBranding } from "@/components/impostazioni/sedi-branding";
 import { sanificaDocumentoHtml, SANDBOX_ANTEPRIMA } from "@/lib/html-sicuro";
 
 
 export const Route = createFileRoute("/_app/impostazioni")({
+  head: () => ({ meta: [
+    { title: 'Impostazioni e sedi | FidiManager' },
+    { name: 'description', content: 'Impostazioni operative e identità delle sedi MADE in FidiManager.' },
+    { property: 'og:title', content: 'Impostazioni e sedi | FidiManager' },
+    { property: 'og:description', content: 'Gestione delle impostazioni e delle sedi MADE.' },
+    { property: 'og:type', content: 'website' },
+    { name: 'twitter:card', content: 'summary' },
+  ] }),
   component: ImpostazioniPage,
 });
 
@@ -114,6 +123,8 @@ function ImpostazioniPage() {
         </Dialog>
       </div>
 
+
+      {!loading && role === 'amministratore' && <SediBranding />}
 
       <ConfigurazioniCard />
 

@@ -8,6 +8,8 @@
 @custom-variant pv-tabella { @media (min-width: 768px), (orientation: landscape) and (max-height: 500px) { @slot; } }
 
 @theme inline {
+  --color-branding-email: var(--branding-email);
+  --color-branding-pdf: var(--branding-pdf);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -71,6 +73,9 @@
 }
 
 :root {
+  /* FM76: contesto reale dei loghi, indipendente dal tema dell'app. */
+  --branding-email: #0d1f3c;
+  --branding-pdf: #ffffff;
   /* Scheda preventivo (FM65 G1) */
   --pv-azzurro: #eaf1fb;
   --pv-azzurro-bordo: #cfdcf0;

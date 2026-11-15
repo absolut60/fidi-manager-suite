@@ -1,3 +1,10 @@
+# FM76 — Branding per sede, fetta 1
+- [x] Applicata 0239_fm76_branding_sedi.sql: colonne nullable e quattro policy storage amministratore; UPDATE stores/MFA già adeguati, invariati.
+- [x] Fonte unica branding e gestione contatti/loghi nelle impostazioni; email e flussi invariati. Bucket branding creato privato con limite 1 MB; anteprime firmate per l'amministratore.
+- [x] 956 test verdi; schermate 375/1280 controllate, nessun overflow 320/375/390/768/1280/1920. Contatti e upload verificati con risposte simulate, pagina temporanea rimossa.
+- [ ] Lettura pubblica bucket: bloccata da public_buckets_blocked; occorre abilitare bucket pubblici in Privacy e sicurezza della workspace e rendere branding pubblico.
+- [ ] Verifica autenticata completa (salvataggio/rilettura, sostituzione/rimozione): --self non trova account del richiedente; nessuna modifica di dati reali effettuata.
+
 # FM72 — Responsabile showroom, tappa ④b (solo frontend)
 - [x] Allineati gemelli showroom/preventivi; blocco codice agente e vincolo agente derivati dal gate di scrittura condiviso, inclusi ruoli misti. Nessuna migrazione o modifica SQL/prezzi; sede obbligatoria e menu invariati. Documentazione aggiornata e regola tecnica nella AGENTS di area (root oltre budget).
 - [x] 30 test mirati e suite completa 920 test verdi con il runner Bun già usato dal progetto (nessuna dipendenza Vitest aggiunta). Browser con dati simulati: preventivi_write senza codice bloccato, responsabile solo e con preventivi_write non bloccati; screenshot 375/1280 controllati, nessun overflow pagina a 320/375/390/768/1280/1920 né errori browser. Pagina temporanea rimossa; nessun salvataggio reale effettuato.
