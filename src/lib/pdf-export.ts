@@ -1,3 +1,4 @@
+import { nomeIntestatarioPdf } from "./soggetto-preventivo";
 import jsPDF from "jspdf";
 import { prezzoNettoRiga, rigaInUnita, formatScontiGamma, isIntestazioneKit } from "./riga-preventivo";
 import autoTable from "jspdf-autotable";
@@ -95,7 +96,7 @@ function drawHeader(doc: jsPDF, titolo: string, prev: PreventivoConDettagli, bra
 
   doc.setFont("helvetica", "bold"); doc.setFontSize(10.5);
   doc.setTextColor(...NAVY);
-  const rs = (cli?.ragione_sociale ?? "—").slice(0, 48);
+  const rs = nomeIntestatarioPdf(prev).slice(0, 48);
   doc.text(rs, 14, by + 10.5);
 
   doc.setFont("helvetica", "normal"); doc.setFontSize(7.5);

@@ -617,9 +617,9 @@ function PreventivoEditorPage() {
                               <Button size="sm" onClick={handleAddEmptyBlocco} disabled={addEmptyBlocco.isPending}>
                                 <Plus className="mr-1 h-4 w-4" /> Aggiungi blocco
                               </Button>
-                              <Button size="sm" variant="outline" onClick={() => setAddBloccoOpen(true)}>
+                              {lineaPreventivo(prev.linea).blocchi.bloccoDaKit && <Button size="sm" variant="outline" onClick={() => setAddBloccoOpen(true)}>
                                 Da Kit
-                              </Button>
+                              </Button>}
                             </div>
                           )}
                         </CardContent>
@@ -637,9 +637,9 @@ function PreventivoEditorPage() {
                   <Button size="sm" onClick={handleAddEmptyBlocco} disabled={addEmptyBlocco.isPending}>
                     <Plus className="mr-1 h-4 w-4" /> Aggiungi blocco
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => setAddBloccoOpen(true)}>
+                  {lineaPreventivo(prev.linea).blocchi.bloccoDaKit && <Button size="sm" variant="outline" onClick={() => setAddBloccoOpen(true)}>
                     Da Kit
-                  </Button>
+                  </Button>}
                 </div>
               )}
             </section>

@@ -34,3 +34,22 @@ describe("FM71 soggetto preventivo", () => {
     expect(prev).toEqual({ store_id: null, filiale: null });
   });
 });
+describe("nomeIntestatarioPdf", () => {
+  it("stampa la ragione sociale del lead quando manca il cliente", async () => {
+    const { nomeIntestatarioPdf } = await import("@/lib/soggetto-preventivo");
+    expect(nomeIntestatarioPdf({ cliente: null, lead: { ragione_sociale: "PIPPO SRL", nome: null, cognome: null } })).toBe("PIPPO SRL");
+  });
+  it("per il cliente resta la sua ragione sociale", async () => {
+    const { nomeIntestatarioPdf } = await import("@/lib/soggetto-preventivo");
+    expect(nomeIntestatarioPdf({ cliente: { ragione_sociale: "ROSSI SPA" }, lead: null })).toBe("ROSSI SPA");
+    expect(nomeIntestatarioPdf({ cliente: null, lead: null })).toBe("—");
+  });
+});
+
+describe("bloccoDaKit per linea", () => {
+  it("Da Kit spento solo per Showroom", async () => {
+    const { lineaPreventivo } = await import("@/lib/linee-preventivo");
+    expect(lineaPreventivo("showroom").blocchi.bloccoDaKit).toBe(false);
+    for (const l of ["sistema_made", "edilizia", "fotovoltaico"]) expect(lineaPreventivo(l as never).blocchi.bloccoDaKit).toBe(true);
+  });
+});

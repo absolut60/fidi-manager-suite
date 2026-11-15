@@ -17,6 +17,11 @@ export const inputLeadRapido = z.object({
 export function nomeLeadPreventivo(lead: Pick<LeadPreventivo, "ragione_sociale" | "nome" | "cognome"> | null | undefined) {
   return lead?.ragione_sociale || [lead?.nome, lead?.cognome].filter(Boolean).join(" ") || "Lead";
 }
+/** Nome dell'intestatario nei PDF: cliente se presente, altrimenti lead, altrimenti "—". */
+export function nomeIntestatarioPdf(prev: { cliente?: { ragione_sociale: string | null } | null; lead?: Pick<LeadPreventivo, "ragione_sociale" | "nome" | "cognome"> | null }) {
+  if (prev.cliente) return prev.cliente.ragione_sociale ?? "—";
+  return prev.lead ? nomeLeadPreventivo(prev.lead) : "—";
+}
 export function campiLeadRapido(input: z.input<typeof inputLeadRapido>, agente: string | null) {
   const v = inputLeadRapido.parse(input);
   return { ...v, ragione_sociale: v.ragione_sociale || null, nome: v.nome || null, cognome: v.cognome || null,
