@@ -5,7 +5,7 @@ import { isRaccoglitorePosa } from "@/lib/riga-preventivo";
 import type { BloccoConRighe } from "@/lib/preventivi-api";
 import { formatNumeroIt } from "@/lib/numero-it";
 
-const euro = (v: number) => `€ ${formatNumeroIt(v, { minDecimals: 2, maxDecimals: 2 })}`;
+const euro = (v: number) => `€ ${formatNumeroIt(v, { minDecimals: 2, maxDecimals: 2, migliaia: true })}`;
 
 /** FM75 F3c: riepilogo IVA per aliquota, solo presentazione da riepilogoIva (i totali salvati restano su iva_perc fino a F3d). */
 export function RiepilogoIvaPreventivo({ regime, ivaPerc, blocchi }: { regime: unknown; ivaPerc: number | null | undefined; blocchi: BloccoConRighe[] }) {
