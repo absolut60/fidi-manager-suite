@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 import { brandingSede, MAX_LOGO_BYTES, type RigaBrandingSede } from '@/lib/branding-sede';
-import { LOGO_EMAIL_URL } from '@/lib/template-email-render';
+import { LOGO_EMAIL_URL, type DatiSede } from '@/lib/template-email-render';
 
 type ClientStorage = Pick<SupabaseClient<Database>, 'storage'>;
 export type LogoEmailSede = { logoEmailUrl: string; inlineLogoBase64?: string };
@@ -42,4 +42,37 @@ export async function logoEmailInvio(sede: RigaBrandingSede | null, client: Clie
     console.warn('[branding-email] Logo sede non disponibile: ripiego MADE');
     return { logoEmailUrl: LOGO_EMAIL_URL };
   }
+}
+
+type ClientLettura = Pick<SupabaseClient<Database>, 'from'>;
+export const SELECT_SEDE_EMAIL = 'nome, insegna, indirizzo, cap, citta, provincia, telefono, logo_email_path';
+export type SedeEmail = { sede: DatiSede | null; inlineLogoBase64?: string };
+
+/** Sede del PREVENTIVO (preventivi.store_id), mai del cliente: testata e piede email.
+ * Senza sede o se non leggibile → sede null, cioè ripiego MADE di wrapEmailHtml.
+ * "invio" scarica il logo col client privilegiato (CID), "anteprima" firma con l'utente.
+ */
+export async function sedeEmailDaStoreId(
+  storeId: string | null | undefined,
+  lettore: ClientLettura,
+  storage: ClientStorage,
+  modo: 'invio' | 'anteprima',
+): Promise<SedeEmail> {
+  if (!storeId) return { sede: null };
+  const { data: store } = await lettore.from('stores').select(SELECT_SEDE_EMAIL).eq('id', storeId).maybeSingle();
+  if (!store) return { sede: null };
+  const logo = modo === 'invio' ? await logoEmailInvio(store, storage) : await logoEmailAnteprima(store, storage);
+  return {
+    ...(logo.inlineLogoBase64 ? { inlineLogoBase64: logo.inlineLogoBase64 } : {}),
+    sede: {
+      logoEmailUrl: logo.logoEmailUrl,
+      nome: store.nome ?? null,
+      insegna: (store as { insegna?: string | null }).insegna ?? null,
+      indirizzo: store.indirizzo ?? null,
+      cap: store.cap ?? null,
+      citta: store.citta ?? null,
+      provincia: store.provincia ?? null,
+      telefono: store.telefono ?? null,
+    },
+  };
 }
