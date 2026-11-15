@@ -5,6 +5,7 @@ import { CellaUm } from "@/components/cella-um";
 import { useEffect, useMemo, useState } from "react";
 import { ArticoloDettaglioDialog } from "@/components/preventivatore/ArticoloDettaglioDialog";
 import { RiepilogoArticoloDialog } from "@/components/preventivatore/RiepilogoArticoloDialog";
+import { ArticoloInDefinizioneDialog } from "@/components/preventivatore/ArticoloInDefinizioneDialog";
 import { Info } from "lucide-react";
 import {
   DndContext,
@@ -28,6 +29,7 @@ import {
   ChevronDown,
   Eye,
   EyeOff,
+  Pencil,
   GripVertical,
   Plus,
   Trash2,
@@ -102,7 +104,7 @@ export function RigheTable({
 
 
 
-  const { bloccoConMisure: conMisure, righeStampabili, regimiIva } = lineaPreventivo(linea).blocchi;
+  const { bloccoConMisure: conMisure, righeStampabili, regimiIva, articoloInDefinizione } = lineaPreventivo(linea).blocchi;
   const conBs = regimiIva && regimeIva === "agevolata_10_bs";
   const calcs = useMemo(() => calcolaBlocco(blocco.righe), [blocco.righe]);
   const [riepilogoRigaId, setRiepilogoRigaId] = useState<string | null>(null);
@@ -259,7 +261,7 @@ export function RigheTable({
 
   const righeProps = (r: (typeof blocco.righe)[number], idx: number) => ({
     row: r,
-    conMisure, righeStampabili, conBs,
+    conMisure, righeStampabili, conBs, articoloInDefinizione,
     prezzoCantiere: segnoPrezzoCantiere(r, dedicati.get(r.articolo_codice ?? r.articolo?.cod_gamma ?? "")),
     idx,
     fascia,
@@ -447,6 +449,8 @@ type RigaProps = {
   righeStampabili: boolean;
   /** FM75 F3c: toggle e badge BS (linea regimiIva + regime agevolata_10_bs). */
   conBs: boolean;
+  /** FM75 F4b: matita e codice fornitore sulla riga manuale. */
+  articoloInDefinizione: boolean;
   prezzoCantiere: boolean;
   row: BloccoConRighe["righe"][number];
   idx: number;
@@ -561,7 +565,7 @@ function useCelleRiga(p: RigaProps) {
           descrizione={row.descrizione} onChange={onSceltaGamma} disabled={readOnly} />
       </div>
     </div>
-  ) : valorizzata ? <span className="block px-1 py-2 font-mono text-xs">MANUALE</span> : null;
+  ) : valorizzata ? <span className="block break-all px-1 py-2 font-mono text-xs">{(p.articoloInDefinizione && row.codice_articolo_fornitore) || "MANUALE"}</span> : null;
   const articolo = (
     <>
       <textarea key={`${row.id}-${row.descrizione ?? ""}`} defaultValue={row.descrizione ?? ""}
@@ -718,9 +722,25 @@ function BadgeBs({ p, valorizzata }: { p: RigaProps; valorizzata: boolean }) {
   return <span className="mt-0.5 inline-block rounded border border-pv-viola/30 bg-pv-viola-tenue px-1 text-[10px] font-semibold text-pv-viola" title="Bene significativo">BS</span>;
 }
 
+function MatitaArticoloInDefinizione(p: RigaProps) {
+  const [open, setOpen] = useState(false);
+  if (!p.articoloInDefinizione || p.row.tipo_riga !== "manuale") return null;
+  return (
+    <>
+      <Button size="icon" variant="ghost" className="h-8 w-8" disabled={p.readOnly}
+        onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+        title="Articolo in definizione" aria-label="Modifica articolo in definizione">
+        <Pencil className="h-3.5 w-3.5" />
+      </Button>
+      {open && <ArticoloInDefinizioneDialog open={open} onOpenChange={setOpen} row={p.row} onPatch={p.onPatch} />}
+    </>
+  );
+}
+
 function AzioniRiga(p: RigaProps & { valorizzata?: boolean }) {
   return (
     <div className="flex items-center justify-end gap-0.5">
+      <MatitaArticoloInDefinizione {...p} />
       <ToggleBs {...p} valorizzata={!!p.valorizzata} />
       <ToggleStampabile {...p} valorizzata={!!p.valorizzata} />
       <Button size="icon" variant="ghost"

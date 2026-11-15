@@ -49,12 +49,12 @@
 
 Ogni linea nel catalogo (`src/lib/linee-preventivo.ts`, campo `blocchi`) dichiara:
 
-| Linea | bloccoConMisure | bloccoDaKit | righeStampabili | regimiIva |
-|---|---|---|---|---|
-| Sistema MADE | sì | sì | no | no |
-| Showroom | no | no | sì | sì |
-| Edilizia | sì | sì | no | no |
-| Fotovoltaico | sì | sì | no | no |
+| Linea | bloccoConMisure | bloccoDaKit | righeStampabili | regimiIva | articoloInDefinizione |
+|---|---|---|---|---|---|
+| Sistema MADE | sì | sì | no | no | no |
+| Showroom | no | no | sì | sì | sì |
+| Edilizia | sì | sì | no | no | no |
+| Fotovoltaico | sì | sì | no | no | no |
 
 - `bloccoConMisure = false`: testata del blocco "spoglia" (trascinamento, "Blocco N", Descrizione, Importo, cestino); niente Rif., Quantità, U.M., Prezzo/U.M., ricalcolo su quantità; nelle righe niente colonna/campo Incidenza né avviso sulla quantità del blocco.
 - `bloccoDaKit = false`: "Aggiungi blocco" crea solo un blocco vuoto con titolo, senza tab Kit e senza quantità base.
@@ -62,6 +62,7 @@ Ogni linea nel catalogo (`src/lib/linee-preventivo.ts`, campo `blocchi`) dichiar
 - La linea arriva per prop dalla pagina del preventivo (nessuna lettura extra); ogni uso passa da `lineaPreventivo(...)`, mai confronti diretti con i codici (guardia AST nei test).
 - `righeStampabili = true` (F2c): occhio Stampabile Sì/No nelle azioni di ogni riga valorizzata (non sulla riga raccoglitore PEF), riga attenuata se nascosta, pulsante "Vista commerciale" (anteprima da `vistaCommerciale`, v. `vista-commerciale.md`).
 - `regimiIva = true` (F3c): selettore "Regime IVA" in Testata (22% ordinaria, 10% agevolata, 10% + beni significativi); solo nel regime con beni significativi, toggle "BS" nelle azioni delle righe valorizzate e badge BS accanto alla descrizione; nel Piede e nella Vista commerciale riepilogo per aliquota da `riepilogoIva` con avvisi morbidi (`avvisiRegimeIva`). I totali salvati restano su `iva_perc` fino a F3d (v. `calcolo-iva.md`).
+- `articoloInDefinizione = true` (F4b): sulla riga manuale il codice mostra `codice_articolo_fornitore` (altrimenti "MANUALE") e la matita nelle azioni apre `ArticoloInDefinizioneDialog` (fornitore dalle schede, marca, codice fornitore, descrizione obbligatoria, U.M., costo e listino fornitore a 4 decimali). Salva solo dati tramite `updateRiga`: nessun ricalcolo del prezzo di vendita (leve in F5); aggancio al catalogo e validazione in F4c.
 - Eccezione SQL ammessa (F4a): `trasforma_preventivo_in_ordine` confronta `linea = 'showroom'` perché il catalogo TS non arriva al database. Showroom: l'ordine conserva la descrizione salvata sulla riga (varianti); altre linee: descrizione ripristinata da Gamma per le righe con articolo. Ogni nuova eccezione va documentata qui.
 - Righe "articolo in definizione" (F4a, solo dato): `fornitore_id`, `marca`, `codice_articolo_fornitore` (aggancio ad `articoli_gamma_fornitori`), `listino_fornitore` (listino del fornitore, non Gamma); copiati in duplicazione/alternativa e nell'ordine.
 - Prezzi, `fonte_prezzo` e stampa (PDF, fetta F6) invariati.
