@@ -23,6 +23,8 @@ import { CondizioniRiferimento } from "./CondizioniRiferimento";
 import type { CataloghiRiferimento, RiferimentoPreventivo } from "@/lib/condizioni-riferimento";
 import { nomeLeadPreventivo } from "@/lib/soggetto-preventivo";
 import { AssegnazionePreventivo } from './AssegnazionePreventivo';
+import { lineaPreventivo } from '@/lib/linee-preventivo';
+import { REGIMI_IVA, regimeIvaValido } from '@/lib/calcolo-iva';
 
 export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agenti,principali,haAlternative,listino,categoria,sede,sedeClienteId,onSave,onCliente,onChangeCliente,onCantiere,cataloghiRiferimento,erroreCataloghi,caricamentoCataloghi,onRiferimento,badgeRiferimento,onCambiaSoggetto}: {
   onCambiaSoggetto?: () => void;
@@ -86,6 +88,7 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
         <CondizioniRiferimento key={`${prev.id}:${prev.listino_rif}:${prev.macrocategoria_rif}:${prev.categoria_rif}`} obbligatorio={!!prev.lead_id} riferimento={prev} cataloghi={cataloghiRiferimento} errore={erroreCataloghi} caricamento={caricamentoCataloghi} modificabile={modificabile} onSave={onRiferimento}/>
         {field('Condizione di pagamento',etichettaCondizionePagamento(codici,pagamento,cliente?.condizione_pagamento_desc),<CondizionePagamentoRichiestaSelect ariaLabel="Condizione di pagamento" size="sm" value={pagamento} descFallback={cliente?.condizione_pagamento_desc} onChange={v=>save({condizione_pagamento_cod:v||null})}/>,true)}
         {field('IVA %',`${formatNumeroIt(prev.iva_perc||0)}%`,<Input aria-label="IVA %" className="h-7 bg-card px-2 text-xs md:text-xs" inputMode="decimal" defaultValue={formatNumeroIt(prev.iva_perc||0)} onBlur={e=>{const v=parseNumeroIt(e.target.value);if(v!==null&&v!==prev.iva_perc)save({iva_perc:v});}}/>)}
+        {lineaPreventivo(prev.linea).blocchi.regimiIva && field('Regime IVA',REGIMI_IVA.find(r=>r.value===regimeIvaValido(prev.regime_iva))?.label,<Select value={regimeIvaValido(prev.regime_iva)} onValueChange={v=>{const r=regimeIvaValido(v);if(r!==prev.regime_iva)save({regime_iva:r});}}><SelectTrigger aria-label="Regime IVA" className="h-7 w-full min-w-0 bg-card px-2 text-xs [&>span]:truncate [&>span]:text-left"><SelectValue/></SelectTrigger><SelectContent>{REGIMI_IVA.map(o=><SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>)}
         {field('Filiale',prev.filiale,select('Filiale',prev.store_id||'',stores.map(s=>({value:s.id,label:s.nome})),id=>save(campiSedePreventivo(stores.find(s=>s.id===id)??null))))}
       </div>
     </RiquadroScheda>

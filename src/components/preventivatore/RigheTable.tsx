@@ -68,8 +68,10 @@ export function RigheTable({
   clienteId,
   scontoPiede = 0,
   cantiereId,
-  sedeGiacenzaId = null, sedeNome = null, condizioniPrezzi, linea,
+  sedeGiacenzaId = null, sedeNome = null, condizioniPrezzi, linea, regimeIva,
 }: {
+  /** FM75 F3c: regime IVA del documento (toggle BS solo con regimiIva e agevolata_10_bs). */
+  regimeIva?: string | null;
   /** FM75 F1: linea del preventivo, passata dalla pagina. */
   linea?: unknown;
   condizioniPrezzi: CondizioniPrezziPreventivo;
@@ -100,7 +102,8 @@ export function RigheTable({
 
 
 
-  const { bloccoConMisure: conMisure, righeStampabili } = lineaPreventivo(linea).blocchi;
+  const { bloccoConMisure: conMisure, righeStampabili, regimiIva } = lineaPreventivo(linea).blocchi;
+  const conBs = regimiIva && regimeIva === "agevolata_10_bs";
   const calcs = useMemo(() => calcolaBlocco(blocco.righe), [blocco.righe]);
   const [riepilogoRigaId, setRiepilogoRigaId] = useState<string | null>(null);
   const calcMap = useMemo(() => new Map(calcs.righe.map((r) => [r.id, r.calc])), [calcs]);
@@ -256,7 +259,7 @@ export function RigheTable({
 
   const righeProps = (r: (typeof blocco.righe)[number], idx: number) => ({
     row: r,
-    conMisure, righeStampabili,
+    conMisure, righeStampabili, conBs,
     prezzoCantiere: segnoPrezzoCantiere(r, dedicati.get(r.articolo_codice ?? r.articolo?.cod_gamma ?? "")),
     idx,
     fascia,
@@ -442,6 +445,8 @@ type RigaProps = {
   conMisure: boolean;
   /** FM75 F2c: mostra il flag Stampabile (solo linee che lo prevedono). */
   righeStampabili: boolean;
+  /** FM75 F3c: toggle e badge BS (linea regimiIva + regime agevolata_10_bs). */
+  conBs: boolean;
   prezzoCantiere: boolean;
   row: BloccoConRighe["righe"][number];
   idx: number;
@@ -695,9 +700,28 @@ function ToggleStampabile(p: RigaProps & { valorizzata: boolean }) {
   );
 }
 
+function ToggleBs(p: RigaProps & { valorizzata: boolean }) {
+  if (!p.conBs || !p.valorizzata) return null;
+  const bs = !!p.row.bene_significativo;
+  const etichetta = bs ? "Bene significativo: sì (clic per togliere)" : "Bene significativo: no (clic per indicarlo)";
+  return (
+    <Button size="icon" variant="ghost" className={cn("h-8 w-8 text-[10px] font-bold", bs ? "text-pv-viola" : "text-muted-foreground")} disabled={p.readOnly}
+      onClick={(e) => { e.stopPropagation(); p.onPatch({ bene_significativo: !bs }); }}
+      title={etichetta} aria-label={etichetta} aria-pressed={bs}>
+      BS
+    </Button>
+  );
+}
+
+function BadgeBs({ p, valorizzata }: { p: RigaProps; valorizzata: boolean }) {
+  if (!p.conBs || !valorizzata || !p.row.bene_significativo) return null;
+  return <span className="mt-0.5 inline-block rounded border border-pv-viola/30 bg-pv-viola-tenue px-1 text-[10px] font-semibold text-pv-viola" title="Bene significativo">BS</span>;
+}
+
 function AzioniRiga(p: RigaProps & { valorizzata?: boolean }) {
   return (
     <div className="flex items-center justify-end gap-0.5">
+      <ToggleBs {...p} valorizzata={!!p.valorizzata} />
       <ToggleStampabile {...p} valorizzata={!!p.valorizzata} />
       <Button size="icon" variant="ghost"
         className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
@@ -748,7 +772,7 @@ function RigaRow(p: RigaProps) {
       {grip}
       <td className="sticky left-[18px] z-[1] py-0.5 text-center text-xs text-muted-foreground"><NumeroRiga p={p} inTabella /></td>
       <td className="sticky left-[66px] z-[1] min-w-0 px-1 py-0.5">{c.codice}</td>
-      <td className="lg:sticky lg:left-[222px] lg:z-[1] min-w-0 whitespace-normal px-1 py-0.5">{c.articolo}{c.kitSenzaPrezzo && (
+      <td className="lg:sticky lg:left-[222px] lg:z-[1] min-w-0 whitespace-normal px-1 py-0.5">{c.articolo}<BadgeBs p={p} valorizzata={c.valorizzata} />{c.kitSenzaPrezzo && (
         <p className="mt-0.5 text-[11px] font-sans not-italic text-destructive">Articolo non collegato a Gamma: inserisci prezzo e costo a mano</p>
       )}</td>
       <td className="px-0.5 py-0.5">{v && c.um}</td>
@@ -806,7 +830,7 @@ function RigaScheda(p: RigaProps) {
       </div>
       <div className="min-w-0">
         {c.valorizzata && campo("Codice", c.codice)}
-        {campo("Descrizione", c.articolo)}
+        {campo("Descrizione", <>{c.articolo}<BadgeBs p={p} valorizzata={c.valorizzata} /></>)}
         {c.kitSenzaPrezzo && (
           <p className="mt-0.5 text-[11px] font-sans not-italic text-destructive">Articolo non collegato a Gamma: inserisci prezzo e costo a mano</p>
         )}

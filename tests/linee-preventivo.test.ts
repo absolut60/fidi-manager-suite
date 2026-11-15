@@ -73,10 +73,10 @@ test('FM72 filtro elenco multiplo mantiene tutti i codici selezionati', async ()
 });test('FM75 F1 comportamenti blocchi per linea', () => {
   const flag = Object.fromEntries(Object.values(LINEE_PREVENTIVO).map(l => [l.codice, l.blocchi]));
   expect(flag).toEqual({
-    sistema_made: { bloccoConMisure: true, bloccoDaKit: true, righeStampabili: false },
-    showroom: { bloccoConMisure: false, bloccoDaKit: false, righeStampabili: true },
-    edilizia: { bloccoConMisure: true, bloccoDaKit: true, righeStampabili: false },
-    fotovoltaico: { bloccoConMisure: true, bloccoDaKit: true, righeStampabili: false },
+    sistema_made: { bloccoConMisure: true, bloccoDaKit: true, righeStampabili: false, regimiIva: false },
+    showroom: { bloccoConMisure: false, bloccoDaKit: false, righeStampabili: true, regimiIva: true },
+    edilizia: { bloccoConMisure: true, bloccoDaKit: true, righeStampabili: false, regimiIva: false },
+    fotovoltaico: { bloccoConMisure: true, bloccoDaKit: true, righeStampabili: false, regimiIva: false },
   });
   expect(lineaPreventivo(null).blocchi.bloccoConMisure).toBe(true);
 });

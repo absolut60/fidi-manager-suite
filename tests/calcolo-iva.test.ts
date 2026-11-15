@@ -51,3 +51,14 @@ test('preventivo vuoto', () => {
     expect(r.ivaTotale).toBe(0);
   }
 });
+
+import { avvisiRegimeIva, regimeIvaValido } from '../src/lib/calcolo-iva';
+test('avvisi morbidi dei regimi agevolati', () => {
+  expect(avvisiRegimeIva('ordinaria', [])).toEqual([]);
+  expect(avvisiRegimeIva('agevolata_10', [{ posa: true }])).toEqual([]);
+  expect(avvisiRegimeIva('agevolata_10', [{ posa: false }])).toEqual(['Regime agevolato senza riga di posa: verifica la coerenza']);
+  expect(avvisiRegimeIva('agevolata_10_bs', [{ posa: true }])).toEqual(['Nessun bene significativo indicato']);
+  expect(avvisiRegimeIva('agevolata_10_bs', [{ posa: true }, { posa: false, bene_significativo: true }])).toEqual([]);
+  expect(regimeIvaValido(null)).toBe('ordinaria');
+  expect(regimeIvaValido('agevolata_10_bs')).toBe('agevolata_10_bs');
+});

@@ -67,3 +67,22 @@ export function riepilogoIva(input: { regime: RegimeIva; ivaTestataPerc?: number
     dettaglioBs,
   };
 }
+
+/** FM75 F3c: etichette del selettore in testata (ordine di presentazione). */
+export const REGIMI_IVA: { value: RegimeIva; label: string }[] = [
+  { value: 'ordinaria', label: '22% ordinaria' },
+  { value: 'agevolata_10', label: '10% agevolata' },
+  { value: 'agevolata_10_bs', label: '10% + beni significativi' },
+];
+
+export function regimeIvaValido(v: unknown): RegimeIva {
+  return v === 'agevolata_10' || v === 'agevolata_10_bs' ? v : 'ordinaria';
+}
+
+/** FM75 F3c: avvisi morbidi (solo testo, mai blocchi). `posa` = la riga è un raccoglitore posa (isRaccoglitorePosa). */
+export function avvisiRegimeIva(regime: RegimeIva, righe: { bene_significativo?: boolean | null; posa: boolean }[]): string[] {
+  const avvisi: string[] = [];
+  if (regime === 'agevolata_10_bs' && !righe.some(r => r.bene_significativo)) avvisi.push('Nessun bene significativo indicato');
+  if (regime !== 'ordinaria' && !righe.some(r => r.posa)) avvisi.push('Regime agevolato senza riga di posa: verifica la coerenza');
+  return avvisi;
+}

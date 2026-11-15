@@ -5,8 +5,11 @@ import { formatNumeroIt, parseNumeroIt } from "@/lib/numero-it";
 import type { RiepilogoPreventivo } from "./FasciaPreventivo";
 import { RiquadroScheda } from "./RiquadroScheda";
 import { Calculator, Percent } from "lucide-react";
+import type { ReactNode } from "react";
 
-export function PiedePreventivo({ dati, iva, totale, ivaPerc, sconto, modificabile, inCorso, onSconto, onTestata }: {
+export function PiedePreventivo({ dati, iva, totale, ivaPerc, sconto, modificabile, inCorso, onSconto, onTestata, riepilogoIva }: {
+  /** FM75 F3c: presente solo con linee regimiIva; altrimenti il piede resta identico. */
+  riepilogoIva?: ReactNode;
   dati: RiepilogoPreventivo; iva: number; totale: number; ivaPerc: number; sconto: number; modificabile: boolean; inCorso: boolean; onSconto: (n:number)=>void; onTestata:()=>void;
 }) {
   const fmt=(n:number)=>formatNumeroIt(n,{minDecimals:2,maxDecimals:2});
@@ -19,6 +22,7 @@ export function PiedePreventivo({ dati, iva, totale, ivaPerc, sconto, modificabi
     <RiquadroScheda titolo="Totali" icona={Calculator} tono="azzurro"><div className="min-w-0">
       {([['Margine',`${formatNumeroIt(dati.marginePerc,{minDecimals:1,maxDecimals:1})}% · € ${fmt(dati.margineEuro)}`],['Imponibile',`€ ${fmt(dati.imponibile)}`],[`IVA ${formatNumeroIt(ivaPerc)}%`,`€ ${fmt(iva)}`]]).map(([l,v])=><div key={l} className="flex justify-between gap-3 border-b border-pv-azzurro-bordo py-3 text-sm"><span className="text-muted-foreground">{l}</span><strong className="tabular-nums">{v}</strong></div>)}
       <div className="mt-3 rounded-lg bg-primary text-primary-foreground p-4 flex flex-wrap justify-between gap-2 items-center"><span className="font-semibold text-sm">Totale con IVA</span><strong className="text-2xl tabular-nums">€ {fmt(totale)}</strong></div>
+      {riepilogoIva && <div className="mt-4">{riepilogoIva}</div>}
     </div></RiquadroScheda>
   </section>;
 }
