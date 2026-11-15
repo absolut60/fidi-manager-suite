@@ -545,7 +545,8 @@ export async function exportPreventivoPdf(prev: PreventivoConDettagli, opzioni: 
     }
   }
 
-  if (y > doc.internal.pageSize.getHeight() - 72) { doc.addPage(); y = 20; }
+  const spazioPiede = prev.regime_iva && prev.regime_iva !== "ordinaria" ? 100 : 72;
+  if (y > doc.internal.pageSize.getHeight() - spazioPiede) { doc.addPage(); y = 20; }
   doc.setDrawColor(...GRIGIO_BD); doc.setLineWidth(0.2);
   doc.line(14, y, w - 14, y);
   y += 5;
@@ -606,28 +607,31 @@ export async function exportPropostaRapidaPdf(prev: PreventivoConDettagli) {
   const headerEnd = drawHeader(doc, "Proposta rapida", prev, branding);
 
   const blocchi = buildBlocchiOutput(prev);
-  const body = blocchi.map((b) => [
+  const { testataBlocchi } = lineaPreventivo(prev.linea).stampa;
+  const body = blocchi.map((b) => testataBlocchi ? [
     b.rif || "—",
     b.descrizione,
     `${fmtNum(b.quantita, 2)} ${b.um}`,
     `${fmtEur(b.prezzo_um)} /${b.um}`,
     fmtEur(b.importo),
-  ]);
+  ] : [b.descrizione, fmtEur(b.importo)]);
 
   autoTable(doc, {
     startY: Math.max(62, headerEnd + 4),
-    head: [["Rif.", "Descrizione", "Quantità", "Prezzo unit.", "Importo"]],
+    head: [testataBlocchi ? ["Rif.", "Descrizione", "Quantità", "Prezzo unit.", "Importo"] : ["Descrizione", "Importo"]],
     body,
     theme: "striped",
     headStyles: { fillColor: BLOCK_BG, textColor: NAVY, fontStyle: "bold", fontSize: 8, lineColor: GRIGIO_BD, lineWidth: 0.15 },
     bodyStyles: { fontSize: 8.5, textColor: [30, 35, 45] as [number, number, number] },
     alternateRowStyles: { fillColor: GRIGIO_LT },
     styles: { cellPadding: 2 },
-    columnStyles: {
+    columnStyles: testataBlocchi ? {
       0: { cellWidth: 24, font: "courier", fontStyle: "bold" },
       2: { cellWidth: 28, halign: "right" },
       3: { cellWidth: 32, halign: "right", font: "courier" },
       4: { cellWidth: 32, halign: "right", font: "courier", fontStyle: "bold" },
+    } : {
+      1: { cellWidth: 32, halign: "right", font: "courier", fontStyle: "bold" },
     },
     margin: { left: 14, right: 14, bottom: 30, top: 20 },
   });
