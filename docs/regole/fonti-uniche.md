@@ -149,3 +149,6 @@ Numeri da `get_dashboard_fidi_gruppi`, liste da `get_clienti_dashboard_fidi_ids`
 - **TypeScript:** legenda, colori e testo del numero solo in `src/lib/semaforo-ui.ts` (`LEGENDA_STADIO`, `testoNumeroSemaforo`); lettura del singolo cliente solo con `useSemaforoAffidabilitaCliente`; liste da `fido_teorico_cliente.semaforo_stadio`. Mai calcoli o colori locali sul ritardo (niente soglie proprie nelle card).
 - **Il ricalcolo del fido teorico riscrive i colori salvati:** se cambia la regola, i colori salvati vanno allineati subito.
 - **Profilo di pagamento del fido teorico:** dal FM59 fetta 3 usa la stessa regola per riga e gli ultimi 12 mesi (vedi sezione "Profilo di pagamento del fido teorico"); `coefficiente_comportamento` non è stato toccato.
+
+## Riepilogo IVA del preventivo (FM75 F3b)
+Fonte unica TS `riepilogoIva` (`src/lib/calcolo-iva.ts`), gemello SQL `public.calcola_riepilogo_iva(uuid)`. Regole in `docs/regole/calcolo-iva.md`. Non ancora collegato ai totali (fino a F3c resta `iva_perc`).
