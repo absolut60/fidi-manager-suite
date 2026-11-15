@@ -22,6 +22,7 @@ test('FM72 query Per me e ricerca sono in AND, con array cs e lettura RLS', asyn
     let calls=[];
     const q={select(v){calls.push(['select',v]);return this},is(){return this},order(){return this},limit(){return this},eq(){return this},in(){return this},or(v){calls.push(['or',v]);return this},then(done){return Promise.resolve({data:[],error:null}).then(done)}};
     mock.module('@/integrations/supabase/client',()=>({supabase:{from:()=>q,rpc:async()=>({data:[],error:null})}}));
+    mock.module('./src/lib/lead-preventivo-api.ts',()=>({LEAD_PREVENTIVO_SELECT:'id',cercaLeadPreventivo:async()=>[]}));
     const {fetchElencoPreventivi}=await import('./src/lib/preventivi-api.ts');
     const id='30c9d579-76c3-4312-b47e-3f9f4680fc40';
     await fetchElencoPreventivi({per_me:id});
