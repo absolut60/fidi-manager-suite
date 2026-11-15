@@ -1,0 +1,1 @@
+- Site branding is composed only by brandingSede with the existing email fallbacks; settings use verified reference updates before removing Storage files, so failed permissions never remove a referenced logo and email senders remain unchanged.
