@@ -582,6 +582,7 @@ export async function duplicaPreventivo(
         sconto_perc: r.sconto_perc,
         articolo_codice: r.articolo_codice,
         fonte_prezzo: r.fonte_prezzo,
+        stampabile: r.stampabile,
         sconti_gamma: r.sconti_gamma,
         maggiorazione_perc: r.maggiorazione_perc,
         segno: r.segno,
