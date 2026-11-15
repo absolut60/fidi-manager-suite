@@ -56,6 +56,11 @@ Altri avvisi: `articolo_senza_prezzo_su_listino`, `cliente_senza_listino`, `clie
 ## Punti aperti
 - Preventivi ai lead: creazione, Testata e prezzi disponibili da FM71 3b; PDF, blocco trasformazione in ordine e sezioni nelle schede restano alle fette successive.
 
+## Tab Preventivi nelle schede cliente e lead (FM72)
+- `PreventiviSoggettoTab` è il componente unico nelle due schede, dopo Commerciale; visibilità tramite `puoConsultarePreventivi` e letture con client utente/RLS esistente, senza bypass.
+- Cliente: filtro `cliente_id`; lead: filtro `lead_id`, con seconda lettura `lead_origine_id` nel gruppo separato «Originati da questo lead (ora del cliente)». Ordinamento data e creazione decrescenti; badge condivisi con la lista, tabella desktop e schede telefono.
+- Nuovo preventivo solo con `puoScriverePreventivi`: `soggettoIniziale` preseleziona cliente o lead, rilegge il lead con RLS e propone riferimento/pagamento. Numero assegnato dal DB e riferimento lead obbligatorio restano invariati.
+
 ## Condizioni di riferimento (FM71)
 
 - App 3b: creazione e cambio soggetto riusano `SoggettoPreventivoPicker` e `campiSoggettoPreventivo`. Cliente o Lead; ricerca lead sotto RLS, massimo 50 righe, ogni parola su ragione sociale/nome/cognome/telefono/email. Lead rapido con identità obbligatoria, telefono/email e sede facoltativi, fonte manuale/preventivatore, defaults DB e agente corrente se agente; dopo la creazione è selezionato senza una seconda ricerca.

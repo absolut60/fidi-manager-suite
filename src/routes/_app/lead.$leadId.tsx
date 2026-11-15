@@ -96,7 +96,8 @@ import {
 } from "@/lib/lead-costanti";
 import { CollegaLeadClienteDialog } from "@/components/lead/collega-lead-cliente-dialog";
 import { ClienteVisibileLink } from "@/components/lead/cliente-visibile-link";
-import { puoModificareRecordPreventivista } from "@/lib/permessi-preventivi";
+import { puoModificareRecordPreventivista, puoConsultarePreventivi } from "@/lib/permessi-preventivi";
+import { PreventiviSoggettoTab } from "@/components/preventivatore/PreventiviSoggettoTab";
 
 export const Route = createFileRoute("/_app/lead/$leadId")({
   head: () => ({ meta: [{ title: "Scheda lead — FidiManager" }, { name: "description", content: "Anagrafica, contatti e cantieri del lead MADE." }, { property: "og:title", content: "Scheda lead — FidiManager" }, { property: "og:description", content: "Anagrafica, contatti e cantieri del lead MADE." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -629,6 +630,7 @@ function LeadDettaglioPage() {
           <TabsTrigger value="contatti">Contatti</TabsTrigger>
           <TabsTrigger value="cantieri">Cantieri</TabsTrigger>
           <TabsTrigger value="commerciale">Commerciale</TabsTrigger>
+          {puoConsultarePreventivi(roles as string[]) && <TabsTrigger value="preventivi">Preventivi</TabsTrigger>}
           <TabsTrigger value="richieste">Richieste</TabsTrigger>
           <TabsTrigger value="allegati">Allegati</TabsTrigger>
           <TabsTrigger value="campagne">Campagne</TabsTrigger>
@@ -1025,6 +1027,10 @@ function LeadDettaglioPage() {
             }}
           />
         </TabsContent>
+
+        {puoConsultarePreventivi(roles as string[]) && <TabsContent value="preventivi" className="mt-4">
+          <PreventiviSoggettoTab soggetto={{ tipo: "lead", id: leadId, etichetta: nomeLead(lead) }}/>
+        </TabsContent>}
 
         <TabsContent value="richieste" className="mt-4">
           <LeadRichiesteTab leadId={leadId} />

@@ -27,10 +27,12 @@ import { useAuth } from "@/hooks/use-auth";
 import { SoggettoPreventivoPicker } from "./SoggettoPreventivoPicker";
 import { campiSoggettoPreventivo, riferimentoVuoto, type SoggettoPreventivo } from "@/lib/soggetto-preventivo";
 import { campiRiferimentoPreventivo } from "@/lib/condizioni-riferimento";
+import type { SoggettoTabPreventivi } from "@/lib/preventivi-soggetto";
+import { LEAD_PREVENTIVO_SELECT } from "@/lib/lead-preventivo-api";
 
 export function NuovoPreventivoDialog({
-  open, onOpenChange, tipo = "preventivo",
-}: { open: boolean; onOpenChange: (v: boolean) => void; tipo?: TipoDocumento }) {
+  open, onOpenChange, tipo = "preventivo", soggettoIniziale,
+}: { open: boolean; onOpenChange: (v: boolean) => void; tipo?: TipoDocumento; soggettoIniziale?: SoggettoTabPreventivi }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const today = new Date().toISOString().slice(0, 10);
@@ -56,6 +58,30 @@ export function NuovoPreventivoDialog({
   const isWriteOnly = roles.includes("preventivi_write") && !roles.includes("amministratore") && !roles.includes("preventivi_manage");
   const profiloCodiceAgente = profilo ? (profilo as unknown as Record<string, unknown>).codice_agente as string | null | undefined : undefined;
   const writeOnlyMissingCodice = isWriteOnly && !profiloCodiceAgente;
+
+  const leadIniziale = useQuery({
+    queryKey: ["lead-preventivo-iniziale", soggettoIniziale?.id],
+    enabled: open && soggettoIniziale?.tipo === "lead",
+    queryFn: async () => {
+      const { data, error } = await supabase.from("lead").select(LEAD_PREVENTIVO_SELECT).eq("id", soggettoIniziale?.id ?? "").single();
+      if (error) throw new Error("Impossibile leggere il lead per il nuovo preventivo. Riprova.");
+      return data;
+    },
+  });
+  useEffect(() => {
+    if (!open || !soggettoIniziale) return;
+    if (soggettoIniziale.tipo === "cliente") {
+      setSoggetto({ tipo: "cliente", id: soggettoIniziale.id });
+      setClienteId(soggettoIniziale.id);
+    } else if (leadIniziale.data) {
+      const lead = leadIniziale.data;
+      setSoggetto({ tipo: "lead", id: lead.id, lead });
+      setClienteId(null);
+      setRiferimento({ listino_rif: lead.listino_rif, macrocategoria_rif: lead.macrocategoria_rif, categoria_rif: lead.categoria_rif });
+      setPagamento(lead.condizione_pagamento_cod ?? "");
+      if (!isWriteOnly) setAgenteId(lead.agente_codice ?? (roles.includes("agente") ? profiloCodiceAgente ?? null : null));
+    }
+  }, [open, soggettoIniziale?.tipo, soggettoIniziale?.id, leadIniziale.data]);
 
   const { data: agenti = [] } = useQuery({ queryKey: ["agenti"], queryFn: fetchAgenti });
 
@@ -172,10 +198,10 @@ export function NuovoPreventivoDialog({
           </div>
           <div className="grid gap-1.5">
             <Label>Soggetto *</Label>
-            <SoggettoPreventivoPicker value={soggetto} riferimento={riferimento} onRiferimento={setRiferimento} consentiLead={!isOrdine} sedeId={stores.find(s => s.nome === filiale)?.id} onChange={v => {
+            {soggettoIniziale?.tipo === "lead" && leadIniziale.isPending ? <p className="text-sm text-muted-foreground">Caricamento lead…</p> : soggettoIniziale?.tipo === "lead" && leadIniziale.error ? <p role="alert" className="text-sm text-destructive">{leadIniziale.error.message}</p> : <SoggettoPreventivoPicker key={soggettoIniziale?.id} value={soggetto} riferimento={riferimento} onRiferimento={setRiferimento} consentiLead={!isOrdine} sedeId={stores.find(s => s.nome === filiale)?.id} onChange={v => {
               setSoggetto(v); setClienteId(v?.tipo === "cliente" ? v.id : null); setCantiereId(null);
               if (v?.tipo === "lead") { setPagamento(v.lead.condizione_pagamento_cod ?? ""); if (!isWriteOnly) setAgenteId(v.lead.agente_codice ?? (roles.includes("agente") ? profiloCodiceAgente ?? null : null)); }
-            }}/>
+            }}/>}
           </div>
           <div className="grid gap-1.5">
             <Label>Cantiere</Label>
