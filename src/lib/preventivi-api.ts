@@ -777,10 +777,10 @@ async function ricalcolaTotaliPreventivo(preventivo_id: string, iva: number): Pr
   if (totaleErrore) throw totaleErrore;
 }
 
-export async function addBloccoVuoto(preventivo_id: string, ordineNext: number): Promise<Blocco> {
+export async function addBloccoVuoto(preventivo_id: string, ordineNext: number, descrizione = "Nuovo blocco"): Promise<Blocco> {
   return insertBlocco({
     preventivo_id,
-    descrizione: "Nuovo blocco",
+    descrizione,
     um_base: "mq",
     quantita_base: 0,
     ordine: ordineNext,

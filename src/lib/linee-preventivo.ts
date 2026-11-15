@@ -7,14 +7,25 @@ export interface ConfigurazioneLineaPreventivo {
   attiva: boolean;
   classiBadge: string;
   classiBordo: string;
+  /** FM75 F1: comportamenti dei blocchi nel corpo del preventivo. */
+  blocchi: ComportamentiBlocchiLinea;
 }
+
+export interface ComportamentiBlocchiLinea {
+  /** true: testata completa (rif., quantità base, U.M., prezzo/U.M., incidenze); false: blocco spoglio (descrizione e subtotale). */
+  bloccoConMisure: boolean;
+  /** true: «Aggiungi blocco» con Kit + Vuoto; false: solo blocco vuoto. */
+  bloccoDaKit: boolean;
+}
+
+const BLOCCHI_COMPLETI: ComportamentiBlocchiLinea = { bloccoConMisure: true, bloccoDaKit: true };
 
 /** Tutti i comportamenti per linea passano da questo catalogo, non da confronti nei chiamanti. */
 export const LINEE_PREVENTIVO: Record<LineaPreventivo, ConfigurazioneLineaPreventivo> = {
-  sistema_made: { codice: 'sistema_made', etichetta: 'Sistema MADE', attiva: true, classiBadge: 'border-pv-azzurro-bordo bg-pv-azzurro text-pv-blu', classiBordo: 'border-l-pv-blu' },
-  showroom: { codice: 'showroom', etichetta: 'Showroom', attiva: false, classiBadge: 'border-pv-viola/30 bg-pv-viola-tenue text-pv-viola', classiBordo: 'border-l-pv-viola' },
-  edilizia: { codice: 'edilizia', etichetta: 'Edilizia', attiva: false, classiBadge: 'border-pv-verde/30 bg-pv-verde-tenue text-pv-verde', classiBordo: 'border-l-pv-verde' },
-  fotovoltaico: { codice: 'fotovoltaico', etichetta: 'Fotovoltaico', attiva: false, classiBadge: 'border-pv-giallo/30 bg-pv-giallo-tenue text-pv-giallo', classiBordo: 'border-l-pv-giallo' },
+  sistema_made: { codice: 'sistema_made', etichetta: 'Sistema MADE', attiva: true, classiBadge: 'border-pv-azzurro-bordo bg-pv-azzurro text-pv-blu', classiBordo: 'border-l-pv-blu', blocchi: BLOCCHI_COMPLETI },
+  showroom: { codice: 'showroom', etichetta: 'Showroom', attiva: false, classiBadge: 'border-pv-viola/30 bg-pv-viola-tenue text-pv-viola', classiBordo: 'border-l-pv-viola', blocchi: { bloccoConMisure: false, bloccoDaKit: false } },
+  edilizia: { codice: 'edilizia', etichetta: 'Edilizia', attiva: false, classiBadge: 'border-pv-verde/30 bg-pv-verde-tenue text-pv-verde', classiBordo: 'border-l-pv-verde', blocchi: BLOCCHI_COMPLETI },
+  fotovoltaico: { codice: 'fotovoltaico', etichetta: 'Fotovoltaico', attiva: false, classiBadge: 'border-pv-giallo/30 bg-pv-giallo-tenue text-pv-giallo', classiBordo: 'border-l-pv-giallo', blocchi: BLOCCHI_COMPLETI },
 };
 
 export function lineaPreventivo(codice: unknown): ConfigurazioneLineaPreventivo {

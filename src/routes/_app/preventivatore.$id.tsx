@@ -78,6 +78,7 @@ import { UscitaNonSalvataDialog } from "@/components/preventivatore/UscitaNonSal
 import { devoBloccareUscita, useStatoSalvataggioPreventivo, type StatoSalvataggio } from "@/lib/use-stato-salvataggio-preventivo";
 import { AggiungiBloccoDialog } from "@/components/preventivatore/AggiungiBloccoDialog";
 import { RigheTable } from "@/components/preventivatore/RigheTable";
+import { lineaPreventivo } from "@/lib/linee-preventivo";
 import { GeneraDocumentoDialog } from "@/components/preventivatore/GeneraDocumentoDialog";
 import { ClientePicker } from "@/components/preventivatore/ClientePicker";
 import { TrasformaInOrdineDialog } from "@/components/preventivatore/TrasformaInOrdineDialog";
@@ -618,7 +619,7 @@ function PreventivoEditorPage() {
                       </Card>
                     ) : (
                       prev.blocchi.map((b, idx) => (
-                        <BloccoCard condizioniPrezzi={prev} key={b.id} blocco={b} index={idx} preventivoId={id} fascia={(prev.fascia_listino ?? "A") as FasciaListino} readOnly={!modificabile} clienteId={prev.cliente_id ?? null} cantiereId={prev.cantiere_id} {...sedeGiacenze} scontoPiede={Number(prev.sconto_piede_perc ?? 0)} />
+                        <BloccoCard linea={prev.linea} condizioniPrezzi={prev} key={b.id} blocco={b} index={idx} preventivoId={id} fascia={(prev.fascia_listino ?? "A") as FasciaListino} readOnly={!modificabile} clienteId={prev.cliente_id ?? null} cantiereId={prev.cantiere_id} {...sedeGiacenze} scontoPiede={Number(prev.sconto_piede_perc ?? 0)} />
                       ))
                     )}
                   </div>
@@ -664,7 +665,7 @@ function PreventivoEditorPage() {
         fascia={(prev.fascia_listino ?? "A") as FasciaListino}
         clienteId={prev.cliente_id ?? null}
         cantiereId={prev.cantiere_id} scontoPiede={Number(prev.sconto_piede_perc ?? 0)}
-        lastOrdine={lastOrdine}
+        lastOrdine={lastOrdine} linea={prev.linea}
       />
 
       <AggiornaListiniDialog analisi={analisiListini} onClose={() => setAnalisiListini(null)}
@@ -682,9 +683,10 @@ function PreventivoEditorPage() {
 }
 
 function BloccoCard({
-  blocco, index, preventivoId, fascia, readOnly = false, clienteId, scontoPiede, cantiereId, sedeGiacenzaId, sedeNome, condizioniPrezzi,
-}: { condizioniPrezzi: CondizioniPrezziPreventivo; blocco: BloccoConRighe; index: number; preventivoId: string; fascia: FasciaListino; readOnly?: boolean; clienteId: string | null; scontoPiede: number; cantiereId: string | null; sedeGiacenzaId?: string | null; sedeNome?: string | null }) {
+  blocco, index, preventivoId, fascia, readOnly = false, clienteId, scontoPiede, cantiereId, sedeGiacenzaId, sedeNome, condizioniPrezzi, linea,
+}: { linea: unknown; condizioniPrezzi: CondizioniPrezziPreventivo; blocco: BloccoConRighe; index: number; preventivoId: string; fascia: FasciaListino; readOnly?: boolean; clienteId: string | null; scontoPiede: number; cantiereId: string | null; sedeGiacenzaId?: string | null; sedeNome?: string | null }) {
   const qc = useQueryClient();
+  const conMisure = lineaPreventivo(linea).blocchi.bloccoConMisure;
   const sortable = useSortable({ id: blocco.id });
   const style = {
     transform: CSS.Transform.toString(sortable.transform),
@@ -733,7 +735,7 @@ function BloccoCard({
               <GripVertical className="h-4 w-4 text-muted-foreground" />
             </button>
             <div className="mt-1.5 shrink-0 whitespace-nowrap rounded bg-pv-blu px-2 py-1 text-xs font-semibold text-primary-foreground">Blocco {index + 1}</div>
-            <div className="grid w-24 gap-1">
+            {conMisure && <div className="grid w-24 gap-1">
               <Label className="text-[10px] uppercase">Rif.</Label>
               <Input
                 defaultValue={blocco.rif_capitolato ?? ""}
@@ -742,7 +744,7 @@ function BloccoCard({
                 placeholder="—"
                 title="Riferimento capitolato (facoltativo)"
               />
-            </div>
+            </div>}
             <div className="grid flex-1 min-w-[200px] gap-1">
               <Label className="text-[10px] uppercase">Descrizione</Label>
               <Input
@@ -751,6 +753,7 @@ function BloccoCard({
                 className="h-8 font-medium"
               />
             </div>
+            {conMisure && <>
             <div className="grid w-24 gap-1">
               <Label className="text-[10px] uppercase">Quantità</Label>
               <Input
@@ -778,6 +781,7 @@ function BloccoCard({
                 € {formatNumeroIt(prezzoUm, { minDecimals: 2, maxDecimals: 2 })}
               </div>
             </div>
+            </>}
             <div className="grid w-32 gap-1 text-right">
               <Label className="text-[10px] uppercase">Importo</Label>
               <div className="h-8 whitespace-nowrap rounded bg-primary px-2 py-1 text-right font-mono text-sm font-semibold text-primary-foreground">
@@ -811,7 +815,7 @@ function BloccoCard({
             </div>
           )}
 
-          <RigheTable condizioniPrezzi={condizioniPrezzi} blocco={blocco} preventivoId={preventivoId} fascia={fascia} readOnly={readOnly} clienteId={clienteId} cantiereId={cantiereId} sedeGiacenzaId={sedeGiacenzaId} sedeNome={sedeNome} scontoPiede={scontoPiede} />
+          <RigheTable linea={linea} condizioniPrezzi={condizioniPrezzi} blocco={blocco} preventivoId={preventivoId} fascia={fascia} readOnly={readOnly} clienteId={clienteId} cantiereId={cantiereId} sedeGiacenzaId={sedeGiacenzaId} sedeNome={sedeNome} scontoPiede={scontoPiede} />
         </CardContent>
       </Card>
     </div>

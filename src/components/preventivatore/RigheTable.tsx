@@ -54,6 +54,7 @@ import {
 import type { FasciaListino } from "@/lib/articoli-api";
 import { formatNumeroIt } from "@/lib/numero-it";
 import { cn } from "@/lib/utils";
+import { lineaPreventivo } from "@/lib/linee-preventivo";
 import { toast } from "sonner";
 
 export function RigheTable({
@@ -64,8 +65,10 @@ export function RigheTable({
   clienteId,
   scontoPiede = 0,
   cantiereId,
-  sedeGiacenzaId = null, sedeNome = null, condizioniPrezzi,
+  sedeGiacenzaId = null, sedeNome = null, condizioniPrezzi, linea,
 }: {
+  /** FM75 F1: linea del preventivo, passata dalla pagina. */
+  linea?: unknown;
   condizioniPrezzi: CondizioniPrezziPreventivo;
   blocco: BloccoConRighe;
   preventivoId: string;
@@ -94,6 +97,7 @@ export function RigheTable({
 
 
 
+  const conMisure = lineaPreventivo(linea).blocchi.bloccoConMisure;
   const calcs = useMemo(() => calcolaBlocco(blocco.righe), [blocco.righe]);
   const [riepilogoRigaId, setRiepilogoRigaId] = useState<string | null>(null);
   const calcMap = useMemo(() => new Map(calcs.righe.map((r) => [r.id, r.calc])), [calcs]);
@@ -274,13 +278,13 @@ export function RigheTable({
 
   return (
     <div>
-      {!readOnly && Number(blocco.quantita_base ?? 0) <= 0 && (
+      {!readOnly && conMisure && Number(blocco.quantita_base ?? 0) <= 0 && (
         <p className="px-3 py-2 text-xs text-muted-foreground">Imposta la quantità del blocco per usare l’incidenza</p>
       )}
       {/* Da 1024 px: tabella. Sotto: schede compatte con gli stessi campi. */}
       <div className="hidden max-w-full overflow-x-auto pv-tabella:block">
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        <table className="w-full min-w-[1470px] table-fixed border-separate border-spacing-0 text-xs">
+        <table className={cn("w-full table-fixed", conMisure ? "min-w-[1470px]" : "min-w-[1410px]", " border-separate border-spacing-0 text-xs">
           <thead>
             <tr className="whitespace-nowrap bg-pv-testa text-[10px] uppercase tracking-wide text-muted-foreground [&>th]:bg-pv-testa [&>th]:border-b">
               <th className="w-[18px] px-1 py-1.5 sticky left-0 z-10"></th>
@@ -288,7 +292,7 @@ export function RigheTable({
               <th className="w-[156px] px-1 py-1.5 text-left sticky left-[66px] z-10">Codice</th>
               <th className="px-1 py-1.5 text-left lg:sticky lg:left-[222px] lg:z-10">Descrizione</th>
               <th className="w-[64px] px-1 py-1.5 text-left">U.M.</th>
-              <th className="w-[60px] px-1 py-1.5 text-right">Incid.</th>
+              {conMisure && <th className="w-[60px] px-1 py-1.5 text-right">Incid.</th>}
               <th className="w-[76px] px-1 py-1.5 text-right">Quantità</th>
               <th className="w-[84px] px-1 py-1.5 text-right">Prezzo lordo</th>
               <th className="w-[68px] px-1 py-1.5 text-right">Sconti</th>
@@ -431,6 +435,7 @@ function AddRowMenu({
 
 
 type RigaProps = {
+  conMisure: boolean;
   prezzoCantiere: boolean;
   row: BloccoConRighe["righe"][number];
   idx: number;
@@ -707,7 +712,7 @@ function RigaRow(p: RigaProps) {
     return (
       <tr ref={sortable.setNodeRef} style={style} className={rowClass}>
         {grip}
-        <td colSpan={16}></td>
+        <td colSpan={p.conMisure ? 16 : 15}></td>
         <td className="text-right"><AzioniRiga {...p} /></td>
       </tr>
     );
@@ -722,7 +727,7 @@ function RigaRow(p: RigaProps) {
         <p className="mt-0.5 text-[11px] font-sans not-italic text-destructive">Articolo non collegato a Gamma: inserisci prezzo e costo a mano</p>
       )}</td>
       <td className="px-0.5 py-0.5">{v && c.um}</td>
-      <td className="px-0.5 py-0.5 text-right">{v && c.incidenza}</td>
+      {p.conMisure && <td className="px-0.5 py-0.5 text-right">{v && c.incidenza}</td>}
       <td className="px-0.5 py-0.5 text-right">{v && c.quantita}</td>
       <td className="px-0.5 py-0.5 text-right">{v && c.lordo}</td>
       <td className="px-0.5 py-0.5 text-right">{v && c.sconti}</td>
@@ -789,7 +794,7 @@ function RigaScheda(p: RigaProps) {
           {campo("Sconti", c.sconti)}
           {campo("Extra %", c.extra, undefined, "Sconto extra %")}
           {valore("Netto", c.netto)}
-          {campo("Incidenza", c.incidenza)}
+          {p.conMisure && campo("Incidenza", c.incidenza)}
           {campo("Magg.%", c.magg)}
           {campo("±", c.segnoSel)}
           {campo("Costo unit.", c.costo)}
