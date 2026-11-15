@@ -1,3 +1,7 @@
+# FM72 — Assegnazione interna preventivi, fetta ①b
+- [ ] Riquadro condiviso, salvataggio verificato dei soli due campi e nomi da catalogo utenti condiviso; filtro Per me persistente e badge elenco, nessuna notifica client o modifica DB/prezzi.
+- [ ] Test regole/query, suite completa, schermate 375/1280 e documentazione.
+
 # FM72 — Assegnazione interna preventivi, fetta ①a
 - [x] Applicata 0226_fm72_assegnazione_preventivi.sql: responsabile nullable senza FK e copie UUID[] con indici, trigger best-effort unico. Catalogo preventivo_assegnato inserito separatamente dalla struttura, raggruppamento per destinatario/tipo e link elenco /preventivatore/. Impronte RLS, gate/prezzi/contatori, task/raggruppamento e quattro trigger precedenti identiche. Regola tecnica documentata nella sezione Assegnazione interna; AGENTS root oltre budget, non modificato.
 - [x] Test SQL sul database reale in BEGIN/ROLLBACK con ruolo authenticated e claims aal2: assegnazione, riassegnazione, copia aggiunta/deduplicata, autore escluso, altri campi, rimozione, valori invariati, INSERT copie e gruppo tra documenti. Sotto-transazione annullata e firme documenti/contatore/notifiche uguali; zero fixture residue. Corpo applicato identico al file (MD5 c6b302e1412ace47ffbac3688c8644c7), EXECUTE solo service_role, registro 227 voci 0000–0226 coerente. Suite 894 test verdi, build OK; documentazione aggiornata. Nessuna interfaccia in questa fetta.
