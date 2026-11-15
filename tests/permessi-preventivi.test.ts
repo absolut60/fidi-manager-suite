@@ -90,7 +90,7 @@ describe("FM63 2 bis consultazione per showroom", () => {
   });
 });
 
-test('scontistica di base fornitore: amministratore, preventivi_manage e responsabile_showroom; nessun altro', async () => {
+it('scontistica di base fornitore: amministratore, preventivi_manage e responsabile_showroom; nessun altro', async () => {
   const { puoModificareScontiBaseFornitore: p } = await import('../src/lib/permessi-preventivi');
   for (const r of ['amministratore', 'preventivi_manage', 'responsabile_showroom']) expect(p([r])).toBe(true);
   for (const r of ['amministrazione', 'store_manager', 'agente', 'showroom', 'preventivi_write', 'preventivi_read']) expect(p([r])).toBe(false);
