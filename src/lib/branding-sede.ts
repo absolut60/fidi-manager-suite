@@ -18,7 +18,7 @@ export function urlPubblicoBranding(path: string, baseUrl = import.meta.env?.VIT
 
 /** Solo composizione dati: nessuna lettura, nessuna modifica alle cornici attuali. */
 export function brandingSede(sede?: RigaBrandingSede | null, baseUrl?: string): BrandingSede {
-  const dato = (key: keyof typeof SEDE_FALLBACK) => sede?.[key] || SEDE_FALLBACK[key];
+  const dato = (key: 'nome' | 'insegna' | 'indirizzo' | 'cap' | 'citta' | 'provincia' | 'telefono') => sede?.[key] || SEDE_FALLBACK[key];
   const logoEmailPath = sede?.logo_email_path || null;
   const logoPdfPath = sede?.logo_pdf_path || null;
   return {
