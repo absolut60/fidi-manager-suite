@@ -1,3 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { ClientOnly, createFileRoute } from "@tanstack/react-router";
 import { PreventiviSoggettoTab } from "@/components/preventivatore/PreventiviSoggettoTab";
-export const Route = createFileRoute("/fm72-verifica")({ component: () => <main className="p-4"><h1>Preventivi del lead</h1><PreventiviSoggettoTab soggetto={{tipo:"lead",id:"11111111-1111-4111-8111-111111111111",etichetta:"Impresa collaudo"}}/></main> });
+export const Route = createFileRoute("/fm72-verifica")({ component: () => <ClientOnly><main className="p-4"><h1>Preventivi del lead</h1><PreventiviSoggettoTab soggetto={{tipo:"lead",id:"11111111-1111-4111-8111-111111111111",etichetta:"Impresa collaudo"}}/></main></ClientOnly> });
