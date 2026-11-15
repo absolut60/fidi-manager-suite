@@ -9,7 +9,7 @@ DECLARE
   cinisello uuid := '3c57ae39-1f3a-4085-96ef-2f2d2c4c8221';
   lissone uuid := 'dd51b549-e15a-4d3a-bac4-38d28967c651';
   casorezzo uuid := 'f5d415b4-87c6-46fe-aba8-47896e3667d6';
-  vuota uuid; agente text; n integer; p_mio uuid; p_altro uuid; ok boolean; rifiutato boolean;
+  vuota uuid; agente text; c_admin text; c_u text; n integer; p_mio uuid; p_altro uuid; ok boolean; rifiutato boolean;
 BEGIN
   SELECT s.id INTO vuota FROM public.stores s
    WHERE NOT EXISTS (SELECT 1 FROM public.preventivi p WHERE p.store_id=s.id) LIMIT 1;
@@ -17,6 +17,8 @@ BEGIN
   IF (SELECT count(*) FROM public.preventivi) <> 5 THEN RAISE EXCEPTION 'Dati di partenza cambiati: aggiornare i conteggi attesi'; END IF;
   IF EXISTS (SELECT 1 FROM auth.users WHERE id=u) THEN RAISE EXCEPTION 'UUID fixture già usato'; END IF;
 
+  c_admin := json_build_object('sub',admin,'role','authenticated','aal','aal2')::text;
+  c_u := json_build_object('sub',u,'role','authenticated','aal','aal2')::text;
   INSERT INTO auth.users(id, email, aud, role) VALUES (u, 'fm72-tappa3@fixture.invalid', 'authenticated', 'authenticated');
   INSERT INTO public.profili(id, email, nome, cognome) VALUES (u, 'fm72-tappa3@fixture.invalid', 'Fixture', 'FM72')
     ON CONFLICT (id) DO NOTHING;
@@ -35,15 +37,21 @@ BEGIN
   INSERT INTO public.user_roles(user_id, role) VALUES (u,'preventivi_read');
   SET LOCAL ROLE authenticated; SELECT count(*) INTO n FROM public.preventivi; RESET ROLE;
   IF n <> 5 THEN RAISE EXCEPTION 'preventivi_read default: attesi 5, visti %', n; END IF;
+  PERFORM set_config('request.jwt.claims', c_admin, true); -- il trigger protegge sede/agente: modifica come amministratore
   UPDATE public.profili SET linee_abilitate='{showroom}' WHERE id=u;
+  PERFORM set_config('request.jwt.claims', c_u, true);
   SET LOCAL ROLE authenticated; SELECT count(*) INTO n FROM public.preventivi; RESET ROLE;
   IF n <> 0 THEN RAISE EXCEPTION 'preventivi_read showroom: attesi 0, visti %', n; END IF;
   DELETE FROM public.user_roles WHERE user_id=u;
+  PERFORM set_config('request.jwt.claims', c_admin, true); -- il trigger protegge sede/agente: modifica come amministratore
   UPDATE public.profili SET linee_abilitate='{sistema_made}' WHERE id=u;
+  PERFORM set_config('request.jwt.claims', c_u, true);
 
   -- store_manager per sede
   INSERT INTO public.user_roles(user_id, role) VALUES (u,'store_manager');
+  PERFORM set_config('request.jwt.claims', c_admin, true); -- il trigger protegge sede/agente: modifica come amministratore
   UPDATE public.profili SET store_id=cinisello WHERE id=u;
+  PERFORM set_config('request.jwt.claims', c_u, true);
   SET LOCAL ROLE authenticated; SELECT count(*) INTO n FROM public.preventivi; RESET ROLE;
   IF n <> 3 THEN RAISE EXCEPTION 'Store manager Cinisello: attesi 3, visti %', n; END IF;
   SELECT id INTO p_mio FROM public.preventivi WHERE store_id=cinisello LIMIT 1;
@@ -53,33 +61,47 @@ BEGIN
     RESET ROLE; RAISE EXCEPTION 'auth_vede_preventivo_id incoerente per lo store manager';
   END IF;
   RESET ROLE;
-  UPDATE public.profili SET linee_abilitate='{showroom}' WHERE id=u; -- store manager: tutte le linee
+  PERFORM set_config('request.jwt.claims', c_admin, true); -- il trigger protegge sede/agente: modifica come amministratore
+  UPDATE public.profili SET linee_abilitate='{showroom}' WHERE id=u;
+  PERFORM set_config('request.jwt.claims', c_u, true); -- store manager: tutte le linee
   SET LOCAL ROLE authenticated; SELECT count(*) INTO n FROM public.preventivi; RESET ROLE;
   IF n <> 3 THEN RAISE EXCEPTION 'Store manager: le linee non devono limitarlo (visti %)', n; END IF;
+  PERFORM set_config('request.jwt.claims', c_admin, true); -- il trigger protegge sede/agente: modifica come amministratore
   UPDATE public.profili SET linee_abilitate='{sistema_made}', store_id=lissone WHERE id=u;
+  PERFORM set_config('request.jwt.claims', c_u, true);
   SET LOCAL ROLE authenticated; SELECT count(*) INTO n FROM public.preventivi; RESET ROLE;
   IF n <> 1 THEN RAISE EXCEPTION 'Store manager Lissone: attesi 1, visti %', n; END IF;
+  PERFORM set_config('request.jwt.claims', c_admin, true); -- il trigger protegge sede/agente: modifica come amministratore
   UPDATE public.profili SET store_id=casorezzo WHERE id=u;
+  PERFORM set_config('request.jwt.claims', c_u, true);
   SET LOCAL ROLE authenticated; SELECT count(*) INTO n FROM public.preventivi; RESET ROLE;
   IF n <> 1 THEN RAISE EXCEPTION 'Store manager Casorezzo: attesi 1, visti %', n; END IF;
+  PERFORM set_config('request.jwt.claims', c_admin, true); -- il trigger protegge sede/agente: modifica come amministratore
   UPDATE public.profili SET store_id=vuota WHERE id=u;
+  PERFORM set_config('request.jwt.claims', c_u, true);
   SET LOCAL ROLE authenticated; SELECT count(*) INTO n FROM public.preventivi; RESET ROLE;
   IF n <> 0 THEN RAISE EXCEPTION 'Store manager sede vuota: attesi 0, visti %', n; END IF;
   DELETE FROM public.user_roles WHERE user_id=u;
 
   -- showroom
   INSERT INTO public.user_roles(user_id, role) VALUES (u,'showroom');
+  PERFORM set_config('request.jwt.claims', c_admin, true); -- il trigger protegge sede/agente: modifica come amministratore
   UPDATE public.profili SET store_id=cinisello WHERE id=u;
+  PERFORM set_config('request.jwt.claims', c_u, true);
   SET LOCAL ROLE authenticated; SELECT count(*) INTO n FROM public.preventivi; RESET ROLE;
   IF n <> 3 THEN RAISE EXCEPTION 'Showroom Cinisello default: attesi 3, visti %', n; END IF;
+  PERFORM set_config('request.jwt.claims', c_admin, true); -- il trigger protegge sede/agente: modifica come amministratore
   UPDATE public.profili SET linee_abilitate='{showroom}' WHERE id=u;
+  PERFORM set_config('request.jwt.claims', c_u, true);
   SET LOCAL ROLE authenticated; SELECT count(*) INTO n FROM public.preventivi; RESET ROLE;
   IF n <> 0 THEN RAISE EXCEPTION 'Showroom Cinisello {showroom}: attesi 0, visti %', n; END IF;
   DELETE FROM public.user_roles WHERE user_id=u;
 
   -- scrittura preventivi_write
   INSERT INTO public.user_roles(user_id, role) VALUES (u,'preventivi_write');
+  PERFORM set_config('request.jwt.claims', c_admin, true); -- il trigger protegge sede/agente: modifica come amministratore
   UPDATE public.profili SET codice_agente=agente, linee_abilitate='{showroom}' WHERE id=u;
+  PERFORM set_config('request.jwt.claims', c_u, true);
   rifiutato := false;
   BEGIN
     SET LOCAL ROLE authenticated;
@@ -89,7 +111,9 @@ BEGIN
   EXCEPTION WHEN insufficient_privilege THEN rifiutato := true; RESET ROLE;
   END;
   IF NOT rifiutato THEN RAISE EXCEPTION 'INSERT su linea non abilitata accettato'; END IF;
+  PERFORM set_config('request.jwt.claims', c_admin, true); -- il trigger protegge sede/agente: modifica come amministratore
   UPDATE public.profili SET linee_abilitate='{sistema_made}' WHERE id=u;
+  PERFORM set_config('request.jwt.claims', c_u, true);
   SET LOCAL ROLE authenticated;
   INSERT INTO public.preventivi(numero, titolo, agente_codice, linea)
     VALUES ('FM72-T3-'||gen_random_uuid()::text, 'FM72 TEST linea abilitata', agente, 'sistema_made');
