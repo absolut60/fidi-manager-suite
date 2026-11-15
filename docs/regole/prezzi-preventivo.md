@@ -174,3 +174,14 @@ La tabella `public.cantiere_listini_speciali` contiene prezzi manuali senza date
 - Le differenze di «Aggiorna listini» portano fonte attuale e nuova: manuali inizialmente non spuntate con badge «Prezzo non di listino»; altre spuntate. L’operatore può selezionarle. Sotto costo rimane rosso, anche insieme al badge.
 - Il segno «Prezzo cantiere» segue `fonte_prezzo = 'cantiere'`; solo per NULL si confrontano lordo/sconti/maggiorazione con il prezzo dedicato attuale.
 - `duplicaPreventivo` copia la fonte, anche NULL. `trasforma_preventivo_in_ordine` resta invariata: non copia la nuova colonna, quindi le righe ordine risultano NULL; importi e condizioni restano copiati come prima.
+
+## Leve showroom (FM75 F5)
+
+- Fonte unica: `src/lib/leve-prezzo-showroom.ts` (`applicaLeva`, `parseCascata`, `ricaricoImplicito`). La leva è un modo di SCRIVERE `prezzo_unit`/`sconti_gamma`: il netto resta `prezzoNettoRiga`, margini da `riga-preventivo.ts`. Nessun secondo motore.
+- Tre leve, comanda l'ultima toccata (`righe_preventivo.leva_prezzo`):
+  - `ricarico`: `prezzo_unit = round4(costo unitario × (1 + ricarico/100))`, `sconti_gamma` vuoti (costo 50, ricarico 40 → 70);
+  - `sconto_listino`: `prezzo_unit = listino_fornitore`, `sconti_gamma = cascata` (listino 100, "-45+5" → netto 57,75);
+  - `prezzo_manuale`: `prezzo_unit = prezzo`, `sconti_gamma` vuoti, ricarico implicito a ritroso `(prezzo/costo − 1) × 100` (80 su costo 50 → 60%).
+- `ricarico` salvato = ricarico scelto o implicito sul netto prima dello sconto extra; null senza costo.
+- Convenzione cascata: internamente quella di `sconti_gamma` (positivo = sconto, negativo = maggiorazione). Testo con almeno un "-": "-" sconto, "+" maggiorazione ("-45+5" → [45, −5]); senza "-" notazione Gamma, tutti sconti ("45+5" → [45, 5]). `fornitori.sconti_base` usa la convenzione interna.
+- Sconto extra (`sconto_perc`) resta sopra tutto, invariato. `fonte_prezzo` delle righe manuali resta 'manuale' (FM69). Importi a 4 decimali (FM63).
