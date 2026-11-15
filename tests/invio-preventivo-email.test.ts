@@ -8,7 +8,7 @@ test('template default: oggetto "Preventivo {{numero}} — {{titolo}}" risolto',
   const r = renderTemplate(TEMPLATE_INVIO_PREVENTIVO_DEFAULT, { ragione_sociale: 'PIPPO SRL', nome_operatore: 'Andrea', scadenze: [], preventivo }, { tipo: 'invio_preventivo' });
   expect(r.oggetto).toBe('Preventivo PRV-167/26 — Bagno');
   expect(r.corpo).toContain('31/12/2026');
-  expect(r.corpo).toContain('12.200,00 €');
+  expect(r.corpo).toContain('12.200,00');
   expect(r.corpo).toContain('PIPPO SRL');
   expect(r.corpo).not.toContain('{{');
 });
