@@ -5930,6 +5930,7 @@ export type Database = {
           note: string | null
           numero: string | null
           preventivo_origine_id: string | null
+          regime_iva: Database["public"]["Enums"]["regime_iva_preventivo"]
           sconto_piede_perc: number
           stato: Database["public"]["Enums"]["stato_preventivo"]
           store_id: string | null
@@ -5967,6 +5968,7 @@ export type Database = {
           note?: string | null
           numero?: string | null
           preventivo_origine_id?: string | null
+          regime_iva?: Database["public"]["Enums"]["regime_iva_preventivo"]
           sconto_piede_perc?: number
           stato?: Database["public"]["Enums"]["stato_preventivo"]
           store_id?: string | null
@@ -6004,6 +6006,7 @@ export type Database = {
           note?: string | null
           numero?: string | null
           preventivo_origine_id?: string | null
+          regime_iva?: Database["public"]["Enums"]["regime_iva_preventivo"]
           sconto_piede_perc?: number
           stato?: Database["public"]["Enums"]["stato_preventivo"]
           store_id?: string | null
@@ -7008,8 +7011,10 @@ export type Database = {
       }
       righe_preventivo: {
         Row: {
+          aliquota_iva: number | null
           articolo_codice: string | null
           articolo_id: string | null
+          bene_significativo: boolean
           blocco_id: string
           costo: number | null
           created_at: string
@@ -7038,8 +7043,10 @@ export type Database = {
           vendita: number | null
         }
         Insert: {
+          aliquota_iva?: number | null
           articolo_codice?: string | null
           articolo_id?: string | null
+          bene_significativo?: boolean
           blocco_id: string
           costo?: number | null
           created_at?: string
@@ -7068,8 +7075,10 @@ export type Database = {
           vendita?: number | null
         }
         Update: {
+          aliquota_iva?: number | null
           articolo_codice?: string | null
           articolo_id?: string | null
+          bene_significativo?: boolean
           blocco_id?: string
           costo?: number | null
           created_at?: string
@@ -11323,6 +11332,7 @@ export type Database = {
         | "showroom"
         | "edilizia"
         | "fotovoltaico"
+      regime_iva_preventivo: "ordinaria" | "agevolata_10" | "agevolata_10_bs"
       stato_articolo: "attivo" | "potenziale"
       stato_importazione:
         | "in_elaborazione"
@@ -11655,6 +11665,7 @@ export const Constants = {
         "edilizia",
         "fotovoltaico",
       ],
+      regime_iva_preventivo: ["ordinaria", "agevolata_10", "agevolata_10_bs"],
       stato_articolo: ["attivo", "potenziale"],
       stato_importazione: [
         "in_elaborazione",
