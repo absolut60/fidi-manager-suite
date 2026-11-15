@@ -29,6 +29,8 @@ import { campiSoggettoPreventivo, riferimentoVuoto, type SoggettoPreventivo } fr
 import { campiRiferimentoPreventivo } from "@/lib/condizioni-riferimento";
 import type { SoggettoTabPreventivi } from "@/lib/preventivi-soggetto";
 import { LEAD_PREVENTIVO_SELECT } from "@/lib/lead-preventivo-api";
+import { selettoreLineaCreazione, type LineaPreventivo } from "@/lib/linee-preventivo";
+import { useLineeUtente } from "@/lib/use-linee-utente";
 
 export function NuovoPreventivoDialog({
   open, onOpenChange, tipo = "preventivo", soggettoIniziale,
@@ -54,7 +56,12 @@ export function NuovoPreventivoDialog({
   const [validita, setValidita] = useState(() => validitaProposta(today));
   const validitaManuale = useRef(false);
 
-  const { profilo, roles } = useAuth();
+  const { profilo, roles, user } = useAuth();
+  const lineeProfilo = useLineeUtente(user?.id);
+  const statoLinea = selettoreLineaCreazione(lineeProfilo.data?.linee_abilitate, lineeProfilo.data?.linea_predefinita);
+  const [lineaScelta, setLineaScelta] = useState<LineaPreventivo | null>(null);
+  const linea = lineaScelta && statoLinea.linee.some(l => l.codice === lineaScelta) ? lineaScelta : statoLinea.iniziale;
+  const lineaNonDisponibile = lineeProfilo.isSuccess && statoLinea.bloccaCreazione;
   const isWriteOnly = roles.includes("preventivi_write") && !roles.includes("amministratore") && !roles.includes("preventivi_manage");
   const profiloCodiceAgente = profilo ? (profilo as unknown as Record<string, unknown>).codice_agente as string | null | undefined : undefined;
   const writeOnlyMissingCodice = isWriteOnly && !profiloCodiceAgente;
@@ -158,6 +165,7 @@ export function NuovoPreventivoDialog({
   const create = useMutation({
     mutationFn: async () => {
       if (!soggetto) throw new Error("Scegli un cliente o un lead");
+      if (!linea) throw new Error("Non hai linee del preventivatore abilitate: chiedi all'amministratore.");
       const dataFinal = data || today;
       const tipoDocFinal: TipoDoc = tipoDoc || "PREVENTIVO";
       return creaConPrimoBlocco(() => createPreventivo({
@@ -172,7 +180,7 @@ export function NuovoPreventivoDialog({
         tipo,
         data: dataFinal,
         validita: validita || null,
-      }), addBloccoVuoto);
+      }, { linea }), addBloccoVuoto);
     },
     onSuccess: ({ preventivo, erroreBlocco }) => {
       qc.invalidateQueries({ queryKey: ["preventivi"] });
@@ -196,6 +204,18 @@ export function NuovoPreventivoDialog({
             <Label htmlFor="nuovo-preventivo-titolo">Titolo <span className="text-muted-foreground font-normal">(facoltativo, consigliato)</span></Label>
             <Input id="nuovo-preventivo-titolo" value={titolo} onChange={(e) => setTitolo(e.target.value)} placeholder="Titolo del preventivo" />
           </div>
+          {statoLinea.mostra && (
+            <div className="grid gap-1.5">
+              <Label>Linea *</Label>
+              <div className="flex flex-wrap gap-1" role="group" aria-label="Linea del preventivo">
+                {statoLinea.linee.map(l => (
+                  <Button key={l.codice} type="button" size="sm" className="min-h-10" variant={linea === l.codice ? "default" : "outline"} aria-pressed={linea === l.codice} onClick={() => setLineaScelta(l.codice)}>
+                    {l.etichetta}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="grid gap-1.5">
             <Label>Soggetto *</Label>
             {soggettoIniziale?.tipo === "lead" && leadIniziale.isPending ? <p className="text-sm text-muted-foreground">Caricamento lead…</p> : soggettoIniziale?.tipo === "lead" && leadIniziale.error ? <p role="alert" className="text-sm text-destructive">{leadIniziale.error.message}</p> : <SoggettoPreventivoPicker key={soggettoIniziale?.id} value={soggetto} riferimento={riferimento} onRiferimento={setRiferimento} consentiLead={!isOrdine} sedeId={stores.find(s => s.nome === filiale)?.id} onChange={v => {
@@ -313,9 +333,15 @@ export function NuovoPreventivoDialog({
             Il tuo profilo non ha un codice agente: contatta l'amministratore.
           </p>
         )}
+        {lineaNonDisponibile && (
+          <p role="alert" className="text-sm text-destructive">
+            Non hai linee del preventivatore abilitate: chiedi all'amministratore di abilitartene una.
+          </p>
+        )}
+        {lineeProfilo.error && <p role="alert" className="text-sm text-destructive">{lineeProfilo.error.message}</p>}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
-          <Button onClick={() => create.mutate()} disabled={!soggetto || (soggetto.tipo === "lead" && !campiRiferimentoPreventivo(true,riferimento)) || create.isPending || writeOnlyMissingCodice}>
+          <Button onClick={() => create.mutate()} disabled={!soggetto || (soggetto.tipo === "lead" && !campiRiferimentoPreventivo(true,riferimento)) || create.isPending || writeOnlyMissingCodice || !linea}>
             Crea {labelDoc}
           </Button>
         </DialogFooter>
