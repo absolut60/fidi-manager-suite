@@ -4001,6 +4001,7 @@ export type Database = {
           persona_fisica: boolean | null
           provincia: string | null
           ragione_sociale: string | null
+          sconti_base: number[] | null
           sito: string | null
           sottocategoria_app: string | null
           sottocategoria_app_da: string | null
@@ -4059,6 +4060,7 @@ export type Database = {
           persona_fisica?: boolean | null
           provincia?: string | null
           ragione_sociale?: string | null
+          sconti_base?: number[] | null
           sito?: string | null
           sottocategoria_app?: string | null
           sottocategoria_app_da?: string | null
@@ -4117,6 +4119,7 @@ export type Database = {
           persona_fisica?: boolean | null
           provincia?: string | null
           ragione_sociale?: string | null
+          sconti_base?: number[] | null
           sito?: string | null
           sottocategoria_app?: string | null
           sottocategoria_app_da?: string | null
@@ -7025,6 +7028,9 @@ export type Database = {
           id: string
           importo: number | null
           incidenza: number | null
+          leva_prezzo:
+            | Database["public"]["Enums"]["leva_prezzo_showroom"]
+            | null
           listino_fornitore: number | null
           maggiorazione_perc: number
           marca: string | null
@@ -7061,6 +7067,9 @@ export type Database = {
           id?: string
           importo?: number | null
           incidenza?: number | null
+          leva_prezzo?:
+            | Database["public"]["Enums"]["leva_prezzo_showroom"]
+            | null
           listino_fornitore?: number | null
           maggiorazione_perc?: number
           marca?: string | null
@@ -7097,6 +7106,9 @@ export type Database = {
           id?: string
           importo?: number | null
           incidenza?: number | null
+          leva_prezzo?:
+            | Database["public"]["Enums"]["leva_prezzo_showroom"]
+            | null
           listino_fornitore?: number | null
           maggiorazione_perc?: number
           marca?: string | null
@@ -11354,6 +11366,7 @@ export type Database = {
         | "convertito"
         | "perso"
       lead_tipo: "potenziale_cliente" | "richiesta_specifica"
+      leva_prezzo_showroom: "ricarico" | "sconto_listino" | "prezzo_manuale"
       linea_preventivo:
         | "sistema_made"
         | "showroom"
@@ -11686,6 +11699,7 @@ export const Constants = {
         "perso",
       ],
       lead_tipo: ["potenziale_cliente", "richiesta_specifica"],
+      leva_prezzo_showroom: ["ricarico", "sconto_listino", "prezzo_manuale"],
       linea_preventivo: [
         "sistema_made",
         "showroom",

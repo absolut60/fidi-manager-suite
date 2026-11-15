@@ -1667,6 +1667,13 @@
       "when": 1794771734993,
       "tag": "0237_fm75_ordine_conserva_linea",
       "breakpoints": true
+    },
+    {
+      "idx": 238,
+      "version": "7",
+      "when": 1794772661095,
+      "tag": "0238_fm75_leve_prezzo_showroom",
+      "breakpoints": true
     }
   ]
 }
