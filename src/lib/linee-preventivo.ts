@@ -9,7 +9,26 @@ export interface ConfigurazioneLineaPreventivo {
   classiBordo: string;
   /** FM75 F1: comportamenti dei blocchi nel corpo del preventivo. */
   blocchi: ComportamentiBlocchiLinea;
+  /** F6: parametri di stampa dei PDF (pdf-export.ts legge solo da qui). */
+  stampa: StampaLinea;
 }
+
+export interface BandaStampa { titolo: string[]; sottotitolo: string[] }
+export interface StampaLinea {
+  /** Riga sotto il titolo in testata; null = solo logo. */
+  payoff: string | null;
+  /** Banda colorata sopra il piede dell'ultima pagina; null = nessuna banda. */
+  banda: BandaStampa | null;
+  /** true: testata di blocco con rif., quantità base e prezzo per U.M.; false: solo titolo (e subtotali). */
+  testataBlocchi: boolean;
+}
+
+const STAMPA_SISTEMA: StampaLinea = {
+  payoff: 'Distribuzione sistemi a secco  |  cartongesso, profili, isolanti, controsoffitti',
+  banda: { titolo: ['IL NUOVO MODO', 'DI COSTRUIRE.'], sottotitolo: ['Tecnologie leggere, risultati solidi', 'il sistema a secco che guarda al futuro.'] },
+  testataBlocchi: true,
+};
+const STAMPA_SHOWROOM: StampaLinea = { payoff: null, banda: null, testataBlocchi: false };
 
 export interface ComportamentiBlocchiLinea {
   /** true: testata completa (rif., quantità base, U.M., prezzo/U.M., incidenze); false: blocco spoglio (descrizione e subtotale). */
@@ -28,10 +47,10 @@ const BLOCCHI_COMPLETI: ComportamentiBlocchiLinea = { bloccoConMisure: true, blo
 
 /** Tutti i comportamenti per linea passano da questo catalogo, non da confronti nei chiamanti. */
 export const LINEE_PREVENTIVO: Record<LineaPreventivo, ConfigurazioneLineaPreventivo> = {
-  sistema_made: { codice: 'sistema_made', etichetta: 'Sistema MADE', attiva: true, classiBadge: 'border-pv-azzurro-bordo bg-pv-azzurro text-pv-blu', classiBordo: 'border-l-pv-blu', blocchi: BLOCCHI_COMPLETI },
-  showroom: { codice: 'showroom', etichetta: 'Showroom', attiva: false, classiBadge: 'border-pv-viola/30 bg-pv-viola-tenue text-pv-viola', classiBordo: 'border-l-pv-viola', blocchi: { bloccoConMisure: false, bloccoDaKit: false, righeStampabili: true, regimiIva: true, articoloInDefinizione: true } },
-  edilizia: { codice: 'edilizia', etichetta: 'Edilizia', attiva: false, classiBadge: 'border-pv-verde/30 bg-pv-verde-tenue text-pv-verde', classiBordo: 'border-l-pv-verde', blocchi: BLOCCHI_COMPLETI },
-  fotovoltaico: { codice: 'fotovoltaico', etichetta: 'Fotovoltaico', attiva: false, classiBadge: 'border-pv-giallo/30 bg-pv-giallo-tenue text-pv-giallo', classiBordo: 'border-l-pv-giallo', blocchi: BLOCCHI_COMPLETI },
+  sistema_made: { codice: 'sistema_made', etichetta: 'Sistema MADE', attiva: true, classiBadge: 'border-pv-azzurro-bordo bg-pv-azzurro text-pv-blu', classiBordo: 'border-l-pv-blu', blocchi: BLOCCHI_COMPLETI, stampa: STAMPA_SISTEMA },
+  showroom: { codice: 'showroom', etichetta: 'Showroom', attiva: false, classiBadge: 'border-pv-viola/30 bg-pv-viola-tenue text-pv-viola', classiBordo: 'border-l-pv-viola', blocchi: { bloccoConMisure: false, bloccoDaKit: false, righeStampabili: true, regimiIva: true, articoloInDefinizione: true }, stampa: STAMPA_SHOWROOM },
+  edilizia: { codice: 'edilizia', etichetta: 'Edilizia', attiva: false, classiBadge: 'border-pv-verde/30 bg-pv-verde-tenue text-pv-verde', classiBordo: 'border-l-pv-verde', blocchi: BLOCCHI_COMPLETI, stampa: STAMPA_SISTEMA },
+  fotovoltaico: { codice: 'fotovoltaico', etichetta: 'Fotovoltaico', attiva: false, classiBadge: 'border-pv-giallo/30 bg-pv-giallo-tenue text-pv-giallo', classiBordo: 'border-l-pv-giallo', blocchi: BLOCCHI_COMPLETI, stampa: STAMPA_SISTEMA },
 };
 
 export function lineaPreventivo(codice: unknown): ConfigurazioneLineaPreventivo {

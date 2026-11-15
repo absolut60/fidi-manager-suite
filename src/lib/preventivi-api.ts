@@ -1,4 +1,4 @@
-import { totaliDocumento, type RigaIva } from "./calcolo-iva";
+import { totaliDocumento, riepilogoIva, regimeIvaValido, type RigaIva } from "./calcolo-iva";
 import { fetchPrezziPreventivo, fetchPrezzoPreventivoArticolo, condizioniPrezziCliente, type CondizioniPrezziPreventivo } from "./prezzi-preventivo";
 import { eliminaConEsito } from "./esito-eliminazione";
 import { getCantiereListini, type CantiereListinoRow } from "./cantiere-listini-api";
@@ -1052,13 +1052,10 @@ export interface TotaliPreventivo {
   totale: number;
 }
 
-export function calcolaTotaliPreventivo(
-  blocchi: { righe: Riga[]; quantita_base?: number | null; prezzo_um?: number | null; importo?: number | null }[],
-  iva_perc = 22,
-  sconto_piede_perc = 0,
-  regime_iva: unknown = 'ordinaria',
-): TotaliPreventivo {
-  // FM75 F3d: IVA e totale solo da totaliDocumento (calcolo-iva.ts), righe per regime.
+type BloccoTotali = { righe: Riga[]; quantita_base?: number | null; prezzo_um?: number | null; importo?: number | null };
+
+/** F6: righe IVA del documento (importo, BS, aliquota di riga) — base unica di totali e riepilogo IVA. */
+export function righeIvaDaBlocchi(blocchi: BloccoTotali[]): RigaIva[] {
   const righeIva: RigaIva[] = [];
   for (const b of blocchi) {
     if (b.righe?.length) {
@@ -1073,6 +1070,22 @@ export function calcolaTotaliPreventivo(
       righeIva.push({ importo: round2(n(b.quantita_base) * n(b.prezzo_um)) });
     }
   }
+  return righeIva;
+}
+
+/** F6: riepilogo IVA per aliquota del documento (stessa base righe di calcolaTotaliPreventivo). */
+export function riepilogoIvaDocumento(blocchi: BloccoTotali[], iva_perc: number | null | undefined, regime_iva: unknown) {
+  return riepilogoIva({ regime: regimeIvaValido(regime_iva), ivaTestataPerc: n(iva_perc ?? 22), righe: righeIvaDaBlocchi(blocchi) });
+}
+
+export function calcolaTotaliPreventivo(
+  blocchi: BloccoTotali[],
+  iva_perc = 22,
+  sconto_piede_perc = 0,
+  regime_iva: unknown = 'ordinaria',
+): TotaliPreventivo {
+  // FM75 F3d: IVA e totale solo da totaliDocumento (calcolo-iva.ts), righe per regime.
+  const righeIva = righeIvaDaBlocchi(blocchi);
   const lordo = totaliDocumento({ regime: regime_iva, ivaTestataPerc: n(iva_perc), righe: righeIva });
   const imponibileLordo = lordo.totale_imponibile;
   const scontoPerc = Math.max(0, n(sconto_piede_perc));
