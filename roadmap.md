@@ -1,3 +1,8 @@
+# FM72 — Linea del preventivo, fetta ②
+- [ ] Migrazione additiva enum/colonna/default/indice, senza cambiare policy, trigger o prezzi; verifica SQL con rollback e registro.
+- [ ] Catalogo unico, badge elenco/scheda/tab soggetto, filtro multiplo persistente solo con più linee attive; duplicazioni/alternative conservano la linea.
+- [ ] Test catalogo, guardia confronti, salvataggi e suite completa; screenshot 375/1280 e documentazione.
+
 # FM72 — Assegnazione interna preventivi, fetta ①b
 - [x] AssegnazionePreventivo in Testata, responsabile/cop ie ricercabili con chip rimovibili, UPDATE verificato dei soli due campi e chiave salvataggio condivisa; catalogo utenti con query unica in cache, filtro Per me persistente e badge/nome nelle righe. Nessuna notifica client o modifica DB/prezzi/RLS/trigger; documentazione e regola tecnica nella AGENTS di area (root oltre budget).
 - [x] 899 test verdi: filtro responsabile/copie, AND con ricerca, lettura completa dei campi e gate confermati/ordini/ruoli. Browser con risposte simulate 320/375/390/768/1280/1920: PATCH limitato ai due campi, rilettura assegnazione, ricerca copie, sola lettura, filtro persistente al ricaricamento, zero INSERT notifiche, zero query per riga e overflow. Screenshot 375/1280 controllati, pagina temporanea rimossa; build OK. Salvataggio autenticato reale non verificato: sessione operativa non disponibile.
