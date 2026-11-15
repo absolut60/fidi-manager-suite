@@ -446,13 +446,18 @@ export async function anteprimaProssimoNumero(
   return `${prefix}-${data}/${String(a).slice(-2)}`;
 }
 
+/**
+ * Crea un preventivo. `opzioni.linea` è la linea del documento: la creazione da dialog passa sempre
+ * la linea scelta dall'utente (lineeUtente), duplicazioni/alternative la linea dell'origine.
+ * Senza opzioni vale il default del database; una `linea` dentro `row` viene sempre ignorata.
+ */
 export async function createPreventivo(
   row: Omit<PreventivoInsert, "numero" | "linea">,
-  copia?: { linea: LineaPreventivo },
+  opzioni?: { linea: LineaPreventivo },
 ): Promise<{ preventivo: Preventivo; numeroRiassegnato: string | null }> {
   // Anche eventuali chiamanti JavaScript obsoleti non possono passare un numero.
   const { numero: _numeroIgnorato, linea: _lineaIgnorata, ...campi } = row as PreventivoInsert;
-  const payload = copia ? { ...campi, linea: copia.linea } : campi;
+  const payload = opzioni ? { ...campi, linea: opzioni.linea } : campi;
   const { data, error } = await supabase.from("preventivi").insert(payload).select().single();
   if (error) throw new Error(`${error.message}${error.details ? ` — ${error.details}` : ""}${error.code ? ` [${error.code}]` : ""}`);
   return { preventivo: data, numeroRiassegnato: null };

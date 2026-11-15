@@ -28,3 +28,44 @@ export function lineeAttive(): ConfigurazioneLineaPreventivo[] {
 }
 
 export const mostraFiltroLinee = lineeAttive().length > 1;
+/** Linee che l'utente può usare: abilitate sul profilo ∩ attive, nell'ordine del catalogo. */
+export function lineeUtente(abilitate: readonly LineaPreventivo[] | null | undefined): ConfigurazioneLineaPreventivo[] {
+  const set = new Set(abilitate ?? []);
+  return lineeAttive().filter(linea => set.has(linea.codice));
+}
+
+/** Predefinita del profilo se utilizzabile, altrimenti la prima utilizzabile; null se nessuna. */
+export function lineaPredefinitaEffettiva(
+  abilitate: readonly LineaPreventivo[] | null | undefined,
+  predefinita: LineaPreventivo | null | undefined,
+): LineaPreventivo | null {
+  const usabili = lineeUtente(abilitate);
+  return usabili.find(linea => linea.codice === predefinita)?.codice ?? usabili[0]?.codice ?? null;
+}
+
+/** Gestione utenti: riallinea la predefinita alle linee abilitate scelte (anche non ancora attive). */
+export function riallineaPredefinitaProfilo(
+  abilitate: readonly LineaPreventivo[],
+  predefinita: LineaPreventivo | null,
+): LineaPreventivo | null {
+  const ordinate = tutteLeLinee().map(l => l.codice).filter(c => abilitate.includes(c));
+  return predefinita && ordinate.includes(predefinita) ? predefinita : ordinate[0] ?? null;
+}
+
+export function tutteLeLinee(): ConfigurazioneLineaPreventivo[] {
+  return Object.values(LINEE_PREVENTIVO);
+}
+
+/** Etichetta per la gestione utenti: segnala le linee non ancora attive. */
+export function etichettaLineaGestione(linea: ConfigurazioneLineaPreventivo): string {
+  return linea.attiva ? linea.etichetta : `${linea.etichetta} — non ancora attiva`;
+}
+
+/** Stato del selettore linea in creazione preventivo. */
+export function selettoreLineaCreazione(
+  abilitate: readonly LineaPreventivo[] | null | undefined,
+  predefinita: LineaPreventivo | null | undefined,
+): { linee: ConfigurazioneLineaPreventivo[]; mostra: boolean; iniziale: LineaPreventivo | null; bloccaCreazione: boolean } {
+  const linee = lineeUtente(abilitate);
+  return { linee, mostra: linee.length > 1, iniziale: lineaPredefinitaEffettiva(abilitate, predefinita), bloccaCreazione: linee.length === 0 };
+}

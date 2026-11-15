@@ -2,6 +2,7 @@ import { erroreSedeObbligatoria } from "@/lib/permessi-showroom";
 import { createFileRoute } from "@tanstack/react-router";
 import { messaggioPasswordNonValida } from "@/lib/regole-password";
 import { useMemo, useState } from "react";
+import { etichettaLineaGestione, riallineaPredefinitaProfilo, tutteLeLinee, type LineaPreventivo } from "@/lib/linee-preventivo";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { UsersRound, Pencil, UserPlus, Eye, EyeOff, Mail, Bell, ArrowUp, ArrowDown, Search } from "lucide-react";
@@ -92,6 +93,8 @@ type UserRow = {
   store_id: string | null;
   codice_agente: string | null;
   attivo: boolean;
+  linee_abilitate: LineaPreventivo[] | null;
+  linea_predefinita: LineaPreventivo | null;
   ruoli: AppRole[];
   store_nome: string | null;
 };
@@ -550,6 +553,13 @@ function EditUtenteDialog({ utente, haMfa, onClose }: { utente: UserRow; haMfa: 
   const [storeId, setStoreId] = useState<string>(utente.store_id ?? "_none");
   const [codiceAgente, setCodiceAgente] = useState<string>(utente.codice_agente ?? "_none");
   const [attivo, setAttivo] = useState(utente.attivo);
+  const [lineeAbilitate, setLineeAbilitate] = useState<LineaPreventivo[]>(utente.linee_abilitate ?? ["sistema_made"]);
+  const [lineaPredefinita, setLineaPredefinita] = useState<LineaPreventivo | null>(riallineaPredefinitaProfilo(utente.linee_abilitate ?? ["sistema_made"], utente.linea_predefinita));
+  function cambiaLinea(codice: LineaPreventivo, attiva: boolean) {
+    const nuove = attiva ? [...new Set([...lineeAbilitate, codice])] : lineeAbilitate.filter(c => c !== codice);
+    setLineeAbilitate(nuove);
+    setLineaPredefinita(p => riallineaPredefinitaProfilo(nuove, p));
+  }
   const { data: stores } = useStores();
   const { data: agenti } = useAgenti();
   const fn = useServerFn(updateUtenteRuoli);
@@ -560,6 +570,7 @@ function EditUtenteDialog({ utente, haMfa, onClose }: { utente: UserRow; haMfa: 
   const mutation = useMutation({
     mutationFn: async () => {
       if (ruoli.length === 0) throw new Error("Seleziona almeno un ruolo");
+      if (lineeAbilitate.length === 0 || !lineaPredefinita) throw new Error("Abilita almeno una linea del preventivatore");
       const erroreSede = erroreSedeObbligatoria(ruoli, storeId === "_none" ? null : storeId);
       if (erroreSede) throw new Error(erroreSede);
       if (ruoli.includes("agente") && codiceAgente === "_none") throw new Error("Il ruolo Agente richiede un agente collegato");
@@ -571,6 +582,8 @@ function EditUtenteDialog({ utente, haMfa, onClose }: { utente: UserRow; haMfa: 
         attivo,
         nome: nome.trim(),
         cognome: cognome.trim(),
+        lineeAbilitate,
+        lineaPredefinita,
       }});
     },
     onSuccess: () => {
@@ -689,6 +702,32 @@ function EditUtenteDialog({ utente, haMfa, onClose }: { utente: UserRow; haMfa: 
             )}
           </div>
         )}
+        <div className="space-y-2 rounded-md border border-l-4 border-l-primary p-3">
+          <Label className="text-sm font-semibold">Linee preventivatore</Label>
+          <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+            {tutteLeLinee().map((l) => (
+              <label key={l.codice} className="flex min-h-10 min-w-0 items-center gap-2 text-sm">
+                <Checkbox checked={lineeAbilitate.includes(l.codice)} onCheckedChange={(c) => cambiaLinea(l.codice, c === true)} />
+                <span className="min-w-0 break-words">{etichettaLineaGestione(l)}</span>
+              </label>
+            ))}
+          </div>
+          {lineeAbilitate.length === 0 ? (
+            <p className="text-xs text-destructive">Abilita almeno una linea.</p>
+          ) : (
+            <div className="space-y-1.5">
+              <Label>Linea predefinita</Label>
+              <Select value={lineaPredefinita ?? undefined} onValueChange={(v) => setLineaPredefinita(v as LineaPreventivo)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {tutteLeLinee().filter((l) => lineeAbilitate.includes(l.codice)).map((l) => (
+                    <SelectItem key={l.codice} value={l.codice}>{etichettaLineaGestione(l)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
         <label className="flex items-center gap-2 text-sm">
           <Checkbox checked={attivo} onCheckedChange={(c) => setAttivo(c === true)} />
           Utente attivo
