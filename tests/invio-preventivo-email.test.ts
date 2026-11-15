@@ -22,7 +22,7 @@ test('email: piè GDPR, sede del preventivo, CID solo nella versione di invio', 
   expect(e.htmlArchivio).not.toContain('cid:logoMade');
   expect(e.htmlInvio).toContain('Riga1<br/>Riga2');
   expect(e.htmlInvio).toContain('SEDE DI LISSONE');
-  expect(e.htmlInvio.length).toBeGreaterThan(e.htmlInvio.indexOf('Riga2'));
+  expect(e.htmlInvio).toContain('regolamento UE 2016/679');
 });
 test('destinatari: validi, ripetuti, oltre 10', () => {
   const base = { preventivoId: '00000000-0000-4000-8000-000000000000', oggetto: 'o', corpo: 'c', pdf: { filename: 'p.pdf', base64: 'JVBERg==' } };
