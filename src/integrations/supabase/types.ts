@@ -6256,6 +6256,8 @@ export type Database = {
           deve_cambiare_password: boolean
           email: string | null
           id: string
+          linea_predefinita: Database["public"]["Enums"]["linea_preventivo"]
+          linee_abilitate: Database["public"]["Enums"]["linea_preventivo"][]
           nome: string | null
           password_cambiata_il: string | null
           store_id: string | null
@@ -6269,6 +6271,8 @@ export type Database = {
           deve_cambiare_password?: boolean
           email?: string | null
           id: string
+          linea_predefinita?: Database["public"]["Enums"]["linea_preventivo"]
+          linee_abilitate?: Database["public"]["Enums"]["linea_preventivo"][]
           nome?: string | null
           password_cambiata_il?: string | null
           store_id?: string | null
@@ -6282,6 +6286,8 @@ export type Database = {
           deve_cambiare_password?: boolean
           email?: string | null
           id?: string
+          linea_predefinita?: Database["public"]["Enums"]["linea_preventivo"]
+          linee_abilitate?: Database["public"]["Enums"]["linea_preventivo"][]
           nome?: string | null
           password_cambiata_il?: string | null
           store_id?: string | null
@@ -8667,6 +8673,10 @@ export type Database = {
       auth_ha_accesso_fornitori: { Args: never; Returns: boolean }
       auth_ha_accesso_preventivi: { Args: never; Returns: boolean }
       auth_ha_ruolo_globale_clienti: { Args: never; Returns: boolean }
+      auth_linee_abilitate: {
+        Args: never
+        Returns: Database["public"]["Enums"]["linea_preventivo"][]
+      }
       auth_listini_sede: {
         Args: never
         Returns: {
@@ -8708,7 +8718,10 @@ export type Database = {
         Returns: boolean
       }
       auth_puo_scrivere_preventivo: {
-        Args: { _agente_codice: string }
+        Args: {
+          _agente_codice: string
+          _linea: Database["public"]["Enums"]["linea_preventivo"]
+        }
         Returns: boolean
       }
       auth_puo_scrivere_preventivo_id: {
@@ -8727,6 +8740,8 @@ export type Database = {
           _cantiere_id: string
           _cliente_id: string
           _lead_id: string
+          _linea: Database["public"]["Enums"]["linea_preventivo"]
+          _store_id: string
         }
         Returns: boolean
       }
