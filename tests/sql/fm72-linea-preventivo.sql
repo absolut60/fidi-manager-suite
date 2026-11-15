@@ -17,7 +17,8 @@ BEGIN
   IF EXISTS (SELECT 1 FROM public.preventivi WHERE linea IS DISTINCT FROM 'sistema_made'::public.linea_preventivo) THEN
     RAISE EXCEPTION 'Documenti esistenti fuori da Sistema MADE';
   END IF;
-  INSERT INTO public.preventivi(titolo) VALUES ('FM72 TEST default linea') RETURNING linea INTO assegnata;
+  -- Numero esplicito: isola il default linea dal gate del contatore, senza modificarlo.
+  INSERT INTO public.preventivi(numero,titolo) VALUES ('FM72-LINEA-TEST-' || gen_random_uuid()::text,'FM72 TEST default linea') RETURNING linea INTO assegnata;
   IF assegnata IS DISTINCT FROM 'sistema_made'::public.linea_preventivo THEN
     RAISE EXCEPTION 'Default INSERT errato: %', assegnata;
   END IF;
