@@ -26,6 +26,8 @@ import {
   ArrowDown,
   ArrowUp,
   ChevronDown,
+  Eye,
+  EyeOff,
   GripVertical,
   Plus,
   Trash2,
@@ -55,6 +57,7 @@ import type { FasciaListino } from "@/lib/articoli-api";
 import { formatNumeroIt } from "@/lib/numero-it";
 import { cn } from "@/lib/utils";
 import { lineaPreventivo } from "@/lib/linee-preventivo";
+import { isRaccoglitorePosa } from "@/lib/riga-preventivo";
 import { toast } from "sonner";
 
 export function RigheTable({
@@ -97,7 +100,7 @@ export function RigheTable({
 
 
 
-  const conMisure = lineaPreventivo(linea).blocchi.bloccoConMisure;
+  const { bloccoConMisure: conMisure, righeStampabili } = lineaPreventivo(linea).blocchi;
   const calcs = useMemo(() => calcolaBlocco(blocco.righe), [blocco.righe]);
   const [riepilogoRigaId, setRiepilogoRigaId] = useState<string | null>(null);
   const calcMap = useMemo(() => new Map(calcs.righe.map((r) => [r.id, r.calc])), [calcs]);
@@ -253,7 +256,7 @@ export function RigheTable({
 
   const righeProps = (r: (typeof blocco.righe)[number], idx: number) => ({
     row: r,
-    conMisure,
+    conMisure, righeStampabili,
     prezzoCantiere: segnoPrezzoCantiere(r, dedicati.get(r.articolo_codice ?? r.articolo?.cod_gamma ?? "")),
     idx,
     fascia,
@@ -437,6 +440,8 @@ function AddRowMenu({
 
 type RigaProps = {
   conMisure: boolean;
+  /** FM75 F2c: mostra il flag Stampabile (solo linee che lo prevedono). */
+  righeStampabili: boolean;
   prezzoCantiere: boolean;
   row: BloccoConRighe["righe"][number];
   idx: number;
@@ -672,9 +677,28 @@ function sfondoScheda(c: Parameters<typeof tonoRiga>[0]) {
   return SFONDO_SCHEDA[tonoRiga(c)];
 }
 
-function AzioniRiga(p: RigaProps) {
+/** FM75 F2c: la riga è nascosta in stampa (solo se la linea prevede il flag). */
+function rigaNascosta(p: RigaProps) {
+  return p.righeStampabili && p.row.stampabile === false;
+}
+
+function ToggleStampabile(p: RigaProps & { valorizzata: boolean }) {
+  if (!p.righeStampabili || !p.valorizzata || isRaccoglitorePosa(p.row.articolo_codice)) return null;
+  const stampabile = p.row.stampabile !== false;
+  const etichetta = stampabile ? "Stampabile: sì (clic per nascondere)" : "Stampabile: no (clic per mostrare)";
+  return (
+    <Button size="icon" variant="ghost" className="h-8 w-8" disabled={p.readOnly}
+      onClick={(e) => { e.stopPropagation(); p.onPatch({ stampabile: !stampabile }); }}
+      title={etichetta} aria-label={etichetta} aria-pressed={!stampabile}>
+      {stampabile ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />}
+    </Button>
+  );
+}
+
+function AzioniRiga(p: RigaProps & { valorizzata?: boolean }) {
   return (
     <div className="flex items-center justify-end gap-0.5">
+      <ToggleStampabile {...p} valorizzata={!!p.valorizzata} />
       <Button size="icon" variant="ghost"
         className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
         onClick={p.onDelete} title="Elimina riga" aria-label="Elimina riga">
@@ -691,7 +715,7 @@ function RigaRow(p: RigaProps) {
   const style = {
     transform: CSS.Transform.toString(sortable.transform),
     transition: sortable.transition,
-    opacity: sortable.isDragging ? 0.5 : 1,
+    opacity: sortable.isDragging || rigaNascosta(p) ? 0.5 : 1,
   };
   const c = useCelleRiga(p);
   const rowClass = cn(
@@ -743,7 +767,7 @@ function RigaRow(p: RigaProps) {
       <td className="px-0.5 py-0.5 text-right text-muted-foreground">{v && c.costo}</td>
       <td className="px-1 py-1 text-right">{v && <BadgeMargine perc={p.calc.margine_perc} testo={c.margine} />}</td>
       <td className="px-1 py-1.5 text-right text-muted-foreground">{v && c.peso}</td>
-      <td className="px-0.5 text-right"><AzioniRiga {...p} /></td>
+      <td className="px-0.5 text-right"><AzioniRiga {...p} valorizzata={v} /></td>
     </tr>
   );
 }
@@ -771,13 +795,13 @@ function RigaScheda(p: RigaProps) {
     </div>
   );
   return (
-    <div className={cn("rounded-md border p-2", sfondoScheda(c), c.kitSenzaPrezzo && "border-destructive")}
+    <div className={cn("rounded-md border p-2", sfondoScheda(c), c.kitSenzaPrezzo && "border-destructive", rigaNascosta(p) && "opacity-50")}
       onClick={c.onRowClick}>
       <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
         <div className="flex min-w-0 items-center gap-1"><NumeroRiga p={p} /><span className="min-w-0 break-words text-xs text-muted-foreground">{TIPI_RIGA_LABEL[c.tipo]}</span></div>
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
           {c.valorizzata && <><span className="whitespace-nowrap font-mono text-xs font-semibold">{c.importo}</span><BadgeMargine perc={p.calc.margine_perc} testo={c.margine} /></>}
-          <AzioniRiga {...p} />
+          <AzioniRiga {...p} valorizzata={c.valorizzata} />
         </div>
       </div>
       <div className="min-w-0">
