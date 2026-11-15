@@ -60,6 +60,7 @@ Altri avvisi: `articolo_senza_prezzo_su_listino`, `cliente_senza_listino`, `clie
 - `PreventiviSoggettoTab` è il componente unico nelle due schede, dopo Commerciale; visibilità tramite `puoConsultarePreventivi` e letture con client utente/RLS esistente, senza bypass.
 - Cliente: filtro `cliente_id`; lead: filtro `lead_id`, con seconda lettura `lead_origine_id` nel gruppo separato «Originati da questo lead (ora del cliente)». Ordinamento data e creazione decrescenti; badge condivisi con la lista, tabella desktop e schede telefono.
 - Nuovo preventivo solo con `puoScriverePreventivi`: `soggettoIniziale` preseleziona cliente o lead, rilegge il lead con RLS e propone riferimento/pagamento. Numero assegnato dal DB e riferimento lead obbligatorio restano invariati.
+- Fetta 2: condizioni commerciali modificabili dall'anagrafica lead, visibili solo via `puoConsultarePreventivi`; il normale permesso di modifica del lead e la RLS restano invariati. Se nascoste, i quattro campi non entrano nel form né nel payload. Pagamento e riferimento riusano componenti/cataloghi del preventivo; riferimento spento = tre NULL, acceso = listino/macrocategoria/categoria completi tramite `campiRiferimentoPreventivo`, altrimenti salvataggio bloccato con messaggio italiano. Nessuna scrittura immediata delle tendine: salva con l'anagrafica.
 
 ## Condizioni di riferimento (FM71)
 
