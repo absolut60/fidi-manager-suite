@@ -8630,6 +8630,10 @@ export type Database = {
         Args: { _id: string; _note: string }
         Returns: undefined
       }
+      aggiorna_sconti_base_fornitore: {
+        Args: { _id: string; _sconti: number[] }
+        Returns: undefined
+      }
       aggiorna_stato_messaggio_whatsapp: {
         Args: {
           _errore?: string
@@ -8758,6 +8762,10 @@ export type Database = {
         Returns: boolean
       }
       auth_puo_modificare_lead: { Args: { _lead_id: string }; Returns: boolean }
+      auth_puo_modificare_sconti_base_fornitore: {
+        Args: never
+        Returns: boolean
+      }
       auth_puo_scrivere_blocco: {
         Args: { _blocco_id: string }
         Returns: boolean
