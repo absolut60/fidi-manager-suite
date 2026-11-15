@@ -31,6 +31,7 @@
 - Gestione utenti: sezione "Linee preventivatore" nella modifica utente (quattro linee dal catalogo, quelle non attive con "— non ancora attiva"), almeno una obbligatoria, predefinita limitata alle abilitate e riallineata con `riallineaPredefinitaProfilo`. Salvataggio via `updateUtenteRuoli` (solo amministratore).
 - Creazione: `NuovoPreventivoDialog` legge la propria riga di profili (`useLineeUtente`) e usa `selettoreLineaCreazione` (`lineeUtente` = abilitate ∩ attive; `lineaPredefinitaEffettiva`). Più linee → selettore; una → nessun selettore; nessuna → "Crea" disabilitato con messaggio.
 - Regola: la creazione da dialog passa SEMPRE la linea dell'utente a `createPreventivo(row, { linea })`; duplicazioni e alternative passano la linea dell'origine; una `linea` dentro `row` è sempre ignorata.
+- Anche la trasformazione in ordine conserva la linea: `trasforma_preventivo_in_ordine` copia `linea` del preventivo nella testata dell'ordine (migrazione `0237_fm75_ordine_conserva_linea.sql`). Prima la colonna veniva omessa e il default `sistema_made` riattribuiva la linea, con visibilità FM72 e comportamenti di linea sbagliati. Prova transazionale con rollback: `tests/sql/fm75-articolo-definizione-ordine.sql` (verifica `showroom -> showroom` e `sistema_made -> sistema_made`).
 
 ### Tappa ④a — responsabile showroom (solo database)
 
