@@ -66,3 +66,35 @@ export function htmlInTestoSemplice(html: string): string {
     .replace(/&nbsp;/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&")
     .replace(/\n{3,}/g, "\n\n").trim();
 }
+
+/** Stato dopo un invio riuscito: solo "bozza" passa a "inviato"; inviato/confermato restano. */
+export const statoDopoInvioPreventivo = (stato: string | null | undefined): "inviato" | null =>
+  stato === "bozza" ? "inviato" : null;
+
+/** Riga di attività commerciale che traccia l'invio (con copia archiviata del contenuto). */
+export function attivitaInvioPreventivo(a: {
+  preventivo: { id: string; numero: string | null; cliente_id: string | null; lead_id: string | null; agente_codice: string | null; store_id: string | null };
+  operatoreId: string; oggetto: string; htmlArchivio: string; to: string[]; cc: string[]; bcc: string[]; quando: string;
+}) {
+  const elenco = (l: string[]) => (l.length ? l.join(", ") : null);
+  return {
+    tipo: "email" as const,
+    titolo: a.oggetto.slice(0, 250),
+    descrizione: `Preventivo ${a.preventivo.numero ?? ""} inviato per email a ${a.to.join(", ")}`.replace(/\s+/g, " ").trim(),
+    esito: "Inviata",
+    completata: true,
+    data_pianificata: a.quando,
+    data_svolgimento: a.quando,
+    preventivo_id: a.preventivo.id,
+    cliente_id: a.preventivo.cliente_id,
+    lead_id: a.preventivo.cliente_id ? null : a.preventivo.lead_id,
+    agente_codice: a.preventivo.agente_codice,
+    store_id: a.preventivo.store_id,
+    operatore_id: a.operatoreId,
+    email_destinatario: a.to.join(", "),
+    email_cc: elenco(a.cc),
+    email_bcc: elenco(a.bcc),
+    email_oggetto: a.oggetto,
+    email_corpo_html: a.htmlArchivio,
+  };
+}

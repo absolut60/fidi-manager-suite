@@ -6,7 +6,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { sedeEmailDaStoreId } from "@/lib/branding-email";
 import { sendEmailViaEdge } from "@/lib/inngest/send-email.server";
 import { nomeIntestatarioPdf } from "@/lib/soggetto-preventivo";
-import { costruisciEmailPreventivo, inputInvioPreventivo, isPdfBytes, MAX_PDF_PREVENTIVO_BYTES } from "@/lib/invio-preventivo-email-core";
+import { attivitaInvioPreventivo, statoDopoInvioPreventivo, costruisciEmailPreventivo, inputInvioPreventivo, isPdfBytes, MAX_PDF_PREVENTIVO_BYTES } from "@/lib/invio-preventivo-email-core";
 
 export const inviaEmailPreventivo = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -23,7 +23,7 @@ export const inviaEmailPreventivo = createServerFn({ method: "POST" })
 
     const { data: prev, error: ePrev } = await supabase
       .from("preventivi")
-      .select("id, numero, titolo, validita, totale, store_id, cliente_id, lead:lead!preventivi_lead_id_fkey(ragione_sociale,nome,cognome)")
+      .select("id, numero, titolo, validita, totale, stato, agente_codice, lead_id, store_id, cliente_id, lead:lead!preventivi_lead_id_fkey(ragione_sociale,nome,cognome)")
       .eq("id", data.preventivoId).maybeSingle();
     if (ePrev) throw new Error(`Lettura preventivo fallita: ${ePrev.message}`);
     if (!prev) throw new Error("Preventivo non trovato");
@@ -71,5 +71,26 @@ export const inviaEmailPreventivo = createServerFn({ method: "POST" })
       attachments: [{ filename: data.pdf.filename, content: data.pdf.base64, contentType: "application/pdf" }],
     });
     if (!esito.ok) throw new Error(`Invio fallito: ${esito.err ?? "errore sconosciuto"}`);
-    return { ok: true as const, messageId: esito.messageId ?? null, oggetto: email.oggetto, htmlArchivio: email.htmlArchivio };
+
+    // Email partita: da qui nessun errore rende fallito l'invio, finisce negli avvisi.
+    const avvisi: string[] = [];
+    const to = data.to.map(e => e.trim()), cc = data.cc.map(e => e.trim()), bcc = data.bcc.map(e => e.trim());
+    try {
+      const { error } = await supabase.from("attivita_commerciale").insert(attivitaInvioPreventivo({
+        preventivo: prev, operatoreId: userId, oggetto: email.oggetto, htmlArchivio: email.htmlArchivio, to, cc, bcc, quando: new Date().toISOString(),
+      }));
+      if (error) avvisi.push(`Email inviata, ma attività non registrata: ${error.message}`);
+    } catch (e) { avvisi.push(`Email inviata, ma attività non registrata: ${e instanceof Error ? e.message : String(e)}`); }
+
+    let statoNuovo: string | null = null;
+    const prossimo = statoDopoInvioPreventivo(prev.stato);
+    if (prossimo) {
+      try {
+        // Condizione su "bozza" anche nel filtro: mai sovrascrivere uno stato cambiato nel frattempo. RLS dell'utente.
+        const { data: agg, error } = await supabase.from("preventivi").update({ stato: prossimo }).eq("id", prev.id).eq("stato", "bozza").select("id");
+        if (error) avvisi.push(`Email inviata, ma stato non aggiornato: ${error.message}`);
+        else if (agg?.length) statoNuovo = prossimo;
+      } catch (e) { avvisi.push(`Email inviata, ma stato non aggiornato: ${e instanceof Error ? e.message : String(e)}`); }
+    }
+    return { ok: true as const, messageId: esito.messageId ?? null, oggetto: email.oggetto, destinatari: [...to, ...cc], statoNuovo, avvisi };
   });

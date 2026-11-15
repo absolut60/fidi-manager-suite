@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarClock, Plus } from "lucide-react";
+import { CalendarClock, Eye, Plus } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { EmailInviataView } from "@/components/email-inviata-view";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { AttivitaCommercialeDialog } from "@/components/attivita-commerciale-dialog";
@@ -12,6 +14,7 @@ export function AttivitaPreventivo({ id, clienteId, agenteCodice, sedeNome, sede
 }) {
   const [aperto, setAperto] = useState(false);
   const [selezionata, setSelezionata] = useState<AttivitaRow | null>(null);
+  const [emailVista, setEmailVista] = useState<AttivitaRow | null>(null);
   // Identità dalla RPC condizioni; verifica sul catalogo sedi con RLS, mai per nome.
   const { data: sede, isPending: sedeInCaricamento, error: erroreSede } = useQuery({
     queryKey: ["sede-attivita-preventivo", sedeClienteId],
@@ -51,9 +54,10 @@ export function AttivitaPreventivo({ id, clienteId, agenteCodice, sedeNome, sede
           <div className="min-w-0 space-y-1 text-muted-foreground"><p>Pianificata: {fmtDataOra(a.data_pianificata)}</p>{a.data_svolgimento && <p>Svolta: {fmtDataOra(a.data_svolgimento)}</p>}<p className="font-medium text-foreground">{a.completata ? "Completata" : "Da svolgere"}</p></div>
         </>;
         const stile = "grid w-full min-w-0 grid-cols-1 gap-2 py-3 text-left text-xs lg:grid-cols-[minmax(0,1fr)_minmax(0,18rem)]";
-        return modificabile
-          ? <Button key={a.id} variant="ghost" className={`${stile} h-auto justify-start whitespace-normal rounded-none px-0`} onClick={() => { setSelezionata(a); setAperto(true); }}>{contenuto}</Button>
-          : <div key={a.id} className={stile}>{contenuto}</div>;
+        const riga = modificabile
+          ? <Button variant="ghost" className={`${stile} h-auto justify-start whitespace-normal rounded-none px-0`} onClick={() => { setSelezionata(a); setAperto(true); }}>{contenuto}</Button>
+          : <div className={stile}>{contenuto}</div>;
+        return <div key={a.id} className="min-w-0">{riga}{a.email_corpo_html && <Button variant="outline" size="sm" className="mb-3 min-h-10 text-xs" onClick={() => setEmailVista(a)}><Eye className="size-3.5"/>Vedi email inviata</Button>}</div>;
       })}
     </div>
     {erroreSede && <p role="alert" className="text-xs text-destructive">Impossibile caricare la sede del cliente.</p>}
@@ -62,5 +66,11 @@ export function AttivitaPreventivo({ id, clienteId, agenteCodice, sedeNome, sede
       preventivo_id: selezionata.preventivo_id, cliente_id: selezionata.cliente_id, lead_id: selezionata.lead_id,
       opportunita_id: selezionata.opportunita_id, agente_codice: selezionata.agente_codice, store_id: selezionata.store_id,
     } : { preventivo_id: id, cliente_id: clienteId, agente_codice: agenteCodice, store_id: sede?.id ?? null }}/>}
+    <Dialog open={!!emailVista} onOpenChange={v => !v && setEmailVista(null)}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Email inviata</DialogTitle></DialogHeader>
+        {emailVista && <EmailInviataView destinatario={emailVista.email_destinatario} oggetto={emailVista.email_oggetto} corpoHtml={emailVista.email_corpo_html} cc={emailVista.email_cc} bcc={emailVista.email_bcc} />}
+      </DialogContent>
+    </Dialog>
   </RiquadroScheda>;
 }
