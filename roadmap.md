@@ -1,6 +1,6 @@
 # FM72 — Assegnazione interna preventivi, fetta ①a
-- [ ] Migrazione additiva, catalogo notifica separato dalla struttura, trigger best-effort unico; nessun cambio RLS/gate/prezzi/contatori.
-- [ ] Test SQL sul database reale in BEGIN/ROLLBACK, suite completa, verifica registro e documentazione.
+- [x] Applicata 0226_fm72_assegnazione_preventivi.sql: responsabile nullable senza FK e copie UUID[] con indici, trigger best-effort unico. Catalogo preventivo_assegnato inserito separatamente dalla struttura, raggruppamento per destinatario/tipo e link elenco /preventivatore/. Impronte RLS, gate/prezzi/contatori, task/raggruppamento e quattro trigger precedenti identiche. Regola tecnica documentata nella sezione Assegnazione interna; AGENTS root oltre budget, non modificato.
+- [x] Test SQL sul database reale in BEGIN/ROLLBACK con ruolo authenticated e claims aal2: assegnazione, riassegnazione, copia aggiunta/deduplicata, autore escluso, altri campi, rimozione, valori invariati, INSERT copie e gruppo tra documenti. Sotto-transazione annullata e firme documenti/contatore/notifiche uguali; zero fixture residue. Corpo applicato identico al file (MD5 c6b302e1412ace47ffbac3688c8644c7), EXECUTE solo service_role, registro 227 voci 0000–0226 coerente. Suite 894 test verdi, build OK; documentazione aggiornata. Nessuna interfaccia in questa fetta.
 
 # FM72 — Condizioni commerciali lead, fetta 2
 - [x] Sezione vista/modifica con gate consultazione, payload condizionale e riferimento vuoto/completo; cataloghi/componenti condivisi, nessuna migrazione o modifica RLS/prezzi/creazione preventivo. Documentazione aggiornata; regola tecnica nella sezione FM72 (AGENTS root pieno).
