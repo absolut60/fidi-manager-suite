@@ -1702,6 +1702,13 @@
       "when": 1794782829452,
       "tag": "0242_template_email_tipo_invio_preventivo",
       "breakpoints": true
+    },
+    {
+      "idx": 243,
+      "version": "7",
+      "when": 1794783186700,
+      "tag": "0243_invio_preventivo_destinatari",
+      "breakpoints": true
     }
   ]
 }
