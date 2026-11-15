@@ -1583,6 +1583,13 @@
       "when": 1794695469261,
       "tag": "0225_fm71_numero_non_modificabile",
       "breakpoints": true
+    },
+    {
+      "idx": 226,
+      "version": "7",
+      "when": 1794729221260,
+      "tag": "0226_fm72_assegnazione_preventivi",
+      "breakpoints": true
     }
   ]
 }
