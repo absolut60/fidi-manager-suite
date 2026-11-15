@@ -2,13 +2,13 @@ import { expect, test } from 'bun:test';
 import { renderTemplate, TEMPLATE_INVIO_PREVENTIVO_DEFAULT, SEDE_FALLBACK } from '@/lib/template-email-render';
 import { costruisciEmailPreventivo, inputInvioPreventivo } from '@/lib/invio-preventivo-email-core';
 
-const preventivo = { numero: 'PRV-167/26', titolo: 'Bagno', validita: '2026-12-31', totale_ivato: 1220, sede: 'SEDE DI LISSONE' };
+const preventivo = { numero: 'PRV-167/26', titolo: 'Bagno', validita: '2026-12-31', totale_ivato: 12200, sede: 'SEDE DI LISSONE' };
 
 test('template default: oggetto "Preventivo {{numero}} — {{titolo}}" risolto', () => {
   const r = renderTemplate(TEMPLATE_INVIO_PREVENTIVO_DEFAULT, { ragione_sociale: 'PIPPO SRL', nome_operatore: 'Andrea', scadenze: [], preventivo }, { tipo: 'invio_preventivo' });
   expect(r.oggetto).toBe('Preventivo PRV-167/26 — Bagno');
   expect(r.corpo).toContain('31/12/2026');
-  expect(r.corpo).toContain('1.220,00');
+  expect(r.corpo).toContain('12.200,00 €');
   expect(r.corpo).toContain('PIPPO SRL');
   expect(r.corpo).not.toContain('{{');
 });
