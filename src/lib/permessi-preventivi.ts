@@ -3,7 +3,7 @@
 // haAccessoPreventivi      ↔ public.auth_ha_accesso_preventivi() (ricerca clienti, cantieri, numerazioni)
 // puoConsultarePreventivi  ↔ public.auth_consulta_preventivi()   (lettura preventivi/ordini/catalogo/fornitori; + store_manager, showroom)
 // puoVedereFornitori       ↔ public.auth_ha_accesso_fornitori()  (consultazione OR amministrazione)
-// puoScriverePreventivi    ↔ public.auth_puo_scrivere_preventivo() senza il controllo per agente (lo fa il DB)
+// puoScriverePreventivi    ↔ public.auth_puo_scrivere_preventivo(agente, linea) senza i controlli agente e linea (li fa il DB)
 // puoGestireAnagrafichePreventivi ↔ public.auth_puo_gestire_anagrafiche_prev() (kit, listini, articoli)
 type Ruoli = readonly string[];
 /** FM68: gemello di public.auth_preventivista(); non concede accesso ai clienti. */

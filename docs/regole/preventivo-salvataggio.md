@@ -21,3 +21,7 @@
 - Prove permanenti in `tests/sql/fm72-assegnazione-preventivi.sql`: impersonazione authenticated aal2, BEGIN/ROLLBACK, destinatari di fixture senza account e nessun dato/contatore persistente.
 - Interfaccia unica `AssegnazionePreventivo`: utenti da `useUtentiAssegnabili` (una query condivisa), stessa modificabilità della Testata, scrittura verificata dei soli due campi con chiave di salvataggio comune; confermati e ordini in sola lettura. L'app non inserisce mai notifiche: le genera soltanto il trigger.
 - Il filtro rapido «Per me» usa responsabile uguale all'utente O appartenenza alle copie, conservato da `useFiltriPagina`; il SELECT `*` dell'elenco include i due campi. Badge «Per te» per il responsabile corrente, altrimenti nome da lookup condiviso, senza query per riga. Restano invariate le regole dell'elenco per principali e alternative.
+
+## Scrittura per linea abilitata (FM72 tappa ③)
+
+- Inserimento, modifica ed eliminazione passano da `auth_puo_scrivere_preventivo(agente_codice, linea)`: amministratore sempre; preventivi_manage solo sulle linee abilitate del profilo; preventivi_write solo sulle linee abilitate e sui propri documenti (codice agente). Su una linea non abilitata la RLS rifiuta il salvataggio.
