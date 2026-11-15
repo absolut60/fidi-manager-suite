@@ -1,9 +1,9 @@
-// Fonte unica (FM56, decisioni di Andrea 05/11/2026): cosa vede e cosa può fare il ruolo "showroom".
-// Gemello SQL di isSoloShowroom: public.auth_solo_showroom() (migrazione 0141). Se cambia uno, cambia l'altro.
-// Il database filtra già tutto per sede e blocca le scritture; questa regola decide solo lo schermo
+// Fonte unica (FM56, FM72 ④b): cosa vedono e possono fare "showroom" e "responsabile_showroom".
+// Gemello SQL di isSoloShowroom: public.auth_solo_showroom() (aggiornata nella 0231). Se cambia uno, cambia l'altro.
+// Il database applica il perimetro (showroom della sede, responsabile su tutte le sedi) e le scritture; questa regola decide solo lo schermo
 // (nasconde i pulsanti che il database rifiuterebbe). Documentata in docs/regole/sicurezza-permessi.md.
 
-/** Ruoli che, insieme a "showroom", tolgono le restrizioni dello showroom (come auth_solo_showroom()). */
+/** Ruoli che, insieme a uno dei ruoli showroom, tolgono le restrizioni (come auth_solo_showroom()). */
 export const RUOLI_SUPERANO_SHOWROOM = [
   "store_manager",
   "amministratore",
@@ -13,18 +13,19 @@ export const RUOLI_SUPERANO_SHOWROOM = [
 ] as const;
 
 export function haRuoloShowroom(roles: readonly string[] | null | undefined): boolean {
-  return (roles ?? []).includes("showroom");
+  const r = roles ?? [];
+  return r.includes("showroom") || r.includes("responsabile_showroom");
 }
 
-/** Vero quando l'utente è "solo showroom": ha showroom e nessuno dei ruoli che lo superano. */
+/** Vero con showroom o responsabile_showroom e nessuno dei ruoli che superano lo showroom. */
 export function isSoloShowroom(roles: readonly string[] | null | undefined): boolean {
   const r = roles ?? [];
-  return r.includes("showroom") && !RUOLI_SUPERANO_SHOWROOM.some((x) => r.includes(x));
+  return haRuoloShowroom(r) && !RUOLI_SUPERANO_SHOWROOM.some((x) => r.includes(x));
 }
 
 /**
  * Voci di menu dello showroom (oltre all'area fidi, che passa da puoVedereAreaFidi,
- * e ai preventivi, che restano legati ai ruoli preventivi_*).
+ * e ai preventivi, che passano da puoConsultarePreventivi).
  */
 export const VOCI_MENU_SHOWROOM = new Set<string>([
   "/dashboard",

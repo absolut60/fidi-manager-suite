@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   isSoloShowroom,
+  haRuoloShowroom,
   voceMenuVisibileShowroom,
   puoModificareAttivitaCommerciale,
   puoModificareContattoClienteShowroom,
@@ -17,6 +18,26 @@ const ADMIN = ["amministratore"];
 const voce = (to: string, group = "generale") => ({ to, group });
 
 describe("isSoloShowroom (gemello di auth_solo_showroom)", () => {
+  test("responsabile showroom è showroom anche senza il ruolo di sede", () => {
+    expect(haRuoloShowroom(["responsabile_showroom"])).toBe(true);
+    expect(haRuoloShowroom(["showroom"])).toBe(true);
+    expect(haRuoloShowroom(["preventivi_write"])).toBe(false);
+    expect(haRuoloShowroom(null)).toBe(false);
+    expect(haRuoloShowroom(undefined)).toBe(false);
+  });
+  test("responsabile solo, con showroom o preventivi_write conserva le restrizioni", () => {
+    expect(isSoloShowroom(["responsabile_showroom"])).toBe(true);
+    expect(isSoloShowroom(["responsabile_showroom", "showroom"])).toBe(true);
+    expect(isSoloShowroom(["responsabile_showroom", "preventivi_write"])).toBe(true);
+    expect(isSoloShowroom(null)).toBe(false);
+    expect(isSoloShowroom(undefined)).toBe(false);
+  });
+  test("i ruoli che superano showroom superano anche responsabile_showroom", () => {
+    for (const r of ["store_manager", "amministratore", "amministrazione", "direzione", "recupero_crediti"]) {
+      expect(isSoloShowroom(["responsabile_showroom", r])).toBe(false);
+      expect(haRuoloShowroom(["responsabile_showroom", r])).toBe(true);
+    }
+  });
   test("solo showroom e showroom+preventivi_write: vero", () => {
     expect(isSoloShowroom(SHOWROOM)).toBe(true);
     expect(isSoloShowroom(SHOWROOM_PREV)).toBe(true);
@@ -87,5 +108,10 @@ describe("pulsanti", () => {
     expect(erroreSedeObbligatoria(["showroom"], "s1")).toBeNull();
     expect(erroreSedeObbligatoria(["store_manager"], null)).toBe("Il ruolo Store Manager richiede un punto vendita");
     expect(erroreSedeObbligatoria(["amministratore"], null)).toBeNull();
+  });
+  test("il responsabile showroom non richiede una sede; gli altri ruoli la richiedono ancora", () => {
+    expect(erroreSedeObbligatoria(["responsabile_showroom"], null)).toBeNull();
+    expect(erroreSedeObbligatoria(["responsabile_showroom", "showroom"], null)).not.toBeNull();
+    expect(erroreSedeObbligatoria(["responsabile_showroom", "store_manager"], null)).not.toBeNull();
   });
 });

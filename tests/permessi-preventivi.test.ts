@@ -1,6 +1,40 @@
 import { describe, expect, it } from "bun:test";
 import { haAccessoPreventivi, preventivoModificabile, puoConsultarePreventivi, puoGestireAnagrafichePreventivi, puoScriverePreventivi, puoVedereFornitori } from "@/lib/permessi-preventivi";
 import { puoGestireFornitori, puoVedereArticoliFornitori } from "@/lib/permessi-fornitori";
+import { scritturaPreventiviVincolataAgente, writeOnlyMissingCodice } from "@/lib/permessi-preventivi";
+
+describe("FM72 ④b responsabile showroom", () => {
+  it("consulta preventivi e fornitori", () => {
+    expect(puoConsultarePreventivi(["responsabile_showroom"])).toBe(true);
+    expect(puoVedereFornitori(["responsabile_showroom"])).toBe(true);
+  });
+  it("scrive senza ottenere gestione anagrafiche o accesso pieno", () => {
+    expect(puoScriverePreventivi(["responsabile_showroom"])).toBe(true);
+    expect(haAccessoPreventivi(["responsabile_showroom"])).toBe(false);
+    expect(puoGestireAnagrafichePreventivi(["responsabile_showroom"])).toBe(false);
+  });
+  it("preventivi_write senza codice agente è bloccato", () => {
+    expect(writeOnlyMissingCodice(["preventivi_write"], null)).toBe(true);
+    expect(writeOnlyMissingCodice(["preventivi_write"], undefined)).toBe(true);
+    expect(writeOnlyMissingCodice(["preventivi_write"], "")).toBe(true);
+    expect(writeOnlyMissingCodice(["preventivi_write"], "7")).toBe(false);
+    expect(writeOnlyMissingCodice(["preventivi_write", "showroom"], null)).toBe(true);
+  });
+  it("responsabile showroom senza codice non è bloccato, anche con preventivi_write", () => {
+    expect(writeOnlyMissingCodice(["responsabile_showroom"], null)).toBe(false);
+    expect(writeOnlyMissingCodice(["responsabile_showroom", "preventivi_write"], null)).toBe(false);
+    expect(scritturaPreventiviVincolataAgente(["responsabile_showroom", "preventivi_write"])).toBe(false);
+  });
+  it("amministratore e preventivi_manage restano esenti, i ruoli di sola lettura no", () => {
+    for (const r of ["amministratore", "preventivi_manage"]) {
+      expect(writeOnlyMissingCodice(["preventivi_write", r], null)).toBe(false);
+    }
+    for (const r of ["store_manager", "preventivi_read", "agente"]) {
+      expect(writeOnlyMissingCodice(["preventivi_write", r], null)).toBe(true);
+    }
+    expect(writeOnlyMissingCodice([], null)).toBe(false);
+  });
+});
 
 describe("FM63 consultazione preventivi per store manager", () => {
   const sm = ["store_manager"];

@@ -1,3 +1,7 @@
+# FM72 — Responsabile showroom, tappa ④b (solo frontend)
+- [ ] Allineare gemelli showroom/preventivi e centralizzare il blocco codice agente, senza migrazioni o modifiche SQL.
+- [ ] Test dei nuovi ruoli, suite completa e verifica della finestra a 375/1280; aggiornare documentazione.
+
 # FM72 — Responsabile showroom, tappa ④a (solo database)
 - [x] Applicate 0230 enum e 0231 perimetro; registro 232 voci contigue. Helper showroom_sede_ok anche sulla restrittiva INSERT lead. Firme invariate, nessuna assegnazione del ruolo. Unica modifica app: etichetta nel Record esaustivo RUOLI_LABEL, necessaria dopo rigenerazione enum per evitare TS2741; nessuna schermata o gate TS modificato.
 - [x] Test SQL reali aal2 con rollback superati: lead/clienti su due sedi, lettura 0/5 per linea, INSERT consentito/negato, divieti fido/clienti, showroom di sede e conteggi admin 5/store manager 3. Zero fixture residue, corpi applicati identici al file; impronte funzioni non coinvolte, policy non-showroom e tutti i trigger identiche. Documentazione aggiornata, suite 911 test verdi.
