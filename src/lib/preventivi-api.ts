@@ -591,6 +591,7 @@ export async function duplicaPreventivo(
         marca: r.marca,
         codice_articolo_fornitore: r.codice_articolo_fornitore,
         listino_fornitore: r.listino_fornitore,
+        leva_prezzo: r.leva_prezzo,
         sconti_gamma: r.sconti_gamma,
         maggiorazione_perc: r.maggiorazione_perc,
         segno: r.segno,
