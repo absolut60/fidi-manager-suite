@@ -7822,6 +7822,8 @@ export type Database = {
           lat: number | null
           listino_riferimento: number | null
           lng: number | null
+          logo_email_path: string | null
+          logo_pdf_path: string | null
           nome: string
           pec_sede: string | null
           piva: string | null
@@ -7845,6 +7847,8 @@ export type Database = {
           lat?: number | null
           listino_riferimento?: number | null
           lng?: number | null
+          logo_email_path?: string | null
+          logo_pdf_path?: string | null
           nome: string
           pec_sede?: string | null
           piva?: string | null
@@ -7868,6 +7872,8 @@ export type Database = {
           lat?: number | null
           listino_riferimento?: number | null
           lng?: number | null
+          logo_email_path?: string | null
+          logo_pdf_path?: string | null
           nome?: string
           pec_sede?: string | null
           piva?: string | null
