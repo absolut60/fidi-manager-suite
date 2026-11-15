@@ -74,3 +74,13 @@ export function parseCascata(testo: string): number[] | null {
   }
   return valori.length > MAX_SCONTI_GAMMA ? null : valori;
 }
+
+/**
+ * Testo nella notazione con segni ("-" sconto, "+" maggiorazione), inversa di parseCascata:
+ * [45, −5] → "-45+5"; [45, 5] → "-45-5"; [] → "". Decimali con virgola (it-IT).
+ */
+export function formatCascata(cascata: readonly (number | string | null)[] | null | undefined): string {
+  return (cascata ?? []).map(Number).filter((v) => Number.isFinite(v) && v !== 0)
+    .map((v) => `${v > 0 ? "-" : "+"}${Math.abs(v).toLocaleString("it-IT", { maximumFractionDigits: 4, useGrouping: false })}`)
+    .join("");
+}

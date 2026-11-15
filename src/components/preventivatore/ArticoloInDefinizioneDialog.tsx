@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatNumeroIt, parseNumeroIt } from "@/lib/numero-it";
-import { rigaInUnita } from "@/lib/riga-preventivo";
+import { costoRiga, importoRiga, marginePercRiga, prezzoNettoRiga, rigaInUnita } from "@/lib/riga-preventivo";
+import { applicaLeva, formatCascata, parseCascata, type LevaPrezzoShowroom } from "@/lib/leve-prezzo-showroom";
 import type { updateRiga } from "@/lib/preventivi-api";
 import type { ArticoloGammaScelto } from "@/components/preventivatore/ArticoloGammaPicker";
 import { X } from "lucide-react";
@@ -15,6 +16,7 @@ type Patch = Parameters<typeof updateRiga>[1];
 type RigaManuale = Parameters<typeof rigaInUnita>[0] & {
   descrizione?: string | null; fornitore_id?: string | null; marca?: string | null;
   codice_articolo_fornitore?: string | null; listino_fornitore?: number | null;
+  sconti_gamma?: number[] | null; ricarico?: number | null; leva_prezzo?: LevaPrezzoShowroom | null;
 };
 
 const fmt4 = (v: number | null | undefined) => (v == null ? "" : formatNumeroIt(v, { minDecimals: 2, maxDecimals: 4 }));
@@ -34,6 +36,11 @@ export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch, 
   const [um, setUm] = useState("");
   const [costo, setCosto] = useState("");
   const [listino, setListino] = useState("");
+  // F5b: leve prezzo, comanda l'ultima toccata.
+  const [leva, setLeva] = useState<LevaPrezzoShowroom | null>(null);
+  const [ricaricoTxt, setRicaricoTxt] = useState("");
+  const [cascataTxt, setCascataTxt] = useState("");
+  const [prezzoTxt, setPrezzoTxt] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -41,6 +48,9 @@ export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch, 
     setMarca(row.marca ?? ""); setCodice(row.codice_articolo_fornitore ?? "");
     setDescrizione(row.descrizione ?? ""); setUm(row.um ?? "");
     setCosto(fmt4(rigaInUnita(row, null).costo_unit)); setListino(fmt4(row.listino_fornitore));
+    setLeva(null); setRicaricoTxt(fmt4(row.ricarico));
+    setCascataTxt(row.leva_prezzo === "sconto_listino" ? formatCascata(row.sconti_gamma) : "");
+    setPrezzoTxt(row.prezzo_unit == null ? "" : fmt4(prezzoNettoRiga({ prezzo_unit: row.prezzo_unit, sconti_gamma: row.sconti_gamma })));
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const scelto = useQuery({
@@ -55,7 +65,7 @@ export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch, 
     queryKey: ["fornitori-ricerca-riga", termine], enabled: open && termine.length >= 2,
     queryFn: async () => {
       const t = termine.replace(/[%,()]/g, " ");
-      const { data, error } = await supabase.from("fornitori").select("id, ragione_sociale, alias")
+      const { data, error } = await supabase.from("fornitori").select("id, ragione_sociale, alias, sconti_base")
         .or(`ragione_sociale.ilike.%${t}%,alias.ilike.%${t}%`).order("ragione_sociale").limit(20);
       if (error) throw error; return data ?? [];
     },
@@ -91,7 +101,20 @@ export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch, 
   const costoNum = parseNumeroIt(costo);
   const listinoNum = parseNumeroIt(listino);
   const numeriValidi = (costo.trim() === "" || costoNum != null) && (listino.trim() === "" || listinoNum != null);
-  const valido = descrizione.trim() !== "" && numeriValidi;
+  const cascata = parseCascata(cascataTxt);
+  const patchLeva = leva === null ? null : applicaLeva({
+    leva, costoUnit: costo.trim() === "" ? null : costoNum, listinoFornitore: listino.trim() === "" ? null : listinoNum,
+    cascata, ricaricoPerc: parseNumeroIt(ricaricoTxt), prezzoManuale: parseNumeroIt(prezzoTxt),
+  });
+  const erroreLeva = leva === "sconto_listino" && cascata === null ? "Sconto non valido: scrivi ad esempio -45+5"
+    : leva !== null && patchLeva === null ? "Dati insufficienti per questa leva (costo, listino o prezzo mancanti)" : null;
+  const patchCosto = rigaInUnita(row, null, { costo_unit: costo.trim() === "" ? null : costoNum }).patchUm1;
+  const anteprima = { ...row, ...(patchLeva ?? {}), costo: numeriValidi ? patchCosto.costo ?? null : row.costo ?? null };
+  const importoAnteprima = importoRiga(anteprima);
+  const margineEuro = importoAnteprima - Number(anteprima.costo ?? 0);
+  const marginePerc = marginePercRiga(anteprima);
+  const valido = descrizione.trim() !== "" && numeriValidi && erroreLeva === null;
+  const tocca = (l: LevaPrezzoShowroom) => setLeva(l);
 
   const salva = () => {
     if (!valido) return;
@@ -99,7 +122,8 @@ export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch, 
       descrizione: descrizione.trim(), um: vuotoNull(um), marca: vuotoNull(marca),
       codice_articolo_fornitore: vuotoNull(codice), fornitore_id: fornitoreId,
       listino_fornitore: listino.trim() === "" ? null : listinoNum,
-      ...rigaInUnita(row, null, { costo_unit: costo.trim() === "" ? null : costoNum }).patchUm1,
+      ...patchCosto,
+      ...(patchLeva ?? {}),
     });
     onOpenChange(false);
   };
@@ -130,7 +154,7 @@ export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch, 
                       : (risultati.data ?? []).length === 0 ? <p className="p-2 text-sm text-muted-foreground">Nessun fornitore trovato</p>
                       : risultati.data!.map((f) => (
                         <button key={f.id} type="button" className="block min-h-10 w-full break-words px-3 py-2 text-left text-sm hover:bg-muted"
-                          onClick={() => { setFornitoreId(f.id); setCerca(""); }}>
+                          onClick={() => { setFornitoreId(f.id); setCerca(""); if (cascataTxt.trim() === "" && f.sconti_base?.length) setCascataTxt(formatCascata(f.sconti_base)); }}>
                           {f.ragione_sociale}{f.alias ? <span className="text-muted-foreground"> · {f.alias}</span> : null}
                         </button>
                       ))}
@@ -169,6 +193,30 @@ export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch, 
             <div className="grid gap-1.5"><Label htmlFor="aid-um">U.M.</Label><Input id="aid-um" value={um} onChange={(e) => setUm(e.target.value)} /></div>
             <div className="grid gap-1.5"><Label htmlFor="aid-costo">Costo (€)</Label><Input id="aid-costo" inputMode="decimal" value={costo} onChange={(e) => setCosto(e.target.value)} /></div>
             <div className="grid gap-1.5"><Label htmlFor="aid-list">Listino fornitore (€)</Label><Input id="aid-list" inputMode="decimal" value={listino} onChange={(e) => setListino(e.target.value)} /></div>
+          </div>
+          <div className="grid gap-2 rounded-md border p-3">
+            <p className="text-sm font-semibold">Prezzo di vendita</p>
+            <p className="text-xs text-muted-foreground">Comanda l'ultimo campo che modifichi.</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="grid gap-1.5"><Label htmlFor="aid-ric">Ricarico %</Label>
+                <Input id="aid-ric" inputMode="decimal" value={ricaricoTxt} className={leva === "ricarico" ? "ring-2 ring-primary" : undefined}
+                  onChange={(e) => { setRicaricoTxt(e.target.value); tocca("ricarico"); }} /></div>
+              <div className="grid gap-1.5"><Label htmlFor="aid-casc">Sconto dal listino</Label>
+                <Input id="aid-casc" placeholder="-45+5" value={cascataTxt} disabled={listino.trim() === "" || listinoNum == null}
+                  className={leva === "sconto_listino" ? "ring-2 ring-primary" : undefined}
+                  onChange={(e) => { setCascataTxt(e.target.value); tocca("sconto_listino"); }} /></div>
+              <div className="grid gap-1.5"><Label htmlFor="aid-prz">Prezzo (€)</Label>
+                <Input id="aid-prz" inputMode="decimal" value={prezzoTxt} className={leva === "prezzo_manuale" ? "ring-2 ring-primary" : undefined}
+                  onChange={(e) => { setPrezzoTxt(e.target.value); tocca("prezzo_manuale"); }} /></div>
+            </div>
+            {listino.trim() === "" && <p className="text-xs text-muted-foreground">Lo sconto dal listino si attiva indicando il listino fornitore.</p>}
+            {erroreLeva && <p className="text-xs text-destructive">{erroreLeva}</p>}
+            <div className="flex flex-wrap gap-2 text-sm">
+              <span className="rounded-full bg-muted px-2 py-0.5">Netto € {fmt4(prezzoNettoRiga(anteprima))}</span>
+              <span className={marginePerc < 0 ? "rounded-full bg-destructive/10 px-2 py-0.5 text-destructive" : "rounded-full bg-pv-verde-tenue px-2 py-0.5 text-pv-verde"}>
+                Margine € {formatNumeroIt(margineEuro, { minDecimals: 2, maxDecimals: 2 })} · {formatNumeroIt(marginePerc, { minDecimals: 1, maxDecimals: 1 })}%
+              </span>
+            </div>
           </div>
           {!numeriValidi && <p className="text-xs text-destructive">Costo e listino devono essere numeri (es. 12,5000)</p>}
         </div>
