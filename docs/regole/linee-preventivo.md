@@ -23,3 +23,10 @@
 - Sopra il perimetro resta identico il limite agente (`agente_vede_record`), da cui sono esenti amministratore e preventivi_manage. Direzione non è inclusa. `auth_consulta_preventivi` (gate di listini/catalogo/fornitori) non cambia.
 - Cambi voluti: lo store manager vede solo la propria sede; lo showroom solo propria sede e linee abilitate.
 - Test: `tests/sql/fm72-tappa3-visibilita.sql` (BEGIN/ROLLBACK, utente fixture).
+
+### Tappa ③b — campi protetti, gestione utenti e creazione
+
+- `linee_abilitate` e `linea_predefinita` sono campi protetti come sede, codice agente e stato attivo: il trigger `profili_blocca_campi_protetti` rifiuta la modifica a chi non è amministratore (anche sulla propria riga). Test: `tests/sql/fm72-tappa3-campi-protetti.sql`.
+- Gestione utenti: sezione "Linee preventivatore" nella modifica utente (quattro linee dal catalogo, quelle non attive con "— non ancora attiva"), almeno una obbligatoria, predefinita limitata alle abilitate e riallineata con `riallineaPredefinitaProfilo`. Salvataggio via `updateUtenteRuoli` (solo amministratore).
+- Creazione: `NuovoPreventivoDialog` legge la propria riga di profili (`useLineeUtente`) e usa `selettoreLineaCreazione` (`lineeUtente` = abilitate ∩ attive; `lineaPredefinitaEffettiva`). Più linee → selettore; una → nessun selettore; nessuna → "Crea" disabilitato con messaggio.
+- Regola: la creazione da dialog passa SEMPRE la linea dell'utente a `createPreventivo(row, { linea })`; duplicazioni e alternative passano la linea dell'origine; una `linea` dentro `row` è sempre ignorata.
