@@ -1,7 +1,7 @@
 # Rifinitura PDF e Testata preventivo
-- [ ] Intestazione PDF: agente opzionale e filiale rimossa, raster prima/dopo.
-- [ ] Testata bilanciata, badge condizioni, ingresso cantiere unico con opzioni compatibili.
-- [ ] Suite completa, screenshot 1920/1280/375 e SHA corrente.
+- [x] Intestazione PDF: agente opzionale e filiale rimossa; PRV-163/26 raster identico fuori area Filiale (0 pixel diversi).
+- [x] Testata bilanciata, badge nelle condizioni, ingresso unico; cantieri lead non offerti perché get_cantiere_preventivo richiede cliente_id non NULL; nessuna migrazione.
+- [x] 993 test verdi, screenshot Playwright 1920/1280/375 con dati simulati e zero errori/overflow; sessione personale non disponibile, nessun salvataggio reale.
 
 # FM76 — Branding per sede, fetta 3
 - [x] Collegati i quattro PDF a stores tramite preventivi.store_id, senza riserva cliente; fonte unica branding-pdf, download utente privato e piede con campi presenti. Sede senza logo/contatti conserva il piede precedente.
