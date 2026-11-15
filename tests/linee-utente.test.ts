@@ -4,18 +4,18 @@ import { LINEE_PREVENTIVO, lineaPredefinitaEffettiva, lineeUtente, riallineaPred
 
 describe('linee utente (FM72 tappa 3b)', () => {
   test('lineeUtente: intersezione abilitate ∩ attive, ordine del catalogo', () => {
-    expect(lineeUtente(['showroom', 'sistema_made']).map(l => l.codice)).toEqual(['sistema_made']);
-    expect(lineeUtente(['showroom'])).toEqual([]);
+    expect(lineeUtente(['edilizia', 'showroom', 'sistema_made']).map(l => l.codice)).toEqual(['sistema_made', 'showroom']);
+    expect(lineeUtente(['edilizia'])).toEqual([]);
     expect(lineeUtente(null)).toEqual([]);
   });
   test('lineaPredefinitaEffettiva: predefinita se usabile, altrimenti la prima, altrimenti null', () => {
     expect(lineaPredefinitaEffettiva(['sistema_made'], 'sistema_made')).toBe('sistema_made');
-    expect(lineaPredefinitaEffettiva(['sistema_made', 'showroom'], 'showroom')).toBe('sistema_made');
-    expect(lineaPredefinitaEffettiva(['showroom'], 'showroom')).toBeNull();
+    expect(lineaPredefinitaEffettiva(['sistema_made', 'edilizia'], 'edilizia')).toBe('sistema_made');
+    expect(lineaPredefinitaEffettiva(['edilizia'], 'edilizia')).toBeNull();
   });
   test('selettore: nascosto con una linea, bloccato senza linee', () => {
     expect(selettoreLineaCreazione(['sistema_made'], 'sistema_made')).toMatchObject({ mostra: false, iniziale: 'sistema_made', bloccaCreazione: false });
-    expect(selettoreLineaCreazione(['showroom'], 'showroom')).toMatchObject({ mostra: false, iniziale: null, bloccaCreazione: true });
+    expect(selettoreLineaCreazione(['edilizia'], 'edilizia')).toMatchObject({ mostra: false, iniziale: null, bloccaCreazione: true });
   });
   test('selettore: visibile con più linee attive e predefinita preselezionata', () => {
     const orig = LINEE_PREVENTIVO.showroom.attiva;

@@ -4,10 +4,10 @@ import { join } from 'node:path';
 import ts from 'typescript';
 import { LINEE_PREVENTIVO, lineaPreventivo, lineeAttive, mostraFiltroLinee } from '../src/lib/linee-preventivo';
 
-test('FM72 catalogo: quattro linee, solo Sistema MADE attiva', () => {
+test('F7 catalogo: quattro linee, attive Sistema MADE e Showroom', () => {
   expect(Object.keys(LINEE_PREVENTIVO)).toEqual(['sistema_made', 'showroom', 'edilizia', 'fotovoltaico']);
-  expect(lineeAttive().map(l => l.codice)).toEqual(['sistema_made']);
-  expect(mostraFiltroLinee).toBe(false);
+  expect(lineeAttive().map(l => l.codice)).toEqual(['sistema_made', 'showroom']);
+  expect(mostraFiltroLinee).toBe(true);
 });
 test('FM72 fallback sicuro anche per proprietà del prototipo e valori mancanti', () => {
   for (const valore of ['ignota', '__proto__', 'constructor', null, undefined]) expect(lineaPreventivo(valore)).toBe(LINEE_PREVENTIVO.sistema_made);

@@ -643,8 +643,8 @@ function useCelleRiga(p: RigaProps) {
         onCommit={(v) => salvaInUnita({ costo_unit: v })} />
     ),
     margine: `${calc.margine_perc.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`,
-    /** FM75 F5b: margine € di riga (importo − costo), solo linee con articoloInDefinizione. */
-    margineEuro: p.articoloInDefinizione ? `€ ${fmt2(calc.importo - calc.costo)}` : null,
+    /** FM75 F5b + F6: margine € di riga (importo − costo), su tutte le linee. */
+    margineEuro: `€ ${fmt2(calc.importo - calc.costo)}`,
     peso: row.articolo_codice && row.peso_gamma_unit == null ? "—" : fmt2(calc.peso),
     onRowClick: readOnly && vecchioCatalogo ? () => row.articolo_id && onOpenArticolo(row.articolo_id) : undefined,
   };
