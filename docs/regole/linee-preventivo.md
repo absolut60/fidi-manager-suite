@@ -68,3 +68,9 @@ Ogni linea nel catalogo (`src/lib/linee-preventivo.ts`, campo `blocchi`) dichiar
 - Eccezione SQL ammessa (F4a): `trasforma_preventivo_in_ordine` confronta `linea = 'showroom'` perché il catalogo TS non arriva al database. Showroom: l'ordine conserva la descrizione salvata sulla riga (varianti); altre linee: descrizione ripristinata da Gamma per le righe con articolo. Ogni nuova eccezione va documentata qui.
 - Righe "articolo in definizione" (F4a, solo dato): `fornitore_id`, `marca`, `codice_articolo_fornitore` (aggancio ad `articoli_gamma_fornitori`), `listino_fornitore` (listino del fornitore, non Gamma); copiati in duplicazione/alternativa e nell'ordine.
 - Prezzi, `fonte_prezzo` e stampa (PDF, fetta F6) invariati.
+
+## Stampa per linea (F6 fetta 1)
+
+`LINEE_PREVENTIVO[linea].stampa` = `{ payoff, banda, testataBlocchi }` è l'unica fonte dei parametri di stampa: `pdf-export.ts` non confronta mai il codice linea. Sistema MADE, Edilizia e Fotovoltaico: payoff, banda "IL NUOVO MODO DI COSTRUIRE" e testata di blocco completa (PDF invariati, verificati pixel per pixel). Showroom: solo logo in testata, nessuna banda, blocchi con il solo titolo (e i subtotali di riga).
+
+Totali dei PDF: sempre `calcolaTotaliPreventivo(..., regime_iva)` e `riepilogoIvaDocumento` (righe da `righeIvaDaBlocchi`, base unica di `totaliDocumento`/`riepilogoIva`). Nel PDF ufficiale, con regime diverso da `ordinaria` (qualunque linea) il piede mostra imponibile/IVA per aliquota e, nel regime BS, totale intervento, beni significativi e quota al 22%; in `ordinaria` il piede è quello storico.
