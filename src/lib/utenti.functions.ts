@@ -13,6 +13,8 @@ const passwordConforme = z.string().max(100).superRefine((p, ctx) => {
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { Constants, type Database } from "@/integrations/supabase/types";
+import { LINEE_PREVENTIVO, type LineaPreventivo } from "@/lib/linee-preventivo";
+const CODICI_LINEE = Object.keys(LINEE_PREVENTIVO) as [LineaPreventivo, ...LineaPreventivo[]];
 
 type AppRole = Database["public"]["Enums"]["app_role"];
 
@@ -364,10 +366,14 @@ export const updateUtenteRuoli = createServerFn({ method: "POST" })
     attivo: boolean;
     nome?: string;
     cognome?: string;
+    lineeAbilitate?: string[];
+    lineaPredefinita?: string;
   }) =>
     z.object({
       userId: z.string().uuid(),
       ruoli: z.array(z.enum(RUOLI_VALIDI)).min(1).max(RUOLI_VALIDI.length),
+      lineeAbilitate: z.array(z.enum(CODICI_LINEE)).min(1, "Abilita almeno una linea del preventivatore").max(CODICI_LINEE.length).optional(),
+      lineaPredefinita: z.enum(CODICI_LINEE).optional(),
       storeId: z.string().uuid().nullable().optional(),
       codiceAgente: z.string().max(50).nullable().optional(),
       attivo: z.boolean(),
@@ -391,7 +397,12 @@ export const updateUtenteRuoli = createServerFn({ method: "POST" })
       await assertAgenteEsiste(data.codiceAgente);
     }
 
+    if (data.lineeAbilitate && (!data.lineaPredefinita || !data.lineeAbilitate.includes(data.lineaPredefinita))) {
+      throw new Error("La linea predefinita deve essere tra le linee abilitate");
+    }
     const profileUpdate: {
+      linee_abilitate?: LineaPreventivo[];
+      linea_predefinita?: LineaPreventivo;
       store_id: string | null;
       codice_agente: string | null;
       attivo: boolean;
@@ -404,6 +415,10 @@ export const updateUtenteRuoli = createServerFn({ method: "POST" })
     };
     if (data.nome !== undefined) profileUpdate.nome = data.nome;
     if (data.cognome !== undefined) profileUpdate.cognome = data.cognome;
+    if (data.lineeAbilitate && data.lineaPredefinita) {
+      profileUpdate.linee_abilitate = [...new Set(data.lineeAbilitate)];
+      profileUpdate.linea_predefinita = data.lineaPredefinita;
+    }
 
     const { error: eProf } = await supabaseAdmin
       .from("profili")
