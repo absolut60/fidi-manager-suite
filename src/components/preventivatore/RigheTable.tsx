@@ -312,7 +312,7 @@ export function RigheTable({
             <tbody>
               {blocco.righe.length === 0 ? (
                 <tr>
-                  <td colSpan={18} className="py-6 text-center text-muted-foreground">
+                  <td colSpan={conMisure ? 18 : 17} className="py-6 text-center text-muted-foreground">
                     Nessuna riga. Aggiungi la prima.
                   </td>
                 </tr>
@@ -323,7 +323,7 @@ export function RigheTable({
           </SortableContext>
           <tfoot>
             <tr className="border-t bg-muted/30 text-xs">
-              <td colSpan={13} className="sticky left-0 px-2 py-2">
+              <td colSpan={conMisure ? 13 : 12} className="sticky left-0 px-2 py-2">
                 <AddRowMenu readOnly={readOnly} onAddArticolo={addArticoloEmptyAndOpen} onPick={(tipo) => addRow(null, tipo)} />
               </td>
               <td className="px-1 py-2 text-right font-mono font-semibold">€ {fmt2(calcs.totale)}</td>
