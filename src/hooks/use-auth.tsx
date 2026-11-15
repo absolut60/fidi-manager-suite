@@ -206,6 +206,7 @@ export const RUOLI_LABEL: Record<AppRole, string> = {
   marketing_eventi: "Marketing Eventi",
   recupero_crediti: "Recupero crediti",
   showroom: "Showroom",
+  responsabile_showroom: "Responsabile showroom",
 };
 
 /** Descrizioni brevi opzionali, mostrate sotto l'etichetta nella scelta ruoli. */

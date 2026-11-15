@@ -1,6 +1,6 @@
 # FM72 — Responsabile showroom, tappa ④a (solo database)
-- [ ] Enum in migrazione separata, helper sede e soli gate/policy showroom richiesti.
-- [ ] Test SQL reali transazionali con aal2, non regressione e impronte oggetti intoccati; documentazione e suite.
+- [x] Applicate 0230 enum e 0231 perimetro; registro 232 voci contigue. Helper showroom_sede_ok anche sulla restrittiva INSERT lead. Firme invariate, nessuna assegnazione del ruolo. Unica modifica app: etichetta nel Record esaustivo RUOLI_LABEL, necessaria dopo rigenerazione enum per evitare TS2741; nessuna schermata o gate TS modificato.
+- [x] Test SQL reali aal2 con rollback superati: lead/clienti su due sedi, lettura 0/5 per linea, INSERT consentito/negato, divieti fido/clienti, showroom di sede e conteggi admin 5/store manager 3. Zero fixture residue, corpi applicati identici al file; impronte funzioni non coinvolte, policy non-showroom e tutti i trigger identiche. Documentazione aggiornata, suite 911 test verdi.
 
 # FM72 — Linea del preventivo, fetta ②
 - [x] Applicata 0227_fm72_linea_preventivo.sql: enum, colonna NOT NULL/default e indice; registro coerente 228 voci 0000–0227. SQL reale BEGIN/ROLLBACK verifica enum/colonna/default/indice e INSERT con numero esplicito per isolare il gate del contatore (INSERT senza numero negato dalla sessione tecnica); cinque documenti Sistema MADE, zero fixture residue, trigger identici. Nessuna policy/gate/prezzo modificati.
