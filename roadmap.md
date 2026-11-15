@@ -1,3 +1,7 @@
+# FM72 — Tab Preventivi nelle schede soggetto, fetta 1
+- [ ] Componente condiviso con letture RLS cliente/lead e provenienza separata; creazione preselezionata, tab dopo Commerciale e documentazione.
+- [ ] Test query, suite completa e verifica browser 375/1280; nessuna migrazione o modifica prezzi/permessi.
+
 # FM71 — Numero non modificabile, fetta 3d
 - [x] Migrazione 0225, registro 226: trigger con contatori esistenti per preventivi e ordini, blocco UPDATE salvo service_role; nessun backfill o cambio RLS. Numeri espliciti conservati per compatibilità con conversione e app precedente; vincolo UNIQUE invariato.
 - [x] Creazione/duplicazione senza numero, Testata in sola lettura, conversione ordine server invariata.
