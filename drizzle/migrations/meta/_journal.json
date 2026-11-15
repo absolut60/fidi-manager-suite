@@ -1646,6 +1646,13 @@
       "when": 1794770425769,
       "tag": "0234_fm75_calcola_riepilogo_iva",
       "breakpoints": true
+    },
+    {
+      "idx": 235,
+      "version": "7",
+      "when": 1794771165060,
+      "tag": "0235_fm75_ordine_totali_regime_iva",
+      "breakpoints": true
     }
   ]
 }

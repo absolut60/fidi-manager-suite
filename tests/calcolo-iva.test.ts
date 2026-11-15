@@ -62,3 +62,24 @@ test('avvisi morbidi dei regimi agevolati', () => {
   expect(regimeIvaValido(null)).toBe('ordinaria');
   expect(regimeIvaValido('agevolata_10_bs')).toBe('agevolata_10_bs');
 });
+
+import { totaliDocumento } from '../src/lib/calcolo-iva';
+test('F3d: ordinaria senza override = vecchio conto imponibile × iva_perc', () => {
+  const r2 = (x: number) => Math.round(x * 100) / 100;
+  const casi: [number[], number][] = [
+    [[123.45, 67.89, 0.05], 22], [[0.01, 0.02, 0.03], 22], [[1999.99, 0.11, 333.33], 10],
+    [[100.1, 200.2, -50.05], 22], [[12.34], 4], [[45.67, 89.01], 0], [[0.1, 0.2], 22],
+  ];
+  for (let s = 1; s <= 200; s++) casi.push([[s * 1.37 + 0.01, s * 0.07, (s % 7) * 3.33], 22]);
+  for (const [importi, iva] of casi) {
+    const tot = r2(importi.reduce((a, b) => a + b, 0));
+    const t = totaliDocumento({ regime: 'ordinaria', ivaTestataPerc: iva, righe: importi.map(importo => ({ importo })) });
+    expect(t.totale_imponibile).toBe(tot);
+    expect(t.iva_importo).toBe(r2(tot * iva / 100));
+    expect(t.totale).toBe(r2(tot * (1 + iva / 100)));
+  }
+});
+test('F3d: esempio beni significativi, totale salvato 8.848', () => {
+  const t = totaliDocumento({ regime: 'agevolata_10_bs', ivaTestataPerc: 22, righe: esempio });
+  expect(t).toEqual({ totale_imponibile: 8000, iva_importo: 848, totale: 8848 });
+});

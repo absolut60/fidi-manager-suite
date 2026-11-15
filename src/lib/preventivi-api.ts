@@ -1,3 +1,4 @@
+import { totaliDocumento, type RigaIva } from "./calcolo-iva";
 import { fetchPrezziPreventivo, fetchPrezzoPreventivoArticolo, condizioniPrezziCliente, type CondizioniPrezziPreventivo } from "./prezzi-preventivo";
 import { eliminaConEsito } from "./esito-eliminazione";
 import { getCantiereListini, type CantiereListinoRow } from "./cantiere-listini-api";
@@ -752,32 +753,33 @@ export async function applicaAggiornaListini(preventivo_id: string, scelte: Diff
     if (error) throw error;
     aggiornate++;
   }
-  await ricalcolaTotaliPreventivo(preventivo_id, n(prev.iva_perc));
+  await ricalcolaTotaliPreventivo(preventivo_id, prev);
   return { aggiornate };
 }
 
-async function ricalcolaTotaliPreventivo(preventivo_id: string, iva: number): Promise<void> {
+/** FM75 F3d: dati fiscali di testata usati da totaliDocumento. */
+export interface FiscaleDocumento { iva_perc: number | null | undefined; regime_iva: string | null | undefined }
+
+async function ricalcolaTotaliPreventivo(preventivo_id: string, fiscale: FiscaleDocumento): Promise<void> {
   const { data: blocchi, error: bErr } = await supabase
     .from("blocchi_preventivo")
     .select("id, quantita_base, righe:righe_preventivo(*)")
     .eq("preventivo_id", preventivo_id);
   if (bErr) throw bErr;
-  let tot = 0;
+  const righeIva: RigaIva[] = [];
   for (const bl of ((blocchi ?? []) as unknown as { id: string; quantita_base: number | null; righe: Riga[] }[])) {
     let totale = 0;
     for (const r of bl.righe ?? []) {
       if (!isRigaValorizzata(r)) continue;
       totale += n(r.importo);
+      righeIva.push({ importo: n(r.importo), bene_significativo: r.bene_significativo, aliquota_iva: r.aliquota_iva });
     }
-    tot += round2(totale);
     const { error } = await supabase.from("blocchi_preventivo").update({ importo: round2(totale), prezzo_um: n(bl.quantita_base) > 0 ? round2(totale / n(bl.quantita_base)) : null }).eq("id", bl.id);
     if (error) throw error;
   }
-  const { error: totaleErrore } = await supabase.from("preventivi").update({
-    totale_imponibile: round2(tot),
-    iva_importo: round2(tot * iva / 100),
-    totale: round2(tot * (1 + iva / 100)),
-  }).eq("id", preventivo_id);
+  const { error: totaleErrore } = await supabase.from("preventivi")
+    .update(totaliDocumento({ regime: fiscale.regime_iva, ivaTestataPerc: n(fiscale.iva_perc), righe: righeIva }))
+    .eq("id", preventivo_id);
   if (totaleErrore) throw totaleErrore;
 }
 
@@ -875,10 +877,10 @@ export async function updateRiga(id: string, patch: RigaUpdate): Promise<Riga> {
     .update(calcolata).eq("id", id).select().single();
   if (error) throw error;
   if (corrente.blocco?.preventivo_id) {
-    const { data: prev, error: prevErrore } = await supabase.from("preventivi").select("iva_perc")
+    const { data: prev, error: prevErrore } = await supabase.from("preventivi").select("iva_perc, regime_iva")
       .eq("id", corrente.blocco.preventivo_id).single();
     if (prevErrore) throw prevErrore;
-    await ricalcolaTotaliPreventivo(corrente.blocco.preventivo_id, n(prev.iva_perc));
+    await ricalcolaTotaliPreventivo(corrente.blocco.preventivo_id, prev);
   }
   return data;
 }
@@ -888,10 +890,10 @@ export async function updateRiga(id: string, patch: RigaUpdate): Promise<Riga> {
  * (patchConImporto sulla riga in cache, che contiene già i dati Gamma della riga).
  * Nessuna rilettura della riga né dei dati Gamma; poi totali di blocco e preventivo.
  */
-export async function salvaPatchRigaCalcolata(id: string, calcolata: RigaUpdate, preventivo_id: string, iva: number): Promise<void> {
+export async function salvaPatchRigaCalcolata(id: string, calcolata: RigaUpdate, preventivo_id: string, fiscale: FiscaleDocumento): Promise<void> {
   const { error } = await supabase.from("righe_preventivo").update(calcolata).eq("id", id);
   if (error) throw error;
-  await ricalcolaTotaliPreventivo(preventivo_id, iva);
+  await ricalcolaTotaliPreventivo(preventivo_id, fiscale);
 }
 
 export async function deleteRiga(id: string) {
@@ -939,9 +941,9 @@ export async function ricalcolaBloccoSuNuovaQuantita(
   const { error } = await supabase.from("blocchi_preventivo").update(patch).eq("id", blocco_id);
   if (error) throw error;
   const { data: blocco, error: bloccoErrore } = await supabase.from("blocchi_preventivo")
-    .select("preventivo_id, preventivo:preventivi(iva_perc)").eq("id", blocco_id).single();
+    .select("preventivo_id, preventivo:preventivi(iva_perc, regime_iva)").eq("id", blocco_id).single();
   if (bloccoErrore) throw bloccoErrore;
-  await ricalcolaTotaliPreventivo(blocco.preventivo_id, n(blocco.preventivo?.iva_perc));
+  await ricalcolaTotaliPreventivo(blocco.preventivo_id, { iva_perc: blocco.preventivo?.iva_perc, regime_iva: blocco.preventivo?.regime_iva });
 }
 
 export async function reorderRighe(updates: { id: string; ordine: number }[]) {
@@ -1049,30 +1051,39 @@ export function calcolaTotaliPreventivo(
   blocchi: { righe: Riga[]; quantita_base?: number | null; prezzo_um?: number | null; importo?: number | null }[],
   iva_perc = 22,
   sconto_piede_perc = 0,
+  regime_iva: unknown = 'ordinaria',
 ): TotaliPreventivo {
-  let imponibileLordo = 0;
+  // FM75 F3d: IVA e totale solo da totaliDocumento (calcolo-iva.ts), righe per regime.
+  const righeIva: RigaIva[] = [];
   for (const b of blocchi) {
     if (b.righe?.length) {
-      imponibileLordo += calcolaBlocco(b.righe).totale;
+      const calc = new Map(calcolaBlocco(b.righe).righe.map(x => [x.id, x.calc]));
+      for (const r of b.righe) {
+        if (!isRigaValorizzata(r)) continue;
+        righeIva.push({ importo: calc.get(r.id)?.importo ?? 0, bene_significativo: r.bene_significativo, aliquota_iva: r.aliquota_iva });
+      }
     } else if (b.importo != null) {
-      imponibileLordo += n(b.importo);
+      righeIva.push({ importo: round2(n(b.importo)) });
     } else if (b.quantita_base != null && b.prezzo_um != null) {
-      imponibileLordo += n(b.quantita_base) * n(b.prezzo_um);
+      righeIva.push({ importo: round2(n(b.quantita_base) * n(b.prezzo_um)) });
     }
   }
-  imponibileLordo = round2(imponibileLordo);
+  const lordo = totaliDocumento({ regime: regime_iva, ivaTestataPerc: n(iva_perc), righe: righeIva });
+  const imponibileLordo = lordo.totale_imponibile;
   const scontoPerc = Math.max(0, n(sconto_piede_perc));
   const importoSconto = round2((imponibileLordo * scontoPerc) / 100);
-  const imponibileNetto = round2(imponibileLordo - importoSconto);
-  const iva = round2((imponibileNetto * n(iva_perc)) / 100);
+  // Sconto a piede (non usato dai chiamanti: è già nelle righe) ripartito in proporzione su ogni riga.
+  const netto = scontoPerc > 0
+    ? totaliDocumento({ regime: regime_iva, ivaTestataPerc: n(iva_perc), righe: righeIva.map(r => ({ ...r, importo: round2(n(r.importo) * (1 - scontoPerc / 100)) })) })
+    : lordo;
   return {
-    imponibile: imponibileNetto,
+    imponibile: netto.totale_imponibile,
     imponibile_lordo: imponibileLordo,
     sconto_perc: scontoPerc,
     importo_sconto: importoSconto,
-    imponibile_netto: imponibileNetto,
-    iva,
-    totale: round2(imponibileNetto + iva),
+    imponibile_netto: netto.totale_imponibile,
+    iva: netto.iva_importo,
+    totale: netto.totale,
   };
 }
 

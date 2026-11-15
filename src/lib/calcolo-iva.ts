@@ -86,3 +86,16 @@ export function avvisiRegimeIva(regime: RegimeIva, righe: { bene_significativo?:
   if (regime !== 'ordinaria' && !righe.some(r => r.posa)) avvisi.push('Regime agevolato senza riga di posa: verifica la coerenza');
   return avvisi;
 }
+
+export interface TotaliDocumento { totale_imponibile: number; iva_importo: number; totale: number }
+
+/**
+ * FM75 F3d: unica funzione che produce i totali persistiti del documento
+ * (preventivi.totale_imponibile / iva_importo / totale). Gemello SQL: calcola_riepilogo_iva
+ * usato da trasforma_preventivo_in_ordine. In 'ordinaria' senza override equivale al vecchio
+ * conto imponibile × iva_perc (un solo gruppo).
+ */
+export function totaliDocumento(input: { regime: unknown; ivaTestataPerc?: number | null; righe: RigaIva[] }): TotaliDocumento {
+  const r = riepilogoIva({ regime: regimeIvaValido(input.regime), ivaTestataPerc: input.ivaTestataPerc, righe: input.righe });
+  return { totale_imponibile: r.imponibileTotale, iva_importo: r.ivaTotale, totale: r.totale };
+}
