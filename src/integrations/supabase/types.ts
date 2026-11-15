@@ -7030,6 +7030,7 @@ export type Database = {
           sconti_gamma: number[]
           sconto_perc: number | null
           segno: number
+          stampabile: boolean
           tipo_riga: Database["public"]["Enums"]["tipo_riga_preventivo"]
           um: string | null
           um_scelta: string
@@ -7059,6 +7060,7 @@ export type Database = {
           sconti_gamma?: number[]
           sconto_perc?: number | null
           segno?: number
+          stampabile?: boolean
           tipo_riga?: Database["public"]["Enums"]["tipo_riga_preventivo"]
           um?: string | null
           um_scelta?: string
@@ -7088,6 +7090,7 @@ export type Database = {
           sconti_gamma?: number[]
           sconto_perc?: number | null
           segno?: number
+          stampabile?: boolean
           tipo_riga?: Database["public"]["Enums"]["tipo_riga_preventivo"]
           um?: string | null
           um_scelta?: string
