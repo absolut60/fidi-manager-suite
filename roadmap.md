@@ -1,3 +1,8 @@
+# FM76 — Branding per sede, fetta 1
+- [ ] Colonne e policy storage amministratore; bucket pubblico (bloccato dalla policy workspace).
+- [ ] Fonte unica branding e gestione contatti/loghi nelle impostazioni, senza cambiare le email.
+- [ ] Test e verifica schermi 375/1280; accesso reale non disponibile (--self senza account corrispondente).
+
 # FM72 — Responsabile showroom, tappa ④b (solo frontend)
 - [x] Allineati gemelli showroom/preventivi; blocco codice agente e vincolo agente derivati dal gate di scrittura condiviso, inclusi ruoli misti. Nessuna migrazione o modifica SQL/prezzi; sede obbligatoria e menu invariati. Documentazione aggiornata e regola tecnica nella AGENTS di area (root oltre budget).
 - [x] 30 test mirati e suite completa 920 test verdi con il runner Bun già usato dal progetto (nessuna dipendenza Vitest aggiunta). Browser con dati simulati: preventivi_write senza codice bloccato, responsabile solo e con preventivi_write non bloccati; screenshot 375/1280 controllati, nessun overflow pagina a 320/375/390/768/1280/1920 né errori browser. Pagina temporanea rimossa; nessun salvataggio reale effettuato.
