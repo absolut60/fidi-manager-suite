@@ -50,14 +50,15 @@ Ogni linea nel catalogo (`src/lib/linee-preventivo.ts`, campo `blocchi`) dichiar
 
 | Linea | bloccoConMisure | bloccoDaKit | righeStampabili | regimiIva |
 |---|---|---|---|---|
-| Sistema MADE | sì | sì | no |
-| Showroom | no | no | sì |
-| Edilizia | sì | sì | no |
-| Fotovoltaico | sì | sì | no |
+| Sistema MADE | sì | sì | no | no |
+| Showroom | no | no | sì | sì |
+| Edilizia | sì | sì | no | no |
+| Fotovoltaico | sì | sì | no | no |
 
 - `bloccoConMisure = false`: testata del blocco "spoglia" (trascinamento, "Blocco N", Descrizione, Importo, cestino); niente Rif., Quantità, U.M., Prezzo/U.M., ricalcolo su quantità; nelle righe niente colonna/campo Incidenza né avviso sulla quantità del blocco.
 - `bloccoDaKit = false`: "Aggiungi blocco" crea solo un blocco vuoto con titolo, senza tab Kit e senza quantità base.
 - Edilizia e Fotovoltaico conservano il comportamento attuale; si decide alla loro attivazione.
 - La linea arriva per prop dalla pagina del preventivo (nessuna lettura extra); ogni uso passa da `lineaPreventivo(...)`, mai confronti diretti con i codici (guardia AST nei test).
 - `righeStampabili = true` (F2c): occhio Stampabile Sì/No nelle azioni di ogni riga valorizzata (non sulla riga raccoglitore PEF), riga attenuata se nascosta, pulsante "Vista commerciale" (anteprima da `vistaCommerciale`, v. `vista-commerciale.md`).
+- `regimiIva = true` (F3c): selettore "Regime IVA" in Testata (22% ordinaria, 10% agevolata, 10% + beni significativi); solo nel regime con beni significativi, toggle "BS" nelle azioni delle righe valorizzate e badge BS accanto alla descrizione; nel Piede e nella Vista commerciale riepilogo per aliquota da `riepilogoIva` con avvisi morbidi (`avvisiRegimeIva`). I totali salvati restano su `iva_perc` fino a F3d (v. `calcolo-iva.md`).
 - Prezzi, `fonte_prezzo` e stampa (PDF, fetta F6) invariati.
