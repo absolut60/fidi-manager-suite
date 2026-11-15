@@ -11,7 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
-import { Route as Fm72AssegnazioneVerificaRouteImport } from './routes/fm72-assegnazione-verifica'
 import { Route as IscrizioneWhatsappRouteImport } from './routes/iscrizione-whatsapp'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as VerificaCodiceRouteImport } from './routes/verifica-codice'
@@ -113,12 +112,6 @@ const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const Fm72AssegnazioneVerificaRoute =
-  Fm72AssegnazioneVerificaRouteImport.update({
-    id: '/fm72-assegnazione-verifica',
-    path: '/fm72-assegnazione-verifica',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const IscrizioneWhatsappRoute = IscrizioneWhatsappRouteImport.update({
   id: '/iscrizione-whatsapp',
   path: '/iscrizione-whatsapp',
@@ -596,7 +589,6 @@ const ApiWebhooksD360TokenRoute = ApiWebhooksD360TokenRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/fm72-assegnazione-verifica': typeof Fm72AssegnazioneVerificaRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
   '/verifica-codice': typeof VerificaCodiceRoute
@@ -691,7 +683,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/fm72-assegnazione-verifica': typeof Fm72AssegnazioneVerificaRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
   '/verifica-codice': typeof VerificaCodiceRoute
@@ -785,7 +776,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
-  '/fm72-assegnazione-verifica': typeof Fm72AssegnazioneVerificaRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
   '/verifica-codice': typeof VerificaCodiceRoute
@@ -882,7 +872,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/fm72-assegnazione-verifica'
     | '/iscrizione-whatsapp'
     | '/login'
     | '/verifica-codice'
@@ -977,7 +966,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/fm72-assegnazione-verifica'
     | '/iscrizione-whatsapp'
     | '/login'
     | '/verifica-codice'
@@ -1070,7 +1058,6 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_app'
-    | '/fm72-assegnazione-verifica'
     | '/iscrizione-whatsapp'
     | '/login'
     | '/verifica-codice'
@@ -1167,7 +1154,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
-  Fm72AssegnazioneVerificaRoute: typeof Fm72AssegnazioneVerificaRoute
   IscrizioneWhatsappRoute: typeof IscrizioneWhatsappRoute
   LoginRoute: typeof LoginRoute
   VerificaCodiceRoute: typeof VerificaCodiceRoute
@@ -1198,13 +1184,6 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AppRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/fm72-assegnazione-verifica': {
-      id: '/fm72-assegnazione-verifica'
-      path: '/fm72-assegnazione-verifica'
-      fullPath: '/fm72-assegnazione-verifica'
-      preLoaderRoute: typeof Fm72AssegnazioneVerificaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/iscrizione-whatsapp': {
@@ -2060,7 +2039,6 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
-  Fm72AssegnazioneVerificaRoute: Fm72AssegnazioneVerificaRoute,
   IscrizioneWhatsappRoute: IscrizioneWhatsappRoute,
   LoginRoute: LoginRoute,
   VerificaCodiceRoute: VerificaCodiceRoute,
