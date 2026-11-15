@@ -1611,6 +1611,13 @@
       "when": 1794736438215,
       "tag": "0229_fm72_tappa3_linee_campi_protetti",
       "breakpoints": true
+    },
+    {
+      "idx": 230,
+      "version": "7",
+      "when": 1794737736975,
+      "tag": "0230_fm72_responsabile_showroom_enum",
+      "breakpoints": true
     }
   ]
 }
