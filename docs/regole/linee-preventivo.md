@@ -48,15 +48,16 @@
 
 Ogni linea nel catalogo (`src/lib/linee-preventivo.ts`, campo `blocchi`) dichiara:
 
-| Linea | bloccoConMisure | bloccoDaKit |
-|---|---|---|
-| Sistema MADE | sì | sì |
-| Showroom | no | no |
-| Edilizia | sì | sì |
-| Fotovoltaico | sì | sì |
+| Linea | bloccoConMisure | bloccoDaKit | righeStampabili |
+|---|---|---|---|
+| Sistema MADE | sì | sì | no |
+| Showroom | no | no | sì |
+| Edilizia | sì | sì | no |
+| Fotovoltaico | sì | sì | no |
 
 - `bloccoConMisure = false`: testata del blocco "spoglia" (trascinamento, "Blocco N", Descrizione, Importo, cestino); niente Rif., Quantità, U.M., Prezzo/U.M., ricalcolo su quantità; nelle righe niente colonna/campo Incidenza né avviso sulla quantità del blocco.
 - `bloccoDaKit = false`: "Aggiungi blocco" crea solo un blocco vuoto con titolo, senza tab Kit e senza quantità base.
 - Edilizia e Fotovoltaico conservano il comportamento attuale; si decide alla loro attivazione.
 - La linea arriva per prop dalla pagina del preventivo (nessuna lettura extra); ogni uso passa da `lineaPreventivo(...)`, mai confronti diretti con i codici (guardia AST nei test).
+- `righeStampabili = true` (F2c): occhio Stampabile Sì/No nelle azioni di ogni riga valorizzata (non sulla riga raccoglitore PEF), riga attenuata se nascosta, pulsante "Vista commerciale" (anteprima da `vistaCommerciale`, v. `vista-commerciale.md`).
 - Prezzi, `fonte_prezzo` e stampa (PDF, fetta F6) invariati.

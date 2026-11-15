@@ -79,6 +79,7 @@ import { devoBloccareUscita, useStatoSalvataggioPreventivo, type StatoSalvataggi
 import { AggiungiBloccoDialog } from "@/components/preventivatore/AggiungiBloccoDialog";
 import { RigheTable } from "@/components/preventivatore/RigheTable";
 import { lineaPreventivo } from "@/lib/linee-preventivo";
+import { VistaCommercialeDialog } from "@/components/preventivatore/VistaCommercialeDialog";
 import { GeneraDocumentoDialog } from "@/components/preventivatore/GeneraDocumentoDialog";
 import { ClientePicker } from "@/components/preventivatore/ClientePicker";
 import { TrasformaInOrdineDialog } from "@/components/preventivatore/TrasformaInOrdineDialog";
@@ -123,6 +124,7 @@ function PreventivoEditorPage() {
   };
   const [addBloccoOpen, setAddBloccoOpen] = useState(false);
   const [outputOpen, setOutputOpen] = useState(false);
+  const [vistaOpen, setVistaOpen] = useState(false);
   const { roles } = useAuth();
   // FM63: chi consulta soltanto (es. store manager) non vede comandi di modifica; il DB resta il controllo vero.
   const puoScrivere = puoScriverePreventivi(roles as string[]);
@@ -453,6 +455,9 @@ function PreventivoEditorPage() {
             <Button size="sm" variant="outline" onClick={() => setOutputOpen(true)}>
               <FileDown className="mr-1 h-4 w-4" /> Genera documento
             </Button>
+            {lineaPreventivo(prev.linea).blocchi.righeStampabili && (
+              <Button size="sm" variant="outline" onClick={() => setVistaOpen(true)}>Vista commerciale</Button>
+            )}
             {puoScrivere && prev.tipo === "preventivo" && (
               <Dialog
                 open={duplicaOpen}
@@ -670,6 +675,7 @@ function PreventivoEditorPage() {
 
       <AggiornaListiniDialog analisi={analisiListini} onClose={() => setAnalisiListini(null)}
         onApplica={(sc) => applicaListini.mutate(sc)} inCorso={applicaListini.isPending} />
+      {vistaOpen && <VistaCommercialeDialog open onOpenChange={setVistaOpen} blocchi={prev.blocchi} />}
       <GeneraDocumentoDialog open={outputOpen} onOpenChange={setOutputOpen} prev={prev} />
       {prev.tipo === "preventivo" && (
         <TrasformaInOrdineDialog
