@@ -70,4 +70,13 @@ test('FM72 filtro elenco multiplo mantiene tutti i codici selezionati', async ()
   const processo = Bun.spawn(['bun', '-e', script], { cwd: process.cwd(), stdout: 'pipe', stderr: 'pipe' });
   const errore = await new Response(processo.stderr).text();
   expect(await processo.exited, errore).toBe(0);
+});test('FM75 F1 comportamenti blocchi per linea', () => {
+  const flag = Object.fromEntries(Object.values(LINEE_PREVENTIVO).map(l => [l.codice, l.blocchi]));
+  expect(flag).toEqual({
+    sistema_made: { bloccoConMisure: true, bloccoDaKit: true },
+    showroom: { bloccoConMisure: false, bloccoDaKit: false },
+    edilizia: { bloccoConMisure: true, bloccoDaKit: true },
+    fotovoltaico: { bloccoConMisure: true, bloccoDaKit: true },
+  });
+  expect(lineaPreventivo(null).blocchi.bloccoConMisure).toBe(true);
 });

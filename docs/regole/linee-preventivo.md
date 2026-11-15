@@ -43,3 +43,20 @@
 
 - I gemelli in `permessi-showroom.ts` e `permessi-preventivi.ts` riconoscono il nuovo ruolo; dettagli in `sicurezza-permessi.md`. Il responsabile, anche insieme a preventivi_write, non viene bloccato dalla mancanza del codice agente nella creazione.
 - Il selettore delle linee abilitate resta identico; il database mantiene il controllo effettivo della linea. Nessuna migrazione o nuova schermata.
+
+## Comportamenti per linea — F1 showroom (FM75)
+
+Ogni linea nel catalogo (`src/lib/linee-preventivo.ts`, campo `blocchi`) dichiara:
+
+| Linea | bloccoConMisure | bloccoDaKit |
+|---|---|---|
+| Sistema MADE | sì | sì |
+| Showroom | no | no |
+| Edilizia | sì | sì |
+| Fotovoltaico | sì | sì |
+
+- `bloccoConMisure = false`: testata del blocco "spoglia" (trascinamento, "Blocco N", Descrizione, Importo, cestino); niente Rif., Quantità, U.M., Prezzo/U.M., ricalcolo su quantità; nelle righe niente colonna/campo Incidenza né avviso sulla quantità del blocco.
+- `bloccoDaKit = false`: "Aggiungi blocco" crea solo un blocco vuoto con titolo, senza tab Kit e senza quantità base.
+- Edilizia e Fotovoltaico conservano il comportamento attuale; si decide alla loro attivazione.
+- La linea arriva per prop dalla pagina del preventivo (nessuna lettura extra); ogni uso passa da `lineaPreventivo(...)`, mai confronti diretti con i codici (guardia AST nei test).
+- Prezzi, `fonte_prezzo` e stampa (PDF, fetta F6) invariati.

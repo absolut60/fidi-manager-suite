@@ -18,10 +18,13 @@ import { addBloccoDaKit, addBloccoVuoto, fractionalOrder } from "@/lib/preventiv
 import type { FasciaListino } from "@/lib/articoli-api";
 import { toast } from "sonner";
 import { parseNumeroIt } from "@/lib/numero-it";
+import { lineaPreventivo } from "@/lib/linee-preventivo";
 
 export function AggiungiBloccoDialog({
-  open, onOpenChange, preventivoId, lastOrdine, clienteId, scontoPiede = 0, cantiereId, condizioniPrezzi,
+  open, onOpenChange, preventivoId, lastOrdine, clienteId, scontoPiede = 0, cantiereId, condizioniPrezzi, linea,
 }: {
+  /** FM75 F1: linea del preventivo (comportamenti dal catalogo). */
+  linea?: unknown;
   condizioniPrezzi: CondizioniPrezziPreventivo;
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -33,6 +36,8 @@ export function AggiungiBloccoDialog({
   cantiereId?: string | null;
 }) {
   const qc = useQueryClient();
+  const daKit = lineaPreventivo(linea).blocchi.bloccoDaKit;
+  const [titolo, setTitolo] = useState("");
   const { data: dedicati = [] } = useQuery({ ...opzioniPrezziCantiere(cantiereId ?? ""), enabled: !!cantiereId });
   const [tab, setTab] = useState<"kit" | "vuoto">("kit");
   const [famiglia, setFamiglia] = useState<string>("ALL");
@@ -42,7 +47,7 @@ export function AggiungiBloccoDialog({
   const { data: kits = [] } = useQuery({
     queryKey: ["kits-with-comp"],
     queryFn: fetchKitsWithComponenti,
-    enabled: open,
+    enabled: open && daKit,
   });
 
   const filtered = kits.filter((k) => famiglia === "ALL" || k.famiglia === famiglia);
@@ -71,10 +76,13 @@ export function AggiungiBloccoDialog({
   });
 
   const addVuoto = useMutation({
-    mutationFn: () => addBloccoVuoto(preventivoId, fractionalOrder(lastOrdine, null)),
+    mutationFn: () => daKit
+      ? addBloccoVuoto(preventivoId, fractionalOrder(lastOrdine, null))
+      : addBloccoVuoto(preventivoId, fractionalOrder(lastOrdine, null), titolo.trim() || "Nuovo blocco"),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["preventivo", preventivoId] });
       onOpenChange(false);
+      setTitolo("");
       toast.success("Blocco vuoto aggiunto");
     },
     onError: (e: unknown) => toast.error((e as Error).message),
@@ -84,6 +92,12 @@ export function AggiungiBloccoDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader><DialogTitle>Aggiungi blocco</DialogTitle></DialogHeader>
+        {!daKit ? (
+          <div className="grid gap-1.5">
+            <Label htmlFor="titolo-blocco">Titolo del blocco</Label>
+            <Input id="titolo-blocco" value={titolo} placeholder="Nuovo blocco" onChange={(e) => setTitolo(e.target.value)} />
+          </div>
+        ) : (
         <Tabs value={tab} onValueChange={(v) => setTab(v as "kit" | "vuoto")}>
           <TabsList>
             <TabsTrigger value="kit">Da kit</TabsTrigger>
@@ -142,9 +156,10 @@ export function AggiungiBloccoDialog({
             </p>
           </TabsContent>
         </Tabs>
+        )}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
-          {tab === "kit" ? (
+          {daKit && tab === "kit" ? (
             <Button onClick={() => addKit.mutate()} disabled={!kitId || (condizioniPrezzi.listino_rif == null && !clienteId && !dedicati.length) || addKit.isPending}>
               Aggiungi kit
             </Button>
