@@ -643,6 +643,8 @@ function useCelleRiga(p: RigaProps) {
         onCommit={(v) => salvaInUnita({ costo_unit: v })} />
     ),
     margine: `${calc.margine_perc.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`,
+    /** FM75 F5b: margine € di riga (importo − costo), solo linee con articoloInDefinizione. */
+    margineEuro: p.articoloInDefinizione ? `€ ${fmt2(calc.importo - calc.costo)}` : null,
     peso: row.articolo_codice && row.peso_gamma_unit == null ? "—" : fmt2(calc.peso),
     onRowClick: readOnly && vecchioCatalogo ? () => row.articolo_id && onOpenArticolo(row.articolo_id) : undefined,
   };
@@ -811,7 +813,7 @@ function RigaRow(p: RigaProps) {
         {(v || c.isSubtotal) && c.importo}
       </td>
       <td className="px-0.5 py-0.5 text-right text-muted-foreground">{v && c.costo}</td>
-      <td className="px-1 py-1 text-right">{v && <BadgeMargine perc={p.calc.margine_perc} testo={c.margine} />}</td>
+      <td className="px-1 py-1 text-right">{v && <><BadgeMargine perc={p.calc.margine_perc} testo={c.margine} />{c.margineEuro && <span className="block whitespace-nowrap font-mono text-[10px] text-muted-foreground">{c.margineEuro}</span>}</>}</td>
       <td className="px-1 py-1.5 text-right text-muted-foreground">{v && c.peso}</td>
       <td className="px-0.5 text-right"><AzioniRiga {...p} valorizzata={v} /></td>
     </tr>
@@ -846,7 +848,7 @@ function RigaScheda(p: RigaProps) {
       <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
         <div className="flex min-w-0 items-center gap-1"><NumeroRiga p={p} /><span className="min-w-0 break-words text-xs text-muted-foreground">{TIPI_RIGA_LABEL[c.tipo]}</span></div>
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
-          {c.valorizzata && <><span className="whitespace-nowrap font-mono text-xs font-semibold">{c.importo}</span><BadgeMargine perc={p.calc.margine_perc} testo={c.margine} /></>}
+          {c.valorizzata && <><span className="whitespace-nowrap font-mono text-xs font-semibold">{c.importo}</span><BadgeMargine perc={p.calc.margine_perc} testo={c.margine} />{c.margineEuro && <span className="whitespace-nowrap font-mono text-[10px] text-muted-foreground">{c.margineEuro}</span>}</>}
           <AzioniRiga {...p} valorizzata={c.valorizzata} />
         </div>
       </div>

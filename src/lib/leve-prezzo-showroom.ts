@@ -54,7 +54,7 @@ export function applicaLeva(i: InputLeva): PatchLeva | null {
 
 /**
  * Legge la cascata commerciale del listino fornitore e la restituisce nella convenzione di sconti_gamma.
- * - Notazione con segni (se compare almeno un "-"/"−"): "-" = sconto, "+" = maggiorazione;
+ * - Notazione con segni (se compare almeno un "-"/"−" o il testo inizia con "+"): "-" = sconto, "+" = maggiorazione;
  *   un primo termine senza segno vale sconto. "-45+5" → [45, -5] (listino 100 → netto 57,75).
  * - Notazione Gamma (nessun "-"): ogni termine è uno sconto. "45" → [45]; "45+5" → [45, 5].
  * Virgola decimale ammessa, spazi ignorati, zeri tolti. null se non valida o oltre MAX_SCONTI_GAMMA termini.
@@ -62,7 +62,7 @@ export function applicaLeva(i: InputLeva): PatchLeva | null {
 export function parseCascata(testo: string): number[] | null {
   const t = testo.replace(/[−–]/g, "-").replace(/\s/g, "").replace(/,/g, ".");
   if (!t) return [];
-  const conSegni = t.includes("-");
+  const conSegni = t.includes("-") || t.startsWith("+");
   const termini = t.match(/[+-]?[^+-]*/g)?.filter((x) => x !== "") ?? [];
   const valori: number[] = [];
   for (const termine of termini) {
@@ -73,4 +73,14 @@ export function parseCascata(testo: string): number[] | null {
     valori.push(conSegni && m[1] === "+" ? -v : v);
   }
   return valori.length > MAX_SCONTI_GAMMA ? null : valori;
+}
+
+/**
+ * Testo nella notazione con segni ("-" sconto, "+" maggiorazione), inversa di parseCascata:
+ * [45, −5] → "-45+5"; [45, 5] → "-45-5"; [] → "". Decimali con virgola (it-IT).
+ */
+export function formatCascata(cascata: readonly (number | string | null)[] | null | undefined): string {
+  return (cascata ?? []).map(Number).filter((v) => Number.isFinite(v) && v !== 0)
+    .map((v) => `${v > 0 ? "-" : "+"}${Math.abs(v).toLocaleString("it-IT", { maximumFractionDigits: 4, useGrouping: false })}`)
+    .join("");
 }

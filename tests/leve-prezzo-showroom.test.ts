@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { applicaLeva, parseCascata } from "../src/lib/leve-prezzo-showroom";
+import { applicaLeva, formatCascata, parseCascata } from "../src/lib/leve-prezzo-showroom";
 import { prezzoNettoRiga } from "../src/lib/riga-preventivo";
 
 describe("leve prezzo showroom", () => {
@@ -41,5 +41,15 @@ describe("leve prezzo showroom", () => {
     expect(parseCascata("-12,5")).toEqual([12.5]);
     expect(parseCascata("-45+x")).toBeNull();
     expect(parseCascata("-1-1-1-1-1-1-1")).toBeNull();
+  });
+});
+
+describe("formatCascata", () => {
+  it("notazione con segni e andata/ritorno", () => {
+    expect(formatCascata([45, -5])).toBe("-45+5");
+    expect(formatCascata([45, 5])).toBe("-45-5");
+    expect(formatCascata([12.5])).toBe("-12,5");
+    expect(formatCascata([])).toBe("");
+    for (const c of [[45, -5], [45, 5], [12.5, -3.25, 10], [-10]]) expect(parseCascata(formatCascata(c))).toEqual(c);
   });
 });
