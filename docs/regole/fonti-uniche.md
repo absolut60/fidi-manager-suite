@@ -134,6 +134,8 @@ Unico punto il trigger `trg_lead_allegati_cliente` (AFTER UPDATE OF cliente_id O
 ## Ruolo showroom (FM56)
 Fonte unica `isSoloShowroom` (`src/lib/permessi-showroom.ts`) / `public.auth_solo_showroom()`; scrittura bloccata da policy RESTRICTIVE "Showroom: …", eccezioni: contatti e lead della sede, attività commerciali proprie, allegati di task/chat/lead della sede.
 
+FM72 ④a (solo database): `responsabile_showroom` eredita gli stessi permessi e divieti, ma su tutte le sedi, senza sede richiesta nel profilo. Fonte unica del perimetro SQL `showroom_sede_ok`; preventivi limitati alle linee abilitate del profilo. Interfaccia e gemelli TS saranno allineati nella fetta ④b, non in questa fetta.
+
 ## Dashboard fidi (FM56)
 Numeri da `get_dashboard_fidi_gruppi`, liste da `get_clienti_dashboard_fidi_ids` (base `dashboard_fidi_clienti_base` / `dashboard_fidi_appartenenze`).
 
