@@ -1,3 +1,4 @@
+import { logoEmailInvio } from "@/lib/branding-email";
 // Punto UNICO di invio di una singola email di recupero al cliente (FM48).
 // Modalità "modello" (template_email) o "libera" (oggetto/corpo scritti a mano),
 // con copia (CC), copia nascosta (CCN), allegati PDF e lettera PDF opzionale.
@@ -139,14 +140,19 @@ export const inviaEmailRecupero = createServerFn({ method: "POST" })
     if (!cliente) throw new Error("Cliente non trovato");
 
     let sede: DatiSede | null = null;
+    let inlineLogoBase64: string | undefined;
     if (cliente.store_id) {
       const { data: store } = await supabase
         .from("stores")
-        .select("nome, insegna, indirizzo, cap, citta, provincia, telefono")
+        .select("nome, insegna, indirizzo, cap, citta, provincia, telefono, logo_email_path")
         .eq("id", cliente.store_id)
         .maybeSingle();
       if (store) {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const logo = await logoEmailInvio(store, supabaseAdmin);
+        inlineLogoBase64 = logo.inlineLogoBase64;
         sede = {
+          logoEmailUrl: logo.logoEmailUrl,
           nome: store.nome ?? null,
           insegna: (store as { insegna?: string | null }).insegna ?? null,
           indirizzo: store.indirizzo ?? null,
@@ -317,6 +323,7 @@ export const inviaEmailRecupero = createServerFn({ method: "POST" })
       fromName: "Recupero Crediti MADE",
       replyTo: emailOperatore ?? undefined,
       inlineLogo: true,
+      ...(inlineLogoBase64 ? { inlineLogoBase64 } : {}),
       attachments: files.map((f) => ({
         filename: f.filename,
         content: bytesToB64(f.bytes),

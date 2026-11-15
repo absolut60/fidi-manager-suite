@@ -1,3 +1,4 @@
+import { logoEmailInvio } from "@/lib/branding-email";
 import { inngest } from "./client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { renderTemplate, isScaduto, wrapEmailHtml, livelloSollecitoFromTipo, type DatiSede, type ScadenzaSollecito } from "@/lib/template-email-render";
@@ -372,14 +373,18 @@ export const invioMassivoSolleciti = inngest.createFunction(
               .maybeSingle();
 
             let sede: DatiSede | null = null;
+    let inlineLogoBase64: string | undefined;
             if (cliente?.store_id) {
               const { data: store } = await supabaseAdmin
                 .from("stores")
-                .select("nome, insegna, indirizzo, cap, citta, provincia, telefono")
+                .select("nome, insegna, indirizzo, cap, citta, provincia, telefono, logo_email_path")
                 .eq("id", cliente.store_id)
                 .maybeSingle();
               if (store) {
+                const logo = await logoEmailInvio(store, supabaseAdmin);
+                inlineLogoBase64 = logo.inlineLogoBase64;
                 sede = {
+                  logoEmailUrl: logo.logoEmailUrl,
                   nome: store.nome ?? null,
                   insegna: (store as { insegna?: string | null }).insegna ?? null,
                   indirizzo: store.indirizzo ?? null,
@@ -467,6 +472,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
               fromName: "Recupero Crediti MADE",
               replyTo: cfg.emailOperatore ?? undefined,
               inlineLogo: true,
+      ...(inlineLogoBase64 ? { inlineLogoBase64 } : {}),
             });
 
             if (!sendRes.ok) {
@@ -494,7 +500,9 @@ export const invioMassivoSolleciti = inngest.createFunction(
                 importo_riferimento: totaleRif,
                 note: noteRiassunto,
                 email_oggetto: rendered.oggetto,
-                email_corpo_html: htmlCompleto,
+                email_corpo_html: inlineLogoBase64 ? wrapEmailHtml(rendered.corpo, sede, {
+                  nome: cfg.nomeOperatore, email: cfg.emailOperatore,
+                }, { tipo: tpl.tipo, piedeRiservatezza: true }) : htmlCompleto,
                 email_destinatario: d.indirizzo_usato,
                 email_message_id: sendRes.messageId ?? null,
                 livello_sollecito: livelloSollecitoFromTipo(tpl.tipo),

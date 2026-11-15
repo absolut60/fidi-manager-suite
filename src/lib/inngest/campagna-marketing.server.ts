@@ -1,3 +1,4 @@
+import { logoEmailInvio } from "@/lib/branding-email";
 import { inngest, sendInngestEvent } from "./client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isEmailValida } from "@/lib/email-validazione";
@@ -280,6 +281,7 @@ export const invioCampagnaMarketing = inngest.createFunction(
             let agente = "";
             let categoria = "";
             let sede: DatiSede | null = null;
+    let inlineLogoBase64: string | undefined;
 
             if (d.cliente_id) {
               const { data: cli } = await supabaseAdmin
@@ -303,11 +305,14 @@ export const invioCampagnaMarketing = inngest.createFunction(
               if (storeId) {
                 const { data: store } = await supabaseAdmin
                   .from("stores")
-                  .select("nome, insegna, indirizzo, cap, citta, provincia, telefono")
+                  .select("nome, insegna, indirizzo, cap, citta, provincia, telefono, logo_email_path")
                   .eq("id", storeId)
                   .maybeSingle();
                 if (store) {
+                  const logo = await logoEmailInvio(store, supabaseAdmin);
+                  inlineLogoBase64 = logo.inlineLogoBase64;
                   sede = {
+                    logoEmailUrl: logo.logoEmailUrl,
                     nome: store.nome ?? null,
                     insegna: (store as { insegna?: string | null }).insegna ?? null,
                     indirizzo: store.indirizzo ?? null,
@@ -347,6 +352,7 @@ export const invioCampagnaMarketing = inngest.createFunction(
               html: htmlFinale,
               fromName: "MADE Distribuzione",
               inlineLogo: true,
+      ...(inlineLogoBase64 ? { inlineLogoBase64 } : {}),
               ...(allegati.length ? { attachments: allegati } : {}),
               ...(cfg.emailOperatore && isEmailValida(cfg.emailOperatore) ? { replyTo: cfg.emailOperatore } : {}),
             });

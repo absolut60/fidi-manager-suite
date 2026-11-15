@@ -1,3 +1,4 @@
+import { logoEmailInvio } from "@/lib/branding-email";
 // Job giornaliero: promemoria automatico scadenze in arrivo.
 // - Cron: 06:00 UTC ogni giorno.
 // - Rispetta il flag `promemoria_scadenza_attivo`.
@@ -159,6 +160,16 @@ export const promemoriaScadenzaAutomatico = inngest.createFunction(
       perCliente.set(s.cliente_id, arr);
     }
 
+    // La RPC fornisce già i dati sede: solo i percorsi dei loghi in una lettura batch.
+    const storeIds = [...new Set(scadenzeFiltrate.map(r => r.store_id).filter((id): id is string => Boolean(id)))];
+    const loghiSedi = new Map<string, Awaited<ReturnType<typeof logoEmailInvio>>>();
+    if (storeIds.length) {
+      const { data: stores, error: erroreLoghi } = await supabaseAdmin.from("stores")
+        .select("id, logo_email_path").in("id", storeIds);
+      if (erroreLoghi) console.warn("[branding-email] Lettura loghi promemoria fallita: ripiego MADE");
+      for (const store of stores ?? []) loghiSedi.set(store.id, await logoEmailInvio(store, supabaseAdmin));
+    }
+
     const todayISO = new Date().toISOString().slice(0, 10);
     let inviati = 0;
     let saltati_no_email = 0;
@@ -166,6 +177,9 @@ export const promemoriaScadenzaAutomatico = inngest.createFunction(
 
     for (const [clienteId, lista] of perCliente) {
       const first = lista[0];
+      const logo = first.store_id ? loghiSedi.get(first.store_id) : undefined;
+      const sedeOriginale = sedeFromRow(first);
+      const sede = sedeOriginale ? { ...sedeOriginale, logoEmailUrl: logo?.logoEmailUrl } : null;
       const ragioneSociale = first.ragione_sociale ?? "Cliente";
       const email = (first.email ?? "").trim();
       const importoTotale = lista.reduce((acc, r) => acc + Number(r.importo_scadenza || 0), 0);
@@ -186,7 +200,7 @@ export const promemoriaScadenzaAutomatico = inngest.createFunction(
         template,
         ragioneSociale,
         scadenze: scadenzePerRender,
-        sede: sedeFromRow(first),
+        sede,
         mittente,
         useCid: false,
       });
@@ -224,7 +238,7 @@ export const promemoriaScadenzaAutomatico = inngest.createFunction(
         template,
         ragioneSociale,
         scadenze: scadenzePerRender,
-        sede: sedeFromRow(first),
+        sede,
         mittente,
         useCid: true,
       });
@@ -234,6 +248,7 @@ export const promemoriaScadenzaAutomatico = inngest.createFunction(
         subject: oggetto,
         html,
         inlineLogo: true,
+        ...(logo?.inlineLogoBase64 ? { inlineLogoBase64: logo.inlineLogoBase64 } : {}),
         fromName: mittente.nome,
         replyTo: mittente.email,
       });
