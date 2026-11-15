@@ -1,3 +1,8 @@
+# FM76 — Branding per sede, fetta 2
+- [x] Collegati logo sede a recupero singolo, massivo (inclusi promemoria manuali), promemoria automatici e campagne cliente; anteprime firmate dalla lettura sede condivisa, archivio con data URL durevole solo per logo personalizzato. Generici/interni/fornitori/assicurazione/privacy restano MADE.
+- [x] Payload inline opzionale nella funzione email esistente; 964 test verdi, fallback con 12 impronte HTML precedenti (quattro varianti), compilazione OK; cornici simulate Playwright 375/1280 controllate. Ricognizione e file in docs/regole/branding-email.md. Nessuna migrazione/dato/policy modificato.
+- [ ] Collaudo autenticato e SMTP con logo reale: zero loghi caricati sulle 10 sedi; --self non trova account personale. Nessuna email reale inviata.
+
 # FM76 — Branding per sede, fetta 1
 - [x] Applicata 0239_fm76_branding_sedi.sql: colonne nullable e quattro policy storage amministratore; UPDATE stores/MFA già adeguati, invariati.
 - [x] Fonte unica branding e gestione contatti/loghi nelle impostazioni; email e flussi invariati. Bucket branding creato privato con limite 1 MB; anteprime firmate per l'amministratore.
