@@ -54,7 +54,7 @@ export function applicaLeva(i: InputLeva): PatchLeva | null {
 
 /**
  * Legge la cascata commerciale del listino fornitore e la restituisce nella convenzione di sconti_gamma.
- * - Notazione con segni (se compare almeno un "-"/"−"): "-" = sconto, "+" = maggiorazione;
+ * - Notazione con segni (se compare almeno un "-"/"−" o il testo inizia con "+"): "-" = sconto, "+" = maggiorazione;
  *   un primo termine senza segno vale sconto. "-45+5" → [45, -5] (listino 100 → netto 57,75).
  * - Notazione Gamma (nessun "-"): ogni termine è uno sconto. "45" → [45]; "45+5" → [45, 5].
  * Virgola decimale ammessa, spazi ignorati, zeri tolti. null se non valida o oltre MAX_SCONTI_GAMMA termini.
@@ -62,7 +62,7 @@ export function applicaLeva(i: InputLeva): PatchLeva | null {
 export function parseCascata(testo: string): number[] | null {
   const t = testo.replace(/[−–]/g, "-").replace(/\s/g, "").replace(/,/g, ".");
   if (!t) return [];
-  const conSegni = t.includes("-");
+  const conSegni = t.includes("-") || t.startsWith("+");
   const termini = t.match(/[+-]?[^+-]*/g)?.filter((x) => x !== "") ?? [];
   const valori: number[] = [];
   for (const termine of termini) {
