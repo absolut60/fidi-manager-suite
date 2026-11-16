@@ -13,7 +13,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IscrizioneWhatsappRouteImport } from './routes/iscrizione-whatsapp'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as VerificaCervedTemporaneaRouteImport } from './routes/verifica-cerved-temporanea'
 import { Route as VerificaCodiceRouteImport } from './routes/verifica-codice'
 import { Route as AppAlertFidiRouteImport } from './routes/_app/alert-fidi'
 import { Route as AppApprovazioniRouteImport } from './routes/_app/approvazioni'
@@ -123,12 +122,6 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const VerificaCervedTemporaneaRoute =
-  VerificaCervedTemporaneaRouteImport.update({
-    id: '/verifica-cerved-temporanea',
-    path: '/verifica-cerved-temporanea',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const VerificaCodiceRoute = VerificaCodiceRouteImport.update({
   id: '/verifica-codice',
   path: '/verifica-codice',
@@ -598,7 +591,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
-  '/verifica-cerved-temporanea': typeof VerificaCervedTemporaneaRoute
   '/verifica-codice': typeof VerificaCodiceRoute
   '/alert-fidi': typeof AppAlertFidiRoute
   '/approvazioni': typeof AppApprovazioniRoute
@@ -693,7 +685,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
-  '/verifica-cerved-temporanea': typeof VerificaCervedTemporaneaRoute
   '/verifica-codice': typeof VerificaCodiceRoute
   '/alert-fidi': typeof AppAlertFidiRoute
   '/approvazioni': typeof AppApprovazioniRoute
@@ -787,7 +778,6 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
-  '/verifica-cerved-temporanea': typeof VerificaCervedTemporaneaRoute
   '/verifica-codice': typeof VerificaCodiceRoute
   '/_app/alert-fidi': typeof AppAlertFidiRoute
   '/_app/approvazioni': typeof AppApprovazioniRoute
@@ -884,7 +874,6 @@ export interface FileRouteTypes {
     | '/'
     | '/iscrizione-whatsapp'
     | '/login'
-    | '/verifica-cerved-temporanea'
     | '/verifica-codice'
     | '/alert-fidi'
     | '/approvazioni'
@@ -979,7 +968,6 @@ export interface FileRouteTypes {
     | '/'
     | '/iscrizione-whatsapp'
     | '/login'
-    | '/verifica-cerved-temporanea'
     | '/verifica-codice'
     | '/alert-fidi'
     | '/approvazioni'
@@ -1072,7 +1060,6 @@ export interface FileRouteTypes {
     | '/_app'
     | '/iscrizione-whatsapp'
     | '/login'
-    | '/verifica-cerved-temporanea'
     | '/verifica-codice'
     | '/_app/alert-fidi'
     | '/_app/approvazioni'
@@ -1169,7 +1156,6 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   IscrizioneWhatsappRoute: typeof IscrizioneWhatsappRoute
   LoginRoute: typeof LoginRoute
-  VerificaCervedTemporaneaRoute: typeof VerificaCervedTemporaneaRoute
   VerificaCodiceRoute: typeof VerificaCodiceRoute
   ConsensiTokenRoute: typeof ConsensiTokenRoute
   FirmaPrivacyTokenRoute: typeof FirmaPrivacyTokenRoute
@@ -1212,13 +1198,6 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/verifica-cerved-temporanea': {
-      id: '/verifica-cerved-temporanea'
-      path: '/verifica-cerved-temporanea'
-      fullPath: '/verifica-cerved-temporanea'
-      preLoaderRoute: typeof VerificaCervedTemporaneaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/verifica-codice': {
@@ -2062,7 +2041,6 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   IscrizioneWhatsappRoute: IscrizioneWhatsappRoute,
   LoginRoute: LoginRoute,
-  VerificaCervedTemporaneaRoute: VerificaCervedTemporaneaRoute,
   VerificaCodiceRoute: VerificaCodiceRoute,
   ConsensiTokenRoute: ConsensiTokenRoute,
   FirmaPrivacyTokenRoute: FirmaPrivacyTokenRoute,
