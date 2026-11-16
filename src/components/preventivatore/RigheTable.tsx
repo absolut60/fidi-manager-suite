@@ -638,11 +638,11 @@ function useCelleRiga(p: RigaProps) {
     ricarico: (
       <EditableNumberCell ariaLabel="Ricarico %" decimali={2}
         value={row.leva_prezzo === "ricarico" && row.ricarico != null ? Number(row.ricarico)
-          : row.prezzo_unit == null ? null : ricaricoImplicito(prezzoNettoRiga(row), row.costo_unit == null ? null : Number(row.costo_unit))}
+          : row.prezzo_unit == null ? null : ricaricoImplicito(unita.netto ?? 0, unita.costo_unit)}
         onCommit={(v) => {
-          const patch = applicaLeva({ leva: "ricarico", costoUnit: row.costo_unit == null ? null : Number(row.costo_unit), ricaricoPerc: v });
+          const patch = applicaLeva({ leva: "ricarico", costoUnit: unita.costo_unit, ricaricoPerc: v });
           if (!patch) { toast.error("Per applicare il ricarico serve il costo della riga"); return; }
-          onPatch(patch);
+          onPatch({ ...patch, ...rigaInUnita(row, row.unita_gamma, { prezzo_unit: patch.prezzo_unit }).patchUm1 });
         }} />
     ),
     segnoSel: (
