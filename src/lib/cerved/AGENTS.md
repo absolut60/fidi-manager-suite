@@ -1,0 +1,1 @@
+- Light Report purchase sends the POST /v1/purchase body only from acquistaLightReport, always with subject_type COMPANY (required by the Cerved "Product Purchase" sheet; every linked subject comes from entity_search COMPANIES_ONLY), so no other caller or field shape can be invented.
