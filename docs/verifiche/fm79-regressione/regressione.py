@@ -142,6 +142,9 @@ async def fotografa(fase):
                     await pg.wait_for_function("()=>{const t=document.body.innerText.trim();return t.length>40&&!/^Caricamento/.test(t)}", timeout=12000)
                 except Exception: pass
                 await pg.wait_for_timeout(1800)
+                try:  # niente "Caricamento…" né scheletri: evita di fotografare a metà caricamento
+                    await pg.wait_for_function("()=>!/Caricamento/.test(document.body.innerText)&&!document.querySelector('.animate-pulse,.animate-spin')", timeout=10000)
+                except Exception: pass
                 await pg.add_style_tag(content="*{caret-color:transparent!important;animation:none!important;transition:none!important}")
                 nome = re.sub(r"[^a-z0-9]+", "_", path.lower()).strip("_")
                 # Attende che la pagina sia ferma: due fotografie consecutive uguali (max 8 tentativi).
