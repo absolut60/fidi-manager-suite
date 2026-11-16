@@ -947,9 +947,24 @@ function dataXml(n: NodoXml | null): string | null {
 
 export type LightReportCerved = {
   data_report: string | null;
+  anagrafica: (Pick<AziendaCerved, "denominazione" | "partita_iva" | "codice_fiscale" | "rea" | "forma_giuridica" | "ateco_2025_codice" | "ateco_2025_descrizione" | "stato_attivita_codice" | "stato_attivita_descrizione" | "sede"> & {
+    pec: string | null; sito_web: string | null; telefono: string | null;
+    dipendenti: number | null; unita_locali: number | null;
+    data_costituzione: string | null; data_inizio_attivita: string | null;
+  }) | null;
   fido_certificato: { valore: number | null; codice: string | null } | null;
-  score_cgs: { valore: number | null; codice: string | null } | null;
-  gradings: { eventi_negativi: number | null; payline: number | null; governance: number | null };
+  score_cgs: { valore: number | null; codice: string | null; pd: number | null; trend_codice: string | null; trend_descrizione: string | null; semaforo: string | null } | null;
+  gradings: {
+    eventi_negativi: number | null; payline: number | null; governance: number | null; richieste: number | null;
+    dettagli: Record<"eventi_negativi" | "payline" | "governance" | "richieste", { classe: number | null; descrizione: string | null } | null>;
+    cebi: { classe: number | null; codice: string | null; descrizione: string | null; pd: number | null; data_chiusura: string | null } | null;
+  };
+  bilanci: (Pick<BilancioCervedNorm, "data_chiusura" | "ricavi" | "acquisti" | "mol" | "utile" | "patrimonio_netto" | "debiti_banche" | "debiti_fornitori" | "crediti_clienti" | "liquidita"> & { roe: number | null; roi: number | null })[];
+  eventi_negativi: EventiNegativiCervedNorm & {
+    /** Codici grezzi: non sono booleani e non hanno una decodifica verificata. */
+    codici_azienda: Record<string, number | null> | null;
+    collegati: { nome: string | null; codice_fiscale: string | null; persona: boolean | null; flag_pc: boolean | null; flag_pp: boolean | null; codici: Record<string, number | null> | null }[];
+  };
   payline: {
     score: number | null; trend: string | null; esperienze: number | null; non_scadute: number | null; aperte: number | null;
     importo_totale: number | null; incidenza_scaduto: number | null; aperte_scadute: number | null;
@@ -983,15 +998,95 @@ export function normalizzaLightReportXml(xml: string): LightReportCerved {
   const evNum = (k: string) => num(figli(ev, k)[0] ?? null);
   const pr = trova(doc, "Protests");
   const conTesto = (base: NodoXml | null, k: string) => txt(figli(base, k)[0] ?? null);
+  // FM79: nuovi percorsi ancorati alla radice; mai dati di una società collegata.
+  const root = figli(doc, "LightReport")[0] ?? null;
+  const diretto = (n: NodoXml | null, k: string) => figli(n, k)[0] ?? null;
+  const item = diretto(root, "ItemInformation");
+  const company = diretto(item, "CompanyInformation");
+  const registered = diretto(diretto(root, "Offices"), "RegisteredOffice");
+  const address = diretto(registered, "RegisteredOfficeAddress") ?? diretto(company, "Address");
+  const sede = address ? {
+    indirizzo: conTesto(address, "Street"), cap: conTesto(address, "PostCode"),
+    comune: conTesto(address, "Municipality"), provincia: testo(diretto(address, "Province")?.attr.Code),
+  } : null;
+  const ateco = diretto(item, "ISTATCode2025");
+  const grading = (tag: string) => {
+    const n = diretto(root, tag);
+    return n ? { classe: num(diretto(n, "SubScoreClass")), descrizione: conTesto(n, "DescriptiveGradingSynthesisCode") } : null;
+  };
+  const cebiPd = figli(diretto(root, "OverallAssessment"), "Cebi4PD")
+    .sort((a, b) => (b.attr.dtCloseBalSheet ?? "").localeCompare(a.attr.dtCloseBalSheet ?? ""))[0] ?? null;
+  const cebiCode = diretto(cebiPd, "CebiScore4GeoCode");
+  const ratios = figli(diretto(root, "CompanyDevelopmentIndicators"), "BalanceSheetRatios");
+  const bilanci = figli(diretto(root, "BalanceSheetCebi"), "BalanceSheetInfo").map((b) => {
+    const data = dataXml(diretto(b, "ClosingDate"));
+    const ce = diretto(b, "ProfitAndLoss");
+    const sp = diretto(b, "LiabilitiesAndShareholderEquity");
+    const assets = diretto(b, "Assets");
+    // Value è in migliaia arrotondate, non il valore analitico della fotografia granulare.
+    const euro = (n: NodoXml | null, tag: string) => migliaiaInEuro(txt(diretto(diretto(n, tag), "Value")));
+    const breve = euro(sp, "STDebtsTowardsBanks");
+    const lungo = euro(sp, "MiddleLongTermDebtsTowardsBanks");
+    const ratio = data ? ratios.find((r) => dataXml(diretto(r, "ClosingDate")) === data) ?? null : null;
+    const voices = diretto(ratio, "Voices");
+    return {
+      data_chiusura: data, ricavi: euro(ce, "Sales") ?? euro(ce, "TotalRevenues"),
+      acquisti: euro(ce, "CostOfGoodsSold"), mol: euro(ce, "Ebitda"), utile: euro(ce, "ProfitAndLoss"),
+      patrimonio_netto: euro(sp, "ShareholdersFunds"),
+      debiti_banche: breve == null && lungo == null ? null : (breve ?? 0) + (lungo ?? 0),
+      debiti_fornitori: euro(sp, "TradeCreditors"), crediti_clienti: euro(assets, "BalanceSheetReceivable"),
+      liquidita: euro(assets, "Liquidity"), roe: num(diretto(diretto(voices, "Roe"), "Value")), roi: num(diretto(diretto(voices, "Roi"), "Value")),
+    };
+  });
+  const subs = diretto(root, "Subsidiaries");
+  const codici = (n: NodoXml | null) => n ? Object.fromEntries(n.figli.map((f) => [f.nome, num(f)])) : null;
+  const collegati = figli(subs, "Othersubsidiaries").map((n) => ({
+    nome: conTesto(n, "OthersubsidiarieInfos"), codice_fiscale: conTesto(n, "TaxCode"), persona: bool(diretto(n, "IsPerson")),
+    flag_pc: bool(diretto(n, "FlagPc")), flag_pp: bool(diretto(n, "FlagPP")), codici: codici(diretto(n, "CgrFlags")),
+  }));
+  const flagAssenti: FlagEventiCerved = { protesti: null, pregiudizievoli: null, procedure: null, eventi_crisi: null, cigs: null, fallimenti_propri: null };
 
   return {
     data_report: dataXml(trova(doc, "DeliveryAndSummaryDetails/DeliveredOn")),
+    anagrafica: item ? {
+      denominazione: conTesto(item, "OfficialCompanyName") ?? conTesto(company, "CompanyName"),
+      partita_iva: conTesto(company, "VATRegistrationNo"), codice_fiscale: conTesto(company, "TaxCode"),
+      rea: conTesto(diretto(item, "ReaCode"), "REANo"), forma_giuridica: conTesto(company, "CompanyForm"),
+      ateco_2025_codice: formattaAtecoCerved(ateco?.attr.Code?.split("/")[0]), ateco_2025_descrizione: txt(ateco),
+      stato_attivita_codice: conTesto(item, "ActivityStatus"), stato_attivita_descrizione: conTesto(item, "ActivityStatusDescription"), sede,
+      pec: conTesto(item, "CertifiedEmail"), sito_web: conTesto(item, "WebSite"),
+      // Nessun tag telefono negli XML campionati: nessun percorso ipotetico.
+      telefono: null, dipendenti: num(diretto(diretto(root, "CompanyEmployee"), "NumberOfEmployees")),
+      unita_locali: num(diretto(item, "OfficesAndSubOrganizationsNumber")),
+      data_costituzione: dataXml(diretto(item, "IncorporationDate")), data_inizio_attivita: dataXml(diretto(item, "ActivityStartDate")),
+    } : null,
     fido_certificato: fido ? { valore: num(figli(fido, "Value")[0] ?? null), codice: txt(figli(fido, "Code")[0] ?? null) } : null,
-    score_cgs: cgs ? { valore: num(figli(cgs, "Score")[0] ?? null), codice: txt(figli(cgs, "DescriptiveScoreSynthesisCode")[0] ?? null) } : null,
+    score_cgs: cgs ? {
+      valore: num(figli(cgs, "Score")[0] ?? null), codice: txt(figli(cgs, "DescriptiveScoreSynthesisCode")[0] ?? null),
+      // Cebi4PD e PaymentExperiencePayline/Trend appartengono ad altri score, non al CGS.
+      pd: null, trend_codice: null, trend_descrizione: null, semaforo: conTesto(cgs, "Icon"),
+    } : null,
     gradings: {
       eventi_negativi: num(trova(doc, "NegativeEventsGrading/Grading")),
       payline: num(trova(doc, "PaylineGrading/Grading")),
       governance: num(trova(doc, "GovernanceGrading/Grading")),
+      richieste: num(diretto(diretto(root, "OverdraftRequestsGrading"), "Grading")),
+      dettagli: { eventi_negativi: grading("NegativeEventsGrading"), payline: grading("PaylineGrading"), governance: grading("GovernanceGrading"), richieste: grading("OverdraftRequestsGrading") },
+      cebi: cebiPd ? {
+        classe: numero(cebiCode?.attr.Class), codice: txt(cebiCode), descrizione: null,
+        pd: (() => { const p = num(diretto(cebiPd, "PdAllGeoEiOverL")); return p == null ? null : p / 100; })(),
+        data_chiusura: dataXml({ ...cebiPd, testo: cebiPd.attr.dtCloseBalSheet ?? "" }),
+      } : null,
+    },
+    bilanci,
+    eventi_negativi: {
+      azienda: root && (subs || diretto(root, "Protests") || diretto(root, "Bankruptcy") || diretto(root, "AgreedWindingUpProcedures")) ? {
+        ...flagAssenti,
+        // ProtestsSimilarityExists indica omonimia, NON un protesto accertato.
+        fallimenti_propri: nonVuoto(diretto(root, "Bankruptcy")), procedure: nonVuoto(diretto(root, "AgreedWindingUpProcedures")),
+      } : null,
+      persone: collegati.filter((c) => c.persona === true).map((c) => ({ ...flagAssenti, nome: c.nome })),
+      codici_azienda: codici(diretto(subs, "CgrFlags")), collegati,
     },
     payline: pay ? {
       score: num(figli(pay, "Score")[0] ?? null),

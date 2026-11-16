@@ -1,0 +1,196 @@
+{
+  "data_report": "2026-11-06",
+  "fido_certificato": {
+    "valore": 262000,
+    "codice": "DF07"
+  },
+  "score_cgs": {
+    "valore": 56,
+    "codice": "CGS_4"
+  },
+  "gradings": {
+    "eventi_negativi": 50,
+    "payline": 60,
+    "governance": 48
+  },
+  "payline": {
+    "score": 6,
+    "trend": "P1",
+    "esperienze": 165,
+    "non_scadute": 158,
+    "aperte": 7,
+    "importo_totale": 438321.57,
+    "incidenza_scaduto": 0,
+    "aperte_scadute": 0,
+    "ritardo_medio_scadute": 0,
+    "giorni_concordati": 115,
+    "giorni_effettivi": 113,
+    "trimestri": [
+      {
+        "trimestre": "1",
+        "azienda": 120,
+        "settore": 80
+      },
+      {
+        "trimestre": "2",
+        "azienda": 121,
+        "settore": 80
+      },
+      {
+        "trimestre": "3",
+        "azienda": 125,
+        "settore": 76
+      },
+      {
+        "trimestre": "4",
+        "azienda": 113,
+        "settore": 82
+      }
+    ]
+  },
+  "richieste_12_mesi": {
+    "totale": 30,
+    "per_mese": [
+      {
+        "mese": "11",
+        "anno": "2025",
+        "banche_finanziarie": 1,
+        "aziende": 0,
+        "altri": 2,
+        "totale": 3
+      },
+      {
+        "mese": "12",
+        "anno": "2025",
+        "banche_finanziarie": 1,
+        "aziende": 0,
+        "altri": 3,
+        "totale": 4
+      },
+      {
+        "mese": "01",
+        "anno": "2026",
+        "banche_finanziarie": 1,
+        "aziende": 0,
+        "altri": 1,
+        "totale": 2
+      },
+      {
+        "mese": "02",
+        "anno": "2026",
+        "banche_finanziarie": 0,
+        "aziende": 0,
+        "altri": 1,
+        "totale": 1
+      },
+      {
+        "mese": "03",
+        "anno": "2026",
+        "banche_finanziarie": 1,
+        "aziende": 1,
+        "altri": 2,
+        "totale": 4
+      },
+      {
+        "mese": "04",
+        "anno": "2026",
+        "banche_finanziarie": 2,
+        "aziende": 1,
+        "altri": 0,
+        "totale": 3
+      },
+      {
+        "mese": "05",
+        "anno": "2026",
+        "banche_finanziarie": 2,
+        "aziende": 1,
+        "altri": 2,
+        "totale": 5
+      },
+      {
+        "mese": "06",
+        "anno": "2026",
+        "banche_finanziarie": 2,
+        "aziende": 1,
+        "altri": 1,
+        "totale": 4
+      },
+      {
+        "mese": "07",
+        "anno": "2026",
+        "banche_finanziarie": 0,
+        "aziende": 0,
+        "altri": 1,
+        "totale": 1
+      },
+      {
+        "mese": "08",
+        "anno": "2026",
+        "banche_finanziarie": 0,
+        "aziende": 0,
+        "altri": 0,
+        "totale": 0
+      },
+      {
+        "mese": "09",
+        "anno": "2026",
+        "banche_finanziarie": 1,
+        "aziende": 1,
+        "altri": 0,
+        "totale": 2
+      },
+      {
+        "mese": "10",
+        "anno": "2026",
+        "banche_finanziarie": 1,
+        "aziende": 0,
+        "altri": 0,
+        "totale": 1
+      },
+      {
+        "mese": "11",
+        "anno": "2026",
+        "banche_finanziarie": 0,
+        "aziende": 0,
+        "altri": 0,
+        "totale": 0
+      }
+    ]
+  },
+  "immobili": {
+    "valore_stimato": 502183,
+    "numero_stimati": 3,
+    "terreni": 1,
+    "fabbricati": 5
+  },
+  "eventi_straordinari": {
+    "elenco": [
+      {
+        "tipo": "TRANSFER",
+        "tipo_trasferimento": "COMPRAVENDITA",
+        "data_atto": "2005-11-03",
+        "cessionario": "DELEO S.R.L.",
+        "cedente": "S.I.T.A.  SERVIZI IMPIANTI TECNOLOGICI AEROPORTUALI S.R.L. IN LIQUIDAZIONE"
+      },
+      {
+        "tipo": "TRANSFER",
+        "tipo_trasferimento": "CONFERIMENTO",
+        "data_atto": "2000-12-21",
+        "cessionario": "DELEO S.R.L.",
+        "cedente": "DELEO GINO"
+      }
+    ],
+    "conteggi": {
+      "trasferimenti": 2,
+      "fusioni": 0,
+      "modifiche": 0,
+      "procedure_liquidazione": 0,
+      "pignoramenti": 0
+    }
+  },
+  "protesti": {
+    "possibile_omonimia": true,
+    "fallimento": false,
+    "procedure": false
+  }
+}
