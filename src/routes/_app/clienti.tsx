@@ -2124,6 +2124,7 @@ function ClientiPage() {
                     { etichetta: "Punto vendita", valore: c.stores?.nome || "—" },
                     { etichetta: "Fido attuale", valore: fmtEuro(c.fido_gestionale) },
                     { etichetta: "Fido residuo", valore: fmtEuro(c.fido_residuo) },
+                    ...(isTablet ? [{ etichetta: "Scaduto", valore: sc && sc.ha_scaduto ? fmtEuro(sc.totale_scaduto) : "—" }] : []),
                     ...(mostraFidoTeorico ? [{ etichetta: "Fido proposto", valore: (() => { const ft = fidoTeoricoDisplayMap?.get(c.id); return ft ? fmtEuro(ft.fido_proposto) : "—"; })() }] : []),
                   ]}
 
