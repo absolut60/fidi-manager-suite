@@ -118,7 +118,7 @@ export function VistaCerved({ dati, clienteId, fidoMade, puoAggiornare, inCorso,
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{collegato ? "Aggiorna da Cerved" : "Collega a Cerved"}</AlertDialogTitle>
-          <AlertDialogDescription>Leggo da Cerved profilo, affidabilità, bilanci, eventi negativi e fido di questo cliente.</AlertDialogDescription>
+          <AlertDialogDescription>Recupero il Light Report Cerved di questo cliente. Lo acquisto solo se non c’è un report ancora valido.</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Annulla</AlertDialogCancel>

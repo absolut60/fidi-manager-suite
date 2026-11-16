@@ -3,8 +3,8 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /**
- * Collega (se serve) un cliente al suo soggetto Cerved e salva profilo e score
- * come nuove fotografie. Unico percorso del Light Report: senza un report valido lo acquista
+ * Collega (se serve) un cliente al suo soggetto Cerved, salvando la sola ricerca iniziale.
+ * Unico percorso del Light Report: senza un report valido lo acquista
  * (una volta l'anno, blocco anti doppio acquisto), poi lo recupera; con un report valido solo recupero gratuito.
  * Permesso: public.auth_puo_aggiornare_cerved() (gemello puoAggiornareCerved).
  */
@@ -52,18 +52,6 @@ export const aggiornaCervedCliente = createServerFn({ method: "POST" })
       ricerca = { dati: norm, chiamata_id: r.chiamata_id };
     }
 
-    const ids = String(idSoggetto);
-    // Fido certificato: arriva dal Light Report (Credit Limit dà 403, fuori contratto): fidoCerved non si chiama più.
-    const [p, s, el, ev] = await Promise.all([
-      m.leggiProfilo(ids, ctx),
-      m.leggiScore(ids, ctx),
-      m.elencoBilanciCerved(ids, ctx),
-      m.eventiNegativiFlag(ids, ctx),
-    ]);
-    // Bilanci: i due di tipo 'E' più recenti (nessuno, es. ditte individuali → niente foto, niente errore).
-    const scelti = el.esito === "ok" ? m.dueBilanciEPiuRecenti(m.normalizzaElencoBilanci(el.risposta)) : [];
-    const bil = await Promise.all(scelti.map((b) => m.bilancioCerved(ids, b.data_chiusura, "E", ctx)));
-
     const ora = new Date().toISOString();
     if (esistente) {
       const { error } = await supabaseAdmin.from("cerved_soggetti")
@@ -80,21 +68,6 @@ export const aggiornaCervedCliente = createServerFn({ method: "POST" })
     const errori: string[] = [];
     const foto: { tipo: string; dati: unknown; chiamata_id: string | null }[] = [];
     if (ricerca) foto.push({ tipo: "ricerca", dati: ricerca.dati, chiamata_id: ricerca.chiamata_id });
-    if (p.esito === "ok") foto.push({ tipo: "profilo", dati: m.normalizzaProfiloCerved(p.risposta), chiamata_id: p.chiamata_id });
-    else errori.push(`Profilo: ${p.errore ?? "lettura non riuscita"}`);
-    if (s.esito === "ok") foto.push({ tipo: "score", dati: { scores: m.normalizzaScoreCerved(s.risposta) }, chiamata_id: s.chiamata_id });
-    else errori.push(`Score: ${s.errore ?? "lettura non riuscita"}`);
-
-    let bilanciOk = el.esito === "ok";
-    if (!bilanciOk) errori.push(`Bilanci: ${el.errore ?? "lettura non riuscita"}`);
-    const anni = bil.filter((b) => b.esito === "ok").map((b) => m.normalizzaBilancioCerved(b.risposta));
-    bil.filter((b) => b.esito !== "ok").forEach((b) => errori.push(`Bilancio: ${b.errore ?? "lettura non riuscita"}`));
-    if (bil.some((b) => b.esito !== "ok")) bilanciOk = false;
-    if (anni.length) foto.push({ tipo: "bilancio", dati: { anni }, chiamata_id: bil.find((b) => b.esito === "ok")?.chiamata_id ?? null });
-
-    if (ev.esito === "ok") foto.push({ tipo: "eventi_negativi", dati: m.normalizzaEventiNegativiCerved(ev.risposta), chiamata_id: ev.chiamata_id });
-    else errori.push(`Eventi negativi: ${ev.errore ?? "lettura non riuscita"}`);
-
     if (foto.length) {
       const { error } = await supabaseAdmin.from("cerved_fotografie").insert(
         foto.map((f) => ({
@@ -131,10 +104,6 @@ export const aggiornaCervedCliente = createServerFn({ method: "POST" })
       nuovo_collegamento: !esistente,
       id_soggetto: idSoggetto,
       denominazione_cerved: denominazione,
-      profilo_ok: p.esito === "ok",
-      score_ok: s.esito === "ok",
-      bilanci_ok: bilanciOk,
-      eventi_ok: ev.esito === "ok",
       errori,
     };
   });
