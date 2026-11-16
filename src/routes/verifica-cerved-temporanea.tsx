@@ -13,7 +13,7 @@ function Verifica() {
     window.addEventListener("campione-cerved", ricevi);
     return () => window.removeEventListener("campione-cerved", ricevi);
   }, []);
-  if (!dati) return <p>Caricamento</p>;
+  if (!dati) return <button onClick={() => window.dispatchEvent(new Event("pronto-cerved"))}>Carica campione</button>;
   return <div className="p-3">
     <SezioneCervedCompatta dati={{ lightReport: dati.foto.light_report ?? null, scores: dati.foto.score?.scores ?? null }} fidoAttuale={65500} />
     <VistaCerved dati={dati} clienteId={dati.id} fidoMade={65500} puoAggiornare={false} inCorso={false} onAggiorna={() => {}} />
