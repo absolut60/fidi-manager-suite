@@ -152,17 +152,36 @@ async def fotografa(fase):
                 await ctx.close()
         await b.close()
 
-def confronta():
+def _diverse():
     from PIL import Image, ImageChops
     prima, dopo = OUT / "prima", OUT / "dopo"; diverse = []
     for f in sorted(prima.glob("*.png")):
         g = dopo / f.name
         if not g.exists(): diverse.append((f.name, "manca dopo")); continue
-        a, b = Image.open(f).convert("RGB"), Image.open(g).convert("RGB")
-        if a.size != b.size: diverse.append((f.name, f"dimensioni {a.size}→{b.size}")); continue
-        box = ImageChops.difference(a, b).getbbox()
+        x, y = Image.open(f).convert("RGB"), Image.open(g).convert("RGB")
+        if x.size != y.size: diverse.append((f.name, f"dimensioni {x.size}->{y.size}")); continue
+        box = ImageChops.difference(x, y).getbbox()
         if box: diverse.append((f.name, f"pixel diversi in {box}"))
-    print(f"Confrontate {len(list(prima.glob('*.png')))} immagini, diverse: {len(diverse)}")
+    return diverse
+
+def _percorso(nome_file):
+    base = nome_file.rsplit("_", 1)[0]
+    for path in pagine():
+        if re.sub(r"[^a-z0-9]+", "_", path.lower()).strip("_") == base: return path
+
+def confronta():
+    """Confronto pixel. Una differenza viene rifotografata fino a 2 volte prima di essere
+    dichiarata: separa un caricamento lento da un cambiamento vero."""
+    global SOLO
+    totale = len(list((OUT / "prima").glob("*.png")))
+    diverse = _diverse()
+    for tentativo in range(2):
+        if not diverse: break
+        SOLO = sorted({_percorso(n) for n, _ in diverse if _percorso(n)})
+        print(f"Rifotografo {len(SOLO)} pagine (tentativo {tentativo + 1})...")
+        asyncio.run(fotografa("dopo"))
+        diverse = _diverse()
+    print(f"Confrontate {totale} immagini, diverse: {len(diverse)}")
     for n, m in diverse: print(" -", n, m)
     sys.exit(1 if diverse else 0)
 
