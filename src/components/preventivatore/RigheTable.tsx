@@ -29,7 +29,6 @@ import {
   ChevronDown,
   Eye,
   EyeOff,
-  Pencil,
   GripVertical,
   Plus,
   Trash2,
@@ -836,7 +835,7 @@ function RigaRow(p: RigaProps) {
       <td className="px-0.5 py-0.5 text-right text-muted-foreground">{v && c.costo}</td>
       <td className="px-1 py-1 text-right">{v && <><BadgeMargine perc={p.calc.margine_perc} testo={c.margine} />{c.margineEuro && <span className="block whitespace-nowrap font-mono text-[10px] text-muted-foreground">{c.margineEuro}</span>}</>}</td>
       {p.gamma && <td className="px-1 py-1.5 text-right text-muted-foreground">{v && c.peso}</td>}
-      <td className="px-0.5 text-right"><AzioniRiga {...p} valorizzata={v} /></td>
+      <td className="px-0.5 text-right"><AzioniRiga {...p} valorizzata={v} />{def.dialog}</td>
     </tr>
   );
 }
@@ -897,6 +896,7 @@ function RigaScheda(p: RigaProps) {
           {p.gamma && valore("Peso", c.peso)}
         </div>
       )}
+      {def.dialog}
       {c.isSubtotal && valore("Sotto-totale", <span className="text-xs font-semibold">{c.importo}</span>)}
     </div>
   );
