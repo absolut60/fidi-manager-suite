@@ -6,6 +6,8 @@
 /* pv-orizzontale = telefono in orizzontale; pv-tabella = dove il corpo del preventivo si vede come tabella (tablet, telefono orizzontale, PC) */
 @custom-variant pv-orizzontale { @media (orientation: landscape) and (max-height: 500px) and (max-width: 1023.98px) { @slot; } }
 @custom-variant pv-tabella { @media (min-width: 768px), (orientation: landscape) and (max-height: 500px) { @slot; } }
+/* tablet = schermo touch senza mouse da 768px, escluso il telefono in orizzontale (complemento di pv-orizzontale); gemello JS in src/hooks/use-tablet.ts (FM79) */
+@custom-variant tablet { @media (pointer: coarse) and (hover: none) and (min-width: 768px) and (min-height: 501px) { @slot; } }
 
 @theme inline {
   --color-branding-email: var(--branding-email);
