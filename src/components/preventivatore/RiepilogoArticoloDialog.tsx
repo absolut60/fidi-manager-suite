@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RiquadroScheda } from "./RiquadroScheda";
-import { fetchPrezzoClienteArticolo, fetchRiepilogoArticoloPreventivo } from "@/lib/preventivi-api";
+import { fetchPrezzoClienteArticolo, fetchRiepilogoArticoloPreventivo, fetchRiepilogoArticoloRiferimento } from "@/lib/preventivi-api";
+import { fetchPrezzoPreventivoArticolo, type CondizioniPrezziPreventivo } from "@/lib/prezzi-preventivo";
 import { disponibilitaSchedaArticolo } from "@/lib/catalogo-articoli.functions";
 import { formatScontiGamma, rigaInUnita, type ImportoRigaInput } from "@/lib/riga-preventivo";
 import { prezzoConUnita, quantitaConUnita, unitaArticolo } from "@/lib/scheda-articolo";
@@ -20,7 +21,9 @@ type RigaRiepilogo = ImportoRigaInput & { incidenza?: number | null; costo?: num
 export type RiepilogoArticoloDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  clienteId: string;
+  /** Con cliente: condizioni del cliente (invariato). Senza cliente (lead): condizioni di riferimento e sede del preventivo. */
+  clienteId: string | null;
+  condizioni?: CondizioniPrezziPreventivo;
   codice: string;
   riga: RigaRiepilogo;
   calc: { importo: number; margine_perc: number };
@@ -38,9 +41,13 @@ function Voce({ etichetta, valore, forte }: { etichetta: ReactNode; valore: Reac
 }
 
 /** FM65 punto 4: riepilogo dell'articolo di una riga, sola lettura. Dati: riepilogo_articolo_preventivo + prezzi_preventivo_cliente. */
-export function RiepilogoArticoloDialog({ open, onOpenChange, clienteId, codice, riga, calc }: RiepilogoArticoloDialogProps) {
-  const qRiep = useQuery({ queryKey: ["riepilogo-articolo-preventivo", clienteId, codice], queryFn: () => fetchRiepilogoArticoloPreventivo(clienteId, codice), enabled: open && !!clienteId && !!codice });
-  const qPrezzo = useQuery({ queryKey: ["prezzo-cliente-articolo", clienteId, codice], queryFn: () => fetchPrezzoClienteArticolo(clienteId, codice), enabled: open && !!clienteId && !!codice });
+export function RiepilogoArticoloDialog({ open, onOpenChange, clienteId, condizioni, codice, riga, calc }: RiepilogoArticoloDialogProps) {
+  const rif = !clienteId && condizioni?.listino_rif != null ? condizioni : null;
+  const attivo = open && !!codice && (!!clienteId || !!rif);
+  const qRiep = useQuery({ queryKey: rif ? ["riepilogo-articolo-riferimento", rif.listino_rif, rif.store_id, codice] : ["riepilogo-articolo-preventivo", clienteId, codice],
+    queryFn: () => rif ? fetchRiepilogoArticoloRiferimento(rif.listino_rif!, rif.store_id ?? null, codice) : fetchRiepilogoArticoloPreventivo(clienteId!, codice), enabled: attivo });
+  const qPrezzo = useQuery({ queryKey: rif ? ["prezzo-riferimento-articolo", rif.listino_rif, rif.macrocategoria_rif, rif.categoria_rif, rif.store_id, codice] : ["prezzo-cliente-articolo", clienteId, codice],
+    queryFn: () => rif ? fetchPrezzoPreventivoArticolo(rif, codice) : fetchPrezzoClienteArticolo(clienteId!, codice), enabled: attivo });
   const qGiacenze = useQuery({ queryKey: ["catalogo-articolo-disponibilita", codice], queryFn: () => disponibilitaSchedaArticolo({ data: { codice } }), enabled: open && !!codice, retry: (tentativo, errore) => !errorePermessoGiacenze(errore) && tentativo < 2 });
   const a = qRiep.data, pr = qPrezzo.data;
   const giacenze = giacenzeRiepilogoArticolo(qGiacenze.data ?? [], a?.sede_cliente_id ?? null);

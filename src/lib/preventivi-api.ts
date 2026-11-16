@@ -1174,3 +1174,9 @@ export async function fetchRiepilogoArticoloPreventivo(clienteId: string, codice
   if (error) throw error;
   return data?.[0] ?? null;
 }
+/** Preventivo senza cliente (lead): stesso riepilogo da listino di riferimento e sede del preventivo. */
+export async function fetchRiepilogoArticoloRiferimento(listino: number, storeId: string | null, codice: string): Promise<RiepilogoArticoloPreventivo | null> {
+  const { data, error } = await supabase.rpc("riepilogo_articolo_preventivo_riferimento", { _listino: listino, _store_id: storeId as string, _codice: codice });
+  if (error) throw error;
+  return data?.[0] ?? null;
+}

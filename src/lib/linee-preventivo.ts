@@ -41,14 +41,18 @@ export interface ComportamentiBlocchiLinea {
   regimiIva: boolean;
   /** FM75 F4b: finestra "articolo in definizione" sulla riga manuale e codice fornitore al posto di "MANUALE". */
   articoloInDefinizione: boolean;
+  /** true: importo nel riquadro scuro della testata del blocco; false: importo evidenziato solo nel piede del blocco. */
+  importoInTestataBlocco: boolean;
+  /** true: colonne Gamma della riga (Magg.%, Extra %, ±, Peso); false: al loro posto la colonna Ricarico % (leva FM75). */
+  colonneGammaRiga: boolean;
 }
 
-const BLOCCHI_COMPLETI: ComportamentiBlocchiLinea = { bloccoConMisure: true, bloccoDaKit: true, righeStampabili: false, regimiIva: false, articoloInDefinizione: false };
+const BLOCCHI_COMPLETI: ComportamentiBlocchiLinea = { bloccoConMisure: true, bloccoDaKit: true, righeStampabili: false, regimiIva: false, articoloInDefinizione: false, importoInTestataBlocco: true, colonneGammaRiga: true };
 
 /** Tutti i comportamenti per linea passano da questo catalogo, non da confronti nei chiamanti. */
 export const LINEE_PREVENTIVO: Record<LineaPreventivo, ConfigurazioneLineaPreventivo> = {
   sistema_made: { codice: 'sistema_made', etichetta: 'Sistema MADE', attiva: true, classiBadge: 'border-pv-azzurro-bordo bg-pv-azzurro text-pv-blu', classiBordo: 'border-l-pv-blu', blocchi: BLOCCHI_COMPLETI, stampa: STAMPA_SISTEMA },
-  showroom: { codice: 'showroom', etichetta: 'Showroom', attiva: true, classiBadge: 'border-pv-viola/30 bg-pv-viola-tenue text-pv-viola', classiBordo: 'border-l-pv-viola', blocchi: { bloccoConMisure: false, bloccoDaKit: false, righeStampabili: true, regimiIva: true, articoloInDefinizione: true }, stampa: STAMPA_SHOWROOM },
+  showroom: { codice: 'showroom', etichetta: 'Showroom', attiva: true, classiBadge: 'border-pv-viola/30 bg-pv-viola-tenue text-pv-viola', classiBordo: 'border-l-pv-viola', blocchi: { bloccoConMisure: false, bloccoDaKit: false, righeStampabili: true, regimiIva: true, articoloInDefinizione: true, importoInTestataBlocco: false, colonneGammaRiga: false }, stampa: STAMPA_SHOWROOM },
   edilizia: { codice: 'edilizia', etichetta: 'Edilizia', attiva: false, classiBadge: 'border-pv-verde/30 bg-pv-verde-tenue text-pv-verde', classiBordo: 'border-l-pv-verde', blocchi: BLOCCHI_COMPLETI, stampa: STAMPA_SISTEMA },
   fotovoltaico: { codice: 'fotovoltaico', etichetta: 'Fotovoltaico', attiva: false, classiBadge: 'border-pv-giallo/30 bg-pv-giallo-tenue text-pv-giallo', classiBordo: 'border-l-pv-giallo', blocchi: BLOCCHI_COMPLETI, stampa: STAMPA_SISTEMA },
 };

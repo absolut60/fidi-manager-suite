@@ -1716,6 +1716,13 @@
       "when": 1794783627563,
       "tag": "0244_attivita_commerciale_email_archiviata",
       "breakpoints": true
+    },
+    {
+      "idx": 245,
+      "version": "7",
+      "when": 1794787735850,
+      "tag": "0245_riepilogo_articolo_riferimento",
+      "breakpoints": true
     }
   ]
 }

@@ -73,10 +73,19 @@ test('FM72 filtro elenco multiplo mantiene tutti i codici selezionati', async ()
 });test('FM75 F1 comportamenti blocchi per linea', () => {
   const flag = Object.fromEntries(Object.values(LINEE_PREVENTIVO).map(l => [l.codice, l.blocchi]));
   expect(flag).toEqual({
-    sistema_made: { bloccoConMisure: true, bloccoDaKit: true, righeStampabili: false, regimiIva: false, articoloInDefinizione: false },
-    showroom: { bloccoConMisure: false, bloccoDaKit: false, righeStampabili: true, regimiIva: true, articoloInDefinizione: true },
-    edilizia: { bloccoConMisure: true, bloccoDaKit: true, righeStampabili: false, regimiIva: false, articoloInDefinizione: false },
-    fotovoltaico: { bloccoConMisure: true, bloccoDaKit: true, righeStampabili: false, regimiIva: false, articoloInDefinizione: false },
+    sistema_made: { bloccoConMisure: true, bloccoDaKit: true, righeStampabili: false, regimiIva: false, articoloInDefinizione: false, importoInTestataBlocco: true, colonneGammaRiga: true },
+    showroom: { bloccoConMisure: false, bloccoDaKit: false, righeStampabili: true, regimiIva: true, articoloInDefinizione: true, importoInTestataBlocco: false, colonneGammaRiga: false },
+    edilizia: { bloccoConMisure: true, bloccoDaKit: true, righeStampabili: false, regimiIva: false, articoloInDefinizione: false, importoInTestataBlocco: true, colonneGammaRiga: true },
+    fotovoltaico: { bloccoConMisure: true, bloccoDaKit: true, righeStampabili: false, regimiIva: false, articoloInDefinizione: false, importoInTestataBlocco: true, colonneGammaRiga: true },
   });
   expect(lineaPreventivo(null).blocchi.bloccoConMisure).toBe(true);
+});
+
+test('Corpo showroom: senza Peso/±/Magg./Extra, con Ricarico % e importo solo nel piede', () => {
+  const src = readFileSync('src/components/preventivatore/RigheTable.tsx', 'utf8');
+  expect(src).toContain('colonneGammaRiga: gamma');
+  expect(src).toMatch(/\{gamma && <th[^>]*>Peso<\/th>\}/);
+  expect(src).toMatch(/\{gamma && <th[^>]*>±<\/th>\}/);
+  expect(src).toMatch(/: <th[^>]*>Ricarico %<\/th>\}/);
+  expect(src).toContain('applicaLeva({ leva: "ricarico"');
 });
