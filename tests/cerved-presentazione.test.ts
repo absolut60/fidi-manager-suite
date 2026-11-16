@@ -116,7 +116,9 @@ describe("testiLightReportRischio", () => {
   });
 });
 
-import { datiCervedCompatto } from "../src/lib/cerved-presentazione";
+import { datiCervedCompatto, datiSchedaCerved, scoreCervedPresentazione, gradingCervedPresentazione } from "../src/lib/cerved-presentazione";
+import { normalizzaLightReportXml } from "../src/lib/cerved/cerved.server";
+import { readFileSync } from "node:fs";
 describe("datiCervedCompatto", () => {
   const scores = [{ codice_score: "CGS", descrizione_score: null, valore: 43, categoria_codice: "CGS_5", categoria_descrizione: "Moderata", pd: 0.06, trend_codice: null, trend_descrizione: null }];
   it("senza dati Cerved non compare", () => {
@@ -133,5 +135,73 @@ describe("datiCervedCompatto", () => {
     expect(v.valore).toBe(43);
     expect(v.fascia).toBe("Affidabilità moderata");
     expect(v.fido).toBeNull();
+  });
+});
+
+describe("FM79: presentazione LR → fotografia → assente", () => {
+  const build = normalizzaLightReportXml(readFileSync(new URL("./fixtures/cerved-light-report-build-technology.xml", import.meta.url), "utf8"));
+  const deleo = normalizzaLightReportXml(readFileSync(new URL("./fixtures/cerved-light-report-deleo.xml", import.meta.url), "utf8"));
+  const score = (codice: string, extra = {}) => ({ codice_score: codice, descrizione_score: null, valore: 20, categoria_codice: `${codice}_5`, categoria_descrizione: "Moderata", pd: 0.06, trend_codice: null, trend_descrizione: "Stabile", ...extra });
+  it("anagrafica BUILD prevale e telefono resta solo granulare", () => {
+    const a = datiSchedaCerved({ light_report: build, ricerca: { denominazione: "Vecchio", rea: "1" }, profilo: { telefono: "02 123", dipendenti: 100, dipendenti_anno: 2024 } }).anagrafica;
+    expect(a.denominazione).toBe("BUILD TECHNOLOGY S.R.L.");
+    expect(a.rea).toBe("1523414");
+    expect(a.pec).toBe("BUILDTECHNOLOGY@LEGALMAIL.IT");
+    expect(a.sede.comune).toBe("ROMA");
+    expect(a.dipendenti).toBe(6);
+    expect(a.dipendenti_anno).toBeNull();
+    expect(a.unita_locali).toBe(2);
+    expect(a.data_costituzione).toBe("27/09/2017");
+    expect(a.telefono).toBe("02 123");
+    expect(datiSchedaCerved({ light_report: { anagrafica: { telefono: "non usare" } } }).anagrafica.telefono).toBeNull();
+  });
+  it("ripiego anagrafico per singolo campo, vuoti non cancellano fotografie", () => {
+    const a = datiSchedaCerved({ light_report: { anagrafica: { rea: "", sede: { comune: "ROMA" } } }, ricerca: { rea: "99", sede: { indirizzo: "VIA TEST", comune: "MILANO" } }, profilo: { sito_web: "sito.it", pec: ["pec@x.it"], unita_locali: 0 } }).anagrafica;
+    expect(a.rea).toBe("99"); expect(a.sede).toMatchObject({ comune: "ROMA", indirizzo: "VIA TEST" });
+    expect(a.sito_web).toBe("sito.it"); expect(a.pec).toBe("pec@x.it"); expect(a.unita_locali).toBe(0);
+    expect(datiSchedaCerved({}).anagrafica.denominazione).toBeNull();
+  });
+  it("CGS BUILD: 64/Buona/verde; PD e andamento solo granulari", () => {
+    const v = scoreCervedPresentazione(build, [score("CGS")]);
+    expect(v.valore).toBe(64); expect(v.categoria).toBe("Buona"); expect(v.semaforo.tono).toBe("verde");
+    expect(v.pd).toBe(0.06); expect(v.andamento).toBe("Stabile");
+    expect(scoreCervedPresentazione(build).pd).toBeNull();
+    expect(scoreCervedPresentazione(build).andamento).toBeNull();
+    expect(scoreCervedPresentazione({ score_cgs: { pd: 0.9, trend_descrizione: "non usare" } }).pd).toBeNull();
+  });
+  it("semaforo sconosciuto ripiega sullo score senza inventare categorie", () => {
+    const v = scoreCervedPresentazione({ score_cgs: { semaforo: "X", codice: "CGS_999" } }, [score("SEM_CGS", { categoria_codice: "R" }), score("CGS")]);
+    expect(v.semaforo.tono).toBe("rosso"); expect(v.categoria).toBe("Moderata"); expect(v.valore).toBe(20);
+    expect(scoreCervedPresentazione(null).valore).toBeNull();
+    expect(scoreCervedPresentazione({ score_cgs: { codice: "CGS_999" } }).categoria).toBeNull();
+  });
+  it("DELEO solo LR: compatto 56/Media e fido 262000", () => {
+    const v = datiCervedCompatto(deleo, [score("CGS")], 65500);
+    expect(v?.valore).toBe(56); expect(v?.fascia).toBe("Affidabilità media"); expect(v?.fido).toBe("262.000 €");
+    expect(datiCervedCompatto(build, null, 0)?.fascia).toBe("Affidabilità buona");
+  });
+  it("grading: numero e classe LR, descrizione granulare, codici non tradotti", () => {
+    expect(gradingCervedPresentazione(build, [score("PAY", { categoria_descrizione: "Regolari" })], "PAY")).toMatchObject({ valore: 49, classe: 3, descrizione: "Regolari", esito: "neutro" });
+    expect(gradingCervedPresentazione(build, [], "NEG")).toMatchObject({ valore: 50, classe: 0, descrizione: null });
+    expect(gradingCervedPresentazione(null, [score("GOV")], "GOV").valore).toBe(20);
+    expect(gradingCervedPresentazione(null, [], "GOV").valore).toBeNull();
+  });
+  it("bilanci: tre annate BUILD in euro, indici e variazioni; DELEO ripiega", () => {
+    const v = datiSchedaCerved({ light_report: build, bilancio: { anni: [{ ricavi: 1698217 }] } });
+    expect(v.bilanciLr).toBe(true); expect(v.anni).toHaveLength(3);
+    expect(v.anni[0].ricavi).toBe(1758000); expect(v.anni[0].roe).toBe(16.1); expect(v.anni[0].roi).toBe(15.3);
+    expect(variazionePercentuale(v.anni[0].ricavi, v.anni[1].ricavi)).toBeCloseTo(82.5545, 3);
+    expect(variazionePercentuale(v.anni[1].ricavi, v.anni[2].ricavi)).toBeCloseTo(-65.7783, 3);
+    expect(datiSchedaCerved({ light_report: deleo, bilancio: { anni: [{ ricavi: 123 }] } }).anni[0].ricavi).toBe(123);
+    expect(datiSchedaCerved({}).anni).toEqual([]);
+  });
+  it("eventi: false LR prevale; protesti solo granulari; collegati senza flag", () => {
+    const v = datiSchedaCerved({ light_report: build, eventi_negativi: { azienda: { procedure: true, protesti: true, cigs: false } } }).eventi;
+    expect(v.azienda.procedure).toBe(false); expect(v.azienda.fallimenti_propri).toBe(false);
+    expect(v.azienda.protesti).toBe(true); expect(v.azienda.cigs).toBe(false); expect(v.azienda.pregiudizievoli).toBeNull();
+    expect(v.collegati).toHaveLength(4);
+    expect(v.collegati[0]).toEqual({ nome: "FINARELLI MARCO", codice_fiscale: "FNRMRC71P14H501D" });
+    expect(datiSchedaCerved({ light_report: { eventi_negativi: { azienda: { protesti: true }, codici_azienda: { CgrPr: 5 } } } }).eventi.azienda.protesti).toBeNull();
+    expect(Object.values(datiSchedaCerved({}).eventi.azienda)).toEqual([null, null, null, null, null, null]);
   });
 });
