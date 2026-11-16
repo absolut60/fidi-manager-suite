@@ -113,6 +113,7 @@ def pagine():
     return ps
 
 SOLO = [a for a in sys.argv[2].split(",")] if len(sys.argv) > 2 and sys.argv[2] else None  # facoltativo: elenco pagine
+AZZERA_SCROLL = "()=>{document.activeElement&&document.activeElement.blur();window.scrollTo(0,0);document.querySelectorAll('*').forEach(e=>{if(e.scrollTop)e.scrollTop=0})}"
 MISURA = (Path(__file__).parent / "misura.js").read_text()
 
 async def fotografa(fase):
@@ -137,7 +138,15 @@ async def fotografa(fase):
                 await pg.wait_for_timeout(1800)
                 await pg.add_style_tag(content="*{caret-color:transparent!important;animation:none!important;transition:none!important}")
                 nome = re.sub(r"[^a-z0-9]+", "_", path.lower()).strip("_")
-                await pg.screenshot(path=str(cartella / f"{nome}_{w}x{h}.png"))
+                # Attende che la pagina sia ferma: due fotografie consecutive uguali (max 8 tentativi).
+                precedente = None
+                for _ in range(8):
+                    await pg.evaluate(AZZERA_SCROLL)
+                    await pg.wait_for_timeout(700)
+                    img = await pg.screenshot()
+                    if img == precedente: break
+                    precedente = img
+                (cartella / f"{nome}_{w}x{h}.png").write_bytes(img)
                 print(fase, f"{w}x{h}", path, flush=True)
             await ctx.close()
         await b.close()
