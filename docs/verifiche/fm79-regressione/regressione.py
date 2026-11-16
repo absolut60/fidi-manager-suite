@@ -121,16 +121,17 @@ async def fotografa(fase):
     async with async_playwright() as p:
         b = await p.chromium.launch(headless=True)
         for (w, h, touch) in DIMENSIONI:
-            ctx = await b.new_context(viewport={"width": w, "height": h}, has_touch=touch, is_mobile=touch,
-                                      device_scale_factor=1, reduced_motion="reduce", locale="it-IT",
-                                      timezone_id="Europe/Rome")
-            await ctx.route("**/*.supabase.co/**", backend_finto)
-            pg = await ctx.new_page()
-            await pg.clock.set_fixed_time(DATA_FISSA)
-            await pg.goto("http://localhost:8080/login")
-            await pg.evaluate("([k,v])=>localStorage.setItem(k,v)",
-                              ["sb-bbjmdrctjkoliclmqzcl-auth-token", json.dumps(SESSION)])
             for path in (SOLO or pagine()):
+                # Contesto nuovo per ogni pagina: nessuno stato condiviso fra pagine.
+                ctx = await b.new_context(viewport={"width": w, "height": h}, has_touch=touch, is_mobile=touch,
+                                          device_scale_factor=1, reduced_motion="reduce", locale="it-IT",
+                                          timezone_id="Europe/Rome")
+                await ctx.route("**/*.supabase.co/**", backend_finto)
+                pg = await ctx.new_page()
+                await pg.clock.set_fixed_time(DATA_FISSA)
+                await pg.goto("http://localhost:8080/login")
+                await pg.evaluate("([k,v])=>localStorage.setItem(k,v)",
+                                  ["sb-bbjmdrctjkoliclmqzcl-auth-token", json.dumps(SESSION)])
                 await pg.goto("http://localhost:8080" + path, wait_until="domcontentloaded")
                 try:
                     await pg.wait_for_function("()=>{const t=document.body.innerText.trim();return t.length>40&&!/^Caricamento/.test(t)}", timeout=12000)
@@ -148,7 +149,7 @@ async def fotografa(fase):
                     precedente = img
                 (cartella / f"{nome}_{w}x{h}.png").write_bytes(img)
                 print(fase, f"{w}x{h}", path, flush=True)
-            await ctx.close()
+                await ctx.close()
         await b.close()
 
 def confronta():
