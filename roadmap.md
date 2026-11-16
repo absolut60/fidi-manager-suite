@@ -1,3 +1,6 @@
+# FM79 — Cerved: subject_type obbligatorio nell'acquisto
+- [x] `acquistaLightReport` invia `subject_type: "COMPANY"` nel corpo di POST B2B /v1/purchase; format, product_id 52015, subject_id, language ITALIAN e reference invariati. Nuovo test `tests/cerved-acquisto.test.ts` sul corpo realmente inviato (con e senza reference). Nessuna migrazione.
+
 # FM79 — Cerved, fetta 3
 - [x] Eliminate leggiProfilo/leggiScore/elencoBilanciCerved/bilancioCerved/eventiNegativiFlag e relative scritture; nessuna modifica alle fotografie esistenti. Ricerca solo primo collegamento, aggiornamento soggetto e percorso Light Report invariati. Quattro esiti rimossi dopo verifica di assenza chiamanti; mantenuti sei campi richiesti. Scheda: solo testo di conferma aggiornato. Nessuna migrazione o modifica diagnostica.
 - [x] Otto test isolati del vero handler con confini esterni simulati, senza mock globali; ricerca iniziale, report valido/assente, acquisto annuale, errori e permesso negato verificati. Suite completa: 1017 superati, zero falliti; compilazione automatica OK. Verifica statica: nessuna chiamata granulare o esito rimosso nel percorso, XML/PDF invariati. Nessuna prova live, come richiesto (Cerved 403).
