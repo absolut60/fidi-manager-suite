@@ -1,3 +1,7 @@
+# FM79 — Cerved, fetta 2
+- [x] Scheda e riepilogo compatto: fonte condivisa cerved-presentazione, Light Report prioritario e ripiego per campo; CGS PD/trend solo granulari, CEBI separato, tre bilanci e indici, nessuna chiamata o migrazione modificata. Hook batch e sezione compatta già leggono light_report, riusati senza modifiche.
+- [x] 1009 test superati; screenshot BUILD e PRO.GE.CO a 320/375/390/768/1280/1920, zero overflow/errori; solo LR verificato. BUILD salvato ha ancora il formato precedente: verificato anche il nuovo formato dalla fixture XML reale, senza aggiornare dati né chiamare Cerved. Pagina temporanea rimossa. Sessione personale non disponibile: verifiche presentazionali locali, non login end-to-end.
+
 # FM79 — Cerved, fetta 1
 - [x] Lettore esteso con percorsi verificati su tre XML reali; fixture BUILD con tre bilanci, nessuna UI, chiamata API o migrazione.
 - [x] Non regressione completa DELEO e nuove sezioni: 1001 test superati, zero falliti; compilazione automatica OK.

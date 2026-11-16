@@ -58,6 +58,80 @@ export function trovaScore(scores: ScoreCervedVista[], codice: string): ScoreCer
   return scores.find((s) => s.codice_score?.toUpperCase() === codice) ?? null;
 }
 
+type DatoCerved = Record<string, any>;
+const numeroCerved = (n: unknown): number | null => typeof n === "number" && Number.isFinite(n) ? n : null;
+const testoCerved = (s: unknown): string | null => typeof s === "string" && s.trim() ? s.trim() : null;
+
+/** Coppie codice/descrizione verificate sulle fotografie score reali; nessuna deduzione delle classi mancanti. */
+const CATEGORIE_CGS: Record<string, string> = {
+  CGS_1: "Massima", CGS_2: "Elevata", CGS_3: "Buona", CGS_4: "Media",
+  CGS_5: "Moderata", CGS_6: "Contenuta", CGS_8: "Non affidabile",
+};
+
+/** CGS comune a scheda e compatto. PD/trend vengono esclusivamente dalle fotografie granulari. */
+export function scoreCervedPresentazione(lr: DatoCerved | null | undefined, scores: ScoreCervedVista[] = []) {
+  const cgs = trovaScore(scores, "CGS");
+  const sem = trovaScore(scores, "SEM_CGS");
+  const codice = testoCerved(lr?.score_cgs?.codice);
+  const icon = testoCerved(lr?.score_cgs?.semaforo);
+  const semaforo = coloreSemaforo(icon).tono !== "neutro" ? coloreSemaforo(icon) : coloreSemaforo(sem?.categoria_codice);
+  return {
+    valore: numeroCerved(lr?.score_cgs?.valore) ?? numeroCerved(cgs?.valore),
+    categoria: (codice ? CATEGORIE_CGS[codice] : null) ?? testoCerved(cgs?.categoria_descrizione),
+    semaforo,
+    pd: numeroCerved(cgs?.pd) ?? numeroCerved(sem?.pd),
+    andamento: testoCerved(cgs?.trend_descrizione) ?? testoCerved(sem?.trend_descrizione),
+  };
+}
+
+/** Grading LR: numero e classe distinti dai codici non decodificati; testo solo dallo score salvato. */
+export function gradingCervedPresentazione(lr: DatoCerved | null | undefined, scores: ScoreCervedVista[], codice: "NEG" | "PAY" | "GOV") {
+  const chiave = { NEG: "eventi_negativi", PAY: "payline", GOV: "governance" }[codice];
+  const foto = trovaScore(scores, codice);
+  const valoreLr = numeroCerved(lr?.gradings?.[chiave]);
+  return {
+    valore: valoreLr ?? numeroCerved(foto?.valore),
+    classe: numeroCerved(lr?.gradings?.dettagli?.[chiave]?.classe),
+    descrizione: testoCerved(foto?.categoria_descrizione),
+    esito: valoreLr == null ? esitoScore(codice, foto?.categoria_codice) : "neutro" as EsitoScore,
+  };
+}
+
+/** Unico ripiego per campo della scheda: preserva false/zero e non copia codici grezzi degli eventi. */
+export function datiSchedaCerved(foto: DatoCerved, soggetto: DatoCerved = {}) {
+  const lr = foto.light_report;
+  const r = foto.ricerca ?? {};
+  const p = foto.profilo ?? {};
+  const a = lr?.anagrafica ?? {};
+  const testo = (k: string, ...ripieghi: unknown[]) => [a[k], ...ripieghi].map(testoCerved).find(v => v != null) ?? null;
+  const sede = Object.fromEntries(["indirizzo", "cap", "comune", "provincia"].map(k => [k, testoCerved(a.sede?.[k]) ?? testoCerved(r.sede?.[k]) ?? testoCerved(p.sede?.[k])]));
+  const anagrafica = {
+    denominazione: testo("denominazione", soggetto.denominazione_cerved, r.denominazione, p.denominazione),
+    partita_iva: testo("partita_iva", r.partita_iva, p.partita_iva, soggetto.partita_iva),
+    codice_fiscale: testo("codice_fiscale", r.codice_fiscale, p.codice_fiscale),
+    rea: testo("rea", r.rea, p.rea), forma_giuridica: testo("forma_giuridica", r.forma_giuridica, p.forma_giuridica),
+    ateco_2025_codice: testo("ateco_2025_codice", r.ateco_2025_codice, p.ateco_2025_codice),
+    ateco_2025_descrizione: testo("ateco_2025_descrizione", r.ateco_2025_descrizione, p.ateco_2025_descrizione),
+    stato_attivita_codice: testo("stato_attivita_codice", p.stato_attivita_codice, r.stato_attivita_codice),
+    stato_attivita_descrizione: testo("stato_attivita_descrizione", p.stato_attivita_descrizione, r.stato_attivita_descrizione),
+    sede, pec: testo("pec", Array.isArray(p.pec) ? p.pec.join(", ") : p.pec),
+    sito_web: testo("sito_web", p.sito_web), telefono: testoCerved(p.telefono),
+    dipendenti: numeroCerved(a.dipendenti) ?? numeroCerved(p.dipendenti),
+    dipendenti_anno: numeroCerved(a.dipendenti) == null ? p.dipendenti_anno : null,
+    unita_locali: numeroCerved(a.unita_locali) ?? numeroCerved(p.unita_locali),
+    data_costituzione: dataIsoIt(a.data_costituzione) ?? testoCerved(p.data_costituzione),
+  };
+  const bilanciLr = Array.isArray(lr?.bilanci) && lr.bilanci.length > 0;
+  const anni: DatoCerved[] = bilanciLr ? lr.bilanci.slice(0, 3) : Array.isArray(foto.bilancio?.anni) ? foto.bilancio.anni : [];
+  const azienda = Object.fromEntries(["protesti", "pregiudizievoli", "procedure", "eventi_crisi", "cigs", "fallimenti_propri"].map(k => {
+    const xml = k === "procedure" || k === "fallimenti_propri" ? lr?.eventi_negativi?.azienda?.[k] : null;
+    const fallback = foto.eventi_negativi?.azienda?.[k];
+    return [k, typeof xml === "boolean" ? xml : typeof fallback === "boolean" ? fallback : null];
+  }));
+  const collegati: DatoCerved[] = Array.isArray(lr?.eventi_negativi?.collegati) ? lr.eventi_negativi.collegati.map((c: DatoCerved) => ({ nome: testoCerved(c.nome), codice_fiscale: testoCerved(c.codice_fiscale) })).filter((c: DatoCerved) => c.nome || c.codice_fiscale) : [];
+  return { anagrafica, anni, bilanciLr, eventi: { azienda, persone: foto.eventi_negativi?.persone ?? [], collegati } };
+}
+
 /** ISO timestamp → "GG/MM/AAAA alle HH:MM" (ora di Roma). */
 export function formattaAggiornatoIl(iso: string | null | undefined): string | null {
   if (!iso) return null;
@@ -221,7 +295,7 @@ export function testiLightReportRischio(lr: Record<string, any> | null | undefin
 /**
  * Sezione Cerved compatta (richiesta fido e proposta massiva): solo CGS e fido certificato.
  * CGS dall'ultimo Light Report, altrimenti dalla fotografia 'score'; fido solo dal Light Report.
- * Fascia: descrizione Cerved della fotografia 'score' (nessuna traduzione inventata dei codici).
+ * Fascia: codice CGS verificato del Light Report, altrimenti descrizione della fotografia score.
  * null se non c'è nessun dato: la sezione non compare.
  */
 export function datiCervedCompatto(
@@ -230,9 +304,9 @@ export function datiCervedCompatto(
   fidoAttuale: number | null | undefined,
 ) {
   const num = (n: unknown) => (typeof n === "number" && Number.isFinite(n) ? n : null);
-  const cgsFoto = Array.isArray(scores) ? trovaScore(scores, "CGS") : null;
-  const valore = num(lr?.score_cgs?.valore) ?? num(cgsFoto?.valore);
-  const desc = cgsFoto?.categoria_descrizione?.trim();
+  const cgs = scoreCervedPresentazione(lr, scores ?? []);
+  const valore = cgs.valore;
+  const desc = cgs.categoria;
   const fascia = desc ? `Affidabilità ${desc.toLowerCase()}` : null;
   const cert = num(lr?.fido_certificato?.valore);
   if (valore == null && cert == null) return null;
