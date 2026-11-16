@@ -4,6 +4,7 @@ Uso:
   python3 docs/verifiche/fm79-regressione/regressione.py prima   # PRIMA della fetta
   python3 docs/verifiche/fm79-regressione/regressione.py dopo    # DOPO la fetta
   python3 docs/verifiche/fm79-regressione/regressione.py confronta
+  (facoltativo, solo alcune pagine)  ... regressione.py prima /dashboard,/clienti
 
 Utente e dati sono SIMULATI dentro il browser (nessun accesso reale, nessuna
 scrittura): ogni chiamata al backend viene intercettata e riceve righe finte
@@ -111,6 +112,7 @@ def pagine():
         ps.append("/" + n.replace(f"/codice/{UID}", "/codice/C100000"))
     return ps
 
+SOLO = [a for a in sys.argv[2].split(",")] if len(sys.argv) > 2 and sys.argv[2] else None  # facoltativo: elenco pagine
 MISURA = (Path(__file__).parent / "misura.js").read_text()
 
 async def fotografa(fase):
@@ -127,7 +129,7 @@ async def fotografa(fase):
             await pg.goto("http://localhost:8080/login")
             await pg.evaluate("([k,v])=>localStorage.setItem(k,v)",
                               ["sb-bbjmdrctjkoliclmqzcl-auth-token", json.dumps(SESSION)])
-            for path in pagine():
+            for path in (SOLO or pagine()):
                 await pg.goto("http://localhost:8080" + path, wait_until="domcontentloaded")
                 try:
                     await pg.wait_for_function("()=>{const t=document.body.innerText.trim();return t.length>40&&!/^Caricamento/.test(t)}", timeout=12000)
