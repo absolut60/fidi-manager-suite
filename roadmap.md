@@ -1,6 +1,6 @@
 # FM79 — Cerved, fetta 3
 - [x] Eliminate leggiProfilo/leggiScore/elencoBilanciCerved/bilancioCerved/eventiNegativiFlag e relative scritture; nessuna modifica alle fotografie esistenti. Ricerca solo primo collegamento, aggiornamento soggetto e percorso Light Report invariati. Quattro esiti rimossi dopo verifica di assenza chiamanti; mantenuti sei campi richiesti. Scheda: solo testo di conferma aggiornato. Nessuna migrazione o modifica diagnostica.
-- [ ] Test isolati senza chiamate live (Cerved 403), suite completa e verifica statica.
+- [x] Otto test isolati del vero handler con confini esterni simulati, senza mock globali; ricerca iniziale, report valido/assente, acquisto annuale, errori e permesso negato verificati. Suite completa: 1017 superati, zero falliti; compilazione automatica OK. Verifica statica: nessuna chiamata granulare o esito rimosso nel percorso, XML/PDF invariati. Nessuna prova live, come richiesto (Cerved 403).
 
 # FM79 — Cerved, fetta 2
 - [x] Scheda e riepilogo compatto: fonte condivisa cerved-presentazione, Light Report prioritario e ripiego per campo; CGS PD/trend solo granulari, CEBI separato, tre bilanci e indici, nessuna chiamata o migrazione modificata. Hook batch e sezione compatta già leggono light_report, riusati senza modifiche.
