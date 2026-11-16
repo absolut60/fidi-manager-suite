@@ -59,6 +59,7 @@ import type { FasciaListino } from "@/lib/articoli-api";
 import { formatNumeroIt } from "@/lib/numero-it";
 import { cn } from "@/lib/utils";
 import { lineaPreventivo } from "@/lib/linee-preventivo";
+import { applicaLeva, ricaricoImplicito } from "@/lib/leve-prezzo-showroom";
 import { isRaccoglitorePosa } from "@/lib/riga-preventivo";
 import { toast } from "sonner";
 
@@ -104,7 +105,9 @@ export function RigheTable({
 
 
 
-  const { bloccoConMisure: conMisure, righeStampabili, regimiIva, articoloInDefinizione } = lineaPreventivo(linea).blocchi;
+  const { bloccoConMisure: conMisure, righeStampabili, regimiIva, articoloInDefinizione, colonneGammaRiga: gamma, importoInTestataBlocco } = lineaPreventivo(linea).blocchi;
+  // Colonne della tabella: 17 complete (+1 incidenza), senza colonne Gamma −4 +1 (Ricarico %).
+  const nColonne = (gamma ? 17 : 14) + (conMisure ? 1 : 0);
   const conBs = regimiIva && regimeIva === "agevolata_10_bs";
   const calcs = useMemo(() => calcolaBlocco(blocco.righe), [blocco.righe]);
   const [riepilogoRigaId, setRiepilogoRigaId] = useState<string | null>(null);
@@ -263,7 +266,7 @@ export function RigheTable({
 
   const righeProps = (r: (typeof blocco.righe)[number], idx: number) => ({
     row: r,
-    conMisure, righeStampabili, conBs, articoloInDefinizione,
+    conMisure, righeStampabili, conBs, articoloInDefinizione, gamma,
     prezzoCantiere: segnoPrezzoCantiere(r, dedicati.get(r.articolo_codice ?? r.articolo?.cod_gamma ?? "")),
     idx,
     fascia,
@@ -271,7 +274,7 @@ export function RigheTable({
     preventivoId, sedeGiacenzaId, sedeNome, cantiereId,
     autoOpenPicker: r.id === pendingPickerId,
     onOpenArticolo: (aid: string) => setOpenArticoloId(aid),
-    onOpenRiepilogo: clienteId ? () => setRiepilogoRigaId(r.id) : null,
+    onOpenRiepilogo: clienteId || condizioniPrezzi.listino_rif != null ? () => setRiepilogoRigaId(r.id) : null,
     calc: calcMap.get(r.id) ?? { importo: 0, costo: 0, vendita: 0, margine_perc: 0, peso: 0, importoEffettivo: 0 },
     onPatch: (patch: Parameters<typeof updateRiga>[1]) =>
       upd.mutate({ id: r.id, patch }),
@@ -295,7 +298,7 @@ export function RigheTable({
       {/* Da 1024 px: tabella. Sotto: schede compatte con gli stessi campi. */}
       <div className="hidden max-w-full overflow-x-auto pv-tabella:block">
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        <table className={cn("w-full table-fixed", conMisure ? "min-w-[1470px]" : "min-w-[1410px]", "border-separate border-spacing-0 text-xs")}>
+        <table className={cn("w-full table-fixed", !gamma ? (conMisure ? "min-w-[1326px]" : "min-w-[1266px]") : conMisure ? "min-w-[1470px]" : "min-w-[1410px]", "border-separate border-spacing-0 text-xs")}>
           <thead>
             <tr className="whitespace-nowrap bg-pv-testa text-[10px] uppercase tracking-wide text-muted-foreground [&>th]:bg-pv-testa [&>th]:border-b">
               <th className="w-[18px] px-1 py-1.5 sticky left-0 z-10"></th>
@@ -307,14 +310,16 @@ export function RigheTable({
               <th className="w-[76px] px-1 py-1.5 text-right">Quantità</th>
               <th className="w-[84px] px-1 py-1.5 text-right">Prezzo lordo</th>
               <th className="w-[68px] px-1 py-1.5 text-right">Sconti</th>
+              {gamma ? <>
               <th className="w-[52px] px-1 py-1.5 text-right">Magg.%</th>
               <th className="w-[60px] px-1 py-1.5 text-right" title="Sconto extra %">Extra %</th>
+              </> : <th className="w-[64px] px-1 py-1.5 text-right" title="Ricarico sul costo">Ricarico %</th>}
               <th className="w-[84px] px-1 py-1.5 text-right">Netto</th>
-              <th className="w-[44px] px-1 py-1.5 text-center">±</th>
+              {gamma && <th className="w-[44px] px-1 py-1.5 text-center">±</th>}
               <th className="w-[96px] px-1 py-1.5 text-right">Importo</th>
               <th className="w-[76px] px-1 py-1.5 text-right">Costo</th>
               <th className="w-[60px] px-1 py-1.5 text-right">Marg.%</th>
-              <th className="w-[52px] px-1 py-1.5 text-right">Peso</th>
+              {gamma && <th className="w-[52px] px-1 py-1.5 text-right">Peso</th>}
               <th className="w-[60px] px-1 py-1.5"></th>
             </tr>
           </thead>
@@ -322,7 +327,7 @@ export function RigheTable({
             <tbody>
               {blocco.righe.length === 0 ? (
                 <tr>
-                  <td colSpan={conMisure ? 18 : 17} className="py-6 text-center text-muted-foreground">
+                  <td colSpan={nColonne} className="py-6 text-center text-muted-foreground">
                     Nessuna riga. Aggiungi la prima.
                   </td>
                 </tr>
@@ -333,13 +338,13 @@ export function RigheTable({
           </SortableContext>
           <tfoot>
             <tr className="border-t bg-muted/30 text-xs">
-              <td colSpan={conMisure ? 13 : 12} className="sticky left-0 px-2 py-2">
+              <td colSpan={nColonne - 5} className="sticky left-0 px-2 py-2">
                 <AddRowMenu readOnly={readOnly} onAddArticolo={addArticoloEmptyAndOpen} onPick={(tipo) => addRow(null, tipo)} />
               </td>
-              <td className="px-1 py-2 text-right font-mono font-semibold">€ {fmt2(calcs.totale)}</td>
+              <td className="px-1 py-2 text-right font-mono font-semibold">{importoInTestataBlocco ? <>€ {fmt2(calcs.totale)}</> : <span className="inline-flex flex-col items-end rounded-md bg-primary px-1.5 py-0.5 font-bold text-primary-foreground"><span className="font-sans text-[9px] font-semibold uppercase">Importo</span>€ {fmt2(calcs.totale)}</span>}</td>
               <td className="px-1 py-2 text-right"><span className="inline-flex flex-col items-end rounded-md bg-pv-grigio-tenue px-1.5 py-0.5 font-mono"><span className="font-sans text-[9px] font-semibold uppercase text-muted-foreground">Costo</span>€ {fmt2(calcs.costo)}</span></td>
               <td className="px-1 py-2 text-right"><span className={cn("inline-flex flex-col items-end rounded-md px-1.5 py-0.5 font-mono", margineTot < 0 ? "bg-destructive/10 text-destructive" : "bg-pv-verde-tenue text-pv-verde")}><span className="font-sans text-[9px] font-semibold uppercase">Margine</span>{margineTot.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</span></td>
-              <td className="px-1 py-2 text-right font-mono text-muted-foreground">{fmt2(calcs.peso)}</td>
+              {gamma && <td className="px-1 py-2 text-right font-mono text-muted-foreground">{fmt2(calcs.peso)}</td>}
               <td></td>
             </tr>
           </tfoot>
@@ -355,7 +360,7 @@ export function RigheTable({
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/30 p-2 text-sm">
           <AddRowMenu readOnly={readOnly} onAddArticolo={addArticoloEmptyAndOpen} onPick={(tipo) => addRow(null, tipo)} />
           <div className="grid grid-cols-2 gap-x-4 font-mono text-xs">
-            <span className="text-muted-foreground">Totale</span><span className="text-right font-semibold">€ {fmt2(calcs.totale)}</span>
+            {importoInTestataBlocco ? <><span className="text-muted-foreground">Totale</span><span className="text-right font-semibold">€ {fmt2(calcs.totale)}</span></> : <span className="col-span-2 justify-self-end whitespace-nowrap rounded-md bg-primary px-2 py-0.5 font-bold text-primary-foreground">Importo € {fmt2(calcs.totale)}</span>}
             <span className="col-span-2 mt-1 flex flex-wrap justify-end gap-1">
               <span className="whitespace-nowrap rounded-full bg-pv-grigio-tenue px-2 py-0.5">Costo € {fmt2(calcs.costo)}</span>
               <span className={cn("whitespace-nowrap rounded-full px-2 py-0.5", margineTot < 0 ? "bg-destructive/10 text-destructive" : "bg-pv-verde-tenue text-pv-verde")}>Margine {margineTot.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</span>
@@ -372,9 +377,9 @@ export function RigheTable({
       {(() => {
         const rr = riepilogoRigaId ? blocco.righe.find((x) => x.id === riepilogoRigaId) : null;
         const cc = rr ? calcMap.get(rr.id) : null;
-        return rr?.articolo_codice && clienteId && cc ? (
+        return rr?.articolo_codice && (clienteId || condizioniPrezzi.listino_rif != null) && cc ? (
           <RiepilogoArticoloDialog open onOpenChange={(b) => { if (!b) setRiepilogoRigaId(null); }}
-            clienteId={clienteId} codice={rr.articolo_codice} riga={rr} calc={cc} />
+            clienteId={clienteId} condizioni={condizioniPrezzi} codice={rr.articolo_codice} riga={rr} calc={cc} />
         ) : null;
       })()}
     </div>
@@ -453,6 +458,8 @@ type RigaProps = {
   conBs: boolean;
   /** FM75 F4b: matita e codice fornitore sulla riga manuale. */
   articoloInDefinizione: boolean;
+  /** Colonne Gamma (Magg.%, Extra %, ±, Peso) oppure Ricarico % (catalogo linee). */
+  gamma: boolean;
   prezzoCantiere: boolean;
   row: BloccoConRighe["righe"][number];
   idx: number;
@@ -517,7 +524,7 @@ function ScontiCell({ value, onCommit }: { value: number[] | null | undefined; o
 function PulsanteRiepilogo({ idx, onOpen, inTabella }: { idx: number; onOpen: (() => void) | null; inTabella?: boolean }) {
   const apri = (e: React.SyntheticEvent) => { e.stopPropagation(); e.preventDefault(); onOpen?.(); };
   return <span role="button" tabIndex={onOpen ? 0 : -1} aria-disabled={!onOpen || undefined}
-    aria-label={`Riepilogo articolo riga ${idx + 1}`} title={onOpen ? "Riepilogo articolo" : "Scegli prima il cliente"}
+    aria-label={`Riepilogo articolo riga ${idx + 1}`} title={onOpen ? "Riepilogo articolo" : "Scegli il cliente o imposta le condizioni di riferimento"}
     onClick={onOpen ? apri : (e) => e.stopPropagation()}
     onKeyDown={(e) => { if (onOpen && (e.key === "Enter" || e.key === " ")) apri(e); }}
     className={cn("grid shrink-0 place-items-center rounded-md text-pv-blu", inTabella ? "size-7 lg:size-5" : "size-10",
@@ -627,6 +634,17 @@ function useCelleRiga(p: RigaProps) {
         onCommit={(v) => onPatch({ sconto_perc: v ?? 0 })} />
     ),
     netto: row.prezzo_unit == null ? "—" : fmt4(unita.netto ?? 0),
+    /** FM75: leva ricarico in riga, stesso applicaLeva della finestra riga (scrive prezzo e azzera gli sconti). */
+    ricarico: (
+      <EditableNumberCell ariaLabel="Ricarico %" decimali={2}
+        value={row.leva_prezzo === "ricarico" && row.ricarico != null ? Number(row.ricarico)
+          : row.prezzo_unit == null ? null : ricaricoImplicito(prezzoNettoRiga(row), row.costo_unit == null ? null : Number(row.costo_unit))}
+        onCommit={(v) => {
+          const patch = applicaLeva({ leva: "ricarico", costoUnit: row.costo_unit == null ? null : Number(row.costo_unit), ricaricoPerc: v });
+          if (!patch) { toast.error("Per applicare il ricarico serve il costo della riga"); return; }
+          onPatch(patch);
+        }} />
+    ),
     segnoSel: (
       <Select value={String(segno)} onValueChange={(v) => onPatch({ segno: Number(v) === -1 ? -1 : 1 })}>
         <SelectTrigger className="h-8 w-10 px-1 text-xs" aria-label="Segno"><SelectValue /></SelectTrigger>
@@ -785,7 +803,7 @@ function RigaRow(p: RigaProps) {
     return (
       <tr ref={sortable.setNodeRef} style={style} className={rowClass}>
         {grip}
-        <td colSpan={p.conMisure ? 16 : 15}></td>
+        <td colSpan={(p.gamma ? 15 : 12) + (p.conMisure ? 1 : 0)}></td>
         <td className="text-right"><AzioniRiga {...p} /></td>
       </tr>
     );
@@ -804,17 +822,19 @@ function RigaRow(p: RigaProps) {
       <td className="px-0.5 py-0.5 text-right">{v && c.quantita}</td>
       <td className="px-0.5 py-0.5 text-right">{v && c.lordo}</td>
       <td className="px-0.5 py-0.5 text-right">{v && c.sconti}</td>
+      {p.gamma ? <>
       <td className="px-0.5 py-0.5 text-right">{v && c.magg}</td>
       <td className="px-0.5 py-0.5 text-right">{v && c.extra}</td>
+      </> : <td className="px-0.5 py-0.5 text-right">{v && c.ricarico}</td>}
       <td className="px-1 py-1.5 text-right">{v && c.netto}</td>
-      <td className="px-0.5 py-0.5 text-center">{v && c.segnoSel}</td>
+      {p.gamma && <td className="px-0.5 py-0.5 text-center">{v && c.segnoSel}</td>}
       <td className={cn("px-1 py-1.5 text-right", c.isSubtotal && "border-y-2 border-primary/40 text-xs",
         p.calc.importoEffettivo < 0 && "text-destructive")}>
         {(v || c.isSubtotal) && c.importo}
       </td>
       <td className="px-0.5 py-0.5 text-right text-muted-foreground">{v && c.costo}</td>
       <td className="px-1 py-1 text-right">{v && <><BadgeMargine perc={p.calc.margine_perc} testo={c.margine} />{c.margineEuro && <span className="block whitespace-nowrap font-mono text-[10px] text-muted-foreground">{c.margineEuro}</span>}</>}</td>
-      <td className="px-1 py-1.5 text-right text-muted-foreground">{v && c.peso}</td>
+      {p.gamma && <td className="px-1 py-1.5 text-right text-muted-foreground">{v && c.peso}</td>}
       <td className="px-0.5 text-right"><AzioniRiga {...p} valorizzata={v} /></td>
     </tr>
   );
@@ -865,13 +885,13 @@ function RigaScheda(p: RigaProps) {
           {campo("Quantità", c.quantita)}
           {campo("Prezzo lordo", c.lordo)}
           {campo("Sconti", c.sconti)}
-          {campo("Extra %", c.extra, undefined, "Sconto extra %")}
+          {p.gamma ? campo("Extra %", c.extra, undefined, "Sconto extra %") : campo("Ricarico %", c.ricarico)}
           {valore("Netto", c.netto)}
           {p.conMisure && campo("Incidenza", c.incidenza)}
-          {campo("Magg.%", c.magg)}
-          {campo("±", c.segnoSel)}
+          {p.gamma && campo("Magg.%", c.magg)}
+          {p.gamma && campo("±", c.segnoSel)}
           {campo("Costo unit.", c.costo)}
-          {valore("Peso", c.peso)}
+          {p.gamma && valore("Peso", c.peso)}
         </div>
       )}
       {c.isSubtotal && valore("Sotto-totale", <span className="text-xs font-semibold">{c.importo}</span>)}
