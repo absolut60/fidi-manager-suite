@@ -247,8 +247,8 @@ test("Light Report DELEO: fido, CGS, payline, richieste e immobili dai percorsi 
   const d = normalizzaLightReportXml(XML_DELEO);
   expect(d.data_report).toBe("2026-11-06");
   expect(d.fido_certificato).toEqual({ valore: 262000, codice: "DF07" });
-  expect(d.score_cgs).toEqual({ valore: 56, codice: "CGS_4" });
-  expect(d.gradings).toEqual({ eventi_negativi: 50, payline: 60, governance: 48 });
+  expect(d.score_cgs).toMatchObject({ valore: 56, codice: "CGS_4" });
+  expect(d.gradings).toMatchObject({ eventi_negativi: 50, payline: 60, governance: 48 });
   expect(d.payline?.giorni_effettivi).toBe(113);
   expect(d.payline?.giorni_concordati).toBe(115);
   expect(d.payline?.esperienze).toBe(165);
@@ -272,4 +272,79 @@ test("Light Report: tag con namespace e attributi, campi assenti a null", () => 
   expect(d.score_cgs).toBeNull();
   expect(d.payline).toBeNull();
   expect(d.protesti).toEqual({ possibile_omonimia: null, fallimento: null, procedure: null });
+});
+
+const XML_BUILD = readFileSync(new URL("./fixtures/cerved-light-report-build-technology.xml", import.meta.url), "utf8");
+
+test("FM79: ogni valore preesistente DELEO resta identico (incluse tutte le righe)", () => {
+  const precedente = JSON.parse(readFileSync(new URL("./fixtures/cerved-light-report-deleo-prima.json", import.meta.url), "utf8"));
+  const attuale = normalizzaLightReportXml(XML_DELEO);
+  const { score_cgs, gradings, ...resto } = precedente;
+  for (const [chiave, valore] of Object.entries(resto)) expect(attuale[chiave as keyof typeof attuale]).toEqual(valore);
+  expect({ valore: attuale.score_cgs?.valore, codice: attuale.score_cgs?.codice }).toEqual(score_cgs);
+  expect({ eventi_negativi: attuale.gradings.eventi_negativi, payline: attuale.gradings.payline, governance: attuale.gradings.governance }).toEqual(gradings);
+});
+
+test("FM79: anagrafica azienda principale, provincia in attributo e ATECO 2025", () => {
+  expect(normalizzaLightReportXml(XML_BUILD).anagrafica).toEqual({
+    denominazione: "BUILD TECHNOLOGY S.R.L.", partita_iva: "14475121001", codice_fiscale: "14475121001", rea: "1523414",
+    forma_giuridica: "SOCIETA' A RESPONSABILITA' LIMITATA", ateco_2025_codice: "43.21.01",
+    ateco_2025_descrizione: "Installazione di impianti di illuminazione e fotovoltaici in edifici",
+    stato_attivita_codice: "A", stato_attivita_descrizione: "ATTIVA",
+    sede: { indirizzo: "PIAZZALE DELLE PROVINCIE 8", cap: "00162", comune: "ROMA", provincia: "RM" },
+    pec: "BUILDTECHNOLOGY@LEGALMAIL.IT", sito_web: "buildtecnology.it", telefono: null, dipendenti: 6, unita_locali: 2,
+    data_costituzione: "2017-09-27", data_inizio_attivita: "2017-11-03",
+  });
+});
+
+test("FM79: CGS non prende PD CEBI né trend Payline; grading e CEBI verificati", () => {
+  const r = normalizzaLightReportXml(XML_BUILD);
+  expect(r.score_cgs).toEqual({ valore: 64, codice: "CGS_3", pd: null, trend_codice: null, trend_descrizione: null, semaforo: "V" });
+  expect(r.gradings).toEqual({
+    eventi_negativi: 50, payline: 49, governance: 40, richieste: 45,
+    dettagli: { eventi_negativi: { classe: 0, descrizione: "C4_1" }, payline: { classe: 3, descrizione: "C3_1" }, governance: { classe: 3, descrizione: "C6_1" }, richieste: { classe: 3, descrizione: "C5_1" } },
+    cebi: { classe: 4, codice: "S4", descrizione: null, pd: 0.0012, data_chiusura: "2025-12-31" },
+  });
+  expect(normalizzaLightReportXml(XML_DELEO).gradings.cebi).toBeNull();
+});
+
+test("FM79: tre bilanci XML in migliaia convertiti in euro, indici collegati per data", () => {
+  expect(normalizzaLightReportXml(XML_BUILD).bilanci).toEqual([
+    { data_chiusura: "2025-12-31", ricavi: 1758000, acquisti: 337000, mol: 105000, utile: 68000, patrimonio_netto: 457000, debiti_banche: 19000, debiti_fornitori: 588000, crediti_clienti: 864000, liquidita: 92000, roe: 16.1, roi: 15.3 },
+    { data_chiusura: "2024-12-31", ricavi: 963000, acquisti: 234000, mol: 80000, utile: 43000, patrimonio_netto: 389000, debiti_banche: 23000, debiti_fornitori: 79000, crediti_clienti: 115000, liquidita: 311000, roe: 11.7, roi: 11.2 },
+    { data_chiusura: "2023-12-31", ricavi: 2814000, acquisti: 517000, mol: 231000, utile: 147000, patrimonio_netto: 347000, debiti_banche: 27000, debiti_fornitori: 266000, crediti_clienti: 381000, liquidita: 440000, roe: 53.8, roi: 48.6 },
+  ]);
+  expect(normalizzaLightReportXml(XML_DELEO).bilanci).toEqual([]);
+});
+
+test("FM79: debiti banca sommano due componenti, una mancante non azzera l'altra", () => {
+  const a = "<STDebtsTowardsBanks><Value>12</Value></STDebtsTowardsBanks>";
+  const b = "<MiddleLongTermDebtsTowardsBanks><Value>34</Value></MiddleLongTermDebtsTowardsBanks>";
+  const parse = (v: string) => normalizzaLightReportXml(`<LightReport><BalanceSheetCebi><BalanceSheetInfo><LiabilitiesAndShareholderEquity>${v}</LiabilitiesAndShareholderEquity></BalanceSheetInfo></BalanceSheetCebi></LightReport>`).bilanci[0];
+  expect(parse(a + b).debiti_banche).toBe(46000);
+  expect(parse(a).debiti_banche).toBe(12000);
+  expect(parse("").debiti_banche).toBeNull();
+  expect(parse("").roe).toBeNull();
+});
+
+test("FM79: eventi non confondono omonimia, codici numerici e flag collegati con negatività accertata", () => {
+  const e = normalizzaLightReportXml(XML_BUILD).eventi_negativi;
+  expect(e.azienda).toEqual({ protesti: null, pregiudizievoli: null, procedure: false, eventi_crisi: null, cigs: null, fallimenti_propri: false });
+  expect(e.codici_azienda).toEqual({ CgrPr: 5, CgrPa: 10, CgrPb: 10, CgrPc: 0, CgrF: 99, CgrPrA: 99, CgrPrC: 1 });
+  expect(e.persone.map((p) => p.nome)).toEqual(["FINARELLI MARCO", "MARTELLA LAILA"]);
+  expect(e.persone[0].protesti).toBeNull();
+  expect(e.collegati).toHaveLength(4);
+  expect(e.collegati[0]).toMatchObject({ nome: "FINARELLI MARCO", codice_fiscale: "FNRMRC71P14H501D", persona: true, flag_pc: false, flag_pp: true });
+  expect(e.collegati[2]).toMatchObject({ persona: false, flag_pc: true, flag_pp: true });
+});
+
+test("FM79: nuovi dati assenti restano null, sezioni collegate non contaminano l'azienda", () => {
+  const r = normalizzaLightReportXml("<LightReport><PositionCompany><ItemInformation><OfficialCompanyName>ALTRA AZIENDA</OfficialCompanyName></ItemInformation></PositionCompany></LightReport>");
+  expect(r.anagrafica).toBeNull();
+  expect(r.gradings.dettagli.payline).toBeNull();
+  expect(r.gradings.cebi).toBeNull();
+  expect(r.eventi_negativi).toEqual({ azienda: null, persone: [], codici_azienda: null, collegati: [] });
+  const e = normalizzaLightReportXml("<LightReport><Bankruptcy><Event>procedura</Event></Bankruptcy><AgreedWindingUpProcedures><Event>procedura</Event></AgreedWindingUpProcedures></LightReport>");
+  expect(e.eventi_negativi.azienda?.procedure).toBe(true);
+  expect(e.eventi_negativi.azienda?.fallimenti_propri).toBe(true);
 });
