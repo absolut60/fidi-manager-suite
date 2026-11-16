@@ -12,6 +12,7 @@ import { Plus, Search, Building, MapPin, Shield, ShieldOff, ArrowLeft, ArrowRigh
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/lista-responsive";
+import { useIsTablet } from "@/hooks/use-tablet";
 import * as RadixSlider from "@radix-ui/react-slider";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -179,6 +180,8 @@ function etichettaElenco(valori: string[], label: (v: string) => string): string
 
 function ClientiPage() {
   const navigate = useNavigate();
+  /** FM79: solo sul tablet cambia l'impaginazione (schede in verticale, tabella ridotta in orizzontale). */
+  const isTablet = useIsTablet();
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
   const isListRoute = currentPath === "/clienti";
   const { role: _roleEarly, profilo: _profiloEarly, hasRole: _hasRoleEarly, user: _userEarly } = useAuth();
@@ -1536,7 +1539,7 @@ function ClientiPage() {
   );
 
   const FidoTeoricoToggle = (
-    <label className="flex items-center gap-2 text-[13px] cursor-pointer select-none h-9 px-2 rounded-md border">
+    <label className="flex items-center gap-2 text-[13px] cursor-pointer select-none h-9 px-2 rounded-md border tablet:min-h-11 tablet:text-sm">
       <Checkbox
         checked={mostraFidoTeorico}
         onCheckedChange={(v) => setMostraFidoTeorico(!!v)}
@@ -1631,7 +1634,7 @@ function ClientiPage() {
           key={c.key}
           type="button"
           onClick={c.onRemove}
-          className="inline-flex items-center gap-1 rounded-full border bg-muted/50 hover:bg-muted px-2.5 py-1 text-xs transition-colors"
+          className="inline-flex items-center gap-1 rounded-full border bg-muted/50 hover:bg-muted px-2.5 py-1 text-xs transition-colors tablet:min-h-10 tablet:px-3"
         >
           <span>{c.label}</span>
           <X className="size-3 opacity-60" />
@@ -1657,6 +1660,35 @@ function ClientiPage() {
   );
 
   function renderFiltriContent(stack = false) {
+    if (isTablet && !stack) {
+      // FM79 tablet: ricerca a tutta larghezza, filtri su 2 colonne (3 in orizzontale) con etichette intere.
+      return (
+        <div className="space-y-2 text-sm">
+          <SearchInput value={searchInput} onChange={setSearchInput} />
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+            {StoreSelect}
+            {ScadutoSelect}
+            {AScadereSelect}
+            {SemaforoSelect}
+            {StatoFidoPopover}
+            {TipoSoggettoSelect}
+            {AgenteSelect}
+            {MestiereSelect}
+            {PrivacySelect}
+            {FidoFasciaSelect}
+            {TotaleRischioSelect}
+            {FatturatoSelect}
+            {StatoAttivitaSelect}
+            {RichiestaFidoSelect}
+            {ScostamentoSelect}
+            {ProfiloFidoSelect}
+            {FidoTeoricoToggle}
+            {AdvFilterBtn}
+          </div>
+          {ChipsRow}
+        </div>
+      );
+    }
     if (stack) {
       return (
         <div className="grid grid-cols-1 gap-3">
@@ -1757,7 +1789,7 @@ function ClientiPage() {
       <button
         type="button"
         onClick={() => toggleSort(col)}
-        className={`flex items-center gap-1 font-medium hover:text-primary transition-colors ${align === "right" ? "ml-auto" : ""}`}
+        className={`flex items-center gap-1 font-medium hover:text-primary transition-colors tablet:min-h-10 ${align === "right" ? "ml-auto" : ""}`}
       >
         {label}
         {active ? (
@@ -1766,6 +1798,126 @@ function ClientiPage() {
           <ChevronsUpDown className="size-4 text-muted-foreground/60" />
         )}
       </button>
+    );
+  }
+
+  /** FM79 tablet in orizzontale (da lg): solo colonne essenziali, il resto dentro la riga; azioni sempre visibili. */
+  function renderTabellaTablet() {
+    return (
+      <div className="hidden lg:block">
+        <Table className="w-full table-fixed">
+          <TableHeader>
+            <TableRow>
+              {!isAgente && (
+                <TableHead className="w-12">
+                  <Checkbox checked={tuttiClientiSel} onCheckedChange={(v) => void toggleTuttiClienti(v === true)} />
+                </TableHead>
+              )}
+              <TableHead><SortHeader col="ragione_sociale" label="Ragione sociale" /></TableHead>
+              <TableHead className="w-[17%]">Punto vendita</TableHead>
+              <TableHead className="w-[17%] text-right"><SortHeader col="fido_gestionale" label="Fido" align="right" /></TableHead>
+              <TableHead className="w-[17%]"><SortHeader col="scaduto" label="Scaduto" /></TableHead>
+              <TableHead className="w-[14%]">Stato</TableHead>
+              <TableHead className="w-14"><span className="sr-only">Azioni</span></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {clienti.map((c: any) => {
+              const sem = semaforoDisplayMap?.get(c.id) ?? null;
+              const residuoNum = c.fido_residuo == null ? null : Number(c.fido_residuo);
+              const sc = (scadenziarioMap ?? scadenziarioDisplayMap)?.get(c.id);
+              const isBlocked = !!c.bloccato || Number(c.ind_blocco ?? 0) > 0;
+              const attivo = isClienteAttivo((c as any).ultima_data_fatturazione, (c as any).doc_da_fatturare, config);
+              const legale = (c as { in_gestione_legale?: boolean }).in_gestione_legale;
+              const ft = mostraFidoTeorico ? fidoTeoricoDisplayMap?.get(c.id) : undefined;
+              return (
+                <TableRow
+                  key={c.id}
+                  className={`cursor-pointer ${isBlocked ? "bg-[#FEF2F2] dark:bg-destructive/10 border-l-[3px] border-l-[#EF4444]" : legale ? "bg-amber-50 dark:bg-amber-500/10 border-l-[3px] border-l-amber-500" : !attivo ? "bg-muted/40 text-muted-foreground" : ""}`}
+                  onClick={() => navigate({ to: "/clienti/$clienteId", params: { clienteId: c.id } })}
+                >
+                  {!isAgente && (
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => toggleSelect(c)} />
+                    </TableCell>
+                  )}
+                  <TableCell className="align-top">
+                    <div className="flex items-start gap-2 min-w-0">
+                      <span
+                        className={`mt-1.5 inline-block size-2.5 shrink-0 rounded-full ${sem?.stadio ? SEMAFORO_DOT[sem.stadio] : "bg-muted"}`}
+                        title={sem?.motivo ?? (sem?.stadio ? SEMAFORO_LABEL[sem.stadio] : "Semaforo non ancora calcolato")}
+                      />
+                      <div className="min-w-0">
+                        <div className="font-medium break-words line-clamp-2">
+                          {legale && <span title="In gestione legale" className="text-orange-600 mr-1">⚖</span>}
+                          {c.ragione_sociale}
+                        </div>
+                        <div className="text-xs text-muted-foreground break-words">
+                          <span className="font-mono">{c.codice_gestionale || "—"}</span>
+                          {c.partita_iva ? ` · P. IVA ${c.partita_iva}` : ""}
+                          {c.citta ? ` · ${c.citta}${c.provincia ? ` (${c.provincia})` : ""}` : ""}
+                        </div>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="align-top text-sm break-words">
+                    {c.stores?.nome || <span className="text-muted-foreground">—</span>}
+                  </TableCell>
+                  <TableCell className="align-top text-right text-sm tabular-nums">
+                    <div>{fmtEuro(c.fido_gestionale)}</div>
+                    <div className={`text-xs ${residuoNum != null && residuoNum < 0 ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                      Residuo {fmtEuro(c.fido_residuo)}
+                    </div>
+                    {ft && <div className="text-xs text-muted-foreground">Proposto {fmtEuro(ft.fido_proposto)}</div>}
+                  </TableCell>
+                  <TableCell className="align-top">
+                    <div className="flex flex-col items-start gap-1">
+                      {sc && sc.ha_scaduto ? (
+                        <Badge className="bg-destructive/15 text-destructive gap-1" title="Importo scaduto">
+                          <AlertCircle className="size-3" /> {fmtEuro(sc.totale_scaduto)}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                      {sc && sc.ha_a_scadere && (
+                        <Badge className="bg-yellow-500/15 text-yellow-700 dark:text-yellow-500 gap-1" title="A scadere">
+                          <Clock className="size-3" /> {fmtEuro(sc.totale_a_scadere)}
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="align-top">
+                    <div className="flex flex-col items-start gap-1">
+                      <Badge variant={!attivo ? "secondary" : "default"}>{!attivo ? "Non attivo" : "Attivo"}</Badge>
+                      {c.ind_blocco === 1 && <Badge className="bg-yellow-500/15 text-yellow-700 dark:text-yellow-500">Blocco revocabile</Badge>}
+                      {c.ind_blocco === 2 && <Badge className="bg-destructive/15 text-destructive">Bloccato</Badge>}
+                      {legale && <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-500">⚖️ Legale</Badge>}
+                      {privacyDisplayMap?.get(c.id) ? (
+                        <Badge className="bg-success/15 text-success gap-1"><Shield className="size-3" /> Privacy OK</Badge>
+                      ) : (
+                        <Badge className="bg-warning/15 text-warning gap-1"><ShieldOff className="size-3" /> Privacy da richiedere</Badge>
+                      )}
+                      {c.assicurazione_attiva && <Badge className="bg-success/15 text-success">POUEY</Badge>}
+                      {badgePromessa(c.id)}
+                    </div>
+                  </TableCell>
+                  <TableCell className="align-top" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Modifica"
+                      aria-label="Modifica"
+                      onClick={() => navigate({ to: "/clienti/$clienteId", params: { clienteId: c.id }, search: { edit: 1 } as any })}
+                    >
+                      <Pencil className="size-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
     );
   }
 
@@ -1915,7 +2067,7 @@ function ClientiPage() {
           <>
           {/* Mobile: schede al posto della tabella */}
           {!isAgente && totaleClienti > 0 && (
-            <div className="md:hidden mb-2">
+            <div className={isTablet ? "lg:hidden mb-2" : "md:hidden mb-2"}>
               {selectedIds.size >= totaleClienti ? (
                 <Button variant="outline" className="w-full h-10" onClick={clearSelection}>
                   Deseleziona tutto
@@ -1934,6 +2086,7 @@ function ClientiPage() {
             </div>
           )}
           <ElencoSchede
+            finoA={isTablet ? "lg" : "md"}
             selezioneTutti={!isAgente ? {
               tutti: tuttiClientiSel,
               alcuni: selectedIds.size > 0,
@@ -1966,6 +2119,7 @@ function ClientiPage() {
                     );
                   })()}
                   campi={[
+                    ...(isTablet ? [{ etichetta: "Codice", valore: c.codice_gestionale || "—" }] : []),
                     { etichetta: "Città", valore: c.citta ? `${c.citta}${c.provincia ? ` (${c.provincia})` : ""}` : "—" },
                     { etichetta: "Punto vendita", valore: c.stores?.nome || "—" },
                     { etichetta: "Fido attuale", valore: fmtEuro(c.fido_gestionale) },
@@ -1996,6 +2150,19 @@ function ClientiPage() {
                         <Badge className="bg-yellow-500/15 text-yellow-700 dark:text-yellow-500">Blocco revocabile</Badge>
                       )}
                       {badgePromessa(c.id)}
+                      {isTablet && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="ml-auto gap-1.5"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate({ to: "/clienti/$clienteId", params: { clienteId: c.id }, search: { edit: 1 } as any });
+                          }}
+                        >
+                          <Pencil className="size-4" /> Modifica
+                        </Button>
+                      )}
                     </>
                   }
                 />
@@ -2004,6 +2171,7 @@ function ClientiPage() {
           </ElencoSchede>
 
 
+          {isTablet ? renderTabellaTablet() : (
           <div className="hidden md:block">
             <Table className="min-w-[1600px]">
               <TableHeader>
@@ -2207,6 +2375,7 @@ function ClientiPage() {
               </TableBody>
              </Table>
           </div>
+          )}
           </>
         )}
 
