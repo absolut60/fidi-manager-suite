@@ -48,6 +48,10 @@ Due giri `prima`/`dopo` senza alcuna modifica al codice su 6 pagine (dashboard, 
 - Le pagine di dettaglio (scheda cliente, preventivo, richiesta, …) con dati simulati restano sullo scheletro di caricamento: per loro lo script garantisce l'invarianza dell'impaginazione esterna, non del contenuto. Per le fette che le toccano serve in più una verifica con accesso vero.
 - Le finestre (dialog) non vengono aperte dallo script: le fette che toccano `dialog.tsx`/`sheet.tsx` aggiungono fotografie a 375/1280/1440 delle finestre toccate, prima e dopo.
 
+## Note dalla fetta 1 (16/11/2026)
+
+- Con più gruppi in parallelo alcune pagine possono essere fotografate a metà caricamento ("Caricamento…", scheletri). Lo script ora aspetta fino a 10 s che spariscano; se una differenza mostra solo uno stato di caricamento, si rifotografa quella pagina **in entrambe le fasi** con il codice corrispondente.
+
 ## Testo completo dello script
 
 Copia identica di `fm79-regressione/regressione.py` (se differiscono, vale il file .py).
@@ -187,11 +191,19 @@ async def fotografa(fase):
                 await pg.goto("http://localhost:8080/login")
                 await pg.evaluate("([k,v])=>localStorage.setItem(k,v)",
                                   ["sb-bbjmdrctjkoliclmqzcl-auth-token", json.dumps(SESSION)])
-                await pg.goto("http://localhost:8080" + path, wait_until="domcontentloaded")
+                for tentativo in range(3):  # navigazione interrotta dal server di sviluppo: si riprova
+                    try:
+                        await pg.goto("http://localhost:8080" + path, wait_until="domcontentloaded"); break
+                    except Exception:
+                        if tentativo == 2: raise
+                        await pg.wait_for_timeout(1500)
                 try:
                     await pg.wait_for_function("()=>{const t=document.body.innerText.trim();return t.length>40&&!/^Caricamento/.test(t)}", timeout=12000)
                 except Exception: pass
                 await pg.wait_for_timeout(1800)
+                try:  # niente "Caricamento…" né scheletri: evita di fotografare a metà caricamento
+                    await pg.wait_for_function("()=>!/Caricamento/.test(document.body.innerText)&&!document.querySelector('.animate-pulse,.animate-spin')", timeout=10000)
+                except Exception: pass
                 await pg.add_style_tag(content="*{caret-color:transparent!important;animation:none!important;transition:none!important}")
                 nome = re.sub(r"[^a-z0-9]+", "_", path.lower()).strip("_")
                 # Attende che la pagina sia ferma: due fotografie consecutive uguali (max 8 tentativi).
