@@ -46,7 +46,8 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
   const datoCliente=(etichetta:string,valore:ReactNode,ampio=false,mono=false)=><div className={`min-w-0 space-y-1 ${ampio?'col-span-2':''}`}><p className="text-[11px] text-muted-foreground">{etichetta}</p><div className={`break-words text-xs ${mono?'font-mono':''}`}>{valore||'—'}</div></div>;
   const etichettaSoggetto=cliente?.tipo_soggetto==='persona_fisica'?'Privato':cliente?.tipo_soggetto==='azienda'?'Azienda':null;
   const due="grid grid-cols-2 gap-x-2 gap-y-1.5 xl:grid-cols-4";
-  return <section className="grid grid-cols-1 items-start gap-3 py-2 lg:grid-cols-2 [&>*]:min-w-0">
+  return <section className="grid grid-cols-1 items-start gap-3 py-2 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] [&>*]:min-w-0">
+    <div className="flex min-w-0 flex-col gap-3 [&>*]:min-w-0">
     <RiquadroScheda titolo="Documento" icona={FileText} tono="grigio" densita="compatta">
       <div className={due}>
         {text('titolo','Titolo',true)}
@@ -91,13 +92,16 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
     </RiquadroScheda>
     <AssegnazionePreventivo prev={prev} modificabile={modificabile}/>
     <CantiereTestata prev={prev} modificabile={modificabile} onCantiere={onCantiere} clienteEtichetta={identitaCliente} sedeClienteNome={sede} sedeClienteId={sedeClienteId}/>
-    <RiquadroScheda titolo="Note" icona={StickyNote} tono="viola" densita="compatta" className="lg:col-start-1 lg:row-start-4">
+    </div>
+    <div className="flex min-w-0 flex-col gap-3 [&>*]:min-w-0">
+    <RiquadroScheda titolo="Note" icona={StickyNote} tono="viola" densita="compatta">
       {modificabile?<Textarea aria-label="Note" rows={3} className="min-h-0 resize-none bg-card px-2 py-1 text-xs md:text-xs" defaultValue={prev.note||''} onBlur={e=>{if((e.target.value||null)!==prev.note)save({note:e.target.value||null});}}/>:<p className="whitespace-pre-wrap break-words text-xs">{prev.note||'—'}</p>}
       <NotePreventivo id={prev.id} modificabile={modificabile}/>
     </RiquadroScheda>
-    <RiquadroScheda titolo="Allegati" icona={Paperclip} tono="grigio" densita="compatta" className="lg:col-start-2 lg:row-start-4 [&>header]:hidden">
+    <RiquadroScheda titolo="Allegati" icona={Paperclip} tono="grigio" densita="compatta" className="[&>header]:hidden">
       <AllegatiSection entitaTipo="preventivo" entitaId={prev.id} clienteId={null} canEdit={modificabile} eliminaTutti={modificabile} compact/>
     </RiquadroScheda>
     <AttivitaPreventivo id={prev.id} clienteId={prev.cliente_id} agenteCodice={prev.agente_codice} sedeNome={sede} sedeClienteId={sedeClienteId} modificabile={modificabile}/>
+    </div>
   </section>;
 }

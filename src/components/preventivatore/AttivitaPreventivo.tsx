@@ -43,7 +43,7 @@ export function AttivitaPreventivo({ id, clienteId, agenteCodice, sedeNome, sede
       return ordinaAttivitaPreventivo(righe);
     },
   });
-  return <RiquadroScheda titolo={`Attività commerciali (${attivita.length})`} icona={CalendarClock} tono="azzurro" densita="compatta" className="lg:col-start-2 lg:row-start-3">
+  return <RiquadroScheda titolo={`Attività commerciali (${attivita.length})`} icona={CalendarClock} tono="azzurro" densita="compatta">
     {isPending && <p className="text-xs text-muted-foreground">Caricamento attività…</p>}
     {error && <p role="alert" className="text-xs text-destructive">Impossibile caricare le attività.</p>}
     {!isPending && !error && !attivita.length && <p className="text-xs text-muted-foreground">Nessuna attività registrata.</p>}
