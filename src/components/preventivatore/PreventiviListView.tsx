@@ -172,8 +172,8 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
         <TableCell className="hidden px-2 py-2 align-top 2xl:table-cell"><Testo>{r.creato_da_nome}</Testo></TableCell>
         <TableCell className="px-2 py-2 align-top tabular-nums">{formatDate(r.data)}{!isOrdine && <span className="mt-1 block text-[11px] text-muted-foreground 2xl:hidden">{`Valido al ${r.validita ? formatDate(r.validita) : "—"}`}</span>}</TableCell>
         {!isOrdine && <TableCell className="hidden px-2 py-2 align-top tabular-nums 2xl:table-cell">{r.validita ? formatDate(r.validita) : "—"}</TableCell>}
-        {!isOrdine && <TableCell className="px-2 py-2 align-top"><BadgeTipoDoc tipoDoc={r.tipo_doc} className="whitespace-normal px-2 text-[11px] leading-tight" /></TableCell>}
-        <TableCell className="px-2 py-2 align-top"><BadgeStato stato={r.stato} className="px-2 text-[11px]" /><BadgeEvasione stato={evasioneDi(r)} className="mt-1 px-2 text-[11px] 2xl:hidden" /></TableCell>
+        {!isOrdine && <TableCell className="hidden px-2 py-2 align-top 2xl:table-cell"><BadgeTipoDoc tipoDoc={r.tipo_doc} className="whitespace-normal px-2 text-[11px] leading-tight" /></TableCell>}
+        <TableCell className="px-2 py-2 align-top"><BadgeStato stato={r.stato} className="px-2 text-[11px]" />{!isOrdine && <BadgeTipoDoc tipoDoc={r.tipo_doc} className="mt-1 whitespace-normal px-2 text-[11px] leading-tight 2xl:hidden" />}<BadgeEvasione stato={evasioneDi(r)} className="mt-1 px-2 text-[11px] 2xl:hidden" /></TableCell>
         <TableCell className="hidden px-2 py-2 align-top 2xl:table-cell"><BadgeEvasione stato={evasioneDi(r)} className="px-2 text-[11px]" /></TableCell>
         <TableCell className={cn("px-2 py-2 align-top text-right tabular-nums", alternativa ? "text-muted-foreground" : "font-semibold")}>{euro(r.totale)}</TableCell>
       </TableRow>
@@ -340,15 +340,15 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
             <Table className="table-fixed">
               <TableHeader>
                 <TableRow className="bg-pv-testa text-[11px] uppercase tracking-wide hover:bg-pv-testa">
-                  <TableHead className="w-[7.5rem] px-2">Numero</TableHead>
+                  <TableHead className="w-[6.5rem] px-2 2xl:w-[7.5rem]">Numero</TableHead>
                   <TableHead className="min-w-0 px-2">Titolo</TableHead>
                   <TableHead className="min-w-0 px-2">Cliente/Lead</TableHead>
                   <TableHead className="hidden w-[7rem] px-2 2xl:table-cell">Cantiere</TableHead>
                   <TableHead className="hidden w-[7rem] px-2 2xl:table-cell">Creato da</TableHead>
                   <TableHead className="w-[5.5rem] px-2">Data</TableHead>
                   {!isOrdine && <TableHead className="hidden w-[5.5rem] px-2 2xl:table-cell">Validità</TableHead>}
-                  {!isOrdine && <TableHead className="w-[7rem] px-2">Tipo</TableHead>}
-                  <TableHead className="w-[6.25rem] px-2">Stato</TableHead>
+                  {!isOrdine && <TableHead className="hidden w-[7rem] px-2 2xl:table-cell">Tipo</TableHead>}
+                  <TableHead className="w-[7rem] px-2">Stato</TableHead>
                   <TableHead className="hidden w-[6.25rem] px-2 2xl:table-cell">Evasione</TableHead>
                   <TableHead className="w-[7rem] px-2 text-right">Totale</TableHead>
                 </TableRow>
