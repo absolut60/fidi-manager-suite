@@ -8,12 +8,14 @@ export const Route = createFileRoute("/verifica-cerved-temporanea")({
 });
 function Verifica() {
   const [dati, setDati] = useState<(DatiCervedCliente & { id: string }) | null>(null);
+  const [pronto, setPronto] = useState(false);
   useEffect(() => {
     const ricevi = (e: Event) => setDati((e as CustomEvent).detail);
     window.addEventListener("campione-cerved", ricevi);
+    setPronto(true);
     return () => window.removeEventListener("campione-cerved", ricevi);
   }, []);
-  if (!dati) return <button onClick={() => window.dispatchEvent(new Event("pronto-cerved"))}>Carica campione</button>;
+  if (!dati) return <p>{pronto ? "Pronto" : "Caricamento"}</p>;
   return <div className="p-3">
     <SezioneCervedCompatta dati={{ lightReport: dati.foto.light_report ?? null, scores: dati.foto.score?.scores ?? null }} fidoAttuale={65500} />
     <VistaCerved dati={dati} clienteId={dati.id} fidoMade={65500} puoAggiornare={false} inCorso={false} onAggiorna={() => {}} />
