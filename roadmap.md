@@ -1,6 +1,7 @@
 # FM79 — Cerved, fetta 1
-- [ ] Estendere solo il lettore Light Report con percorsi verificati su tre XML reali e confronto delle unità con fotografie bilancio.
-- [ ] Verificare non regressione DELEO, nuove sezioni e suite completa; nessuna UI, chiamata API o migrazione.
+- [x] Lettore esteso con percorsi verificati su tre XML reali; fixture BUILD con tre bilanci, nessuna UI, chiamata API o migrazione.
+- [x] Non regressione completa DELEO e nuove sezioni: 1001 test superati, zero falliti; compilazione automatica OK.
+- [x] Limiti del dato verificati: bilanci XML riclassificati in migliaia non identici ai granulari (BUILD 2025 ricavi 1.758.000 vs 1.698.217, MOL 105.000 vs 123.642); CGS PD/trend assenti, CEBI PD distinto; CgrFlags senza decodifica certa conservati grezzi, FlagPc/FlagPP non trattati come eventi negativi accertati.
 
 # Rifinitura PDF e Testata preventivo
 - [x] Intestazione PDF: agente opzionale e filiale rimossa; PRV-163/26 raster identico fuori area Filiale (0 pixel diversi).
