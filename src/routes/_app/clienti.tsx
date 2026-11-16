@@ -1837,7 +1837,7 @@ function ClientiPage() {
                   onClick={() => navigate({ to: "/clienti/$clienteId", params: { clienteId: c.id } })}
                 >
                   {!isAgente && (
-                    <TableCell onClick={(e) => e.stopPropagation()}>
+                    <TableCell className="align-top" onClick={(e) => e.stopPropagation()}>
                       <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => toggleSelect(c)} />
                     </TableCell>
                   )}
@@ -1848,7 +1848,7 @@ function ClientiPage() {
                         title={sem?.motivo ?? (sem?.stadio ? SEMAFORO_LABEL[sem.stadio] : "Semaforo non ancora calcolato")}
                       />
                       <div className="min-w-0">
-                        <div className="font-medium break-words line-clamp-2">
+                        <div className="font-medium break-words">
                           {legale && <span title="In gestione legale" className="text-orange-600 mr-1">⚖</span>}
                           {c.ragione_sociale}
                         </div>
