@@ -28,3 +28,11 @@ Regola permanente del proprietario. Si aggiunge alla sezione 1 del knowledge.
 - La variante `pv-orizzontale` in `src/styles.css` è la fonte unica del "telefono in orizzontale": una media query in JS non va riscritta.
 - Barra blu in alto a scomparsa: lo stato (nascosta/mostra) viene calcolato dal hook `src/hooks/use-barra-a-scomparsa.ts` su ogni dispositivo, l'effetto visivo lo decide solo il CSS con `pv-orizzontale:data-[nascosta=true]:-translate-y-full`. Fuori da `pv-orizzontale` la barra resta sempre visibile.
 - `<main>` mantiene `pt-14`: in cima alla pagina la barra non copre nulla.
+
+## Tablet (FM79)
+
+- La variante `tablet:` in `src/styles.css` è la fonte unica per riconoscere il tablet: schermo touch senza mouse (`pointer: coarse` e `hover: none`), da 768px, escluso il telefono in orizzontale (`min-height: 501px`, complemento di `pv-orizzontale`). Non si attiva su PC con mouse né sul telefono.
+- In JS si usa solo `useIsTablet()` / `MEDIA_TABLET` di `src/hooks/use-tablet.ts` (stessa query, letta in `useEffect`, mai al primo render): mai media query riscritte nei componenti.
+- Le correzioni per il tablet usano solo classi `tablet:` aggiunte, senza toccare le classi esistenti: telefono e PC devono restare identici al pixel.
+- I componenti base (`button`, `input`, `textarea`, `select`, `checkbox`) sul tablet hanno già target ≥ 40px e testo dei campi a 16px (niente zoom di iPad).
+- Ogni fetta va verificata con lo script di non-regressione (`docs/verifiche/fm79-screenshot-regressione.md`): 0 differenze a 375×812, 1280×800 e 1440×900, più fotografie touch alle dimensioni tablet.
