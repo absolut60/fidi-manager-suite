@@ -844,6 +844,9 @@ export async function acquistaLightReport(
 ): Promise<EsitoAcquistoLightReport> {
   const corpo: Record<string, unknown> = {
     format: formato,
+    // subject_type è obbligatorio nel corpo di POST B2B /v1/purchase (scheda "Product Purchase").
+    // Tutti i soggetti collegati sono aziende trovate con entity_search filtroricerca COMPANIES_ONLY.
+    subject_type: "COMPANY",
     product_id: PRODOTTO_LIGHT_REPORT,
     subject_id: Number.isFinite(Number(subjectId)) ? Number(subjectId) : subjectId,
     language: "ITALIAN",
