@@ -62,6 +62,26 @@ function scenario({ collegato = true, valido = true, permesso = true, erroreAcqu
 }
 
 describe("FM79 aggiornamento solo Light Report", () => {
+  it("fotografie esistenti mai aggiornate/eliminate; recupero delegato conserva XML e PDF", () => {
+    const ast = ts.createSourceFile("cerved-cliente.functions.ts", fonte, ts.ScriptTarget.Latest, true);
+    const mutazioni: string[] = [];
+    const visita = (n: ts.Node) => {
+      if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression)) {
+        const metodo = n.expression.name.text;
+        if (["delete", "update", "upsert"].includes(metodo) && n.expression.expression.getText(ast).includes('from("cerved_fotografie")')) mutazioni.push(metodo);
+      }
+      ts.forEachChild(n, visita);
+    };
+    visita(ast);
+    expect(mutazioni).toEqual([]);
+    const server = readFileSync(new URL("../src/lib/cerved/cerved.server.ts", import.meta.url), "utf8");
+    const recupero = server.slice(server.indexOf("export async function recuperaESalvaLightReport("));
+    expect(recupero).toContain('recuperaDocumentoFormato(report.request_id, "XML", ctx)');
+    expect(recupero).toContain('recuperaDocumentoFormato(report.request_id, "PDF", ctx)');
+    expect(recupero).toContain('tipo: "light_report"');
+    expect(recupero).toContain('dati: normalizzaLightReportXml(doc.contenuto_xml)');
+    expect(recupero).toContain('.upload(dest, byte, { contentType: "application/pdf", upsert: true })');
+  });
   it("cliente collegato: nessuna ricerca, fotografia granulare o acquisto se il report è valido", async () => {
     const s = scenario(); const r = await s.esegui();
     expect(s.chiamate).toEqual(["recupero:richiesta"]);

@@ -1,5 +1,5 @@
 # FM79 — Cerved, fetta 3
-- [ ] Taglio chiamate e fotografie granulari dall’aggiornamento; ricerca iniziale e percorso Light Report invariati, rimozione esiti inutilizzati e solo testo di conferma aggiornato.
+- [x] Eliminate leggiProfilo/leggiScore/elencoBilanciCerved/bilancioCerved/eventiNegativiFlag e relative scritture; nessuna modifica alle fotografie esistenti. Ricerca solo primo collegamento, aggiornamento soggetto e percorso Light Report invariati. Quattro esiti rimossi dopo verifica di assenza chiamanti; mantenuti sei campi richiesti. Scheda: solo testo di conferma aggiornato. Nessuna migrazione o modifica diagnostica.
 - [ ] Test isolati senza chiamate live (Cerved 403), suite completa e verifica statica.
 
 # FM79 — Cerved, fetta 2
