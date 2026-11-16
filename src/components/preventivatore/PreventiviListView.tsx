@@ -163,17 +163,18 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
           </div>
           <BadgeLinea linea={r.linea} className="mt-1" />
         </TableCell>
-        <TableCell className="px-2 py-2 align-top"><Testo className="font-medium">{r.titolo}</Testo>{!isOrdine && etichettaAssegnazione(r)}</TableCell>
+        <TableCell className="px-2 py-2 align-top"><Testo className="font-medium">{r.titolo}</Testo>{!isOrdine && etichettaAssegnazione(r)}{r.cantiere?.nome && <Testo className="mt-1 text-muted-foreground 2xl:hidden">{r.cantiere.nome}</Testo>}</TableCell>
         <TableCell className="px-2 py-2 align-top">
           <SoggettoElenco r={r} />
+          {r.creato_da_nome && <span className="mt-1 block text-[11px] text-muted-foreground 2xl:hidden"><Testo>{`Creato da ${r.creato_da_nome}`}</Testo></span>}
         </TableCell>
-        <TableCell className="px-2 py-2 align-top text-muted-foreground"><Testo>{r.cantiere?.nome}</Testo></TableCell>
-        <TableCell className="px-2 py-2 align-top"><Testo>{r.creato_da_nome}</Testo></TableCell>
-        <TableCell className="px-2 py-2 align-top tabular-nums">{formatDate(r.data)}</TableCell>
-        {!isOrdine && <TableCell className="px-2 py-2 align-top tabular-nums">{r.validita ? formatDate(r.validita) : "—"}</TableCell>}
-        {!isOrdine && <TableCell className="px-2 py-2 align-top"><BadgeTipoDoc tipoDoc={r.tipo_doc} className="whitespace-normal px-2 text-[11px] leading-tight" /></TableCell>}
-        <TableCell className="px-2 py-2 align-top"><BadgeStato stato={r.stato} className="px-2 text-[11px]" /></TableCell>
-        <TableCell className="px-2 py-2 align-top"><BadgeEvasione stato={evasioneDi(r)} className="px-2 text-[11px]" /></TableCell>
+        <TableCell className="hidden px-2 py-2 align-top text-muted-foreground 2xl:table-cell"><Testo>{r.cantiere?.nome}</Testo></TableCell>
+        <TableCell className="hidden px-2 py-2 align-top 2xl:table-cell"><Testo>{r.creato_da_nome}</Testo></TableCell>
+        <TableCell className="px-2 py-2 align-top tabular-nums">{formatDate(r.data)}{!isOrdine && <span className="mt-1 block text-[11px] text-muted-foreground 2xl:hidden">{`Valido al ${r.validita ? formatDate(r.validita) : "—"}`}</span>}</TableCell>
+        {!isOrdine && <TableCell className="hidden px-2 py-2 align-top tabular-nums 2xl:table-cell">{r.validita ? formatDate(r.validita) : "—"}</TableCell>}
+        {!isOrdine && <TableCell className="hidden px-2 py-2 align-top 2xl:table-cell"><BadgeTipoDoc tipoDoc={r.tipo_doc} className="whitespace-normal px-2 text-[11px] leading-tight" /></TableCell>}
+        <TableCell className="px-2 py-2 align-top"><BadgeStato stato={r.stato} className="px-2 text-[11px]" />{!isOrdine && <BadgeTipoDoc tipoDoc={r.tipo_doc} className="mt-1 whitespace-normal px-2 text-[11px] leading-tight 2xl:hidden" />}<BadgeEvasione stato={evasioneDi(r)} className="mt-1 px-2 text-[11px] 2xl:hidden" /></TableCell>
+        <TableCell className="hidden px-2 py-2 align-top 2xl:table-cell"><BadgeEvasione stato={evasioneDi(r)} className="px-2 text-[11px]" /></TableCell>
         <TableCell className={cn("px-2 py-2 align-top text-right tabular-nums", alternativa ? "text-muted-foreground" : "font-semibold")}>{euro(r.totale)}</TableCell>
       </TableRow>
     );
@@ -269,13 +270,13 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
         )}
 
         <div className="rounded-md border bg-card">
-          <div className="divide-y md:hidden">
+          <div className="divide-y lg:hidden">
             {isLoading ? (
               <div className="py-8 text-center text-sm text-muted-foreground">Caricamento…</div>
             ) : principali.length === 0 ? (
               <div className="py-8 text-center text-sm text-muted-foreground">{labelEmpty}</div>
             ) : (
-              <ElencoSchede>
+              <ElencoSchede finoA="lg">
                 {principali.map((r, indiceGruppo) => {
                   const alt = mostraAlternative ? (altPer.get(r.id) ?? []) : [];
                   return (
@@ -335,20 +336,20 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
               </ElencoSchede>
             )}
           </div>
-          <div className="hidden overflow-x-auto md:block">
-            <Table className="table-fixed min-w-[760px]">
+          <div className="hidden overflow-x-auto lg:block">
+            <Table className="table-fixed">
               <TableHeader>
                 <TableRow className="bg-pv-testa text-[11px] uppercase tracking-wide hover:bg-pv-testa">
-                  <TableHead className="w-[7.5rem] px-2">Numero</TableHead>
-                  <TableHead className="px-2">Titolo</TableHead>
-                  <TableHead className="px-2">Cliente/Lead</TableHead>
-                  <TableHead className="w-[8%] px-2">Cantiere</TableHead>
-                  <TableHead className="w-[7%] px-2">Creato da</TableHead>
+                  <TableHead className="w-[6.5rem] px-2 2xl:w-[7.5rem]">Numero</TableHead>
+                  <TableHead className="min-w-0 px-2">Titolo</TableHead>
+                  <TableHead className="min-w-0 px-2">Cliente/Lead</TableHead>
+                  <TableHead className="hidden w-[7rem] px-2 2xl:table-cell">Cantiere</TableHead>
+                  <TableHead className="hidden w-[7rem] px-2 2xl:table-cell">Creato da</TableHead>
                   <TableHead className="w-[5.5rem] px-2">Data</TableHead>
-                  {!isOrdine && <TableHead className="w-[5.5rem] px-2">Validità</TableHead>}
-                  {!isOrdine && <TableHead className="w-[7rem] px-2">Tipo</TableHead>}
-                  <TableHead className="w-[6.25rem] px-2">Stato</TableHead>
-                  <TableHead className="w-[6.25rem] px-2">Evasione</TableHead>
+                  {!isOrdine && <TableHead className="hidden w-[5.5rem] px-2 2xl:table-cell">Validità</TableHead>}
+                  {!isOrdine && <TableHead className="hidden w-[7rem] px-2 2xl:table-cell">Tipo</TableHead>}
+                  <TableHead className="w-[7rem] px-2">Stato</TableHead>
+                  <TableHead className="hidden w-[6.25rem] px-2 2xl:table-cell">Evasione</TableHead>
                   <TableHead className="w-[7rem] px-2 text-right">Totale</TableHead>
                 </TableRow>
               </TableHeader>
