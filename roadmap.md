@@ -1,3 +1,7 @@
+# FM79 — Cerved, fetta 1
+- [ ] Estendere solo il lettore Light Report con percorsi verificati su tre XML reali e confronto delle unità con fotografie bilancio.
+- [ ] Verificare non regressione DELEO, nuove sezioni e suite completa; nessuna UI, chiamata API o migrazione.
+
 # Rifinitura PDF e Testata preventivo
 - [x] Intestazione PDF: agente opzionale e filiale rimossa; PRV-163/26 raster identico fuori area Filiale (0 pixel diversi).
 - [x] Testata bilanciata, badge nelle condizioni, ingresso unico; cantieri lead non offerti perché get_cantiere_preventivo richiede cliente_id non NULL; nessuna migrazione.
