@@ -458,6 +458,7 @@ type RigaProps = {
   conBs: boolean;
   /** FM75 F4b: matita e codice fornitore sulla riga manuale. */
   articoloInDefinizione: boolean;
+  onApriDefinizione?: () => void;
   /** Colonne Gamma (Magg.%, Extra %, ±, Peso) oppure Ricarico % (catalogo linee). */
   gamma: boolean;
   prezzoCantiere: boolean;
@@ -574,6 +575,12 @@ function useCelleRiga(p: RigaProps) {
           descrizione={row.descrizione} onChange={onSceltaGamma} disabled={readOnly} />
       </div>
     </div>
+  ) : valorizzata && p.articoloInDefinizione && !readOnly ? (
+    <button type="button" onClick={(e) => { e.stopPropagation(); p.onApriDefinizione?.(); }}
+      title="Apri articolo in definizione" aria-label={`Apri articolo in definizione riga ${p.idx + 1}`}
+      className="block min-h-[26px] w-full break-all rounded px-1 py-1 text-left font-mono text-xs text-pv-blu underline decoration-dotted underline-offset-2 hover:bg-pv-azzurro focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      {row.codice_articolo_fornitore || "MANUALE"}
+    </button>
   ) : valorizzata ? <span className="block break-all px-1 py-2 font-mono text-xs">{(p.articoloInDefinizione && row.codice_articolo_fornitore) || "MANUALE"}</span> : null;
   const articolo = (
     <>
@@ -744,25 +751,17 @@ function BadgeBs({ p, valorizzata }: { p: RigaProps; valorizzata: boolean }) {
   return <span className="mt-0.5 inline-block rounded border border-pv-viola/30 bg-pv-viola-tenue px-1 text-[10px] font-semibold text-pv-viola" title="Bene significativo">BS</span>;
 }
 
-function MatitaArticoloInDefinizione(p: RigaProps) {
+/** Finestra "articolo in definizione": si apre dal codice della riga manuale (linee con articoloInDefinizione). */
+function useArticoloInDefinizione(p: RigaProps) {
   const [open, setOpen] = useState(false);
-  if (!p.articoloInDefinizione || p.row.tipo_riga !== "manuale") return null;
-  return (
-    <>
-      <Button size="icon" variant="ghost" className="h-8 w-8" disabled={p.readOnly}
-        onClick={(e) => { e.stopPropagation(); setOpen(true); }}
-        title="Articolo in definizione" aria-label="Modifica articolo in definizione">
-        <Pencil className="h-3.5 w-3.5" />
-      </Button>
-      {open && <ArticoloInDefinizioneDialog open={open} onOpenChange={setOpen} row={p.row} onPatch={p.onPatch} onSceltaGamma={p.onSceltaGamma} />}
-    </>
-  );
+  const attivo = p.articoloInDefinizione && p.row.tipo_riga === "manuale";
+  const dialog = attivo && open ? <ArticoloInDefinizioneDialog open onOpenChange={setOpen} row={p.row} onPatch={p.onPatch} onSceltaGamma={p.onSceltaGamma} /> : null;
+  return { apri: attivo ? () => setOpen(true) : undefined, dialog };
 }
 
 function AzioniRiga(p: RigaProps & { valorizzata?: boolean }) {
   return (
     <div className="flex items-center justify-end gap-0.5">
-      <MatitaArticoloInDefinizione {...p} />
       <ToggleBs {...p} valorizzata={!!p.valorizzata} />
       <ToggleStampabile {...p} valorizzata={!!p.valorizzata} />
       <Button size="icon" variant="ghost"
@@ -777,6 +776,8 @@ function AzioniRiga(p: RigaProps & { valorizzata?: boolean }) {
 }
 
 function RigaRow(p: RigaProps) {
+  const def = useArticoloInDefinizione(p);
+  p = { ...p, onApriDefinizione: def.apri };
   const sortable = useSortable({ id: p.row.id });
   const style = {
     transform: CSS.Transform.toString(sortable.transform),
@@ -842,6 +843,8 @@ function RigaRow(p: RigaProps) {
 
 /** Sotto 1024 px: la riga come scheda compatta con gli stessi campi. */
 function RigaScheda(p: RigaProps) {
+  const def = useArticoloInDefinizione(p);
+  p = { ...p, onApriDefinizione: def.apri };
   const c = useCelleRiga(p);
   if (c.tipo === "separatore") {
     return (
