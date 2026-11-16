@@ -1,3 +1,7 @@
+# FM79 — Cerved, fetta 2
+- [ ] Scheda e riepilogo compatto: Light Report prioritario, ripiego granulare per campo, nessuna chiamata o migrazione modificata.
+- [ ] Test di precedenza con fixture reali, suite completa e screenshot con/senza Light Report.
+
 # FM79 — Cerved, fetta 1
 - [x] Lettore esteso con percorsi verificati su tre XML reali; fixture BUILD con tre bilanci, nessuna UI, chiamata API o migrazione.
 - [x] Non regressione completa DELEO e nuove sezioni: 1001 test superati, zero falliti; compilazione automatica OK.
