@@ -703,6 +703,7 @@ function BloccoCard({
   };
 
   const calc = useMemo(() => calcolaBlocco(blocco.righe), [blocco.righe]);
+  const importoInTestata = lineaPreventivo(linea).blocchi.importoInTestataBlocco;
   const totaleBlocco = calc.totale || Number(blocco.importo ?? 0);
   const prezzoUm =
     Number(blocco.quantita_base ?? 0) > 0
@@ -790,12 +791,12 @@ function BloccoCard({
               </div>
             </div>
             </>}
-            <div className="grid w-32 gap-1 text-right">
+            {importoInTestata && <div className="grid w-32 gap-1 text-right">
               <Label className="text-[10px] uppercase">Importo</Label>
               <div className="h-8 whitespace-nowrap rounded bg-primary px-2 py-1 text-right font-mono text-sm font-semibold text-primary-foreground">
                 € {formatNumeroIt(totaleBlocco, { minDecimals: 2, maxDecimals: 2 })}
               </div>
-            </div>
+            </div>}
             {!readOnly && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
