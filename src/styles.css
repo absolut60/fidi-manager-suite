@@ -3,29 +3,19 @@
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
-
-/*
- * Design system definition.
- *
- * The @theme inline block maps CSS custom properties to Tailwind utility
- * classes (e.g. --color-primary -> bg-primary, text-primary).
- *
- * The :root and .dark blocks define the actual color values using oklch.
- * All colors MUST use oklch format.
- *
- * To add a new semantic color:
- * 1. Add the variable to :root (light value) and .dark (dark value)
- * 2. Register it in @theme inline as --color-<name>: var(--<name>)
- */
+/* pv-orizzontale = telefono in orizzontale; pv-tabella = dove il corpo del preventivo si vede come tabella (tablet, telefono orizzontale, PC) */
+@custom-variant pv-orizzontale { @media (orientation: landscape) and (max-height: 500px) and (max-width: 1023.98px) { @slot; } }
+@custom-variant pv-tabella { @media (min-width: 768px), (orientation: landscape) and (max-height: 500px) { @slot; } }
+/* tablet = schermo touch senza mouse da 768px, escluso il telefono in orizzontale (complemento di pv-orizzontale); gemello JS in src/hooks/use-tablet.ts (FM79) */
+@custom-variant tablet { @media (pointer: coarse) and (hover: none) and (min-width: 768px) and (min-height: 501px) { @slot; } }
 
 @theme inline {
+  --color-branding-email: var(--branding-email);
+  --color-branding-pdf: var(--branding-pdf);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
-  --radius-4xl: calc(var(--radius) + 16px);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -42,94 +32,130 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-pv-azzurro: var(--pv-azzurro);
+  --color-pv-azzurro-bordo: var(--pv-azzurro-bordo);
+  --color-pv-azzurro-medio: var(--pv-azzurro-medio);
+  --color-pv-azzurro-medio-bordo: var(--pv-azzurro-medio-bordo);
+  --color-pv-blu: var(--pv-blu);
+  --color-pv-testa: var(--pv-testa);
+  --color-pv-viola: var(--pv-viola);
+  --color-pv-viola-tenue: var(--pv-viola-tenue);
+  --color-pv-arancio: var(--pv-arancio);
+  --color-pv-arancio-tenue: var(--pv-arancio-tenue);
+  --color-pv-verde: var(--pv-verde);
+  --color-pv-verde-tenue: var(--pv-verde-tenue);
+  --color-pv-giallo: var(--pv-giallo);
+  --color-pv-giallo-tenue: var(--pv-giallo-tenue);
+  --color-pv-grigio-tenue: var(--pv-grigio-tenue);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-ring-offset-background: var(--background);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
+  /* Motivi riga proposta fido massiva (fonte: motivoRigaProposta) */
+  --color-motivo-scaduto: var(--motivo-scaduto);
+  --color-motivo-scaduto-bg: var(--motivo-scaduto-bg);
+  --color-motivo-autorizzare: var(--motivo-autorizzare);
+  --color-motivo-autorizzare-bg: var(--motivo-autorizzare-bg);
+  --color-motivo-ordini: var(--motivo-ordini);
+  --color-motivo-ordini-bg: var(--motivo-ordini-bg);
+  --color-motivo-bloccato: var(--motivo-bloccato);
+  --color-motivo-bloccato-fg: var(--motivo-bloccato-fg);
+  --color-motivo-bloccato-bg: var(--motivo-bloccato-bg);
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.129 0.042 264.695);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
-  --secondary: oklch(0.968 0.007 247.896);
-  --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: oklch(0.208 0.042 265.755);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.984 0.003 247.858);
-  --sidebar-foreground: oklch(0.129 0.042 264.695);
-  --sidebar-primary: oklch(0.208 0.042 265.755);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.968 0.007 247.896);
-  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
-  --sidebar-border: oklch(0.929 0.013 255.508);
-  --sidebar-ring: oklch(0.704 0.04 256.788);
-}
+  /* FM76: contesto reale dei loghi, indipendente dal tema dell'app. */
+  --branding-email: #0d1f3c;
+  --branding-pdf: #ffffff;
+  /* Scheda preventivo (FM65 G1) */
+  --pv-azzurro: #eaf1fb;
+  --pv-azzurro-bordo: #cfdcf0;
+  /* Fascia riepilogo FM65 C: tono intermedio, distinto dalle intestazioni blocco.
+     Bordo condiviso con l'azzurro esistente; testo nei token foreground/pv-blu. */
+  --pv-azzurro-medio: #c9d9ef;
+  --pv-azzurro-medio-bordo: #a9c1e3;
+  --pv-blu: #2b5ea7;
+  --pv-testa: #eef1f5;
+  --pv-viola: #6b3fb8;
+  --pv-viola-tenue: #f1ebfb;
+  --pv-arancio: #b45309;
+  --pv-arancio-tenue: #fdf1e4;
+  --pv-verde: #1f7a3d;
+  --pv-verde-tenue: #e6f4ea;
+  --pv-giallo: #7a5b00;
+  --pv-giallo-tenue: #fdf3c4;
+  --pv-grigio-tenue: #f3f4f6;
 
-.dark {
-  --background: oklch(0.129 0.042 264.695);
-  --foreground: oklch(0.984 0.003 247.858);
-  --card: oklch(0.208 0.042 265.755);
-  --card-foreground: oklch(0.984 0.003 247.858);
-  --popover: oklch(0.208 0.042 265.755);
-  --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
-  --secondary: oklch(0.279 0.041 260.031);
-  --secondary-foreground: oklch(0.984 0.003 247.858);
-  --muted: oklch(0.279 0.041 260.031);
-  --muted-foreground: oklch(0.704 0.04 256.788);
-  --accent: oklch(0.279 0.041 260.031);
-  --accent-foreground: oklch(0.984 0.003 247.858);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.551 0.027 264.364);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.208 0.042 265.755);
-  --sidebar-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.279 0.041 260.031);
-  --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.551 0.027 264.364);
+  --radius: 0.5rem;
+
+  /* Navy primario #0D1F3C */
+  --primary: oklch(0.234 0.054 257);
+  --primary-foreground: oklch(0.98 0 0);
+
+  /* Accent #4A9EFF */
+  --accent: oklch(0.677 0.157 248);
+  --accent-foreground: oklch(0.98 0 0);
+
+  --background: oklch(0.985 0.003 247);
+  --foreground: oklch(0.18 0.02 257);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.02 257);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.02 257);
+
+  --secondary: oklch(0.96 0.005 247);
+  --secondary-foreground: oklch(0.234 0.054 257);
+
+  --muted: oklch(0.96 0.005 247);
+  --muted-foreground: oklch(0.5 0.02 257);
+
+  --destructive: oklch(0.58 0.22 27);
+  --destructive-foreground: oklch(0.98 0 0);
+
+  --success: oklch(0.65 0.17 145);
+  --success-foreground: oklch(0.98 0 0);
+
+  --warning: oklch(0.75 0.16 70);
+  --warning-foreground: oklch(0.18 0.02 257);
+
+  --info: oklch(0.677 0.157 248);
+  --info-foreground: oklch(0.98 0 0);
+
+  --border: oklch(0.92 0.008 247);
+  --input: oklch(0.92 0.008 247);
+  --ring: oklch(0.677 0.157 248);
+
+  /* Sidebar — navy scuro */
+  --sidebar: oklch(0.234 0.054 257);
+  --sidebar-foreground: oklch(0.92 0.01 247);
+  --sidebar-accent: oklch(0.3 0.05 257);
+  --sidebar-accent-foreground: oklch(0.98 0 0);
+  --sidebar-border: oklch(0.32 0.04 257);
+
+  /* Motivi riga proposta fido massiva: bordo + sfondo, contrasto leggibile.
+     Bloccato/legale = rosso scuro ben marcato (caso più grave); scaduto = rosso chiaro. */
+  --motivo-scaduto: oklch(0.56 0.17 50);
+  --motivo-scaduto-bg: oklch(0.96 0.045 65);
+  --motivo-autorizzare: oklch(0.5 0.18 295);
+  --motivo-autorizzare-bg: oklch(0.96 0.02 295);
+  --motivo-ordini: oklch(0.55 0.14 240);
+  --motivo-ordini-bg: oklch(0.95 0.03 235);
+  --motivo-bloccato: oklch(0.52 0.22 27);
+  --motivo-bloccato-fg: oklch(0.98 0 0);
+  --motivo-bloccato-bg: oklch(0.94 0.04 25);
 }
 
 @layer base {
@@ -140,5 +166,29 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
   }
+}
+
+/* Dropdown suggerimenti Google Places sopra i dialog Radix */
+.pac-container {
+  z-index: 10000 !important;
+}
+
+/* Scrollbar nascosta (barre tab scrollabili su mobile) */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Nasconde il badge "Edit with Lovable" nell'app pubblicata */
+#lovable-badge,
+#lovable-badge-container,
+[id^="lovable-badge"],
+a[href*="lovable.dev"][target="_blank"] {
+  display: none !important;
 }
