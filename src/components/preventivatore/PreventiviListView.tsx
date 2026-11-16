@@ -269,7 +269,7 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
         )}
 
         <div className="rounded-md border bg-card">
-          <div className="divide-y md:hidden">
+          <div className="divide-y lg:hidden">
             {isLoading ? (
               <div className="py-8 text-center text-sm text-muted-foreground">Caricamento…</div>
             ) : principali.length === 0 ? (
@@ -335,15 +335,15 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
               </ElencoSchede>
             )}
           </div>
-          <div className="hidden overflow-x-auto md:block">
+          <div className="hidden overflow-x-auto lg:block">
             <Table className="table-fixed min-w-[760px]">
               <TableHeader>
                 <TableRow className="bg-pv-testa text-[11px] uppercase tracking-wide hover:bg-pv-testa">
                   <TableHead className="w-[7.5rem] px-2">Numero</TableHead>
                   <TableHead className="px-2">Titolo</TableHead>
                   <TableHead className="px-2">Cliente/Lead</TableHead>
-                  <TableHead className="w-[8%] px-2">Cantiere</TableHead>
-                  <TableHead className="w-[7%] px-2">Creato da</TableHead>
+                  <TableHead className="w-[7rem] px-2">Cantiere</TableHead>
+                  <TableHead className="w-[7rem] px-2">Creato da</TableHead>
                   <TableHead className="w-[5.5rem] px-2">Data</TableHead>
                   {!isOrdine && <TableHead className="w-[5.5rem] px-2">Validità</TableHead>}
                   {!isOrdine && <TableHead className="w-[7rem] px-2">Tipo</TableHead>}
