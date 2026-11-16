@@ -2016,7 +2016,7 @@ function ClientiPage() {
               <button
                 type="button"
                 onClick={() => setFiltroTipoSoggetto("tutti")}
-                className="underline hover:text-foreground"
+                className="underline hover:text-foreground tablet:inline-flex tablet:min-h-10 tablet:items-center tablet:px-1"
               >
                 mostra tutti
               </button>
@@ -2403,7 +2403,7 @@ function ClientiPage() {
                     key={p}
                     variant={p === page ? "default" : "outline"}
                     size="sm"
-                    className="min-w-9"
+                    className="min-w-9 tablet:min-w-10"
                     onClick={() => setPage(p)}
                   >
                     {p}
