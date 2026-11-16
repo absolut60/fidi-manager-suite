@@ -136,6 +136,31 @@ export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch, 
           <DialogDescription>Compila quello che sai ora: tutto è facoltativo tranne la descrizione.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-3">
+          <div className="grid gap-1.5"><Label htmlFor="aid-cod">Codice articolo fornitore</Label><Input id="aid-cod" value={codice} onChange={(e) => setCodice(e.target.value)} onBlur={() => setCodiceCercato(codice.trim())} /></div>
+          {(aCatalogo.data ?? []).length > 0 && (
+            <div className="grid gap-2 rounded-md border border-l-4 border-l-primary bg-muted/30 p-3">
+              <p className="text-sm font-semibold">Articolo già a catalogo</p>
+              {aCatalogo.data!.map((a) => (
+                <div key={a.codice} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <div className="min-w-0 flex-1 text-sm">
+                    <span className="font-mono font-semibold">{a.codice}</span>
+                    <span className="break-words"> — {a.descrizione ?? "senza descrizione"}</span>
+                    {a.stato_gamma && <span className="text-muted-foreground"> · {a.stato_gamma}</span>}
+                  </div>
+                  <Button type="button" size="sm" variant="secondary" className="min-h-10 shrink-0" onClick={() => usaArticolo(a)}>Usa questo articolo</Button>
+                </div>
+              ))}
+              <p className="text-xs text-muted-foreground">Facoltativo: puoi ignorarlo e restare sulla riga manuale.</p>
+            </div>
+          )}
+          <div className="grid gap-1.5">
+            <Label htmlFor="aid-desc">Descrizione *</Label>
+            <textarea id="aid-desc" rows={1} value={descrizione} onChange={(e) => setDescrizione(e.target.value)}
+              ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = `${el.scrollHeight}px`; } }}
+              onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px`; }}
+              className="min-h-10 w-full resize-none overflow-hidden rounded-md border border-input bg-background px-3 py-2 text-sm [field-sizing:content]" />
+            {descrizione.trim() === "" && <p className="text-xs text-destructive">La descrizione è obbligatoria</p>}
+          </div>
           <div className="grid gap-1.5">
             <Label htmlFor="aid-forn">Fornitore</Label>
             {fornitoreId ? (
@@ -165,31 +190,6 @@ export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch, 
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="grid gap-1.5"><Label htmlFor="aid-marca">Marca</Label><Input id="aid-marca" value={marca} onChange={(e) => setMarca(e.target.value)} /></div>
-            <div className="grid gap-1.5"><Label htmlFor="aid-cod">Codice articolo fornitore</Label><Input id="aid-cod" value={codice} onChange={(e) => setCodice(e.target.value)} onBlur={() => setCodiceCercato(codice.trim())} /></div>
-          </div>
-          {(aCatalogo.data ?? []).length > 0 && (
-            <div className="grid gap-2 rounded-md border border-l-4 border-l-primary bg-muted/30 p-3">
-              <p className="text-sm font-semibold">Articolo già a catalogo</p>
-              {aCatalogo.data!.map((a) => (
-                <div key={a.codice} className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <div className="min-w-0 flex-1 text-sm">
-                    <span className="font-mono font-semibold">{a.codice}</span>
-                    <span className="break-words"> — {a.descrizione ?? "senza descrizione"}</span>
-                    {a.stato_gamma && <span className="text-muted-foreground"> · {a.stato_gamma}</span>}
-                  </div>
-                  <Button type="button" size="sm" variant="secondary" className="min-h-10 shrink-0" onClick={() => usaArticolo(a)}>Usa questo articolo</Button>
-                </div>
-              ))}
-              <p className="text-xs text-muted-foreground">Facoltativo: puoi ignorarlo e restare sulla riga manuale.</p>
-            </div>
-          )}
-          <div className="grid gap-1.5">
-            <Label htmlFor="aid-desc">Descrizione *</Label>
-            <textarea id="aid-desc" rows={3} value={descrizione} onChange={(e) => setDescrizione(e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" />
-            {descrizione.trim() === "" && <p className="text-xs text-destructive">La descrizione è obbligatoria</p>}
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="grid gap-1.5"><Label htmlFor="aid-um">U.M.</Label><Input id="aid-um" value={um} onChange={(e) => setUm(e.target.value)} /></div>
             <div className="grid gap-1.5"><Label htmlFor="aid-costo">Costo (€)</Label><Input id="aid-costo" inputMode="decimal" value={costo} onChange={(e) => setCosto(e.target.value)} /></div>
             <div className="grid gap-1.5"><Label htmlFor="aid-list">Listino fornitore (€)</Label><Input id="aid-list" inputMode="decimal" value={listino} onChange={(e) => setListino(e.target.value)} /></div>
