@@ -225,22 +225,22 @@ export function ListinoAcquistoView() {
       {/* Table */}
       <div className="flex-1 overflow-auto tablet:relative tablet:isolate tablet:max-w-full tablet:[&_input]:min-h-11 tablet:[&_input]:text-base tablet:[&_th]:whitespace-normal tablet:[&_th]:align-top tablet:[&_th]:bg-primary tablet:[&_th]:text-primary-foreground tablet:[&_td]:align-top">
         <fieldset disabled={!gestisce} className="contents">
-        <table className="w-full text-xs table-fixed tablet:min-w-[1300px] tablet:w-[1300px]">
+        <table className="w-full text-xs table-fixed tablet:min-w-[1688px] tablet:w-[1688px]">
           <colgroup>
-            <col style={{ width: "104px" }} className="tablet:w-[104px]" />
-            <col className="tablet:w-[280px]" />
-            <col style={{ width: "140px" }} />
-            <col style={{ width: "80px" }} />
-            <col style={{ width: "56px" }} />
-            <col style={{ width: "56px" }} />
-            <col style={{ width: "56px" }} />
-            <col style={{ width: "56px" }} />
-            <col style={{ width: "56px" }} />
-            <col style={{ width: "88px" }} />
-            <col style={{ width: "68px" }} />
-            <col style={{ width: "68px" }} />
-            <col style={{ width: "104px" }} />
-            <col style={{ width: "88px" }} />
+            <col style={{ width: "104px" }} className="tablet:w-[104px]!" />
+            <col className="tablet:w-[280px]!" />
+            <col style={{ width: "140px" }} className="tablet:w-[160px]!" />
+            <col style={{ width: "80px" }} className="tablet:w-[112px]!" />
+            <col style={{ width: "56px" }} className="tablet:w-[88px]!" />
+            <col style={{ width: "56px" }} className="tablet:w-[88px]!" />
+            <col style={{ width: "56px" }} className="tablet:w-[88px]!" />
+            <col style={{ width: "56px" }} className="tablet:w-[88px]!" />
+            <col style={{ width: "56px" }} className="tablet:w-[88px]!" />
+            <col style={{ width: "88px" }} className="tablet:w-[112px]!" />
+            <col style={{ width: "68px" }} className="tablet:w-[112px]!" />
+            <col style={{ width: "68px" }} className="tablet:w-[112px]!" />
+            <col style={{ width: "104px" }} className="tablet:w-[144px]!" />
+            <col style={{ width: "88px" }} className="tablet:w-[112px]!" />
           </colgroup>
           <thead className="sticky top-0 z-10 bg-navy text-navy-foreground">
             <tr className="text-[11px] uppercase tracking-wide">
