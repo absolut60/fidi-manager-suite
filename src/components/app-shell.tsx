@@ -508,7 +508,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 onClick={() => toggleBlock(b.key)}
-                className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-sidebar-accent/40 transition-colors group text-sidebar-foreground"
+                className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-sidebar-accent/40 transition-colors group text-sidebar-foreground tablet:min-h-11"
               >
                 <HeaderIcon className="size-3.5 shrink-0" />
                 <span className="flex-1 text-left text-[11px] font-semibold tracking-wider uppercase truncate">
@@ -548,7 +548,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             to="/il-mio-profilo"
             onClick={() => setMobileOpen(false)}
             title="Il mio profilo"
-            className="flex items-center gap-3 flex-1 min-w-0 rounded-md hover:bg-sidebar-accent transition-colors px-1 py-1 -mx-1"
+            className="flex items-center gap-3 flex-1 min-w-0 rounded-md hover:bg-sidebar-accent transition-colors px-1 py-1 -mx-1 tablet:min-h-11"
           >
             <Avatar className="size-9">
               <AvatarFallback className="bg-accent text-accent-foreground text-xs font-semibold">
@@ -567,7 +567,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {!mobile && <NotificationsBell />}
           <button
             onClick={handleLogout}
-            className="size-8 rounded-md hover:bg-sidebar-accent flex items-center justify-center text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors"
+            className="size-8 tablet:size-11 rounded-md hover:bg-sidebar-accent flex items-center justify-center text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors"
             title="Esci"
           >
             <LogOut className="size-4" />
@@ -581,7 +581,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex w-full bg-background">
       <header
         data-nascosta={barraNascosta}
-        className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-primary text-primary-foreground flex items-center justify-between px-4 z-40 border-b border-sidebar-border transition-transform duration-200 pv-orizzontale:data-[nascosta=true]:-translate-y-full"
+        className="lg:hidden tablet:flex fixed top-0 left-0 right-0 h-14 bg-primary text-primary-foreground flex items-center justify-between px-4 z-40 border-b border-sidebar-border transition-transform duration-200 pv-orizzontale:data-[nascosta=true]:-translate-y-full"
       >
         <div className="flex items-center gap-2 min-w-0">
           <img
@@ -610,20 +610,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <aside className="hidden lg:flex w-64 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border fixed inset-y-0 left-0 z-30">
+      <aside className="hidden lg:flex tablet:hidden w-64 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border fixed inset-y-0 left-0 z-30">
         <SidebarContent />
       </aside>
 
       {mobileOpen && (
         <>
-          <div className="lg:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setMobileOpen(false)} />
-          <aside className="lg:hidden fixed inset-y-0 left-0 top-14 w-72 bg-sidebar text-sidebar-foreground flex flex-col z-50 border-r border-sidebar-border">
+          <div className="lg:hidden tablet:block fixed inset-0 bg-black/50 z-40" onClick={() => setMobileOpen(false)} />
+          <aside className="lg:hidden tablet:flex fixed inset-y-0 left-0 top-14 w-72 bg-sidebar text-sidebar-foreground flex flex-col z-50 border-r border-sidebar-border">
             <SidebarContent mobile />
           </aside>
         </>
       )}
 
-      <main className="flex-1 min-w-0 lg:ml-64 pt-14 lg:pt-0">
+      <main className="flex-1 min-w-0 lg:ml-64 pt-14 lg:pt-0 tablet:ml-0 tablet:pt-14">
         <BannerAttivaNotifiche />
         <BarraBluContext.Provider value={barraNascosta}>
           <div className="p-4 sm:p-6 lg:p-8 pv-orizzontale:px-1 pv-orizzontale:py-2">{children}</div>
@@ -654,7 +654,7 @@ function NavItemRow({
         to={item.to}
         onClick={onNav}
         activeOptions={item.exact ? { exact: true } : undefined}
-        className={`relative flex items-center gap-3 pl-4 pr-3 py-2 rounded-md text-sm transition-colors ${
+        className={`relative flex items-center gap-3 pl-4 pr-3 py-2 rounded-md text-sm transition-colors tablet:min-h-11 ${
           active
             ? "bg-accent text-accent-foreground font-medium"
             : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"

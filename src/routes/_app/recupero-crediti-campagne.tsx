@@ -149,20 +149,20 @@ function CampagnePage() {
       </header>
 
       <Card className="p-0 overflow-hidden">
-        <Table>
+        <Table className="tablet:table-fixed">
           <TableHeader>
             <TableRow>
-              <TableHead>Data</TableHead>
-              <TableHead>Operatore</TableHead>
-              <TableHead>Template</TableHead>
+              <TableHead className="tablet:hidden">Data</TableHead>
+              <TableHead className="tablet:hidden">Operatore</TableHead>
+              <TableHead className="tablet:w-[44%]">Template</TableHead>
               <TableHead>Stato</TableHead>
-              <TableHead className="text-right">Tot.</TableHead>
-              <TableHead className="text-right">Inviati</TableHead>
-              <TableHead className="text-right">Saltati</TableHead>
-              <TableHead className="text-right">Falliti</TableHead>
-              <TableHead className="min-w-[180px]">Avanzamento</TableHead>
-              <TableHead className="w-[60px]"></TableHead>
-              <TableHead className="w-[40px]"></TableHead>
+              <TableHead className="text-right tablet:hidden">Tot.</TableHead>
+              <TableHead className="text-right tablet:hidden">Inviati</TableHead>
+              <TableHead className="text-right tablet:hidden">Saltati</TableHead>
+              <TableHead className="text-right tablet:hidden">Falliti</TableHead>
+              <TableHead className="min-w-[180px] tablet:hidden">Avanzamento</TableHead>
+              <TableHead className="w-[60px] tablet:w-16"></TableHead>
+              <TableHead className="w-[40px] tablet:w-16"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -182,28 +182,33 @@ function CampagnePage() {
                 const isTerminale = c.stato === "completata" || c.stato === "completata_con_errori" || c.stato === "annullata";
                 return (
                   <TableRow key={c.id} className="hover:bg-muted/50">
-                    <TableCell className="whitespace-nowrap cursor-pointer" onClick={() => setOpenDettaglio(c.id)}>{fmtDateTime(c.created_at)}</TableCell>
-                    <TableCell className="cursor-pointer" onClick={() => setOpenDettaglio(c.id)}>{`${c.operatore?.nome ?? ""} ${c.operatore?.cognome ?? ""}`.trim() || "—"}</TableCell>
+                    <TableCell className="whitespace-nowrap cursor-pointer tablet:hidden" onClick={() => setOpenDettaglio(c.id)}>{fmtDateTime(c.created_at)}</TableCell>
+                    <TableCell className="cursor-pointer tablet:hidden" onClick={() => setOpenDettaglio(c.id)}>{`${c.operatore?.nome ?? ""} ${c.operatore?.cognome ?? ""}`.trim() || "—"}</TableCell>
                     <TableCell className="cursor-pointer" onClick={() => setOpenDettaglio(c.id)}>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 tablet:flex-wrap tablet:break-words">
                         <span>{c.tipo_campagna === "sollecito_progressivo" ? "Progressivo (1° / 2° / Messa in mora)" : (c.template?.nome ?? "—")}</span>
                         {c.tipo_campagna === "promemoria_scadenza" && (
                           <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">Promemoria</Badge>
                         )}
                       </div>
+                      <div className="hidden tablet:block mt-2 space-y-1 text-sm text-muted-foreground break-words">
+                        <div>{fmtDateTime(c.created_at)} · {`${c.operatore?.nome ?? ""} ${c.operatore?.cognome ?? ""}`.trim() || "—"}</div>
+                        <div>Totale: {c.totale_destinatari} · Inviati: {c.inviati} · Saltati: {c.saltati} · <span className="text-destructive">Falliti: {c.falliti}</span></div>
+                        <div className="flex items-center gap-2"><Progress value={pct} className="h-2" /><span className="shrink-0">{pct}%</span></div>
+                      </div>
                     </TableCell>
                     <TableCell className="cursor-pointer" onClick={() => setOpenDettaglio(c.id)}><StatoBadge s={c.stato} /></TableCell>
-                    <TableCell className="text-right font-medium cursor-pointer" onClick={() => setOpenDettaglio(c.id)}>{c.totale_destinatari}</TableCell>
-                    <TableCell className="text-right text-emerald-600 cursor-pointer" onClick={() => setOpenDettaglio(c.id)}>{c.inviati}</TableCell>
-                    <TableCell className="text-right text-amber-600 cursor-pointer" onClick={() => setOpenDettaglio(c.id)}>{c.saltati}</TableCell>
-                    <TableCell className="text-right text-destructive cursor-pointer" onClick={() => setOpenDettaglio(c.id)}>{c.falliti}</TableCell>
-                    <TableCell className="cursor-pointer" onClick={() => setOpenDettaglio(c.id)}>
+                    <TableCell className="text-right font-medium cursor-pointer tablet:hidden" onClick={() => setOpenDettaglio(c.id)}>{c.totale_destinatari}</TableCell>
+                    <TableCell className="text-right text-emerald-600 cursor-pointer tablet:hidden" onClick={() => setOpenDettaglio(c.id)}>{c.inviati}</TableCell>
+                    <TableCell className="text-right text-amber-600 cursor-pointer tablet:hidden" onClick={() => setOpenDettaglio(c.id)}>{c.saltati}</TableCell>
+                    <TableCell className="text-right text-destructive cursor-pointer tablet:hidden" onClick={() => setOpenDettaglio(c.id)}>{c.falliti}</TableCell>
+                    <TableCell className="cursor-pointer tablet:hidden" onClick={() => setOpenDettaglio(c.id)}>
                       <div className="flex items-center gap-2">
                         <Progress value={pct} className="h-2" />
                         <span className="text-xs text-muted-foreground tabular-nums w-10">{pct}%</span>
                       </div>
                     </TableCell>
-                    <TableCell className="cursor-pointer" onClick={() => setOpenDettaglio(c.id)}><ChevronRight className="size-4 text-muted-foreground" /></TableCell>
+                    <TableCell className="cursor-pointer" onClick={() => setOpenDettaglio(c.id)}><ChevronRight className="size-4 text-muted-foreground tablet:hidden" /><Button variant="ghost" size="icon" className="hidden tablet:inline-flex" aria-label="Apri campagna" onClick={() => setOpenDettaglio(c.id)}><ChevronRight className="size-4" /></Button></TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
