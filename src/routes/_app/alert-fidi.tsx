@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useIsTablet } from "@/hooks/use-tablet";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/lista-responsive";
@@ -73,6 +74,7 @@ function AlertFidiContenuto({ userId, puoProporre }: { userId: string; puoPropor
   // Sola lettura (approvatori, responsabile agenti, agenti): niente selezione né "Apri proposta".
   const selezionabile = (a: AlertFidoRow) => puoProporre && alertSelezionabile(a) && !inAttesaGammaMap?.get(a.cliente_id);
   const queryClient = useQueryClient();
+  const isTablet = useIsTablet();
   const { data: righeBase, isLoading, error } = useQuery({
     queryKey: ["alert-fidi-aperti"],
     queryFn: fetchAlertFidiAperti,
@@ -258,8 +260,8 @@ function AlertFidiContenuto({ userId, puoProporre }: { userId: string; puoPropor
     </div>
   );
   /** Schede (telefono/tablet): numeri in griglia, etichetta sopra e valore sotto. */
-  const renderNumeriGriglia = (a: AlertFidoRow) => (
-    <div className="grid grid-cols-2 gap-x-3 gap-y-2 tabular-nums">
+  const renderNumeriGriglia = (a: AlertFidoRow, unaColonna = false) => (
+    <div className={unaColonna ? "grid grid-cols-1 gap-y-1.5 tabular-nums" : "grid grid-cols-2 gap-x-3 gap-y-2 tabular-nums"}>
       {([["Fido Gamma", formatEuro(fidoGammaAlert(a))], ["Ci deve", formatEuro(debitoOggi(a))], ["Fido teorico", renderTeorico(a)]] as const).map(([e, v]) => (
         <div key={e} className="min-w-0">
           <div className="text-xs text-muted-foreground">{e}</div>
@@ -404,7 +406,7 @@ function AlertFidiContenuto({ userId, puoProporre }: { userId: string; puoPropor
             </span>
           ))}
         </div>
-        <ElencoSchede selezioneTutti={puoProporre ? {
+        <ElencoSchede finoA={isTablet ? "lg" : "md"} selezioneTutti={puoProporre ? {
             tutti: tuttiSel, alcuni: selVisibili.length > 0, disabled: selezionabiliVisibili.length === 0,
             onChange: toggleTutti, etichetta: `Seleziona tutti (${selezionabiliVisibili.length})`,
           } : undefined}>
@@ -424,7 +426,7 @@ function AlertFidiContenuto({ userId, puoProporre }: { userId: string; puoPropor
             ))}
           </ElencoSchede>
 
-          <Card className="hidden md:block">
+          <Card className={isTablet ? "hidden lg:block" : "hidden md:block"}>
             <Table className="table-fixed">
               <TableHeader><TableRow>
                 <TableHead className="w-10">
@@ -432,14 +434,16 @@ function AlertFidiContenuto({ userId, puoProporre }: { userId: string; puoPropor
                     disabled={selezionabiliVisibili.length === 0} onCheckedChange={() => toggleTutti(!tuttiSel)}
                     aria-label="Seleziona tutti" />}
                 </TableHead>
-                <TableHead className="w-[17%]">Cliente</TableHead>
+                <TableHead className="w-[17%] max-2xl:w-[19%]">Cliente</TableHead>
                 <TableHead>Perché</TableHead>
-                <TableHead className="w-24 text-right">Fido Gamma</TableHead>
-                <TableHead className="w-24 text-right">Ci deve</TableHead>
-                <TableHead className="w-28 text-right">Fido teorico</TableHead>
-                <TableHead className="w-[13%]">Ultima decisione</TableHead>
-                <TableHead className="w-24">Alert dal</TableHead>
-                <TableHead className="w-28">Azioni</TableHead>
+                {/* FM80: sotto 2xl i tre numeri stanno in una sola colonna "Fido". */}
+                <TableHead className="w-32 2xl:hidden">Fido</TableHead>
+                <TableHead className="hidden 2xl:table-cell w-24 text-right">Fido Gamma</TableHead>
+                <TableHead className="hidden 2xl:table-cell w-24 text-right">Ci deve</TableHead>
+                <TableHead className="hidden 2xl:table-cell w-28 text-right">Fido teorico</TableHead>
+                <TableHead className="w-[13%] max-2xl:w-[17%]">Ultima decisione</TableHead>
+                <TableHead className="hidden 2xl:table-cell w-24">Alert dal</TableHead>
+                <TableHead className="hidden 2xl:table-cell w-28">Azioni</TableHead>
               </TableRow></TableHeader>
               <TableBody>
                 {visibili.map((a) => (
@@ -458,12 +462,19 @@ function AlertFidiContenuto({ userId, puoProporre }: { userId: string; puoPropor
                       </div>
                       {renderPerche(a)}
                     </TableCell>
-                    <TableCell className="align-top text-right tabular-nums">{formatEuro(fidoGammaAlert(a))}</TableCell>
-                    <TableCell className="align-top text-right tabular-nums">{formatEuro(debitoOggi(a))}</TableCell>
-                    <TableCell className="align-top whitespace-normal text-right">{renderTeorico(a)}</TableCell>
-                    <TableCell className="align-top whitespace-normal">{renderDecisione(a)}</TableCell>
-                    <TableCell className="align-top">{formatDate(a.aperto_il)}</TableCell>
-                    <TableCell className="align-top whitespace-normal">{renderAzioni(a)}</TableCell>
+                    <TableCell className="align-top whitespace-normal 2xl:hidden">{renderNumeriGriglia(a, true)}</TableCell>
+                    <TableCell className="hidden 2xl:table-cell align-top text-right tabular-nums">{formatEuro(fidoGammaAlert(a))}</TableCell>
+                    <TableCell className="hidden 2xl:table-cell align-top text-right tabular-nums">{formatEuro(debitoOggi(a))}</TableCell>
+                    <TableCell className="hidden 2xl:table-cell align-top whitespace-normal text-right">{renderTeorico(a)}</TableCell>
+                    <TableCell className="align-top whitespace-normal">
+                      {renderDecisione(a)}
+                      <div className="2xl:hidden">
+                        <div className={renderDecisione(a) ? "mt-1.5 text-xs text-muted-foreground" : "text-xs text-muted-foreground"}>Alert dal {formatDate(a.aperto_il)}</div>
+                        {selezionabile(a) && <div className="mt-2">{renderAzioni(a)}</div>}
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden 2xl:table-cell align-top">{formatDate(a.aperto_il)}</TableCell>
+                    <TableCell className="hidden 2xl:table-cell align-top whitespace-normal">{renderAzioni(a)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
