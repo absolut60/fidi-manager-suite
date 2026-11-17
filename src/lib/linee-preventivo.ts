@@ -49,9 +49,12 @@ export interface ComportamentiBlocchiLinea {
 
 const BLOCCHI_COMPLETI: ComportamentiBlocchiLinea = { bloccoConMisure: true, bloccoDaKit: true, righeStampabili: false, regimiIva: false, articoloInDefinizione: false, importoInTestataBlocco: true, colonneGammaRiga: true };
 
+/** FM82: Sistema MADE = blocchi completi + articolo manuale "in definizione" come lo Showroom; edilizia e fotovoltaico restano su BLOCCHI_COMPLETI. */
+const BLOCCHI_SISTEMA_MADE: ComportamentiBlocchiLinea = { ...BLOCCHI_COMPLETI, articoloInDefinizione: true };
+
 /** Tutti i comportamenti per linea passano da questo catalogo, non da confronti nei chiamanti. */
 export const LINEE_PREVENTIVO: Record<LineaPreventivo, ConfigurazioneLineaPreventivo> = {
-  sistema_made: { codice: 'sistema_made', etichetta: 'Sistema MADE', attiva: true, classiBadge: 'border-pv-azzurro-bordo bg-pv-azzurro text-pv-blu', classiBordo: 'border-l-pv-blu', blocchi: BLOCCHI_COMPLETI, stampa: STAMPA_SISTEMA },
+  sistema_made: { codice: 'sistema_made', etichetta: 'Sistema MADE', attiva: true, classiBadge: 'border-pv-azzurro-bordo bg-pv-azzurro text-pv-blu', classiBordo: 'border-l-pv-blu', blocchi: BLOCCHI_SISTEMA_MADE, stampa: STAMPA_SISTEMA },
   showroom: { codice: 'showroom', etichetta: 'Showroom', attiva: true, classiBadge: 'border-pv-viola/30 bg-pv-viola-tenue text-pv-viola', classiBordo: 'border-l-pv-viola', blocchi: { bloccoConMisure: false, bloccoDaKit: false, righeStampabili: true, regimiIva: true, articoloInDefinizione: true, importoInTestataBlocco: false, colonneGammaRiga: false }, stampa: STAMPA_SHOWROOM },
   edilizia: { codice: 'edilizia', etichetta: 'Edilizia', attiva: false, classiBadge: 'border-pv-verde/30 bg-pv-verde-tenue text-pv-verde', classiBordo: 'border-l-pv-verde', blocchi: BLOCCHI_COMPLETI, stampa: STAMPA_SISTEMA },
   fotovoltaico: { codice: 'fotovoltaico', etichetta: 'Fotovoltaico', attiva: false, classiBadge: 'border-pv-giallo/30 bg-pv-giallo-tenue text-pv-giallo', classiBordo: 'border-l-pv-giallo', blocchi: BLOCCHI_COMPLETI, stampa: STAMPA_SISTEMA },
