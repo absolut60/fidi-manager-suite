@@ -61,6 +61,7 @@ import { lineaPreventivo } from "@/lib/linee-preventivo";
 import { applicaLeva, ricaricoImplicito } from "@/lib/leve-prezzo-showroom";
 import { isRaccoglitorePosa } from "@/lib/riga-preventivo";
 import { toast } from "sonner";
+import { useIsTablet } from "@/hooks/use-tablet";
 
 export function RigheTable({
   blocco,
@@ -301,8 +302,8 @@ export function RigheTable({
           <thead>
             <tr className="whitespace-nowrap bg-pv-testa text-[10px] uppercase tracking-wide text-muted-foreground [&>th]:bg-pv-testa [&>th]:border-b">
               <th className="w-[18px] px-1 py-1.5 sticky left-0 z-10"></th>
-              <th className="w-[48px] px-1 py-1.5 text-center sticky left-[18px] z-10">#</th>
-              <th className="w-[156px] px-1 py-1.5 text-left sticky left-[66px] z-10">Codice</th>
+              <th className="w-[48px] px-1 py-1.5 text-center sticky left-[18px] z-10 tablet:w-[64px]">#</th>
+              <th className="w-[156px] px-1 py-1.5 text-left sticky left-[66px] z-10 tablet:left-[82px] tablet:w-[140px]">Codice</th>
               <th className="px-1 py-1.5 text-left lg:sticky lg:left-[222px] lg:z-10">Descrizione</th>
               <th className="w-[64px] px-1 py-1.5 text-left">U.M.</th>
               {conMisure && <th className="w-[60px] px-1 py-1.5 text-right">Incid.</th>}
@@ -527,7 +528,7 @@ function PulsanteRiepilogo({ idx, onOpen, inTabella }: { idx: number; onOpen: ((
     aria-label={`Riepilogo articolo riga ${idx + 1}`} title={onOpen ? "Riepilogo articolo" : "Scegli il cliente o imposta le condizioni di riferimento"}
     onClick={onOpen ? apri : (e) => e.stopPropagation()}
     onKeyDown={(e) => { if (onOpen && (e.key === "Enter" || e.key === " ")) apri(e); }}
-    className={cn("grid shrink-0 place-items-center rounded-md text-pv-blu", inTabella ? "size-7 lg:size-5" : "size-10",
+    className={cn("grid shrink-0 place-items-center rounded-md text-pv-blu", inTabella ? "size-7 lg:size-5 tablet:size-10 tablet:lg:size-10" : "size-10",
       onOpen ? "cursor-pointer hover:bg-pv-azzurro focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" : "cursor-not-allowed opacity-40")}>
     <Info className="size-4 lg:size-3.5" aria-hidden />
   </span>;
@@ -535,9 +536,9 @@ function PulsanteRiepilogo({ idx, onOpen, inTabella }: { idx: number; onOpen: ((
 
 /** Fixed number and detail slots, also for rows without a Gamma article. */
 function NumeroRiga({ p, inTabella = false }: { p: RigaProps; inTabella?: boolean }) {
-  return <div className={cn("grid shrink-0 items-center gap-0.5 text-xs text-muted-foreground", inTabella ? "min-h-[26px] grid-cols-[20px_20px]" : "grid-cols-[24px_40px]")}>
+  return <div className={cn("grid shrink-0 items-center gap-0.5 text-xs text-muted-foreground", inTabella ? "min-h-[26px] grid-cols-[20px_20px] tablet:grid-cols-[18px_40px]" : "grid-cols-[24px_40px]")}>
     <span className="text-center font-mono tabular-nums">{p.idx + 1}</span>
-    <span className={cn("flex items-center justify-center", inTabella ? "size-5" : "size-10")}>
+    <span className={cn("flex items-center justify-center", inTabella ? "size-5 tablet:size-10" : "size-10")}>
       {p.row.articolo_codice && <PulsanteRiepilogo idx={p.idx} onOpen={p.onOpenRiepilogo ?? null} inTabella={inTabella} />}
     </span>
   </div>;
@@ -759,6 +760,14 @@ function useArticoloInDefinizione(p: RigaProps) {
 }
 
 function AzioniRiga(p: RigaProps & { valorizzata?: boolean }) {
+  const isTablet = useIsTablet();
+  // FM81, solo tablet: BS, stampabile ed elimina passano nel menu "⋯", così la colonna resta larga 60px senza sovrapposizioni.
+  if (isTablet) return (
+    <div className="flex items-center justify-end">
+      <RowActions onAddAbove={p.onAddAbove} onAddBelow={p.onAddBelow}
+        onChangeType={(t) => p.onPatch({ tipo_riga: t })} currentType={p.row.tipo_riga} extra={<VociTabletRiga {...p} valorizzata={!!p.valorizzata} />} />
+    </div>
+  );
   return (
     <div className="flex items-center justify-end gap-0.5">
       <ToggleBs {...p} valorizzata={!!p.valorizzata} />
@@ -785,7 +794,7 @@ function RigaRow(p: RigaProps) {
   };
   const c = useCelleRiga(p);
   const rowClass = cn(
-    "border-b font-mono align-top whitespace-nowrap [&>td]:border-b",
+    "border-b font-mono align-top whitespace-nowrap [&>td]:border-b tablet:align-middle tablet:[&_input]:min-h-10 tablet:[&_textarea]:min-h-10 tablet:[&_textarea]:py-3 tablet:[&_[role=combobox]]:min-h-10",
     sfondoRiga(c),
     c.isSubtotal && "font-semibold",
     c.tipo === "separatore" && "h-2",
@@ -813,7 +822,7 @@ function RigaRow(p: RigaProps) {
     <tr ref={sortable.setNodeRef} style={style} className={rowClass} onClick={c.onRowClick}>
       {grip}
       <td className="sticky left-[18px] z-[1] py-0.5 text-center text-xs text-muted-foreground"><NumeroRiga p={p} inTabella /></td>
-      <td className="sticky left-[66px] z-[1] min-w-0 px-1 py-0.5">{c.codice}</td>
+      <td className="sticky left-[66px] z-[1] min-w-0 px-1 py-0.5 tablet:left-[82px]">{c.codice}</td>
       <td className="lg:sticky lg:left-[222px] lg:z-[1] min-w-0 whitespace-normal px-1 py-0.5">{c.articolo}<BadgeBs p={p} valorizzata={c.valorizzata} />{c.kitSenzaPrezzo && (
         <p className="mt-0.5 text-[11px] font-sans not-italic text-destructive">Articolo non collegato a Gamma: inserisci prezzo e costo a mano</p>
       )}</td>
@@ -902,9 +911,31 @@ function RigaScheda(p: RigaProps) {
   );
 }
 
+/** FM81, solo tablet: le stesse azioni di ToggleBs, ToggleStampabile ed Elimina, come voci del menu della riga. */
+function VociTabletRiga(p: RigaProps & { valorizzata: boolean }) {
+  const bsVisibile = p.conBs && p.valorizzata;
+  const bs = !!p.row.bene_significativo;
+  const stampVisibile = p.righeStampabili && p.valorizzata && !isRaccoglitorePosa(p.row.articolo_codice);
+  const stampabile = p.row.stampabile !== false;
+  return <>
+    {bsVisibile && <DropdownMenuItem disabled={p.readOnly} onClick={(e) => { e.stopPropagation(); p.onPatch({ bene_significativo: !bs }); }}>
+      <span className="mr-2 w-4 text-[10px] font-bold text-pv-viola">BS</span>{bs ? "Togli bene significativo" : "Indica bene significativo"}
+    </DropdownMenuItem>}
+    {stampVisibile && <DropdownMenuItem disabled={p.readOnly} onClick={(e) => { e.stopPropagation(); p.onPatch({ stampabile: !stampabile }); }}>
+      {stampabile ? <EyeOff className="mr-2 h-3.5 w-3.5" /> : <Eye className="mr-2 h-3.5 w-3.5" />}{stampabile ? "Nascondi in stampa" : "Mostra in stampa"}
+    </DropdownMenuItem>}
+    <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={(e) => { e.stopPropagation(); p.onDelete(); }}>
+      <Trash2 className="mr-2 h-3.5 w-3.5" /> Elimina riga
+    </DropdownMenuItem>
+    <DropdownMenuSeparator />
+  </>;
+}
+
 function RowActions({
-  onAddAbove, onAddBelow, onChangeType, currentType,
+  onAddAbove, onAddBelow, onChangeType, currentType, extra,
 }: {
+  /** FM81: voci aggiuntive in testa al menu, passate solo sul tablet. */
+  extra?: React.ReactNode;
   onAddAbove: (t: TipoRiga) => void;
   onAddBelow: (t: TipoRiga) => void;
   onChangeType: (t: TipoRiga) => void;
@@ -913,11 +944,12 @@ function RowActions({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button size="icon" variant="ghost" className="h-7 w-7">
+        <Button size="icon" variant="ghost" className="h-7 w-7 tablet:focus-visible:ring-0" aria-label={extra ? "Azioni riga" : undefined}>
           <span className="text-xs">⋯</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
+        {extra}
         <DropdownMenuLabel className="text-xs">Inserisci sopra</DropdownMenuLabel>
         {TIPI_RIGA.map((t) => (
           <DropdownMenuItem key={`a-${t}`} onClick={() => onAddAbove(t)}>

@@ -1939,3 +1939,24 @@ File: `src/routes/_app/alert-fidi.tsx` (solo impaginazione; dati, filtri, permes
 
 - **375×812** e **1600×900**: prima/dopo identiche pixel per pixel al primo confronto (nessun 3+3 necessario). A 1600 la colonna Perché resta 320 px come oggi (tabella originale invariata).
 - Limite: dati simulati; motivi colorati delle righe non riprodotti dalla fixture (codici segnalazione finti).
+
+## FM81 — Corpo preventivo sul tablet (`RigheTable.tsx`)
+
+Diagnosi (banco temporaneo con 6 righe articolo + 2 sotto-totali, linea Showroom, touch a 1280×800, 1180×820, 1366×1024):
+- colonna azioni 60px, ma BS/occhio/cestino/⋯ alti e larghi 40px dalla fetta 1: **24 sovrapposizioni** (occhio e cestino sopra la % e sopra il margine €) a tutte e tre le dimensioni;
+- codice: pulsante del selettore alto 44px con testo centrato, celle `align-top` → codice ~9px più in basso della descrizione;
+- intestazioni Netto/Importo: scarto misurato 0px dal margine destro dei valori (non riprodotto con dati finti);
+- "⋯" del sotto-totale: stesso componente e stessa resa delle altre righe (bordo 0, outline none); il riquadro della foto è l'anello di focus che resta dopo un tocco.
+
+Scelta: occhio, BS ed Elimina passano nel menu "⋯" della riga (solo tablet). Motivo: la colonna resta 60px e la tabella non si allarga, la % e il margine € hanno tutto lo spazio, e l'eliminazione non è più a un tocco accidentale accanto ai numeri. Lo stato "nascosto in stampa" resta visibile dalla riga attenuata, il BS dal badge.
+
+Classificazione del diff (49 righe cambiate da `9777f06e`):
+1. classi `tablet:` aggiunte a className esistenti (th/td #, Codice, riga `tablet:align-middle` + campi ≥40px, (i) 40px, ring del ⋯): 9 righe;
+2. ramo `useIsTablet()` in `AzioniRiga` e componente `VociTabletRiga` montato solo da quel ramo: 33 righe;
+3. import `useIsTablet`: 1 riga;
+4. ALTRO: 6 righe — prop facoltativa `extra` di `RowActions` (assente fuori dal tablet → menu identico) e `aria-label={extra ? "Azioni riga" : undefined}` (undefined fuori dal tablet: nessun attributo). Nessun effetto su telefono o PC.
+
+Al primo render `useIsTablet` vale false: sul tablet un istante con le icone del PC, sul PC nessun effetto.
+
+Foto originale/attuale (3+3, banco con componente originale e attuale affiancati) a 375×812, 1280×800, 1440×900: identiche al pixel, differenze vere 0.
+Misure touch dopo (768×1024, 820×1180, 1180×820, 1366×1024 e 1280×800): sovrapposizioni 0, intestazioni allineate (0px), target <40px nel corpo 0 (escluso la maniglia di trascinamento), piede IMPORTO/COSTO/MARGINE leggibile. La tabella mantiene lo scroll orizzontale interno già presente (larghezza minima invariata).
