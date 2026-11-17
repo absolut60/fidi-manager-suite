@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search, Users, Star, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useIsTablet } from "@/hooks/use-tablet";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,7 @@ function fmtDate(v: unknown): string {
 }
 
 function ContattiPage() {
+  const isTablet = useIsTablet();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { role, user } = useAuth();
@@ -132,8 +134,8 @@ function ContattiPage() {
 
       <Card className="p-4">
         <FiltriCollassabili attivi={attiviCount}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="lg:col-span-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 tablet:grid-cols-2 tablet:lg:grid-cols-3">
+          <div className="lg:col-span-2 tablet:col-span-full">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
@@ -187,8 +189,8 @@ function ContattiPage() {
         ) : (
           <>
           {/* Mobile: schede al posto della tabella */}
-          <div className="md:hidden p-3">
-          <ElencoSchede>
+          <div className="md:hidden p-3 tablet:max-lg:block">
+          <ElencoSchede finoA={isTablet ? "lg" : "md"}>
             {filtered.map((c: any) => (
               <SchedaLista
                 key={c.id}
@@ -228,18 +230,18 @@ function ContattiPage() {
           </div>
 
 
-          <div className="hidden md:block">
-          <Table>
+          <div className="hidden md:block tablet:max-lg:hidden">
+          <Table className="tablet:table-fixed tablet:[&_td]:whitespace-normal tablet:[&_td]:break-normal tablet:[&_th]:whitespace-normal" >
 
             <TableHeader>
               <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Ruolo</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Cellulare</TableHead>
+                <TableHead className="tablet:w-[25%]">Nome</TableHead>
+                <TableHead className="tablet:w-[30%]">Cliente</TableHead>
+                <TableHead className="tablet:hidden">Ruolo</TableHead>
+                <TableHead className="tablet:w-[30%]">Email</TableHead>
+                <TableHead className="tablet:hidden">Cellulare</TableHead>
                 <TableHead>Consensi</TableHead>
-                <TableHead>Data firma</TableHead>
+                <TableHead className="tablet:hidden">Data firma</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -254,18 +256,19 @@ function ContattiPage() {
                   })}
                 >
                   <TableCell className="font-medium">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 tablet:flex-wrap">
                       {c.principale && <Star className="size-3 fill-accent text-accent" />}
                       {c.nome} {c.cognome}
                     </div>
+                    {isTablet && <div className="text-xs font-normal text-muted-foreground">{c.ruolo ?? "—"}<div>Data firma: {fmtDate(c.data_firma)}</div></div>}
                   </TableCell>
                   <TableCell>
                     {c.clienti?.ragione_sociale}
                     <div className="text-xs text-muted-foreground">{c.clienti?.stores?.nome ?? "—"}</div>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{c.ruolo ?? "—"}</TableCell>
-                  <TableCell className="text-muted-foreground text-xs">{c.email ?? "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">{c.cellulare ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground tablet:hidden">{c.ruolo ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground text-xs tablet:break-words">{c.email ?? "—"}{isTablet && <div className="mt-1">{c.cellulare ?? "—"}</div>}</TableCell>
+                  <TableCell className="text-muted-foreground tablet:hidden">{c.cellulare ?? "—"}</TableCell>
                   <TableCell>
                     <BadgeConsensi
                       compact
@@ -274,7 +277,7 @@ function ContattiPage() {
                       email={(statoConsensi?.get(c.id) ?? STATO_CONSENSI_VUOTO).email}
                     />
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{fmtDate(c.data_firma)}</TableCell>
+                  <TableCell className="text-muted-foreground tablet:hidden">{fmtDate(c.data_firma)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

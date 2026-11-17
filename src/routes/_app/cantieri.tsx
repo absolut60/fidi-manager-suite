@@ -9,6 +9,7 @@ import { AlertTriangle, Building2, MapPin, Pencil, Plus, Search } from "lucide-r
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useIsTablet } from "@/hooks/use-tablet";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { BadgeProvvisorio } from "@/components/badge-provvisorio";
@@ -58,6 +59,7 @@ export const Route = createFileRoute("/_app/cantieri")({
 const PAGINA = 1000;
 
 function CantieriPage() {
+  const isTablet = useIsTablet();
   const { tab, focus } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const qc = useQueryClient();
@@ -246,9 +248,9 @@ function CantieriPage() {
         value={tab ?? "lista"}
         onValueChange={(v) => navigate({ search: (s) => ({ ...s, tab: v as "lista" | "mappa" }) })}
       >
-        <TabsList>
-          <TabsTrigger value="lista">Lista</TabsTrigger>
-          <TabsTrigger value="mappa">Mappa</TabsTrigger>
+        <TabsList className="tablet:h-auto">
+          <TabsTrigger className="tablet:min-h-10" value="lista">Lista</TabsTrigger>
+          <TabsTrigger className="tablet:min-h-10" value="mappa">Mappa</TabsTrigger>
         </TabsList>
 
         <TabsContent value="lista" className="space-y-4">
@@ -269,7 +271,7 @@ function CantieriPage() {
             <Card><p className="p-12 text-center text-sm text-muted-foreground">Nessun cantiere trovato.</p></Card>
           ) : (
             <>
-              <ElencoSchede>
+              <ElencoSchede finoA={isTablet ? "lg" : "md"}>
                 {filtrati.map((c) => {
                   const s = (c.geocodifica_stato ?? "da_geocodificare") as GeoStato;
                   return (
@@ -315,18 +317,18 @@ function CantieriPage() {
                 })}
               </ElencoSchede>
 
-              <Card className="hidden md:block">
-                <Table>
+              <Card className="hidden md:block tablet:max-lg:hidden">
+                <Table className="tablet:table-fixed tablet:[&_td]:whitespace-normal tablet:[&_td]:break-normal tablet:[&_th]:whitespace-normal" >
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Cliente / Lead</TableHead>
-                      <TableHead>Indirizzo</TableHead>
-                      <TableHead>Geocodifica</TableHead>
-                      <TableHead>Sede più vicina</TableHead>
-                      <TableHead>Agente</TableHead>
+                      <TableHead className="tablet:w-[42%]">Nome</TableHead>
+                      <TableHead className="tablet:w-[28%]">Cliente / Lead</TableHead>
+                      <TableHead className="tablet:hidden">Indirizzo</TableHead>
+                      <TableHead className="tablet:hidden">Geocodifica</TableHead>
+                      <TableHead className="tablet:hidden">Sede più vicina</TableHead>
+                      <TableHead className="tablet:hidden">Agente</TableHead>
                       <TableHead>Stato</TableHead>
-                      <TableHead className="w-32" />
+                      <TableHead className="w-32 tablet:w-24" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -336,6 +338,12 @@ function CantieriPage() {
                         <TableRow key={c.id}>
                           <TableCell className="font-medium">
                             {c.nome}
+                            {isTablet && <div className="space-y-1 text-xs font-normal text-muted-foreground">
+                              <div>{indirizzoCompleto(c) || "—"}</div>
+                              <div>Sede più vicina: {testoSedeVicina(c) ?? "—"}</div>
+                              <div>Agente: {c.agente_codice ? (agenteLabel.get(c.agente_codice) ?? c.agente_codice) : "—"}</div>
+                              <Badge variant="outline" className={GEO_CLASS[s]}>{GEO_LABEL[s]}</Badge>
+                            </div>}
                             {c.provvisorio && <span className="ml-2 inline-block align-middle"><BadgeProvvisorio /></span>}
                             <span className="ml-2 inline-block align-middle"><BadgePrezziDedicati conteggio={conteggiPrezzi[c.id]} /></span>
                             {c.categoria && (
@@ -345,15 +353,15 @@ function CantieriPage() {
                             )}
                           </TableCell>
                           <TableCell className="text-sm">{nomeSoggettoCantiere(c)}</TableCell>
-                          <TableCell className="text-sm text-muted-foreground">{indirizzoCompleto(c) || "—"}</TableCell>
-                          <TableCell>
+                          <TableCell className="text-sm text-muted-foreground tablet:hidden">{indirizzoCompleto(c) || "—"}</TableCell>
+                          <TableCell className="tablet:hidden">
                             <Badge variant="outline" className={GEO_CLASS[s]} title={c.geocodifica_messaggio ?? undefined}>
                               {s === "fallita" && <AlertTriangle className="size-3 mr-1" />}
                               {GEO_LABEL[s]}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-sm">{testoSedeVicina(c) ?? "—"}</TableCell>
-                          <TableCell className="text-sm">
+                          <TableCell className="text-sm tablet:hidden">{testoSedeVicina(c) ?? "—"}</TableCell>
+                          <TableCell className="text-sm tablet:hidden">
                             {c.agente_codice ? (agenteLabel.get(c.agente_codice) ?? c.agente_codice) : "—"}
                           </TableCell>
                           <TableCell>
@@ -362,7 +370,7 @@ function CantieriPage() {
                               : <Badge className="bg-emerald-600/15 text-emerald-700">Attivo</Badge>}
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-0.5">
+                            <div className="flex items-center gap-0.5 tablet:flex-col tablet:gap-2">
                               <Button
                                 variant="ghost" size="icon" title="Mostra su mappa"
                                 onClick={() => mostraSuMappa(c)}
@@ -453,7 +461,7 @@ function Filtri({
 }) {
   return (
     <FiltriCollassabili>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 tablet:grid-cols-2 tablet:lg:grid-cols-3">
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input

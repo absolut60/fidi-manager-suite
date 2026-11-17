@@ -938,3 +938,307 @@ C3 +L9: /* tablet = schermo touch senza mouse da 768px, escluso il telefono in o
 C3 +L10: @custom-variant tablet { @media (pointer: coarse) and (hover: none) and (min-width: 768px) and (min-height: 501px) { @slot; } }
 ```
 
+
+
+## Fetta 5 — Commerciale (17/11/2026)
+
+Base: `9fbfa470804808f7c58d61ec865330e1e77f7928`. Codice verificato: `928dfd0246fa994a798a1bbe983f6dabb92129c4`. Solo cinque route commerciali; nessuna migrazione, dati, query, permessi, handler o logo modificati.
+
+### A. Prova statica
+
+Stesso criterio delle quattro categorie sopra; si contano separatamente aggiunte e rimozioni. ClassName prima assente con soli token tablet rientra in C1. C2 comprende anche le righe originali conservate nelle sostituzioni JSX con discendenti tablet.
+
+| Categoria | Aggiunte | Rimosse | Totale |
+|---|---:|---:|---:|
+| 1 | 88 | 90 | 178 |
+| 2 | 28 | 3 | 31 |
+| 3 | 0 | 0 | 0 |
+| 4 | 8 | 0 | 8 |
+
+**ALTRO, elenco completo:**
+
+- `src/routes/_app/cantieri.tsx:+12` — `import { useIsTablet } from "@/hooks/use-tablet";`. Import/invocazione hook fuori dal ramo: listener matchMedia anche su telefono/PC, ma valore false e nessun cambiamento visivo, di dati o dei gestori.
+
+- `src/routes/_app/cantieri.tsx:+62` — `const isTablet = useIsTablet();`. Import/invocazione hook fuori dal ramo: listener matchMedia anche su telefono/PC, ma valore false e nessun cambiamento visivo, di dati o dei gestori.
+
+- `src/routes/_app/contatti.tsx:+8` — `import { useIsTablet } from "@/hooks/use-tablet";`. Import/invocazione hook fuori dal ramo: listener matchMedia anche su telefono/PC, ma valore false e nessun cambiamento visivo, di dati o dei gestori.
+
+- `src/routes/_app/contatti.tsx:+35` — `const isTablet = useIsTablet();`. Import/invocazione hook fuori dal ramo: listener matchMedia anche su telefono/PC, ma valore false e nessun cambiamento visivo, di dati o dei gestori.
+
+- `src/routes/_app/lead.index.tsx:+18` — `import { useIsTablet } from "@/hooks/use-tablet";`. Import/invocazione hook fuori dal ramo: listener matchMedia anche su telefono/PC, ma valore false e nessun cambiamento visivo, di dati o dei gestori.
+
+- `src/routes/_app/lead.index.tsx:+94` — `const isTablet = useIsTablet();`. Import/invocazione hook fuori dal ramo: listener matchMedia anche su telefono/PC, ma valore false e nessun cambiamento visivo, di dati o dei gestori.
+
+
+- `src/routes/_app/opportunita.index.tsx:+10` — `import { useIsTablet } from "@/hooks/use-tablet";`. Import/invocazione hook fuori dal ramo: listener matchMedia anche su telefono/PC, ma valore false e nessun cambiamento visivo, di dati o dei gestori.
+
+- `src/routes/_app/opportunita.index.tsx:+45` — `const isTablet = useIsTablet();`. Import/invocazione hook fuori dal ramo: listener matchMedia anche su telefono/PC, ma valore false e nessun cambiamento visivo, di dati o dei gestori.
+
+
+Il hook conserva false al primo render/SSR; dopo useEffect diventa true soltanto sul tablet. Le classi CSS tablet possono essere già attive prima del hook: il brevissimo layout iniziale è quindi misto, non necessariamente la vista PC completa. Tutte le prop finoA mantengono md nel ramo false; tutti i nuovi testi sono condizionati a isTablet. Nessuna riga ALTRO cambia telefono/PC.
+
+### B. Fotografie originali/attuali
+
+15 coppie sequenziali: cinque pagine × 375×812 touch, 1280×800 mouse e 1440×900 mouse, fixture 14 righe (calendario: 14 attività). 13 coppie subito identiche; due diverse a 375 (/lead, /opportunita) ripetute da sole secondo 3+3.
+
+| Coppia | Tre originali stabili | Tre attuali stabili | Esito |
+|---|---|---|---|
+| Lead 375 | Sì | No | Rumore; primo originale/attuale identici |
+| Opportunità 375 | No | No | Rumore |
+
+**Differenze VERE: 0 a 375; 0 a 1280; 0 a 1440.** Non si afferma che ogni scatto sia identico: le due serie instabili sono rumore secondo il criterio richiesto. Originali caricati nel browser mediante transpilation esbuild e intercettazione dei cinque moduli storici, senza sostituire il codice app; nessun confronto di schermi d’errore accettato.
+
+### C. Misure touch
+
+Per ciascuna pagina misurati DOM completo, overflow orizzontale, testi stretti e controlli visibili; fotografie ai quattro formati. Le checkbox esistenti hanno icona 16/20px e pseudo-elemento after con inset -12px: il target effettivo è 40/44px, non la sola icona. Si misura tale area, senza cambiarne la presentazione.
+
+| Pagina | Dimensione | Px nascosti | Una lettera/riga | Target <40px |
+|---|---|---:|---:|---:|
+| /lead | 768 | 0 | 0 | 0 |
+| /opportunita | 768 | 0 | 0 | 0 |
+| /contatti | 768 | 0 | 0 | 0 |
+| /cantieri | 768 | 0 | 0 | 0 |
+| /calendario-commerciale | 768 | 0 | 0 | 0 |
+| /lead | 820 | 0 | 0 | 0 |
+| /opportunita | 820 | 0 | 0 | 0 |
+| /contatti | 820 | 0 | 0 | 0 |
+| /cantieri | 820 | 0 | 0 | 0 |
+| /calendario-commerciale | 820 | 0 | 0 | 0 |
+| /lead | 1180 | 0 | 0 | 0 |
+| /opportunita | 1180 | 0 | 0 | 0 |
+| /contatti | 1180 | 0 | 0 | 0 |
+| /cantieri | 1180 | 0 | 0 | 0 |
+| /calendario-commerciale | 1180 | 0 | 0 | 0 |
+| /lead | 1366 | 0 | 0 | 0 |
+| /opportunita | 1366 | 0 | 0 | 0 |
+| /contatti | 1366 | 0 | 0 | 0 |
+| /cantieri | 1366 | 0 | 0 | 0 |
+| /calendario-commerciale | 1366 | 0 | 0 | 0 |
+
+Tutte le venti misure: 0/0/0. Screenshot controllati: schede verticali, nomi e città leggibili, tabelle orizzontali essenziali; calendario giorni e pulsanti almeno 40px. Nessun errore app nelle prove definitive. Le prove con fixture verificano presentazione, non flussi reali o permessi.
+
+### D. Test
+
+`bun test`: **1019 pass, 0 fail**, 3433 asserzioni in 137 file. Build automatico OK. Artefatti temporanei in /tmp/browser/fm79-f5. Nessuna nuova fonte di business o modifica delle regole responsive; riutilizzati hook e variante esistenti.
+
+### Appendice: ogni riga della fetta
+
+```text
+C1 src/routes/_app/calendario-commerciale.tsx -L279:           <div className="flex items-center gap-2">
+C1 src/routes/_app/calendario-commerciale.tsx +L279:           <div className="flex items-center gap-2 tablet:min-h-10 tablet:[&_[role=switch]]:min-h-10 tablet:[&_[role=switch]]:min-w-10">
+C1 src/routes/_app/calendario-commerciale.tsx -L303:       <Card className="p-2 sm:p-4 overflow-x-hidden">
+C1 src/routes/_app/calendario-commerciale.tsx +L303:       <Card className="p-2 sm:p-4 overflow-x-hidden tablet:[&_.fc-button]:min-h-10 tablet:[&_.fc-button]:min-w-10 tablet:[&_.fc-toolbar]:flex-wrap tablet:[&_.fc-toolbar]:gap-3 tablet:[&_.fc-daygrid-day-frame]:min-h-20 tablet:[&_.fc-daygrid-day-number]:inline-flex tablet:[&_.fc-daygrid-day-number]:min-h-10 tablet:[&_.fc-daygrid-day-number]:min-w-10 tablet:[&_.fc-daygrid-day-number]:items-center tablet:[&_.fc-daygrid-day-number]:justify-center tablet:[&_.fc-event]:min-h-10 tablet:[&_.fc-event-title]:whitespace-normal tablet:[&_.fc-event-title]:break-words">
+C4 src/routes/_app/cantieri.tsx +L12: import { useIsTablet } from "@/hooks/use-tablet";
+C4 src/routes/_app/cantieri.tsx +L62:   const isTablet = useIsTablet();
+C1 src/routes/_app/cantieri.tsx -L249:         <TabsList>
+C1 src/routes/_app/cantieri.tsx -L250:           <TabsTrigger value="lista">Lista</TabsTrigger>
+C1 src/routes/_app/cantieri.tsx -L251:           <TabsTrigger value="mappa">Mappa</TabsTrigger>
+C1 src/routes/_app/cantieri.tsx +L251:         <TabsList className="tablet:h-auto">
+C1 src/routes/_app/cantieri.tsx +L252:           <TabsTrigger className="tablet:min-h-10" value="lista">Lista</TabsTrigger>
+C1 src/routes/_app/cantieri.tsx +L253:           <TabsTrigger className="tablet:min-h-10" value="mappa">Mappa</TabsTrigger>
+C2 src/routes/_app/cantieri.tsx -L272:               <ElencoSchede>
+C2 src/routes/_app/cantieri.tsx +L274:               <ElencoSchede finoA={isTablet ? "lg" : "md"}>
+C1 src/routes/_app/cantieri.tsx -L318:               <Card className="hidden md:block">
+C1 src/routes/_app/cantieri.tsx -L319:                 <Table>
+C1 src/routes/_app/cantieri.tsx +L320:               <Card className="hidden md:block tablet:max-lg:hidden">
+C1 src/routes/_app/cantieri.tsx +L321:                 <Table className="tablet:table-fixed tablet:[&_td]:whitespace-normal tablet:[&_td]:break-normal tablet:[&_th]:whitespace-normal" >
+C1 src/routes/_app/cantieri.tsx -L322:                       <TableHead>Nome</TableHead>
+C1 src/routes/_app/cantieri.tsx -L323:                       <TableHead>Cliente / Lead</TableHead>
+C1 src/routes/_app/cantieri.tsx -L324:                       <TableHead>Indirizzo</TableHead>
+C1 src/routes/_app/cantieri.tsx -L325:                       <TableHead>Geocodifica</TableHead>
+C1 src/routes/_app/cantieri.tsx -L326:                       <TableHead>Sede più vicina</TableHead>
+C1 src/routes/_app/cantieri.tsx -L327:                       <TableHead>Agente</TableHead>
+C1 src/routes/_app/cantieri.tsx +L324:                       <TableHead className="tablet:w-[42%]">Nome</TableHead>
+C1 src/routes/_app/cantieri.tsx +L325:                       <TableHead className="tablet:w-[28%]">Cliente / Lead</TableHead>
+C1 src/routes/_app/cantieri.tsx +L326:                       <TableHead className="tablet:hidden">Indirizzo</TableHead>
+C1 src/routes/_app/cantieri.tsx +L327:                       <TableHead className="tablet:hidden">Geocodifica</TableHead>
+C1 src/routes/_app/cantieri.tsx +L328:                       <TableHead className="tablet:hidden">Sede più vicina</TableHead>
+C1 src/routes/_app/cantieri.tsx +L329:                       <TableHead className="tablet:hidden">Agente</TableHead>
+C1 src/routes/_app/cantieri.tsx -L329:                       <TableHead className="w-32" />
+C1 src/routes/_app/cantieri.tsx +L331:                       <TableHead className="w-32 tablet:w-24" />
+C2 src/routes/_app/cantieri.tsx +L341:                             {isTablet && <div className="space-y-1 text-xs font-normal text-muted-foreground">
+C2 src/routes/_app/cantieri.tsx +L342:                               <div>{indirizzoCompleto(c) || "—"}</div>
+C2 src/routes/_app/cantieri.tsx +L343:                               <div>Sede più vicina: {testoSedeVicina(c) ?? "—"}</div>
+C2 src/routes/_app/cantieri.tsx +L344:                               <div>Agente: {c.agente_codice ? (agenteLabel.get(c.agente_codice) ?? c.agente_codice) : "—"}</div>
+C2 src/routes/_app/cantieri.tsx +L345:                               <Badge variant="outline" className={GEO_CLASS[s]}>{GEO_LABEL[s]}</Badge>
+C2 src/routes/_app/cantieri.tsx +L346:                             </div>}
+C1 src/routes/_app/cantieri.tsx -L348:                           <TableCell className="text-sm text-muted-foreground">{indirizzoCompleto(c) || "—"}</TableCell>
+C1 src/routes/_app/cantieri.tsx -L349:                           <TableCell>
+C1 src/routes/_app/cantieri.tsx +L356:                           <TableCell className="text-sm text-muted-foreground tablet:hidden">{indirizzoCompleto(c) || "—"}</TableCell>
+C1 src/routes/_app/cantieri.tsx +L357:                           <TableCell className="tablet:hidden">
+C1 src/routes/_app/cantieri.tsx -L355:                           <TableCell className="text-sm">{testoSedeVicina(c) ?? "—"}</TableCell>
+C1 src/routes/_app/cantieri.tsx -L356:                           <TableCell className="text-sm">
+C1 src/routes/_app/cantieri.tsx +L363:                           <TableCell className="text-sm tablet:hidden">{testoSedeVicina(c) ?? "—"}</TableCell>
+C1 src/routes/_app/cantieri.tsx +L364:                           <TableCell className="text-sm tablet:hidden">
+C1 src/routes/_app/cantieri.tsx -L365:                             <div className="flex items-center gap-0.5">
+C1 src/routes/_app/cantieri.tsx +L373:                             <div className="flex items-center gap-0.5 tablet:flex-col tablet:gap-2">
+C1 src/routes/_app/cantieri.tsx -L456:       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+C1 src/routes/_app/cantieri.tsx +L464:       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 tablet:grid-cols-2 tablet:lg:grid-cols-3">
+C4 src/routes/_app/contatti.tsx +L8: import { useIsTablet } from "@/hooks/use-tablet";
+C4 src/routes/_app/contatti.tsx +L35:   const isTablet = useIsTablet();
+C1 src/routes/_app/contatti.tsx -L135:         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+C1 src/routes/_app/contatti.tsx -L136:           <div className="lg:col-span-2">
+C1 src/routes/_app/contatti.tsx +L137:         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 tablet:grid-cols-2 tablet:lg:grid-cols-3">
+C1 src/routes/_app/contatti.tsx +L138:           <div className="lg:col-span-2 tablet:col-span-full">
+C1 src/routes/_app/contatti.tsx -L190:           <div className="md:hidden p-3">
+C2 src/routes/_app/contatti.tsx -L191:           <ElencoSchede>
+C1 src/routes/_app/contatti.tsx +L192:           <div className="md:hidden p-3 tablet:max-lg:block">
+C2 src/routes/_app/contatti.tsx +L193:           <ElencoSchede finoA={isTablet ? "lg" : "md"}>
+C1 src/routes/_app/contatti.tsx -L231:           <div className="hidden md:block">
+C1 src/routes/_app/contatti.tsx -L232:           <Table>
+C1 src/routes/_app/contatti.tsx +L233:           <div className="hidden md:block tablet:max-lg:hidden">
+C1 src/routes/_app/contatti.tsx +L234:           <Table className="tablet:table-fixed tablet:[&_td]:whitespace-normal tablet:[&_td]:break-normal tablet:[&_th]:whitespace-normal" >
+C1 src/routes/_app/contatti.tsx -L236:                 <TableHead>Nome</TableHead>
+C1 src/routes/_app/contatti.tsx -L237:                 <TableHead>Cliente</TableHead>
+C1 src/routes/_app/contatti.tsx -L238:                 <TableHead>Ruolo</TableHead>
+C1 src/routes/_app/contatti.tsx -L239:                 <TableHead>Email</TableHead>
+C1 src/routes/_app/contatti.tsx -L240:                 <TableHead>Cellulare</TableHead>
+C1 src/routes/_app/contatti.tsx +L238:                 <TableHead className="tablet:w-[25%]">Nome</TableHead>
+C1 src/routes/_app/contatti.tsx +L239:                 <TableHead className="tablet:w-[30%]">Cliente</TableHead>
+C1 src/routes/_app/contatti.tsx +L240:                 <TableHead className="tablet:hidden">Ruolo</TableHead>
+C1 src/routes/_app/contatti.tsx +L241:                 <TableHead className="tablet:w-[30%]">Email</TableHead>
+C1 src/routes/_app/contatti.tsx +L242:                 <TableHead className="tablet:hidden">Cellulare</TableHead>
+C1 src/routes/_app/contatti.tsx -L242:                 <TableHead>Data firma</TableHead>
+C1 src/routes/_app/contatti.tsx +L244:                 <TableHead className="tablet:hidden">Data firma</TableHead>
+C1 src/routes/_app/contatti.tsx -L257:                     <div className="flex items-center gap-1.5">
+C1 src/routes/_app/contatti.tsx +L259:                     <div className="flex items-center gap-1.5 tablet:flex-wrap">
+C2 src/routes/_app/contatti.tsx +L263:                     {isTablet && <div className="text-xs font-normal text-muted-foreground">{c.ruolo ?? "—"}<div>Data firma: {fmtDate(c.data_firma)}</div></div>}
+C1 src/routes/_app/contatti.tsx -L266:                   <TableCell className="text-muted-foreground">{c.ruolo ?? "—"}</TableCell>
+C1 src/routes/_app/contatti.tsx -L267:                   <TableCell className="text-muted-foreground text-xs">{c.email ?? "—"}</TableCell>
+C1 src/routes/_app/contatti.tsx -L268:                   <TableCell className="text-muted-foreground">{c.cellulare ?? "—"}</TableCell>
+C1 src/routes/_app/contatti.tsx +L269:                   <TableCell className="text-muted-foreground tablet:hidden">{c.ruolo ?? "—"}</TableCell>
+C2 src/routes/_app/contatti.tsx +L270:                   <TableCell className="text-muted-foreground text-xs tablet:break-words">{c.email ?? "—"}{isTablet && <div className="mt-1">{c.cellulare ?? "—"}</div>}</TableCell>
+C2 src/routes/_app/contatti.tsx +L271:                   <TableCell className="text-muted-foreground tablet:hidden">{c.cellulare ?? "—"}</TableCell>
+C1 src/routes/_app/contatti.tsx -L277:                   <TableCell className="text-muted-foreground">{fmtDate(c.data_firma)}</TableCell>
+C1 src/routes/_app/contatti.tsx +L280:                   <TableCell className="text-muted-foreground tablet:hidden">{fmtDate(c.data_firma)}</TableCell>
+C4 src/routes/_app/lead.index.tsx +L18: import { useIsTablet } from "@/hooks/use-tablet";
+C4 src/routes/_app/lead.index.tsx +L94:   const isTablet = useIsTablet();
+C1 src/routes/_app/lead.index.tsx -L417:         className="flex items-center gap-1 font-medium hover:text-primary transition-colors"
+C1 src/routes/_app/lead.index.tsx +L419:         className="flex items-center gap-1 font-medium hover:text-primary transition-colors tablet:min-h-10 tablet:min-w-10"
+C1 src/routes/_app/lead.index.tsx -L494:         <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
+C1 src/routes/_app/lead.index.tsx -L495:           <TabsTrigger value="attivi" className="gap-1.5">
+C1 src/routes/_app/lead.index.tsx +L496:         <TabsList className="w-full justify-start overflow-x-auto sm:w-auto tablet:h-auto tablet:flex-wrap">
+C1 src/routes/_app/lead.index.tsx +L497:           <TabsTrigger value="attivi" className="gap-1.5 tablet:min-h-10">
+C1 src/routes/_app/lead.index.tsx -L498:           <TabsTrigger value="ricontattare" className="gap-1.5">
+C1 src/routes/_app/lead.index.tsx +L500:           <TabsTrigger value="ricontattare" className="gap-1.5 tablet:min-h-10">
+C1 src/routes/_app/lead.index.tsx -L502:           <TabsTrigger value="convertiti" className="gap-1.5">
+C1 src/routes/_app/lead.index.tsx +L504:           <TabsTrigger value="convertiti" className="gap-1.5 tablet:min-h-10">
+C1 src/routes/_app/lead.index.tsx -L505:           <TabsTrigger value="persi" className="gap-1.5">
+C1 src/routes/_app/lead.index.tsx +L507:           <TabsTrigger value="persi" className="gap-1.5 tablet:min-h-10">
+C1 src/routes/_app/lead.index.tsx -L570:         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+C1 src/routes/_app/lead.index.tsx +L572:         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 tablet:grid-cols-2 tablet:lg:grid-cols-3">
+C1 src/routes/_app/lead.index.tsx -L572:           <div className="lg:col-span-2">
+C1 src/routes/_app/lead.index.tsx +L574:           <div className="lg:col-span-2 tablet:col-span-full">
+C1 src/routes/_app/lead.index.tsx -L718:               className="text-primary hover:underline disabled:opacity-60"
+C1 src/routes/_app/lead.index.tsx +L720:               className="text-primary hover:underline disabled:opacity-60 tablet:min-h-10"
+C2 src/routes/_app/lead.index.tsx +L753:             finoA={isTablet ? "lg" : "md"}
+C2 src/routes/_app/lead.index.tsx +L775:                   ...(isTablet ? [{ etichetta: "Sede / Agente", valore: `${nomeStore(l.store_id)}${l.agente_codice ? ` · ${l.agente_codice}` : ""}` }] : []),
+C1 src/routes/_app/lead.index.tsx -L803:           <div className="hidden md:block">
+C1 src/routes/_app/lead.index.tsx -L804:             <Table>
+C1 src/routes/_app/lead.index.tsx +L807:           <div className="hidden md:block tablet:max-lg:hidden">
+C1 src/routes/_app/lead.index.tsx +L808:             <Table className="tablet:table-fixed tablet:[&_td]:whitespace-normal tablet:[&_td]:break-normal tablet:[&_th]:whitespace-normal" >
+C1 src/routes/_app/lead.index.tsx -L808:                     <TableHead className="w-10">
+C1 src/routes/_app/lead.index.tsx +L812:                     <TableHead className="w-10 tablet:w-14">
+C1 src/routes/_app/lead.index.tsx -L816:                   <TableHead><SortHeader col="ragione_sociale" label="Nominativo" /></TableHead>
+C1 src/routes/_app/lead.index.tsx -L817:                   <TableHead>Tipo soggetto</TableHead>
+C1 src/routes/_app/lead.index.tsx +L820:                   <TableHead className="tablet:w-[42%]"><SortHeader col="ragione_sociale" label="Nominativo" /></TableHead>
+C1 src/routes/_app/lead.index.tsx +L821:                   <TableHead className="tablet:hidden">Tipo soggetto</TableHead>
+C1 src/routes/_app/lead.index.tsx -L819:                   <TableHead>Tipo lead</TableHead>
+C1 src/routes/_app/lead.index.tsx +L823:                   <TableHead className="tablet:hidden">Tipo lead</TableHead>
+C1 src/routes/_app/lead.index.tsx -L821:                   <TableHead>Fonte</TableHead>
+C1 src/routes/_app/lead.index.tsx -L822:                   <TableHead>Città</TableHead>
+C1 src/routes/_app/lead.index.tsx -L823:                   <TableHead>Sede / Agente</TableHead>
+C1 src/routes/_app/lead.index.tsx -L824:                   <TableHead>Assegnato a</TableHead>
+C1 src/routes/_app/lead.index.tsx +L825:                   <TableHead className="tablet:hidden">Fonte</TableHead>
+C1 src/routes/_app/lead.index.tsx +L826:                   <TableHead className="tablet:hidden">Città</TableHead>
+C1 src/routes/_app/lead.index.tsx +L827:                   <TableHead className="tablet:hidden">Sede / Agente</TableHead>
+C1 src/routes/_app/lead.index.tsx +L828:                   <TableHead className="tablet:hidden">Assegnato a</TableHead>
+C1 src/routes/_app/lead.index.tsx -L827:                       <TableHead><SortHeader col="convertito_il" label="Data conversione" /></TableHead>
+C1 src/routes/_app/lead.index.tsx -L828:                       <TableHead>Cliente</TableHead>
+C1 src/routes/_app/lead.index.tsx +L831:                       <TableHead className="tablet:hidden"><SortHeader col="convertito_il" label="Data conversione" /></TableHead>
+C1 src/routes/_app/lead.index.tsx +L832:                       <TableHead className="tablet:hidden">Cliente</TableHead>
+C1 src/routes/_app/lead.index.tsx -L833:                   <TableHead><SortHeader col="created_at" label="Creato" /></TableHead>
+C1 src/routes/_app/lead.index.tsx +L837:                   <TableHead className="tablet:hidden"><SortHeader col="created_at" label="Creato" /></TableHead>
+C1 src/routes/_app/lead.index.tsx -L845:                       <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
+C1 src/routes/_app/lead.index.tsx +L849:                       <TableCell className="w-10 tablet:w-14" onClick={(e) => e.stopPropagation()}>
+C1 src/routes/_app/lead.index.tsx -L853:                     <TableCell className="font-medium">{nomeLead(l)}</TableCell>
+C1 src/routes/_app/lead.index.tsx -L854:                     <TableCell className="text-xs text-muted-foreground">
+C1 src/routes/_app/lead.index.tsx +L857:                     <TableCell className="font-medium tablet:whitespace-normal tablet:break-normal">{nomeLead(l)}
+C2 src/routes/_app/lead.index.tsx +L858:                       {isTablet && <div className="space-y-1 text-xs font-normal text-muted-foreground">
+C2 src/routes/_app/lead.index.tsx +L859:                         <div>{etichettaTipoSoggetto(l.tipo_soggetto)} · {LEAD_TIPO_LABEL[l.tipo_lead]} · {LEAD_FONTE_LABEL[l.fonte]}</div>
+C2 src/routes/_app/lead.index.tsx +L860:                         <div>{l.citta ?? "—"}{l.provincia ? ` (${l.provincia})` : ""}</div>
+C2 src/routes/_app/lead.index.tsx +L861:                         <div>{nomeStore(l.store_id)}{l.agente_codice ? ` · ${l.agente_codice}` : ""}</div>
+C2 src/routes/_app/lead.index.tsx +L862:                         <div>Assegnato a: {nomeProfilo(l.assegnato_a)}</div>
+C2 src/routes/_app/lead.index.tsx +L863:                         <div>Creato: {formatData(l.created_at)}</div>
+C2 src/routes/_app/lead.index.tsx +L864:                         {mostraConversione && <div>Convertito: {formatData(l.convertito_il)} · {l.cliente?.ragione_sociale ?? "Cliente non collegato"}</div>}
+C2 src/routes/_app/lead.index.tsx +L865:                       </div>}
+C2 src/routes/_app/lead.index.tsx +L866:                     </TableCell>
+C1 src/routes/_app/lead.index.tsx +L867:                     <TableCell className="text-xs text-muted-foreground tablet:hidden">
+C1 src/routes/_app/lead.index.tsx -L859:                     <TableCell className="text-xs">{LEAD_TIPO_LABEL[l.tipo_lead]}</TableCell>
+C1 src/routes/_app/lead.index.tsx +L872:                     <TableCell className="text-xs tablet:hidden">{LEAD_TIPO_LABEL[l.tipo_lead]}</TableCell>
+C1 src/routes/_app/lead.index.tsx -L861:                     <TableCell className="text-xs">{LEAD_FONTE_LABEL[l.fonte]}</TableCell>
+C1 src/routes/_app/lead.index.tsx -L862:                     <TableCell className="text-xs">
+C1 src/routes/_app/lead.index.tsx +L874:                     <TableCell className="text-xs tablet:hidden">{LEAD_FONTE_LABEL[l.fonte]}</TableCell>
+C1 src/routes/_app/lead.index.tsx +L875:                     <TableCell className="text-xs tablet:hidden">
+C1 src/routes/_app/lead.index.tsx -L865:                     <TableCell className="text-xs">
+C1 src/routes/_app/lead.index.tsx +L878:                     <TableCell className="text-xs tablet:hidden">
+C1 src/routes/_app/lead.index.tsx -L868:                     <TableCell className="text-xs">{nomeProfilo(l.assegnato_a)}</TableCell>
+C1 src/routes/_app/lead.index.tsx +L881:                     <TableCell className="text-xs tablet:hidden">{nomeProfilo(l.assegnato_a)}</TableCell>
+C1 src/routes/_app/lead.index.tsx -L871:                         <TableCell className="text-xs">{formatData(l.convertito_il)}</TableCell>
+C1 src/routes/_app/lead.index.tsx -L872:                         <TableCell className="text-xs" onClick={(e) => e.stopPropagation()}>
+C1 src/routes/_app/lead.index.tsx +L884:                         <TableCell className="text-xs tablet:hidden">{formatData(l.convertito_il)}</TableCell>
+C1 src/routes/_app/lead.index.tsx +L885:                         <TableCell className="text-xs tablet:hidden" onClick={(e) => e.stopPropagation()}>
+C1 src/routes/_app/lead.index.tsx -L877:                               className="text-primary hover:underline"
+C1 src/routes/_app/lead.index.tsx +L890:                               className="text-primary hover:underline tablet:inline-flex tablet:min-h-10"
+C1 src/routes/_app/lead.index.tsx -L893:                     <TableCell className="text-xs">{formatData(l.created_at)}</TableCell>
+C1 src/routes/_app/lead.index.tsx +L906:                     <TableCell className="text-xs tablet:hidden">{formatData(l.created_at)}</TableCell>
+C4 src/routes/_app/opportunita.index.tsx +L10: import { useIsTablet } from "@/hooks/use-tablet";
+C4 src/routes/_app/opportunita.index.tsx +L45:   const isTablet = useIsTablet();
+C1 src/routes/_app/opportunita.index.tsx -L193:           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+C1 src/routes/_app/opportunita.index.tsx +L195:           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 tablet:grid-cols-2 tablet:lg:grid-cols-3">
+C2 src/routes/_app/opportunita.index.tsx -L231:             <ElencoSchede>
+C2 src/routes/_app/opportunita.index.tsx +L233:             <ElencoSchede finoA={isTablet ? "lg" : "md"}>
+C1 src/routes/_app/opportunita.index.tsx -L236:                     <Link to="/opportunita/$opportunitaId" params={{ opportunitaId: o.id }} className="hover:underline">
+C1 src/routes/_app/opportunita.index.tsx +L238:                     <Link to="/opportunita/$opportunitaId" params={{ opportunitaId: o.id }} className="hover:underline tablet:inline-flex tablet:min-h-10 tablet:items-center tablet:whitespace-normal tablet:break-normal">
+C1 src/routes/_app/opportunita.index.tsx -L251:                         <SelectTrigger className="h-8 w-[150px]">
+C1 src/routes/_app/opportunita.index.tsx +L253:                         <SelectTrigger className="h-8 w-[150px] tablet:w-full tablet:min-w-0 tablet:[&_span]:whitespace-normal">
+C1 src/routes/_app/opportunita.index.tsx -L277:             <div className="hidden md:block">
+C1 src/routes/_app/opportunita.index.tsx -L278:               <Table>
+C1 src/routes/_app/opportunita.index.tsx +L279:             <div className="hidden md:block tablet:max-lg:hidden">
+C1 src/routes/_app/opportunita.index.tsx +L280:               <Table className="tablet:table-fixed tablet:[&_td]:whitespace-normal tablet:[&_td]:break-normal tablet:[&_th]:whitespace-normal" >
+C1 src/routes/_app/opportunita.index.tsx -L281:                     <TableHead>Titolo</TableHead>
+C1 src/routes/_app/opportunita.index.tsx -L282:                     <TableHead>Soggetto</TableHead>
+C1 src/routes/_app/opportunita.index.tsx -L283:                     <TableHead>Tipo</TableHead>
+C1 src/routes/_app/opportunita.index.tsx -L284:                     <TableHead>Stato</TableHead>
+C1 src/routes/_app/opportunita.index.tsx +L283:                     <TableHead className="tablet:w-[25%]">Titolo</TableHead>
+C1 src/routes/_app/opportunita.index.tsx +L284:                     <TableHead className="tablet:w-[25%]">Soggetto</TableHead>
+C1 src/routes/_app/opportunita.index.tsx +L285:                     <TableHead className="tablet:hidden">Tipo</TableHead>
+C1 src/routes/_app/opportunita.index.tsx +L286:                     <TableHead className="tablet:w-[20%]">Stato</TableHead>
+C1 src/routes/_app/opportunita.index.tsx -L286:                     <TableHead>Agente</TableHead>
+C1 src/routes/_app/opportunita.index.tsx -L287:                     <TableHead>Chiusura prevista</TableHead>
+C1 src/routes/_app/opportunita.index.tsx -L288:                     <TableHead className="w-20" />
+C1 src/routes/_app/opportunita.index.tsx +L288:                     <TableHead className="tablet:hidden">Agente</TableHead>
+C1 src/routes/_app/opportunita.index.tsx +L289:                     <TableHead className="tablet:hidden">Chiusura prevista</TableHead>
+C1 src/routes/_app/opportunita.index.tsx +L290:                     <TableHead className="w-20 tablet:w-24" />
+C1 src/routes/_app/opportunita.index.tsx -L298:                           className="hover:underline"
+C1 src/routes/_app/opportunita.index.tsx +L300:                           className="hover:underline tablet:inline-flex tablet:min-h-10 tablet:items-center tablet:whitespace-normal tablet:break-normal"
+C2 src/routes/_app/opportunita.index.tsx +L304:                         {isTablet && <div className="space-y-1 text-xs font-normal text-muted-foreground">
+C2 src/routes/_app/opportunita.index.tsx +L305:                           <div>{TIPO_LABEL[o.tipo]}</div>
+C2 src/routes/_app/opportunita.index.tsx +L306:                           <div>Agente: {o.agente_codice ? (agenteLabel.get(o.agente_codice) ?? o.agente_codice) : "—"}</div>
+C2 src/routes/_app/opportunita.index.tsx +L307:                           <div>Chiusura prevista: {fmtData(o.data_prevista_chiusura)}</div>
+C2 src/routes/_app/opportunita.index.tsx +L308:                         </div>}
+C1 src/routes/_app/opportunita.index.tsx -L304:                         <div className="flex items-center gap-2">
+C1 src/routes/_app/opportunita.index.tsx +L311:                         <div className="flex items-center gap-2 tablet:flex-col tablet:items-start">
+C1 src/routes/_app/opportunita.index.tsx -L308:                           <span className="truncate">{nomeSoggetto(o)}</span>
+C1 src/routes/_app/opportunita.index.tsx +L315:                           <span className="truncate tablet:whitespace-normal tablet:break-normal">{nomeSoggetto(o)}</span>
+C1 src/routes/_app/opportunita.index.tsx -L311:                       <TableCell>{TIPO_LABEL[o.tipo]}</TableCell>
+C1 src/routes/_app/opportunita.index.tsx +L318:                       <TableCell className="tablet:hidden">{TIPO_LABEL[o.tipo]}</TableCell>
+C1 src/routes/_app/opportunita.index.tsx -L314:                           <SelectTrigger className="h-8 w-[150px]">
+C1 src/routes/_app/opportunita.index.tsx +L321:                           <SelectTrigger className="h-8 w-[150px] tablet:w-full tablet:min-w-0 tablet:[&_span]:whitespace-normal">
+C1 src/routes/_app/opportunita.index.tsx -L325:                       <TableCell>{o.agente_codice ? (agenteLabel.get(o.agente_codice) ?? o.agente_codice) : "—"}</TableCell>
+C1 src/routes/_app/opportunita.index.tsx -L326:                       <TableCell>{fmtData(o.data_prevista_chiusura)}</TableCell>
+C1 src/routes/_app/opportunita.index.tsx +L332:                       <TableCell className="tablet:hidden">{o.agente_codice ? (agenteLabel.get(o.agente_codice) ?? o.agente_codice) : "—"}</TableCell>
+C1 src/routes/_app/opportunita.index.tsx +L333:                       <TableCell className="tablet:hidden">{fmtData(o.data_prevista_chiusura)}</TableCell>
+C1 src/routes/_app/opportunita.index.tsx -L328:                         <div className="flex items-center gap-0.5">
+C1 src/routes/_app/opportunita.index.tsx +L335:                         <div className="flex items-center gap-0.5 tablet:flex-col tablet:gap-2">
+```

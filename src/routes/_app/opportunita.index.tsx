@@ -7,6 +7,7 @@ import { Search, Plus, Pencil, Target } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useIsTablet } from "@/hooks/use-tablet";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { FiltroMultiplo } from "@/components/filtro-multiplo";
 import { Card } from "@/components/ui/card";
@@ -41,6 +42,7 @@ export const Route = createFileRoute("/_app/opportunita/")({
 const PAGINA = 1000;
 
 function OpportunitaPage() {
+  const isTablet = useIsTablet();
   const qc = useQueryClient();
   const { puoEliminareOpportunita } = usePermessiCommerciale();
   const { roles, user } = useAuth();
@@ -190,7 +192,7 @@ function OpportunitaPage() {
             </Button>
           }
         >
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 tablet:grid-cols-2 tablet:lg:grid-cols-3">
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
               <Input
@@ -228,12 +230,12 @@ function OpportunitaPage() {
           <div className="py-10 text-center text-sm text-muted-foreground">Nessuna opportunità trovata.</div>
         ) : (
           <>
-            <ElencoSchede>
+            <ElencoSchede finoA={isTablet ? "lg" : "md"}>
               {filtrate.map((o) => (
                 <SchedaLista
                   key={o.id}
                   titolo={
-                    <Link to="/opportunita/$opportunitaId" params={{ opportunitaId: o.id }} className="hover:underline">
+                    <Link to="/opportunita/$opportunitaId" params={{ opportunitaId: o.id }} className="hover:underline tablet:inline-flex tablet:min-h-10 tablet:items-center tablet:whitespace-normal tablet:break-normal">
                       {o.titolo}
                     </Link>
                   }
@@ -248,7 +250,7 @@ function OpportunitaPage() {
                   footer={
                     <>
                       <Select value={o.stato} onValueChange={(v) => cambiaStato(o, v as StatoOpportunita)}>
-                        <SelectTrigger className="h-8 w-[150px]">
+                        <SelectTrigger className="h-8 w-[150px] tablet:w-full tablet:min-w-0 tablet:[&_span]:whitespace-normal">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -274,18 +276,18 @@ function OpportunitaPage() {
               ))}
             </ElencoSchede>
 
-            <div className="hidden md:block">
-              <Table>
+            <div className="hidden md:block tablet:max-lg:hidden">
+              <Table className="tablet:table-fixed tablet:[&_td]:whitespace-normal tablet:[&_td]:break-normal tablet:[&_th]:whitespace-normal" >
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Titolo</TableHead>
-                    <TableHead>Soggetto</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Stato</TableHead>
+                    <TableHead className="tablet:w-[25%]">Titolo</TableHead>
+                    <TableHead className="tablet:w-[25%]">Soggetto</TableHead>
+                    <TableHead className="tablet:hidden">Tipo</TableHead>
+                    <TableHead className="tablet:w-[20%]">Stato</TableHead>
                     <TableHead className="text-right">Valore stimato</TableHead>
-                    <TableHead>Agente</TableHead>
-                    <TableHead>Chiusura prevista</TableHead>
-                    <TableHead className="w-20" />
+                    <TableHead className="tablet:hidden">Agente</TableHead>
+                    <TableHead className="tablet:hidden">Chiusura prevista</TableHead>
+                    <TableHead className="w-20 tablet:w-24" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -295,23 +297,28 @@ function OpportunitaPage() {
                         <Link
                           to="/opportunita/$opportunitaId"
                           params={{ opportunitaId: o.id }}
-                          className="hover:underline"
+                          className="hover:underline tablet:inline-flex tablet:min-h-10 tablet:items-center tablet:whitespace-normal tablet:break-normal"
                         >
                           {o.titolo}
                         </Link>
+                        {isTablet && <div className="space-y-1 text-xs font-normal text-muted-foreground">
+                          <div>{TIPO_LABEL[o.tipo]}</div>
+                          <div>Agente: {o.agente_codice ? (agenteLabel.get(o.agente_codice) ?? o.agente_codice) : "—"}</div>
+                          <div>Chiusura prevista: {fmtData(o.data_prevista_chiusura)}</div>
+                        </div>}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 tablet:flex-col tablet:items-start">
                           <Badge variant={o.cliente_id ? "default" : "secondary"} className="shrink-0">
                             {o.cliente_id ? "Cliente" : "Lead"}
                           </Badge>
-                          <span className="truncate">{nomeSoggetto(o)}</span>
+                          <span className="truncate tablet:whitespace-normal tablet:break-normal">{nomeSoggetto(o)}</span>
                         </div>
                       </TableCell>
-                      <TableCell>{TIPO_LABEL[o.tipo]}</TableCell>
+                      <TableCell className="tablet:hidden">{TIPO_LABEL[o.tipo]}</TableCell>
                       <TableCell>
                         <Select value={o.stato} onValueChange={(v) => cambiaStato(o, v as StatoOpportunita)}>
-                          <SelectTrigger className="h-8 w-[150px]">
+                          <SelectTrigger className="h-8 w-[150px] tablet:w-full tablet:min-w-0 tablet:[&_span]:whitespace-normal">
                             <Badge variant="outline" className={STATO_CLASS[o.stato]}>{STATO_LABEL[o.stato]}</Badge>
                           </SelectTrigger>
                           <SelectContent>
@@ -322,10 +329,10 @@ function OpportunitaPage() {
                         </Select>
                       </TableCell>
                       <TableCell className="text-right tabular-nums">{fmtEuro(o.valore_stimato)}</TableCell>
-                      <TableCell>{o.agente_codice ? (agenteLabel.get(o.agente_codice) ?? o.agente_codice) : "—"}</TableCell>
-                      <TableCell>{fmtData(o.data_prevista_chiusura)}</TableCell>
+                      <TableCell className="tablet:hidden">{o.agente_codice ? (agenteLabel.get(o.agente_codice) ?? o.agente_codice) : "—"}</TableCell>
+                      <TableCell className="tablet:hidden">{fmtData(o.data_prevista_chiusura)}</TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-0.5">
+                        <div className="flex items-center gap-0.5 tablet:flex-col tablet:gap-2">
                           <Button
                             variant="ghost"
                             size="icon"
