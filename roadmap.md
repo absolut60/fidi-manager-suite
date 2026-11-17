@@ -1,3 +1,7 @@
+# FM79 — Fetta 9 Listini e rifiniture
+- [ ] Listini con scroll interno e identificazione fissa; Privacy, template, audit e banner solo tablet.
+- [ ] Prova statica, fotografie originali/attuali, misure touch, test e aggiornamento stato A1–A11/M1–M12/B1–B5.
+
 # FM79 — Fette 7–8 Marketing e Amministrazione
 - [x] Marketing + Utenti: cinque file solo tablet; prova statica documentata, 15 coppie (12 identiche + tre 3+3, zero differenze vere), 20 misure touch 0/0/0; Bun 1019/0, logo/dati/permessi invariati.
 - [ ] Listini acquisto/vendita/matrice: rinviati al prossimo giro, come autorizzato dal perimetro ridotto Marketing + Utenti.
