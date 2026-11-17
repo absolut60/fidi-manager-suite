@@ -1283,7 +1283,7 @@ Simulazione: finestra aperta ad altezza piena, poi viewport ridotto e ultimo cam
 | opportunita | Visibili (conferma senza campo) | 0 | Visibili (conferma senza campo) | 8 |
 | conferma | Visibili (conferma senza campo) | 0 | Visibili (conferma senza campo) | 2 |
 
-**Limite non risolto a 1180×480:** la regola canonica tablet richiede min-height 501px; a 480 si disattiva e tornano comandi originali (12/9/8/2 sotto 40px). Non modificata la regola né il meta viewport, per rispettare il divieto di cambiamenti sul telefono. La simulazione non dimostra il comportamento della tastiera reale iPad: richiede prova sul dispositivo. Per ottenere target tablet a 480 serve una decisione sulla regola/identificazione del tablet; fetta quindi non dichiarata completamente chiusa.
+**Precisazione Andrea, 17/11/2026:** il limite della simulazione a 1180×480 non è un problema reale della tastiera iPad: la tastiera riduce solo il visual viewport, non il layout viewport usato dalla media query, quindi la regola `tablet` resta attiva. Ridurre il viewport Playwright a 480px non riproduce questo comportamento. Regola e meta viewport restano invariati; la verifica finale della tastiera si fa sul dispositivo e non è certificata dagli scatti Chromium.
 
 ### D. Test
 

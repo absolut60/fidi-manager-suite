@@ -1,8 +1,12 @@
+# FM79 — Fette 7–8 Marketing e Amministrazione
+- [ ] Marketing + Utenti: diagnosi, sole modifiche tablet, prova statica e fotografie sequenziali, misure touch, suite Bun e SHA.
+- [ ] Listini acquisto/vendita/matrice: da svolgere in una fetta successiva se non completabili insieme alla verifica Marketing + Utenti.
+
 # FM79 — Fetta 6 finestre e tastiera
 - [x] Diagnosi e 12 coppie di riferimento.
 - [x] Classi solo tablet nei tre componenti condivisi.
 - [x] Diff 16 righe solo C1; 12 coppie, zero differenze vere (1 rumore 3+3); 16 misure standard e 820×780 OK; 1019 test verdi; SHA codice nel rapporto.
-- [ ] Risoluzione 1180×480: la query tablet richiede altezza ≥501px; eventuale modifica della regola richiede decisione Andrea.
+- [x] Precisazione Andrea: su iPad la tastiera riduce il visual viewport, non il layout viewport; 1180×480 non riproduce il caso reale. Verifica finale sul dispositivo.
 
 # FM79 — Fetta 5 Commerciale
 - [x] Diagnosi e fotografie originali delle cinque pagine.
