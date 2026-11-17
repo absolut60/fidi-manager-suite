@@ -1,3 +1,4 @@
+import { useIsTablet } from "@/hooks/use-tablet";
 import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
@@ -96,6 +97,7 @@ function StatoBadge({ s }: { s: string }) {
 }
 
 function InviiMarketingPage() {
+  const isTablet = useIsTablet();
   const { roles, loading: authLoading } = useAuth();
   const canSee = useMemo(() => puoAccedereMarketing(roles as string[]), [roles]);
   const qc = useQueryClient();
@@ -330,26 +332,26 @@ function InviiMarketingPage() {
 
 
       <Card className="p-0 overflow-hidden">
-        <Table>
-          <TableHeader>
+        <Table className="tablet:table-fixed tablet:w-full tablet:max-lg:block">
+          <TableHeader className="tablet:max-lg:hidden">
             <TableRow>
-              <TableHead>Data</TableHead>
-              <TableHead>Operatore</TableHead>
-              <TableHead>Campagna</TableHead>
-              <TableHead>Oggetto</TableHead>
-              <TableHead>Stato</TableHead>
-              <TableHead className="text-right">Tot.</TableHead>
-              <TableHead className="text-right">Inviati</TableHead>
-              <TableHead className="text-right">Saltati</TableHead>
-              <TableHead className="text-right">Falliti</TableHead>
-              <TableHead className="text-right">Clic reali</TableHead>
-              <TableHead className="text-right">Tasso clic</TableHead>
-              <TableHead className="min-w-[180px]">Avanzamento</TableHead>
-              <TableHead className="w-[60px]"></TableHead>
-              <TableHead className="w-[40px]"></TableHead>
+              <TableHead className="tablet:hidden">Data</TableHead>
+              <TableHead className="tablet:hidden">Operatore</TableHead>
+              <TableHead className="tablet:w-[45%]">Campagna</TableHead>
+              <TableHead className="tablet:hidden">Oggetto</TableHead>
+              <TableHead className="tablet:w-40">Stato</TableHead>
+              <TableHead className="text-right tablet:hidden">Tot.</TableHead>
+              <TableHead className="text-right tablet:hidden">Inviati</TableHead>
+              <TableHead className="text-right tablet:hidden">Saltati</TableHead>
+              <TableHead className="text-right tablet:hidden">Falliti</TableHead>
+              <TableHead className="text-right tablet:hidden">Clic reali</TableHead>
+              <TableHead className="text-right tablet:hidden">Tasso clic</TableHead>
+              <TableHead className="min-w-[180px] tablet:w-48">Avanzamento</TableHead>
+              <TableHead className="w-[60px] tablet:w-12"></TableHead>
+              <TableHead className="w-[40px] tablet:w-16"></TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
+          <TableBody className="tablet:max-lg:block tablet:max-lg:space-y-3">
             {isLoading ? (
               Array.from({ length: 3 }).map((_, i) => (
                 <TableRow key={i}><TableCell colSpan={14}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
@@ -381,12 +383,12 @@ function InviiMarketingPage() {
                   (ultimoInvioMs == null || (progressoAggiornatoAt || Date.now()) - ultimoInvioMs > 10 * 60_000);
                 const apri = () => setOpenDettaglio(c.id);
                 return (
-                  <TableRow key={c.id} className="hover:bg-muted/50">
-                    <TableCell className="whitespace-nowrap cursor-pointer" onClick={apri}>{fmtDateTime(c.inviata_at ?? c.created_at)}</TableCell>
-                    <TableCell className="cursor-pointer" onClick={apri}>{`${c.operatore?.nome ?? ""} ${c.operatore?.cognome ?? ""}`.trim() || "—"}</TableCell>
-                    <TableCell className="font-medium cursor-pointer" onClick={apri}>{c.nome}</TableCell>
-                    <TableCell className="cursor-pointer text-muted-foreground max-w-[240px] truncate" onClick={apri}>{c.oggetto || "—"}</TableCell>
-                    <TableCell className="cursor-pointer" onClick={apri}>
+                  <TableRow key={c.id} className="hover:bg-muted/50 tablet:max-lg:grid tablet:max-lg:grid-cols-2 tablet:max-lg:border-b tablet:max-lg:p-3">
+                    <TableCell className="whitespace-nowrap cursor-pointer tablet:hidden" onClick={apri}>{fmtDateTime(c.inviata_at ?? c.created_at)}</TableCell>
+                    <TableCell className="cursor-pointer tablet:hidden" onClick={apri}>{`${c.operatore?.nome ?? ""} ${c.operatore?.cognome ?? ""}`.trim() || "—"}</TableCell>
+                    <TableCell className="font-medium cursor-pointer tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0 tablet:max-lg:col-span-2" onClick={apri}>{c.nome}{isTablet && <div className="mt-2 space-y-1 text-sm font-normal text-muted-foreground break-words"><div>{c.oggetto || "—"}</div><div>{fmtDateTime(c.inviata_at ?? c.created_at)} · {`${c.operatore?.nome ?? ""} ${c.operatore?.cognome ?? ""}`.trim() || "—"}</div><div className="grid grid-cols-2 gap-2 mt-2"><span>Totale: {c.totale_destinatari}</span><span>Inviati: {c.inviati}</span><span>Saltati: {c.saltati}</span><span>Falliti: {c.falliti}</span><span>Clic reali: {clicReali?.[c.id]?.clic_reali_unici ?? 0}</span><span>Tasso clic: {c.inviati > 0 ? `${Math.round(((clicReali?.[c.id]?.clic_reali_unici ?? 0) / c.inviati) * 1000) / 10}%` : "—"}</span></div></div>}</TableCell>
+                    <TableCell className="cursor-pointer text-muted-foreground max-w-[240px] truncate tablet:hidden" onClick={apri}>{c.oggetto || "—"}</TableCell>
+                    <TableCell className="cursor-pointer tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0" onClick={apri}>
                       <StatoBadge s={c.stato} />
                       {salute.livello === "attiva" && (
                         <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
@@ -408,12 +410,12 @@ function InviiMarketingPage() {
                       )}
                     </TableCell>
 
-                    <TableCell className="text-right font-medium cursor-pointer" onClick={apri}>{c.totale_destinatari}</TableCell>
-                    <TableCell className="text-right text-emerald-600 cursor-pointer" onClick={apri}>{c.inviati}</TableCell>
-                    <TableCell className="text-right text-amber-600 cursor-pointer" onClick={apri}>{c.saltati}</TableCell>
-                    <TableCell className="text-right text-destructive cursor-pointer" onClick={apri}>{c.falliti}</TableCell>
+                    <TableCell className="text-right font-medium cursor-pointer tablet:hidden" onClick={apri}>{c.totale_destinatari}</TableCell>
+                    <TableCell className="text-right text-emerald-600 cursor-pointer tablet:hidden" onClick={apri}>{c.inviati}</TableCell>
+                    <TableCell className="text-right text-amber-600 cursor-pointer tablet:hidden" onClick={apri}>{c.saltati}</TableCell>
+                    <TableCell className="text-right text-destructive cursor-pointer tablet:hidden" onClick={apri}>{c.falliti}</TableCell>
                     <TableCell
-                      className="text-right font-medium cursor-pointer"
+                      className="text-right font-medium cursor-pointer tablet:hidden"
                       onClick={apri}
                       title="Clic di persone reali. Le aperture automatiche dei filtri antivirus dei destinatari sono conteggiate a parte."
                     >
@@ -429,10 +431,10 @@ function InviiMarketingPage() {
                         );
                       })()}
                     </TableCell>
-                    <TableCell className="text-right text-sm tabular-nums cursor-pointer" onClick={apri}>
+                    <TableCell className="text-right text-sm tabular-nums cursor-pointer tablet:hidden" onClick={apri}>
                       {c.inviati > 0 ? `${Math.round((((clicReali?.[c.id]?.clic_reali_unici ?? 0)) / c.inviati) * 1000) / 10}%` : "—"}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">
                       <div className="flex items-center gap-2 cursor-pointer" onClick={apri}>
                         <Progress value={pct} className="h-2" />
                         <span className="text-xs text-muted-foreground tabular-nums w-10">{pct}%</span>
@@ -450,8 +452,8 @@ function InviiMarketingPage() {
                       )}
                     </TableCell>
 
-                    <TableCell className="cursor-pointer" onClick={apri}><ChevronRight className="size-4 text-muted-foreground" /></TableCell>
-                    <TableCell>
+                    <TableCell className="cursor-pointer tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0" onClick={apri}><ChevronRight className="size-4 text-muted-foreground" /></TableCell>
+                    <TableCell className="tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="size-8" onClick={(e) => e.stopPropagation()}>

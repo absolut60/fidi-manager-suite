@@ -1,3 +1,4 @@
+import { useIsTablet } from "@/hooks/use-tablet";
 import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { filtroElenco } from "@/lib/filtro-elenco";
@@ -118,6 +119,7 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
 const TIPO_SOGGETTO_DB: Record<string, string> = { fisica: "persona_fisica", giuridica: "azienda" };
 
 function MarketingSegmentiPage() {
+  const isTablet = useIsTablet();
   const { roles, loading, user } = useAuth();
   const qc = useQueryClient();
   const canSee = useMemo(
@@ -1142,7 +1144,7 @@ function MarketingSegmentiPage() {
             <span className="font-semibold">{totaleDestinatari.toLocaleString("it-IT")}</span> destinatari totali
             <span className="text-muted-foreground"> (email aziendali + contatti)</span>
           </div>
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-2 ml-auto tablet:flex-wrap tablet:w-full">
             <Select value={campagnaId} onValueChange={setCampagnaId}>
               <SelectTrigger className="w-[260px]">
                 <SelectValue placeholder="Scegli campagna" />
@@ -1232,10 +1234,10 @@ function MarketingSegmentiPage() {
       )}
       {/* Lista */}
       <Card>
-        <Table>
-          <TableHeader>
+        <Table className="tablet:table-fixed tablet:w-full tablet:max-lg:block">
+          <TableHeader className="tablet:max-lg:hidden">
             <TableRow>
-              <TableHead className="w-10">
+              <TableHead className="w-10 tablet:w-14">
                 <Checkbox
                   checked={selezionati.size > 0 && selezionati.size >= totale}
                   onCheckedChange={(v) => {
@@ -1245,17 +1247,17 @@ function MarketingSegmentiPage() {
                   aria-label="Seleziona tutto il segmento"
                 />
               </TableHead>
-              <TableHead className="w-8" />
-              <TableHead>Ragione sociale</TableHead>
-              <TableHead>Città / Prov.</TableHead>
-              <TableHead>Sede</TableHead>
-              <TableHead>Agente</TableHead>
-              <TableHead>Categoria</TableHead>
-              <TableHead className="text-center">Email valida</TableHead>
-              <TableHead className="text-center">Marketing</TableHead>
+              <TableHead className="w-8 tablet:w-14" />
+              <TableHead className="tablet:w-[55%]">Ragione sociale</TableHead>
+              <TableHead className="tablet:hidden">Città / Prov.</TableHead>
+              <TableHead className="tablet:hidden">Sede</TableHead>
+              <TableHead className="tablet:hidden">Agente</TableHead>
+              <TableHead className="tablet:hidden">Categoria</TableHead>
+              <TableHead className="text-center tablet:w-32">Email valida</TableHead>
+              <TableHead className="text-center tablet:w-32">Marketing</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
+          <TableBody className="tablet:max-lg:block tablet:max-lg:space-y-3">
             {(isLoading || caricamentoTutti) && (
               <TableRow><TableCell colSpan={9} className="text-muted-foreground text-center py-6">
                 {caricamentoTutti ? (
@@ -1273,34 +1275,35 @@ function MarketingSegmentiPage() {
               const isOpen = espansi.has(c.id);
               return (
                 <Fragment key={c.id}>
-                  <TableRow>
-                    <TableCell>
+                  <TableRow className="tablet:max-lg:grid tablet:max-lg:grid-cols-[40px_40px_minmax(0,1fr)] tablet:max-lg:border-b tablet:max-lg:p-3">
+                    <TableCell className="tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">
                       <Checkbox
                         checked={isSel}
                         onCheckedChange={(v) => toggleCliente(c.id, !!v)}
                         aria-label={`Seleziona ${c.ragione_sociale}`}
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">
                       <button
                         type="button"
                         onClick={() => toggleEspanso(c.id)}
-                        className="text-muted-foreground hover:text-foreground"
+                        className="text-muted-foreground hover:text-foreground tablet:min-h-10 tablet:min-w-10"
                         aria-label={isOpen ? "Comprimi" : "Espandi"}
                       >
                         {isOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
                       </button>
                     </TableCell>
-                    <TableCell className="font-medium cursor-pointer" onClick={() => toggleEspanso(c.id)}>
+                    <TableCell className="font-medium cursor-pointer tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0" onClick={() => toggleEspanso(c.id)}>
                       {c.ragione_sociale}
+                      {isTablet && <div className="mt-2 space-y-1 text-sm font-normal text-muted-foreground break-words"><div>{[c.citta, c.provincia].filter(Boolean).join(" — ") || "—"}</div><div>{c.store_id ? (storeNomeById.get(c.store_id) ?? "—") : "—"}</div><div>{c.agente || c.codice_agente || "—"}</div><div>{c.categoria || "—"}</div></div>}
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
+                    <TableCell className="text-sm text-muted-foreground tablet:hidden">
                       {[c.citta, c.provincia].filter(Boolean).join(" — ") || "—"}
                     </TableCell>
-                    <TableCell className="text-sm">{c.store_id ? (storeNomeById.get(c.store_id) ?? "—") : "—"}</TableCell>
-                    <TableCell className="text-sm">{c.agente || (c.codice_agente ? c.codice_agente : "—")}</TableCell>
-                    <TableCell className="text-sm">{c.categoria || "—"}</TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-sm tablet:hidden">{c.store_id ? (storeNomeById.get(c.store_id) ?? "—") : "—"}</TableCell>
+                    <TableCell className="text-sm tablet:hidden">{c.agente || (c.codice_agente ? c.codice_agente : "—")}</TableCell>
+                    <TableCell className="text-sm tablet:hidden">{c.categoria || "—"}</TableCell>
+                    <TableCell className="text-center tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0 tablet:max-lg:col-span-3 tablet:max-lg:text-left">
                       {hasEmail ? (
                         <Badge variant="outline" className="border-success text-success gap-1">
                           <Mail className="size-3" /> Sì
@@ -1311,7 +1314,7 @@ function MarketingSegmentiPage() {
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-center tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0 tablet:max-lg:col-span-3 tablet:max-lg:text-left">
                       {c.email && disiscritteSet?.has(String(c.email).trim().toLowerCase()) && (
                         <Badge variant="destructive" className="gap-1">
                           <MailX className="size-3" /> Disiscritto
@@ -1432,7 +1435,7 @@ function MarketingSegmentiPage() {
                 <Card key={s.id} className="p-4 space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="font-medium truncate">{s.nome}</div>
+                      <div className="font-medium truncate tablet:whitespace-normal tablet:break-words">{s.nome}</div>
                       <div className="flex items-center gap-2 mt-1">
                         <Badge variant={statico ? "secondary" : "outline"}>
                           {statico ? "Statico" : "Dinamico"}
