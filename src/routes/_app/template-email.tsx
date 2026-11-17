@@ -1,3 +1,4 @@
+import { useIsTablet } from "@/hooks/use-tablet";
 import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -51,6 +52,7 @@ function TipoLabel({ tipo }: { tipo: string }) {
 }
 
 function TemplateEmailPage() {
+  const isTablet = useIsTablet();
   const { role, loading } = useAuth();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -111,26 +113,26 @@ function TemplateEmailPage() {
             <p>Nessun template configurato.</p>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
+          <Table className="tablet:table-fixed tablet:w-full tablet:max-lg:block">
+            <TableHeader className="tablet:max-lg:hidden">
               <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Oggetto</TableHead>
-                <TableHead className="w-24">Attivo</TableHead>
-                <TableHead className="w-32 text-right">Azioni</TableHead>
+                <TableHead className="tablet:w-[65%]">Nome</TableHead>
+                <TableHead className="tablet:hidden">Tipo</TableHead>
+                <TableHead className="tablet:hidden">Oggetto</TableHead>
+                <TableHead className="w-24 tablet:w-32">Attivo</TableHead>
+                <TableHead className="w-32 text-right tablet:w-28">Azioni</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody className="tablet:max-lg:block">
               {templates.map((t) => (
-                <TableRow key={t.id}>
-                  <TableCell className="font-medium">{t.nome}</TableCell>
-                  <TableCell><TipoLabel tipo={t.tipo} /></TableCell>
-                  <TableCell className="text-muted-foreground text-sm truncate max-w-md">{t.oggetto}</TableCell>
-                  <TableCell>
+                <TableRow key={t.id} className="tablet:max-lg:grid tablet:max-lg:grid-cols-[minmax(0,1fr)_auto] tablet:max-lg:p-3">
+                  <TableCell className="font-medium tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">{t.nome}{isTablet && <div className="mt-2 space-y-2 text-sm font-normal text-muted-foreground"><TipoLabel tipo={t.tipo} /><div>{t.oggetto ?? "—"}</div></div>}</TableCell>
+                  <TableCell className="tablet:hidden"><TipoLabel tipo={t.tipo} /></TableCell>
+                  <TableCell className="text-muted-foreground text-sm truncate max-w-md tablet:hidden">{t.oggetto}</TableCell>
+                  <TableCell className="tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">
                     {t.attivo ? <Badge>Attivo</Badge> : <Badge variant="outline">Disattivo</Badge>}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">
                     <div className="flex justify-end gap-1">
                       <Button size="icon" variant="ghost" onClick={() => { setEditing(t); setOpen(true); }}>
                         <Pencil className="size-4" />

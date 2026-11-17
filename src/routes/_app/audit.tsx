@@ -110,8 +110,8 @@ function AuditPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
+          <Table className="tablet:table-fixed tablet:w-full tablet:block">
+            <TableHeader className="tablet:hidden">
               <TableRow>
                 <TableHead>Data</TableHead>
                 <TableHead>Utente</TableHead>
@@ -120,20 +120,20 @@ function AuditPage() {
                 <TableHead>Dettagli</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody className="tablet:block">
               {loadingData ? (
                 <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Caricamento…</TableCell></TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nessun evento</TableCell></TableRow>
               ) : filtered.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell className="text-xs whitespace-nowrap">
+                <TableRow key={r.id} className="tablet:grid tablet:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] tablet:p-3">
+                  <TableCell className="text-xs whitespace-nowrap tablet:whitespace-normal tablet:block">
                     {format(new Date(r.created_at), "dd/MM/yy HH:mm:ss", { locale: it })}
                   </TableCell>
-                  <TableCell className="text-xs">{r.user_email ?? "—"}</TableCell>
-                  <TableCell><Badge variant="outline">{r.entita}</Badge></TableCell>
-                  <TableCell><Badge>{r.azione}</Badge></TableCell>
-                  <TableCell className="text-xs font-mono max-w-md truncate">
+                  <TableCell className="text-xs tablet:whitespace-normal tablet:break-all tablet:block">{r.user_email ?? "—"}</TableCell>
+                  <TableCell className="tablet:whitespace-normal tablet:break-words tablet:block"><Badge variant="outline">{r.entita}</Badge></TableCell>
+                  <TableCell className="tablet:whitespace-normal tablet:break-words tablet:block"><Badge>{r.azione}</Badge></TableCell>
+                  <TableCell className="text-xs font-mono max-w-md truncate tablet:max-w-none tablet:whitespace-normal tablet:break-all tablet:col-span-2 tablet:block">
                     {r.dettagli ? JSON.stringify(r.dettagli) : "—"}
                   </TableCell>
                 </TableRow>

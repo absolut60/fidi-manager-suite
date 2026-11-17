@@ -260,12 +260,12 @@ export function MatriceRicarichiView() {
         )}
       </div>
 
-      <div className="flex-1 overflow-auto">
-        <table className="w-full text-xs">
+      <div className="flex-1 overflow-auto tablet:relative tablet:isolate tablet:max-w-full tablet:[&_input]:min-h-11 tablet:[&_input]:text-base tablet:[&_th]:whitespace-normal tablet:[&_th]:align-top tablet:[&_td]:align-top">
+        <table className="w-full text-xs tablet:table-fixed tablet:min-w-[1200px]">
           <thead className="sticky top-0 z-10 bg-navy text-navy-foreground">
             <tr className="text-[11px] uppercase tracking-wide">
-              <th className="px-3 py-2 text-left w-14">Cat.</th>
-              <th className="px-3 py-2 text-left">Descrizione</th>
+              <th className="px-3 py-2 text-left w-14 tablet:w-14 tablet:sticky tablet:left-0 tablet:z-20 tablet:bg-navy">Cat.</th>
+              <th className="px-3 py-2 text-left tablet:w-[280px] tablet:sticky tablet:left-14 tablet:z-20 tablet:bg-navy">Descrizione</th>
               <th className="px-3 py-2 text-left">Macro gruppo</th>
               <th className="px-2 py-2 text-right">Ricarico A %</th>
               <th className="px-2 py-2 text-right">Ricarico B %</th>
@@ -276,8 +276,8 @@ export function MatriceRicarichiView() {
           <tbody>
             {rows.map((r) => (
               <tr key={r.categoria} className="border-b hover:bg-muted/30">
-                <td className="px-3 py-1 font-mono font-bold text-navy">{r.categoria}</td>
-                <td className="px-2 py-0.5">
+                <td className="px-3 py-1 font-mono font-bold text-navy tablet:sticky tablet:left-0 tablet:z-10 tablet:bg-card">{r.categoria}</td>
+                <td className="px-2 py-0.5 tablet:sticky tablet:left-14 tablet:z-10 tablet:bg-card">
                   <Input
                     defaultValue={r.descrizione_categoria ?? ""}
                     disabled={!isAdmin}

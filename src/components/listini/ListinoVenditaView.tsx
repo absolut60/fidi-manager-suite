@@ -297,12 +297,12 @@ export function ListinoVenditaView() {
 
 
       {/* Table */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto tablet:relative tablet:isolate tablet:max-w-full tablet:[&_input]:min-h-11 tablet:[&_input]:text-base tablet:[&_th]:whitespace-normal tablet:[&_th]:align-top tablet:[&_td]:align-top">
         <fieldset disabled={!gestisce} className="contents">
-        <table className="w-full text-xs table-fixed">
+        <table className="w-full text-xs table-fixed tablet:min-w-[1040px]">
           <colgroup>
-            <col style={{ width: "104px" }} />
-            <col />
+            <col style={{ width: "104px" }} className="tablet:!w-[104px]" />
+            <col className="tablet:w-[280px]" />
             <col style={{ width: "140px" }} />
             <col style={{ width: "96px" }} />
             <col style={{ width: "88px" }} />
@@ -311,8 +311,8 @@ export function ListinoVenditaView() {
           </colgroup>
           <thead className="sticky top-0 z-10 bg-navy text-navy-foreground">
             <tr className="text-[11px] uppercase tracking-wide">
-              <th className="px-2 py-2 text-left">Cod. GAMMA</th>
-              <th className="px-3 py-2 text-left">Descrizione</th>
+              <th className="px-2 py-2 text-left tablet:sticky tablet:left-0 tablet:z-20 tablet:bg-navy">Cod. GAMMA</th>
+              <th className="px-3 py-2 text-left tablet:sticky tablet:left-[104px] tablet:z-20 tablet:bg-navy">Descrizione</th>
               <th className="px-2 py-2 text-left">Categoria</th>
               <th className="px-2 py-2 text-right">Costo netto</th>
               <th className="px-1 py-2 text-right">Ricarico %</th>
@@ -327,14 +327,14 @@ export function ListinoVenditaView() {
               return (
                 <tr key={a.id} className="border-b hover:bg-muted/50">
                   <td
-                    className="px-2 py-1 font-mono truncate cursor-pointer"
+                    className="px-2 py-1 font-mono truncate cursor-pointer tablet:sticky tablet:left-0 tablet:z-10 tablet:bg-card tablet:whitespace-normal tablet:break-words tablet:min-h-10"
                     title={a.cod_gamma ?? ""}
                     onClick={() => navigate({ to: "/articoli/$id", params: { id: a.id } })}
                   >
                     {a.cod_gamma ?? "—"}
                   </td>
                   <td
-                    className="px-3 py-1 truncate cursor-pointer"
+                    className="px-3 py-1 truncate cursor-pointer tablet:sticky tablet:left-[104px] tablet:z-10 tablet:bg-card tablet:whitespace-normal tablet:break-words"
                     title={a.descrizione}
                     onClick={() => navigate({ to: "/articoli/$id", params: { id: a.id } })}
                   >

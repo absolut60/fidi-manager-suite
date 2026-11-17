@@ -19,10 +19,10 @@ function ListiniPage() {
           in <code className="font-mono">src/lib/pricing.ts</code>.
         </p>
         <Tabs defaultValue="acquisto" className="mt-2 lg:mt-3">
-          <TabsList>
-            <TabsTrigger value="acquisto">Listino acquisto</TabsTrigger>
-            <TabsTrigger value="vendita">Listino vendita</TabsTrigger>
-            <TabsTrigger value="matrice">Matrice ricarichi</TabsTrigger>
+          <TabsList className="tablet:h-auto">
+            <TabsTrigger className="tablet:min-h-10" value="acquisto">Listino acquisto</TabsTrigger>
+            <TabsTrigger className="tablet:min-h-10" value="vendita">Listino vendita</TabsTrigger>
+            <TabsTrigger className="tablet:min-h-10" value="matrice">Matrice ricarichi</TabsTrigger>
           </TabsList>
           <TabsContent
             value="acquisto"
