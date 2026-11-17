@@ -300,7 +300,7 @@ function CalendarioCommercialePage() {
         </div>
       </Card>
 
-      <Card className="p-2 sm:p-4 overflow-x-hidden tablet:[&_.fc-button]:min-h-10 tablet:[&_.fc-button]:min-w-10 tablet:[&_.fc-toolbar]:flex-wrap tablet:[&_.fc-toolbar]:gap-3 tablet:[&_.fc-daygrid-day-frame]:min-h-20 tablet:[&_.fc-daygrid-day-number]:inline-flex tablet:[&_.fc-daygrid-day-number]:min-h-10 tablet:[&_.fc-daygrid-day-number]:min-w-10 tablet:[&_.fc-daygrid-day-number]:items-center tablet:[&_.fc-daygrid-day-number]:justify-center tablet:[&_.fc-event]:min-h-10 tablet:[&_.fc-event-title]:whitespace-normal tablet:[&_.fc-event-title]:break-normal">
+      <Card className="p-2 sm:p-4 overflow-x-hidden tablet:[&_.fc-button]:min-h-10 tablet:[&_.fc-button]:min-w-10 tablet:[&_.fc-toolbar]:flex-wrap tablet:[&_.fc-toolbar]:gap-3 tablet:[&_.fc-daygrid-day-frame]:min-h-20 tablet:[&_.fc-daygrid-day-number]:inline-flex tablet:[&_.fc-daygrid-day-number]:min-h-10 tablet:[&_.fc-daygrid-day-number]:min-w-10 tablet:[&_.fc-daygrid-day-number]:items-center tablet:[&_.fc-daygrid-day-number]:justify-center tablet:[&_.fc-event]:min-h-10 tablet:[&_.fc-event-title]:whitespace-normal tablet:[&_.fc-event-title]:break-words">
         {attivitaQuery.isLoading && !attivitaQuery.data ? (
           <Skeleton className="h-[600px] w-full" />
         ) : (
