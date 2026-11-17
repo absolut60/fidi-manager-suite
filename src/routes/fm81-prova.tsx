@@ -5,7 +5,7 @@ import type { BloccoConRighe } from "@/lib/preventivi-api";
 
 const art = (i: number, cod: string, desc: string, q: number, p: number, c: number) => ({
   id: `r${i}`, blocco_id: "b1", tipo_riga: "articolo_singolo", ordine: i * 10, articolo_codice: cod, articolo_id: null, articolo: null,
-  descrizione: desc, um: "PZ", quantita: q, prezzo_unit: p, vendita: p, costo: c, sconto_perc: 0, sconti_gamma: "20+10", maggiorazione_perc: 0,
+  descrizione: desc, um: "PZ", quantita: q, prezzo_unit: p, vendita: p, costo: c, sconto_perc: 0, sconti_gamma: [20, 10], maggiorazione_perc: 0,
   segno: 1, stampabile: true, ricarico: 35, leva_prezzo: null, peso: 0, peso_gamma_unit: 0, unita_gamma: null, um_scelta: "um1",
   codice_articolo_fornitore: null, bene_significativo: false, fonte_prezzo: null,
 });
