@@ -581,7 +581,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex w-full bg-background">
       <header
         data-nascosta={barraNascosta}
-        className="lg:hidden tablet:flex fixed top-0 left-0 right-0 h-14 bg-primary text-primary-foreground flex items-center justify-between px-4 z-40 border-b border-sidebar-border transition-transform duration-200 pv-orizzontale:data-[nascosta=true]:-translate-y-full"
+        className="lg:hidden tablet:flex fixed top-0 left-0 right-0 h-14 bg-primary text-primary-foreground flex items-center justify-between px-4 z-40 tablet:z-50 border-b border-sidebar-border transition-transform duration-200 pv-orizzontale:data-[nascosta=true]:-translate-y-full"
       >
         <div className="flex items-center gap-2 min-w-0">
           <img
