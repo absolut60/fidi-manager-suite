@@ -1,3 +1,9 @@
+# FM79 — Tablet, chiusura fetta 4 e fetta 5
+- [ ] Chiudere fetta 4 contro 88560579: scatti sequenziali 3+3 delle immagini diverse, incluse approva e segmenti; documentare il protocollo e le differenze vere.
+- [x] Documentato protocollo sequenziale; 90 scatti su cinque pagine, 12 casi identici e 3 rumorosi, zero differenze vere osservate. Suite 1019/0. Chiusura completa bloccata dalla fixture Legali dopo 103 scatti originali; Recupero/Approva richiedono fixture non vuote e ruolo approvatore. Vecchie immagini non disponibili.
+- [ ] Fetta 5 solo tablet: Lead, Opportunità, Contatti, Cantieri e Calendario commerciale; nessuna modifica dati/logica/permessi.
+- [ ] Regressione fetta 5 col protocollo 3+3, misure quattro dimensioni con 14 righe, bun test e SHA.
+
 # FM79 — Tablet, fetta 4
 - [ ] Menu tablet sovrapposto e richiudibile, voci ≥44px; recupero schede/colonne essenziali, campagne compatte e calendario ≥40px. Solo presentazione tablet, logo invariato.
 - [ ] Doppio riferimento originale e confronto dopo su 222 immagini, fotografie/misure touch alle quattro dimensioni con sidebar inclusa, suite Bun e SHA.

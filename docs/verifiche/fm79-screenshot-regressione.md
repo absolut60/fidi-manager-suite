@@ -12,7 +12,28 @@ Scopo: dimostrare in ogni fetta tablet che **telefono e PC non cambiano di un pi
 
 ## Come si usa in ogni fetta
 
+### Protocollo obbligatorio sequenziale (Andrea, 17/11/2026)
+
+- Eseguire le fotografie in sequenza, mai con dieci processi paralleli: un'immagine stabile momentaneamente può essere ancora a metà caricamento.
+- Per **ogni immagine diversa prima/dopo**, rifotografare quella pagina **da sola** alla stessa dimensione: **tre volte col codice originale**, poi **tre volte col codice attuale**. Contesti nuovi e gli stessi dati, orologio e condizioni di attesa in tutte le prove.
+- La differenza è **VERA** soltanto se le tre immagini originali coincidono pixel per pixel, le tre attuali coincidono pixel per pixel e i due gruppi differiscono. Tutto il resto è **rumore**, da riportare separatamente, non una differenza vera.
+- Riportare l'elenco delle differenze vere a **375×812, 1280×800 e 1440×900**: deve essere vuoto. Se non lo è, correggere esclusivamente il tablet e ripetere.
+- Per chiudere la fetta 4 il riferimento è **88560579**; includere anche `/richieste-interne/approva` e `/marketing/segmenti`, rimaste in sospeso dalla fetta 3. Le fotografie precedenti, se non più disponibili in `/tmp`, vanno rigenerate senza dedurre l'esito dai vecchi conteggi.
+- Il comando storico `confronta` qui sotto non implementa il protocollo 3+3: le sue rifotografie della sola fase `dopo` **non sono una certificazione**. I due gruppi originali/attuali devono essere acquisiti separatamente e confrontati secondo questa regola.
+
 Con l'anteprima in esecuzione su `http://localhost:8080`:
+
+### Verifica di chiusura fetta 4 — esito parziale, 17/11/2026
+
+- Nessuna modifica al codice dell'app; conservato il `head` della pagina Recupero crediti, come richiesto.
+- I vecchi 222 scatti e l'elenco delle 12 immagini diverse non erano più presenti in `/tmp`: non è possibile riclassificare quelle specifiche immagini senza rigenerare il giro completo.
+- Eseguiti **90 scatti sequenziali**: cinque pagine × tre dimensioni × tre originali (88560579) e tre attuali. Pagine: Recupero crediti, Campagne recupero, Calendario recupero, Richieste interne/approva, Marketing/segmenti. Originale mostrato mediante intercettazione dei moduli nel browser di prova, senza sostituire i file dell'app.
+- Fra questi **15 casi**, **12** hanno entrambi i gruppi internamente identici e nessuna differenza fra gruppi; **3** sono rumore secondo il protocollo: Marketing/segmenti a 375 (gruppo attuale non stabile), Approva a 1280 (attuale non stabile), Approva a 1440 (entrambi non stabili). **Differenze vere osservate: 0** a 375, 1280 e 1440, limitatamente a questi casi.
+- Su Approva a 1440 il rumore compare anche fra scatti dell'originale; a 1280 i tre originali coincidono, quindi in questa prova il rumore originale a 1280 **non è stato riprodotto**. Non è possibile identificare i vecchi pixel della fetta 3 senza le vecchie immagini.
+- Limite sostanziale: lo script storico mostra Recupero senza righe aggregate e Approva senza ruolo approvatore. Questi scatti verificano soltanto la presentazione esterna; **non certificano le righe né le azioni di approvazione**.
+- Rigenerazione completa avviata in sequenza: interrotta dopo **103 fotografie originali**, sulla pagina `/legali`, con errore del dato simulato (`Cannot read properties of undefined (reading 'id')`). Non si è contato lo schermo d'errore come verifica riuscita; il confronto completo 222/222 e la chiusura della fetta 4 **restano incompleti**.
+- `bun test`: **1019 superati, 0 falliti**, 137 file; compilazione automatica `build OK`. Fetta 5 non avviata: rispettato l'ordine richiesto, prima chiusura effettiva della fetta 4.
+- Per completare: correggere esclusivamente le fixture dello strumento (relazioni Legali, aggregati Recupero e ruolo Approva), rigenerare il giro originale/attuale e applicare 3+3 a ogni immagine diversa; poi iniziare la fetta 5. Nessun dato reale, permesso o logica applicativa modificati.
 
 ```bash
 # 1. PRIMA di toccare il codice
