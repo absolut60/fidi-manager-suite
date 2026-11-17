@@ -674,6 +674,7 @@ function BozzeTab({
               { etichetta: "Fido attuale", valore: <span className="tabular-nums">{formatEuro(getFidoAttuale(r.clienti))}</span> },
               { etichetta: "Richiesto da", valore: userName((r as any).richiedente) },
               { etichetta: "Data", valore: formatDate(r.created_at) },
+              ...(isTablet ? [{ etichetta: "Store", valore: r.clienti?.stores?.nome ?? "—" }, { etichetta: "Stato", valore: STATO_LABEL[r.stato as keyof typeof STATO_LABEL] ?? r.stato }] : []),
             ]}
             footer={(msgCounts?.[r.id] ?? 0) > 0 ? (
               <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium"><MessageSquare className="size-3" />{msgCounts![r.id]}</span>
@@ -924,6 +925,7 @@ function InApprovazioneTab({
                     { etichetta: "Scaduto", valore: Number(r.clienti?.scaduto ?? 0) > 0 ? <span className="tabular-nums text-destructive">{formatEuro(Number(r.clienti?.scaduto))}</span> : "—" },
                     { etichetta: "Store", valore: r.clienti?.stores?.nome ?? "—" },
                     { etichetta: "Richiesto da", valore: userName((r as any).richiedente) },
+                    ...(isTablet ? [{ etichetta: "Data invio", valore: formatDate(r.data_invio ?? (r.stato !== "bozza" ? r.created_at : null)) }] : []),
                   ]}
                   footer={
                     <>
@@ -1175,6 +1177,7 @@ function StoricoTab({
                     { etichetta: "Richiesto da", valore: userName((r as any).richiedente) },
                     { etichetta: kind === "approvata" ? "Approvato da" : "Deciso da", valore: userName((r as any).approvatore) },
                     { etichetta: "Data", valore: formatDate(r.data_chiusura ?? r.created_at) },
+                    ...(isTablet ? [{ etichetta: "Store", valore: r.clienti?.stores?.nome ?? "—" }] : []),
                   ]}
                   footer={
                     <>
