@@ -953,7 +953,7 @@ Stesso criterio delle quattro categorie sopra; si contano separatamente aggiunte
 | 1 | 88 | 90 | 178 |
 | 2 | 27 | 3 | 30 |
 | 3 | 0 | 0 | 0 |
-| 4 | 9 | 0 | 9 |
+| 4 | 8 | 0 | 8 |
 
 **ALTRO, elenco completo:**
 
@@ -969,7 +969,6 @@ Stesso criterio delle quattro categorie sopra; si contano separatamente aggiunte
 
 - `src/routes/_app/lead.index.tsx:+94` — `const isTablet = useIsTablet();`. Import/invocazione hook fuori dal ramo: listener matchMedia anche su telefono/PC, ma valore false e nessun cambiamento visivo, di dati o dei gestori.
 
-- `src/routes/_app/lead.index.tsx:+865` — `</div>}`. Import/invocazione hook fuori dal ramo: listener matchMedia anche su telefono/PC, ma valore false e nessun cambiamento visivo, di dati o dei gestori.
 
 - `src/routes/_app/opportunita.index.tsx:+10` — `import { useIsTablet } from "@/hooks/use-tablet";`. Import/invocazione hook fuori dal ramo: listener matchMedia anche su telefono/PC, ma valore false e nessun cambiamento visivo, di dati o dei gestori.
 
@@ -1172,7 +1171,7 @@ C2 src/routes/_app/lead.index.tsx +L861:                         <div>{nomeStore
 C2 src/routes/_app/lead.index.tsx +L862:                         <div>Assegnato a: {nomeProfilo(l.assegnato_a)}</div>
 C2 src/routes/_app/lead.index.tsx +L863:                         <div>Creato: {formatData(l.created_at)}</div>
 C2 src/routes/_app/lead.index.tsx +L864:                         {mostraConversione && <div>Convertito: {formatData(l.convertito_il)} · {l.cliente?.ragione_sociale ?? "Cliente non collegato"}</div>}
-C4 src/routes/_app/lead.index.tsx +L865:                       </div>}
+C2 src/routes/_app/lead.index.tsx +L865:                       </div>}
 C2 src/routes/_app/lead.index.tsx +L866:                     </TableCell>
 C1 src/routes/_app/lead.index.tsx +L867:                     <TableCell className="text-xs text-muted-foreground tablet:hidden">
 C1 src/routes/_app/lead.index.tsx -L859:                     <TableCell className="text-xs">{LEAD_TIPO_LABEL[l.tipo_lead]}</TableCell>
