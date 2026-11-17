@@ -1,3 +1,8 @@
+# FM79 — Chiusura verifica fette 1–4 (fetta 5 esclusa da questo giro)
+- [ ] Prova statica completa src f3f1883f→HEAD: classificazione di tutte le righe e impatto telefono/PC, documento fm79-prova-statica.md.
+- [ ] Conferma sequenziale dieci pagine × tre dimensioni; fixture approvatore e almeno cinque aggregati recupero, protocollo 3+3 delle differenze.
+- [ ] Suite bun test e SHA; nessuna modifica app salvo differenze non-tablet effettive autorizzate.
+
 # FM79 — Tablet, chiusura fetta 4 e fetta 5
 - [ ] Chiudere fetta 4 contro 88560579: scatti sequenziali 3+3 delle immagini diverse, incluse approva e segmenti; documentare il protocollo e le differenze vere.
 - [x] Documentato protocollo sequenziale; 90 scatti su cinque pagine, 12 casi identici e 3 rumorosi, zero differenze vere osservate. Suite 1019/0. Chiusura completa bloccata dalla fixture Legali dopo 103 scatti originali; Recupero/Approva richiedono fixture non vuote e ruolo approvatore. Vecchie immagini non disponibili.
