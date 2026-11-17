@@ -681,7 +681,18 @@ function BozzeTab({
           />
         ))}
       </ElencoSchede>
-      <div className="hidden md:block">
+      {isTablet ? (
+<TabellaFidoTablet
+          rows={rows}
+          onApri={(r: any) => navigate({ to: "/richieste/$richiestaId", params: { richiestaId: r.id } })}
+          selezione={{ tutti: allSel, onTutti: toggleTutte, checked: (r) => selected.has(r.id), onToggle: (r) => toggle(r.id) }}
+          badge={(r) => <><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{etichettaTipoRichiesta(r.tipo, importoPerEtichettaTipo(r))}</span><CambioCondizionePagamento variant="badge" richiesta={r} /><BadgeExtraTeorico importo={r.importo_richiesto} teorico={(r as any).fido_teorico_riferimento} />{(msgCounts?.[r.id] ?? 0) > 0 && <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium"><MessageSquare className="size-3" />{msgCounts![r.id]}</span>}</>}
+          dettagli={(r) => [r.clienti?.stores?.nome ?? "—", userName((r as any).richiedente), formatDate(r.created_at)]}
+          importo={(r) => <><div className="font-medium">{formatEuro(Number(r.importo_richiesto))}</div><div className="text-xs text-muted-foreground">Fido attuale {formatEuro(getFidoAttuale(r.clienti))}</div></>}
+          stato={(r) => <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${STATO_TONE[r.stato as keyof typeof STATO_TONE]}`}>{STATO_LABEL[r.stato as keyof typeof STATO_LABEL]}</span>}
+        />
+) : (
+<div className="hidden md:block">
       <Table className="min-w-[900px]">
         <TableHeader>
           <TableRow>
@@ -737,6 +748,7 @@ function BozzeTab({
         </TableBody>
       </Table>
       </div>
+)}
     </Card>
   );
 }
@@ -870,7 +882,7 @@ function InApprovazioneTab({
               <p className="text-sm font-medium min-w-0">
                 {selected.size} selezionate · {formatEuro(filtered.filter((r) => selected.has(r.id)).reduce((s, r) => s + Number(r.importo_richiesto), 0))}
               </p>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 tablet:gap-6">
                 <Button size="sm" variant="outline" className="text-destructive border-destructive/30"
                   onClick={() => setAction({ kind: "rifiuta", rows: filtered.filter((r) => selected.has(r.id)) })}>
                   <X className="size-4" /> Rifiuta
@@ -925,7 +937,18 @@ function InApprovazioneTab({
               );
             })}
           </ElencoSchede>
-          <div className="hidden md:block">
+          {isTablet ? (
+<TabellaFidoTablet
+            rows={filtered}
+            onApri={(r: any) => navigate({ to: "/richieste/$richiestaId", params: { richiestaId: r.id } })}
+            selezione={canApprove ? { tutti: allSel, disabled: decidibili.length === 0, onTutti: toggleTutte, checked: (r) => selected.has(r.id), onToggle: (r) => toggle(r.id), abilitata: (r) => decidibile(r), motivo: (r) => motivoNonDecidibile(r) } : undefined}
+            badge={(r) => { const unread = msgNonLetti?.[r.id] ?? 0; const nAltre = altreAttiveMap.get(r.cliente_id) ?? 0; return <><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{etichettaTipoRichiesta(r.tipo, importoPerEtichettaTipo(r))}</span><CambioCondizionePagamento variant="badge" richiesta={r} /><BadgeExtraTeorico importo={r.importo_richiesto} teorico={(r as any).fido_teorico_riferimento} />{unread > 0 && <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium"><MessageSquare className="size-3" />{unread}</span>}{nAltre > 0 && <Badge variant="outline" className="text-warning border-warning/40 gap-1 text-xs" title="Altra richiesta attiva o approvata-non-esportata per lo stesso cliente"><AlertCircle className="size-3" /> +{nAltre}</Badge>}</>; }}
+            dettagli={(r) => [r.clienti?.stores?.nome ?? "—", userName((r as any).richiedente), `Inviata ${formatDate(r.data_invio ?? (r.stato !== "bozza" ? r.created_at : null))}`]}
+            importo={(r) => <><div className="font-medium">{formatEuro(Number(r.importo_richiesto))}</div><div className="text-xs text-muted-foreground">Fido {formatEuro(getFidoAttuale(r.clienti))}</div><div className="text-xs text-muted-foreground">Rischio {formatEuro(Number(r.clienti?.totale_rischio ?? 0))}</div>{Number(r.clienti?.scaduto ?? 0) > 0 && <div className="text-xs text-destructive">Scaduto {formatEuro(Number(r.clienti?.scaduto))}</div>}</>}
+            stato={(r) => { const g = giorniDa(r.data_invio); return <><Badge variant="outline">L{r.livello_corrente}/{r.livello_richiesto}</Badge><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${attesaTone(g)}`}>{g}gg</span></>; }}
+          />
+) : (
+<div className="hidden md:block">
           <Table className="min-w-[1300px]">
             <TableHeader>
               <TableRow>
@@ -999,6 +1022,7 @@ function InApprovazioneTab({
             </TableBody>
           </Table>
           </div>
+)}
         </Card>
       )}
 
@@ -1162,7 +1186,17 @@ function StoricoTab({
               );
             })}
           </ElencoSchede>
-          <div className="hidden md:block">
+          {isTablet ? (
+<TabellaFidoTablet
+            rows={filtered}
+            onApri={(r: any) => navigate({ to: "/richieste/$richiestaId", params: { richiestaId: r.id } })}
+            badge={(r) => <><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{etichettaTipoRichiesta(r.tipo, importoPerEtichettaTipo(r))}</span><CambioCondizionePagamento variant="badge" richiesta={r} /><BadgeExtraTeorico importo={r.importo_richiesto} teorico={(r as any).fido_teorico_riferimento} />{(msgCounts?.[r.id] ?? 0) > 0 && <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium"><MessageSquare className="size-3" />{msgCounts![r.id]}</span>}</>}
+            dettagli={(r) => [r.clienti?.stores?.nome ?? "—", userName((r as any).richiedente), `${kind === "approvata" ? "Approvato da" : "Deciso da"} ${userName((r as any).approvatore)}`, formatDate(r.data_chiusura ?? r.created_at), ...(kind === "rifiutata" ? [`Motivo: ${r.note ?? r.motivazione ?? "—"}`] : [])]}
+            importo={(r) => <><div className="font-medium">{formatEuro(Number(r.importo_richiesto))}</div>{kind === "approvata" && (mapRichiestaFido(r).soloCondizione ? <div className="text-xs text-muted-foreground">solo cond. pag.</div> : <div className="text-xs text-success font-medium">Appr. {formatEuro(Number(r.importo_approvato ?? r.importo_richiesto))}</div>)}</>}
+            stato={(r) => { const se = r.stato_export as string | null; const L: Record<string,string> = { da_esportare:"Da esportare", esportata:"Esportata", processata:"Processata", errore_export:"Errore" }; const T: Record<string,string> = { da_esportare:"bg-info/15 text-info", esportata:"bg-warning/15 text-warning", processata:"bg-success/15 text-success", errore_export:"bg-destructive/15 text-destructive" }; return <><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${STATO_TONE[r.stato as keyof typeof STATO_TONE]}`}>{STATO_LABEL[r.stato as keyof typeof STATO_LABEL]}</span>{kind === "approvata" && se && <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${T[se]}`}>{L[se]}</span>}</>; }}
+          />
+) : (
+<div className="hidden md:block">
           <Table className="min-w-[1000px]">
             <TableHeader>
               <TableRow>
@@ -1225,6 +1259,7 @@ function StoricoTab({
             </TableBody>
           </Table>
           </div>
+)}
         </Card>
       )}
     </div>
@@ -1289,7 +1324,17 @@ function TuttoTab({ rows, loading, msgCounts }: { rows: any[]; loading: boolean;
             />
           ))}
         </ElencoSchede>
-        <div className="hidden md:block">
+        {isTablet ? (
+<TabellaFidoTablet
+          rows={filtered}
+          onApri={(r: any) => navigate({ to: "/richieste/$richiestaId", params: { richiestaId: r.id } })}
+          badge={(r) => <><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{etichettaTipoRichiesta(r.tipo, importoPerEtichettaTipo(r))}</span><CambioCondizionePagamento variant="badge" richiesta={r} /><BadgeExtraTeorico importo={r.importo_richiesto} teorico={(r as any).fido_teorico_riferimento} />{(msgCounts?.[r.id] ?? 0) > 0 && <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium"><MessageSquare className="size-3" />{msgCounts![r.id]}</span>}</>}
+          dettagli={(r) => [r.clienti?.stores?.nome ?? "—", `L${r.livello_corrente}/${r.livello_richiesto}`, userName((r as any).richiedente), `Approvato da ${userName((r as any).approvatore)}`, formatDate(r.created_at)]}
+          importo={(r) => <div className="font-medium">{formatEuro(Number(r.importo_richiesto))}</div>}
+          stato={(r) => <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${STATO_TONE[r.stato as keyof typeof STATO_TONE]}`}>{STATO_LABEL[r.stato as keyof typeof STATO_LABEL]}</span>}
+        />
+) : (
+<div className="hidden md:block">
         <Table className="min-w-[1000px]">
           <TableHeader>
             <TableRow>
@@ -1337,7 +1382,83 @@ function TuttoTab({ rows, loading, msgCounts }: { rows: any[]; loading: boolean;
           </TableBody>
         </Table>
         </div>
+)}
       </Card>
+    </div>
+  );
+}
+
+/* ===================== TABELLA TABLET (FM79) ===================== */
+/**
+ * Solo tablet in orizzontale (≥1024px, useIsTablet): colonne essenziali
+ * Richiesta/Cliente · Importo · Stato · Azioni; tipo, sede, richiedente e date
+ * dentro la riga. Telefono e PC continuano a usare schede e tabella originali.
+ */
+function TabellaFidoTablet({
+  rows, onApri, selezione, badge, dettagli, importo, stato,
+}: {
+  rows: any[];
+  onApri: (r: any) => void;
+  selezione?: {
+    tutti: boolean; disabled?: boolean; onTutti: () => void;
+    checked: (r: any) => boolean; onToggle: (r: any) => void;
+    abilitata?: (r: any) => boolean; motivo?: (r: any) => string;
+  };
+  badge: (r: any) => React.ReactNode;
+  dettagli: (r: any) => string[];
+  importo: (r: any) => React.ReactNode;
+  stato: (r: any) => React.ReactNode;
+}) {
+  return (
+    <div className="hidden lg:block">
+      <Table className="table-fixed w-full">
+        <TableHeader>
+          <TableRow>
+            {selezione && (
+              <TableHead className="w-14">
+                <Checkbox aria-label="Seleziona tutte" checked={selezione.tutti} disabled={selezione.disabled} onCheckedChange={selezione.onTutti} />
+              </TableHead>
+            )}
+            <TableHead>Richiesta</TableHead>
+            <TableHead className="w-40 text-right">Importo</TableHead>
+            <TableHead className="w-36">Stato</TableHead>
+            <TableHead className="w-24 text-right"><span className="sr-only">Azioni</span></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((r) => {
+            const abil = selezione ? (selezione.abilitata ? selezione.abilitata(r) : true) : false;
+            return (
+              <TableRow key={r.id} className="cursor-pointer hover:bg-muted/50" onClick={() => onApri(r)}>
+                {selezione && (
+                  <TableCell onClick={(e) => e.stopPropagation()} className="align-top">
+                    <Checkbox
+                      aria-label="Seleziona richiesta"
+                      checked={abil ? selezione.checked(r) : false}
+                      disabled={!abil}
+                      title={!abil ? selezione.motivo?.(r) : undefined}
+                      onCheckedChange={() => selezione.onToggle(r)}
+                    />
+                  </TableCell>
+                )}
+                <TableCell className="align-top min-w-0 whitespace-normal">
+                  <div className="flex items-start gap-2 min-w-0">
+                    <SemaforoPallino cliente={r.clienti} className="mt-1.5 shrink-0" />
+                    <span className="min-w-0 break-words font-medium">{r.clienti?.ragione_sociale ?? "—"}</span>
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-1">{badge(r)}</div>
+                  <div className="mt-1 text-xs text-muted-foreground break-words">{dettagli(r).join(" · ")}</div>
+                </TableCell>
+                <TableCell className="align-top text-right tabular-nums whitespace-normal">{importo(r)}</TableCell>
+                <TableCell className="align-top whitespace-normal"><div className="flex flex-col items-start gap-1">{stato(r)}</div></TableCell>
+                <TableCell className="align-top text-right" onClick={(e) => e.stopPropagation()}>
+                  <Button variant="outline" size="sm" onClick={() => onApri(r)}>Apri</Button>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
     </div>
   );
 }
