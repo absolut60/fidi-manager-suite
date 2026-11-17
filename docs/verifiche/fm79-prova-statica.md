@@ -1901,3 +1901,41 @@ C1 src/routes/_app/template-lettera.tsx +L139:                   <TableCell clas
 C1 src/routes/_app/template-lettera.tsx -L140:                   <TableCell className="text-right">
 C1 src/routes/_app/template-lettera.tsx +L142:                   <TableCell className="text-right tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">
 ```
+
+## FM80 Alert fidi (17/11/2026)
+
+File: `src/routes/_app/alert-fidi.tsx` (solo impaginazione; dati, filtri, permessi e logica invariati).
+
+### Diagnosi (prima, 14 avvisi finti, larghezza reale colonna Perché)
+
+| Dimensione | Perché | Note |
+|---|---|---|
+| 820×1180 touch | 0 px | tabella da md, testo una lettera per riga (22 elementi) |
+| 1180×820 touch | 205 px | |
+| 1024×768 mouse | 0 px | una lettera per riga (22) |
+| 1280×800 mouse | 96 px | |
+| 1440×900 mouse | 208 px | |
+| 1600×900 mouse | 320 px | (riferimento ≥2xl) |
+
+### Prova statica sul diff
+
+- **Telefono (<768): invariato.** Nessuna classe senza prefisso è cambiata nelle schede; `ElencoSchede finoA` vale `"md"` e la Card `hidden md:block` quando `useIsTablet()` è falso (ramo false identico all'originale). La tabella è nascosta sotto md come prima.
+- **PC ≥1536 (2xl): invariato.** Le nove colonne originali conservano le loro classi; quelle aggiunte sono `hidden 2xl:table-cell` (attive come `table-cell` da 2xl, stessa resa), `max-2xl:w-[…]` (non applicate da 2xl) e i nuovi elementi `2xl:hidden` (colonna Fido e "Alert dal"/azioni dentro Ultima decisione: `display:none`, nessuno spazio). `renderNumeriGriglia(a)` senza secondo argomento produce la stessa classe di prima.
+- **Tablet (useIsTablet):** verticale <1024 schede (`finoA="lg"`, tabella `hidden lg:block`); orizzontale ≥1024 la stessa tabella compatta del PC sotto 2xl.
+- **PC 768–1535 (cambiato apposta):** sei colonne invece di nove: Fido Gamma / Ci deve / Fido teorico raccolti in una colonna "Fido" (w-32, `renderNumeriGriglia(a, true)`: stessa fonte, una colonna); "Alert dal" e "Apri proposta" sotto Ultima decisione; Cliente 19% e Ultima decisione 17% (prima 17%/13%); Perché prende il resto.
+- ALTRO: `import useIsTablet` e `const isTablet = useIsTablet()` (nessun effetto su telefono/PC: al primo render vale false, come nelle fette FM79); parametro opzionale `unaColonna` di `renderNumeriGriglia` (default = comportamento precedente).
+
+### Foto e misure (dopo)
+
+| Dimensione | Vista | Perché | px nascosti | una lettera | target <40 |
+|---|---|---|---|---|---|
+| 768×1024 touch | schede | — | 0 | 0 | 0 |
+| 820×1180 touch | schede | — | 0 | 0 | 0 |
+| 1180×820 touch | tabella compatta | 524 px | 0 | 0 | 0 |
+| 1366×1024 touch | tabella compatta | 629 px | 0 | 0 | 0 |
+| 1024×768 mouse | tabella compatta | 261 px | 0 | 0 | (caselle 16px su mouse, come prima) |
+| 1280×800 mouse | tabella compatta | 425 px | 0 | 0 | idem |
+| 1440×900 mouse | tabella compatta | 527 px | 0 | 0 | idem |
+
+- **375×812** e **1600×900**: prima/dopo identiche pixel per pixel al primo confronto (nessun 3+3 necessario). A 1600 la colonna Perché resta 320 px come oggi (tabella originale invariata).
+- Limite: dati simulati; motivi colorati delle righe non riprodotti dalla fixture (codici segnalazione finti).
