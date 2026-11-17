@@ -12,6 +12,15 @@ Scopo: dimostrare in ogni fetta tablet che **telefono e PC non cambiano di un pi
 
 ## Come si usa in ogni fetta
 
+### Protocollo obbligatorio sequenziale (Andrea, 17/11/2026)
+
+- Eseguire le fotografie in sequenza, mai con dieci processi paralleli: un'immagine stabile momentaneamente può essere ancora a metà caricamento.
+- Per **ogni immagine diversa prima/dopo**, rifotografare quella pagina **da sola** alla stessa dimensione: **tre volte col codice originale**, poi **tre volte col codice attuale**. Contesti nuovi e gli stessi dati, orologio e condizioni di attesa in tutte le prove.
+- La differenza è **VERA** soltanto se le tre immagini originali coincidono pixel per pixel, le tre attuali coincidono pixel per pixel e i due gruppi differiscono. Tutto il resto è **rumore**, da riportare separatamente, non una differenza vera.
+- Riportare l'elenco delle differenze vere a **375×812, 1280×800 e 1440×900**: deve essere vuoto. Se non lo è, correggere esclusivamente il tablet e ripetere.
+- Per chiudere la fetta 4 il riferimento è **88560579**; includere anche `/richieste-interne/approva` e `/marketing/segmenti`, rimaste in sospeso dalla fetta 3. Le fotografie precedenti, se non più disponibili in `/tmp`, vanno rigenerate senza dedurre l'esito dai vecchi conteggi.
+- Il comando storico `confronta` qui sotto non implementa il protocollo 3+3: le sue rifotografie della sola fase `dopo` **non sono una certificazione**. I due gruppi originali/attuali devono essere acquisiti separatamente e confrontati secondo questa regola.
+
 Con l'anteprima in esecuzione su `http://localhost:8080`:
 
 ```bash
