@@ -1309,3 +1309,317 @@ C1 src/components/ui/sheet.tsx +L64:       <SheetPrimitive.Close className="abso
 C1 src/components/ui/sheet.tsx -L81:     className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)}
 C1 src/components/ui/sheet.tsx +L81:     className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 tablet:sticky tablet:bottom-0 tablet:z-10 tablet:bg-background tablet:py-3 tablet:shrink-0 tablet:gap-2", className)}
 ```
+
+
+## Fette 7–8 — Marketing e Utenti (17/11/2026)
+
+Perimetro eseguito: marketing.invii, marketing.campagne (tab Email), marketing.segmenti (elenco Email e nomi dei salvati), marketing/iscritti-whatsapp, utenti. I tre listini acquisto/vendita/matrice NON modificati: rimandati al prossimo giro come autorizzato. Le tabelle WhatsApp incorporate in Campagne/Segmenti non sono modificate; aggiunti soltanto target tablet ai selettori della pagina Campagne.
+
+### A. Prova statica
+
+Base `4a29acf812103dab653b2f4052f241e5bec6c399`; cinque file src. Conteggi delle righe firmate (+ e −, sostituzione = due righe); categoria 2 per le righe miste con JSX aggiunto sotto isTablet, categoria 1 per i soli token tablet e categoria 4 conservativa per import/invocazioni.
+
+| Categoria | Righe |
+|---|---:|
+| 1 | 201 |
+| 2 | 38 |
+| 3 | 0 |
+| 4 | 10 |
+| Totale | 249 |
+
+Tutti i token di classe preesistenti restano, nello stesso ordine; solo aggiunte tablet. Ramo false di Utenti conserva ElencoSchede e contenuto originali. Nuovi dati secondari montati solo con isTablet, usando gli stessi dati già caricati e gli stessi gestori. Nessuna query/mutazione/permesso/calcolo cambiati. Hook false al primo render, poi effetto; nessun ramo attivato su telefono o PC mouse. Nessuna nuova fonte unica o dipendenza; root AGENTS al limite, nessuna regola aggiunta. Head delle pagine esaminati: Campagne/Invii/Segmenti già specifici; Utenti e Iscritti privi di head specifico, non aggiunto in questo perimetro tablet per non cambiare telefono/PC.
+
+#### ALTRO completo
+
+- `src/routes/_app/marketing.campagne.tsx:1` `+import { useIsTablet } from "@/hooks/use-tablet";` — import/invocazione del hook: listener senza effetti sul layout telefono/PC; false fuori tablet.
+- `src/routes/_app/marketing.campagne.tsx:134` `+const isTablet = useIsTablet();` — import/invocazione del hook: listener senza effetti sul layout telefono/PC; false fuori tablet.
+- `src/routes/_app/marketing.invii.tsx:1` `+import { useIsTablet } from "@/hooks/use-tablet";` — import/invocazione del hook: listener senza effetti sul layout telefono/PC; false fuori tablet.
+- `src/routes/_app/marketing.invii.tsx:100` `+const isTablet = useIsTablet();` — import/invocazione del hook: listener senza effetti sul layout telefono/PC; false fuori tablet.
+- `src/routes/_app/marketing.segmenti.tsx:1` `+import { useIsTablet } from "@/hooks/use-tablet";` — import/invocazione del hook: listener senza effetti sul layout telefono/PC; false fuori tablet.
+- `src/routes/_app/marketing.segmenti.tsx:122` `+const isTablet = useIsTablet();` — import/invocazione del hook: listener senza effetti sul layout telefono/PC; false fuori tablet.
+- `src/routes/_app/marketing/iscritti-whatsapp.tsx:1` `+import { useIsTablet } from "@/hooks/use-tablet";` — import/invocazione del hook: listener senza effetti sul layout telefono/PC; false fuori tablet.
+- `src/routes/_app/marketing/iscritti-whatsapp.tsx:161` `+const isTablet = useIsTablet();` — import/invocazione del hook: listener senza effetti sul layout telefono/PC; false fuori tablet.
+- `src/routes/_app/utenti.tsx:1` `+import { useIsTablet } from "@/hooks/use-tablet";` — import/invocazione del hook: listener senza effetti sul layout telefono/PC; false fuori tablet.
+- `src/routes/_app/utenti.tsx:151` `+const isTablet = useIsTablet();` — import/invocazione del hook: listener senza effetti sul layout telefono/PC; false fuori tablet.
+
+### B. Fotografie sequenziali
+
+15 coppie sulle cinque pagine a 375×812 touch, 1280×800 e 1440×900 mouse, 14 righe simulate per elenco. 12 identiche subito; tre diverse ripetute isolate, tre originali e tre attuali:
+
+| Coppia | Tre originali | Tre attuali | Esito |
+|---|---|---|---|
+| Campagne 375 | stabili | stabili, identici agli originali | nessuna differenza vera |
+| Campagne 1280 | stabili | instabili | rumore, non differenza vera |
+| Segmenti 1440 | stabili | stabili, identici agli originali | nessuna differenza vera |
+
+**Differenze vere: 0 a ciascuna dimensione.** Per il 3+3 riferimento client ottenuto rimuovendo i soli token tablet e fissando isTablet=false nell'intercettazione dei moduli Vite; equivalenza presentazionale verificata dal diff, senza riscrivere i file app. CSS corrente invariato perché tablet non attivo nelle tre dimensioni di controllo. Fotografie acquisite sequenzialmente dopo attesa font/caricamenti e due screenshot identici; nessun processo in parallelo. Problemi preesistenti su telefono/PC deliberatamente conservati (es. Utenti largo con nomi artificiali lunghi).
+
+### C. Misure touch
+
+| Pagina | Dimensioni | Px nascosti / lettere singole / target <40px |
+|---|---|---|
+| /marketing/invii | 768×1024, 820×1180, 1180×820, 1366×1024 | 0 / 0 / 0 in tutte |
+| /marketing/campagne | 768×1024, 820×1180, 1180×820, 1366×1024 | 0 / 0 / 0 in tutte |
+| /marketing/segmenti | 768×1024, 820×1180, 1180×820, 1366×1024 | 0 / 0 / 0 in tutte |
+| /marketing/iscritti-whatsapp | 768×1024, 820×1180, 1180×820, 1366×1024 | 0 / 0 / 0 in tutte |
+| /utenti | 768×1024, 820×1180, 1180×820, 1366×1024 | 0 / 0 / 0 in tutte |
+
+20 casi, 14 righe per lista, nessuno scroll interno o esterno orizzontale. Checkbox: visuale 16px, area effettiva 40×40 tramite pseudo-elemento già introdotto nella fetta 1; il primo rilevatore contava il solo box visivo, corretto il rilevatore temporaneo (nessuna modifica checkbox). Le righe Segmenti sotto la piega fotografate anche scorrendo. Utenti: schede su tutti i tablet, due affiancate in orizzontale. Contatori invio/campagna nelle righe; stato e azioni restano nelle colonne. Nomi interi e dettagli nelle righe; loghi intatti. Test presentazionali con fixture, non verifiche di permessi/invii reali; nessuna scrittura reale.
+
+### D. Test e artefatti
+
+`bun test`: 1019 pass, 0 fail, 3433 asserzioni, 137 file; build automatico OK. SHA codice verificato `beafc8dde4e8c924989162c06d7a51d677e5becd` (documentazione conclusiva successiva). Script/immagini/JSON temporanei in /tmp/browser/fm79-f78.
+
+### Appendice: ogni riga del diff classificata
+
+```text
+C4 src/routes/_app/marketing.campagne.tsx +L1: import { useIsTablet } from "@/hooks/use-tablet";
+C4 src/routes/_app/marketing.campagne.tsx +L134:   const isTablet = useIsTablet();
+C1 src/routes/_app/marketing.campagne.tsx -L256:       <TabsList>
+C1 src/routes/_app/marketing.campagne.tsx -L257:         <TabsTrigger value="email">Email</TabsTrigger>
+C1 src/routes/_app/marketing.campagne.tsx -L258:         <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
+C1 src/routes/_app/marketing.campagne.tsx +L258:       <TabsList className="tablet:h-auto">
+C1 src/routes/_app/marketing.campagne.tsx +L259:         <TabsTrigger className="tablet:min-h-10" value="email">Email</TabsTrigger>
+C1 src/routes/_app/marketing.campagne.tsx +L260:         <TabsTrigger className="tablet:min-h-10" value="whatsapp">WhatsApp</TabsTrigger>
+C1 src/routes/_app/marketing.campagne.tsx -L287:           <Table>
+C1 src/routes/_app/marketing.campagne.tsx -L288:             <TableHeader>
+C1 src/routes/_app/marketing.campagne.tsx +L289:           <Table className="tablet:table-fixed tablet:w-full tablet:max-lg:block">
+C1 src/routes/_app/marketing.campagne.tsx +L290:             <TableHeader className="tablet:max-lg:hidden">
+C1 src/routes/_app/marketing.campagne.tsx -L290:                 <TableHead>Nome</TableHead>
+C1 src/routes/_app/marketing.campagne.tsx -L291:                 <TableHead>Oggetto</TableHead>
+C1 src/routes/_app/marketing.campagne.tsx -L292:                 <TableHead>Stato</TableHead>
+C1 src/routes/_app/marketing.campagne.tsx -L293:                 <TableHead className="text-center">Destinatari</TableHead>
+C1 src/routes/_app/marketing.campagne.tsx -L294:                 <TableHead>Avanzamento</TableHead>
+C1 src/routes/_app/marketing.campagne.tsx -L295:                 <TableHead>Aggiornata</TableHead>
+C1 src/routes/_app/marketing.campagne.tsx -L296:                 <TableHead className="text-right">Azioni</TableHead>
+C1 src/routes/_app/marketing.campagne.tsx +L292:                 <TableHead className="tablet:w-[50%]">Nome</TableHead>
+C1 src/routes/_app/marketing.campagne.tsx +L293:                 <TableHead className="tablet:hidden">Oggetto</TableHead>
+C1 src/routes/_app/marketing.campagne.tsx +L294:                 <TableHead className="tablet:w-48">Stato</TableHead>
+C1 src/routes/_app/marketing.campagne.tsx +L295:                 <TableHead className="text-center tablet:hidden">Destinatari</TableHead>
+C1 src/routes/_app/marketing.campagne.tsx +L296:                 <TableHead className="tablet:hidden">Avanzamento</TableHead>
+C1 src/routes/_app/marketing.campagne.tsx +L297:                 <TableHead className="tablet:hidden">Aggiornata</TableHead>
+C1 src/routes/_app/marketing.campagne.tsx +L298:                 <TableHead className="text-right tablet:w-56">Azioni</TableHead>
+C1 src/routes/_app/marketing.campagne.tsx -L299:             <TableBody>
+C1 src/routes/_app/marketing.campagne.tsx +L301:             <TableBody className="tablet:max-lg:block tablet:max-lg:space-y-3">
+C1 src/routes/_app/marketing.campagne.tsx -L305:                 <TableRow key={c.id}>
+C1 src/routes/_app/marketing.campagne.tsx -L306:                   <TableCell className="font-medium">{c.nome}</TableCell>
+C1 src/routes/_app/marketing.campagne.tsx -L307:                   <TableCell className="text-muted-foreground">{c.oggetto || "—"}</TableCell>
+C1 src/routes/_app/marketing.campagne.tsx -L308:                   <TableCell>
+C1 src/routes/_app/marketing.campagne.tsx +L307:                 <TableRow key={c.id} className="tablet:max-lg:grid tablet:max-lg:grid-cols-1 tablet:max-lg:border-b tablet:max-lg:p-3">
+C2 src/routes/_app/marketing.campagne.tsx +L308:                   <TableCell className="font-medium tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">{c.nome}{isTablet && <div className="mt-2 space-y-2 text-sm font-normal text-muted-foreground break-words"><div>{c.oggetto || "—"}</div><div>Aggiornata: {fmtDate(c.updated_at)}</div><Button variant="outline" size="sm" onClick={() => setDestinatariDi(c)}><Users className="size-4 mr-2" />Destinatari: {totale.toLocaleString("it-IT")}</Button><div className="grid grid-cols-2 gap-2"><span>Da inviare: {daInviare}</span><span>Inviate: {k?.inviato ?? 0}</span><span>Fallite: {k?.fallito ?? 0}</span><span>Saltate: {k?.saltato ?? 0}</span></div></div>}</TableCell>
+C1 src/routes/_app/marketing.campagne.tsx +L309:                   <TableCell className="text-muted-foreground tablet:hidden">{c.oggetto || "—"}</TableCell>
+C1 src/routes/_app/marketing.campagne.tsx +L310:                   <TableCell className="tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">
+C1 src/routes/_app/marketing.campagne.tsx -L314:                   <TableCell className="text-center">
+C1 src/routes/_app/marketing.campagne.tsx +L316:                   <TableCell className="text-center tablet:hidden">
+C1 src/routes/_app/marketing.campagne.tsx -L325:                   <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+C1 src/routes/_app/marketing.campagne.tsx +L327:                   <TableCell className="text-xs text-muted-foreground whitespace-nowrap tablet:hidden">
+C1 src/routes/_app/marketing.campagne.tsx -L336:                   <TableCell className="text-muted-foreground">{fmtDate(c.updated_at)}</TableCell>
+C1 src/routes/_app/marketing.campagne.tsx -L337:                   <TableCell className="text-right space-x-1 whitespace-nowrap">
+C1 src/routes/_app/marketing.campagne.tsx +L338:                   <TableCell className="text-muted-foreground tablet:hidden">{fmtDate(c.updated_at)}</TableCell>
+C1 src/routes/_app/marketing.campagne.tsx +L339:                   <TableCell className="text-right space-x-1 whitespace-nowrap tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0 tablet:space-x-0 tablet:whitespace-normal tablet:[&_button]:m-1">
+C1 src/routes/_app/marketing.campagne.tsx -L425:           <TabsList>
+C1 src/routes/_app/marketing.campagne.tsx -L426:             <TabsTrigger value="campagne">Campagne</TabsTrigger>
+C1 src/routes/_app/marketing.campagne.tsx -L427:             <TabsTrigger value="template">Template</TabsTrigger>
+C1 src/routes/_app/marketing.campagne.tsx +L427:           <TabsList className="tablet:h-auto">
+C1 src/routes/_app/marketing.campagne.tsx +L428:             <TabsTrigger className="tablet:min-h-10" value="campagne">Campagne</TabsTrigger>
+C1 src/routes/_app/marketing.campagne.tsx +L429:             <TabsTrigger className="tablet:min-h-10" value="template">Template</TabsTrigger>
+C4 src/routes/_app/marketing.invii.tsx +L1: import { useIsTablet } from "@/hooks/use-tablet";
+C4 src/routes/_app/marketing.invii.tsx +L100:   const isTablet = useIsTablet();
+C1 src/routes/_app/marketing.invii.tsx -L333:         <Table>
+C1 src/routes/_app/marketing.invii.tsx -L334:           <TableHeader>
+C1 src/routes/_app/marketing.invii.tsx +L335:         <Table className="tablet:table-fixed tablet:w-full tablet:max-lg:block">
+C1 src/routes/_app/marketing.invii.tsx +L336:           <TableHeader className="tablet:max-lg:hidden">
+C1 src/routes/_app/marketing.invii.tsx -L336:               <TableHead>Data</TableHead>
+C1 src/routes/_app/marketing.invii.tsx -L337:               <TableHead>Operatore</TableHead>
+C1 src/routes/_app/marketing.invii.tsx -L338:               <TableHead>Campagna</TableHead>
+C1 src/routes/_app/marketing.invii.tsx -L339:               <TableHead>Oggetto</TableHead>
+C1 src/routes/_app/marketing.invii.tsx -L340:               <TableHead>Stato</TableHead>
+C1 src/routes/_app/marketing.invii.tsx -L341:               <TableHead className="text-right">Tot.</TableHead>
+C1 src/routes/_app/marketing.invii.tsx -L342:               <TableHead className="text-right">Inviati</TableHead>
+C1 src/routes/_app/marketing.invii.tsx -L343:               <TableHead className="text-right">Saltati</TableHead>
+C1 src/routes/_app/marketing.invii.tsx -L344:               <TableHead className="text-right">Falliti</TableHead>
+C1 src/routes/_app/marketing.invii.tsx -L345:               <TableHead className="text-right">Clic reali</TableHead>
+C1 src/routes/_app/marketing.invii.tsx -L346:               <TableHead className="text-right">Tasso clic</TableHead>
+C1 src/routes/_app/marketing.invii.tsx -L347:               <TableHead className="min-w-[180px]">Avanzamento</TableHead>
+C1 src/routes/_app/marketing.invii.tsx -L348:               <TableHead className="w-[60px]"></TableHead>
+C1 src/routes/_app/marketing.invii.tsx -L349:               <TableHead className="w-[40px]"></TableHead>
+C1 src/routes/_app/marketing.invii.tsx +L338:               <TableHead className="tablet:hidden">Data</TableHead>
+C1 src/routes/_app/marketing.invii.tsx +L339:               <TableHead className="tablet:hidden">Operatore</TableHead>
+C1 src/routes/_app/marketing.invii.tsx +L340:               <TableHead className="tablet:w-[45%]">Campagna</TableHead>
+C1 src/routes/_app/marketing.invii.tsx +L341:               <TableHead className="tablet:hidden">Oggetto</TableHead>
+C1 src/routes/_app/marketing.invii.tsx +L342:               <TableHead className="tablet:w-40">Stato</TableHead>
+C1 src/routes/_app/marketing.invii.tsx +L343:               <TableHead className="text-right tablet:hidden">Tot.</TableHead>
+C1 src/routes/_app/marketing.invii.tsx +L344:               <TableHead className="text-right tablet:hidden">Inviati</TableHead>
+C1 src/routes/_app/marketing.invii.tsx +L345:               <TableHead className="text-right tablet:hidden">Saltati</TableHead>
+C1 src/routes/_app/marketing.invii.tsx +L346:               <TableHead className="text-right tablet:hidden">Falliti</TableHead>
+C1 src/routes/_app/marketing.invii.tsx +L347:               <TableHead className="text-right tablet:hidden">Clic reali</TableHead>
+C1 src/routes/_app/marketing.invii.tsx +L348:               <TableHead className="text-right tablet:hidden">Tasso clic</TableHead>
+C1 src/routes/_app/marketing.invii.tsx +L349:               <TableHead className="min-w-[180px] tablet:w-48">Avanzamento</TableHead>
+C1 src/routes/_app/marketing.invii.tsx +L350:               <TableHead className="w-[60px] tablet:w-12"></TableHead>
+C1 src/routes/_app/marketing.invii.tsx +L351:               <TableHead className="w-[40px] tablet:w-16"></TableHead>
+C1 src/routes/_app/marketing.invii.tsx -L352:           <TableBody>
+C1 src/routes/_app/marketing.invii.tsx +L354:           <TableBody className="tablet:max-lg:block tablet:max-lg:space-y-3">
+C1 src/routes/_app/marketing.invii.tsx -L384:                   <TableRow key={c.id} className="hover:bg-muted/50">
+C1 src/routes/_app/marketing.invii.tsx -L385:                     <TableCell className="whitespace-nowrap cursor-pointer" onClick={apri}>{fmtDateTime(c.inviata_at ?? c.created_at)}</TableCell>
+C1 src/routes/_app/marketing.invii.tsx -L386:                     <TableCell className="cursor-pointer" onClick={apri}>{`${c.operatore?.nome ?? ""} ${c.operatore?.cognome ?? ""}`.trim() || "—"}</TableCell>
+C1 src/routes/_app/marketing.invii.tsx -L387:                     <TableCell className="font-medium cursor-pointer" onClick={apri}>{c.nome}</TableCell>
+C1 src/routes/_app/marketing.invii.tsx -L388:                     <TableCell className="cursor-pointer text-muted-foreground max-w-[240px] truncate" onClick={apri}>{c.oggetto || "—"}</TableCell>
+C1 src/routes/_app/marketing.invii.tsx -L389:                     <TableCell className="cursor-pointer" onClick={apri}>
+C1 src/routes/_app/marketing.invii.tsx +L386:                   <TableRow key={c.id} className="hover:bg-muted/50 tablet:max-lg:grid tablet:max-lg:grid-cols-2 tablet:max-lg:border-b tablet:max-lg:p-3">
+C1 src/routes/_app/marketing.invii.tsx +L387:                     <TableCell className="whitespace-nowrap cursor-pointer tablet:hidden" onClick={apri}>{fmtDateTime(c.inviata_at ?? c.created_at)}</TableCell>
+C1 src/routes/_app/marketing.invii.tsx +L388:                     <TableCell className="cursor-pointer tablet:hidden" onClick={apri}>{`${c.operatore?.nome ?? ""} ${c.operatore?.cognome ?? ""}`.trim() || "—"}</TableCell>
+C2 src/routes/_app/marketing.invii.tsx +L389:                     <TableCell className="font-medium cursor-pointer tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0 tablet:max-lg:col-span-2" onClick={apri}>{c.nome}{isTablet && <div className="mt-2 space-y-1 text-sm font-normal text-muted-foreground break-words"><div>{c.oggetto || "—"}</div><div>{fmtDateTime(c.inviata_at ?? c.created_at)} · {`${c.operatore?.nome ?? ""} ${c.operatore?.cognome ?? ""}`.trim() || "—"}</div><div className="grid grid-cols-2 gap-2 mt-2"><span>Totale: {c.totale_destinatari}</span><span>Inviati: {c.inviati}</span><span>Saltati: {c.saltati}</span><span>Falliti: {c.falliti}</span><span>Clic reali: {clicReali?.[c.id]?.clic_reali_unici ?? 0}</span><span>Tasso clic: {c.inviati > 0 ? `${Math.round(((clicReali?.[c.id]?.clic_reali_unici ?? 0) / c.inviati) * 1000) / 10}%` : "—"}</span></div></div>}</TableCell>
+C1 src/routes/_app/marketing.invii.tsx +L390:                     <TableCell className="cursor-pointer text-muted-foreground max-w-[240px] truncate tablet:hidden" onClick={apri}>{c.oggetto || "—"}</TableCell>
+C1 src/routes/_app/marketing.invii.tsx +L391:                     <TableCell className="cursor-pointer tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0" onClick={apri}>
+C1 src/routes/_app/marketing.invii.tsx -L411:                     <TableCell className="text-right font-medium cursor-pointer" onClick={apri}>{c.totale_destinatari}</TableCell>
+C1 src/routes/_app/marketing.invii.tsx -L412:                     <TableCell className="text-right text-emerald-600 cursor-pointer" onClick={apri}>{c.inviati}</TableCell>
+C1 src/routes/_app/marketing.invii.tsx -L413:                     <TableCell className="text-right text-amber-600 cursor-pointer" onClick={apri}>{c.saltati}</TableCell>
+C1 src/routes/_app/marketing.invii.tsx -L414:                     <TableCell className="text-right text-destructive cursor-pointer" onClick={apri}>{c.falliti}</TableCell>
+C1 src/routes/_app/marketing.invii.tsx +L413:                     <TableCell className="text-right font-medium cursor-pointer tablet:hidden" onClick={apri}>{c.totale_destinatari}</TableCell>
+C1 src/routes/_app/marketing.invii.tsx +L414:                     <TableCell className="text-right text-emerald-600 cursor-pointer tablet:hidden" onClick={apri}>{c.inviati}</TableCell>
+C1 src/routes/_app/marketing.invii.tsx +L415:                     <TableCell className="text-right text-amber-600 cursor-pointer tablet:hidden" onClick={apri}>{c.saltati}</TableCell>
+C1 src/routes/_app/marketing.invii.tsx +L416:                     <TableCell className="text-right text-destructive cursor-pointer tablet:hidden" onClick={apri}>{c.falliti}</TableCell>
+C1 src/routes/_app/marketing.invii.tsx -L416:                       className="text-right font-medium cursor-pointer"
+C1 src/routes/_app/marketing.invii.tsx +L418:                       className="text-right font-medium cursor-pointer tablet:hidden"
+C1 src/routes/_app/marketing.invii.tsx -L432:                     <TableCell className="text-right text-sm tabular-nums cursor-pointer" onClick={apri}>
+C1 src/routes/_app/marketing.invii.tsx +L434:                     <TableCell className="text-right text-sm tabular-nums cursor-pointer tablet:hidden" onClick={apri}>
+C1 src/routes/_app/marketing.invii.tsx -L435:                     <TableCell>
+C1 src/routes/_app/marketing.invii.tsx +L437:                     <TableCell className="tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">
+C1 src/routes/_app/marketing.invii.tsx -L453:                     <TableCell className="cursor-pointer" onClick={apri}><ChevronRight className="size-4 text-muted-foreground" /></TableCell>
+C1 src/routes/_app/marketing.invii.tsx -L454:                     <TableCell>
+C1 src/routes/_app/marketing.invii.tsx +L455:                     <TableCell className="cursor-pointer tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0" onClick={apri}><ChevronRight className="size-4 text-muted-foreground" /></TableCell>
+C1 src/routes/_app/marketing.invii.tsx +L456:                     <TableCell className="tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">
+C4 src/routes/_app/marketing.segmenti.tsx +L1: import { useIsTablet } from "@/hooks/use-tablet";
+C4 src/routes/_app/marketing.segmenti.tsx +L122:   const isTablet = useIsTablet();
+C1 src/routes/_app/marketing.segmenti.tsx -L1145:           <div className="flex items-center gap-2 ml-auto">
+C1 src/routes/_app/marketing.segmenti.tsx +L1147:           <div className="flex items-center gap-2 ml-auto tablet:flex-wrap tablet:w-full">
+C1 src/routes/_app/marketing.segmenti.tsx -L1235:         <Table>
+C1 src/routes/_app/marketing.segmenti.tsx -L1236:           <TableHeader>
+C1 src/routes/_app/marketing.segmenti.tsx +L1237:         <Table className="tablet:table-fixed tablet:w-full tablet:max-lg:block">
+C1 src/routes/_app/marketing.segmenti.tsx +L1238:           <TableHeader className="tablet:max-lg:hidden">
+C1 src/routes/_app/marketing.segmenti.tsx -L1238:               <TableHead className="w-10">
+C1 src/routes/_app/marketing.segmenti.tsx +L1240:               <TableHead className="w-10 tablet:w-14">
+C1 src/routes/_app/marketing.segmenti.tsx -L1248:               <TableHead className="w-8" />
+C1 src/routes/_app/marketing.segmenti.tsx -L1249:               <TableHead>Ragione sociale</TableHead>
+C1 src/routes/_app/marketing.segmenti.tsx -L1250:               <TableHead>Città / Prov.</TableHead>
+C1 src/routes/_app/marketing.segmenti.tsx -L1251:               <TableHead>Sede</TableHead>
+C1 src/routes/_app/marketing.segmenti.tsx -L1252:               <TableHead>Agente</TableHead>
+C1 src/routes/_app/marketing.segmenti.tsx -L1253:               <TableHead>Categoria</TableHead>
+C1 src/routes/_app/marketing.segmenti.tsx -L1254:               <TableHead className="text-center">Email valida</TableHead>
+C1 src/routes/_app/marketing.segmenti.tsx -L1255:               <TableHead className="text-center">Marketing</TableHead>
+C1 src/routes/_app/marketing.segmenti.tsx +L1250:               <TableHead className="w-8 tablet:w-14" />
+C1 src/routes/_app/marketing.segmenti.tsx +L1251:               <TableHead className="tablet:w-[55%]">Ragione sociale</TableHead>
+C1 src/routes/_app/marketing.segmenti.tsx +L1252:               <TableHead className="tablet:hidden">Città / Prov.</TableHead>
+C1 src/routes/_app/marketing.segmenti.tsx +L1253:               <TableHead className="tablet:hidden">Sede</TableHead>
+C1 src/routes/_app/marketing.segmenti.tsx +L1254:               <TableHead className="tablet:hidden">Agente</TableHead>
+C1 src/routes/_app/marketing.segmenti.tsx +L1255:               <TableHead className="tablet:hidden">Categoria</TableHead>
+C1 src/routes/_app/marketing.segmenti.tsx +L1256:               <TableHead className="text-center tablet:w-32">Email valida</TableHead>
+C1 src/routes/_app/marketing.segmenti.tsx +L1257:               <TableHead className="text-center tablet:w-32">Marketing</TableHead>
+C1 src/routes/_app/marketing.segmenti.tsx -L1258:           <TableBody>
+C1 src/routes/_app/marketing.segmenti.tsx +L1260:           <TableBody className="tablet:max-lg:block tablet:max-lg:space-y-3">
+C1 src/routes/_app/marketing.segmenti.tsx -L1276:                   <TableRow>
+C1 src/routes/_app/marketing.segmenti.tsx -L1277:                     <TableCell>
+C1 src/routes/_app/marketing.segmenti.tsx +L1278:                   <TableRow className="tablet:max-lg:grid tablet:max-lg:grid-cols-[40px_40px_minmax(0,1fr)] tablet:max-lg:border-b tablet:max-lg:p-3">
+C1 src/routes/_app/marketing.segmenti.tsx +L1279:                     <TableCell className="tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">
+C1 src/routes/_app/marketing.segmenti.tsx -L1284:                     <TableCell>
+C1 src/routes/_app/marketing.segmenti.tsx +L1286:                     <TableCell className="tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">
+C1 src/routes/_app/marketing.segmenti.tsx -L1288:                         className="text-muted-foreground hover:text-foreground"
+C1 src/routes/_app/marketing.segmenti.tsx +L1290:                         className="text-muted-foreground hover:text-foreground tablet:min-h-10 tablet:min-w-10"
+C1 src/routes/_app/marketing.segmenti.tsx -L1294:                     <TableCell className="font-medium cursor-pointer" onClick={() => toggleEspanso(c.id)}>
+C1 src/routes/_app/marketing.segmenti.tsx +L1296:                     <TableCell className="font-medium cursor-pointer tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0" onClick={() => toggleEspanso(c.id)}>
+C2 src/routes/_app/marketing.segmenti.tsx +L1298:                       {isTablet && <div className="mt-2 space-y-1 text-sm font-normal text-muted-foreground break-words"><div>{[c.citta, c.provincia].filter(Boolean).join(" — ") || "—"}</div><div>{c.store_id ? (storeNomeById.get(c.store_id) ?? "—") : "—"}</div><div>{c.agente || c.codice_agente || "—"}</div><div>{c.categoria || "—"}</div></div>}
+C1 src/routes/_app/marketing.segmenti.tsx -L1297:                     <TableCell className="text-sm text-muted-foreground">
+C1 src/routes/_app/marketing.segmenti.tsx +L1300:                     <TableCell className="text-sm text-muted-foreground tablet:hidden">
+C1 src/routes/_app/marketing.segmenti.tsx -L1300:                     <TableCell className="text-sm">{c.store_id ? (storeNomeById.get(c.store_id) ?? "—") : "—"}</TableCell>
+C1 src/routes/_app/marketing.segmenti.tsx -L1301:                     <TableCell className="text-sm">{c.agente || (c.codice_agente ? c.codice_agente : "—")}</TableCell>
+C1 src/routes/_app/marketing.segmenti.tsx -L1302:                     <TableCell className="text-sm">{c.categoria || "—"}</TableCell>
+C1 src/routes/_app/marketing.segmenti.tsx -L1303:                     <TableCell className="text-center">
+C1 src/routes/_app/marketing.segmenti.tsx +L1303:                     <TableCell className="text-sm tablet:hidden">{c.store_id ? (storeNomeById.get(c.store_id) ?? "—") : "—"}</TableCell>
+C1 src/routes/_app/marketing.segmenti.tsx +L1304:                     <TableCell className="text-sm tablet:hidden">{c.agente || (c.codice_agente ? c.codice_agente : "—")}</TableCell>
+C1 src/routes/_app/marketing.segmenti.tsx +L1305:                     <TableCell className="text-sm tablet:hidden">{c.categoria || "—"}</TableCell>
+C1 src/routes/_app/marketing.segmenti.tsx +L1306:                     <TableCell className="text-center tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0 tablet:max-lg:col-span-3 tablet:max-lg:text-left">
+C1 src/routes/_app/marketing.segmenti.tsx -L1314:                     <TableCell className="text-center">
+C1 src/routes/_app/marketing.segmenti.tsx +L1317:                     <TableCell className="text-center tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0 tablet:max-lg:col-span-3 tablet:max-lg:text-left">
+C1 src/routes/_app/marketing.segmenti.tsx -L1435:                       <div className="font-medium truncate">{s.nome}</div>
+C1 src/routes/_app/marketing.segmenti.tsx +L1438:                       <div className="font-medium truncate tablet:whitespace-normal tablet:break-words">{s.nome}</div>
+C4 src/routes/_app/marketing/iscritti-whatsapp.tsx +L1: import { useIsTablet } from "@/hooks/use-tablet";
+C4 src/routes/_app/marketing/iscritti-whatsapp.tsx +L161:   const isTablet = useIsTablet();
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx -L556:         <div className="md:hidden space-y-2">
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx +L558:         <div className="md:hidden space-y-2 tablet:max-lg:block">
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx -L632:         <div className="hidden md:block">
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx -L633:         <Table>
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx +L634:         <div className="hidden md:block tablet:max-lg:hidden">
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx +L635:         <Table className="tablet:table-fixed tablet:w-full">
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx -L636:               <TableHead>Numero</TableHead>
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx +L638:               <TableHead className="tablet:w-40">Numero</TableHead>
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx -L638:               <TableHead>Impresa / privato</TableHead>
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx -L639:               <TableHead>Origine</TableHead>
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx -L640:               <TableHead>Data</TableHead>
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx -L641:               <TableHead>Stato</TableHead>
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx -L642:               <TableHead>Collegato a</TableHead>
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx -L643:               <TableHead className="text-right">Azioni</TableHead>
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx +L640:               <TableHead className="tablet:hidden">Impresa / privato</TableHead>
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx +L641:               <TableHead className="tablet:hidden">Origine</TableHead>
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx +L642:               <TableHead className="tablet:hidden">Data</TableHead>
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx +L643:               <TableHead className="tablet:w-44">Stato</TableHead>
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx +L644:               <TableHead className="tablet:hidden">Collegato a</TableHead>
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx +L645:               <TableHead className="text-right tablet:w-36">Azioni</TableHead>
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx -L662:                   <TableCell className="font-mono text-sm">
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx +L664:                   <TableCell className="font-mono text-sm tablet:whitespace-normal tablet:break-words">
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx -L665:                   <TableCell>
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx +L667:                   <TableCell className="tablet:whitespace-normal tablet:break-words">
+C2 src/routes/_app/marketing/iscritti-whatsapp.tsx +L669:                     {isTablet && <div className="mt-2 space-y-1 text-sm text-muted-foreground break-words"><div>{r.azienda || "—"}</div><div>{r.partita_iva ? `P.IVA ${r.partita_iva}` : ""}</div><div>{r.store_id ? sediMap[r.store_id] : "—"}</div><div>{fmtData(r.created_at)} · {LABEL_ORIGINE[r.origine ?? ""] ?? r.origine}</div><div>{nomiCollegati[r.cliente_id ?? r.lead_id ?? ""] || "—"}</div></div>}
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx -L668:                   <TableCell>
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx +L671:                   <TableCell className="tablet:hidden">
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx -L689:                   <TableCell>
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx +L692:                   <TableCell className="tablet:hidden">
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx -L694:                   <TableCell className="text-sm">{fmtData(r.created_at)}</TableCell>
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx -L695:                   <TableCell>
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx +L697:                   <TableCell className="text-sm tablet:hidden">{fmtData(r.created_at)}</TableCell>
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx +L698:                   <TableCell className="tablet:whitespace-normal tablet:break-words">
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx -L702:                   <TableCell>
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx +L705:                   <TableCell className="tablet:hidden">
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx -L711:                   <TableCell className="text-right space-x-2" onClick={(e) => e.stopPropagation()}>
+C1 src/routes/_app/marketing/iscritti-whatsapp.tsx +L714:                   <TableCell className="text-right space-x-2 tablet:whitespace-normal tablet:break-words tablet:space-x-0 tablet:[&_button]:w-full tablet:[&_button]:mb-2" onClick={(e) => e.stopPropagation()}>
+C4 src/routes/_app/utenti.tsx +L1: import { useIsTablet } from "@/hooks/use-tablet";
+C4 src/routes/_app/utenti.tsx +L151:   const isTablet = useIsTablet();
+C1 src/routes/_app/utenti.tsx -L351:             <div className="mb-3 flex items-center gap-2 md:hidden">
+C1 src/routes/_app/utenti.tsx +L353:             <div className="mb-3 flex items-center gap-2 md:hidden tablet:flex">
+C2 src/routes/_app/utenti.tsx +L376:                 {isTablet ? (
+C2 src/routes/_app/utenti.tsx +L377:                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+C2 src/routes/_app/utenti.tsx +L378:                   {ordinati.map((u) => (
+C2 src/routes/_app/utenti.tsx +L379:                     <SchedaLista
+C2 src/routes/_app/utenti.tsx +L380:                       key={u.id}
+C2 src/routes/_app/utenti.tsx +L381:                       badge={<Badge variant={u.attivo ? "default" : "secondary"}>{u.attivo ? "Attivo" : "Inattivo"}</Badge>}
+C2 src/routes/_app/utenti.tsx +L382:                       titolo={<span className="min-w-0 break-words">{[u.nome, u.cognome].filter(Boolean).join(" ") || "—"}</span>}
+C2 src/routes/_app/utenti.tsx +L383:                       campi={[
+C2 src/routes/_app/utenti.tsx +L384:                         {
+C2 src/routes/_app/utenti.tsx +L385:                           etichetta: "Email",
+C2 src/routes/_app/utenti.tsx +L386:                           valore: u.email ? <span className="break-all">{u.email}</span> : "—",
+C2 src/routes/_app/utenti.tsx +L387:                         },
+C2 src/routes/_app/utenti.tsx +L388:                         { etichetta: "Punto vendita", valore: u.store_nome ?? "—" },
+C2 src/routes/_app/utenti.tsx +L389:                         { etichetta: "Verifica in due passaggi", valore: testoMfa(u.id) },
+C2 src/routes/_app/utenti.tsx +L390:                         {
+C2 src/routes/_app/utenti.tsx +L391:                           etichetta: "Ruoli",
+C2 src/routes/_app/utenti.tsx +L392:                           valore: u.ruoli.length === 0 ? "—" : (
+C2 src/routes/_app/utenti.tsx +L393:                             <span className="flex flex-wrap gap-1">
+C2 src/routes/_app/utenti.tsx +L394:                               {u.ruoli.map((r) => (
+C2 src/routes/_app/utenti.tsx +L395:                                 <Badge key={r} variant="outline">{RUOLI_LABEL[r]}</Badge>
+C2 src/routes/_app/utenti.tsx +L396:                               ))}
+C2 src/routes/_app/utenti.tsx +L397:                             </span>
+C2 src/routes/_app/utenti.tsx +L398:                           ),
+C2 src/routes/_app/utenti.tsx +L399:                         },
+C2 src/routes/_app/utenti.tsx +L400:                       ]}
+C2 src/routes/_app/utenti.tsx +L401:                       footer={
+C2 src/routes/_app/utenti.tsx +L402:                         <Button size="sm" className="h-10 gap-2" onClick={() => setEditing(u)}>
+C2 src/routes/_app/utenti.tsx +L403:                           <Pencil className="size-4" /> Modifica
+C2 src/routes/_app/utenti.tsx +L404:                         </Button>
+C2 src/routes/_app/utenti.tsx +L405:                       }
+C2 src/routes/_app/utenti.tsx +L406:                     />
+C2 src/routes/_app/utenti.tsx +L407:                   ))}
+C2 src/routes/_app/utenti.tsx +L408:                 </div>
+C2 src/routes/_app/utenti.tsx +L409:                 ) : (
+C1 src/routes/_app/utenti.tsx +L442:                 )}
+C1 src/routes/_app/utenti.tsx -L408:                 <div className="hidden md:block">
+C1 src/routes/_app/utenti.tsx +L445:                 <div className="hidden md:block tablet:hidden">
+```

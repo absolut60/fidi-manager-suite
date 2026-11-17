@@ -1,6 +1,6 @@
 # FM79 — Fette 7–8 Marketing e Amministrazione
-- [ ] Marketing + Utenti: diagnosi, sole modifiche tablet, prova statica e fotografie sequenziali, misure touch, suite Bun e SHA.
-- [ ] Listini acquisto/vendita/matrice: da svolgere in una fetta successiva se non completabili insieme alla verifica Marketing + Utenti.
+- [x] Marketing + Utenti: cinque file solo tablet; prova statica documentata, 15 coppie (12 identiche + tre 3+3, zero differenze vere), 20 misure touch 0/0/0; Bun 1019/0, logo/dati/permessi invariati.
+- [ ] Listini acquisto/vendita/matrice: rinviati al prossimo giro, come autorizzato dal perimetro ridotto Marketing + Utenti.
 
 # FM79 — Fetta 6 finestre e tastiera
 - [x] Diagnosi e 12 coppie di riferimento.
