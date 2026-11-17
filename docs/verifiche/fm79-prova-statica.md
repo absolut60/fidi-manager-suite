@@ -951,7 +951,7 @@ Stesso criterio delle quattro categorie sopra; si contano separatamente aggiunte
 | Categoria | Aggiunte | Rimosse | Totale |
 |---|---:|---:|---:|
 | 1 | 88 | 90 | 178 |
-| 2 | 27 | 3 | 30 |
+| 2 | 28 | 3 | 31 |
 | 3 | 0 | 0 | 0 |
 | 4 | 8 | 0 | 8 |
 
