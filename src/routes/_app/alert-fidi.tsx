@@ -74,6 +74,7 @@ function AlertFidiContenuto({ userId, puoProporre }: { userId: string; puoPropor
   // Sola lettura (approvatori, responsabile agenti, agenti): niente selezione né "Apri proposta".
   const selezionabile = (a: AlertFidoRow) => puoProporre && alertSelezionabile(a) && !inAttesaGammaMap?.get(a.cliente_id);
   const queryClient = useQueryClient();
+  const isTablet = useIsTablet();
   const { data: righeBase, isLoading, error } = useQuery({
     queryKey: ["alert-fidi-aperti"],
     queryFn: fetchAlertFidiAperti,
