@@ -119,3 +119,51 @@ Ordine per gravità e uso quotidiano. Ogni fetta: `regressione.py prima` → cor
 | 9 | Rifiniture | `src/routes/_app/privacy.tsx`, `template-email.tsx`, `template-lettera.tsx`, `audit.tsx`, `src/components/banner-attiva-notifiche.tsx` | B1–B5 |
 
 Da decidere (proprietario): aggiungere `interactive-widget=resizes-content` al meta viewport (M10) cambia il comportamento della tastiera anche sui telefoni Android, pur senza cambiare l'immagine; e se il menu laterale sul tablet in orizzontale debba potersi richiudere (M11).
+
+
+## Stato finale dopo la fetta 9 — 17/11/2026
+
+L’analisi e i valori sopra restano la fotografia iniziale, non lo stato corrente. Esiti delle fette documentati in fm79-prova-statica.md. “Risolto” riguarda la presentazione verificata con fixture, non certifica permessi o tastiera reale.
+
+| Problema | Stato | Fetta / limiti |
+|---|---|---|
+| A1 | Risolto | 2 |
+| A2 | Risolto | 3 |
+| A3 | Risolto | 3 |
+| A4 | Risolto | 3 |
+| A5 | Risolto | 3 |
+| A6 | Risolto | 5 |
+| A7 | Risolto | 7–8 |
+| A8 | Risolto | 7–8 |
+| A9 | Risolto | 4 |
+| A10 | Risolto nei componenti base e nelle pagine delle fette; dettagli da provare sul dispositivo | 1 + 3–9; nessuna certificazione di tutti i controlli nelle pagine non accessibili alle fixture. |
+| A11 | Risolto nei campi condivisi; comportamento Safari da provare sul dispositivo | 1; 16px sui tablet. |
+| M1 | Risolto | 5 |
+| M2 | Risolto | 7–8 |
+| M3 | Risolto | 4 |
+| M4 | Risolto | 3 |
+| M5 | Risolto con eccezione voluta | 9; scroll interno nelle tre tabelle, codice/descrizione fissi, target ≥40px e intestazioni leggibili. |
+| M6 | Risolto | 7–8 |
+| M7 | Risolto | 5 |
+| M8 | Risolto | 7–8 |
+| M9 | Risolto | 5 |
+| M10 | Presentazione risolta; tastiera reale da provare sul dispositivo | 6; viewport non modificato per decisione Andrea. Su iPad tastiera riduce visual viewport, non layout viewport: 1180×480 Playwright non è prova del caso reale. |
+| M11 | Risolto | 4 |
+| M12 | Risolto | 4 + 5 |
+| B1 | Risolto | 9 |
+| B2 | Risolto | 9 |
+| B3 | Risolto | 9 |
+| B4 | Risolto | 9 |
+| B5 | Risolto | 9 |
+
+### Da provare sul dispositivo (non verificabili con fixture complete)
+
+- Scheda cliente, preventivo, richiesta fido e richiesta interna.
+- Schede lead, opportunità, task ed evento.
+- Scheda articolo nei due percorsi (ID/codice), fornitore e kit.
+- Cambia password.
+- Area Legali: fixture non valida, esclusa dai confronti.
+- Tastiera iPad nei moduli lunghi, PDF reali e anteprime/download, rotazione dell’app installata.
+- Dashboard, scadenziario, cruscotto incassi e promemoria: involucro verificato con dati vuoti, righe reali da provare sul dispositivo.
+
+Decisioni chiuse: menu tablet richiudibile e sovrapposto (fetta 4); nessuna modifica interactive-widget/meta viewport (fetta 6). Le tabelle WhatsApp incorporate in Campagne/Segmenti non erano nel perimetro dei problemi M2/M8, riferiti agli elenchi Email; non dichiarate collaudate. Nessun problema A/M/B rimane privo di stato.

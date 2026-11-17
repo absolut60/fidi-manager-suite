@@ -1,6 +1,10 @@
+# FM79 — Fetta 9 Listini e rifiniture
+- [x] Listini con scroll interno, codice/descrizione fissi e campi 44px; Privacy/template/Audit/banner solo tablet.
+- [x] Diff classificato completo; 21 coppie, zero differenze vere dopo 3+3 e attesa contatori; 28 misure touch con sole eccezioni scroll listini; 1019 test verdi; audit con stato di tutti i problemi e prove dispositivo.
+
 # FM79 — Fette 7–8 Marketing e Amministrazione
 - [x] Marketing + Utenti: cinque file solo tablet; prova statica documentata, 15 coppie (12 identiche + tre 3+3, zero differenze vere), 20 misure touch 0/0/0; Bun 1019/0, logo/dati/permessi invariati.
-- [ ] Listini acquisto/vendita/matrice: rinviati al prossimo giro, come autorizzato dal perimetro ridotto Marketing + Utenti.
+- [x] Listini acquisto/vendita/matrice completati nella fetta 9.
 
 # FM79 — Fetta 6 finestre e tastiera
 - [x] Diagnosi e 12 coppie di riferimento.

@@ -1,3 +1,4 @@
+import { useIsTablet } from "@/hooks/use-tablet";
 import { useVisibilitaLimitataNegozio } from "@/lib/visibilita-negozio";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
@@ -35,6 +36,7 @@ function CB({ ok }: { ok: boolean }) {
 }
 
 function PrivacyPage() {
+  const isTablet = useIsTablet();
   const navigate = useNavigate();
   const { role } = useAuth();
   const isStoreManager = useVisibilitaLimitataNegozio(); // FM59: store manager e showroom (fonte unica)
@@ -155,39 +157,39 @@ function PrivacyPage() {
         ) : rows.length === 0 ? (
           <div className="p-12 text-center text-sm text-muted-foreground">Nessun contatto trovato</div>
         ) : (
-          <Table>
-            <TableHeader>
+          <Table className="tablet:table-fixed tablet:w-full tablet:max-lg:block">
+            <TableHeader className="tablet:max-lg:hidden">
               <TableRow>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Contatto</TableHead>
-                <TableHead>Ruolo</TableHead>
-                <TableHead className="text-center">Trattamento dati</TableHead>
-                <TableHead>Consensi</TableHead>
-                <TableHead>Data firma</TableHead>
-                <TableHead className="text-right">PDF</TableHead>
+                <TableHead className="tablet:w-[35%]">Cliente</TableHead>
+                <TableHead className="tablet:w-[25%]">Contatto</TableHead>
+                <TableHead className="tablet:hidden">Ruolo</TableHead>
+                <TableHead className="text-center tablet:w-28">Trattamento dati</TableHead>
+                <TableHead className="tablet:w-28">Consensi</TableHead>
+                <TableHead className="tablet:hidden">Data firma</TableHead>
+                <TableHead className="text-right tablet:w-36">PDF</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody className="tablet:max-lg:block">
               {rows.map((r: any) => (
                 <TableRow
                   key={r.id}
-                  className="cursor-pointer hover:bg-muted/40"
+                  className="cursor-pointer hover:bg-muted/40 tablet:max-lg:grid tablet:max-lg:grid-cols-2 tablet:max-lg:p-3"
                   onClick={() => navigate({
                     to: "/clienti/$clienteId",
                     params: { clienteId: r.clienti.id },
                     search: { tab: "privacy" },
                   })}
                 >
-                  <TableCell className="font-medium">
+                  <TableCell className="font-medium tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">
                     {r.clienti?.ragione_sociale}
                     <div className="text-xs text-muted-foreground">{r.clienti?.stores?.nome ?? "—"}</div>
                   </TableCell>
-                  <TableCell>{`${r.nome ?? ""} ${r.cognome ?? ""}`.trim() || "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">{r.ruolo ?? "—"}</TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">{`${r.nome ?? ""} ${r.cognome ?? ""}`.trim() || "—"}{isTablet && <div className="mt-2 space-y-1 text-sm text-muted-foreground"><div>{r.ruolo ?? "—"}</div><div>Firma: {fmtDate(r.data_firma)}</div></div>}</TableCell>
+                  <TableCell className="text-muted-foreground tablet:hidden">{r.ruolo ?? "—"}</TableCell>
+                  <TableCell className="text-center tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">
                     <CB ok={(statoConsensi?.get(r.id) ?? STATO_CONSENSI_VUOTO).trattamento_dati} />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">
                     <BadgeConsensi
                       compact
                       trattamentoDati={(statoConsensi?.get(r.id) ?? STATO_CONSENSI_VUOTO).trattamento_dati}
@@ -195,8 +197,8 @@ function PrivacyPage() {
                       email={(statoConsensi?.get(r.id) ?? STATO_CONSENSI_VUOTO).email}
                     />
                   </TableCell>
-                  <TableCell>{fmtDate(r.data_firma)}</TableCell>
-                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                  <TableCell className="tablet:hidden">{fmtDate(r.data_firma)}</TableCell>
+                  <TableCell className="text-right tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0" onClick={(e) => e.stopPropagation()}>
                     {r.pdf_privacy_path || r.pdf_privacy_url ? (
                       <PdfPrivacyButton path={r.pdf_privacy_path} url={r.pdf_privacy_url}>
                         Scarica PDF

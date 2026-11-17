@@ -69,9 +69,9 @@ export function BannerAttivaNotifiche() {
   if (pathname === "/attiva-notifiche" || pathname === "/il-mio-profilo") return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-3 bg-primary px-4 py-2.5 text-primary-foreground sm:px-6">
+    <div className="flex flex-wrap items-center gap-3 bg-primary px-4 py-2.5 text-primary-foreground sm:px-6 tablet:flex-nowrap tablet:gap-2 tablet:py-1">
       <Bell className="size-4 shrink-0" />
-      <p className="flex-1 text-sm">
+      <p className="flex-1 text-sm tablet:min-w-0 tablet:text-xs">
         Attiva le notifiche per non perderti aggiornamenti importanti
       </p>
       <Button asChild size="sm" variant="secondary">

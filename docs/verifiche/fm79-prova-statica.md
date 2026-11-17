@@ -1627,3 +1627,277 @@ C1 src/routes/_app/utenti.tsx +L445:                 <div className="hidden md:b
 ### Ricontrollo finale delle pagine e dei dettagli
 
 Eseguiti 40 casi sequenziali: cinque pagine × telefono 375, PC 1280, tablet 820 e 1180 × classe dark assente/presente. Scorrimento degli elenchi e apertura editor campagna, dettaglio invio, espansione segmento, riconciliazione e modifica utente senza salvare; nessun errore JavaScript. La classe dark non produce un tema completo distinto nelle pagine attuali (token restano chiari): non aggiunto un tema. Problemi già presenti su telefono/PC, incluso editor Campagne largo a 375 e tabelle dense, conservati per l’invarianza richiesta; non sono correzioni autorizzate da questa fetta. Screenshot supplementari in /tmp/browser/fm79-f78/review.
+
+
+## Fetta 9 — Listini e B1–B5 (17/11/2026)
+
+Base `559d37c2a54deaa233f6fe650f1a2d1e1f4a2b92`. Tre listini, Privacy, template email/lettera, Audit e banner; aggiunta solo tablet anche ai tre selettori in listini.tsx (necessaria per i target ≥40px). Nessun dato, prezzo, formula, handler, permesso, logo o viewport modificato.
+
+### A. Diff classificato
+
+| Categoria | Righe firmate |
+|---|---:|
+| 1 | 201 |
+| 2 | 3 |
+| 3 | 0 |
+| 4 | 6 |
+| Totale | 210 |
+
+C1: soli token tablet aggiunti, classi precedenti preservate. C2: dettagli secondari solo con isTablet; il testo principale e gestori originali conservati. C3: nessun nuovo hook. ALTRO completo:
+
+- `src/routes/_app/privacy.tsx:1` `+import { useIsTablet } from "@/hooks/use-tablet";`: import/invocazione hook; false su telefono/PC, nessun effetto sulla presentazione.
+- `src/routes/_app/privacy.tsx:39` `+const isTablet = useIsTablet();`: import/invocazione hook; false su telefono/PC, nessun effetto sulla presentazione.
+- `src/routes/_app/template-email.tsx:1` `+import { useIsTablet } from "@/hooks/use-tablet";`: import/invocazione hook; false su telefono/PC, nessun effetto sulla presentazione.
+- `src/routes/_app/template-email.tsx:55` `+const isTablet = useIsTablet();`: import/invocazione hook; false su telefono/PC, nessun effetto sulla presentazione.
+- `src/routes/_app/template-lettera.tsx:1` `+import { useIsTablet } from "@/hooks/use-tablet";`: import/invocazione hook; false su telefono/PC, nessun effetto sulla presentazione.
+- `src/routes/_app/template-lettera.tsx:53` `+const isTablet = useIsTablet();`: import/invocazione hook; false su telefono/PC, nessun effetto sulla presentazione.
+
+Head: Listini e template già specifici; Privacy/Audit senza head specifico preesistente, non aggiunto nel perimetro tablet. Nessuna nuova fonte unica o struttura; AGENTS pieno, non ampliato.
+
+### B. Fotografie sequenziali
+
+21 coppie: sette viste (tre tab Listini più Privacy/Email/Lettera/Audit) × 375×812 touch, 1280×800 e 1440×900 mouse. 19 identiche subito; Audit 375 e acquisto 1440 diverse su pochi pixel nei contatori della barra. Primo 3+3 ancora troppo presto rispetto ai contatori: differenze stabili. Ripetuto aggiungendo attesa dei dati secondari: entrambi i gruppi stabili e identici, **0 differenze vere** in entrambe le coppie. Nessun difetto app corretto per queste differenze. Riferimento nel 3+3: moduli client intercettati senza soli token tablet e con isTablet=false, equivalente al diff fuori tablet; nessun ripristino dei file.
+
+### C. Touch e scelta listini
+
+28 casi (sette viste × 768×1024, 820×1180, 1180×820, 1366×1024): scroll pagina 0, lettere singole 0, target <40px 0, intestazioni sovrapposte 0, errori runtime 0. Privacy/template/Audit: nessun contenuto nascosto. Banner: da 52px circa a 48px, testo compatto, Configura conserva target 40px; fixture lo mostra su tutte le pagine.
+
+**Eccezioni deliberate listini:** scroll soltanto nel riquadro, codice e descrizione fissi insieme (delta 0px per entrambe le colonne nel test scrollLeft); sfondo opaco anche nelle intestazioni. Il rilevatore generico conta intestazioni parzialmente visibili al bordo del riquadro: non sono colonne perse, sono raggiungibili scorrendo. Colonne minime: acquisto totale 1688px, vendita 992px; codice 104px, descrizione 280px, altre 88–160px; matrice minimo 1200px.
+
+| Vista | Larghezza tablet | Scroll interno px |
+|---|---:|---:|
+| acquisto | 768 | 968 |
+| vendita | 768 | 272 |
+| matrice | 768 | 480 |
+| acquisto | 820 | 916 |
+| vendita | 820 | 220 |
+| matrice | 820 | 428 |
+| acquisto | 1180 | 572 |
+| vendita | 1180 | 0 |
+| matrice | 1180 | 84 |
+| acquisto | 1366 | 386 |
+| vendita | 1366 | 0 |
+| matrice | 1366 | 0 |
+
+In verticale conservata la stessa tabella con colonne identificative fisse: la consultazione prezzi richiede confronto fra sconti, costo, trasporto e fasce, che le schede disperderebbero. È possibile scorrere tutte le colonne senza perdere l’articolo; campi almeno 44px. Nella matrice la descrizione resta il campo modificabile originale, testo lungo consultabile spostando il cursore nel campo.
+
+Scorse tutte le righe (14 articoli/contatti/template/eventi; matrice 26 categorie), fotografata ultima riga; aperti editor template, modifica massiva vendita e conferma matrice, poi Annulla senza scritture. Privacy: verificato pulsante PDF visibile, non un download reale (file simulato); scheda articolo e cliente restano da provare sul dispositivo. Tema app corrente chiaro; nessun tema nuovo introdotto.
+
+### D. Test
+
+`bun test`: 1019 pass, 0 fail, 3433 asserzioni, 137 file. Build automatico OK. Script, JSON e screenshot /tmp/browser/fm79-f9.
+
+### Appendice completa diff
+
+```text
+C1 src/components/banner-attiva-notifiche.tsx -L72:     <div className="flex flex-wrap items-center gap-3 bg-primary px-4 py-2.5 text-primary-foreground sm:px-6">
+C1 src/components/banner-attiva-notifiche.tsx +L72:     <div className="flex flex-wrap items-center gap-3 bg-primary px-4 py-2.5 text-primary-foreground sm:px-6 tablet:flex-nowrap tablet:gap-2 tablet:py-1">
+C1 src/components/banner-attiva-notifiche.tsx -L74:       <p className="flex-1 text-sm">
+C1 src/components/banner-attiva-notifiche.tsx +L74:       <p className="flex-1 text-sm tablet:min-w-0 tablet:text-xs">
+C1 src/components/listini/ListinoAcquistoView.tsx -L226:       <div className="flex-1 overflow-auto">
+C1 src/components/listini/ListinoAcquistoView.tsx +L226:       <div className="flex-1 overflow-auto tablet:relative tablet:isolate tablet:max-w-full tablet:[&_input]:min-h-11 tablet:[&_input]:text-base tablet:[&_th]:whitespace-normal tablet:[&_th]:align-top tablet:[&_th]:bg-primary tablet:[&_th]:text-primary-foreground tablet:[&_td]:align-top">
+C1 src/components/listini/ListinoAcquistoView.tsx -L228:         <table className="w-full text-xs table-fixed">
+C1 src/components/listini/ListinoAcquistoView.tsx +L228:         <table className="w-full text-xs table-fixed tablet:min-w-[1688px] tablet:w-[1688px]">
+C1 src/components/listini/ListinoAcquistoView.tsx -L230:             <col style={{ width: "104px" }} />
+C1 src/components/listini/ListinoAcquistoView.tsx -L231:             <col />
+C1 src/components/listini/ListinoAcquistoView.tsx -L232:             <col style={{ width: "140px" }} />
+C1 src/components/listini/ListinoAcquistoView.tsx -L233:             <col style={{ width: "80px" }} />
+C1 src/components/listini/ListinoAcquistoView.tsx -L234:             <col style={{ width: "56px" }} />
+C1 src/components/listini/ListinoAcquistoView.tsx -L235:             <col style={{ width: "56px" }} />
+C1 src/components/listini/ListinoAcquistoView.tsx -L236:             <col style={{ width: "56px" }} />
+C1 src/components/listini/ListinoAcquistoView.tsx -L237:             <col style={{ width: "56px" }} />
+C1 src/components/listini/ListinoAcquistoView.tsx -L238:             <col style={{ width: "56px" }} />
+C1 src/components/listini/ListinoAcquistoView.tsx -L239:             <col style={{ width: "88px" }} />
+C1 src/components/listini/ListinoAcquistoView.tsx -L240:             <col style={{ width: "68px" }} />
+C1 src/components/listini/ListinoAcquistoView.tsx -L241:             <col style={{ width: "68px" }} />
+C1 src/components/listini/ListinoAcquistoView.tsx -L242:             <col style={{ width: "104px" }} />
+C1 src/components/listini/ListinoAcquistoView.tsx -L243:             <col style={{ width: "88px" }} />
+C1 src/components/listini/ListinoAcquistoView.tsx +L230:             <col style={{ width: "104px" }} className="tablet:w-[104px]!" />
+C1 src/components/listini/ListinoAcquistoView.tsx +L231:             <col className="tablet:w-[280px]!" />
+C1 src/components/listini/ListinoAcquistoView.tsx +L232:             <col style={{ width: "140px" }} className="tablet:w-[160px]!" />
+C1 src/components/listini/ListinoAcquistoView.tsx +L233:             <col style={{ width: "80px" }} className="tablet:w-[112px]!" />
+C1 src/components/listini/ListinoAcquistoView.tsx +L234:             <col style={{ width: "56px" }} className="tablet:w-[88px]!" />
+C1 src/components/listini/ListinoAcquistoView.tsx +L235:             <col style={{ width: "56px" }} className="tablet:w-[88px]!" />
+C1 src/components/listini/ListinoAcquistoView.tsx +L236:             <col style={{ width: "56px" }} className="tablet:w-[88px]!" />
+C1 src/components/listini/ListinoAcquistoView.tsx +L237:             <col style={{ width: "56px" }} className="tablet:w-[88px]!" />
+C1 src/components/listini/ListinoAcquistoView.tsx +L238:             <col style={{ width: "56px" }} className="tablet:w-[88px]!" />
+C1 src/components/listini/ListinoAcquistoView.tsx +L239:             <col style={{ width: "88px" }} className="tablet:w-[112px]!" />
+C1 src/components/listini/ListinoAcquistoView.tsx +L240:             <col style={{ width: "68px" }} className="tablet:w-[112px]!" />
+C1 src/components/listini/ListinoAcquistoView.tsx +L241:             <col style={{ width: "68px" }} className="tablet:w-[112px]!" />
+C1 src/components/listini/ListinoAcquistoView.tsx +L242:             <col style={{ width: "104px" }} className="tablet:w-[144px]!" />
+C1 src/components/listini/ListinoAcquistoView.tsx +L243:             <col style={{ width: "88px" }} className="tablet:w-[112px]!" />
+C1 src/components/listini/ListinoAcquistoView.tsx -L247:               <th className="px-2 py-2 text-left">Cod. GAMMA</th>
+C1 src/components/listini/ListinoAcquistoView.tsx -L248:               <th className="px-3 py-2 text-left">Descrizione</th>
+C1 src/components/listini/ListinoAcquistoView.tsx +L247:               <th className="px-2 py-2 text-left tablet:sticky tablet:left-0 tablet:z-20 tablet:bg-primary tablet:text-primary-foreground">Cod. GAMMA</th>
+C1 src/components/listini/ListinoAcquistoView.tsx +L248:               <th className="px-3 py-2 text-left tablet:sticky tablet:left-[104px] tablet:z-20 tablet:bg-primary tablet:text-primary-foreground">Descrizione</th>
+C1 src/components/listini/ListinoAcquistoView.tsx -L270:                     className="px-2 py-1 font-mono truncate cursor-pointer"
+C1 src/components/listini/ListinoAcquistoView.tsx +L270:                     className="px-2 py-1 font-mono truncate cursor-pointer tablet:sticky tablet:left-0 tablet:z-10 tablet:bg-card tablet:whitespace-normal tablet:break-words tablet:min-h-10"
+C1 src/components/listini/ListinoAcquistoView.tsx -L277:                     className="px-3 py-1 truncate cursor-pointer"
+C1 src/components/listini/ListinoAcquistoView.tsx +L277:                     className="px-3 py-1 truncate cursor-pointer tablet:sticky tablet:left-[104px] tablet:z-10 tablet:bg-card tablet:whitespace-normal tablet:break-words"
+C1 src/components/listini/ListinoVenditaView.tsx -L300:       <div className="flex-1 overflow-auto">
+C1 src/components/listini/ListinoVenditaView.tsx +L300:       <div className="flex-1 overflow-auto tablet:relative tablet:isolate tablet:max-w-full tablet:[&_input]:min-h-11 tablet:[&_input]:text-base tablet:[&_th]:whitespace-normal tablet:[&_th]:align-top tablet:[&_th]:bg-primary tablet:[&_th]:text-primary-foreground tablet:[&_td]:align-top">
+C1 src/components/listini/ListinoVenditaView.tsx -L302:         <table className="w-full text-xs table-fixed">
+C1 src/components/listini/ListinoVenditaView.tsx +L302:         <table className="w-full text-xs table-fixed tablet:min-w-[992px] tablet:w-[992px]">
+C1 src/components/listini/ListinoVenditaView.tsx -L304:             <col style={{ width: "104px" }} />
+C1 src/components/listini/ListinoVenditaView.tsx -L305:             <col />
+C1 src/components/listini/ListinoVenditaView.tsx -L306:             <col style={{ width: "140px" }} />
+C1 src/components/listini/ListinoVenditaView.tsx -L307:             <col style={{ width: "96px" }} />
+C1 src/components/listini/ListinoVenditaView.tsx -L308:             <col style={{ width: "88px" }} />
+C1 src/components/listini/ListinoVenditaView.tsx -L309:             <col style={{ width: "96px" }} />
+C1 src/components/listini/ListinoVenditaView.tsx -L310:             <col style={{ width: "80px" }} />
+C1 src/components/listini/ListinoVenditaView.tsx +L304:             <col style={{ width: "104px" }} className="tablet:w-[104px]!" />
+C1 src/components/listini/ListinoVenditaView.tsx +L305:             <col className="tablet:w-[280px]!" />
+C1 src/components/listini/ListinoVenditaView.tsx +L306:             <col style={{ width: "140px" }} className="tablet:w-[160px]!" />
+C1 src/components/listini/ListinoVenditaView.tsx +L307:             <col style={{ width: "96px" }} className="tablet:w-[112px]!" />
+C1 src/components/listini/ListinoVenditaView.tsx +L308:             <col style={{ width: "88px" }} className="tablet:w-[112px]!" />
+C1 src/components/listini/ListinoVenditaView.tsx +L309:             <col style={{ width: "96px" }} className="tablet:w-[112px]!" />
+C1 src/components/listini/ListinoVenditaView.tsx +L310:             <col style={{ width: "80px" }} className="tablet:w-[112px]!" />
+C1 src/components/listini/ListinoVenditaView.tsx -L314:               <th className="px-2 py-2 text-left">Cod. GAMMA</th>
+C1 src/components/listini/ListinoVenditaView.tsx -L315:               <th className="px-3 py-2 text-left">Descrizione</th>
+C1 src/components/listini/ListinoVenditaView.tsx +L314:               <th className="px-2 py-2 text-left tablet:sticky tablet:left-0 tablet:z-20 tablet:bg-primary tablet:text-primary-foreground">Cod. GAMMA</th>
+C1 src/components/listini/ListinoVenditaView.tsx +L315:               <th className="px-3 py-2 text-left tablet:sticky tablet:left-[104px] tablet:z-20 tablet:bg-primary tablet:text-primary-foreground">Descrizione</th>
+C1 src/components/listini/ListinoVenditaView.tsx -L330:                     className="px-2 py-1 font-mono truncate cursor-pointer"
+C1 src/components/listini/ListinoVenditaView.tsx +L330:                     className="px-2 py-1 font-mono truncate cursor-pointer tablet:sticky tablet:left-0 tablet:z-10 tablet:bg-card tablet:whitespace-normal tablet:break-words tablet:min-h-10"
+C1 src/components/listini/ListinoVenditaView.tsx -L337:                     className="px-3 py-1 truncate cursor-pointer"
+C1 src/components/listini/ListinoVenditaView.tsx +L337:                     className="px-3 py-1 truncate cursor-pointer tablet:sticky tablet:left-[104px] tablet:z-10 tablet:bg-card tablet:whitespace-normal tablet:break-words"
+C1 src/components/listini/MatriceRicarichiView.tsx -L263:       <div className="flex-1 overflow-auto">
+C1 src/components/listini/MatriceRicarichiView.tsx -L264:         <table className="w-full text-xs">
+C1 src/components/listini/MatriceRicarichiView.tsx +L263:       <div className="flex-1 overflow-auto tablet:relative tablet:isolate tablet:max-w-full tablet:[&_input]:min-h-11 tablet:[&_input]:text-base tablet:[&_th]:whitespace-normal tablet:[&_th]:align-top tablet:[&_th]:bg-primary tablet:[&_th]:text-primary-foreground tablet:[&_td]:align-top">
+C1 src/components/listini/MatriceRicarichiView.tsx +L264:         <table className="w-full text-xs tablet:table-fixed tablet:min-w-[1200px]">
+C1 src/components/listini/MatriceRicarichiView.tsx -L267:               <th className="px-3 py-2 text-left w-14">Cat.</th>
+C1 src/components/listini/MatriceRicarichiView.tsx -L268:               <th className="px-3 py-2 text-left">Descrizione</th>
+C1 src/components/listini/MatriceRicarichiView.tsx +L267:               <th className="px-3 py-2 text-left w-14 tablet:w-14 tablet:sticky tablet:left-0 tablet:z-20 tablet:bg-primary tablet:text-primary-foreground">Cat.</th>
+C1 src/components/listini/MatriceRicarichiView.tsx +L268:               <th className="px-3 py-2 text-left tablet:w-[280px] tablet:sticky tablet:left-14 tablet:z-20 tablet:bg-primary tablet:text-primary-foreground">Descrizione</th>
+C1 src/components/listini/MatriceRicarichiView.tsx -L279:                 <td className="px-3 py-1 font-mono font-bold text-navy">{r.categoria}</td>
+C1 src/components/listini/MatriceRicarichiView.tsx -L280:                 <td className="px-2 py-0.5">
+C1 src/components/listini/MatriceRicarichiView.tsx +L279:                 <td className="px-3 py-1 font-mono font-bold text-navy tablet:sticky tablet:left-0 tablet:z-10 tablet:bg-card">{r.categoria}</td>
+C1 src/components/listini/MatriceRicarichiView.tsx +L280:                 <td className="px-2 py-0.5 tablet:sticky tablet:left-14 tablet:z-10 tablet:bg-card">
+C1 src/routes/_app/audit.tsx -L113:           <Table>
+C1 src/routes/_app/audit.tsx -L114:             <TableHeader>
+C1 src/routes/_app/audit.tsx +L113:           <Table className="tablet:table-fixed tablet:w-full tablet:block">
+C1 src/routes/_app/audit.tsx +L114:             <TableHeader className="tablet:hidden">
+C1 src/routes/_app/audit.tsx -L123:             <TableBody>
+C1 src/routes/_app/audit.tsx +L123:             <TableBody className="tablet:block">
+C1 src/routes/_app/audit.tsx -L129:                 <TableRow key={r.id}>
+C1 src/routes/_app/audit.tsx -L130:                   <TableCell className="text-xs whitespace-nowrap">
+C1 src/routes/_app/audit.tsx +L129:                 <TableRow key={r.id} className="tablet:grid tablet:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] tablet:p-3">
+C1 src/routes/_app/audit.tsx +L130:                   <TableCell className="text-xs whitespace-nowrap tablet:whitespace-normal tablet:block">
+C1 src/routes/_app/audit.tsx -L133:                   <TableCell className="text-xs">{r.user_email ?? "—"}</TableCell>
+C1 src/routes/_app/audit.tsx -L134:                   <TableCell><Badge variant="outline">{r.entita}</Badge></TableCell>
+C1 src/routes/_app/audit.tsx -L135:                   <TableCell><Badge>{r.azione}</Badge></TableCell>
+C1 src/routes/_app/audit.tsx -L136:                   <TableCell className="text-xs font-mono max-w-md truncate">
+C1 src/routes/_app/audit.tsx +L133:                   <TableCell className="text-xs tablet:whitespace-normal tablet:break-all tablet:block">{r.user_email ?? "—"}</TableCell>
+C1 src/routes/_app/audit.tsx +L134:                   <TableCell className="tablet:whitespace-normal tablet:break-words tablet:block"><Badge variant="outline">{r.entita}</Badge></TableCell>
+C1 src/routes/_app/audit.tsx +L135:                   <TableCell className="tablet:whitespace-normal tablet:break-words tablet:block"><Badge>{r.azione}</Badge></TableCell>
+C1 src/routes/_app/audit.tsx +L136:                   <TableCell className="text-xs font-mono max-w-md truncate tablet:max-w-none tablet:whitespace-normal tablet:break-all tablet:col-span-2 tablet:block">
+C1 src/routes/_app/listini.tsx -L22:           <TabsList>
+C1 src/routes/_app/listini.tsx -L23:             <TabsTrigger value="acquisto">Listino acquisto</TabsTrigger>
+C1 src/routes/_app/listini.tsx -L24:             <TabsTrigger value="vendita">Listino vendita</TabsTrigger>
+C1 src/routes/_app/listini.tsx -L25:             <TabsTrigger value="matrice">Matrice ricarichi</TabsTrigger>
+C1 src/routes/_app/listini.tsx +L22:           <TabsList className="tablet:h-auto">
+C1 src/routes/_app/listini.tsx +L23:             <TabsTrigger className="tablet:min-h-10" value="acquisto">Listino acquisto</TabsTrigger>
+C1 src/routes/_app/listini.tsx +L24:             <TabsTrigger className="tablet:min-h-10" value="vendita">Listino vendita</TabsTrigger>
+C1 src/routes/_app/listini.tsx +L25:             <TabsTrigger className="tablet:min-h-10" value="matrice">Matrice ricarichi</TabsTrigger>
+C4 src/routes/_app/privacy.tsx +L1: import { useIsTablet } from "@/hooks/use-tablet";
+C4 src/routes/_app/privacy.tsx +L39:   const isTablet = useIsTablet();
+C1 src/routes/_app/privacy.tsx -L158:           <Table>
+C1 src/routes/_app/privacy.tsx -L159:             <TableHeader>
+C1 src/routes/_app/privacy.tsx +L160:           <Table className="tablet:table-fixed tablet:w-full tablet:max-lg:block">
+C1 src/routes/_app/privacy.tsx +L161:             <TableHeader className="tablet:max-lg:hidden">
+C1 src/routes/_app/privacy.tsx -L161:                 <TableHead>Cliente</TableHead>
+C1 src/routes/_app/privacy.tsx -L162:                 <TableHead>Contatto</TableHead>
+C1 src/routes/_app/privacy.tsx -L163:                 <TableHead>Ruolo</TableHead>
+C1 src/routes/_app/privacy.tsx -L164:                 <TableHead className="text-center">Trattamento dati</TableHead>
+C1 src/routes/_app/privacy.tsx -L165:                 <TableHead>Consensi</TableHead>
+C1 src/routes/_app/privacy.tsx -L166:                 <TableHead>Data firma</TableHead>
+C1 src/routes/_app/privacy.tsx -L167:                 <TableHead className="text-right">PDF</TableHead>
+C1 src/routes/_app/privacy.tsx +L163:                 <TableHead className="tablet:w-[35%]">Cliente</TableHead>
+C1 src/routes/_app/privacy.tsx +L164:                 <TableHead className="tablet:w-[25%]">Contatto</TableHead>
+C1 src/routes/_app/privacy.tsx +L165:                 <TableHead className="tablet:hidden">Ruolo</TableHead>
+C1 src/routes/_app/privacy.tsx +L166:                 <TableHead className="text-center tablet:w-28">Trattamento dati</TableHead>
+C1 src/routes/_app/privacy.tsx +L167:                 <TableHead className="tablet:w-28">Consensi</TableHead>
+C1 src/routes/_app/privacy.tsx +L168:                 <TableHead className="tablet:hidden">Data firma</TableHead>
+C1 src/routes/_app/privacy.tsx +L169:                 <TableHead className="text-right tablet:w-36">PDF</TableHead>
+C1 src/routes/_app/privacy.tsx -L170:             <TableBody>
+C1 src/routes/_app/privacy.tsx +L172:             <TableBody className="tablet:max-lg:block">
+C1 src/routes/_app/privacy.tsx -L174:                   className="cursor-pointer hover:bg-muted/40"
+C1 src/routes/_app/privacy.tsx +L176:                   className="cursor-pointer hover:bg-muted/40 tablet:max-lg:grid tablet:max-lg:grid-cols-2 tablet:max-lg:p-3"
+C1 src/routes/_app/privacy.tsx -L181:                   <TableCell className="font-medium">
+C1 src/routes/_app/privacy.tsx +L183:                   <TableCell className="font-medium tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">
+C1 src/routes/_app/privacy.tsx -L185:                   <TableCell>{`${r.nome ?? ""} ${r.cognome ?? ""}`.trim() || "—"}</TableCell>
+C1 src/routes/_app/privacy.tsx -L186:                   <TableCell className="text-muted-foreground">{r.ruolo ?? "—"}</TableCell>
+C1 src/routes/_app/privacy.tsx -L187:                   <TableCell className="text-center">
+C2 src/routes/_app/privacy.tsx +L187:                   <TableCell className="tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">{`${r.nome ?? ""} ${r.cognome ?? ""}`.trim() || "—"}{isTablet && <div className="mt-2 space-y-1 text-sm text-muted-foreground"><div>{r.ruolo ?? "—"}</div><div>Firma: {fmtDate(r.data_firma)}</div></div>}</TableCell>
+C1 src/routes/_app/privacy.tsx +L188:                   <TableCell className="text-muted-foreground tablet:hidden">{r.ruolo ?? "—"}</TableCell>
+C1 src/routes/_app/privacy.tsx +L189:                   <TableCell className="text-center tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">
+C1 src/routes/_app/privacy.tsx -L190:                   <TableCell>
+C1 src/routes/_app/privacy.tsx +L192:                   <TableCell className="tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">
+C1 src/routes/_app/privacy.tsx -L198:                   <TableCell>{fmtDate(r.data_firma)}</TableCell>
+C1 src/routes/_app/privacy.tsx -L199:                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+C1 src/routes/_app/privacy.tsx +L200:                   <TableCell className="tablet:hidden">{fmtDate(r.data_firma)}</TableCell>
+C1 src/routes/_app/privacy.tsx +L201:                   <TableCell className="text-right tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0" onClick={(e) => e.stopPropagation()}>
+C4 src/routes/_app/template-email.tsx +L1: import { useIsTablet } from "@/hooks/use-tablet";
+C4 src/routes/_app/template-email.tsx +L55:   const isTablet = useIsTablet();
+C1 src/routes/_app/template-email.tsx -L114:           <Table>
+C1 src/routes/_app/template-email.tsx -L115:             <TableHeader>
+C1 src/routes/_app/template-email.tsx +L116:           <Table className="tablet:table-fixed tablet:w-full tablet:max-lg:block">
+C1 src/routes/_app/template-email.tsx +L117:             <TableHeader className="tablet:max-lg:hidden">
+C1 src/routes/_app/template-email.tsx -L117:                 <TableHead>Nome</TableHead>
+C1 src/routes/_app/template-email.tsx -L118:                 <TableHead>Tipo</TableHead>
+C1 src/routes/_app/template-email.tsx -L119:                 <TableHead>Oggetto</TableHead>
+C1 src/routes/_app/template-email.tsx -L120:                 <TableHead className="w-24">Attivo</TableHead>
+C1 src/routes/_app/template-email.tsx -L121:                 <TableHead className="w-32 text-right">Azioni</TableHead>
+C1 src/routes/_app/template-email.tsx +L119:                 <TableHead className="tablet:w-[65%]">Nome</TableHead>
+C1 src/routes/_app/template-email.tsx +L120:                 <TableHead className="tablet:hidden">Tipo</TableHead>
+C1 src/routes/_app/template-email.tsx +L121:                 <TableHead className="tablet:hidden">Oggetto</TableHead>
+C1 src/routes/_app/template-email.tsx +L122:                 <TableHead className="w-24 tablet:w-32">Attivo</TableHead>
+C1 src/routes/_app/template-email.tsx +L123:                 <TableHead className="w-32 text-right tablet:w-28">Azioni</TableHead>
+C1 src/routes/_app/template-email.tsx -L124:             <TableBody>
+C1 src/routes/_app/template-email.tsx +L126:             <TableBody className="tablet:max-lg:block">
+C1 src/routes/_app/template-email.tsx -L126:                 <TableRow key={t.id}>
+C1 src/routes/_app/template-email.tsx -L127:                   <TableCell className="font-medium">{t.nome}</TableCell>
+C1 src/routes/_app/template-email.tsx -L128:                   <TableCell><TipoLabel tipo={t.tipo} /></TableCell>
+C1 src/routes/_app/template-email.tsx -L129:                   <TableCell className="text-muted-foreground text-sm truncate max-w-md">{t.oggetto}</TableCell>
+C1 src/routes/_app/template-email.tsx -L130:                   <TableCell>
+C1 src/routes/_app/template-email.tsx +L128:                 <TableRow key={t.id} className="tablet:max-lg:grid tablet:max-lg:grid-cols-[minmax(0,1fr)_auto] tablet:max-lg:p-3">
+C2 src/routes/_app/template-email.tsx +L129:                   <TableCell className="font-medium tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">{t.nome}{isTablet && <div className="mt-2 space-y-2 text-sm font-normal text-muted-foreground"><TipoLabel tipo={t.tipo} /><div>{t.oggetto ?? "—"}</div></div>}</TableCell>
+C1 src/routes/_app/template-email.tsx +L130:                   <TableCell className="tablet:hidden"><TipoLabel tipo={t.tipo} /></TableCell>
+C1 src/routes/_app/template-email.tsx +L131:                   <TableCell className="text-muted-foreground text-sm truncate max-w-md tablet:hidden">{t.oggetto}</TableCell>
+C1 src/routes/_app/template-email.tsx +L132:                   <TableCell className="tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">
+C1 src/routes/_app/template-email.tsx -L133:                   <TableCell className="text-right">
+C1 src/routes/_app/template-email.tsx +L135:                   <TableCell className="text-right tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">
+C4 src/routes/_app/template-lettera.tsx +L1: import { useIsTablet } from "@/hooks/use-tablet";
+C4 src/routes/_app/template-lettera.tsx +L53:   const isTablet = useIsTablet();
+C1 src/routes/_app/template-lettera.tsx -L117:           <Table>
+C1 src/routes/_app/template-lettera.tsx -L118:             <TableHeader>
+C1 src/routes/_app/template-lettera.tsx +L119:           <Table className="tablet:table-fixed tablet:w-full tablet:max-lg:block">
+C1 src/routes/_app/template-lettera.tsx +L120:             <TableHeader className="tablet:max-lg:hidden">
+C1 src/routes/_app/template-lettera.tsx -L120:                 <TableHead>Nome</TableHead>
+C1 src/routes/_app/template-lettera.tsx -L121:                 <TableHead>Tipo</TableHead>
+C1 src/routes/_app/template-lettera.tsx -L122:                 <TableHead>Oggetto</TableHead>
+C1 src/routes/_app/template-lettera.tsx -L123:                 <TableHead className="w-32">Dati auto</TableHead>
+C1 src/routes/_app/template-lettera.tsx -L124:                 <TableHead className="w-24">Attivo</TableHead>
+C1 src/routes/_app/template-lettera.tsx -L125:                 <TableHead className="w-32 text-right">Azioni</TableHead>
+C1 src/routes/_app/template-lettera.tsx +L122:                 <TableHead className="tablet:w-[65%]">Nome</TableHead>
+C1 src/routes/_app/template-lettera.tsx +L123:                 <TableHead className="tablet:hidden">Tipo</TableHead>
+C1 src/routes/_app/template-lettera.tsx +L124:                 <TableHead className="tablet:hidden">Oggetto</TableHead>
+C1 src/routes/_app/template-lettera.tsx +L125:                 <TableHead className="w-32 tablet:hidden">Dati auto</TableHead>
+C1 src/routes/_app/template-lettera.tsx +L126:                 <TableHead className="w-24 tablet:w-32">Attivo</TableHead>
+C1 src/routes/_app/template-lettera.tsx +L127:                 <TableHead className="w-32 text-right tablet:w-28">Azioni</TableHead>
+C1 src/routes/_app/template-lettera.tsx -L128:             <TableBody>
+C1 src/routes/_app/template-lettera.tsx +L130:             <TableBody className="tablet:max-lg:block">
+C1 src/routes/_app/template-lettera.tsx -L130:                 <TableRow key={t.id}>
+C1 src/routes/_app/template-lettera.tsx -L131:                   <TableCell className="font-medium">{t.nome}</TableCell>
+C1 src/routes/_app/template-lettera.tsx -L132:                   <TableCell><TipoLabel tipo={t.tipo} /></TableCell>
+C1 src/routes/_app/template-lettera.tsx -L133:                   <TableCell className="text-muted-foreground text-sm truncate max-w-md">{t.oggetto ?? "—"}</TableCell>
+C1 src/routes/_app/template-lettera.tsx -L134:                   <TableCell>
+C1 src/routes/_app/template-lettera.tsx +L132:                 <TableRow key={t.id} className="tablet:max-lg:grid tablet:max-lg:grid-cols-[minmax(0,1fr)_auto] tablet:max-lg:p-3">
+C2 src/routes/_app/template-lettera.tsx +L133:                   <TableCell className="font-medium tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">{t.nome}{isTablet && <div className="mt-2 space-y-2 text-sm font-normal text-muted-foreground"><TipoLabel tipo={t.tipo} /><div>{t.oggetto ?? "—"}</div><Badge variant="outline">{t.usa_dati_automatici ? "Auto" : "Libero"}</Badge></div>}</TableCell>
+C1 src/routes/_app/template-lettera.tsx +L134:                   <TableCell className="tablet:hidden"><TipoLabel tipo={t.tipo} /></TableCell>
+C1 src/routes/_app/template-lettera.tsx +L135:                   <TableCell className="text-muted-foreground text-sm truncate max-w-md tablet:hidden">{t.oggetto ?? "—"}</TableCell>
+C1 src/routes/_app/template-lettera.tsx +L136:                   <TableCell className="tablet:hidden">
+C1 src/routes/_app/template-lettera.tsx -L137:                   <TableCell>
+C1 src/routes/_app/template-lettera.tsx +L139:                   <TableCell className="tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">
+C1 src/routes/_app/template-lettera.tsx -L140:                   <TableCell className="text-right">
+C1 src/routes/_app/template-lettera.tsx +L142:                   <TableCell className="text-right tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">
+```
