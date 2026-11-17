@@ -1,7 +1,7 @@
 # FM79 — Fetta 5 Commerciale
 - [x] Diagnosi e fotografie originali delle cinque pagine.
 - [x] Solo presentazione tablet: schede verticali, tabelle essenziali, calendario touch.
-- [ ] Prova statica, confronto sequenziale, misure touch, tutti i test e SHA.
+- [x] Prova statica completa; 15 coppie (13 identiche, 2 rumore confermato 3+3), zero differenze vere; 20 misure touch 0/0/0; 1019 test verdi, SHA codice nel rapporto.
 
 # FM79 — Chiusura verifica fette 1–4 (fetta 5 esclusa da questo giro)
 - [x] Prova statica completa src f3f1883f→HEAD: 600 righe (156 classi tablet, 399 rami/helper tablet, 23 hook/variante, 22 ALTRO); nessuna eccezione cambia la presentazione telefono/PC. Head Recupero conservato, documento fm79-prova-statica.md con tutte le righe.
