@@ -11,6 +11,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, MessageSquare, Paperclip, Search } fro
 import { SchedaLista, ElencoSchede, type CampoScheda } from "@/components/lista-responsive";
 import { puoGestireTesoreria } from "@/lib/tesoreria-permessi";
 import { cn } from "@/lib/utils";
+import { useIsTablet } from "@/hooks/use-tablet";
 import {
   STILE_ARCHIVIATA, statoAcconto, stileAdmin, stilePrincipale, stileStatus, stileTipo, type StileVoce,
 } from "./stili";
@@ -134,6 +135,7 @@ export function RichiesteTable({
   filtroUrl?: { soloBonifici?: boolean; periodo?: Periodo };
 }) {
   const navigate = useNavigate();
+  const isTablet = useIsTablet();
   const openDetail = (id: string) => navigate({ to: "/richieste-interne/$richiestaId", params: { richiestaId: id } });
   // Filtri e ordinamento conservati (useFiltriPagina), una chiave per vista.
   const { user, roles } = useAuth();
@@ -240,7 +242,7 @@ export function RichiesteTable({
       )}
 
       {/* Sotto md: schede */}
-      <ElencoSchede>
+      <ElencoSchede finoA={isTablet ? "lg" : "md"}>
         {isLoading && <div className="text-center text-muted-foreground py-8 text-sm">Caricamento…</div>}
         {!isLoading && filtered.length === 0 && (
           <div className="text-center text-muted-foreground py-8 text-sm">{emptyLabel}</div>
@@ -306,6 +308,82 @@ export function RichiesteTable({
         })}
       </ElencoSchede>
 
+      {isTablet ? (
+        // FM79: solo tablet in orizzontale (≥1024px). Colonne essenziali; tipo,
+        // richiedente+sede e date dentro la riga. Importo sempre visibile.
+        <div className="hidden lg:block rounded-md border">
+          <Table className="table-fixed w-full">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-1 p-0" aria-hidden />
+                <SortHead active={sortKey === "title"} dir={sortDir} onClick={() => toggleSort("title")}>Richiesta</SortHead>
+                <SortHead active={sortKey === "amount"} dir={sortDir} onClick={() => toggleSort("amount")} className="w-36 text-right">Importo</SortHead>
+                <SortHead active={sortKey === "status"} dir={sortDir} onClick={() => toggleSort("status")} className="w-44">Stato</SortHead>
+                <TableHead className={onGestisci || onRipristina ? "w-52" : "w-24"}><span className="sr-only">Azioni</span></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading && (
+                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Caricamento…</TableCell></TableRow>
+              )}
+              {!isLoading && filtered.length === 0 && (
+                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">{emptyLabel}</TableCell></TableRow>
+              )}
+              {filtered.map((r) => {
+                const nAll = r.richieste_interne_allegati?.length ?? 0;
+                const showAdmin =
+                  showAdminBadge &&
+                  (r.status === "resp_approved" || r.status === "approved") &&
+                  r.admin_status &&
+                  r.admin_status !== "da_gestire";
+                const info = [
+                  nascondiRichiedente ? null : r.requester_name,
+                  r.sede_name || "—",
+                  r.fornitore ? `Fornitore ${r.fornitore}` : null,
+                  fmtData(r.created_at),
+                  showArchivedColumns ? `Archiviata da ${r.archived_by_name || "—"} il ${fmtData(r.archived_at)}` : null,
+                ].filter(Boolean).join(" · ");
+                return (
+                  <TableRow key={r.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openDetail(r.id)}>
+                    <TableCell className={cn("w-1 p-0 border-l-4", stilePrincipale(r).bordo)} aria-hidden />
+                    <TableCell className="align-top whitespace-normal">
+                      <div className={`flex items-start gap-1.5 min-w-0 ${unreadIds?.has(r.id) ? "font-bold text-primary" : "font-semibold"}`}>
+                        {unreadIds?.has(r.id) && <MessageSquare className="size-3.5 text-primary shrink-0 mt-0.5" aria-label="Messaggi non letti" />}
+                        <span className="min-w-0 break-words">{r.title}</span>
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-1">
+                        <BadgeStile stile={stileTipo(r.type)} />
+                        {nAll > 0 && <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><Paperclip className="size-3" />{nAll}</span>}
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground break-words">{info}</div>
+                    </TableCell>
+                    <TableCell className="align-top text-right font-mono whitespace-normal">{fmtEuro(r.amount)}</TableCell>
+                    <TableCell className="align-top whitespace-normal">
+                      <div className="flex flex-col gap-1">
+                        <BadgeStile stile={stileStatus(r.status)} />
+                        {showAdmin && <BadgeStile stile={stileAdmin(r.admin_status)} />}
+                        <BadgeAcconto r={r} />
+                        {r.archived && !showArchivedColumns && <BadgeStile stile={STILE_ARCHIVIATA} />}
+                      </div>
+                    </TableCell>
+                    <TableCell className="align-top" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex flex-col items-stretch gap-3">
+                        {onGestisci && mostraPulsanteGestisci(r) && (
+                          <Button size="sm" variant="outline" className="whitespace-normal h-auto" onClick={() => onGestisci(r)}>{gestisciLabel}</Button>
+                        )}
+                        {onRipristina && (
+                          <Button size="sm" variant="outline" onClick={() => onRipristina(r)}>↩ Ripristina</Button>
+                        )}
+                        <Button size="sm" variant="ghost" onClick={() => openDetail(r.id)}>Apri</Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      ) : (
       <div className="hidden md:block rounded-md border">
 
         <Table className="min-w-[1000px]">
@@ -396,6 +474,7 @@ export function RichiesteTable({
           </TableBody>
         </Table>
       </div>
+      )}
     </div>
   );
 }
@@ -420,7 +499,7 @@ function SortHead({
 }: { active: boolean; dir: "asc" | "desc"; onClick: () => void; children: React.ReactNode; className?: string }) {
   return (
     <TableHead className={className}>
-      <button onClick={onClick} className="inline-flex items-center gap-1 font-medium hover:text-foreground">
+      <button onClick={onClick} className="inline-flex items-center gap-1 font-medium hover:text-foreground tablet:min-h-10">
         {children}
         {active ? (dir === "asc" ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />) : <ArrowUpDown className="size-3 opacity-40" />}
       </button>
