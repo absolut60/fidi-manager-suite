@@ -25,6 +25,8 @@ Con l'anteprima in esecuzione su `http://localhost:8080`:
 
 ### Verifica di chiusura fetta 4 — esito parziale, 17/11/2026
 
+**Aggiornamento successivo:** Andrea ha sostituito il giro completo con la prova statica delle fette 1–4 e dieci pagine di conferma. Verifica conclusa in `fm79-prova-statica.md`: 600 righe classificate, 30/30 coppie identiche a 375/1280/1440, fixture Approva con ruolo e 14 richieste, Recupero con cinque aggregati, 1019 test superati. Il resoconto parziale seguente rimane come storico, non come attività ancora aperta. Nessuna modifica all’app; fetta 5 esclusa da questo giro.
+
 - Nessuna modifica al codice dell'app; conservato il `head` della pagina Recupero crediti, come richiesto.
 - I vecchi 222 scatti e l'elenco delle 12 immagini diverse non erano più presenti in `/tmp`: non è possibile riclassificare quelle specifiche immagini senza rigenerare il giro completo.
 - Eseguiti **90 scatti sequenziali**: cinque pagine × tre dimensioni × tre originali (88560579) e tre attuali. Pagine: Recupero crediti, Campagne recupero, Calendario recupero, Richieste interne/approva, Marketing/segmenti. Originale mostrato mediante intercettazione dei moduli nel browser di prova, senza sostituire i file dell'app.

@@ -1,17 +1,16 @@
 # FM79 — Chiusura verifica fette 1–4 (fetta 5 esclusa da questo giro)
-- [ ] Prova statica completa src f3f1883f→HEAD: classificazione di tutte le righe e impatto telefono/PC, documento fm79-prova-statica.md.
-- [ ] Conferma sequenziale dieci pagine × tre dimensioni; fixture approvatore e almeno cinque aggregati recupero, protocollo 3+3 delle differenze.
-- [ ] Suite bun test e SHA; nessuna modifica app salvo differenze non-tablet effettive autorizzate.
+- [x] Prova statica completa src f3f1883f→HEAD: 600 righe (156 classi tablet, 399 rami/helper tablet, 23 hook/variante, 22 ALTRO); nessuna eccezione cambia la presentazione telefono/PC. Head Recupero conservato, documento fm79-prova-statica.md con tutte le righe.
+- [x] Conferma sequenziale dieci pagine × tre dimensioni: 60 scatti, 30/30 coppie identiche; 14 richieste da approvare e cinque aggregati recupero visibili. Zero coppie diverse, 3+3 non necessario; Legali esclusa.
+- [x] Suite bun test 1019/0; src invariato e nessuna migrazione. Verifica 1–4 chiusa secondo A+B+C, fetta 5 espressamente esclusa.
 
 # FM79 — Tablet, chiusura fetta 4 e fetta 5
-- [ ] Chiudere fetta 4 contro 88560579: scatti sequenziali 3+3 delle immagini diverse, incluse approva e segmenti; documentare il protocollo e le differenze vere.
+- [x] Protocollo precedente sostituito dalla verifica statica f3f1883f→HEAD e dal giro ridotto richiesti da Andrea; chiusura documentata in fm79-prova-statica.md.
 - [x] Documentato protocollo sequenziale; 90 scatti su cinque pagine, 12 casi identici e 3 rumorosi, zero differenze vere osservate. Suite 1019/0. Chiusura completa bloccata dalla fixture Legali dopo 103 scatti originali; Recupero/Approva richiedono fixture non vuote e ruolo approvatore. Vecchie immagini non disponibili.
-- [ ] Fetta 5 solo tablet: Lead, Opportunità, Contatti, Cantieri e Calendario commerciale; nessuna modifica dati/logica/permessi.
-- [ ] Regressione fetta 5 col protocollo 3+3, misure quattro dimensioni con 14 righe, bun test e SHA.
+- Fetta 5 rinviata espressamente da Andrea, non autorizzata in questo giro.
 
 # FM79 — Tablet, fetta 4
-- [ ] Menu tablet sovrapposto e richiudibile, voci ≥44px; recupero schede/colonne essenziali, campagne compatte e calendario ≥40px. Solo presentazione tablet, logo invariato.
-- [ ] Doppio riferimento originale e confronto dopo su 222 immagini, fotografie/misure touch alle quattro dimensioni con sidebar inclusa, suite Bun e SHA.
+- [x] Modifiche presentazionali preesistenti della fetta 4 verificate sul diff completo, logo invariato.
+- [x] Chiusura non-regressione sostituita dal criterio A+B+C del 17/11: prova statica completa e 30 coppie ridotte identiche, suite Bun 1019/0; non ripetute le misure tablet, fuori dal nuovo giro richiesto.
 
 # FM79 — Cerved: subject_type obbligatorio nell'acquisto
 - [x] `acquistaLightReport` invia `subject_type: "COMPANY"` nel corpo di POST B2B /v1/purchase; format, product_id 52015, subject_id, language ITALIAN e reference invariati. Nuovo test `tests/cerved-acquisto.test.ts` sul corpo realmente inviato (con e senza reference). Nessuna migrazione.
