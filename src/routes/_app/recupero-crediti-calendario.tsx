@@ -562,7 +562,7 @@ function CalendarioPage() {
         </div>
       </Card>
 
-      <Card className="p-4">
+      <Card className="p-4 tablet:[&_.fc-button]:min-h-10 tablet:[&_.fc-button]:min-w-10 tablet:[&_.fc-daygrid-day-frame]:min-h-10 tablet:[&_.fc-timegrid-slot]:h-10 tablet:[&_.fc-col-header-cell-cushion]:inline-flex tablet:[&_.fc-col-header-cell-cushion]:min-h-10 tablet:[&_.fc-col-header-cell-cushion]:items-center tablet:[&_.fc-daygrid-day-number]:inline-flex tablet:[&_.fc-daygrid-day-number]:min-h-10 tablet:[&_.fc-daygrid-day-number]:min-w-10 tablet:[&_.fc-daygrid-day-number]:items-center tablet:[&_.fc-daygrid-day-number]:justify-center">
         {azioniQuery.isLoading && !range ? (
           <Skeleton className="h-[600px] w-full" />
         ) : (

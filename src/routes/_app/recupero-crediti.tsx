@@ -33,6 +33,7 @@ import { RegistraPromessaSelectorDialog } from "@/components/registra-promessa-s
 import { cn } from "@/lib/utils";
 import { useNomiUtentiQuery } from "@/hooks/use-nomi-utenti";
 import { supabase } from "@/integrations/supabase/client";
+import { useIsTablet } from "@/hooks/use-tablet";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { FiltroMultiplo } from "@/components/filtro-multiplo";
@@ -62,6 +63,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export const Route = createFileRoute("/_app/recupero-crediti")({
+  head: () => ({ meta: [{ title: "Recupero crediti | FidiManager" }, { name: "description", content: "Clienti, scaduti e attività di recupero crediti MADE." }, { property: "og:title", content: "Recupero crediti | FidiManager" }, { property: "og:description", content: "Clienti, scaduti e attività di recupero crediti MADE." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: RecuperoCreditiPage,
 });
 
@@ -166,6 +168,7 @@ function daIsoGiorno(v: string): Date | undefined {
 }
 
 function RecuperoCreditiPage() {
+  const isTablet = useIsTablet();
   const { role, profilo, roles, user } = useAuth();
   const puoInviare = puoInviareComunicazioniRecupero(roles as string[]);
   const isStoreManager = useVisibilitaLimitataNegozio(); // FM59: store manager e showroom (fonte unica)
@@ -446,7 +449,7 @@ function RecuperoCreditiPage() {
   return (
     <TooltipProvider delayDuration={200}>
       <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center tablet:flex-col tablet:items-stretch">
         <div className="flex items-center gap-3 min-w-0 sm:flex-1">
           <HandCoins className="size-7 text-primary shrink-0" />
           <div className="min-w-0">
@@ -456,7 +459,7 @@ function RecuperoCreditiPage() {
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 tablet:grid tablet:grid-cols-2 tablet:lg:grid-cols-4">
           <Button size="sm" onClick={() => setNuovaAzioneOpen(true)} className="gap-1.5">
             <Plus className="size-4" /> Nuova azione
           </Button>
@@ -469,7 +472,7 @@ function RecuperoCreditiPage() {
             </Link>
           </Button>
           {puoInviare && (
-            <Button variant="outline" size="sm" onClick={() => setInvioMassivoOpen(true)} className="gap-1.5">
+            <Button variant="outline" size="sm" onClick={() => setInvioMassivoOpen(true)} className="gap-1.5 tablet:min-h-10">
               <Send className="size-4" /> Invio massivo solleciti
             </Button>
           )}
@@ -477,7 +480,7 @@ function RecuperoCreditiPage() {
       </div>
 
       {/* Metric cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 tablet:grid-cols-2">
         <MetricCard label="Totale azioni" value={m?.totale ?? 0} loading={metricsQuery.isLoading} />
         <MetricCard label="Da fare" value={m?.daFare ?? 0} loading={metricsQuery.isLoading} tone="warning" />
         <MetricCard label="Promesse di pagamento" value={m?.promesse ?? 0} loading={metricsQuery.isLoading} tone="info" />
@@ -487,14 +490,14 @@ function RecuperoCreditiPage() {
       {/* Tabs cliente */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
-          <TabsList>
-            <TabsTrigger value="aperti" className="gap-1.5">
+          <TabsList className="tablet:h-auto">
+            <TabsTrigger value="aperti" className="gap-1.5 tablet:min-h-10">
               <Clock className="size-3.5" /> Aperti ({counts.aperti})
             </TabsTrigger>
-            <TabsTrigger value="tutti" className="gap-1.5">
+            <TabsTrigger value="tutti" className="gap-1.5 tablet:min-h-10">
               <CheckCircle2 className="size-3.5" /> Tutti ({counts.tutti})
             </TabsTrigger>
-            <TabsTrigger value="conclusi" className="gap-1.5">
+            <TabsTrigger value="conclusi" className="gap-1.5 tablet:min-h-10">
               <CheckCircle2 className="size-3.5" /> Conclusi ({counts.conclusi})
             </TabsTrigger>
           </TabsList>
@@ -504,7 +507,7 @@ function RecuperoCreditiPage() {
             type="button"
             onClick={() => setSoloRitardo((v) => !v)}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs border transition-colors",
+              "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs border transition-colors tablet:min-h-10",
               soloRitardo
                 ? "bg-destructive text-destructive-foreground border-destructive"
                 : "bg-background hover:bg-muted text-foreground border-border"
@@ -519,8 +522,8 @@ function RecuperoCreditiPage() {
       {/* Filters */}
       <Card className="p-4">
         <FiltriCollassabili attivi={filtriAttivi}>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
-          <div className="lg:col-span-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3 tablet:grid-cols-2 tablet:lg:grid-cols-3">
+          <div className="lg:col-span-2 tablet:col-span-full">
             <div className="relative">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
@@ -583,7 +586,7 @@ function RecuperoCreditiPage() {
 
       {/* Table */}
       <Card>
-        <div className="md:hidden p-3">
+        <div className={isTablet ? "p-3 lg:hidden" : "md:hidden p-3"}>
           {aggQuery.isLoading ? (
             <div className="space-y-2">
               {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-24 w-full" />)}
@@ -591,7 +594,7 @@ function RecuperoCreditiPage() {
           ) : pageRows.length === 0 ? (
             <div className="text-center text-muted-foreground py-10 text-sm">Nessun cliente con azioni di recupero</div>
           ) : (
-            <ElencoSchede>
+            <ElencoSchede finoA={isTablet ? "lg" : "md"}>
               {pageRows.map((r) => (
                 <SchedaLista
                   key={r.cliente_id}
@@ -632,20 +635,20 @@ function RecuperoCreditiPage() {
           )}
         </div>
 
-        <div className="hidden md:block">
-          <Table className="min-w-[1150px]">
+        <div className={isTablet ? "hidden lg:block" : "hidden md:block"}>
+          <Table className="min-w-[1150px] tablet:min-w-0 tablet:table-fixed">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-10" />
+                <TableHead className="w-10 tablet:hidden" />
                 <SortableHead label="Cliente" k="ragione_sociale" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
-                <TableHead>Store</TableHead>
+                <TableHead className="tablet:hidden">Store</TableHead>
                 <SortableHead label="Scaduto" k="scaduto" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} align="right" />
                 <SortableHead label="Aperte" k="azioni_aperte" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} align="center" />
                 <SortableHead label="Prossima" k="prossima" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
                 <SortableHead label="Ultima fatta" k="ultima" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
-                <TableHead>Stadio</TableHead>
-                <TableHead>Stato</TableHead>
-                <TableHead className="w-16 text-center">Azioni</TableHead>
+                <TableHead className="tablet:hidden">Stadio</TableHead>
+                <TableHead className="tablet:hidden">Stato</TableHead>
+                <TableHead className="w-16 text-center tablet:w-28">Azioni</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -678,7 +681,7 @@ function RecuperoCreditiPage() {
                       )}
                       onClick={() => setExpandedClienteId(expanded ? null : r.cliente_id)}
                     >
-                      <TableCell onClick={(e) => e.stopPropagation()}>
+                      <TableCell className="tablet:hidden" onClick={(e) => e.stopPropagation()}>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -689,11 +692,11 @@ function RecuperoCreditiPage() {
                         </Button>
                       </TableCell>
                       <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 tablet:flex-wrap">
                           <Link
                             to="/clienti/$clienteId"
                             params={{ clienteId: r.cliente_id }}
-                            className="text-primary hover:underline"
+                            className="text-primary hover:underline tablet:flex tablet:min-h-10 tablet:items-center tablet:break-words"
                             onClick={(e) => e.stopPropagation()}
                           >
                             {r.ragione_sociale}
@@ -706,8 +709,14 @@ function RecuperoCreditiPage() {
                             </TooltipAzioneRecupero>
                           )}
                         </div>
+                        {isTablet && <div className="text-sm text-muted-foreground break-words">{r.store_nome ?? "—"} · Aperte: {r.azioni_aperte}
+                          <div className="mt-1 flex flex-wrap gap-2"><StadioSollecitoBadge stadio={r.stadio_sollecito} data={r.stadio_data} giorni={r.stadio_giorni} />
+                            {prossimaInRitardo ? <Badge variant="destructive">In ritardo</Badge> : hasAperte ? <Badge variant="secondary">Aperte</Badge> : <Badge variant="secondary">Solo storico</Badge>}
+                          </div>
+                          {r.prossima_data && <div className="mt-1">Prossima: {tipoLabel(r.prossima_tipo)} {fmtDateTime(r.prossima_data)}</div>}
+                        </div>}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
+                      <TableCell className="text-sm text-muted-foreground tablet:hidden">
                         {r.store_nome ?? "—"}
                       </TableCell>
                       <TableCell className={cn(
@@ -716,7 +725,7 @@ function RecuperoCreditiPage() {
                       )}>
                         {fmtEuro(r.totale_scaduto)}
                       </TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="text-center tablet:hidden">
                         {hasAperte ? (
                           <Badge className="bg-yellow-500 text-white hover:bg-yellow-500">
                             {r.azioni_aperte}
@@ -725,7 +734,7 @@ function RecuperoCreditiPage() {
                           <span className="text-muted-foreground text-sm">0</span>
                         )}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap text-sm">
+                      <TableCell className="whitespace-nowrap text-sm tablet:hidden">
                         {r.prossima_data ? (
                           <TooltipAzioneRecupero criterio={{ clienteId: r.cliente_id, prossima: true }} etichetta="Prossima">
                           <div className="flex items-center gap-2">
@@ -739,10 +748,10 @@ function RecuperoCreditiPage() {
                           <span className="text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap text-sm">
+                      <TableCell className="whitespace-nowrap text-sm tablet:whitespace-normal">
                         {r.ultima_fatta_data ? (
                           <TooltipAzioneRecupero criterio={{ clienteId: r.cliente_id, ultimaFatta: true }} etichetta="Ultima fatta">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 tablet:flex-wrap">
                             {tipoLabel(r.ultima_fatta_tipo)}
                             <span className="text-muted-foreground">{fmtDateTime(r.ultima_fatta_data)}</span>
                           </div>
@@ -751,10 +760,10 @@ function RecuperoCreditiPage() {
                           <span className="text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="tablet:hidden">
                         <StadioSollecitoBadge stadio={r.stadio_sollecito} data={r.stadio_data} giorni={r.stadio_giorni} />
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="tablet:hidden">
                         {prossimaInRitardo ? (
                           <Badge variant="destructive" className="gap-1">
                             <AlertTriangle className="size-3" /> In ritardo
@@ -766,6 +775,7 @@ function RecuperoCreditiPage() {
                         )}
                       </TableCell>
                       <TableCell className="text-center">
+                        {isTablet && <Button variant="ghost" size="icon" aria-label="Mostra attività" onClick={(e) => { e.stopPropagation(); setExpandedClienteId(expanded ? null : r.cliente_id); }}>{expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}</Button>}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
@@ -914,10 +924,10 @@ function SortableHead({
 }) {
   const active = sortKey === k;
   return (
-    <TableHead className={cn(align === "right" && "text-right", align === "center" && "text-center")}>
+    <TableHead className={cn(k === "azioni_aperte" || k === "prossima" ? "tablet:hidden" : k === "scaduto" ? "tablet:w-40" : k === "ultima" ? "tablet:w-[30%]" : "", align === "right" && "text-right", align === "center" && "text-center")}>
       <button
         type="button"
-        className={cn("inline-flex items-center gap-1 hover:text-foreground", active ? "text-foreground" : "text-muted-foreground")}
+        className={cn("inline-flex items-center gap-1 hover:text-foreground tablet:min-h-10", active ? "text-foreground" : "text-muted-foreground")}
         onClick={() => onClick(k)}
       >
         {label}

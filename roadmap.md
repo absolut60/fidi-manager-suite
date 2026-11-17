@@ -1,3 +1,7 @@
+# FM79 — Tablet, fetta 4
+- [ ] Menu tablet sovrapposto e richiudibile, voci ≥44px; recupero schede/colonne essenziali, campagne compatte e calendario ≥40px. Solo presentazione tablet, logo invariato.
+- [ ] Doppio riferimento originale e confronto dopo su 222 immagini, fotografie/misure touch alle quattro dimensioni con sidebar inclusa, suite Bun e SHA.
+
 # FM79 — Cerved: subject_type obbligatorio nell'acquisto
 - [x] `acquistaLightReport` invia `subject_type: "COMPANY"` nel corpo di POST B2B /v1/purchase; format, product_id 52015, subject_id, language ITALIAN e reference invariati. Nuovo test `tests/cerved-acquisto.test.ts` sul corpo realmente inviato (con e senza reference). Nessuna migrazione.
 
