@@ -61,6 +61,7 @@ import { PannelloRischioCliente } from "@/components/pannello-rischio-cliente";
 import { semaforoUI, semaforoDaCliente } from "@/lib/semaforo-ui";
 import { SemaforoPallino } from "@/components/semaforo-pallino";
 import { SchedaLista, ElencoSchede } from "@/components/lista-responsive";
+import { useIsTablet } from "@/hooks/use-tablet";
 import { BadgeExtraTeorico } from "@/components/extra-fido-teorico";
 import { RichiestaFormDialog } from "@/components/richiesta-fido-form-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -605,6 +606,7 @@ function KpiCard({ icon: Icon, tone, label, value, valueClassName, title }: { ic
 function BozzeTab({
   rows, loading, onChanged, msgCounts,
 }: { rows: any[]; loading: boolean; onChanged: () => void; msgCounts?: Record<string, number> }) {
+  const isTablet = useIsTablet();
   const navigate = useNavigate();
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -656,6 +658,7 @@ function BozzeTab({
         </div>
       )}
       <ElencoSchede
+        finoA={isTablet ? "lg" : "md"}
         selezioneTutti={{ tutti: allSel, alcuni: selected.size > 0, onChange: toggleTutte, etichetta: `Seleziona tutte (${rows.length.toLocaleString("it-IT")})` }}
       >
         {rows.map((r) => (
@@ -744,6 +747,7 @@ function InApprovazioneTab({
 }: {
   rows: any[]; righeCodaNonFiltrate: any[]; loading: boolean; canApprove: boolean; ordina: OrdinaRichieste; onChanged: () => void;
 }) {
+  const isTablet = useIsTablet();
   const barraNascosta = useBarraBluNascosta();
   const { user, roles } = useAuth();
   const navigate = useNavigate();
@@ -879,6 +883,7 @@ function InApprovazioneTab({
             </div>
           )}
           <ElencoSchede
+        finoA={isTablet ? "lg" : "md"}
             selezioneTutti={canApprove ? {
               tutti: allSel,
               alcuni: decidibili.some((r) => selected.has(r.id)),
@@ -1081,6 +1086,7 @@ function StoricoTab({
   rows, loading, kind, msgCounts,
 }: { rows: any[]; loading: boolean; kind: "approvata" | "rifiutata"; msgCounts?: Record<string, number> }) {
 
+  const isTablet = useIsTablet();
   const navigate = useNavigate();
   const [meseFiltro, setMeseFiltro] = useState<string>("ultimi3");
   const [mostraTutto, setMostraTutto] = useState(false);
@@ -1126,7 +1132,7 @@ function StoricoTab({
         <Empty label={kind === "approvata" ? "Nessuna richiesta approvata" : "Nessuna richiesta rifiutata"} hint="" />
       ) : (
         <Card className="p-2 sm:p-3">
-          <ElencoSchede>
+          <ElencoSchede finoA={isTablet ? "lg" : "md"}>
             {filtered.map((r) => {
               const se = r.stato_export as ("da_esportare"|"esportata"|"processata"|"errore_export"|null);
               const exportLabel: Record<string,string> = { da_esportare:"Da esportare", esportata:"Esportata", processata:"Processata", errore_export:"Errore" };
@@ -1227,6 +1233,7 @@ function StoricoTab({
 
 /* ============================ TUTTO TAB (admin) ============================ */
 function TuttoTab({ rows, loading, msgCounts }: { rows: any[]; loading: boolean; msgCounts?: Record<string, number> }) {
+  const isTablet = useIsTablet();
   const navigate = useNavigate();
   const [statoF, setStatoF] = useState<string>("tutti");
   const [livF, setLivF] = useState<string>("tutti");
@@ -1256,7 +1263,7 @@ function TuttoTab({ rows, loading, msgCounts }: { rows: any[]; loading: boolean;
         </Select>
       </Card>
       <Card className="p-2 sm:p-3">
-        <ElencoSchede>
+        <ElencoSchede finoA={isTablet ? "lg" : "md"}>
           {filtered.map((r) => (
             <SchedaLista
               key={r.id}
