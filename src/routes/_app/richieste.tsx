@@ -505,19 +505,19 @@ function RichiestePage() {
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           {!isApprovatore || isAdmin ? (
-            <TabsTrigger value="bozze">Bozze {bozze.length > 0 && <Badge variant="secondary" className="ml-2">{bozze.length}</Badge>}</TabsTrigger>
+            <TabsTrigger value="bozze" className="tablet:min-h-10">Bozze {bozze.length > 0 && <Badge variant="secondary" className="ml-2">{bozze.length}</Badge>}</TabsTrigger>
           ) : null}
-          <TabsTrigger value="in_approvazione">
+          <TabsTrigger value="in_approvazione" className="tablet:min-h-10">
             In Approvazione {inApprovazione.length > 0 && <Badge variant="secondary" className="ml-2">{inApprovazione.length}</Badge>}
           </TabsTrigger>
-          <TabsTrigger value="approvate">
+          <TabsTrigger value="approvate" className="tablet:min-h-10">
             Approvate {approvate.length > 0 && <Badge variant="secondary" className="ml-2">{approvate.length}</Badge>}
           </TabsTrigger>
-          <TabsTrigger value="rifiutate">
+          <TabsTrigger value="rifiutate" className="tablet:min-h-10">
             Rifiutate {rifiutate.length > 0 && <Badge variant="secondary" className="ml-2">{rifiutate.length}</Badge>}
           </TabsTrigger>
           {isAdmin && (
-            <TabsTrigger value="tutto">
+            <TabsTrigger value="tutto" className="tablet:min-h-10">
               Tutto {all.length > 0 && <Badge variant="secondary" className="ml-2">{all.length}</Badge>}
             </TabsTrigger>
           )}

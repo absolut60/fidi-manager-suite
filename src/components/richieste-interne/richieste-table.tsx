@@ -499,7 +499,7 @@ function SortHead({
 }: { active: boolean; dir: "asc" | "desc"; onClick: () => void; children: React.ReactNode; className?: string }) {
   return (
     <TableHead className={className}>
-      <button onClick={onClick} className="inline-flex items-center gap-1 font-medium hover:text-foreground">
+      <button onClick={onClick} className="inline-flex items-center gap-1 font-medium hover:text-foreground tablet:min-h-10">
         {children}
         {active ? (dir === "asc" ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />) : <ArrowUpDown className="size-3 opacity-40" />}
       </button>
