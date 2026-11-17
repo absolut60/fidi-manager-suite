@@ -260,12 +260,12 @@ export function MatriceRicarichiView() {
         )}
       </div>
 
-      <div className="flex-1 overflow-auto tablet:relative tablet:isolate tablet:max-w-full tablet:[&_input]:min-h-11 tablet:[&_input]:text-base tablet:[&_th]:whitespace-normal tablet:[&_th]:align-top tablet:[&_td]:align-top">
+      <div className="flex-1 overflow-auto tablet:relative tablet:isolate tablet:max-w-full tablet:[&_input]:min-h-11 tablet:[&_input]:text-base tablet:[&_th]:whitespace-normal tablet:[&_th]:align-top tablet:[&_th]:bg-primary tablet:[&_th]:text-primary-foreground tablet:[&_td]:align-top">
         <table className="w-full text-xs tablet:table-fixed tablet:min-w-[1200px]">
           <thead className="sticky top-0 z-10 bg-navy text-navy-foreground">
             <tr className="text-[11px] uppercase tracking-wide">
-              <th className="px-3 py-2 text-left w-14 tablet:w-14 tablet:sticky tablet:left-0 tablet:z-20 tablet:bg-navy">Cat.</th>
-              <th className="px-3 py-2 text-left tablet:w-[280px] tablet:sticky tablet:left-14 tablet:z-20 tablet:bg-navy">Descrizione</th>
+              <th className="px-3 py-2 text-left w-14 tablet:w-14 tablet:sticky tablet:left-0 tablet:z-20 tablet:bg-primary tablet:text-primary-foreground">Cat.</th>
+              <th className="px-3 py-2 text-left tablet:w-[280px] tablet:sticky tablet:left-14 tablet:z-20 tablet:bg-primary tablet:text-primary-foreground">Descrizione</th>
               <th className="px-3 py-2 text-left">Macro gruppo</th>
               <th className="px-2 py-2 text-right">Ricarico A %</th>
               <th className="px-2 py-2 text-right">Ricarico B %</th>

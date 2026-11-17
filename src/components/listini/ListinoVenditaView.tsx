@@ -297,11 +297,11 @@ export function ListinoVenditaView() {
 
 
       {/* Table */}
-      <div className="flex-1 overflow-auto tablet:relative tablet:isolate tablet:max-w-full tablet:[&_input]:min-h-11 tablet:[&_input]:text-base tablet:[&_th]:whitespace-normal tablet:[&_th]:align-top tablet:[&_td]:align-top">
+      <div className="flex-1 overflow-auto tablet:relative tablet:isolate tablet:max-w-full tablet:[&_input]:min-h-11 tablet:[&_input]:text-base tablet:[&_th]:whitespace-normal tablet:[&_th]:align-top tablet:[&_th]:bg-primary tablet:[&_th]:text-primary-foreground tablet:[&_td]:align-top">
         <fieldset disabled={!gestisce} className="contents">
-        <table className="w-full text-xs table-fixed tablet:min-w-[1040px]">
+        <table className="w-full text-xs table-fixed tablet:min-w-[884px] tablet:w-[884px]">
           <colgroup>
-            <col style={{ width: "104px" }} className="tablet:!w-[104px]" />
+            <col style={{ width: "104px" }} className="tablet:w-[104px]" />
             <col className="tablet:w-[280px]" />
             <col style={{ width: "140px" }} />
             <col style={{ width: "96px" }} />
@@ -311,8 +311,8 @@ export function ListinoVenditaView() {
           </colgroup>
           <thead className="sticky top-0 z-10 bg-navy text-navy-foreground">
             <tr className="text-[11px] uppercase tracking-wide">
-              <th className="px-2 py-2 text-left tablet:sticky tablet:left-0 tablet:z-20 tablet:bg-navy">Cod. GAMMA</th>
-              <th className="px-3 py-2 text-left tablet:sticky tablet:left-[104px] tablet:z-20 tablet:bg-navy">Descrizione</th>
+              <th className="px-2 py-2 text-left tablet:sticky tablet:left-0 tablet:z-20 tablet:bg-primary tablet:text-primary-foreground">Cod. GAMMA</th>
+              <th className="px-3 py-2 text-left tablet:sticky tablet:left-[104px] tablet:z-20 tablet:bg-primary tablet:text-primary-foreground">Descrizione</th>
               <th className="px-2 py-2 text-left">Categoria</th>
               <th className="px-2 py-2 text-right">Costo netto</th>
               <th className="px-1 py-2 text-right">Ricarico %</th>
