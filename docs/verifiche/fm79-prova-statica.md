@@ -1623,3 +1623,7 @@ C1 src/routes/_app/utenti.tsx +L442:                 )}
 C1 src/routes/_app/utenti.tsx -L408:                 <div className="hidden md:block">
 C1 src/routes/_app/utenti.tsx +L445:                 <div className="hidden md:block tablet:hidden">
 ```
+
+### Ricontrollo finale delle pagine e dei dettagli
+
+Eseguiti 40 casi sequenziali: cinque pagine × telefono 375, PC 1280, tablet 820 e 1180 × classe dark assente/presente. Scorrimento degli elenchi e apertura editor campagna, dettaglio invio, espansione segmento, riconciliazione e modifica utente senza salvare; nessun errore JavaScript. La classe dark non produce un tema completo distinto nelle pagine attuali (token restano chiari): non aggiunto un tema. Problemi già presenti su telefono/PC, incluso editor Campagne largo a 375 e tabelle dense, conservati per l’invarianza richiesta; non sono correzioni autorizzate da questa fetta. Screenshot supplementari in /tmp/browser/fm79-f78/review.
