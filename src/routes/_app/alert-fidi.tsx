@@ -434,14 +434,14 @@ function AlertFidiContenuto({ userId, puoProporre }: { userId: string; puoPropor
                     disabled={selezionabiliVisibili.length === 0} onCheckedChange={() => toggleTutti(!tuttiSel)}
                     aria-label="Seleziona tutti" />}
                 </TableHead>
-                <TableHead className="w-[17%] max-2xl:w-[20%]">Cliente</TableHead>
+                <TableHead className="w-[17%] max-2xl:w-[19%]">Cliente</TableHead>
                 <TableHead>Perché</TableHead>
                 {/* FM80: sotto 2xl i tre numeri stanno in una sola colonna "Fido". */}
                 <TableHead className="w-32 2xl:hidden">Fido</TableHead>
                 <TableHead className="hidden 2xl:table-cell w-24 text-right">Fido Gamma</TableHead>
                 <TableHead className="hidden 2xl:table-cell w-24 text-right">Ci deve</TableHead>
                 <TableHead className="hidden 2xl:table-cell w-28 text-right">Fido teorico</TableHead>
-                <TableHead className="w-[13%] max-2xl:w-[18%]">Ultima decisione</TableHead>
+                <TableHead className="w-[13%] max-2xl:w-[17%]">Ultima decisione</TableHead>
                 <TableHead className="hidden 2xl:table-cell w-24">Alert dal</TableHead>
                 <TableHead className="hidden 2xl:table-cell w-28">Azioni</TableHead>
               </TableRow></TableHeader>
