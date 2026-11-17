@@ -1,3 +1,4 @@
+import { useIsTablet } from "@/hooks/use-tablet";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -157,6 +158,7 @@ function useDebounced<T>(value: T, delay = 300): T {
 }
 
 export default function IscrittiWhatsappPage() {
+  const isTablet = useIsTablet();
   const queryClient = useQueryClient();
   const [pagina, setPagina] = useState(0);
   const [stato, setStato] = useState<string[]>([]);
@@ -553,7 +555,7 @@ export default function IscrittiWhatsappPage() {
         </div>
 
         {/* Telefono: schede (sotto md). Da md la tabella resta invariata. */}
-        <div className="md:hidden space-y-2">
+        <div className="md:hidden space-y-2 tablet:max-lg:block">
           {listaQuery.isLoading ? (
             <p className="py-6 text-center text-sm text-muted-foreground">Caricamento…</p>
           ) : righe.length === 0 ? (
@@ -629,18 +631,18 @@ export default function IscrittiWhatsappPage() {
           )}
         </div>
 
-        <div className="hidden md:block">
-        <Table>
+        <div className="hidden md:block tablet:max-lg:hidden">
+        <Table className="tablet:table-fixed tablet:w-full">
           <TableHeader>
             <TableRow>
-              <TableHead>Numero</TableHead>
+              <TableHead className="tablet:w-40">Numero</TableHead>
               <TableHead>Nome</TableHead>
-              <TableHead>Impresa / privato</TableHead>
-              <TableHead>Origine</TableHead>
-              <TableHead>Data</TableHead>
-              <TableHead>Stato</TableHead>
-              <TableHead>Collegato a</TableHead>
-              <TableHead className="text-right">Azioni</TableHead>
+              <TableHead className="tablet:hidden">Impresa / privato</TableHead>
+              <TableHead className="tablet:hidden">Origine</TableHead>
+              <TableHead className="tablet:hidden">Data</TableHead>
+              <TableHead className="tablet:w-44">Stato</TableHead>
+              <TableHead className="tablet:hidden">Collegato a</TableHead>
+              <TableHead className="text-right tablet:w-36">Azioni</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -659,13 +661,14 @@ export default function IscrittiWhatsappPage() {
             ) : (
               righe.map((r) => (
                 <TableRow key={r.id} className="cursor-pointer hover:bg-muted/60" onClick={() => apriRiga(r)}>
-                  <TableCell className="font-mono text-sm">
+                  <TableCell className="font-mono text-sm tablet:whitespace-normal tablet:break-words">
                     {r.numero_raw ?? r.numero_norm ?? "—"}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="tablet:whitespace-normal tablet:break-words">
                     {[r.nome, r.cognome].filter(Boolean).join(" ") || "—"}
+                    {isTablet && <div className="mt-2 space-y-1 text-sm text-muted-foreground break-words"><div>{r.azienda || "—"}</div><div>{r.partita_iva ? `P.IVA ${r.partita_iva}` : ""}</div><div>{r.store_id ? sediMap[r.store_id] : "—"}</div><div>{fmtData(r.created_at)} · {LABEL_ORIGINE[r.origine ?? ""] ?? r.origine}</div><div>{nomiCollegati[r.cliente_id ?? r.lead_id ?? ""] || "—"}</div></div>}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="tablet:hidden">
                     <div className="flex min-w-0 max-w-[16rem] flex-col items-start gap-1">
                       {r.tipo_soggetto && (
                         <Badge variant="outline">
@@ -686,20 +689,20 @@ export default function IscrittiWhatsappPage() {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="tablet:hidden">
                     <Badge variant="outline">
                       {LABEL_ORIGINE[r.origine ?? ""] ?? r.origine ?? "—"}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-sm">{fmtData(r.created_at)}</TableCell>
-                  <TableCell>
+                  <TableCell className="text-sm tablet:hidden">{fmtData(r.created_at)}</TableCell>
+                  <TableCell className="tablet:whitespace-normal tablet:break-words">
                     <div className="flex flex-col gap-1 items-start">
                       {badgeStato(r.stato)}
                       {r.stato === "nuovo" && badgeDiagnostico(classifica[r.id])}
                     </div>
                   </TableCell>
 
-                  <TableCell>
+                  <TableCell className="tablet:hidden">
                     {r.cliente_id ? (
                       <div className="flex min-w-0 flex-col items-start gap-1"><Badge variant="secondary">Cliente</Badge>{nomiCollegati[r.cliente_id] && <span className="text-sm break-words line-clamp-2">{nomiCollegati[r.cliente_id]}</span>}</div>
                     ) : r.lead_id ? (
@@ -708,7 +711,7 @@ export default function IscrittiWhatsappPage() {
                       "—"
                     )}
                   </TableCell>
-                  <TableCell className="text-right space-x-2" onClick={(e) => e.stopPropagation()}>
+                  <TableCell className="text-right space-x-2 tablet:whitespace-normal tablet:break-words tablet:space-x-0 tablet:[&_button]:w-full tablet:[&_button]:mb-2" onClick={(e) => e.stopPropagation()}>
                     {r.stato === "nuovo" && (
                       <>
                         <Button

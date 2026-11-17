@@ -1,3 +1,4 @@
+import { useIsTablet } from "@/hooks/use-tablet";
 import { eliminaConEsito, messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -130,6 +131,7 @@ function buildAnteprima(oggetto: string, corpo: string, mittenteNome?: string): 
 
 
 function MarketingCampagnePage() {
+  const isTablet = useIsTablet();
   const { roles, user, loading } = useAuth();
   const qc = useQueryClient();
   const [editing, setEditing] = useState<Campagna | null>(null);
@@ -253,9 +255,9 @@ function MarketingCampagnePage() {
 
   return (
     <Tabs defaultValue="email" className="space-y-6">
-      <TabsList>
-        <TabsTrigger value="email">Email</TabsTrigger>
-        <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
+      <TabsList className="tablet:h-auto">
+        <TabsTrigger className="tablet:min-h-10" value="email">Email</TabsTrigger>
+        <TabsTrigger className="tablet:min-h-10" value="whatsapp">WhatsApp</TabsTrigger>
       </TabsList>
 
       <TabsContent value="email" className="space-y-6">
@@ -284,34 +286,34 @@ function MarketingCampagnePage() {
             Nessuna campagna salvata.
           </div>
         ) : (
-          <Table>
-            <TableHeader>
+          <Table className="tablet:table-fixed tablet:w-full tablet:max-lg:block">
+            <TableHeader className="tablet:max-lg:hidden">
               <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Oggetto</TableHead>
-                <TableHead>Stato</TableHead>
-                <TableHead className="text-center">Destinatari</TableHead>
-                <TableHead>Avanzamento</TableHead>
-                <TableHead>Aggiornata</TableHead>
-                <TableHead className="text-right">Azioni</TableHead>
+                <TableHead className="tablet:w-[50%]">Nome</TableHead>
+                <TableHead className="tablet:hidden">Oggetto</TableHead>
+                <TableHead className="tablet:w-48">Stato</TableHead>
+                <TableHead className="text-center tablet:hidden">Destinatari</TableHead>
+                <TableHead className="tablet:hidden">Avanzamento</TableHead>
+                <TableHead className="tablet:hidden">Aggiornata</TableHead>
+                <TableHead className="text-right tablet:w-56">Azioni</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody className="tablet:max-lg:block tablet:max-lg:space-y-3">
               {campagne.map((c) => {
                 const k = conteggi?.get(c.id);
                 const daInviare = k?.da_inviare ?? 0;
                 const totale = k?.totale ?? 0;
                 return (
-                <TableRow key={c.id}>
-                  <TableCell className="font-medium">{c.nome}</TableCell>
-                  <TableCell className="text-muted-foreground">{c.oggetto || "—"}</TableCell>
-                  <TableCell>
+                <TableRow key={c.id} className="tablet:max-lg:grid tablet:max-lg:grid-cols-1 tablet:max-lg:border-b tablet:max-lg:p-3">
+                  <TableCell className="font-medium tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">{c.nome}{isTablet && <div className="mt-2 space-y-2 text-sm font-normal text-muted-foreground break-words"><div>{c.oggetto || "—"}</div><div>Aggiornata: {fmtDate(c.updated_at)}</div><Button variant="outline" size="sm" onClick={() => setDestinatariDi(c)}><Users className="size-4 mr-2" />Destinatari: {totale.toLocaleString("it-IT")}</Button><div className="grid grid-cols-2 gap-2"><span>Da inviare: {daInviare}</span><span>Inviate: {k?.inviato ?? 0}</span><span>Fallite: {k?.fallito ?? 0}</span><span>Saltate: {k?.saltato ?? 0}</span></div></div>}</TableCell>
+                  <TableCell className="text-muted-foreground tablet:hidden">{c.oggetto || "—"}</TableCell>
+                  <TableCell className="tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0">
                     {statoBadge(c.stato)}
                     {c.note && (
                       <div className="text-xs text-destructive mt-1 max-w-[220px]">{c.note}</div>
                     )}
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="text-center tablet:hidden">
                     <button
                       type="button"
                       className="inline-flex items-center gap-1 text-sm hover:underline"
@@ -322,7 +324,7 @@ function MarketingCampagnePage() {
                       {totale.toLocaleString("it-IT")}
                     </button>
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap tablet:hidden">
                     {c.stato === "in_corso" ? (
                       <span className="font-medium text-amber-600">
                         {(k?.inviato ?? 0).toLocaleString("it-IT")} / {totale.toLocaleString("it-IT")} inviate…
@@ -333,8 +335,8 @@ function MarketingCampagnePage() {
                       </>
                     )}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{fmtDate(c.updated_at)}</TableCell>
-                  <TableCell className="text-right space-x-1 whitespace-nowrap">
+                  <TableCell className="text-muted-foreground tablet:hidden">{fmtDate(c.updated_at)}</TableCell>
+                  <TableCell className="text-right space-x-1 whitespace-nowrap tablet:whitespace-normal tablet:break-words tablet:align-top tablet:max-lg:block tablet:max-lg:min-w-0 tablet:space-x-0 tablet:whitespace-normal tablet:[&_button]:m-1">
                     {c.stato === "in_corso" ? (
                       <Button
                         variant="outline"
@@ -422,9 +424,9 @@ function MarketingCampagnePage() {
 
       <TabsContent value="whatsapp">
         <Tabs defaultValue="campagne" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="campagne">Campagne</TabsTrigger>
-            <TabsTrigger value="template">Template</TabsTrigger>
+          <TabsList className="tablet:h-auto">
+            <TabsTrigger className="tablet:min-h-10" value="campagne">Campagne</TabsTrigger>
+            <TabsTrigger className="tablet:min-h-10" value="template">Template</TabsTrigger>
           </TabsList>
           <TabsContent value="campagne">
             <WhatsAppCampagneTab />

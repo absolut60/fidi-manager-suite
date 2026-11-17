@@ -1,3 +1,4 @@
+import { useIsTablet } from "@/hooks/use-tablet";
 import { erroreSedeObbligatoria } from "@/lib/permessi-showroom";
 import { createFileRoute } from "@tanstack/react-router";
 import { messaggioPasswordNonValida } from "@/lib/regole-password";
@@ -147,6 +148,7 @@ const OPZIONI_ORDINA_MOBILE: { value: string; label: string }[] = [
 ];
 
 function UtentiPage() {
+  const isTablet = useIsTablet();
   const { role, loading } = useAuth();
   const [editing, setEditing] = useState<UserRow | null>(null);
   const [creating, setCreating] = useState(false);
@@ -348,7 +350,7 @@ function UtentiPage() {
             </FiltriCollassabili>
 
             {/* Ordinamento su mobile: Select sempre visibile */}
-            <div className="mb-3 flex items-center gap-2 md:hidden">
+            <div className="mb-3 flex items-center gap-2 md:hidden tablet:flex">
               <span className="text-sm text-muted-foreground shrink-0">Ordina per</span>
               <Select
                 value={`${ordina.chiave}:${ordina.dir}`}
@@ -371,6 +373,40 @@ function UtentiPage() {
             ) : (
               <>
                 {/* Mobile: schede al posto della tabella */}
+                {isTablet ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                  {ordinati.map((u) => (
+                    <SchedaLista
+                      key={u.id}
+                      badge={<Badge variant={u.attivo ? "default" : "secondary"}>{u.attivo ? "Attivo" : "Inattivo"}</Badge>}
+                      titolo={<span className="min-w-0 break-words">{[u.nome, u.cognome].filter(Boolean).join(" ") || "—"}</span>}
+                      campi={[
+                        {
+                          etichetta: "Email",
+                          valore: u.email ? <span className="break-all">{u.email}</span> : "—",
+                        },
+                        { etichetta: "Punto vendita", valore: u.store_nome ?? "—" },
+                        { etichetta: "Verifica in due passaggi", valore: testoMfa(u.id) },
+                        {
+                          etichetta: "Ruoli",
+                          valore: u.ruoli.length === 0 ? "—" : (
+                            <span className="flex flex-wrap gap-1">
+                              {u.ruoli.map((r) => (
+                                <Badge key={r} variant="outline">{RUOLI_LABEL[r]}</Badge>
+                              ))}
+                            </span>
+                          ),
+                        },
+                      ]}
+                      footer={
+                        <Button size="sm" className="h-10 gap-2" onClick={() => setEditing(u)}>
+                          <Pencil className="size-4" /> Modifica
+                        </Button>
+                      }
+                    />
+                  ))}
+                </div>
+                ) : (
                 <ElencoSchede>
                   {ordinati.map((u) => (
                     <SchedaLista
@@ -403,9 +439,10 @@ function UtentiPage() {
                     />
                   ))}
                 </ElencoSchede>
+                )}
 
                 {/* Desktop: tabella con intestazioni ordinabili */}
-                <div className="hidden md:block">
+                <div className="hidden md:block tablet:hidden">
                   <Table className="table-auto">
                     <TableHeader>
                       <TableRow>
