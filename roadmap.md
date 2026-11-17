@@ -1,3 +1,9 @@
+# FM79 — Fetta 6 finestre e tastiera
+- [x] Diagnosi e 12 coppie di riferimento.
+- [x] Classi solo tablet nei tre componenti condivisi.
+- [ ] Prova statica, confronto, misure finestre/tastiera, test e SHA.
+- [ ] Risoluzione 1180×480: la query tablet richiede altezza ≥501px; eventuale modifica della regola richiede decisione Andrea.
+
 # FM79 — Fetta 5 Commerciale
 - [x] Diagnosi e fotografie originali delle cinque pagine.
 - [x] Solo presentazione tablet: schede verticali, tabelle essenziali, calendario touch.
