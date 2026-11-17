@@ -11,8 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
-import { Route as Fm81OrigRouteImport } from './routes/fm81-orig'
-import { Route as Fm81ProvaRouteImport } from './routes/fm81-prova'
 import { Route as IscrizioneWhatsappRouteImport } from './routes/iscrizione-whatsapp'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as VerificaCodiceRouteImport } from './routes/verifica-codice'
@@ -112,16 +110,6 @@ const IndexRoute = IndexRouteImport.update({
 } as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const Fm81OrigRoute = Fm81OrigRouteImport.update({
-  id: '/fm81-orig',
-  path: '/fm81-orig',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const Fm81ProvaRoute = Fm81ProvaRouteImport.update({
-  id: '/fm81-prova',
-  path: '/fm81-prova',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IscrizioneWhatsappRoute = IscrizioneWhatsappRouteImport.update({
@@ -601,8 +589,6 @@ const ApiWebhooksD360TokenRoute = ApiWebhooksD360TokenRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/fm81-orig': typeof Fm81OrigRoute
-  '/fm81-prova': typeof Fm81ProvaRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
   '/verifica-codice': typeof VerificaCodiceRoute
@@ -697,8 +683,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/fm81-orig': typeof Fm81OrigRoute
-  '/fm81-prova': typeof Fm81ProvaRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
   '/verifica-codice': typeof VerificaCodiceRoute
@@ -792,8 +776,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
-  '/fm81-orig': typeof Fm81OrigRoute
-  '/fm81-prova': typeof Fm81ProvaRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
   '/verifica-codice': typeof VerificaCodiceRoute
@@ -890,8 +872,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/fm81-orig'
-    | '/fm81-prova'
     | '/iscrizione-whatsapp'
     | '/login'
     | '/verifica-codice'
@@ -986,8 +966,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/fm81-orig'
-    | '/fm81-prova'
     | '/iscrizione-whatsapp'
     | '/login'
     | '/verifica-codice'
@@ -1080,8 +1058,6 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_app'
-    | '/fm81-orig'
-    | '/fm81-prova'
     | '/iscrizione-whatsapp'
     | '/login'
     | '/verifica-codice'
@@ -1178,8 +1154,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
-  Fm81OrigRoute: typeof Fm81OrigRoute
-  Fm81ProvaRoute: typeof Fm81ProvaRoute
   IscrizioneWhatsappRoute: typeof IscrizioneWhatsappRoute
   LoginRoute: typeof LoginRoute
   VerificaCodiceRoute: typeof VerificaCodiceRoute
@@ -1210,20 +1184,6 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AppRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/fm81-orig': {
-      id: '/fm81-orig'
-      path: '/fm81-orig'
-      fullPath: '/fm81-orig'
-      preLoaderRoute: typeof Fm81OrigRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/fm81-prova': {
-      id: '/fm81-prova'
-      path: '/fm81-prova'
-      fullPath: '/fm81-prova'
-      preLoaderRoute: typeof Fm81ProvaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/iscrizione-whatsapp': {
@@ -2079,8 +2039,6 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
-  Fm81OrigRoute: Fm81OrigRoute,
-  Fm81ProvaRoute: Fm81ProvaRoute,
   IscrizioneWhatsappRoute: IscrizioneWhatsappRoute,
   LoginRoute: LoginRoute,
   VerificaCodiceRoute: VerificaCodiceRoute,
