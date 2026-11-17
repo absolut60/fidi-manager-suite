@@ -1242,3 +1242,70 @@ C1 src/routes/_app/opportunita.index.tsx +L333:                       <TableCell
 C1 src/routes/_app/opportunita.index.tsx -L328:                         <div className="flex items-center gap-0.5">
 C1 src/routes/_app/opportunita.index.tsx +L335:                         <div className="flex items-center gap-0.5 tablet:flex-col tablet:gap-2">
 ```
+
+
+## Fetta 6 — Finestre e tastiera (17/11/2026)
+
+Base `964f7b8b9c3fb5720d6cf3dda3c25ed8d9325fe4`; codice verificato `2ab19e342a2c4d4b2c30f398885e14db51baca3a`. Solo dialog.tsx, sheet.tsx, alert-dialog.tsx; viewport, query, dati e permessi invariati.
+
+### A. Diff
+
+| Categoria | Aggiunte | Rimosse | Totale |
+|---|---:|---:|---:|
+| 1 — classi tablet | 8 | 8 | 16 |
+| 2 — rami tablet | 0 | 0 | 0 |
+| 3 — hook/variante nuovi | 0 | 0 | 0 |
+| ALTRO | 0 | 0 | 0 |
+
+Ogni token preesistente conservato nello stesso ordine: tolti soltanto i token tablet aggiunti si recupera la stringa originale. Nessun ALTRO. Nessun nuovo modulo o fonte unica: piedi e limiti sono nei componenti condivisi già esistenti. Nessuna correzione locale applicata; PDF e compose con scroll interno conservano struttura e handler (non certificati con documento reale in questa verifica).
+
+### B. Fotografie sequenziali
+
+Quattro finestre realmente aperte attraverso i pulsanti delle pagine: Nuovo preventivo, Nuovo lead, Nuova opportunità, conferma eliminazione opportunità (senza confermare). Tre dimensioni: 375×812 touch, 1280×800 e 1440×900 mouse. Backend intercettato con fixture, nessuna scrittura.
+
+12 coppie: 11 identiche subito; conferma 1440 diversa in un sottile tratto dello sfondo. Ripetuta da sola 3 originali + 3 attuali: entrambi i gruppi instabili, prima coppia dei gruppi identica → rumore. Originale nel 3+3 ottenuto intercettando i tre moduli e rimuovendo solo le classi tablet aggiunte (equivalenza verificata dal diff). **Differenze VERE: 0**.
+
+### C. Misure
+
+| Finestra | Dimensioni | Dentro schermo | Piede visibile senza scroll iniziale | Target <40px |
+|---|---|---|---|---:|
+| preventivo | 768×1024, 820×1180, 1180×820, 1366×1024 | Sì in tutte | Sì in tutte | 0 in tutte |
+| lead | 768×1024, 820×1180, 1180×820, 1366×1024 | Sì in tutte | Sì in tutte | 0 in tutte |
+| opportunita | 768×1024, 820×1180, 1180×820, 1366×1024 | Sì in tutte | Sì in tutte | 0 in tutte |
+| conferma | 768×1024, 820×1180, 1180×820, 1366×1024 | Sì in tutte | Sì in tutte | 0 in tutte |
+
+Simulazione: finestra aperta ad altezza piena, poi viewport ridotto e ultimo campo focalizzato.
+
+| Finestra | 820×780: piede/campo | Target <40px | 1180×480: piede/campo | Target <40px |
+|---|---|---:|---|---:|
+| preventivo | Visibili (conferma senza campo) | 0 | Visibili (conferma senza campo) | 12 |
+| lead | Visibili (conferma senza campo) | 0 | Visibili (conferma senza campo) | 9 |
+| opportunita | Visibili (conferma senza campo) | 0 | Visibili (conferma senza campo) | 8 |
+| conferma | Visibili (conferma senza campo) | 0 | Visibili (conferma senza campo) | 2 |
+
+**Limite non risolto a 1180×480:** la regola canonica tablet richiede min-height 501px; a 480 si disattiva e tornano comandi originali (12/9/8/2 sotto 40px). Non modificata la regola né il meta viewport, per rispettare il divieto di cambiamenti sul telefono. La simulazione non dimostra il comportamento della tastiera reale iPad: richiede prova sul dispositivo. Per ottenere target tablet a 480 serve una decisione sulla regola/identificazione del tablet; fetta quindi non dichiarata completamente chiusa.
+
+### D. Test
+
+`bun test`: 1019 pass, 0 fail, 3433 asserzioni, 137 file. Build automatico OK. Screenshot e script temporanei /tmp/browser/fm79-f6; esiti conservati qui.
+
+### Appendice completa
+
+```text
+C1 src/components/ui/alert-dialog.tsx -L37:         "fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-4 sm:p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg max-h-[90dvh] overflow-y-auto",
+C1 src/components/ui/alert-dialog.tsx +L37:         "fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-4 sm:p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg max-h-[90dvh] overflow-y-auto tablet:max-h-[90dvh] tablet:overflow-y-auto tablet:scroll-pb-24 tablet:[&_button]:min-h-10 tablet:[&_button]:min-w-10",
+C1 src/components/ui/alert-dialog.tsx -L53:     className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)}
+C1 src/components/ui/alert-dialog.tsx +L53:     className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 tablet:sticky tablet:bottom-0 tablet:z-10 tablet:bg-background tablet:py-3 tablet:shrink-0 tablet:gap-2", className)}
+C1 src/components/ui/dialog.tsx -L41:         "fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-4 sm:p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg max-h-[90vh] max-h-[90dvh] overflow-y-auto",
+C1 src/components/ui/dialog.tsx +L41:         "fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-4 sm:p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg max-h-[90vh] max-h-[90dvh] overflow-y-auto tablet:max-h-[90dvh] tablet:overflow-y-auto tablet:scroll-pb-24 tablet:[&_button]:min-h-10 tablet:[&_button]:min-w-10",
+C1 src/components/ui/dialog.tsx -L47:       <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background cursor-pointer transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+C1 src/components/ui/dialog.tsx +L47:       <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm tablet:min-h-10 tablet:min-w-10 tablet:flex tablet:items-center tablet:justify-center opacity-70 ring-offset-background cursor-pointer transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+C1 src/components/ui/dialog.tsx -L63:     className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)}
+C1 src/components/ui/dialog.tsx +L63:     className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 tablet:sticky tablet:bottom-0 tablet:z-10 tablet:bg-background tablet:py-3 tablet:shrink-0 tablet:gap-2", className)}
+C1 src/components/ui/sheet.tsx -L34:   "fixed z-50 gap-4 bg-background p-4 sm:p-6 shadow-lg overflow-y-auto transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out",
+C1 src/components/ui/sheet.tsx +L34:   "fixed z-50 gap-4 bg-background p-4 sm:p-6 shadow-lg overflow-y-auto tablet:max-h-[100dvh] tablet:overflow-y-auto tablet:scroll-pb-24 tablet:[&_button]:min-h-10 tablet:[&_button]:min-w-10 transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out",
+C1 src/components/ui/sheet.tsx -L64:       <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background cursor-pointer transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
+C1 src/components/ui/sheet.tsx +L64:       <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm tablet:min-h-10 tablet:min-w-10 tablet:flex tablet:items-center tablet:justify-center opacity-70 ring-offset-background cursor-pointer transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
+C1 src/components/ui/sheet.tsx -L81:     className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)}
+C1 src/components/ui/sheet.tsx +L81:     className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 tablet:sticky tablet:bottom-0 tablet:z-10 tablet:bg-background tablet:py-3 tablet:shrink-0 tablet:gap-2", className)}
+```
