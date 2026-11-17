@@ -298,13 +298,13 @@ export function RigheTable({
       {/* Da 1024 px: tabella. Sotto: schede compatte con gli stessi campi. */}
       <div className="hidden max-w-full overflow-x-auto pv-tabella:block">
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        <table className={cn("w-full table-fixed", !gamma ? (conMisure ? "min-w-[1326px] tablet:min-w-[1342px]" : "min-w-[1266px] tablet:min-w-[1282px]") : conMisure ? "min-w-[1470px] tablet:min-w-[1486px]" : "min-w-[1410px] tablet:min-w-[1426px]", "border-separate border-spacing-0 text-xs")}>
+        <table className={cn("w-full table-fixed", !gamma ? (conMisure ? "min-w-[1326px]" : "min-w-[1266px]") : conMisure ? "min-w-[1470px]" : "min-w-[1410px]", "border-separate border-spacing-0 text-xs")}>
           <thead>
             <tr className="whitespace-nowrap bg-pv-testa text-[10px] uppercase tracking-wide text-muted-foreground [&>th]:bg-pv-testa [&>th]:border-b">
               <th className="w-[18px] px-1 py-1.5 sticky left-0 z-10"></th>
               <th className="w-[48px] px-1 py-1.5 text-center sticky left-[18px] z-10 tablet:w-[64px]">#</th>
-              <th className="w-[156px] px-1 py-1.5 text-left sticky left-[66px] z-10 tablet:left-[82px]">Codice</th>
-              <th className="px-1 py-1.5 text-left lg:sticky lg:left-[222px] lg:z-10 tablet:lg:left-[238px]">Descrizione</th>
+              <th className="w-[156px] px-1 py-1.5 text-left sticky left-[66px] z-10 tablet:left-[82px] tablet:w-[140px]">Codice</th>
+              <th className="px-1 py-1.5 text-left lg:sticky lg:left-[222px] lg:z-10">Descrizione</th>
               <th className="w-[64px] px-1 py-1.5 text-left">U.M.</th>
               {conMisure && <th className="w-[60px] px-1 py-1.5 text-right">Incid.</th>}
               <th className="w-[76px] px-1 py-1.5 text-right">Quantità</th>
@@ -794,7 +794,7 @@ function RigaRow(p: RigaProps) {
   };
   const c = useCelleRiga(p);
   const rowClass = cn(
-    "border-b font-mono align-top whitespace-nowrap [&>td]:border-b tablet:align-middle tablet:[&_input]:min-h-10 tablet:[&_textarea]:min-h-10 tablet:[&_[role=combobox]]:min-h-10",
+    "border-b font-mono align-top whitespace-nowrap [&>td]:border-b tablet:align-middle tablet:[&_input]:min-h-10 tablet:[&_textarea]:min-h-10 tablet:[&_textarea]:py-3 tablet:[&_[role=combobox]]:min-h-10",
     sfondoRiga(c),
     c.isSubtotal && "font-semibold",
     c.tipo === "separatore" && "h-2",
@@ -823,7 +823,7 @@ function RigaRow(p: RigaProps) {
       {grip}
       <td className="sticky left-[18px] z-[1] py-0.5 text-center text-xs text-muted-foreground"><NumeroRiga p={p} inTabella /></td>
       <td className="sticky left-[66px] z-[1] min-w-0 px-1 py-0.5 tablet:left-[82px]">{c.codice}</td>
-      <td className="lg:sticky lg:left-[222px] lg:z-[1] min-w-0 whitespace-normal px-1 py-0.5 tablet:lg:left-[238px]">{c.articolo}<BadgeBs p={p} valorizzata={c.valorizzata} />{c.kitSenzaPrezzo && (
+      <td className="lg:sticky lg:left-[222px] lg:z-[1] min-w-0 whitespace-normal px-1 py-0.5">{c.articolo}<BadgeBs p={p} valorizzata={c.valorizzata} />{c.kitSenzaPrezzo && (
         <p className="mt-0.5 text-[11px] font-sans not-italic text-destructive">Articolo non collegato a Gamma: inserisci prezzo e costo a mano</p>
       )}</td>
       <td className="px-0.5 py-0.5">{v && c.um}</td>
