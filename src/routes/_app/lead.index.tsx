@@ -15,6 +15,7 @@ import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/list
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useIsTablet } from "@/hooks/use-tablet";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { filtroElenco } from "@/lib/filtro-elenco";
 import { Button } from "@/components/ui/button";
@@ -90,6 +91,7 @@ const BLOCCO_SPOSTA = 200;
 const BLOCCO_ID = 1000;
 
 function LeadListaPage() {
+  const isTablet = useIsTablet();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { roles, loading: authLoading } = useAuth();
@@ -414,7 +416,7 @@ function LeadListaPage() {
       <button
         type="button"
         onClick={() => toggleSort(col)}
-        className="flex items-center gap-1 font-medium hover:text-primary transition-colors"
+        className="flex items-center gap-1 font-medium hover:text-primary transition-colors tablet:min-h-10 tablet:min-w-10"
       >
         {label}
         {active ? (
@@ -491,18 +493,18 @@ function LeadListaPage() {
       </div>
 
       <Tabs value={tab} onValueChange={(v) => { setTab(v as Vista); setPage(1); }}>
-        <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
-          <TabsTrigger value="attivi" className="gap-1.5">
+        <TabsList className="w-full justify-start overflow-x-auto sm:w-auto tablet:h-auto tablet:flex-wrap">
+          <TabsTrigger value="attivi" className="gap-1.5 tablet:min-h-10">
             Attivi <span className="text-xs opacity-70">{conteggi?.attivi ?? "—"}</span>
           </TabsTrigger>
-          <TabsTrigger value="ricontattare" className="gap-1.5">
+          <TabsTrigger value="ricontattare" className="gap-1.5 tablet:min-h-10">
             <CalendarClock className="size-4" /> Da ricontattare
             <span className="text-xs opacity-70">{conteggi?.ricontattare ?? "—"}</span>
           </TabsTrigger>
-          <TabsTrigger value="convertiti" className="gap-1.5">
+          <TabsTrigger value="convertiti" className="gap-1.5 tablet:min-h-10">
             Convertiti <span className="text-xs opacity-70">{conteggi?.convertiti ?? "—"}</span>
           </TabsTrigger>
-          <TabsTrigger value="persi" className="gap-1.5">
+          <TabsTrigger value="persi" className="gap-1.5 tablet:min-h-10">
             Persi <span className="text-xs opacity-70">{conteggi?.persi ?? "—"}</span>
           </TabsTrigger>
         </TabsList>
@@ -567,9 +569,9 @@ function LeadListaPage() {
             </Button>
           }
         >
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 tablet:grid-cols-2 tablet:lg:grid-cols-3">
 
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 tablet:col-span-full">
             <Label className="text-xs">Ricerca</Label>
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
@@ -715,7 +717,7 @@ function LeadListaPage() {
           {canManage && totale > 0 && selezionati.size < totale && (
             <button
               type="button"
-              className="text-primary hover:underline disabled:opacity-60"
+              className="text-primary hover:underline disabled:opacity-60 tablet:min-h-10"
               disabled={caricandoTutti}
               onClick={() => void selezionaTuttiFiltrati()}
             >
@@ -748,6 +750,7 @@ function LeadListaPage() {
           <>
           {/* Mobile: schede al posto della tabella */}
           <ElencoSchede
+            finoA={isTablet ? "lg" : "md"}
             selezioneTutti={canManage ? {
               tutti: tuttaPaginaSel,
               alcuni: qualcunoPaginaSel,
@@ -769,6 +772,7 @@ function LeadListaPage() {
                   { etichetta: "Città", valore: `${l.citta ?? "—"}${l.provincia ? ` (${l.provincia})` : ""}` },
 
                   { etichetta: "Fonte", valore: LEAD_FONTE_LABEL[l.fonte] },
+                  ...(isTablet ? [{ etichetta: "Sede / Agente", valore: `${nomeStore(l.store_id)}${l.agente_codice ? ` · ${l.agente_codice}` : ""}` }] : []),
                   { etichetta: "Assegnato a", valore: nomeProfilo(l.assegnato_a) },
                   ...(mostraConversione
                     ? [
@@ -800,12 +804,12 @@ function LeadListaPage() {
           </ElencoSchede>
 
 
-          <div className="hidden md:block">
-            <Table>
+          <div className="hidden md:block tablet:max-lg:hidden">
+            <Table className="tablet:table-fixed tablet:[&_td]:whitespace-normal tablet:[&_td]:break-normal tablet:[&_th]:whitespace-normal" >
               <TableHeader>
                 <TableRow>
                   {canManage && (
-                    <TableHead className="w-10">
+                    <TableHead className="w-10 tablet:w-14">
                       <Checkbox
                         aria-label="Seleziona tutta la pagina"
                         checked={tuttaPaginaSel ? true : qualcunoPaginaSel ? "indeterminate" : false}
@@ -813,24 +817,24 @@ function LeadListaPage() {
                       />
                     </TableHead>
                   )}
-                  <TableHead><SortHeader col="ragione_sociale" label="Nominativo" /></TableHead>
-                  <TableHead>Tipo soggetto</TableHead>
+                  <TableHead className="tablet:w-[42%]"><SortHeader col="ragione_sociale" label="Nominativo" /></TableHead>
+                  <TableHead className="tablet:hidden">Tipo soggetto</TableHead>
                   <TableHead><SortHeader col="stato" label="Stato" /></TableHead>
-                  <TableHead>Tipo lead</TableHead>
+                  <TableHead className="tablet:hidden">Tipo lead</TableHead>
                   <TableHead><SortHeader col="priorita" label="Priorità" /></TableHead>
-                  <TableHead>Fonte</TableHead>
-                  <TableHead>Città</TableHead>
-                  <TableHead>Sede / Agente</TableHead>
-                  <TableHead>Assegnato a</TableHead>
+                  <TableHead className="tablet:hidden">Fonte</TableHead>
+                  <TableHead className="tablet:hidden">Città</TableHead>
+                  <TableHead className="tablet:hidden">Sede / Agente</TableHead>
+                  <TableHead className="tablet:hidden">Assegnato a</TableHead>
                   {mostraConversione ? (
                     <>
-                      <TableHead><SortHeader col="convertito_il" label="Data conversione" /></TableHead>
-                      <TableHead>Cliente</TableHead>
+                      <TableHead className="tablet:hidden"><SortHeader col="convertito_il" label="Data conversione" /></TableHead>
+                      <TableHead className="tablet:hidden">Cliente</TableHead>
                     </>
                   ) : (
                     <TableHead><SortHeader col="prossima_azione_il" label="Prossima azione" /></TableHead>
                   )}
-                  <TableHead><SortHeader col="created_at" label="Creato" /></TableHead>
+                  <TableHead className="tablet:hidden"><SortHeader col="created_at" label="Creato" /></TableHead>
                 </TableRow>
               </TableHeader>
 
@@ -842,7 +846,7 @@ function LeadListaPage() {
                     onClick={() => navigate({ to: "/lead/$leadId", params: { leadId: l.id } })}
                   >
                     {canManage && (
-                      <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
+                      <TableCell className="w-10 tablet:w-14" onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           aria-label={`Seleziona ${nomeLead(l)}`}
                           checked={selezionati.has(l.id)}
@@ -850,31 +854,40 @@ function LeadListaPage() {
                         />
                       </TableCell>
                     )}
-                    <TableCell className="font-medium">{nomeLead(l)}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
+                    <TableCell className="font-medium tablet:whitespace-normal tablet:break-normal">{nomeLead(l)}
+                      {isTablet && <div className="space-y-1 text-xs font-normal text-muted-foreground">
+                        <div>{etichettaTipoSoggetto(l.tipo_soggetto)} · {LEAD_TIPO_LABEL[l.tipo_lead]} · {LEAD_FONTE_LABEL[l.fonte]}</div>
+                        <div>{l.citta ?? "—"}{l.provincia ? ` (${l.provincia})` : ""}</div>
+                        <div>{nomeStore(l.store_id)}{l.agente_codice ? ` · ${l.agente_codice}` : ""}</div>
+                        <div>Assegnato a: {nomeProfilo(l.assegnato_a)}</div>
+                        <div>Creato: {formatData(l.created_at)}</div>
+                        {mostraConversione && <div>Convertito: {formatData(l.convertito_il)} · {l.cliente?.ragione_sociale ?? "Cliente non collegato"}</div>}
+                      </div>}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground tablet:hidden">
                       {etichettaTipoSoggetto(l.tipo_soggetto)}
                     </TableCell>
 
                     <TableCell><Badge className={LEAD_STATO_CLASS[l.stato]}>{LEAD_STATO_LABEL[l.stato]}</Badge></TableCell>
-                    <TableCell className="text-xs">{LEAD_TIPO_LABEL[l.tipo_lead]}</TableCell>
+                    <TableCell className="text-xs tablet:hidden">{LEAD_TIPO_LABEL[l.tipo_lead]}</TableCell>
                     <TableCell><Badge className={LEAD_PRIORITA_CLASS[l.priorita]}>{LEAD_PRIORITA_LABEL[l.priorita]}</Badge></TableCell>
-                    <TableCell className="text-xs">{LEAD_FONTE_LABEL[l.fonte]}</TableCell>
-                    <TableCell className="text-xs">
+                    <TableCell className="text-xs tablet:hidden">{LEAD_FONTE_LABEL[l.fonte]}</TableCell>
+                    <TableCell className="text-xs tablet:hidden">
                       {l.citta ?? "—"}{l.provincia ? ` (${l.provincia})` : ""}
                     </TableCell>
-                    <TableCell className="text-xs">
+                    <TableCell className="text-xs tablet:hidden">
                       {nomeStore(l.store_id)}{l.agente_codice ? ` · ${l.agente_codice}` : ""}
                     </TableCell>
-                    <TableCell className="text-xs">{nomeProfilo(l.assegnato_a)}</TableCell>
+                    <TableCell className="text-xs tablet:hidden">{nomeProfilo(l.assegnato_a)}</TableCell>
                     {mostraConversione ? (
                       <>
-                        <TableCell className="text-xs">{formatData(l.convertito_il)}</TableCell>
-                        <TableCell className="text-xs" onClick={(e) => e.stopPropagation()}>
+                        <TableCell className="text-xs tablet:hidden">{formatData(l.convertito_il)}</TableCell>
+                        <TableCell className="text-xs tablet:hidden" onClick={(e) => e.stopPropagation()}>
                           {l.cliente_id && l.cliente ? (
                             <Link
                               to="/clienti/$clienteId"
                               params={{ clienteId: l.cliente_id }}
-                              className="text-primary hover:underline"
+                              className="text-primary hover:underline tablet:inline-flex tablet:min-h-10"
                             >
                               {l.cliente?.ragione_sociale ?? "Scheda cliente"}
                             </Link>
@@ -890,7 +903,7 @@ function LeadListaPage() {
                     ) : (
                       <TableCell className="text-xs">{formatData(l.prossima_azione_il)}</TableCell>
                     )}
-                    <TableCell className="text-xs">{formatData(l.created_at)}</TableCell>
+                    <TableCell className="text-xs tablet:hidden">{formatData(l.created_at)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
