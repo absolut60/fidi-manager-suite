@@ -59,6 +59,8 @@ import { CondizionePagamentoSelect } from "@/components/condizione-pagamento-sel
 import { CategoriaSelect } from "@/components/categoria-select";
 import { useCategorieSegmento } from "@/lib/use-categorie-segmento";
 import { ProposteFidoMassivoDialog } from "@/components/proposta-fido-massiva-dialog";
+import { IconaCervedCollegato } from "@/components/cerved/IconaCervedCollegato";
+import { useClientiConReportCerved } from "@/hooks/use-clienti-con-report-cerved";
 import { EsportaFidoTeoricoButton } from "@/components/esporta-fido-teorico-button";
 
 import { INFORMATIVA_FULL, CONSENSO_TESTI } from "@/lib/consensi-testi";
@@ -997,6 +999,10 @@ function ClientiPage() {
   const totalPages = Math.max(1, Math.ceil(totaleClienti / pageSize));
 
   const visibleClienteIds = useMemo(() => clienti.map((c: any) => c.id), [clienti]);
+  // FM84: simbolo "Collegato a Cerved" — lookup separato e leggero sugli id della pagina visibile.
+  const { data: clientiConCerved } = useClientiConReportCerved(visibleClienteIds, isListRoute);
+  const apriSchedaCerved = (clienteId: string) =>
+    navigate({ to: "/clienti/$clienteId", params: { clienteId }, search: { tab: "cerved" } as any });
   const { data: privacyDisplayMap } = useQuery({
     queryKey: ["clienti-privacy-display", visibleClienteIds],
     enabled: isListRoute && visibleClienteIds.length > 0,
@@ -1851,6 +1857,9 @@ function ClientiPage() {
                         <div className="font-medium break-words">
                           {legale && <span title="In gestione legale" className="text-orange-600 mr-1">⚖</span>}
                           {c.ragione_sociale}
+                          {clientiConCerved?.has(c.id) && (
+                            <IconaCervedCollegato className="ml-1.5 align-[-2px]" onApri={() => apriSchedaCerved(c.id)} />
+                          )}
                         </div>
                         <div className="text-xs text-muted-foreground break-words">
                           <span className="font-mono">{c.codice_gestionale || "—"}</span>
@@ -2106,7 +2115,14 @@ function ClientiPage() {
                     : (c as { in_gestione_legale?: boolean }).in_gestione_legale
                       ? "bg-amber-50 dark:bg-amber-500/10 border-l-[3px] border-l-amber-500"
                       : undefined}
-                  titolo={c.ragione_sociale}
+                  titolo={
+                    <>
+                      {c.ragione_sociale}
+                      {clientiConCerved?.has(c.id) && (
+                        <IconaCervedCollegato className="ml-1.5 align-[-2px]" onApri={() => apriSchedaCerved(c.id)} />
+                      )}
+                    </>
+                  }
                   selezione={!isAgente ? { checked: selectedIds.has(c.id), onChange: () => toggleSelect(c) } : undefined}
                   badge={(() => {
                     const s = semaforoDisplayMap?.get(c.id);
@@ -2244,6 +2260,9 @@ function ClientiPage() {
                           <span title="In gestione legale" className="text-orange-600">⚖</span>
                         )}
                         {c.ragione_sociale}
+                        {clientiConCerved?.has(c.id) && (
+                          <IconaCervedCollegato onApri={() => apriSchedaCerved(c.id)} />
+                        )}
                       </span>
                     </TableCell>
                     <TableCell className="text-sm font-mono">
