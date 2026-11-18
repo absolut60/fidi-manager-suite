@@ -205,6 +205,18 @@ export function settoreGaugeCerved(valore: number | null | undefined): number | 
   return Math.min(7, Math.floor(v / 12.5));
 }
 
+/** Numero di classe CGS (1–8) da "CGS_n"; null se assente o non valido. */
+export function classeCgsDaCodice(codice: string | null | undefined): number | null {
+  const m = /^CGS_([1-8])$/i.exec((codice ?? "").trim());
+  return m ? Number(m[1]) : null;
+}
+
+/** Settore (0–7) del gauge per la classe CGS: CGS_1 (massima) = settore verde 7, CGS_8 = settore rosso 0. */
+export function settoreGaugeDaClasseCgs(classe: number | null | undefined): number | null {
+  if (classe == null || !Number.isInteger(classe) || classe < 1 || classe > 8) return null;
+  return 8 - classe;
+}
+
 // ===== Light Report (dati da normalizzaLightReportXml) =====
 
 const MESI_BREVI = ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"] as const;

@@ -1858,7 +1858,7 @@ function ClientiPage() {
                           {legale && <span title="In gestione legale" className="text-orange-600 mr-1">⚖</span>}
                           {c.ragione_sociale}
                           {clientiConCerved?.has(c.id) && (
-                            <IconaCervedCollegato className="ml-1.5 align-[-2px]" onApri={() => apriSchedaCerved(c.id)} />
+                            <IconaCervedCollegato className="ml-1.5 align-[-2px]" classe={clientiConCerved.get(c.id)?.classe} score={clientiConCerved.get(c.id)?.score} onApri={() => apriSchedaCerved(c.id)} />
                           )}
                         </div>
                         <div className="text-xs text-muted-foreground break-words">
@@ -2119,7 +2119,7 @@ function ClientiPage() {
                     <>
                       {c.ragione_sociale}
                       {clientiConCerved?.has(c.id) && (
-                        <IconaCervedCollegato className="ml-1.5 align-[-2px]" onApri={() => apriSchedaCerved(c.id)} />
+                        <IconaCervedCollegato className="ml-1.5 align-[-2px]" classe={clientiConCerved.get(c.id)?.classe} score={clientiConCerved.get(c.id)?.score} onApri={() => apriSchedaCerved(c.id)} />
                       )}
                     </>
                   }
@@ -2261,7 +2261,7 @@ function ClientiPage() {
                         )}
                         {c.ragione_sociale}
                         {clientiConCerved?.has(c.id) && (
-                          <IconaCervedCollegato onApri={() => apriSchedaCerved(c.id)} />
+                          <IconaCervedCollegato classe={clientiConCerved.get(c.id)?.classe} score={clientiConCerved.get(c.id)?.score} onApri={() => apriSchedaCerved(c.id)} />
                         )}
                       </span>
                     </TableCell>
