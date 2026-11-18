@@ -31,7 +31,7 @@ export function IconaCervedCollegato({
   const amp = 180 / 8;
   const etichetta = etichettaCervedLista(classe, score);
   const svg = (
-    <svg viewBox="0 0 24 15" className="h-[13px] w-[20px]" fill="none" aria-hidden="true">
+    <svg viewBox="0 0 24 15" className="h-[26px] w-[40px]" fill="none" aria-hidden="true">
       {settore == null ? (
         <path d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`} stroke="currentColor" strokeOpacity={0.45} strokeWidth="3" />
       ) : (
@@ -43,9 +43,9 @@ export function IconaCervedCollegato({
           })}
           {(() => {
             const [x, y] = pt(180 - (settore + 0.5) * amp, r - 1.5);
-            return <line x1={cx} y1={cy} x2={x} y2={y} className="stroke-foreground" strokeWidth="1.6" strokeLinecap="round" />;
+            return <line x1={cx} y1={cy} x2={x} y2={y} className="stroke-foreground" strokeWidth="2" strokeLinecap="round" />;
           })()}
-          <circle cx={cx} cy={cy} r="1.5" className="fill-foreground" />
+          <circle cx={cx} cy={cy} r="1.8" className="fill-foreground" />
         </>
       )}
     </svg>
@@ -61,7 +61,7 @@ export function IconaCervedCollegato({
     <button
       type="button"
       onClick={(e) => { e.stopPropagation(); onApri(); }}
-      className={cn("inline-flex min-h-6 min-w-6 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:text-primary", className)}
+      className={cn("inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:text-primary", className)}
       title={etichetta}
       aria-label={`${etichetta}: apri la scheda Cerved del cliente`}
     >

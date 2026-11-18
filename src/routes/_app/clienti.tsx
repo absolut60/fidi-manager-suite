@@ -1825,6 +1825,7 @@ function ClientiPage() {
               <TableHead className="w-[17%]"><SortHeader col="scaduto" label="Scaduto" /></TableHead>
               <TableHead className="w-[14%]">Stato</TableHead>
               <TableHead className="w-14"><span className="sr-only">Azioni</span></TableHead>
+              <TableHead className="w-16 text-right">Cerved</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1857,9 +1858,6 @@ function ClientiPage() {
                         <div className="font-medium break-words">
                           {legale && <span title="In gestione legale" className="text-orange-600 mr-1">⚖</span>}
                           {c.ragione_sociale}
-                          {clientiConCerved?.has(c.id) && (
-                            <IconaCervedCollegato className="ml-1.5 align-[-2px]" classe={clientiConCerved.get(c.id)?.classe} score={clientiConCerved.get(c.id)?.score} onApri={() => apriSchedaCerved(c.id)} />
-                          )}
                         </div>
                         <div className="text-xs text-muted-foreground break-words">
                           <span className="font-mono">{c.codice_gestionale || "—"}</span>
@@ -1920,6 +1918,9 @@ function ClientiPage() {
                     >
                       <Pencil className="size-4" />
                     </Button>
+                  </TableCell>
+                  <TableCell className="align-top text-right">
+                    {clientiConCerved?.has(c.id) && <IconaCervedCollegato classe={clientiConCerved.get(c.id)?.classe} score={clientiConCerved.get(c.id)?.score} onApri={() => apriSchedaCerved(c.id)} />}
                   </TableCell>
                 </TableRow>
               );
@@ -2115,14 +2116,7 @@ function ClientiPage() {
                     : (c as { in_gestione_legale?: boolean }).in_gestione_legale
                       ? "bg-amber-50 dark:bg-amber-500/10 border-l-[3px] border-l-amber-500"
                       : undefined}
-                  titolo={
-                    <>
-                      {c.ragione_sociale}
-                      {clientiConCerved?.has(c.id) && (
-                        <IconaCervedCollegato className="ml-1.5 align-[-2px]" classe={clientiConCerved.get(c.id)?.classe} score={clientiConCerved.get(c.id)?.score} onApri={() => apriSchedaCerved(c.id)} />
-                      )}
-                    </>
-                  }
+                  titolo={c.ragione_sociale}
                   selezione={!isAgente ? { checked: selectedIds.has(c.id), onChange: () => toggleSelect(c) } : undefined}
                   badge={(() => {
                     const s = semaforoDisplayMap?.get(c.id);
@@ -2180,6 +2174,9 @@ function ClientiPage() {
                           <Pencil className="size-4" /> Modifica
                         </Button>
                       )}
+                      {clientiConCerved?.has(c.id) && (
+                        <IconaCervedCollegato className={isTablet ? undefined : "ml-auto"} classe={clientiConCerved.get(c.id)?.classe} score={clientiConCerved.get(c.id)?.score} onApri={() => apriSchedaCerved(c.id)} />
+                      )}
                     </>
                   }
                 />
@@ -2225,6 +2222,7 @@ function ClientiPage() {
                   <TableHead>Stato</TableHead>
 
                   <TableHead className="w-12"></TableHead>
+                  <TableHead className="w-16 text-right">Cerved</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -2260,9 +2258,6 @@ function ClientiPage() {
                           <span title="In gestione legale" className="text-orange-600">⚖</span>
                         )}
                         {c.ragione_sociale}
-                        {clientiConCerved?.has(c.id) && (
-                          <IconaCervedCollegato classe={clientiConCerved.get(c.id)?.classe} score={clientiConCerved.get(c.id)?.score} onApri={() => apriSchedaCerved(c.id)} />
-                        )}
                       </span>
                     </TableCell>
                     <TableCell className="text-sm font-mono">
@@ -2388,6 +2383,9 @@ function ClientiPage() {
                       >
                         <Pencil className="size-4" />
                       </Button>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {clientiConCerved?.has(c.id) && <IconaCervedCollegato classe={clientiConCerved.get(c.id)?.classe} score={clientiConCerved.get(c.id)?.score} onApri={() => apriSchedaCerved(c.id)} />}
                     </TableCell>
                   </TableRow>
                   );
