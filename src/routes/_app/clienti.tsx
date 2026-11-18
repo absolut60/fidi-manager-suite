@@ -1825,7 +1825,7 @@ function ClientiPage() {
               <TableHead className="w-[17%]"><SortHeader col="scaduto" label="Scaduto" /></TableHead>
               <TableHead className="w-[14%]">Stato</TableHead>
               <TableHead className="w-14"><span className="sr-only">Azioni</span></TableHead>
-              <TableHead className="w-16 text-right">Cerved</TableHead>
+              <TableHead className="sticky right-0 z-10 w-16 border-l bg-card text-right">Cerved</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1919,7 +1919,7 @@ function ClientiPage() {
                       <Pencil className="size-4" />
                     </Button>
                   </TableCell>
-                  <TableCell className="align-top text-right">
+                  <TableCell className="sticky right-0 z-10 border-l bg-card p-1 align-bottom text-right">
                     {clientiConCerved?.has(c.id) && <IconaCervedCollegato classe={clientiConCerved.get(c.id)?.classe} score={clientiConCerved.get(c.id)?.score} onApri={() => apriSchedaCerved(c.id)} />}
                   </TableCell>
                 </TableRow>
@@ -2138,6 +2138,9 @@ function ClientiPage() {
                     ...(mostraFidoTeorico ? [{ etichetta: "Fido proposto", valore: (() => { const ft = fidoTeoricoDisplayMap?.get(c.id); return ft ? fmtEuro(ft.fido_proposto) : "—"; })() }] : []),
                   ]}
 
+                  angolo={clientiConCerved?.has(c.id) ? (
+                    <IconaCervedCollegato classe={clientiConCerved.get(c.id)?.classe} score={clientiConCerved.get(c.id)?.score} onApri={() => apriSchedaCerved(c.id)} />
+                  ) : undefined}
                   footer={
                     <>
                       {sc && sc.ha_scaduto && (
@@ -2173,9 +2176,6 @@ function ClientiPage() {
                         >
                           <Pencil className="size-4" /> Modifica
                         </Button>
-                      )}
-                      {clientiConCerved?.has(c.id) && (
-                        <IconaCervedCollegato className={isTablet ? undefined : "ml-auto"} classe={clientiConCerved.get(c.id)?.classe} score={clientiConCerved.get(c.id)?.score} onApri={() => apriSchedaCerved(c.id)} />
                       )}
                     </>
                   }
@@ -2222,7 +2222,7 @@ function ClientiPage() {
                   <TableHead>Stato</TableHead>
 
                   <TableHead className="w-12"></TableHead>
-                  <TableHead className="w-16 text-right">Cerved</TableHead>
+                  <TableHead className="sticky right-0 z-10 w-16 border-l bg-card text-right">Cerved</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -2384,7 +2384,7 @@ function ClientiPage() {
                         <Pencil className="size-4" />
                       </Button>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="sticky right-0 z-10 border-l bg-card p-1 align-bottom text-right">
                       {clientiConCerved?.has(c.id) && <IconaCervedCollegato classe={clientiConCerved.get(c.id)?.classe} score={clientiConCerved.get(c.id)?.score} onApri={() => apriSchedaCerved(c.id)} />}
                     </TableCell>
                   </TableRow>

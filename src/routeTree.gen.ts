@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
+import { Route as Fm84ProvaRouteImport } from './routes/fm84-prova'
 import { Route as IscrizioneWhatsappRouteImport } from './routes/iscrizione-whatsapp'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as VerificaCodiceRouteImport } from './routes/verifica-codice'
@@ -110,6 +111,11 @@ const IndexRoute = IndexRouteImport.update({
 } as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Fm84ProvaRoute = Fm84ProvaRouteImport.update({
+  id: '/fm84-prova',
+  path: '/fm84-prova',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IscrizioneWhatsappRoute = IscrizioneWhatsappRouteImport.update({
@@ -589,6 +595,7 @@ const ApiWebhooksD360TokenRoute = ApiWebhooksD360TokenRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/fm84-prova': typeof Fm84ProvaRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
   '/verifica-codice': typeof VerificaCodiceRoute
@@ -683,6 +690,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/fm84-prova': typeof Fm84ProvaRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
   '/verifica-codice': typeof VerificaCodiceRoute
@@ -776,6 +784,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
+  '/fm84-prova': typeof Fm84ProvaRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
   '/verifica-codice': typeof VerificaCodiceRoute
@@ -872,6 +881,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/fm84-prova'
     | '/iscrizione-whatsapp'
     | '/login'
     | '/verifica-codice'
@@ -966,6 +976,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/fm84-prova'
     | '/iscrizione-whatsapp'
     | '/login'
     | '/verifica-codice'
@@ -1058,6 +1069,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_app'
+    | '/fm84-prova'
     | '/iscrizione-whatsapp'
     | '/login'
     | '/verifica-codice'
@@ -1154,6 +1166,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
+  Fm84ProvaRoute: typeof Fm84ProvaRoute
   IscrizioneWhatsappRoute: typeof IscrizioneWhatsappRoute
   LoginRoute: typeof LoginRoute
   VerificaCodiceRoute: typeof VerificaCodiceRoute
@@ -1184,6 +1197,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fm84-prova': {
+      id: '/fm84-prova'
+      path: '/fm84-prova'
+      fullPath: '/fm84-prova'
+      preLoaderRoute: typeof Fm84ProvaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/iscrizione-whatsapp': {
@@ -2039,6 +2059,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
+  Fm84ProvaRoute: Fm84ProvaRoute,
   IscrizioneWhatsappRoute: IscrizioneWhatsappRoute,
   LoginRoute: LoginRoute,
   VerificaCodiceRoute: VerificaCodiceRoute,

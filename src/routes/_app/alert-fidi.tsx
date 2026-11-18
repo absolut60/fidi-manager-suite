@@ -1,4 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { IconaCervedCollegato } from "@/components/cerved/IconaCervedCollegato";
+import { useClientiConReportCerved } from "@/hooks/use-clienti-con-report-cerved";
 import { StrisciaRicalcoloFido } from "@/components/ricalcolo-fido-barra";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -82,6 +84,13 @@ function AlertFidiContenuto({ userId, puoProporre }: { userId: string; puoPropor
   const righe = righeBase;
   // FM55 3C: segnalazioni dalla stessa fonte di proposta massiva e scheda cliente.
   const idsClienti = useMemo(() => [...new Set((righe ?? []).map((a) => a.cliente_id))].sort(), [righe]);
+  // FM84: simbolo Cerved, stesso hook della lista clienti.
+  const { data: clientiConCerved } = useClientiConReportCerved(idsClienti);
+  const navigate = useNavigate();
+  const iconaCerved = (id: string) => clientiConCerved?.has(id) ? (
+    <IconaCervedCollegato classe={clientiConCerved.get(id)?.classe} score={clientiConCerved.get(id)?.score}
+      onApri={() => navigate({ to: "/clienti/$clienteId", params: { clienteId: id }, search: { tab: "cerved" } as any })} />
+  ) : undefined;
   const { data: teoricoMap } = useQuery({
     queryKey: ["fido-teorico-alert", idsClienti.join(",")],
     enabled: idsClienti.length > 0,
@@ -422,6 +431,7 @@ function AlertFidiContenuto({ userId, puoProporre }: { userId: string; puoPropor
                   { etichetta: "Alert dal", valore: formatDate(a.aperto_il) },
                 ]}
                 footer={renderAzioni(a)}
+                angolo={iconaCerved(a.cliente_id)}
               />
             ))}
           </ElencoSchede>
@@ -444,6 +454,7 @@ function AlertFidiContenuto({ userId, puoProporre }: { userId: string; puoPropor
                 <TableHead className="w-[13%] max-2xl:w-[17%]">Ultima decisione</TableHead>
                 <TableHead className="hidden 2xl:table-cell w-24">Alert dal</TableHead>
                 <TableHead className="hidden 2xl:table-cell w-28">Azioni</TableHead>
+                <TableHead className="sticky right-0 z-10 w-16 border-l bg-card text-right">Cerved</TableHead>
               </TableRow></TableHeader>
               <TableBody>
                 {visibili.map((a) => (
@@ -475,6 +486,7 @@ function AlertFidiContenuto({ userId, puoProporre }: { userId: string; puoPropor
                     </TableCell>
                     <TableCell className="hidden 2xl:table-cell align-top">{formatDate(a.aperto_il)}</TableCell>
                     <TableCell className="hidden 2xl:table-cell align-top whitespace-normal">{renderAzioni(a)}</TableCell>
+                    <TableCell className="sticky right-0 z-10 border-l bg-card p-1 align-bottom text-right">{iconaCerved(a.cliente_id)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

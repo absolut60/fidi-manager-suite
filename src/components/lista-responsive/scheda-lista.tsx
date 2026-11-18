@@ -16,6 +16,7 @@ export function SchedaLista({
   colonneCampi = 1,
   className,
   selezione,
+  angolo,
 }: {
   /** Se omesso la scheda è un contenitore statico (necessario quando contiene elementi interattivi). */
   onClick?: () => void;
@@ -26,6 +27,8 @@ export function SchedaLista({
   colonneCampi?: 1 | 2;
   className?: string;
   selezione?: { checked: boolean; onChange: (v: boolean) => void };
+  /** FM84: elemento fisso nell'angolo in basso a destra (es. simbolo Cerved); il footer gli lascia spazio. */
+  angolo?: ReactNode;
 }) {
   // Mai un <button> come wrapper: la scheda può contenere elementi interattivi
   // (checkbox) e il nesting di bottoni è HTML non valido → mismatch di idratazione.
@@ -48,6 +51,7 @@ export function SchedaLista({
       className={cn(
         "w-full text-left rounded-lg border bg-card p-4",
         onClick && "cursor-pointer active:bg-muted/50",
+        angolo != null && "relative",
         className,
       )}
     >
@@ -88,7 +92,8 @@ export function SchedaLista({
         </div>
       )}
 
-      {footer && <div className="mt-2 flex flex-wrap items-center gap-1.5">{footer}</div>}
+      {footer && <div className={cn("mt-2 flex flex-wrap items-center gap-1.5", angolo != null && "pr-12")}>{footer}</div>}
+      {angolo != null && <div className="absolute bottom-1.5 right-1.5">{angolo}</div>}
     </div>
   );
 }
