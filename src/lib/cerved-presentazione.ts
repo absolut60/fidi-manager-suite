@@ -217,6 +217,15 @@ export function settoreGaugeDaClasseCgs(classe: number | null | undefined): numb
   return 8 - classe;
 }
 
+/**
+ * Settore del mini gauge nella lista clienti: lo STESSO del gauge della scheda,
+ * cioè settoreGaugeCerved sullo score. Solo quando lo score manca si ripiega
+ * sulla classe CGS; null se mancano entrambi (semicerchio grigio senza lancetta).
+ */
+export function settoreIconaCervedLista(score: number | null | undefined, classe: number | null | undefined): number | null {
+  return settoreGaugeCerved(score) ?? settoreGaugeDaClasseCgs(classe);
+}
+
 // ===== Light Report (dati da normalizzaLightReportXml) =====
 
 const MESI_BREVI = ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"] as const;

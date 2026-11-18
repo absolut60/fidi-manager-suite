@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { SETTORI_GAUGE_CERVED, settoreGaugeDaClasseCgs } from "@/lib/cerved-presentazione";
+import { SETTORI_GAUGE_CERVED, settoreIconaCervedLista } from "@/lib/cerved-presentazione";
 import { formatNumeroIt } from "@/lib/numero-it";
 
 /** Testo di tooltip/aria-label del simbolo Cerved nella lista clienti. */
@@ -10,8 +10,9 @@ export function etichettaCervedLista(classe: number | null, score: number | null
 
 /**
  * FM84: mini gauge Cerved (semicerchio a 8 settori con i colori del gauge della scheda,
- * fonte unica SETTORI_GAUGE_CERVED) con lancetta sul settore della classe CGS.
- * Classe mancante: semicerchio grigio senza lancetta.
+ * fonte unica SETTORI_GAUGE_CERVED) con lancetta sul settore dello score CGS, calcolato
+ * con la stessa funzione della scheda (settoreGaugeCerved); ripiego sulla classe solo
+ * senza score. Classe mancante: semicerchio grigio senza lancetta.
  */
 export function IconaCervedCollegato({
   classe = null,
@@ -24,7 +25,7 @@ export function IconaCervedCollegato({
   onApri?: () => void;
   className?: string;
 }) {
-  const settore = settoreGaugeDaClasseCgs(classe);
+  const settore = settoreIconaCervedLista(score, classe);
   const cx = 12, cy = 12.5, r = 9;
   const pt = (deg: number, rr: number) => [cx + rr * Math.cos((deg * Math.PI) / 180), cy - rr * Math.sin((deg * Math.PI) / 180)];
   const amp = 180 / 8;
