@@ -27,6 +27,8 @@
 - I.CO.MA. ancora in attesa nel dato reale; nessun acquisto o recupero live eseguito.
 - Browser con dati/permessi/recupero simulati: 320, 375, 390, 768, 1280, 1920, nessun overflow e pulsanti almeno 44px; dopo recupero elenco riletto e stato vuoto.
 - Sessione del proprietario non disponibile (`auth-session --self` non trova account): accesso reale e consegna Cerved non verificati. Non è stato utilizzato un account altrui.
+- Ricontrollo dal percorso effettivo `/impostazioni`, con autenticazione/dati/rete simulati: amministratore e recupero_crediti, 375/1280 px, entrambi i report, entrambi i recuperi con rilettura e elenco vuoto. Entrambi i link aprono `/clienti/<id>?tab=cerved`, tab Cerved selezionato, ritorno all'elenco riuscito; store_manager non vede la card. Nessuna modifica app necessaria.
+- Controllata anche la classe `.dark`: la card resta uguale, perché l'app attuale non definisce un secondo insieme di colori scuri né un selettore di tema. Le foto etichettate dark verificano la classe, non un tema scuro effettivamente disponibile. Avvisi di hydration degli attributi derivano dalla sessione simulata solo nel browser; zero errori runtime al termine delle prove corrette.
 
 ## Attivazione
 - Pubblicare e risincronizzare Inngest per registrare il nuovo cron.
