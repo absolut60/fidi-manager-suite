@@ -1,6 +1,10 @@
-# FM86 — Scheda Cerved e lettura del report
+# FM88 — Esponenti e società collegate
+- [x] Normalizzazione da PositionCompany; 60 fotografie aggiornate nelle sole chiavi esponenti/societa_collegate, confronto esatto col parser e altri campi invariati. Nessuna chiamata Cerved o migrazione.
+- [x] Sette società G-E TRADE e due ruoli esponente verificati; fotografie 375/768/1280/1920 senza overflow/errori, 1111 test verdi. Lettura report invariata; precedente scheda registrata FM87. Accesso reale porta al login: verifica autenticata indisponibile.
+
+# FM87 — Scheda Cerved e lettura del report
 - [x] Verificati 60 XML archiviati; aggiornati 135 bilanci in 47 fotografie, 13 senza bilancio invariati. Tutti i campi richiesti presenti; confronto DB/normalizzatore senza differenze. Nessuna chiamata Cerved né migrazione.
-- [x] Scheda, consultazioni e lettura fissa completate; 1093 test verdi e fotografie 375/768/1280/1920 senza overflow. Vista reale con dati archiviati su pagina temporanea rimossa; accesso personale indisponibile, apertura autenticata non verificata. Rapporto fm86-cerved-lettura.md.
+- [x] Scheda, consultazioni e lettura fissa completate; 1093 test verdi e fotografie 375/768/1280/1920 senza overflow. Vista reale con dati archiviati su pagina temporanea rimossa; accesso personale indisponibile, apertura autenticata non verificata. Rapporto fm87-cerved-lettura.md.
 
 # FM86 — Sede preventivo e logo PDF
 - [x] Risoluzione unica cliente/lead/utente in preventivo-creazione; creazione da lista/lead e copie/alternative passano da createPreventivo; sede obbligatoria e modificabile. Senza sede i quattro PDF di tutte le linee usano MADE di gruppo (prima ufficiale: Sistema MADE; altri: MADE).

@@ -21,6 +21,8 @@ import {
 import { letturaReportCerved } from "@/lib/cerved-lettura";
 import { VisualizzatorePdf } from "@/components/visualizzatore-pdf";
 import { GaugeCerved } from "@/components/cerved/gauge-cerved";
+import { EsponentiSocietaCerved } from "@/components/cerved/esponenti-societa";
+import { nomiEventiRelazionatiCerved } from "@/lib/cerved-collegati";
 import { useLightReportCliente, chiaveLightReportCliente } from "@/hooks/use-light-report-cliente";
 import { useEsperienzaPagamentoCliente, testiEsperienzaPagamento } from "@/hooks/use-esperienza-pagamento";
 import { SemaforoAffidabilitaBadge } from "@/components/pannello-rischio-cliente";
@@ -289,8 +291,8 @@ export function VistaCerved({ dati, clienteId, fidoMade, puoAggiornare, inCorso,
             return <Elemento k="Eventi negativi su azienda" v={presenti.length ? presenti.join(", ") : Object.values(ev.azienda).every(v => v === false) ? "Assenti" : "Dati parziali"} tono={presenti.length ? "rosso" : Object.values(ev.azienda).every(v => v === false) ? "verde" : undefined} />;
           })()}
           {(() => {
-            const persone = (Array.isArray(ev.persone) ? ev.persone : []).filter((pp: Obj) => EVENTI.some(([k]) => pp[k] === true));
-            return <Elemento k="Eventi negativi su soggetti relazionati" v={persone.length ? persone.map((pp: Obj) => pp.nome ?? "Soggetto senza nome").join("; ") : "Nessuno segnalato"} tono={persone.length ? "rosso" : "verde"} />;
+            const nomi = nomiEventiRelazionatiCerved(Array.isArray(ev.persone) ? ev.persone : [], lr?.societa_collegate ?? []);
+            return <Elemento k="Eventi negativi su soggetti relazionati" v={nomi.length ? nomi.join("; ") : "Nessuno segnalato"} tono={nomi.length ? "rosso" : "verde"} />;
           })()}
           <Elemento k="Appartenenza a un gruppo" v={p?.gruppo == null ? "—" : p.gruppo ? `Sì${p.capogruppo?.length ? ` – ${p.capogruppo.join(", ")}` : ""}` : "No"} />
           <Elemento k="N. addetti" v={a.dipendenti != null ? `${a.dipendenti.toLocaleString("it-IT")}${a.dipendenti_anno ? ` (${a.dipendenti_anno})` : ""}` : "—"} />
@@ -299,12 +301,8 @@ export function VistaCerved({ dati, clienteId, fidoMade, puoAggiornare, inCorso,
           <Elemento k="Costituita il" v={a.data_costituzione ?? "—"} />
           <Elemento k="Pubblica amministrazione" v={r.ente_pa === true ? "Sì" : r.ente_pa === false ? "No" : "—"} />
         </div>
-        {ev.collegati.length > 0 && <SottoSezione titolo="Soggetti collegati">
-          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {ev.collegati.map((c, i) => <li key={i} className="min-w-0 text-sm"><p className="break-words font-medium">{c.nome ?? "—"}</p>{c.codice_fiscale && <p className="break-words text-xs text-muted-foreground">{c.codice_fiscale}</p>}</li>)}
-          </ul>
-        </SottoSezione>}
       </Sezione>
+      {lr && <EsponentiSocietaCerved esponenti={lr.esponenti} societa={lr.societa_collegate} persone={ev.persone} atecoCliente={a.ateco_2025_codice} />}
 
       {/* E) Altri dati */}
       <Sezione titolo="Altri dati">

@@ -948,7 +948,20 @@ function dataXml(n: NodoXml | null): string | null {
   return m ? m[1] : t;
 }
 
+export type RuoloCerved = { codice: string | null; tipo: string | null; dal: string | null; al: string | null; legame_attivo: boolean | null };
+export type EsponenteCerved = { id_persona: string | null; subject_id: string | null; nome: string | null; cognome: string | null; codice_fiscale: string | null; data_nascita: string | null; luogo_nascita: string | null; provincia_nascita: string | null; ruoli: RuoloCerved[] };
+export type SocietaCollegataCerved = {
+  id_societa: string | null; nome: string | null; forma_giuridica: string | null; forma_descrizione: string | null; forma_codice: string | null; codice_fiscale: string | null;
+  stato_codice: string | null; stato_descrizione: string | null; stato_dal: string | null; costituita_il: string | null;
+  ateco_codice: string | null; ateco_descrizione: string | null; capitale: number | null;
+  fatturato: { valore: number | null; data: string | null; valuta: string | null } | null;
+  utile: { valore: number | null; data: string | null; valuta: string | null } | null;
+  eventi_negativi: boolean | null; gruppo: string | null; richieste_12_mesi: number | null; id_esponente: string | null; ruoli: RuoloCerved[];
+};
+
 export type LightReportCerved = {
+  esponenti: EsponenteCerved[];
+  societa_collegate: SocietaCollegataCerved[];
   data_report: string | null;
   anagrafica: (Pick<AziendaCerved, "denominazione" | "partita_iva" | "codice_fiscale" | "rea" | "forma_giuridica" | "ateco_2025_codice" | "ateco_2025_descrizione" | "stato_attivita_codice" | "stato_attivita_descrizione" | "sede"> & {
     pec: string | null; sito_web: string | null; telefono: string | null;
@@ -1058,8 +1071,23 @@ export function normalizzaLightReportXml(xml: string): LightReportCerved {
     flag_pc: bool(diretto(n, "FlagPc")), flag_pp: bool(diretto(n, "FlagPP")), codici: codici(diretto(n, "CgrFlags")),
   }));
   const flagAssenti: FlagEventiCerved = { protesti: null, pregiudizievoli: null, procedure: null, eventi_crisi: null, cigs: null, fallimenti_propri: null };
+  const posizioni = figli(diretto(root, "PositionCompany"), "PositionRelatedCompany");
+  const ruoli = (n: NodoXml): RuoloCerved[] => figli(n, "Position").map(p => ({
+    codice: testo(p.attr.Code), tipo: conTesto(p, "Type"), dal: dataXml(diretto(p, "StartDate")),
+    al: dataXml(diretto(p, "EndDate")), legame_attivo: bool(diretto(p, "ActiveLink")),
+  }));
+  const esponenti: EsponenteCerved[] = posizioni.flatMap(n => figli(n, "Director").map(d => {
+    const i = diretto(d, "Individual");
+    return { id_persona: conTesto(i, "IDPerson"), subject_id: conTesto(i, "SubjectId"), nome: conTesto(i, "FirstName"), cognome: conTesto(i, "LastName"), codice_fiscale: conTesto(i, "TaxCode"), data_nascita: dataXml(diretto(i, "BirthDate")), luogo_nascita: conTesto(i, "BirthPlace"), provincia_nascita: testo(diretto(i, "BirthProvince")?.attr.Code), ruoli: ruoli(d) };
+  }));
+  const societa_collegate: SocietaCollegataCerved[] = posizioni.flatMap(n => figli(n, "RelatedCompany").map(c => {
+    const a = diretto(c, "Aziendaslim"), info = diretto(a, "CompanyInformation"), forma = diretto(info, "CompanyForm"), ateco = diretto(a, "Ateco2025");
+    const importo = (tag: string) => { const v = diretto(a, tag); return v ? { valore: num(diretto(v, "Value")), data: dataXml(diretto(v, "Date")), valuta: conTesto(v, "Currency") } : null; };
+    return { id_societa: conTesto(info, "IDCompany"), nome: conTesto(info, "CompanyName"), forma_giuridica: txt(forma), forma_descrizione: testo(forma?.attr.LegalFormDescription), forma_codice: testo(forma?.attr.LegalFormCode), codice_fiscale: conTesto(info, "TaxCode"), stato_codice: conTesto(a, "ActivityStatus"), stato_descrizione: conTesto(a, "ActivityDescription"), stato_dal: dataXml(diretto(a, "ActivityStatusStartDate")), costituita_il: dataXml(diretto(a, "IncorporationDate")), ateco_codice: testo(ateco?.attr.Code?.split("/")[0]), ateco_descrizione: txt(ateco), capitale: num(diretto(a, "EquityCapital")), fatturato: importo("Revenue"), utile: importo("Profit"), eventi_negativi: bool(diretto(a, "NegativeEvents")), gruppo: conTesto(a, "Group"), richieste_12_mesi: num(diretto(a, "CreditRequestsLastTwelveMonths")), id_esponente: conTesto(a, "LinkSubjectId"), ruoli: ruoli(c) };
+  }));
 
   return {
+    esponenti, societa_collegate,
     data_report: dataXml(trova(doc, "DeliveryAndSummaryDetails/DeliveredOn")),
     anagrafica: item ? {
       denominazione: conTesto(item, "OfficialCompanyName") ?? conTesto(company, "CompanyName"),
