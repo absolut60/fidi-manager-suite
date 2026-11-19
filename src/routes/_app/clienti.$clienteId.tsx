@@ -869,7 +869,7 @@ function ClienteDetail() {
 
         <TabsContent value="cerved">
           <SectionErrorBoundary nome="Cerved">
-            <ClienteCervedTab clienteId={cliente.id} partitaIva={cliente.partita_iva} fidoMade={getFidoAttuale(cliente)} esposizione={cliente.totale_rischio == null ? null : Number(cliente.totale_rischio)} />
+            <ClienteCervedTab pagina clienteId={cliente.id} partitaIva={cliente.partita_iva} fidoMade={getFidoAttuale(cliente)} esposizione={cliente.totale_rischio == null ? null : Number(cliente.totale_rischio)} />
           </SectionErrorBoundary>
         </TabsContent>
 
