@@ -1730,6 +1730,13 @@
       "when": 1795070846024,
       "tag": "0246_cerved_stato_consegna_report",
       "breakpoints": true
+    },
+    {
+      "idx": 247,
+      "version": "7",
+      "when": 1795071542656,
+      "tag": "0247_cerved_blocco_report_notifica",
+      "breakpoints": true
     }
   ]
 }

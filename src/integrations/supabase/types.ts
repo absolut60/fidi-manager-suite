@@ -8842,6 +8842,13 @@ export type Database = {
       }
       auto_collega_iscritto_whatsapp: { Args: { _id: string }; Returns: string }
       backfill_contatti_iscritti_whatsapp: { Args: never; Returns: Json }
+      blocca_report_cerved_e_notifica: {
+        Args: {
+          _report_id: string
+          _ruoli: Database["public"]["Enums"]["app_role"][]
+        }
+        Returns: boolean
+      }
       bulk_update_clienti_anagrafica: { Args: { _rows: Json }; Returns: number }
       bulk_update_clienti_bfa: { Args: { _payloads: Json }; Returns: number }
       calcola_fido_base: {

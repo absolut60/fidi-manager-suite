@@ -1,3 +1,8 @@
+# FM85 — Fetta B
+- [x] Recupero orario, blocco/avviso atomico dopo 48 ore (0247), elenco Cerved e recupero manuale autorizzato; altre impostazioni riservate agli amministratori.
+- [x] 1042 test verdi; browser simulato 320–1920 senza overflow/errori, recupero e rilettura verificati. Corpo RPC/grant verificati; nessuna chiamata Cerved live, account proprietario non disponibile.
+- [ ] Attivazione esterna: pubblicare/resync Inngest ed eseguire il dato catalogo `docs/verifiche/fm85b-catalogo-notifica.sql` (proprietario); rapporto `docs/verifiche/fm85b-recupero-cerved.md`.
+
 # FM85 — Fetta A
 - [x] Schema additivo e allineamento storico; registrazione immediata dell'acquisto e tentativi atomici; stato condiviso in scheda.
 - [x] 1033 test verdi; scheda reale con risposte simulate fotografata a 375/1280 nei tre stati. DB: 51 consegnati e I.CO.MA. in attesa; nessuna chiamata Cerved live. Job automatico escluso (fetta B).

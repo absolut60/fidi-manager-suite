@@ -11,6 +11,7 @@ import {
   finalizeScadenziarioImport,
   processScadAssicImport,
   processBloccoFidoImport,
+  recuperoOrarioCerved,
 } from "@/lib/inngest/functions.server";
 import { processArticoliListiniGammaImport } from "@/lib/inngest/listini-gamma/orchestratore.server";
 import { invioMassivoSolleciti } from "@/lib/inngest/sollecito-massivo.server";
@@ -47,6 +48,7 @@ const handler = serve({
     finalizeScadenziarioImport,
     processScadAssicImport,
     processBloccoFidoImport,
+    recuperoOrarioCerved,
     processArticoliListiniGammaImport,
     invioMassivoSolleciti,
     snapshotMensile,

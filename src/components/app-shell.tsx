@@ -55,6 +55,7 @@ import { useAuth, RUOLI_LABEL } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { puoVedereAreaFidi } from "@/lib/permessi-fidi";
+import { puoAggiornareCerved } from "@/lib/permessi-cerved";
 import { isSoloShowroom, voceMenuVisibileShowroom } from "@/lib/permessi-showroom";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { contaNonLette, notificheNonLetteQueryKey } from "@/lib/notifiche";
@@ -338,6 +339,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const canGestioneRich = isAdmin || isGestoreRich || isEsecutoreRich || isAmministrazione;
 
   const visibleNavRaw = NAV.filter((item) => {
+    if (item.to === "/impostazioni") return isAdmin || puoAggiornareCerved(userRoles);
     if (item.permessoAreaFidi) return puoVedereAreaFidi(userRoles);
     if (item.group === "richieste_interne") {
       if (!canSeeRichiesteInterne) return false;

@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
 import { Unzip, UnzipInflate, unzipSync, strFromU8 } from "fflate";
 import { inngest } from "./client";
+import { recuperaReportCervedInAttesa } from "@/lib/cerved/cerved-attesa.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isFonteImportFidoTeorico } from "@/lib/fido-teorico-import-completi";
 import {
@@ -31,6 +32,36 @@ import {
 
 
 type EventData = { importazioneId: string; filePath: string; userId?: string };
+
+export const recuperoOrarioCerved = inngest.createFunction(
+  {
+    id: "cerved-recupero-report-orario",
+    name: "Cerved — recupero orario report in attesa",
+    retries: 2,
+    concurrency: { limit: 1 },
+    triggers: [{ cron: "0 * * * *" }],
+  },
+  async ({ step, logger }) => {
+    const ids = await step.run("report-in-attesa", async () => {
+      const ids: string[] = [];
+      for (let offset = 0; ; offset += 500) {
+        const { data, error } = await supabaseAdmin.from("cerved_report").select("id")
+          .eq("stato", "in_attesa").order("id").range(offset, offset + 499);
+        if (error) throw new Error(error.message);
+        ids.push(...(data ?? []).map(r => r.id));
+        if (!data || data.length < 500) return ids;
+      }
+    });
+    for (const id of ids) {
+      try {
+        await step.run(`recupero-${id}`, () => recuperaReportCervedInAttesa(id));
+      } catch (e) {
+        logger.error("Recupero Cerved fallito", { reportId: id, errore: String(e) });
+      }
+    }
+    return { report: ids.length };
+  },
+);
 
 /* ============================================================================
  * Utility comuni

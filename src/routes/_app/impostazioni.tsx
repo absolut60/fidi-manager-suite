@@ -33,6 +33,8 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BellRing } from "lucide-react";
 import { ProvaCervedCard } from "@/components/impostazioni/prova-cerved-card";
+import { ReportCervedAttesaCard } from "@/components/impostazioni/report-cerved-attesa-card";
+import { puoAggiornareCerved } from "@/lib/permessi-cerved";
 import { LoghiSede } from "@/components/impostazioni/loghi-sede";
 import { sanificaDocumentoHtml, SANDBOX_ANTEPRIMA } from "@/lib/html-sicuro";
 
@@ -77,7 +79,7 @@ type StoreRow = {
 };
 
 function ImpostazioniPage() {
-  const { role, loading } = useAuth();
+  const { role, roles, loading } = useAuth();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<StoreRow | null>(null);
   const [testEmailTo, setTestEmailTo] = useState("a.giani@gruppomade.com");
@@ -87,6 +89,7 @@ function ImpostazioniPage() {
 
   const { data: stores, isLoading } = useQuery({
     queryKey: ["stores", "all"],
+    enabled: role === "amministratore",
     queryFn: async () => {
       const { data, error } = await supabase.from("stores").select("*").order("codice");
       if (error) throw error;
@@ -95,6 +98,7 @@ function ImpostazioniPage() {
   });
 
   if (!loading && role !== "amministratore") {
+    if (puoAggiornareCerved(roles)) return <div className="space-y-6"><h1 className="text-2xl sm:text-3xl font-bold">Impostazioni</h1><ReportCervedAttesaCard /></div>;
     return <Card className="p-8 text-center"><p className="font-medium">Accesso riservato agli amministratori</p></Card>;
   }
 
@@ -131,6 +135,7 @@ function ImpostazioniPage() {
       <MigrazioneRichiesteCard />
 
       <ProvaCervedCard />
+      <ReportCervedAttesaCard />
 
 
 

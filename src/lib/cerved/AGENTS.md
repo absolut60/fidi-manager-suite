@@ -1,1 +1,2 @@
 - Light Report purchase sends the POST /v1/purchase body only from acquistaLightReport, always with subject_type COMPANY (required by the Cerved "Product Purchase" sheet; every linked subject comes from entity_search COMPANIES_ONLY), so no other caller or field shape can be invented.
+- Pending recovery delegates only to recuperaESalvaLightReport; the service-only blocca_report_cerved_e_notifica RPC atomically guards the 48-hour transition and notifications, receiving recipients' roles from RUOLI_AGGIORNANO_CERVED to avoid duplicate alerts or divergent permissions.
