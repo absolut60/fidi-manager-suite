@@ -1,6 +1,6 @@
 import { CondizioniClienteGamma } from "@/components/preventivatore/CondizioniClienteGamma";
 import { CondizionePagamentoRichiestaSelect } from "@/components/condizione-pagamento-richiesta-select";
-import { campiSedePreventivo, riallineaValidita, validitaProposta } from "@/lib/preventivo-creazione";
+import { campiSedePreventivo, risolviSedePreventivo, riallineaValidita, validitaProposta } from "@/lib/preventivo-creazione";
 import { creaConPrimoBlocco } from "@/lib/nuovo-preventivo";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -144,29 +144,30 @@ export function NuovoPreventivoDialog({
     return () => { attivo = false; };
   }, [clienteId, soggetto?.id, isWriteOnly, profiloCodiceAgente]);
 
-  // Stessa fonte/cache di CondizioniClienteGamma: non riproporre la filiale dopo una modifica manuale.
+  // Stessa fonte/cache di CondizioniClienteGamma; la scelta manuale prevale sulla proposta.
   useEffect(() => {
     let attivo = true;
-    if (soggetto?.tipo === "lead") return;
     filialeManuale.current = false;
-    setFiliale("");
+    setFiliale(risolviSedePreventivo({ lead: soggetto?.tipo === "lead" ? soggetto.lead : null, utente: profilo }) ?? "");
     if (!clienteId) return;
     qc.ensureQueryData({
       queryKey: ["condizioni-preventivo-cliente", clienteId],
       queryFn: () => fetchCondizioniPreventivoCliente(clienteId),
       staleTime: 5 * 60_000,
     }).then((condizioni) => {
-      if (attivo && !filialeManuale.current) setFiliale(condizioni?.sede_nome ?? "");
+      if (attivo && !filialeManuale.current) setFiliale(risolviSedePreventivo({ cliente: condizioni, utente: profilo }) ?? "");
     }).catch(() => {
       if (attivo) toast.warning("Impossibile leggere la sede del cliente: scegli la filiale manualmente.");
     });
     return () => { attivo = false; };
-  }, [clienteId, qc]);
+  }, [clienteId, soggetto?.id, soggetto?.tipo === "lead" ? soggetto.lead.store_id : null, profilo?.store_id, qc]);
 
   const create = useMutation({
     mutationFn: async () => {
       if (!soggetto) throw new Error("Scegli un cliente o un lead");
       if (!linea) throw new Error("Non hai linee del preventivatore abilitate: chiedi all'amministratore.");
+      const sedeScelta = stores.find(s => s.id === filiale);
+      if (!sedeScelta) throw new Error("Scegli la sede prima di salvare il preventivo.");
       const dataFinal = data || today;
       const tipoDocFinal: TipoDoc = tipoDoc || "PREVENTIVO";
       return creaConPrimoBlocco(() => createPreventivo({
@@ -174,7 +175,7 @@ export function NuovoPreventivoDialog({
         cantiere_id: cantiereId,
         cantiere_descrizione: null,
         agente_codice: agenteId,
-        ...campiSedePreventivo(stores.find(s => s.nome === filiale) ?? null),
+        ...campiSedePreventivo(sedeScelta),
         titolo: titolo.trim() || null,
         condizione_pagamento_cod: pagamento || null,
         tipo_doc: tipoDocFinal,
@@ -219,7 +220,7 @@ export function NuovoPreventivoDialog({
           )}
           <div className="grid gap-1.5">
             <Label>Soggetto *</Label>
-            {soggettoIniziale?.tipo === "lead" && leadIniziale.isPending ? <p className="text-sm text-muted-foreground">Caricamento lead…</p> : soggettoIniziale?.tipo === "lead" && leadIniziale.error ? <p role="alert" className="text-sm text-destructive">{leadIniziale.error.message}</p> : <SoggettoPreventivoPicker key={soggettoIniziale?.id} value={soggetto} riferimento={riferimento} onRiferimento={setRiferimento} consentiLead={!isOrdine} sedeId={stores.find(s => s.nome === filiale)?.id} onChange={v => {
+            {soggettoIniziale?.tipo === "lead" && leadIniziale.isPending ? <p className="text-sm text-muted-foreground">Caricamento lead…</p> : soggettoIniziale?.tipo === "lead" && leadIniziale.error ? <p role="alert" className="text-sm text-destructive">{leadIniziale.error.message}</p> : <SoggettoPreventivoPicker key={soggettoIniziale?.id} value={soggetto} riferimento={riferimento} onRiferimento={setRiferimento} consentiLead={!isOrdine} sedeId={filiale || null} onChange={v => {
               setSoggetto(v); setClienteId(v?.tipo === "cliente" ? v.id : null); setCantiereId(null);
               if (v?.tipo === "lead") { setPagamento(v.lead.condizione_pagamento_cod ?? ""); if (!isWriteOnly) setAgenteId(v.lead.agente_codice ?? (roles.includes("agente") ? profiloCodiceAgente ?? null : null)); }
             }}/>}
@@ -276,16 +277,16 @@ export function NuovoPreventivoDialog({
               )}
             </div>
             <div className="grid min-w-0 gap-1.5">
-              <Label>Filiale</Label>
+              <Label>Sede *</Label>
               <Select
                 value={filiale || "_none"}
                 onValueChange={(v) => { filialeManuale.current = true; setFiliale(v === "_none" ? "" : v); }}
               >
-                <SelectTrigger className="h-auto min-h-10 min-w-0 [&>span]:whitespace-normal [&>span]:break-words [&>span]:text-left"><SelectValue placeholder="Seleziona sede…" /></SelectTrigger>
+                <SelectTrigger aria-label="Sede" className="h-auto min-h-10 min-w-0 [&>span]:whitespace-normal [&>span]:break-words [&>span]:text-left"><SelectValue placeholder="Seleziona sede…" /></SelectTrigger>
                 <SelectContent className="max-w-[calc(100vw-2rem)]">
                   <SelectItem value="_none">— Nessuna —</SelectItem>
                   {stores.map((s) => (
-                    <SelectItem key={s.id} value={s.nome} className="whitespace-normal break-words">
+                    <SelectItem key={s.id} value={s.id} className="whitespace-normal break-words">
                       {s.codice} — {s.nome}
                     </SelectItem>
                   ))}
@@ -342,7 +343,7 @@ export function NuovoPreventivoDialog({
         {lineeProfilo.error && <p role="alert" className="text-sm text-destructive">{lineeProfilo.error.message}</p>}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
-          <Button onClick={() => create.mutate()} disabled={!soggetto || (soggetto.tipo === "lead" && !campiRiferimentoPreventivo(true,riferimento)) || create.isPending || writeOnlyMissingCodice || !linea}>
+          <Button onClick={() => create.mutate()} disabled={!filiale || !soggetto || (soggetto.tipo === "lead" && !campiRiferimentoPreventivo(true,riferimento)) || create.isPending || writeOnlyMissingCodice || !linea}>
             Crea {labelDoc}
           </Button>
         </DialogFooter>

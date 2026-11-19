@@ -1,6 +1,22 @@
 import { describe, expect, test } from "bun:test";
-import { campiSedePreventivo, sedeGiacenzePreventivo, letteraPreventivo, lettereElenco, riallineaValidita, validitaProposta } from "../src/lib/preventivo-creazione";
+import { risolviSedePreventivo, campiSedePreventivo, sedeGiacenzePreventivo, letteraPreventivo, lettereElenco, riallineaValidita, validitaProposta } from "../src/lib/preventivo-creazione";
 import { inUnita } from "../src/lib/scheda-articolo";
+
+describe("FM86 sede del preventivo", () => {
+  test("cliente prima di lead e utente", () => {
+    expect(risolviSedePreventivo({cliente:{store_id:"cliente"},lead:{store_id:"lead"},utente:{store_id:"utente"}})).toBe("cliente");
+  });
+  test("lead senza sede sul profilo: Mergozzo per PRV-172/26", () => {
+    expect(risolviSedePreventivo({lead:{store_id:"c76cb049-d6d3-4327-ae30-a7b7b150c6e6"},utente:{store_id:null}})).toBe("c76cb049-d6d3-4327-ae30-a7b7b150c6e6");
+  });
+  test("utente quando il soggetto non ha sede", () => {
+    expect(risolviSedePreventivo({cliente:{store_id:null},lead:{store_id:null},utente:{store_id:"utente"}})).toBe("utente");
+  });
+  test("nessuno: scelta obbligatoria, nessuna sede inventata", () => {
+    expect(risolviSedePreventivo({})).toBeNull();
+    expect(risolviSedePreventivo({utente:{store_id:null}})).toBeNull();
+  });
+});
 
 describe("FM65 R1a", () => {
   test("FM70 3c: la sede preventivo prevale sulla riserva cliente", () => {

@@ -23,7 +23,7 @@ import {
   type Agente,
 } from "./clienti-api";
 import { testoPerFiltroOr } from "@/lib/ricerca-sicura";
-import { campiSedePreventivo } from "./preventivo-creazione";
+import { campiSedePreventivo, risolviSedePreventivo } from "./preventivo-creazione";
 import type { LeadPreventivo } from "./soggetto-preventivo";
 import { LEAD_PREVENTIVO_SELECT, cercaLeadPreventivo } from "./lead-preventivo-api";
 import { filtroPreventiviPerMe } from './assegnazione-preventivo';
@@ -458,13 +458,37 @@ export async function createPreventivo(
 ): Promise<{ preventivo: Preventivo; numeroRiassegnato: string | null }> {
   // Anche eventuali chiamanti JavaScript obsoleti non possono passare un numero.
   const { numero: _numeroIgnorato, linea: _lineaIgnorata, ...campi } = row as PreventivoInsert;
-  const payload = opzioni ? { ...campi, linea: opzioni.linea } : campi;
+  let storeId = campi.store_id;
+  if (!storeId) {
+    const cliente = campi.cliente_id ? await fetchCondizioniPreventivoCliente(campi.cliente_id) : null;
+    let lead: { store_id: string | null } | null = null;
+    if (!campi.cliente_id && campi.lead_id) {
+      const { data, error } = await supabase.from("lead").select("store_id").eq("id", campi.lead_id).single();
+      if (error) throw error;
+      lead = data;
+    }
+    storeId = risolviSedePreventivo({ cliente, lead });
+    if (!storeId) {
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      if (auth.user) {
+        const { data: utente, error } = await supabase.from("profili").select("store_id").eq("id", auth.user.id).single();
+        if (error) throw error;
+        storeId = risolviSedePreventivo({ cliente, lead, utente });
+      }
+    }
+  }
+  if (!storeId) throw new Error("Scegli la sede prima di salvare il preventivo.");
+  const { data: sede, error: sedeError } = await supabase.from("stores").select("id,nome").eq("id", storeId).single();
+  if (sedeError) throw sedeError;
+  const payload = { ...campi, ...campiSedePreventivo(sede), ...(opzioni ? { linea: opzioni.linea } : {}) };
   const { data, error } = await supabase.from("preventivi").insert(payload).select().single();
   if (error) throw new Error(`${error.message}${error.details ? ` — ${error.details}` : ""}${error.code ? ` [${error.code}]` : ""}`);
   return { preventivo: data, numeroRiassegnato: null };
 }
 
 export async function updatePreventivo(id: string, patch: PreventivoUpdate): Promise<Preventivo> {
+  if ("store_id" in patch && !patch.store_id) throw new Error("Scegli la sede prima di salvare il preventivo.");
   const { data, error } = await supabase
     .from("preventivi")
     .update(patch)
@@ -522,7 +546,6 @@ export async function duplicaPreventivo(
 
   const oggi = new Date().toISOString().slice(0, 10);
   if (nuovoCliente && !nuovoClienteRow) throw new Error("Cliente del duplicato non trovato");
-  const condizioniNuovoCliente = nuovoCliente && nuovoClienteRow ? await fetchCondizioniPreventivoCliente(nuovoClienteRow.id) : null;
   const { preventivo: nuovo } = await createPreventivo({
     data: oggi,
     validita: src.validita,
@@ -530,7 +553,7 @@ export async function duplicaPreventivo(
     lead_id: nuovoCliente ? null : src.lead_id,
     cantiere_id: nuovoCliente ? null : src.cantiere_id,
     agente_codice: nuovoCliente ? nuovoClienteRow?.codice_agente : src.agente_codice,
-    ...campiSedePreventivo(nuovoCliente ? { id: condizioniNuovoCliente?.store_id ?? null, nome: condizioniNuovoCliente?.sede_nome ?? null } : { id: src.store_id, nome: src.filiale }),
+    // La creazione risolve la sede dal soggetto anche per duplicati e alternative.
     listino_rif: src.listino_rif,
     macrocategoria_rif: src.macrocategoria_rif,
     categoria_rif: src.categoria_rif,

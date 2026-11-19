@@ -1,3 +1,12 @@
+/** FM86: proposta sede unica; una scelta esplicita del documento resta modificabile. */
+export function risolviSedePreventivo({ cliente, lead, utente }: {
+  cliente?: { store_id: string | null } | null;
+  lead?: { store_id: string | null } | null;
+  utente?: { store_id: string | null } | null;
+}): string | null {
+  return cliente?.store_id ?? lead?.store_id ?? utente?.store_id ?? null;
+}
+
 /** FM70: identità sede scritta sempre insieme al nome della filiale. */
 export function campiSedePreventivo(sede: { id: string | null; nome: string | null } | null) {
   return { filiale: sede?.nome ?? null, store_id: sede?.id ?? null };

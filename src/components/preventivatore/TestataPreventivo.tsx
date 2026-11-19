@@ -18,7 +18,9 @@ import { RiquadroScheda } from "./RiquadroScheda";
 import { IndicatoreClientePreventivo } from "./IndicatoreClientePreventivo";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { campiSedePreventivo } from "@/lib/preventivo-creazione";
+import { campiSedePreventivo, risolviSedePreventivo } from "@/lib/preventivo-creazione";
+import { useAuth } from "@/hooks/use-auth";
+import { toast } from "sonner";
 import { CondizioniRiferimento } from "./CondizioniRiferimento";
 import type { CataloghiRiferimento, RiferimentoPreventivo } from "@/lib/condizioni-riferimento";
 import { nomeLeadPreventivo } from "@/lib/soggetto-preventivo";
@@ -33,10 +35,16 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
   onSave:(patch:PreventivoUpdate)=>void; onCliente:()=>void; onChangeCliente:(id:string)=>void; onCantiere:(id:string)=>void|Promise<void>;
 }) {
   const {data:codici=[]}=useCodiciPagamento();
+  const {profilo}=useAuth();
   const {data:stores=[]}=useQuery({queryKey:["stores-attivi"],queryFn:async()=>{const {data,error}=await supabase.from("stores").select("id, codice, nome").eq("attivo",true).order("codice");if(error)throw error;return data??[];}});
   const pagamento=prev.condizione_pagamento_cod||cliente?.condizione_pagamento_cod||'';
   const pagamentoDesc=codici.find(c=>c.cod===pagamento)?.descrizione||cliente?.condizione_pagamento_desc||'';
-  const save=(patch:PreventivoUpdate)=>onSave({...(!prev.condizione_pagamento_cod&&pagamento?{condizione_pagamento_cod:pagamento}:{}),...patch});
+  const sedeRisolta=prev.store_id ?? risolviSedePreventivo({cliente:{store_id:sedeClienteId??null},lead:prev.lead,utente:profilo});
+  const save=(patch:PreventivoUpdate)=>{
+    const sedeId=patch.store_id===undefined?sedeRisolta:patch.store_id;
+    if(!sedeId){toast.error("Scegli la sede prima di salvare il preventivo.");return;}
+    onSave({...(!prev.store_id?campiSedePreventivo(stores.find(s=>s.id===sedeId)??{id:sedeId,nome:null}):{}),...(!prev.condizione_pagamento_cod&&pagamento?{condizione_pagamento_cod:pagamento}:{}),...patch});
+  };
   const field=(label:string,value:ReactNode,control:ReactNode,wide=false)=><div key={label} className={`min-w-0 grid content-start gap-1 ${wide?'col-span-2':''}`}><Label className="text-[11px] text-muted-foreground">{label}</Label>{modificabile?control:<div className="min-h-7 text-xs break-words whitespace-pre-wrap py-1">{value||'—'}</div>}</div>;
   const text=(key:'titolo',label:string,wide=false)=>field(label,prev[key],<Input aria-label={label} key={`${key}-${prev[key]}`} className="h-7 bg-card px-2 text-xs md:text-xs" defaultValue={prev[key]||''} onBlur={e=>{if((e.target.value||null)!==prev[key])save({[key]:e.target.value||null});}}/>,wide);
   const select=(label:string,value:string,options:{value:string;label:string}[],onChange:(v:string)=>void,disabled=false)=><Select value={value||'__none__'} onValueChange={onChange} disabled={disabled}><SelectTrigger aria-label={label} className="h-7 w-full min-w-0 bg-card px-2 text-xs [&>span]:truncate [&>span]:text-left"><SelectValue/></SelectTrigger><SelectContent className="max-w-[calc(100vw-2rem)]"><SelectItem value="__none__">—</SelectItem>{options.map(o=><SelectItem key={o.value} value={o.value} className="whitespace-normal break-words">{o.label}</SelectItem>)}</SelectContent></Select>;
@@ -87,7 +95,7 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
         {field('Condizione di pagamento',etichettaCondizionePagamento(codici,pagamento,cliente?.condizione_pagamento_desc),<CondizionePagamentoRichiestaSelect ariaLabel="Condizione di pagamento" size="sm" value={pagamento} descFallback={cliente?.condizione_pagamento_desc} onChange={v=>save({condizione_pagamento_cod:v||null})}/>,true)}
         {field('IVA %',`${formatNumeroIt(prev.iva_perc||0)}%`,<Input aria-label="IVA %" className="h-7 bg-card px-2 text-xs md:text-xs" inputMode="decimal" defaultValue={formatNumeroIt(prev.iva_perc||0)} onBlur={e=>{const v=parseNumeroIt(e.target.value);if(v!==null&&v!==prev.iva_perc)save({iva_perc:v});}}/>)}
         {lineaPreventivo(prev.linea).blocchi.regimiIva && field('Regime IVA',REGIMI_IVA.find(r=>r.value===regimeIvaValido(prev.regime_iva))?.label,<Select value={regimeIvaValido(prev.regime_iva)} onValueChange={v=>{const r=regimeIvaValido(v);if(r!==prev.regime_iva)save({regime_iva:r});}}><SelectTrigger aria-label="Regime IVA" className="h-7 w-full min-w-0 bg-card px-2 text-xs [&>span]:truncate [&>span]:text-left"><SelectValue/></SelectTrigger><SelectContent>{REGIMI_IVA.map(o=><SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>)}
-        {field('Filiale',prev.filiale,select('Filiale',prev.store_id||'',stores.map(s=>({value:s.id,label:s.nome})),id=>save(campiSedePreventivo(stores.find(s=>s.id===id)??null))))}
+        {field('Sede *',stores.find(s=>s.id===sedeRisolta)?.nome||prev.filiale,select('Sede',sedeRisolta||'',stores.map(s=>({value:s.id,label:s.nome})),id=>save(campiSedePreventivo(stores.find(s=>s.id===id)??null))))}
       </div>
     </RiquadroScheda>
     <AssegnazionePreventivo prev={prev} modificabile={modificabile}/>

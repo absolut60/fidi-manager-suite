@@ -1,3 +1,7 @@
+# FM86 — Sede preventivo e logo PDF
+- [x] Risoluzione unica cliente/lead/utente in preventivo-creazione; creazione da lista/lead e copie/alternative passano da createPreventivo; sede obbligatoria e modificabile. Senza sede i quattro PDF di tutte le linee usano MADE di gruppo (prima ufficiale: Sistema MADE; altri: MADE).
+- [x] Aggiornato solo store_id di PRV-172/26 a Mergozzo; PRV-169/26 (A&O, lead a Lissone) invariato. 1048 test/0 errori, compilazione OK; dialog e testata simulati a 375/1280, sede proposta/modificata riletta e overflow 0. Sessione personale non disponibile: PDF autenticato con logo Mergozzo non verificato; nessuna migrazione.
+
 # FM85 — Fetta B
 - [x] Recupero orario, blocco/avviso atomico dopo 48 ore (0247), elenco Cerved e recupero manuale autorizzato; altre impostazioni riservate agli amministratori.
 - [x] 1042 test verdi; browser simulato 320–1920 senza overflow/errori, recupero e rilettura verificati. Corpo RPC/grant verificati; nessuna chiamata Cerved live, account proprietario non disponibile.

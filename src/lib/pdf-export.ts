@@ -54,7 +54,7 @@ function drawHeader(doc: jsPDF, titolo: string, prev: PreventivoConDettagli, bra
 
   doc.setFillColor(255, 255, 255);
   doc.rect(0, 0, w, 26, "F");
-  // Logo: "sistema MADE" (JPEG) solo per Preventivo/Ordine; PNG FidiManager per gli altri documenti
+  // FM86: senza sede il ripiego è sempre MADE di gruppo, su tutte le linee.
   let logoSedeDisegnato = false;
   if (branding.logoPdfBytes) {
     try {
@@ -68,7 +68,7 @@ function drawHeader(doc: jsPDF, titolo: string, prev: PreventivoConDettagli, bra
   }
   try {
     if (!logoSedeDisegnato) {
-    if (logo === "sistema") {
+    if (logo === "sistema" && prev.store_id) {
       doc.addImage(LOGO_MADE_B64, "JPEG", 12, 4, 95, 20.2);
     } else {
       doc.addImage(LOGO_MADE_BASE64, "PNG", 12, 6, 95, 13.4);

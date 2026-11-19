@@ -41,10 +41,10 @@ test('FM72 creazione omette linea, copia e alternativa conservano origine', asyn
   const script = `
     import {mock} from 'bun:test';
     const payloads=[];
-    mock.module('@/integrations/supabase/client',()=>({supabase:{from:()=>({insert:v=>{payloads.push(v);return {select:()=>({single:async()=>({data:{id:'p'},error:null})})}}})}}));
+    mock.module('@/integrations/supabase/client',()=>({supabase:{from:()=>({select:()=>({eq:()=>({single:async()=>({data:{id:'sede',nome:'Sede'},error:null})})}),insert:v=>{payloads.push(v);return {select:()=>({single:async()=>({data:{id:'p'},error:null})})}}})}}));
     const {createPreventivo}=await import('./src/lib/preventivi-api.ts');
-    await createPreventivo({titolo:'Nuovo',linea:'showroom'});
-    await createPreventivo({titolo:'Copia'}, {linea:'edilizia'});
+    await createPreventivo({titolo:'Nuovo',linea:'showroom',store_id:'sede'});
+    await createPreventivo({titolo:'Copia',store_id:'sede'}, {linea:'edilizia'});
     if ('linea' in payloads[0] || payloads[1].linea !== 'edilizia') throw Error('Default/copia errati');
   `;
   const processo = Bun.spawn(['bun', '-e', script], { cwd: process.cwd(), stdout: 'pipe', stderr: 'pipe' });
