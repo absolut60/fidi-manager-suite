@@ -67,6 +67,8 @@ import { RichiestaFormDialog } from "@/components/richiesta-fido-form-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
 import { inviaBozzeInApprovazione, decidiRichiesteInBlocco, type EsitoDecisione } from "@/lib/richieste-fido-azioni-massive";
+import { IconaCervedCollegato } from "@/components/cerved/IconaCervedCollegato";
+import { useClientiConReportCerved } from "@/hooks/use-clienti-con-report-cerved";
 
 const TAB_RICHIESTE = ["bozze", "in_approvazione", "approvate", "rifiutate", "tutto"] as const;
 
@@ -602,12 +604,35 @@ function KpiCard({ icon: Icon, tone, label, value, valueClassName, title }: { ic
   );
 }
 
+/**
+ * FM84: simbolo Cerved nelle liste richieste, stesso componente e stesso hook
+ * di Lista clienti e Alert Fidi (fonte unica, nessuna copia). Click → scheda
+ * cliente sul tab Cerved; il componente fa gia' stopPropagation.
+ */
+function useIconaCervedRichieste(rows: any[]) {
+  const navigate = useNavigate();
+  const idsClienti = useMemo(
+    () => [...new Set(rows.map((r) => r.cliente_id).filter(Boolean) as string[])].sort(),
+    [rows],
+  );
+  const { data: clientiConCerved } = useClientiConReportCerved(idsClienti);
+  return (id: string | null | undefined) =>
+    id && clientiConCerved?.has(id) ? (
+      <IconaCervedCollegato
+        classe={clientiConCerved.get(id)?.classe}
+        score={clientiConCerved.get(id)?.score}
+        onApri={() => navigate({ to: "/clienti/$clienteId", params: { clienteId: id }, search: { tab: "cerved" } as any })}
+      />
+    ) : undefined;
+}
+
 /* ============================ BOZZE TAB ============================ */
 function BozzeTab({
   rows, loading, onChanged, msgCounts,
 }: { rows: any[]; loading: boolean; onChanged: () => void; msgCounts?: Record<string, number> }) {
   const isTablet = useIsTablet();
   const navigate = useNavigate();
+  const iconaCerved = useIconaCervedRichieste(rows);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const [avanz, setAvanz] = useState<{ fatte: number; totali: number } | null>(null);
@@ -679,6 +704,7 @@ function BozzeTab({
             footer={(msgCounts?.[r.id] ?? 0) > 0 ? (
               <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium"><MessageSquare className="size-3" />{msgCounts![r.id]}</span>
             ) : undefined}
+            angolo={iconaCerved(r.cliente_id)}
           />
         ))}
       </ElencoSchede>
@@ -686,6 +712,7 @@ function BozzeTab({
 <TabellaFidoTablet
           rows={rows}
           onApri={(r: any) => navigate({ to: "/richieste/$richiestaId", params: { richiestaId: r.id } })}
+          cerved={(r) => iconaCerved(r.cliente_id)}
           selezione={{ tutti: allSel, onTutti: toggleTutte, checked: (r) => selected.has(r.id), onToggle: (r) => toggle(r.id) }}
           badge={(r) => <><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{etichettaTipoRichiesta(r.tipo, importoPerEtichettaTipo(r))}</span><CambioCondizionePagamento variant="badge" richiesta={r} /><BadgeExtraTeorico importo={r.importo_richiesto} teorico={(r as any).fido_teorico_riferimento} />{(msgCounts?.[r.id] ?? 0) > 0 && <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium"><MessageSquare className="size-3" />{msgCounts![r.id]}</span>}</>}
           dettagli={(r) => [r.clienti?.stores?.nome ?? "—", userName((r as any).richiedente), formatDate(r.created_at)]}
@@ -705,6 +732,7 @@ function BozzeTab({
             <TableHead className="text-right">Fido attuale</TableHead>
             <TableHead>Richiesto da</TableHead>
             <TableHead>Data creazione</TableHead>
+            <TableHead className="sticky right-0 z-10 w-16 border-l bg-card text-right">Cerved</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -744,6 +772,7 @@ function BozzeTab({
               </TableCell>
               <TableCell className="text-sm">{userName((r as any).richiedente)}</TableCell>
               <TableCell className="text-sm text-muted-foreground">{formatDate(r.created_at)}</TableCell>
+              <TableCell className="sticky right-0 z-10 border-l bg-card p-1 align-bottom text-right">{iconaCerved(r.cliente_id)}</TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -795,6 +824,7 @@ function InApprovazioneTab({
   // rows arriva gia' filtrato dalla pagina (filtraRichieste): qui solo ordinamento.
   const filtered = ordinaRichieste(rows, ordina);
   const decidibili = filtered.filter(decidibile);
+  const iconaCerved = useIconaCervedRichieste(filtered);
 
   const clienteIdsInCoda = useMemo(() => Array.from(new Set(righeCodaNonFiltrate.map((r) => r.cliente_id))), [righeCodaNonFiltrate]);
   const { data: altreApprovateNonEsportate } = useQuery({
@@ -935,6 +965,7 @@ function InApprovazioneTab({
                       {nAltre > 0 && <Badge variant="outline" className="text-warning border-warning/40 gap-1" title="Altra richiesta attiva o approvata-non-esportata per lo stesso cliente"><AlertCircle className="size-3" /> +{nAltre}</Badge>}
                     </>
                   }
+                  angolo={iconaCerved(r.cliente_id)}
                 />
               );
             })}
@@ -943,6 +974,7 @@ function InApprovazioneTab({
 <TabellaFidoTablet
             rows={filtered}
             onApri={(r: any) => navigate({ to: "/richieste/$richiestaId", params: { richiestaId: r.id } })}
+            cerved={(r) => iconaCerved(r.cliente_id)}
             selezione={canApprove ? { tutti: allSel, disabled: decidibili.length === 0, onTutti: toggleTutte, checked: (r) => selected.has(r.id), onToggle: (r) => toggle(r.id), abilitata: (r) => decidibile(r), motivo: (r) => motivoNonDecidibile(r) } : undefined}
             badge={(r) => { const unread = msgNonLetti?.[r.id] ?? 0; const nAltre = altreAttiveMap.get(r.cliente_id) ?? 0; return <><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{etichettaTipoRichiesta(r.tipo, importoPerEtichettaTipo(r))}</span><CambioCondizionePagamento variant="badge" richiesta={r} /><BadgeExtraTeorico importo={r.importo_richiesto} teorico={(r as any).fido_teorico_riferimento} />{unread > 0 && <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium"><MessageSquare className="size-3" />{unread}</span>}{nAltre > 0 && <Badge variant="outline" className="text-warning border-warning/40 gap-1 text-xs" title="Altra richiesta attiva o approvata-non-esportata per lo stesso cliente"><AlertCircle className="size-3" /> +{nAltre}</Badge>}</>; }}
             dettagli={(r) => [r.clienti?.stores?.nome ?? "—", userName((r as any).richiedente), `Inviata ${formatDate(r.data_invio ?? (r.stato !== "bozza" ? r.created_at : null))}`]}
@@ -967,6 +999,7 @@ function InApprovazioneTab({
                 <TableHead>Richiesto da</TableHead>
                 <TableHead>Data invio</TableHead>
                 <TableHead>Giorni</TableHead>
+                <TableHead className="sticky right-0 z-10 w-16 border-l bg-card text-right">Cerved</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1018,6 +1051,7 @@ function InApprovazioneTab({
                     <TableCell className="text-sm">{userName((r as any).richiedente)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatDate(r.data_invio ?? (r.stato !== "bozza" ? r.created_at : null))}</TableCell>
                     <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${attesaTone(g)}`}>{g}gg</span></TableCell>
+                    <TableCell className="sticky right-0 z-10 border-l bg-card p-1 align-bottom text-right">{iconaCerved(r.cliente_id)}</TableCell>
                   </TableRow>
                 );
               })}
@@ -1136,6 +1170,8 @@ function StoricoTab({
     return Array.from(s).sort().reverse();
   }, [rows]);
 
+  const iconaCerved = useIconaCervedRichieste(filtered);
+
   if (loading) return <SkeletonTable />;
 
   return (
@@ -1185,6 +1221,7 @@ function StoricoTab({
                       {(msgCounts?.[r.id] ?? 0) > 0 && <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium"><MessageSquare className="size-3" />{msgCounts![r.id]}</span>}
                     </>
                   }
+                  angolo={iconaCerved(r.cliente_id)}
                 />
               );
             })}
@@ -1193,6 +1230,7 @@ function StoricoTab({
 <TabellaFidoTablet
             rows={filtered}
             onApri={(r: any) => navigate({ to: "/richieste/$richiestaId", params: { richiestaId: r.id } })}
+            cerved={(r) => iconaCerved(r.cliente_id)}
             badge={(r) => <><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{etichettaTipoRichiesta(r.tipo, importoPerEtichettaTipo(r))}</span><CambioCondizionePagamento variant="badge" richiesta={r} /><BadgeExtraTeorico importo={r.importo_richiesto} teorico={(r as any).fido_teorico_riferimento} />{(msgCounts?.[r.id] ?? 0) > 0 && <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium"><MessageSquare className="size-3" />{msgCounts![r.id]}</span>}</>}
             dettagli={(r) => [r.clienti?.stores?.nome ?? "—", userName((r as any).richiedente), `${kind === "approvata" ? "Approvato da" : "Deciso da"} ${userName((r as any).approvatore)}`, formatDate(r.data_chiusura ?? r.created_at), ...(kind === "rifiutata" ? [`Motivo: ${r.note ?? r.motivazione ?? "—"}`] : [])]}
             importo={(r) => <><div className="font-medium">{formatEuro(Number(r.importo_richiesto))}</div>{kind === "approvata" && (mapRichiestaFido(r).soloCondizione ? <div className="text-xs text-muted-foreground">solo cond. pag.</div> : <div className="text-xs text-success font-medium">Appr. {formatEuro(Number(r.importo_approvato ?? r.importo_richiesto))}</div>)}</>}
@@ -1213,6 +1251,7 @@ function StoricoTab({
                 <TableHead>Richiesto da</TableHead>
                 <TableHead>{kind === "approvata" ? "Approvato da" : "Decisione di"}</TableHead>
                 <TableHead>Data</TableHead>
+                <TableHead className="sticky right-0 z-10 w-16 border-l bg-card text-right">Cerved</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1255,7 +1294,7 @@ function StoricoTab({
                   <TableCell className="text-sm">{userName((r as any).richiedente)}</TableCell>
                   <TableCell className="text-sm">{userName((r as any).approvatore)}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{formatDate(r.data_chiusura ?? r.created_at)}</TableCell>
-
+                  <TableCell className="sticky right-0 z-10 border-l bg-card p-1 align-bottom text-right">{iconaCerved(r.cliente_id)}</TableCell>
                 </TableRow>
                 );
               })}
@@ -1278,6 +1317,7 @@ function TuttoTab({ rows, loading, msgCounts }: { rows: any[]; loading: boolean;
   const filtered = rows
     .filter((r) => statoF === "tutti" || r.stato === statoF)
     .filter((r) => livF === "tutti" || String(r.livello_corrente) === livF);
+  const iconaCerved = useIconaCervedRichieste(filtered);
 
   if (loading) return <SkeletonTable />;
   return (
@@ -1324,6 +1364,7 @@ function TuttoTab({ rows, loading, msgCounts }: { rows: any[]; loading: boolean;
                   {(msgCounts?.[r.id] ?? 0) > 0 && <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium"><MessageSquare className="size-3" />{msgCounts![r.id]}</span>}
                 </>
               }
+              angolo={iconaCerved(r.cliente_id)}
             />
           ))}
         </ElencoSchede>
@@ -1331,6 +1372,7 @@ function TuttoTab({ rows, loading, msgCounts }: { rows: any[]; loading: boolean;
 <TabellaFidoTablet
           rows={filtered}
           onApri={(r: any) => navigate({ to: "/richieste/$richiestaId", params: { richiestaId: r.id } })}
+          cerved={(r) => iconaCerved(r.cliente_id)}
           badge={(r) => <><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{etichettaTipoRichiesta(r.tipo, importoPerEtichettaTipo(r))}</span><CambioCondizionePagamento variant="badge" richiesta={r} /><BadgeExtraTeorico importo={r.importo_richiesto} teorico={(r as any).fido_teorico_riferimento} />{(msgCounts?.[r.id] ?? 0) > 0 && <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium"><MessageSquare className="size-3" />{msgCounts![r.id]}</span>}</>}
           dettagli={(r) => [r.clienti?.stores?.nome ?? "—", `L${r.livello_corrente}/${r.livello_richiesto}`, userName((r as any).richiedente), `Approvato da ${userName((r as any).approvatore)}`, formatDate(r.created_at)]}
           importo={(r) => <div className="font-medium">{formatEuro(Number(r.importo_richiesto))}</div>}
@@ -1351,6 +1393,7 @@ function TuttoTab({ rows, loading, msgCounts }: { rows: any[]; loading: boolean;
               <TableHead>Richiesto da</TableHead>
               <TableHead>Approvato da</TableHead>
               <TableHead>Data</TableHead>
+              <TableHead className="sticky right-0 z-10 w-16 border-l bg-card text-right">Cerved</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1380,6 +1423,7 @@ function TuttoTab({ rows, loading, msgCounts }: { rows: any[]; loading: boolean;
                 <TableCell className="text-sm">{userName((r as any).richiedente)}</TableCell>
                 <TableCell className="text-sm">{userName((r as any).approvatore)}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{formatDate(r.created_at)}</TableCell>
+                <TableCell className="sticky right-0 z-10 border-l bg-card p-1 align-bottom text-right">{iconaCerved(r.cliente_id)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -1398,7 +1442,7 @@ function TuttoTab({ rows, loading, msgCounts }: { rows: any[]; loading: boolean;
  * dentro la riga. Telefono e PC continuano a usare schede e tabella originali.
  */
 function TabellaFidoTablet({
-  rows, onApri, selezione, badge, dettagli, importo, stato,
+  rows, onApri, selezione, badge, dettagli, importo, stato, cerved,
 }: {
   rows: any[];
   onApri: (r: any) => void;
@@ -1411,6 +1455,8 @@ function TabellaFidoTablet({
   dettagli: (r: any) => string[];
   importo: (r: any) => React.ReactNode;
   stato: (r: any) => React.ReactNode;
+  /** FM84: simbolo Cerved, ultima colonna a destra (stessa regola di Lista clienti e Alert Fidi). */
+  cerved?: (r: any) => React.ReactNode;
 }) {
   return (
     <div className="hidden lg:block">
@@ -1426,6 +1472,7 @@ function TabellaFidoTablet({
             <TableHead className="w-40 text-right">Importo</TableHead>
             <TableHead className="w-36">Stato</TableHead>
             <TableHead className="w-24 text-right"><span className="sr-only">Azioni</span></TableHead>
+            {cerved && <TableHead className="w-16 text-right">Cerved</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -1457,6 +1504,11 @@ function TabellaFidoTablet({
                 <TableCell className="align-top text-right" onClick={(e) => e.stopPropagation()}>
                   <Button variant="outline" size="sm" onClick={() => onApri(r)}>Apri</Button>
                 </TableCell>
+                {cerved && (
+                  <TableCell className="align-bottom p-1 text-right" onClick={(e) => e.stopPropagation()}>
+                    {cerved(r)}
+                  </TableCell>
+                )}
               </TableRow>
             );
           })}
