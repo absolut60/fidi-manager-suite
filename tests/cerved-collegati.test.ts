@@ -1,7 +1,7 @@
 import {test,expect} from 'bun:test';
 import {readFileSync} from 'node:fs';
 import {normalizzaLightReportXml} from '../src/lib/cerved/cerved.server';
-import {nomiEventiRelazionatiCerved,ordinaSocietaCerved,stessoSettoreCerved,testoRuoloCerved,sintesiCollegatiCerved,statoSocietaCerved} from '../src/lib/cerved-collegati';
+import {nomiEventiRelazionatiCerved,ordinaSocietaCerved,raggruppaSocietaCerved,stessoSettoreCerved,testoRuoloCerved,sintesiCollegatiCerved,statoSocietaCerved} from '../src/lib/cerved-collegati';
 const lr=normalizzaLightReportXml(readFileSync(new URL('./fixtures/cerved-light-report-ge-trade.xml',import.meta.url),'utf8'));
 test('G-E TRADE sette società e un esponente con due ruoli',()=>{expect(lr.societa_collegate).toHaveLength(7);expect(lr.esponenti).toHaveLength(1);expect(lr.esponenti[0]).toMatchObject({nome:'CORRADO',cognome:'FILIPPI',id_persona:'850589',data_nascita:'1960-02-23',ruoli:[{codice:'AUN',dal:'2019-11-26',legame_attivo:true},{codice:'SOU',dal:'2020-02-17',legame_attivo:true}]});});
 test('persona Filippi distinta da impresa individuale',()=>{const s=lr.societa_collegate.find(s=>s.nome==='FILIPPI CORRADO');expect(s).toMatchObject({id_societa:'12745313',forma_codice:'DI',stato_codice:'T',stato_dal:'2014-02-10',ateco_descrizione:'Lavori di muratura'});expect(s?.codice_fiscale).toBe(lr.esponenti[0].codice_fiscale);expect(s?.id_societa).not.toBe(lr.esponenti[0].id_persona);});
@@ -17,3 +17,18 @@ test('sintesi reale con conteggi e ruolo cessato',()=>{const testo=sintesiColleg
 test('eventi negativi persone e società insieme, true solo',()=>{expect(nomiEventiRelazionatiCerved(lr.eventi_negativi.persone,lr.societa_collegate)).toEqual([]);expect(nomiEventiRelazionatiCerved([{nome:'Persona',protesti:true}], [{...lr.societa_collegate[0],eventi_negativi:true}])).toEqual(['Persona','CHRISTIAN S.R.L.']);});
 test('stati procedura rosso, sconosciuti senza interpretazione',()=>{expect(statoSocietaCerved({...lr.societa_collegate[0],stato_codice:'L',stato_descrizione:'IN LIQUIDAZIONE'}).tono).toBe('rosso');expect(statoSocietaCerved({...lr.societa_collegate[0],stato_codice:'ZZ',stato_descrizione:'ALTRO'})).toEqual({testo:'ALTRO',tono:'neutro'});});
 test('sezione mancante vuota',()=>{const x=normalizzaLightReportXml('<LightReport/>');expect(x.esponenti).toEqual([]);expect(x.societa_collegate).toEqual([]);});
+test('raggruppa per id_societa unendo i ruoli di esponenti diversi',()=>{
+  const base=lr.societa_collegate.find(s=>s.nome==='LEXUS S.R.L.');if(!base)throw Error('manca Lexus');
+  const altroEsponente={...lr.esponenti[0],id_persona:'999',cognome:'ROSSI',nome:'MARIO'};
+  const duplicata={...base,id_esponente:'999',ruoli:[{codice:'SOC',tipo:'Socio',dal:'2022-01-01',al:null,legame_attivo:true}]};
+  const gruppi=raggruppaSocietaCerved([...lr.societa_collegate,duplicata],[...lr.esponenti,altroEsponente]);
+  expect(gruppi).toHaveLength(7);
+  const g=gruppi.find(g=>g.societa.nome==='LEXUS S.R.L.');if(!g)throw Error('gruppo mancante');
+  expect(g.legami).toHaveLength(base.ruoli.length+1);
+  expect(g.legami.map(l=>l.esponente?.id_persona ?? l.id_esponente)).toContain('999');
+  expect(gruppi.map(g=>g.societa.nome)).toEqual(ordinaSocietaCerved(lr.societa_collegate).map(s=>s.nome));
+});
+test('raggruppa senza id_societa non unisce nomi diversi',()=>{
+  const a={...lr.societa_collegate[0],id_societa:null,nome:'ALFA'},b={...lr.societa_collegate[0],id_societa:null,nome:'BETA'};
+  expect(raggruppaSocietaCerved([a,b],[])).toHaveLength(2);
+});

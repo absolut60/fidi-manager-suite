@@ -20,6 +20,18 @@ export function ordinaSocietaCerved(societa: SocietaCollegataCerved[]) {
   const priorita = (s: SocietaCollegataCerved) => s.stato_codice === "A" ? s.ruoli.some(r => testoRuoloCerved(r,s).inCorso) ? 0 : 1 : s.stato_codice === "T" ? 3 : 2;
   return societa.slice().sort((a,b) => priorita(a)-priorita(b) || (a.stato_codice === "T" && b.stato_codice === "T" ? (b.stato_dal ?? "").localeCompare(a.stato_dal ?? "") : 0) || (a.nome ?? "").localeCompare(b.nome ?? "","it"));
 }
+/** Una riga per società (stesso id_societa): i ruoli "Tramite …" di esponenti diversi si uniscono. Ordine = ordinaSocietaCerved. */
+export function raggruppaSocietaCerved(societa: SocietaCollegataCerved[], esponenti: EsponenteCerved[]) {
+  const gruppi = new Map<string, { societa: SocietaCollegataCerved; legami: { ruolo: RuoloCerved; esponente: EsponenteCerved | undefined; id_esponente: string | null }[] }>();
+  for (const s of ordinaSocietaCerved(societa)) {
+    const chiave = s.id_societa ?? `senza-id:${s.nome ?? ""}:${s.codice_fiscale ?? ""}`;
+    let g = gruppi.get(chiave);
+    if (!g) { g = { societa: s, legami: [] }; gruppi.set(chiave, g); }
+    const esponente = esponenti.find(e => e.id_persona === s.id_esponente);
+    for (const ruolo of s.ruoli) g.legami.push({ ruolo, esponente, id_esponente: s.id_esponente });
+  }
+  return [...gruppi.values()];
+}
 export function nomiEventiRelazionatiCerved(persone: Record<string, unknown>[], societa: SocietaCollegataCerved[]) {
   const chiavi = ["protesti","pregiudizievoli","procedure","eventi_crisi","cigs","fallimenti_propri"];
   return [...new Set([...persone.filter(p => chiavi.some(k => p[k] === true)).map(p => typeof p.nome === "string" ? p.nome : "Soggetto senza nome"), ...societa.filter(s => s.eventi_negativi === true).map(s => s.nome ?? "Società senza nome")])];
