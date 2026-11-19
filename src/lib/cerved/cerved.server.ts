@@ -782,8 +782,6 @@ export function normalizzaFidoCerved(risposta: unknown): FidoCervedNorm {
 // ---------------------------------------------------------------------------
 
 export const PRODOTTO_LIGHT_REPORT = 52015;
-const ATTESA_DEFERRED_MS = 15_000;
-const MAX_ATTESA_DEFERRED_MS = 60_000;
 
 /** Base64 → byte (runtime Worker). */
 export function decodificaBase64Byte(b64: string): Uint8Array {
@@ -833,8 +831,8 @@ export type EsitoAcquistoLightReport = {
 };
 
 /**
- * Acquisto del Light Report (POST B2B /v1/purchase). Se la consegna è DEFERRED
- * riprova il recupero XML ogni 15 s per al massimo 1 minuto, poi restituisce lo stato senza errore.
+ * Un solo POST B2B /v1/purchase: il chiamante registra subito il request_id,
+ * prima di avviare qualsiasi recupero gratuito.
  */
 export async function acquistaLightReport(
   subjectId: string,
@@ -852,19 +850,21 @@ export async function acquistaLightReport(
     language: "ITALIAN",
   };
   if (reference) corpo["reference"] = reference;
-  const r = await chiamaCerved({ operazione: "purchase_light_report", base: "b2b", metodo: "POST", percorso: "/v1/purchase", parametri: {}, corpo, ...ctx });
-  const o = (r.risposta && typeof r.risposta === "object" ? r.risposta : {}) as Record<string, unknown>;
+  const r = await chiamaCerved({
+    operazione: "purchase_light_report", base: "b2b", metodo: "POST", percorso: "/v1/purchase", parametri: {}, corpo,
+    estrai: (risposta) => risposta,
+    trasforma: (risposta) => {
+      const o = (risposta && typeof risposta === "object" ? risposta : {}) as Record<string, unknown>;
+      const { content, ...metadati } = o;
+      return { ...metadati, lunghezza_base64: typeof content === "string" ? content.length : 0 };
+    },
+    ...ctx,
+  });
+  const risposta = r.extra ?? r.risposta;
+  const o = (risposta && typeof risposta === "object" ? risposta : {}) as Record<string, unknown>;
   const requestId = testo(o["request_id"]);
-  let stato = testo(o["delivery_status"]);
-  if (r.esito === "ok" && requestId && (stato ?? "").toUpperCase() === "DEFERRED") {
-    const inizio = Date.now();
-    while (Date.now() - inizio < MAX_ATTESA_DEFERRED_MS && (stato ?? "").toUpperCase() === "DEFERRED") {
-      await new Promise((res) => setTimeout(res, ATTESA_DEFERRED_MS));
-      const d = await recuperaDocumento(requestId, ctx);
-      if (d.esito === "ok") stato = (d.risposta as DocumentoRecuperato).delivery_status ?? stato;
-    }
-  }
-  return { http_status: r.http_status, esito: r.esito, errore: r.errore, request_id: requestId, delivery_status: stato, risposta: r.risposta, chiamata_id: r.chiamata_id };
+  const stato = testo(o["delivery_status"]);
+  return { http_status: r.http_status, esito: r.esito, errore: r.errore, request_id: requestId, delivery_status: stato, risposta, chiamata_id: r.chiamata_id };
 }
 
 // ---------------------------------------------------------------------------
@@ -1172,12 +1172,16 @@ export async function recuperaESalvaLightReport(
 ): Promise<EsitoRecuperoReport> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const errori: string[] = [];
+  const { error: eTentativo } = await supabaseAdmin.rpc("registra_tentativo_recupero_cerved", { _report_id: report.id });
+  if (eTentativo) throw new Error("Impossibile registrare il tentativo di recupero Cerved");
   const [x, p] = await Promise.all([
     recuperaDocumentoFormato(report.request_id, "XML", ctx),
     recuperaDocumentoFormato(report.request_id, "PDF", ctx),
   ]);
   let xmlOk = false;
   const doc = x.esito === "ok" ? (x.risposta as DocumentoRecuperato) : null;
+  const ultimoEsito = testo((x.risposta as DocumentoRecuperato | null)?.detailed_delivery_status);
+  const inPreparazione = !doc?.contenuto_xml && x.esito === "ok";
   if (doc?.contenuto_xml) {
     const { error } = await supabaseAdmin.from("cerved_fotografie").insert({
       cliente_id: report.cliente_id, id_soggetto: report.id_soggetto, tipo: "light_report",
@@ -1185,7 +1189,7 @@ export async function recuperaESalvaLightReport(
     });
     if (error) { console.error("[cerved] fotografia light_report non salvata", error.message); errori.push("Light Report: dati letti ma non salvati"); }
     else xmlOk = true;
-  } else {
+  } else if (!inPreparazione) {
     errori.push(`Light Report XML: ${x.errore ?? `documento non disponibile (${doc?.delivery_status ?? "stato sconosciuto"})`}`);
   }
   let percorso: string | null = null;
@@ -1196,12 +1200,18 @@ export async function recuperaESalvaLightReport(
       .upload(dest, byte, { contentType: "application/pdf", upsert: true });
     if (error) { console.error("[cerved] PDF non salvato", error.message); errori.push("Light Report PDF: non salvato"); }
     else percorso = dest;
-  } else {
+  } else if (!inPreparazione || p.esito !== "ok") {
     errori.push(`Light Report PDF: ${p.errore ?? "non presente nella risposta"}`);
   }
-  const agg: Record<string, unknown> = { ultimo_recupero_il: new Date().toISOString(), ultimo_recupero_da: ctx.utenteId };
+  const ora = new Date().toISOString();
+  const agg: Record<string, unknown> = { ultimo_recupero_il: ora, ultimo_recupero_da: ctx.utenteId, ultimo_esito_cerved: ultimoEsito };
+  if (xmlOk) agg["stato"] = "consegnato";
   if (percorso) agg["percorso_pdf"] = percorso;
   const { error: eAgg } = await supabaseAdmin.from("cerved_report").update(agg as never).eq("id", report.id);
   if (eAgg) console.error("[cerved] cerved_report non aggiornato", eAgg.message);
+  if (xmlOk) {
+    const { error } = await supabaseAdmin.from("cerved_report").update({ consegnato_il: ora }).eq("id", report.id).is("consegnato_il", null);
+    if (error) console.error("[cerved] data consegna non salvata", error.message);
+  }
   return { xml_ok: xmlOk, pdf_ok: !!percorso, percorso_pdf: percorso, errori };
 }

@@ -1,3 +1,7 @@
+# FM85 — Fetta A
+- [x] Schema additivo e allineamento storico; registrazione immediata dell'acquisto e tentativi atomici; stato condiviso in scheda.
+- [x] 1033 test verdi; scheda reale con risposte simulate fotografata a 375/1280 nei tre stati. DB: 51 consegnati e I.CO.MA. in attesa; nessuna chiamata Cerved live. Job automatico escluso (fetta B).
+
 # FM79 — Fetta 9 Listini e rifiniture
 - [x] Listini con scroll interno, codice/descrizione fissi e campi 44px; Privacy/template/Audit/banner solo tablet.
 - [x] Diff classificato completo; 21 coppie, zero differenze vere dopo 3+3 e attesa contatori; 28 misure touch con sole eccezioni scroll listini; 1019 test verdi; audit con stato di tutti i problemi e prove dispositivo.

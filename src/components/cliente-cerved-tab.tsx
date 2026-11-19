@@ -16,7 +16,7 @@ import {
   formattaEuroCompatto, variazionePercentuale,
   dataIsoIt, meseBreveIt, formattaGiorniCerved, formattaPercentualeCerved, ETICHETTE_LIGHT_REPORT,
   testoGiorniPayline, testoConfrontoFido, eventoRecenteCerved,
-  datiSchedaCerved, scoreCervedPresentazione, gradingCervedPresentazione,
+  datiSchedaCerved, scoreCervedPresentazione, gradingCervedPresentazione, statoReportCerved,
 } from "@/lib/cerved-presentazione";
 import { VisualizzatorePdf } from "@/components/visualizzatore-pdf";
 import { GaugeCerved } from "@/components/cerved/gauge-cerved";
@@ -583,10 +583,9 @@ function BarraReportCerved({ clienteId, puo }: { clienteId: string; puo: boolean
   const [urlPdf, setUrlPdf] = useState<string | null>(null);
   const rep = useQuery({
     queryKey: ["cerved-report", clienteId],
-    enabled: puo,
     queryFn: async () => {
       const { data, error } = await supabase.from("cerved_report")
-        .select("percorso_pdf").eq("cliente_id", clienteId).not("percorso_pdf", "is", null)
+        .select("percorso_pdf, stato, request_id").eq("cliente_id", clienteId)
         .order("scade_il", { ascending: false }).limit(1).maybeSingle();
       if (error) throw error;
       return data;
@@ -599,6 +598,8 @@ function BarraReportCerved({ clienteId, puo }: { clienteId: string; puo: boolean
     onError: (e: Error) => toast.error(e.message || "Impossibile aprire il PDF"),
   });
 
+  const stato = statoReportCerved(rep.data);
+  if (stato.messaggio) return <p role="status" className={`mt-3 break-words text-sm ${stato.tono === "avviso" ? "text-warning" : "text-muted-foreground"}`}>{stato.messaggio}</p>;
   if (!puo || !rep.data?.percorso_pdf) return null;
 
   return (

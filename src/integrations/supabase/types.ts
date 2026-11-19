@@ -2325,6 +2325,7 @@ export type Database = {
           acquistato_il: string
           chiamata_acquisto_id: string | null
           cliente_id: string
+          consegnato_il: string | null
           created_at: string | null
           id: string
           id_soggetto: number
@@ -2332,14 +2333,19 @@ export type Database = {
           prodotto: number
           request_id: string
           scade_il: string
+          stato: string
+          tentativi_recupero: number
+          ultimo_esito_cerved: string | null
           ultimo_recupero_da: string | null
           ultimo_recupero_il: string | null
+          ultimo_tentativo_il: string | null
         }
         Insert: {
           acquistato_da?: string | null
           acquistato_il?: string
           chiamata_acquisto_id?: string | null
           cliente_id: string
+          consegnato_il?: string | null
           created_at?: string | null
           id?: string
           id_soggetto: number
@@ -2347,14 +2353,19 @@ export type Database = {
           prodotto?: number
           request_id: string
           scade_il: string
+          stato?: string
+          tentativi_recupero?: number
+          ultimo_esito_cerved?: string | null
           ultimo_recupero_da?: string | null
           ultimo_recupero_il?: string | null
+          ultimo_tentativo_il?: string | null
         }
         Update: {
           acquistato_da?: string | null
           acquistato_il?: string
           chiamata_acquisto_id?: string | null
           cliente_id?: string
+          consegnato_il?: string | null
           created_at?: string | null
           id?: string
           id_soggetto?: number
@@ -2362,8 +2373,12 @@ export type Database = {
           prodotto?: number
           request_id?: string
           scade_il?: string
+          stato?: string
+          tentativi_recupero?: number
+          ultimo_esito_cerved?: string | null
           ultimo_recupero_da?: string | null
           ultimo_recupero_il?: string | null
+          ultimo_tentativo_il?: string | null
         }
         Relationships: [
           {
@@ -10985,6 +11000,10 @@ export type Database = {
         Returns: string
       }
       registra_stop_whatsapp: { Args: { _numero_raw: string }; Returns: Json }
+      registra_tentativo_recupero_cerved: {
+        Args: { _report_id: string }
+        Returns: undefined
+      }
       revoca_consensi_batch: {
         Args: {
           _contatto_id: string

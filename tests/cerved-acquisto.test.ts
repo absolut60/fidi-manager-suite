@@ -40,6 +40,19 @@ function scenario(risposta: Record<string, unknown> = { request_id: "req-1", del
 }
 
 describe("FM79 corpo di acquisto Light Report", () => {
+  it("DEFERRED restituisce subito il request_id senza recuperi", async () => {
+    const s = scenario({ request_id: "4839611059", delivery_status: "DEFERRED" });
+    const r = await s.mod.acquistaLightReport("42", "XML", null, { utenteId: null, clienteId: null });
+    expect(r.request_id).toBe("4839611059");
+    expect(r.delivery_status).toBe("DEFERRED");
+    expect(s.http).toHaveLength(1);
+  });
+  it("il registro non contiene content ma conserva la lunghezza", async () => {
+    const s = scenario({ request_id: "req", content: "YWJj", delivery_status: "DELIVERED" });
+    const r = await s.mod.acquistaLightReport("42", "XML", null, { utenteId: null, clienteId: null });
+    expect(s.scritture[0]?.dati.risposta).toEqual({ request_id: "req", delivery_status: "DELIVERED", lunghezza_base64: 4 });
+    expect(r.risposta.content).toBe("YWJj");
+  });
   it("invia subject_type COMPANY con gli altri campi invariati", async () => {
     const { mod, http, scritture } = scenario();
     const esito = await mod.acquistaLightReport("382485168", "XML", "12345", { utenteId: "op", clienteId: "cli" });

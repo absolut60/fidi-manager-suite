@@ -11,7 +11,7 @@ const js = ts.transpileModule(fonte
   .replace('import("@/integrations/supabase/client.server")', "Promise.resolve({supabaseAdmin: admin})"),
   { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
 
-function scenario({ collegato = true, valido = true, permesso = true, erroreAcquisto = false, erroriRecupero = [] as string[], erroreRicerca = false } = {}) {
+function scenario({ collegato = true, valido = true, permesso = true, erroreAcquisto = false, erroriRecupero = [] as string[], erroreRicerca = false, content = null as string | null } = {}) {
   const scritture: { tabella: string; azione: string; dati: any }[] = [];
   const chiamate: string[] = [];
   const filtri: { campo: string; valore: any }[] = [];
@@ -38,7 +38,7 @@ function scenario({ collegato = true, valido = true, permesso = true, erroreAcqu
     scegliAziendaPerPiva: () => ({}),
     normalizzaAziendaCerved: () => ({ id_soggetto: 42, denominazione: "BUILD" }),
     PRODOTTO_LIGHT_REPORT: "light_report",
-    acquistaLightReport: async () => { chiamate.push("acquisto"); return erroreAcquisto ? { esito: "errore", errore: "403" } : { esito: "ok", request_id: "richiesta", chiamata_id: "acquisto" }; },
+    acquistaLightReport: async () => { chiamate.push("acquisto"); return erroreAcquisto ? { esito: "errore", errore: "403" } : { esito: "ok", request_id: "richiesta", chiamata_id: "acquisto", risposta: { content } }; },
     recuperaESalvaLightReport: async (rep: any) => {
       chiamate.push(`recupero:${rep.request_id}`);
       // Il contratto di recupero comprende fotografia XML e PDF: il chiamante delega senza duplicare.
@@ -62,6 +62,20 @@ function scenario({ collegato = true, valido = true, permesso = true, erroreAcqu
 }
 
 describe("FM79 aggiornamento solo Light Report", () => {
+  it("FM85 registra l'acquisto in attesa PRIMA del recupero", async () => {
+    const s = scenario({ valido: false });
+    await s.esegui();
+    const registrazione = s.scritture.findIndex(x => x.tabella === "cerved_report");
+    const recupero = s.scritture.findIndex(x => x.tabella === "recupero_light_report");
+    expect(registrazione).toBeGreaterThanOrEqual(0);
+    expect(registrazione).toBeLessThan(recupero);
+    expect(s.scritture[registrazione]?.dati.stato).toBe("in_attesa");
+  });
+  it("FM85 acquisto con content già consegnato", async () => {
+    const s = scenario({ valido: false, content: "YWJj" });
+    await s.esegui();
+    expect(s.scritture.find(x => x.tabella === "cerved_report")?.dati.stato).toBe("consegnato");
+  });
   it("fotografie esistenti mai aggiornate/eliminate; recupero delegato conserva XML e PDF", () => {
     const ast = ts.createSourceFile("cerved-cliente.functions.ts", fonte, ts.ScriptTarget.Latest, true);
     const mutazioni: string[] = [];

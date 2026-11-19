@@ -14,6 +14,20 @@ export type ScoreCervedVista = {
   trend_descrizione: string | null;
 };
 
+/** Stato di consegna e messaggi condivisi della scheda Cerved. */
+export function statoReportCerved(report: { stato?: string | null; request_id?: string | null } | null | undefined) {
+  const stato = report?.stato ?? "consegnato";
+  if (stato === "in_attesa") return {
+    stato, tono: "neutro" as const,
+    messaggio: "Report in preparazione da Cerved: verrà scaricato automaticamente appena pronto",
+  };
+  if (stato === "bloccato") return {
+    stato, tono: "avviso" as const,
+    messaggio: `Cerved non ha consegnato il report entro 48 ore: contattare Cerved (richiesta n. ${report?.request_id ?? "—"})`,
+  };
+  return { stato, tono: "neutro" as const, messaggio: null };
+}
+
 export const ETICHETTE_SCORE_CERVED: Record<string, string> = {
   SEM_CGS: "Semaforo Cerved",
   CGS: "Affidabilità Cerved",

@@ -133,6 +133,8 @@ async function acquistaERegistraLightReport(
   const acq = await m.acquistaLightReport(String(idSoggetto), "XML", codiceGestionale, ctx);
   if (acq.esito !== "ok" || !acq.request_id) throw new Error(acq.errore ?? "acquisto Cerved senza numero richiesta");
   const acquistatoIl = new Date();
+  const risposta = acq.risposta as { content?: unknown; detailed_delivery_status?: string } | null;
+  const consegnato = typeof risposta?.content === "string" && risposta.content.length > 0;
   const scade = new Date(acquistatoIl);
   scade.setUTCFullYear(scade.getUTCFullYear() + 1);
   // Cerved può restituire lo stesso request_id per lo stesso soggetto: si rinnova la riga esistente.
@@ -140,6 +142,8 @@ async function acquistaERegistraLightReport(
     cliente_id: clienteId, id_soggetto: idSoggetto, request_id: acq.request_id, prodotto: m.PRODOTTO_LIGHT_REPORT,
     acquistato_il: acquistatoIl.toISOString(), scade_il: scade.toISOString(), acquistato_da: utente,
     chiamata_acquisto_id: acq.chiamata_id,
+    stato: consegnato ? "consegnato" : "in_attesa",
+    ultimo_esito_cerved: risposta?.detailed_delivery_status ?? null,
   }, { onConflict: "request_id" }).select("id, cliente_id, id_soggetto, request_id, scade_il").single();
   if (error || !riga) {
     console.error("[cerved] cerved_report non salvato", error?.message);
