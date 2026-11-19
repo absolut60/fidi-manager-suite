@@ -962,7 +962,12 @@ export type LightReportCerved = {
     dettagli: Record<"eventi_negativi" | "payline" | "governance" | "richieste", { classe: number | null; descrizione: string | null } | null>;
     cebi: { classe: number | null; codice: string | null; descrizione: string | null; pd: number | null; data_chiusura: string | null } | null;
   };
-  bilanci: (Pick<BilancioCervedNorm, "data_chiusura" | "ricavi" | "acquisti" | "mol" | "utile" | "patrimonio_netto" | "debiti_banche" | "debiti_fornitori" | "crediti_clienti" | "liquidita"> & { roe: number | null; roi: number | null })[];
+  bilanci: (Pick<BilancioCervedNorm, "data_chiusura" | "ricavi" | "acquisti" | "mol" | "utile" | "patrimonio_netto" | "debiti_banche" | "debiti_fornitori" | "crediti_clienti" | "liquidita"> & {
+    roe: number | null; roi: number | null; ebitda: number | null; ebit: number | null;
+    debiti_banche_breve: number | null; debiti_banche_medio_lungo: number | null;
+    passivo_breve: number | null; immobilizzazioni_materiali: number | null;
+    cash_flow: number | null; current_ratio: number | null; indice_indebitamento: number | null;
+  })[];
   eventi_negativi: EventiNegativiCervedNorm & {
     /** Codici grezzi: non sono booleani e non hanno una decodifica verificata. */
     codici_azienda: Record<string, number | null> | null;
@@ -1034,7 +1039,12 @@ export function normalizzaLightReportXml(xml: string): LightReportCerved {
     const voices = diretto(ratio, "Voices");
     return {
       data_chiusura: data, ricavi: euro(ce, "Sales") ?? euro(ce, "TotalRevenues"),
-      acquisti: euro(ce, "CostOfGoodsSold"), mol: euro(ce, "Ebitda"), utile: euro(ce, "ProfitAndLoss"),
+      acquisti: euro(ce, "CostOfGoodsSold"), mol: euro(ce, "GrossProfit"), ebitda: euro(ce, "Ebitda"), utile: euro(ce, "ProfitAndLoss"),
+      ebit: euro(ce, "OperatingProfit"), cash_flow: euro(ce, "CashFlow"),
+      debiti_banche_breve: breve, debiti_banche_medio_lungo: lungo,
+      passivo_breve: euro(sp, "ShortTermLiabilities"), immobilizzazioni_materiali: euro(assets, "TangibleAssets"),
+      current_ratio: num(diretto(diretto(voices, "CurrentAssetsRatio"), "Value")),
+      indice_indebitamento: num(diretto(diretto(voices, "DebtRatio"), "Value")),
       patrimonio_netto: euro(sp, "ShareholdersFunds"),
       debiti_banche: breve == null && lungo == null ? null : (breve ?? 0) + (lungo ?? 0),
       debiti_fornitori: euro(sp, "TradeCreditors"), crediti_clienti: euro(assets, "BalanceSheetReceivable"),

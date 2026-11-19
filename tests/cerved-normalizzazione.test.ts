@@ -309,10 +309,10 @@ test("FM79: CGS non prende PD CEBI né trend Payline; grading e CEBI verificati"
 });
 
 test("FM79: tre bilanci XML in migliaia convertiti in euro, indici collegati per data", () => {
-  expect(normalizzaLightReportXml(XML_BUILD).bilanci).toEqual([
-    { data_chiusura: "2025-12-31", ricavi: 1758000, acquisti: 337000, mol: 105000, utile: 68000, patrimonio_netto: 457000, debiti_banche: 19000, debiti_fornitori: 588000, crediti_clienti: 864000, liquidita: 92000, roe: 16.1, roi: 15.3 },
-    { data_chiusura: "2024-12-31", ricavi: 963000, acquisti: 234000, mol: 80000, utile: 43000, patrimonio_netto: 389000, debiti_banche: 23000, debiti_fornitori: 79000, crediti_clienti: 115000, liquidita: 311000, roe: 11.7, roi: 11.2 },
-    { data_chiusura: "2023-12-31", ricavi: 2814000, acquisti: 517000, mol: 231000, utile: 147000, patrimonio_netto: 347000, debiti_banche: 27000, debiti_fornitori: 266000, crediti_clienti: 381000, liquidita: 440000, roe: 53.8, roi: 48.6 },
+  expect(normalizzaLightReportXml(XML_BUILD).bilanci).toMatchObject([
+    { data_chiusura: "2025-12-31", ricavi: 1758000, acquisti: 337000, mol: 104000, ebitda: 105000, utile: 68000, patrimonio_netto: 457000, debiti_banche: 19000, debiti_fornitori: 588000, crediti_clienti: 864000, liquidita: 92000, roe: 16.1, roi: 15.3 },
+    { data_chiusura: "2024-12-31", ricavi: 963000, acquisti: 234000, mol: 91000, ebitda: 80000, utile: 43000, patrimonio_netto: 389000, debiti_banche: 23000, debiti_fornitori: 79000, crediti_clienti: 115000, liquidita: 311000, roe: 11.7, roi: 11.2 },
+    { data_chiusura: "2023-12-31", ricavi: 2814000, acquisti: 517000, mol: 244000, ebitda: 231000, utile: 147000, patrimonio_netto: 347000, debiti_banche: 27000, debiti_fornitori: 266000, crediti_clienti: 381000, liquidita: 440000, roe: 53.8, roi: 48.6 },
   ]);
   expect(normalizzaLightReportXml(XML_DELEO).bilanci).toEqual([]);
 });

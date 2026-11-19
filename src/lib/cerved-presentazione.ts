@@ -99,21 +99,34 @@ export function scoreCervedPresentazione(lr: DatoCerved | null | undefined, scor
 }
 
 /** Grading LR: numero e classe distinti dai codici non decodificati; testo solo dallo score salvato. */
-export function gradingCervedPresentazione(lr: DatoCerved | null | undefined, scores: ScoreCervedVista[], codice: "NEG" | "PAY" | "GOV") {
-  const chiave = { NEG: "eventi_negativi", PAY: "payline", GOV: "governance" }[codice];
+export const DECODIFICHE_GRADING_CERVED: Record<string, { descrizione: string; esito: EsitoScore; nota?: string }> = {
+  C4_1: { descrizione: "Assenti", esito: "verde" },
+  C5_1: { descrizione: "Assente", esito: "verde" },
+  C5_2: { descrizione: "Alcuni segnali di rischio", esito: "ambra", nota: "Richieste un po' sopra il normale" },
+  C5_3: { descrizione: "Forti segnali di rischio", esito: "rosso", nota: "Richieste molto superiori al normale per imprese simili" },
+  C6_1: { descrizione: "Assenza di segnali di rischio", esito: "verde" },
+};
+
+export function gradingCervedPresentazione(lr: DatoCerved | null | undefined, scores: ScoreCervedVista[], codice: "NEG" | "PAY" | "GOV" | "CNSL") {
+  const chiave = { NEG: "eventi_negativi", PAY: "payline", GOV: "governance", CNSL: "richieste" }[codice];
   const foto = trovaScore(scores, codice);
   const valoreLr = numeroCerved(lr?.gradings?.[chiave]);
+  const codiceLr = testoCerved(lr?.gradings?.dettagli?.[chiave]?.descrizione);
+  const decodifica = codiceLr ? DECODIFICHE_GRADING_CERVED[codiceLr] : null;
   return {
+    codice: codiceLr,
+    nota: decodifica?.nota ?? null,
     valore: valoreLr ?? numeroCerved(foto?.valore),
     classe: numeroCerved(lr?.gradings?.dettagli?.[chiave]?.classe),
-    descrizione: testoCerved(foto?.categoria_descrizione),
-    esito: valoreLr == null ? esitoScore(codice, foto?.categoria_codice) : "neutro" as EsitoScore,
+    descrizione: lr ? decodifica?.descrizione ?? null : testoCerved(foto?.categoria_descrizione),
+    esito: lr ? decodifica?.esito ?? "neutro" as EsitoScore : esitoScore(codice, foto?.categoria_codice),
   };
 }
 
 /** Unico ripiego per campo della scheda: preserva false/zero e non copia codici grezzi degli eventi. */
 export function datiSchedaCerved(foto: DatoCerved, soggetto: DatoCerved = {}) {
   const lr = foto.light_report;
+  if (lr) foto = { light_report: lr };
   const r = foto.ricerca ?? {};
   const p = foto.profilo ?? {};
   const a = lr?.anagrafica ?? {};
@@ -138,12 +151,19 @@ export function datiSchedaCerved(foto: DatoCerved, soggetto: DatoCerved = {}) {
   const bilanciLr = Array.isArray(lr?.bilanci) && lr.bilanci.length > 0;
   const anni: DatoCerved[] = bilanciLr ? lr.bilanci.slice(0, 3) : Array.isArray(foto.bilancio?.anni) ? foto.bilancio.anni : [];
   const azienda = Object.fromEntries(["protesti", "pregiudizievoli", "procedure", "eventi_crisi", "cigs", "fallimenti_propri"].map(k => {
-    const xml = k === "procedure" || k === "fallimenti_propri" ? lr?.eventi_negativi?.azienda?.[k] : null;
+    const xml = lr?.eventi_negativi?.azienda?.[k];
     const fallback = foto.eventi_negativi?.azienda?.[k];
     return [k, typeof xml === "boolean" ? xml : typeof fallback === "boolean" ? fallback : null];
   }));
   const collegati: DatoCerved[] = Array.isArray(lr?.eventi_negativi?.collegati) ? lr.eventi_negativi.collegati.map((c: DatoCerved) => ({ nome: testoCerved(c.nome), codice_fiscale: testoCerved(c.codice_fiscale) })).filter((c: DatoCerved) => c.nome || c.codice_fiscale) : [];
-  return { anagrafica, anni, bilanciLr, eventi: { azienda, persone: foto.eventi_negativi?.persone ?? [], collegati } };
+  const unici = [...new Map(collegati.map(c => [`${c.codice_fiscale ?? ""}|${c.nome ?? ""}`.toUpperCase(), c])).values()];
+  return { anagrafica, anni, bilanciLr, eventi: { azienda, persone: lr?.eventi_negativi?.persone ?? foto.eventi_negativi?.persone ?? [], collegati: unici } };
+}
+
+export function eventiAziendaAssenti(lr: DatoCerved | null | undefined) {
+  return lr?.gradings?.dettagli?.eventi_negativi?.descrizione === "C4_1" &&
+    !Object.values(lr?.eventi_negativi?.azienda ?? {}).some(v => v === true) &&
+    !(lr?.eventi_negativi?.persone ?? []).some((p: DatoCerved) => Object.entries(p).some(([k,v]) => k !== "nome" && v === true));
 }
 
 /** ISO timestamp → "GG/MM/AAAA alle HH:MM" (ora di Roma). */
@@ -273,8 +293,8 @@ export const ETICHETTE_LIGHT_REPORT = {
   richiesteAiuto: "Quante volte banche e aziende hanno chiesto informazioni su questo cliente",
   immobili: "Patrimonio immobiliare",
   eventiStraordinari: "Eventi straordinari",
-  omonimia: "Possibili protesti per omonimia (da verificare)",
-  serieRichieste: [["banche_finanziarie", "Banche e finanziarie"], ["aziende", "Aziende"], ["altri", "Altri"]] as const,
+  omonimia: "Cerved segnala possibili omonimie: da verificare sul PDF, non è un protesto a carico dell'azienda",
+  serieRichieste: [["banche_finanziarie", "Banche e finanziarie"], ["aziende", "Imprese"], ["altri", "Altri"]] as const,
   conteggiEventi: [["trasferimenti", "Trasferimenti"], ["fusioni", "Fusioni"], ["modifiche", "Modifiche"], ["procedure_liquidazione", "Liquidazioni"], ["pignoramenti", "Pignoramenti"]] as const,
 };
 
