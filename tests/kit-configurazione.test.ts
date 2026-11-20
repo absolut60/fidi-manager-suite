@@ -1,0 +1,68 @@
+import { expect, test } from 'bun:test';
+import { Constants } from '../src/integrations/supabase/types';
+import { LINEE_PREVENTIVO } from '../src/lib/linee-preventivo';
+
+test('FM90 ogni linea dell’enum database ha una configurazione kit', () => {
+  expect(Object.keys(LINEE_PREVENTIVO).sort()).toEqual([...Constants.public.Enums.linea_preventivo].sort());
+  for (const linea of Constants.public.Enums.linea_preventivo) {
+    expect(LINEE_PREVENTIVO[linea].kit).toBeDefined();
+  }
+});
+
+test('FM90 Sistema MADE: prefisso SM, mq, sei colonne e sei specifiche tipizzate', () => {
+  expect(LINEE_PREVENTIVO.sistema_made.kit).toEqual({
+    prefissoCodice: 'SM', umBaseDefault: 'mq', etichettaQuantita: 'Incidenza per {um}',
+    colonneComponente: ['ruolo', 'lato', 'strato', 'tipo_driver', 'valore_driver', 'incidenza'],
+    specifiche: [
+      { codice: 'tipo_struttura', etichetta: 'Tipo struttura', tipo: 'testo' },
+      { codice: 'spessore_mm', etichetta: 'Spessore (mm)', tipo: 'numero' },
+      { codice: 'h_max_m', etichetta: 'Altezza massima (m)', tipo: 'numero' },
+      { codice: 'passo', etichetta: 'Passo', tipo: 'numero' },
+      { codice: 'passo_um', etichetta: 'U.M. passo', tipo: 'testo' },
+      { codice: 'isolante', etichetta: 'Isolante', tipo: 'testo' },
+    ],
+  });
+});
+
+for (const [linea, prefissoCodice] of [ ['showroom', 'SR'], ['edilizia', 'ED'], ['fotovoltaico', 'FV'] ] as const) {
+  test(`FM90 ${linea}: prefisso ${prefissoCodice}, unità kit, ruolo/incidenza e nessuna specifica`, () => {
+    expect(LINEE_PREVENTIVO[linea].kit).toEqual({
+      prefissoCodice, umBaseDefault: 'kit', etichettaQuantita: 'Quantità per kit',
+      colonneComponente: ['ruolo', 'incidenza'], specifiche: [],
+    });
+  });
+}
+
+test('FM90 duplicazione kit non riutilizza il codice univoco e conserva i dati attuali', async () => {
+  const script = `
+    import {mock} from 'bun:test';
+    const kit={id:'originale',codice:'PROVA-1',nome:'Prova',linea:'sistema_made',famiglia:'PARETE',famiglia_id:'famiglia',specifiche:{passo:600},componenti:[{articolo_id:'a',ruolo:'lastra',lato:1,strato:2,tipo_driver:'CONSUMO',valore_driver:5,incidenza:2,ordine:0}]};
+    let nuovo,componenti;
+    mock.module('@/integrations/supabase/client',()=>({supabase:{from:table=>({
+      select:()=>({eq:()=>({single:async()=>({data:kit,error:null})})}),
+      insert:row=>{if(table==='kit'){nuovo=row;return{select:()=>({single:async()=>({data:{...row,id:'copia',codice:'LEGACY-nuovo'},error:null})})}}componenti=row;return Promise.resolve({error:null})}
+    })}}));
+    const {duplicateKit}=await import('./src/lib/kit-api.ts');
+    const copia=await duplicateKit('originale');
+    if('codice' in nuovo || copia.codice===kit.codice) throw Error('Codice originale copiato');
+    if(nuovo.nome!=='Prova (copia)' || nuovo.famiglia_id!=='famiglia' || nuovo.specifiche.passo!==600) throw Error('Dati kit persi');
+    if(componenti.length!==1 || componenti[0].kit_id!=='copia' || componenti[0].incidenza!==2 || componenti[0].valore_driver!==5) throw Error('Componenti persi');
+  `;
+  const processo = Bun.spawn(['bun', '-e', script], { cwd: process.cwd(), stdout: 'pipe', stderr: 'pipe' });
+  const errore = await new Response(processo.stderr).text();
+  expect(await processo.exited, errore).toBe(0);
+});
+
+test('FM90 incidenza esplicita, anche zero, prevale sul driver nel motore attuale', async () => {
+  const script = `
+    import {mock} from 'bun:test';
+    mock.module('@/integrations/supabase/client',()=>({supabase:{}}));
+    const {calcolaRigaKit}=await import('./src/lib/kit-api.ts');
+    const c={tipo_driver:'CONSUMO',valore_driver:5,incidenza:2};
+    if(calcolaRigaKit(c,null,'A').incidenza_effettiva!==2) throw Error('Driver prevale su incidenza 2');
+    if(calcolaRigaKit({...c,incidenza:0},null,'A').incidenza_effettiva!==0) throw Error('Driver prevale su incidenza zero');
+  `;
+  const processo = Bun.spawn(['bun', '-e', script], { cwd: process.cwd(), stdout: 'pipe', stderr: 'pipe' });
+  const errore = await new Response(processo.stderr).text();
+  expect(await processo.exited, errore).toBe(0);
+});

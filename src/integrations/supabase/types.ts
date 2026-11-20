@@ -4546,92 +4546,139 @@ export type Database = {
       }
       kit: {
         Row: {
+          codice: string
           created_at: string
           descrizione_tecnica: string | null
           famiglia: Database["public"]["Enums"]["kit_famiglia"]
+          famiglia_id: string | null
           h_max: number | null
           id: string
           isolante: string | null
+          linea: Database["public"]["Enums"]["linea_preventivo"]
           nome: string
           passo: number | null
           passo_um: string | null
+          specifiche: Json
           spessore: number | null
           tipo_struttura: string | null
           um_base: string
           updated_at: string
         }
         Insert: {
+          codice?: string
           created_at?: string
           descrizione_tecnica?: string | null
           famiglia?: Database["public"]["Enums"]["kit_famiglia"]
+          famiglia_id?: string | null
           h_max?: number | null
           id?: string
           isolante?: string | null
+          linea?: Database["public"]["Enums"]["linea_preventivo"]
           nome: string
           passo?: number | null
           passo_um?: string | null
+          specifiche?: Json
           spessore?: number | null
           tipo_struttura?: string | null
           um_base?: string
           updated_at?: string
         }
         Update: {
+          codice?: string
           created_at?: string
           descrizione_tecnica?: string | null
           famiglia?: Database["public"]["Enums"]["kit_famiglia"]
+          famiglia_id?: string | null
           h_max?: number | null
           id?: string
           isolante?: string | null
+          linea?: Database["public"]["Enums"]["linea_preventivo"]
           nome?: string
           passo?: number | null
           passo_um?: string | null
+          specifiche?: Json
           spessore?: number | null
           tipo_struttura?: string | null
           um_base?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "kit_famiglia_id_fkey"
+            columns: ["famiglia_id"]
+            isOneToOne: false
+            referencedRelation: "kit_famiglie"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       kit_componenti: {
         Row: {
+          articolo_codice: string | null
           articolo_id: string | null
+          codice_articolo_fornitore: string | null
+          costo: number | null
           created_at: string
+          descrizione: string | null
+          fornitore_id: string | null
           id: string
           incidenza: number | null
           kit_id: string
           lato: number | null
+          listino_fornitore: number | null
+          marca: string | null
+          note: string | null
           ordine: number
           ruolo: string | null
           strato: number | null
           tipo_driver: Database["public"]["Enums"]["tipo_driver"] | null
+          um: string | null
           updated_at: string
           valore_driver: number | null
         }
         Insert: {
+          articolo_codice?: string | null
           articolo_id?: string | null
+          codice_articolo_fornitore?: string | null
+          costo?: number | null
           created_at?: string
+          descrizione?: string | null
+          fornitore_id?: string | null
           id?: string
           incidenza?: number | null
           kit_id: string
           lato?: number | null
+          listino_fornitore?: number | null
+          marca?: string | null
+          note?: string | null
           ordine?: number
           ruolo?: string | null
           strato?: number | null
           tipo_driver?: Database["public"]["Enums"]["tipo_driver"] | null
+          um?: string | null
           updated_at?: string
           valore_driver?: number | null
         }
         Update: {
+          articolo_codice?: string | null
           articolo_id?: string | null
+          codice_articolo_fornitore?: string | null
+          costo?: number | null
           created_at?: string
+          descrizione?: string | null
+          fornitore_id?: string | null
           id?: string
           incidenza?: number | null
           kit_id?: string
           lato?: number | null
+          listino_fornitore?: number | null
+          marca?: string | null
+          note?: string | null
           ordine?: number
           ruolo?: string | null
           strato?: number | null
           tipo_driver?: Database["public"]["Enums"]["tipo_driver"] | null
+          um?: string | null
           updated_at?: string
           valore_driver?: number | null
         }
@@ -4644,6 +4691,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "kit_componenti_fornitore_id_fkey"
+            columns: ["fornitore_id"]
+            isOneToOne: false
+            referencedRelation: "fornitori"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "kit_componenti_kit_id_fkey"
             columns: ["kit_id"]
             isOneToOne: false
@@ -4651,6 +4705,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      kit_famiglie: {
+        Row: {
+          attiva: boolean
+          codice: string
+          created_at: string
+          id: string
+          linea: Database["public"]["Enums"]["linea_preventivo"]
+          nome: string
+          ordine: number
+          updated_at: string
+        }
+        Insert: {
+          attiva?: boolean
+          codice: string
+          created_at?: string
+          id?: string
+          linea: Database["public"]["Enums"]["linea_preventivo"]
+          nome: string
+          ordine?: number
+          updated_at?: string
+        }
+        Update: {
+          attiva?: boolean
+          codice?: string
+          created_at?: string
+          id?: string
+          linea?: Database["public"]["Enums"]["linea_preventivo"]
+          nome?: string
+          ordine?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       lead: {
         Row: {

@@ -1751,6 +1751,13 @@
       "when": 1795191676071,
       "tag": "0249_fm90_cerved_lead_cliente",
       "breakpoints": true
+    },
+    {
+      "idx": 250,
+      "version": "7",
+      "when": 1795200792912,
+      "tag": "0250_fm90_kit_motore_unico",
+      "breakpoints": true
     }
   ]
 }

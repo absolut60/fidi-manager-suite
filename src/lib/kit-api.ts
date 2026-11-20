@@ -101,7 +101,8 @@ export async function deleteKit(id: string) {
 
 export async function duplicateKit(id: string, newName?: string): Promise<Kit> {
   const orig = await fetchKit(id);
-  const { id: _id, created_at: _c, updated_at: _u, componenti, ...rest } = orig;
+  // Il codice univoco appartiene all'originale: la copia riceve il default del database.
+  const { id: _id, codice: _codice, created_at: _c, updated_at: _u, componenti, ...rest } = orig;
   const newKit = await createKit({ ...rest, nome: newName ?? `${orig.nome} (copia)` });
   if (componenti.length) {
     const rows: KitComponenteInsert[] = componenti.map((c) => ({

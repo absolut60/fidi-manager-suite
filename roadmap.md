@@ -1,3 +1,8 @@
+# FM90 — Kit motore unico, tappa 1a
+- [x] Schema additivo 0250 e backfill: 3 kit completi, 6 famiglie, 33 componenti (30 Gamma, 3 manuali); campi storici/date immutati, prova DB annullata e RLS verificata.
+- [x] Configurazione kit nel catalogo linee non usata a schermo; default per INSERT attuali e codice nuovo in duplicazione; 1146 test verdi, tsgo pulito, regole kit e rapporto fm90-kit-1a.md.
+- Nota pubblicazione: per mantenere la duplicazione nell'app pubblicata occorre pubblicare l'adeguamento che omette il codice originale; database già aggiornato, pubblicazione non richiesta/eseguita.
+
 # FM90 — Compila da P.IVA
 - [x] Ricerca anagrafica gratuita autorizzata, confronto nel form creazione/modifica e contatore annuale senza migrazione.
 - [x] 1139 test verdi, tipi puliti, fotografie fixture 320/375/390/768/1280/1920 e rapporto fm90-compila-da-piva.md.
