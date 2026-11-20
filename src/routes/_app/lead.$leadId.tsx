@@ -1,4 +1,5 @@
 import { BloccoIndirizzo } from "@/components/blocco-indirizzo";
+import { CompilaDaPiva } from "@/components/lead/compila-da-piva";
 import { eliminaLeadConFile } from "@/lib/lead-elimina.functions";
 import { isSoloShowroom } from "@/lib/permessi-showroom";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -811,11 +812,15 @@ function LeadDettaglioPage() {
                 </div>
                 <div>
                   <Label className="text-xs">Partita IVA</Label>
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
                   <Input
+                    className="min-w-0 flex-1 basis-28"
                     value={f.partita_iva}
                     maxLength={20}
                     onChange={(e) => set("partita_iva", e.target.value)}
                   />
+                  <CompilaDaPiva form={f} leadId={leadId} onApply={patch => setF(p => p ? ({ ...p, ...patch }) : p)} />
+                  </div>
                 </div>
                 <div>
                   <Label className="text-xs">Codice fiscale</Label>

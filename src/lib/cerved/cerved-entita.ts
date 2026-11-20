@@ -17,3 +17,6 @@ export function filtroEntitaCerved(entita: EntitaCerved, id: string): { cliente_
 }
 
 export const NOME_ENTITA_CERVED: Record<EntitaCerved, string> = { cliente: "Cliente", lead: "Lead" };
+
+/** Quota contrattuale indicativa, condivisa da tutte le ricerche entity_search. */
+export const QUOTA_RICERCHE_CERVED_ANNUA = 10_000;

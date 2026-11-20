@@ -11,6 +11,8 @@ import { riprovaReportCerved } from "@/lib/cerved/cerved-attesa.functions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { contaRicercheAnagraficheCerved } from "@/lib/cerved/cerved-anagrafica.functions";
+import { QUOTA_RICERCHE_CERVED_ANNUA } from "@/lib/cerved/cerved-entita";
 
 const chiave = ["cerved-report-in-attesa"];
 const dataOra = (v: string | null) => v ? new Date(v).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" }) : "—";
@@ -20,6 +22,11 @@ export function ReportCervedAttesaCard() {
   const puo = puoAggiornareCerved(roles);
   const qc = useQueryClient();
   const fn = useServerFn(riprovaReportCerved);
+  const conta = useServerFn(contaRicercheAnagraficheCerved);
+  const contatore = useQuery({
+    queryKey: ["cerved-ricerche-annuali", user?.id], enabled: puo,
+    queryFn: () => conta(), staleTime: 30_000,
+  });
   const q = useQuery({
     queryKey: [...chiave, user?.id], enabled: puo,
     queryFn: async () => {
@@ -49,6 +56,7 @@ export function ReportCervedAttesaCard() {
   if (!puo) return null;
   return <Card className="min-w-0 p-4 sm:p-5">
     <h2 className="mb-3 font-semibold">Report Cerved in attesa</h2>
+    <p className="mb-4 break-words text-sm text-muted-foreground">Ricerche anagrafiche Cerved quest'anno: {contatore.data != null ? contatore.data.toLocaleString("it-IT") : contatore.isError ? "non disponibile" : "…"} su {QUOTA_RICERCHE_CERVED_ANNUA.toLocaleString("it-IT")}</p>
     {q.isPending ? <p className="text-sm text-muted-foreground">Caricamento…</p>
       : q.isError ? <p className="text-sm text-destructive">Impossibile leggere i report in attesa</p>
       : !q.data?.length ? <p className="text-sm text-muted-foreground">Nessun report in attesa</p>

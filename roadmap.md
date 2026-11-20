@@ -1,3 +1,8 @@
+# FM90 — Compila da P.IVA
+- [x] Ricerca anagrafica gratuita autorizzata, confronto nel form creazione/modifica e contatore annuale senza migrazione.
+- [x] 1139 test verdi, tipi puliti, fotografie fixture 320/375/390/768/1280/1920 e rapporto fm90-compila-da-piva.md.
+- [ ] Verifica autenticata completa dei due form e contatore: sessione personale non disponibile; nessuna ricerca reale Cerved eseguita.
+
 # FM88 — Esponenti e società collegate
 - [x] Normalizzazione da PositionCompany; 60 fotografie aggiornate nelle sole chiavi esponenti/societa_collegate, confronto esatto col parser e altri campi invariati. Nessuna chiamata Cerved o migrazione.
 - [x] Sette società G-E TRADE e due ruoli esponente verificati; fotografie 375/768/1280/1920 senza overflow/errori, 1111 test verdi. Lettura report invariata; precedente scheda registrata FM87. Accesso reale porta al login: verifica autenticata indisponibile.

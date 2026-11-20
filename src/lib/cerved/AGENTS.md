@@ -10,3 +10,4 @@
 - Screens read cerved_report/cerved_fotografie only by id_soggetto obtained from cerved_soggetti via cerved-letture; never by cliente_id/lead_id (those are origin only).
 - SchedaCervedEntita is the only Cerved card (cliente and lead); MADE-internal parts (fido MADE, come paga MADE, confronto MADE) depend only on datiMade; trigger trg_lead_cerved_cliente copies the lead's subject link to the client on conversion when VAT matches, never purchasing again.
 - Cerved list gauge for clienti and lead comes only from useEntitaConReportCerved.
+- Compila da P.IVA uses only entity_search (free quota ~10,000/year, counted from cerved_chiamate); it never purchases, links or monitors.

@@ -1,4 +1,5 @@
 import { BloccoIndirizzo } from "@/components/blocco-indirizzo";
+import { CompilaDaPiva } from "./compila-da-piva";
 import { isSoloShowroom } from "@/lib/permessi-showroom";
 import { ClienteVisibileLink } from "./cliente-visibile-link";
 import { useEffect, useState } from "react";
@@ -254,7 +255,10 @@ export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
         </div>
         <div>
           <Label className="text-xs">Partita IVA {checking && <Loader2 className="inline size-3 animate-spin" />}</Label>
-          <Input value={f.partita_iva} maxLength={20} onChange={(e) => set("partita_iva", e.target.value)} />
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <Input className="min-w-0 flex-1 basis-28" value={f.partita_iva} maxLength={20} onChange={(e) => set("partita_iva", e.target.value)} />
+            <CompilaDaPiva form={f} creazione onApply={patch => setF(p => ({ ...p, ...patch, tipo_soggetto: patch.tipo_soggetto === "azienda" ? "azienda" : p.tipo_soggetto }))} />
+          </div>
         </div>
         <div>
           <Label className="text-xs">Codice fiscale</Label>
