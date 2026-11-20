@@ -1,3 +1,9 @@
+# FM91 — Kit, parametri e regole nella scheda, fetta 2b1
+- [x] API parametri/regole e duplicazione; configurazione complete/solo_base, nessuna migrazione o modifica ai preventivi.
+- [x] Parametri con avvisi sui riferimenti, operandi a menu, anteprima dal motore unico e sola lettura.
+- [x] Suite 1211/0, fotografie 375/768/1280/1920 senza overflow/runtime, 3 kit/33 componenti/0 parametri invariati; rapporto fm91-kit-2b1.md.
+- [ ] Verifica autenticata persistita: nessun account del richiedente disponibile; flusso verificato con richieste intercettate, nessun dato DB di prova.
+
 # FM91 — Kit, motore a regole, fetta 2a
 - [x] Schema additivo 0251 + restrizione grant ereditati 0252: operandi, parametri, varianti/articoli per ruolo; gate/MFA identici, 3 kit e 33 componenti invariati, zero righe nuove.
 - [x] Calcolo canonico kit-regole con dipendenze, precedenze, UM1, errori italiani; 36 test Excel/casi limite/33 incidenze reali.

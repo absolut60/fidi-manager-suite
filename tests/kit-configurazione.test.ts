@@ -12,6 +12,7 @@ test('FM90 ogni linea dell’enum database ha una configurazione kit', () => {
 test('FM90 Sistema MADE: prefisso SM, mq, sei colonne e sei specifiche tipizzate', () => {
   expect(LINEE_PREVENTIVO.sistema_made.kit).toEqual({
     prefissoCodice: 'SM', umBaseDefault: 'mq', etichettaQuantita: 'Incidenza per {um}',
+    regole: 'complete', parametri: true,
     colonneComponente: ['ruolo', 'lato', 'strato', 'tipo_driver', 'valore_driver', 'incidenza'],
     specifiche: [
       { codice: 'tipo_struttura', etichetta: 'Tipo struttura', tipo: 'testo' },
@@ -28,6 +29,7 @@ for (const [linea, prefissoCodice] of [ ['showroom', 'SR'], ['edilizia', 'ED'], 
   test(`FM90 ${linea}: prefisso ${prefissoCodice}, unità kit, ruolo/incidenza e nessuna specifica`, () => {
     expect(LINEE_PREVENTIVO[linea].kit).toEqual({
       prefissoCodice, umBaseDefault: 'kit', etichettaQuantita: 'Quantità per kit',
+      regole: 'solo_base', parametri: false,
       colonneComponente: ['ruolo', 'incidenza'], specifiche: [],
     });
   });
@@ -39,7 +41,7 @@ test('FM90 duplicazione kit non riutilizza il codice univoco e conserva i dati a
     const kit={id:'originale',codice:'PROVA-1',nome:'Prova',linea:'sistema_made',famiglia_id:'famiglia',um_base:'mq',specifiche:{passo:600},componenti:[{id:'componente',kit_id:'originale',articolo_codice:null,codice_articolo_fornitore:'MAN-01',descrizione:'Lastra manuale',um:'MQ',fornitore_id:'fornitore',marca:'Marca',costo:12,listino_fornitore:20,note:'Nota',ruolo:'lastra',lato:1,strato:2,tipo_driver:'CONSUMO',valore_driver:5,incidenza:2,ordine:0}]};
     let nuovo,componenti;
     mock.module('@/integrations/supabase/client',()=>({supabase:{from:table=>({
-      select:()=>({eq:()=>({single:async()=>({data:kit,error:null})}),like:()=>({order:()=>({range:async()=>({data:[{codice:'SM-9'}],error:null})})}),order:()=>({order:async()=>({data:[{id:'famiglia',linea:'sistema_made',codice:'PARETE',attiva:true}],error:null})})}),
+      select:()=>({eq:()=>table==='kit_parametri'?{order:()=>({order:async()=>({data:[],error:null})})}:{single:async()=>({data:kit,error:null})},like:()=>({order:()=>({range:async()=>({data:[{codice:'SM-9'}],error:null})})}),order:()=>({order:async()=>({data:[{id:'famiglia',linea:'sistema_made',codice:'PARETE',attiva:true}],error:null})})}),
       insert:row=>{if(table==='kit'){nuovo=row;return{select:()=>({single:async()=>({data:{...row,id:'copia'},error:null})})}}componenti=row;return Promise.resolve({error:null})}
     })}}));
     const {duplicateKit}=await import('./src/lib/kit-api.ts');

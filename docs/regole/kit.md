@@ -49,7 +49,7 @@
 
 ## Motore a regole (FM91)
 
-- Fonte unica TypeScript: `src/lib/kit-regole.ts`, funzione pura `calcolaKitRegole`. Non ancora collegata a schermate, import o percorso “Da kit”. Se servirà un calcolo SQL, sarà un gemello documentato di questo modulo, non una seconda logica autonoma.
+- Fonte unica TypeScript: `src/lib/kit-regole.ts`, funzione pura `calcolaKitRegole`. Collegata all'anteprima della scheda kit dalla 2b1; import e percorso “Da kit” restano esclusi. Se servirà un calcolo SQL, sarà un gemello documentato di questo modulo, non una seconda logica autonoma.
 - Quantità per **una unità base** = `BASE × MOLTIPLICA ÷ DIVIDI_1 ÷ DIVIDI_2 ÷ CONFEZIONE + AGGIUNTA`. Nessun arrotondamento intermedio o finale: si arrotonda solo in visualizzazione.
 - Operandi testuali: numero con punto/virgola decimale; `PARAM:CODICE` (A–Z, 0–9, underscore); `RIGA:n` (ordine numerico univoco nello stesso kit). `RIGA:guide`/`RIGA:montanti` sono soltanto nomi descrittivi nell'esempio Excel: si salvano gli ordini numerici effettivi.
 - Al salvataggio `normalizzaOperandoKit` converte la virgola in punto, elimina spazi esterni e rende i vuoti `null`; rifiuta formule libere e operandi malformati. Sarà riusata dalle fette 2b/2c, che gestiranno le scritture.
@@ -60,3 +60,13 @@
 - Gli articoli della variante sono Gamma oppure manuali con gli stessi campi dei componenti; nessun prezzo viene calcolato. `RIGA:n` usa la quantità finale della dipendenza, a prescindere dall'ordine degli elementi in input; cicli, righe inesistenti e divisioni per zero sono errori italiani sulla riga e sulle dipendenze coinvolte.
 - Output: ordine, articolo risolto Gamma/manuale, quantità per unità, fonte (`regola`, `incidenza`, `driver`) ed eventuale errore. Su errore quantità `null`, mai `NaN`/`Infinity` o zero silenzioso; righe indipendenti continuano a essere calcolate.
 - Schema FM91 additivo: sei operandi nullable e `variante_ruolo`, ordine univoco per kit, parametri/varianti/articoli per ruolo. Permessi e trigger aggiornamento come `kit_componenti`, inclusa restrittiva FM44; nessun dato esistente modificato, nessun parametro/variante di prova creato.
+
+## Scheda parametri e regole — FM91 2b1
+
+- Configurazione unica: Sistema MADE `regole: complete`, `parametri: true`; altre linee `regole: solo_base`, `parametri: false`. Stesso motore, nessun confronto di linea nei chiamanti.
+- Parametri: creazione/modifica/eliminazione e frecce d'ordine con gate anagrafiche + linea abilitata, RLS invariata. Codice maiuscolo univoco nel kit, numeri italiani, scelta numerica con elenco separato da punto e virgola. Eliminazione/rinomina segnala tutte le righe referenti e richiede conferma; nessuna sostituzione automatica degli operandi.
+- Sei operandi con inserimento numerico oppure menu di parametri/altre righe; riferimenti visualizzati tramite etichetta, mai da scrivere a mano. Frase descrittiva in `kit-regole-ui`, senza calcolo duplicato. Tutte le scritture componenti, inclusa duplicazione, passano da `normalizzaOperandoKit` attraverso l'adattatore condiviso.
+- Anteprima immediata da `calcolaKitRegole`, anche prima del salvataggio del campo (salvato all'uscita); valori “Prova i parametri” solo locali. Quantità UM1 con sei decimali massimi e virgola, fonte e messaggi italiani del motore. BASE attiva attenua incidenza/driver senza cancellarli.
+- Schede sotto 1024, tabella con operandi in una seconda riga da 1024; larghezza limitata per evitare campi dilatati a 1920. Parametri e form senza comandi per chi legge soltanto; valori di prova restano disponibili perché non scrivono dati.
+- Duplicazione copia parametri e sei operandi; copie parziali hanno errore esplicito. Riordino salva gli ordini con verifica di ogni riga, segnala eventuali salvataggi parziali. Le FK CASCADE eliminano componenti/parametri/varianti insieme al kit.
+- `variante_ruolo` soltanto letto: la riga mostra “articolo da variante: …” senza comandi. Gestione varianti esclusa (2b2), import Excel escluso (2c); nessuna migrazione.

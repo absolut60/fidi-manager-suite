@@ -6,14 +6,15 @@ import { importoRiga } from "./riga-preventivo";
 import { calcIncidenzaFromDriver, round4, type TipoDriver } from "./incidenza";
 import { ERRORE_CODICE_KIT, famigliaKitLegacy, proponiCodiceKit } from './kit-config';
 import { lineaPreventivo, type LineaPreventivo } from './linee-preventivo';
+import { normalizzaPatchRegoleKit, validaParametroKit, type KitParametro, type SalvataggioParametroKit } from './kit-regole-ui';
+export type { KitParametro, SalvataggioParametroKit } from './kit-regole-ui';
 
 type Tabelle = Database['public']['Tables'];
 export type Kit = Pick<Tabelle['kit']['Row'], 'id' | 'codice' | 'nome' | 'linea' | 'famiglia_id' | 'um_base' | 'descrizione_tecnica' | 'specifiche' | 'created_at' | 'updated_at'>;
 export type KitInsert = Pick<Tabelle['kit']['Insert'], 'nome' | 'um_base' | 'descrizione_tecnica' | 'specifiche'> & { codice: string; linea: LineaPreventivo; famiglia_id: string };
 export type KitUpdate = Partial<Omit<KitInsert, 'linea'>>;
 export type KitFamiglia = Tabelle['kit_famiglie']['Row'];
-// DTO della schermata 1b: mantiene solo i campi effettivamente selezionati, fino alla fetta 2b.
-export type KitComponente = Omit<Tabelle['kit_componenti']['Row'], 'articolo_id' | 'regola_base' | 'regola_moltiplica' | 'regola_dividi_1' | 'regola_dividi_2' | 'regola_confezione' | 'regola_aggiunta' | 'variante_ruolo'>;
+export type KitComponente = Omit<Tabelle['kit_componenti']['Row'], 'articolo_id'>;
 export type KitComponenteInsert = Omit<Tabelle['kit_componenti']['Insert'], 'articolo_id'>;
 export type KitComponenteUpdate = Omit<Tabelle['kit_componenti']['Update'], 'articolo_id'>;
 export type FasciaListino = Database['public']['Enums']['fascia_listino'];
@@ -21,7 +22,7 @@ export interface ArticoloKitGamma { codice: string; descrizione: string | null; 
 export interface KitConComponenti extends Kit { componenti: (KitComponente & { articolo: ArticoloKitGamma | null })[] }
 
 const KIT_CAMPI = 'id,codice,nome,linea,famiglia_id,um_base,descrizione_tecnica,specifiche,created_at,updated_at' as const;
-const COMPONENTE_CAMPI = 'id,kit_id,articolo_codice,codice_articolo_fornitore,descrizione,um,fornitore_id,marca,costo,listino_fornitore,note,ruolo,lato,strato,tipo_driver,valore_driver,incidenza,ordine,created_at,updated_at' as const;
+const COMPONENTE_CAMPI = 'id,kit_id,articolo_codice,codice_articolo_fornitore,descrizione,um,fornitore_id,marca,costo,listino_fornitore,note,ruolo,lato,strato,tipo_driver,valore_driver,incidenza,ordine,regola_base,regola_moltiplica,regola_dividi_1,regola_dividi_2,regola_confezione,regola_aggiunta,variante_ruolo,created_at,updated_at' as const;
 const KIT_SELECT = `${KIT_CAMPI},componenti:kit_componenti(${COMPONENTE_CAMPI})` as const;
 
 export async function fetchKitFamiglie(): Promise<KitFamiglia[]> {
@@ -95,8 +96,38 @@ export async function updateKit(id: string, patch: KitUpdate): Promise<Kit> {
 export async function deleteKit(id: string) {
   return eliminaConEsito("kit", id);
 }
+export async function fetchKitParametri(kitId: string): Promise<KitParametro[]> {
+  const { data, error } = await supabase.from('kit_parametri').select('*').eq('kit_id', kitId).order('ordine').order('codice');
+  if (error) throw error;
+  return data ?? [];
+}
+export async function salvaKitParametro(kitId: string, id: string | null, valori: SalvataggioParametroKit): Promise<KitParametro> {
+  const row = validaParametroKit(valori);
+  const query = id ? supabase.from('kit_parametri').update(row).eq('kit_id', kitId).eq('id', id)
+    : supabase.from('kit_parametri').insert({ ...row, kit_id: kitId });
+  const { data, error } = await query.select('*').single();
+  if (error) throw new Error(error.code === '23505' ? 'Codice parametro già usato in questo kit.' : error.code === 'PGRST116' ? 'Non hai il permesso di modificare il parametro.' : error.message);
+  if (!data) throw new Error('Parametro non salvato.');
+  return data;
+}
+export async function deleteKitParametro(kitId: string, id: string) {
+  return eliminaConEsito('kit_parametri', { richiesti: 1, filtro: q => q.eq('kit_id', kitId).eq('id', id) });
+}
+export async function riordinaKitParametri(kitId: string, parametri: readonly KitParametro[], id: string, verso: -1 | 1) {
+  const indice = parametri.findIndex(p => p.id === id);
+  const corrente = parametri[indice];
+  const vicino = parametri[indice + verso];
+  if (!corrente || !vicino) return;
+  const ordinati = [...parametri];
+  ordinati[indice] = vicino; ordinati[indice + verso] = corrente;
+  for (const [ordine, p] of ordinati.entries()) {
+    const { data, error } = await supabase.from('kit_parametri').update({ ordine }).eq('kit_id', kitId).eq('id', p.id).select('id').single();
+    if (error || !data) throw new Error('Ordine dei parametri non completato. Ricarica la scheda e riprova.');
+  }
+}
 export async function duplicateKit(id: string, newName?: string): Promise<Kit> {
   const orig = await fetchKit(id);
+  const parametri = await fetchKitParametri(id);
   if (!orig.famiglia_id) throw new Error('Assegna prima una famiglia al kit');
   let newKit: Kit | undefined;
   for (let tentativo=0; tentativo<3; tentativo++) {
@@ -111,19 +142,24 @@ export async function duplicateKit(id: string, newName?: string): Promise<Kit> {
   if (orig.componenti.length) {
     const rows: KitComponenteInsert[] = orig.componenti.map(c => {
       const { id: _id, kit_id: _kit, created_at: _c, updated_at: _u, articolo: _a, ...campi } = c;
-      return { ...campi, kit_id: newKit.id };
+      return normalizzaPatchRegoleKit({ ...campi, kit_id: newKit.id });
     });
     const { error } = await supabase.from('kit_componenti').insert(rows);
     if (error) throw new Error(`Kit ${newKit.codice} creato, copia componenti non completata: ${error.message}`);
   }
+  if (parametri.length) {
+    const rows = parametri.map(({ id: _id, kit_id: _kit, created_at: _c, updated_at: _u, ...p }) => ({ ...p, kit_id: newKit.id }));
+    const { error } = await supabase.from('kit_parametri').insert(rows);
+    if (error) throw new Error(`Kit ${newKit.codice} creato, copia parametri non completata: ${error.message}`);
+  }
   return newKit;
 }
 export async function insertComponente(row: KitComponenteInsert) {
-  const { data, error } = await supabase.from('kit_componenti').insert(row).select(COMPONENTE_CAMPI).single();
+  const { data, error } = await supabase.from('kit_componenti').insert(normalizzaPatchRegoleKit(row)).select(COMPONENTE_CAMPI).single();
   if (error) throw error; return data;
 }
 export async function updateComponente(id: string, patch: KitComponenteUpdate) {
-  const { data, error } = await supabase.from('kit_componenti').update(patch).eq('id',id).select(COMPONENTE_CAMPI).single();
+  const { data, error } = await supabase.from('kit_componenti').update(normalizzaPatchRegoleKit(patch)).eq('id',id).select(COMPONENTE_CAMPI).single();
   if (error) throw error; return data;
 }
 export async function deleteComponente(id: string) {
