@@ -8,7 +8,9 @@ import { idSoggettoDiEntita } from "@/lib/cerved/cerved-letture";
 import { useAuth } from "@/hooks/use-auth";
 import { useNomiUtentiQuery, formatNomeUtente } from "@/hooks/use-nomi-utenti";
 import { puoAggiornareCerved } from "@/lib/permessi-cerved";
-import { aggiornaCervedCliente, apriPdfReportCervedCliente } from "@/lib/cerved/cerved-cliente.functions";
+import { aggiornaCervedSoggetto, apriPdfReportCerved } from "@/lib/cerved/cerved-soggetto.functions";
+import { colonnaEntitaCerved, NOME_ENTITA_CERVED, type EntitaCerved } from "@/lib/cerved/cerved-entita";
+import { partiMadeCerved } from "@/lib/cerved/cerved-parti-made";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { formatEuro } from "@/lib/fidi";
 import {
@@ -24,7 +26,7 @@ import { VisualizzatorePdf } from "@/components/visualizzatore-pdf";
 import { GaugeCerved } from "@/components/cerved/gauge-cerved";
 import { EsponentiSocietaCerved } from "@/components/cerved/esponenti-societa";
 import { nomiEventiRelazionatiCerved } from "@/lib/cerved-collegati";
-import { useLightReportCliente, chiaveLightReportCliente } from "@/hooks/use-light-report-cliente";
+import { useLightReportEntita, chiaveLightReportEntita } from "@/hooks/use-light-report-cliente";
 import { useEsperienzaPagamentoCliente, testiEsperienzaPagamento } from "@/hooks/use-esperienza-pagamento";
 import { SemaforoAffidabilitaBadge } from "@/components/pannello-rischio-cliente";
 import { Card, CardContent } from "@/components/ui/card";
@@ -48,18 +50,30 @@ export function ClienteCervedTab({ clienteId, partitaIva, fidoMade, esposizione,
   pagina?: boolean;
   esposizione?: number | null; clienteId: string; partitaIva: string | null | undefined; fidoMade: number | null | undefined;
 }) {
+  return <SchedaCervedEntita entita="cliente" id={clienteId} partitaIva={partitaIva} fidoMade={fidoMade} esposizione={esposizione} pagina={pagina} />;
+}
+
+const chiaveReportCerved = (entita: EntitaCerved, id: string) => entita === "cliente" ? ["cerved-report", id] : ["cerved-report", "lead", id];
+
+/** FM90: unica scheda Cerved per cliente e lead. */
+export function SchedaCervedEntita({ entita, id, partitaIva, fidoMade, esposizione, pagina = false }: {
+  entita: EntitaCerved; id: string; partitaIva: string | null | undefined;
+  fidoMade?: number | null | undefined; esposizione?: number | null; pagina?: boolean;
+}) {
+  const clienteId = entita === "cliente" ? id : null;
+  const nome = NOME_ENTITA_CERVED[entita].toLowerCase();
   const pivaValida = (partitaIva ?? "").replace(/\D/g, "").length === 11;
   const { roles } = useAuth();
   const puo = puoAggiornareCerved((roles ?? []) as string[]);
   const qc = useQueryClient();
-  const chiave = ["cerved-cliente", clienteId];
+  const chiave = entita === "cliente" ? ["cerved-cliente", id] : ["cerved-lead", id];
 
   const q = useQuery({
     queryKey: chiave,
     enabled: pivaValida,
     queryFn: async (): Promise<DatiCervedCliente> => {
       const { data: soggetto, error } = await supabase
-        .from("cerved_soggetti").select("*").eq("cliente_id", clienteId).maybeSingle();
+        .from("cerved_soggetti").select("*").eq(colonnaEntitaCerved(entita), id).maybeSingle();
       if (error) throw error;
       const idSoggetto = (soggetto?.id_soggetto as number | undefined) ?? null;
       const tipi = ["ricerca", "profilo", "score", "bilancio", "eventi_negativi", "fido"] as const;
@@ -74,22 +88,22 @@ export function ClienteCervedTab({ clienteId, partitaIva, fidoMade, esposizione,
       return { soggetto, foto: { ricerca: righe[0], profilo: righe[1], score: righe[2], bilancio: righe[3], eventi_negativi: righe[4], fido: righe[5] } };
     },
   });
-  const lr = useLightReportCliente(pivaValida ? clienteId : null);
+  const lr = useLightReportEntita(entita, pivaValida ? id : null);
 
-  const aggiorna = useServerFn(aggiornaCervedCliente);
+  const aggiorna = useServerFn(aggiornaCervedSoggetto);
   const mut = useMutation({
-    mutationFn: () => aggiorna({ data: { clienteId } }),
+    mutationFn: () => aggiorna({ data: { entita, id } }),
     onSuccess: (r) => {
-      toast.success(r.nuovo_collegamento ? "Cliente collegato a Cerved" : "Dati Cerved aggiornati");
+      toast.success(r.nuovo_collegamento ? `${NOME_ENTITA_CERVED[entita]} collegato a Cerved` : "Dati Cerved aggiornati");
       if (r.errori?.length) toast.warning(`Alcuni dati non sono stati letti: ${r.errori.join(" · ")}`);
-      qc.invalidateQueries({ queryKey: chiave }); qc.invalidateQueries({ queryKey: ["cerved-report", clienteId] });
-      qc.invalidateQueries({ queryKey: chiaveLightReportCliente(clienteId) });
+      qc.invalidateQueries({ queryKey: chiave }); qc.invalidateQueries({ queryKey: chiaveReportCerved(entita, id) });
+      qc.invalidateQueries({ queryKey: chiaveLightReportEntita(entita, id) });
     },
     onError: (e: Error) => toast.error(e.message || "Aggiornamento Cerved non riuscito"),
   });
 
   if (!pivaValida) {
-    return <Riquadro><p className="text-sm text-muted-foreground">Cerved si collega tramite partita IVA: questo cliente non ne ha una valida.</p></Riquadro>;
+    return <Riquadro><p className="text-sm text-muted-foreground">Cerved si collega tramite partita IVA: questo {nome} non ne ha una valida.</p></Riquadro>;
   }
   if (q.isLoading || lr.isLoading) return <div className="max-w-6xl space-y-3"><Skeleton className="h-24 w-full" /><Skeleton className="h-40 w-full" /></div>;
   if (q.error) return <Riquadro><p className="text-sm text-destructive">Non riesco a leggere i dati Cerved: {(q.error as Error).message}</p></Riquadro>;
@@ -99,13 +113,15 @@ export function ClienteCervedTab({ clienteId, partitaIva, fidoMade, esposizione,
     <VistaCerved
       dati={{ ...q.data, foto: { ...q.data.foto, light_report: lr.data ?? null } }}
       clienteId={clienteId}
+      entita={entita}
+      datiMade={entita === "cliente"}
       fidoMade={fidoMade}
       esposizione={esposizione}
       pagina={pagina}
       puoAggiornare={puo}
       inCorso={mut.isPending}
       onAggiorna={() => mut.mutate()}
-      barraReport={<BarraReportCerved clienteId={clienteId} puo={puo} inline={pagina} />}
+      barraReport={<BarraReportCerved entita={entita} id={id} puo={puo} inline={pagina} />}
     />
   );
 }
@@ -115,12 +131,16 @@ function Riquadro({ children }: { children: React.ReactNode }) {
 }
 
 /** Parte solo presentazionale (riusabile con dati finti). Impianto della prima pagina del Light Report. */
-export function VistaCerved({ dati, clienteId, fidoMade, puoAggiornare, inCorso, onAggiorna, barraReport, esposizione, pagina = false }: {
+export function VistaCerved({ dati, clienteId, entita = "cliente", datiMade = true, fidoMade, puoAggiornare, inCorso, onAggiorna, barraReport, esposizione, pagina = false }: {
   pagina?: boolean;
-  esposizione?: number | null; dati: DatiCervedCliente; clienteId: string; fidoMade: number | null | undefined; puoAggiornare: boolean;
+  /** null per il lead: usato solo dalle parti MADE. */
+  clienteId: string | null; entita?: EntitaCerved; datiMade?: boolean;
+  esposizione?: number | null; dati: DatiCervedCliente; fidoMade: number | null | undefined; puoAggiornare: boolean;
   inCorso: boolean; onAggiorna: () => void; barraReport?: React.ReactNode;
 }) {
   const [conferma, setConferma] = useState(false);
+  const nome = NOME_ENTITA_CERVED[entita].toLowerCase();
+  const made = partiMadeCerved(datiMade && clienteId != null);
   const { data: nomi } = useNomiUtentiQuery();
   const collegato = !!dati.soggetto;
 
@@ -129,7 +149,7 @@ export function VistaCerved({ dati, clienteId, fidoMade, puoAggiornare, inCorso,
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{collegato ? "Aggiorna da Cerved" : "Collega a Cerved"}</AlertDialogTitle>
-          <AlertDialogDescription>Recupero il Light Report Cerved di questo cliente. Lo acquisto solo se non c’è un report ancora valido.</AlertDialogDescription>
+          <AlertDialogDescription>Recupero il Light Report Cerved di questo {nome}. Lo acquisto solo se non c’è un report ancora valido.</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Annulla</AlertDialogCancel>
@@ -152,7 +172,7 @@ export function VistaCerved({ dati, clienteId, fidoMade, puoAggiornare, inCorso,
     return (
       <Riquadro>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="min-w-0 text-sm">Questo cliente non è ancora collegato a Cerved.</p>
+          <p className="min-w-0 text-sm">Questo {nome} non è ancora collegato a Cerved.</p>
           {pulsante ?? <p className="text-xs text-muted-foreground">Il collegamento lo fanno amministrazione e recupero crediti.</p>}
         </div>
       </Riquadro>
@@ -273,7 +293,7 @@ export function VistaCerved({ dati, clienteId, fidoMade, puoAggiornare, inCorso,
               })}
             </div>
           ) : <NonDisp />}
-          {!lr && <ComePagaMade clienteId={clienteId} />}
+          {!lr && made.comePagaMade && clienteId && <ComePagaMade clienteId={clienteId} />}
         </Sezione>
   );
   const pulsanteAggiorna = puoAggiornare && (
@@ -323,16 +343,16 @@ export function VistaCerved({ dati, clienteId, fidoMade, puoAggiornare, inCorso,
         {dialogo}
 
         <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-2 xl:grid-cols-12">
-          <div className="min-w-0 xl:col-span-3"><CardScore scores={scores} fido={dati.foto.fido} fidoMade={fidoMade} lightReport={lr} pagina /></div>
+          <div className="min-w-0 xl:col-span-3"><CardScore scores={scores} fido={dati.foto.fido} fidoMade={fidoMade} datiMade={made.fidoMade} lightReport={lr} pagina /></div>
           <div className="min-w-0 xl:col-span-3">{valutazioni("h-full")}</div>
-          {lr && <div className="min-w-0 md:col-span-2 xl:col-span-6"><BloccoLettura lr={lr} fidoMade={fidoMade} esposizione={esposizione} className="h-full" /></div>}
+          {lr && <div className="min-w-0 md:col-span-2 xl:col-span-6"><BloccoLettura lr={lr} datiMade={made.confrontoMade} fidoMade={fidoMade} esposizione={esposizione} className="h-full" /></div>}
         </div>
 
         {lr && <BloccoRichieste richieste={lr.richieste_12_mesi} lr={lr} pagina />}
 
         {lr && (
           <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {lr.payline && <BloccoPayline payline={lr.payline} clienteId={clienteId} className="h-full" />}
+            {lr.payline && <BloccoPayline payline={lr.payline} clienteId={made.comePagaMade ? clienteId : null} className="h-full" />}
             <BloccoImmobili immobili={lr.immobili} className="h-full" />
             <BloccoEventiStraordinari ev={lr.eventi_straordinari} className="h-full" />
           </div>
@@ -416,7 +436,7 @@ export function VistaCerved({ dati, clienteId, fidoMade, puoAggiornare, inCorso,
 
       {/* B) Riga principale */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-        <CardScore scores={scores} fido={dati.foto.fido} fidoMade={fidoMade} lightReport={lr} />
+        <CardScore scores={scores} fido={dati.foto.fido} fidoMade={fidoMade} datiMade={made.fidoMade} lightReport={lr} />
         <Sezione titolo="Valutazioni parziali">
           {scores.length || lr?.gradings ? (
             <div className="divide-y">
@@ -435,15 +455,15 @@ export function VistaCerved({ dati, clienteId, fidoMade, puoAggiornare, inCorso,
               })}
             </div>
           ) : <NonDisp />}
-          {!lr && <ComePagaMade clienteId={clienteId} />}
+          {!lr && made.comePagaMade && clienteId && <ComePagaMade clienteId={clienteId} />}
         </Sezione>
       </div>
 
-      {lr && <BloccoLettura lr={lr} fidoMade={fidoMade} esposizione={esposizione} />}
+      {lr && <BloccoLettura lr={lr} datiMade={made.confrontoMade} fidoMade={fidoMade} esposizione={esposizione} />}
 
       {lr && (
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          {lr.payline && <BloccoPayline payline={lr.payline} clienteId={clienteId} />}
+          {lr.payline && <BloccoPayline payline={lr.payline} clienteId={made.comePagaMade ? clienteId : null} />}
           <BloccoRichieste richieste={lr.richieste_12_mesi} lr={lr} />
           <BloccoImmobili immobili={lr.immobili} />
           <BloccoEventiStraordinari ev={lr.eventi_straordinari} />
@@ -486,9 +506,9 @@ function Quadratino({ esito }: { esito: EsitoScore }) {
   );
 }
 
-export function CardScore({ scores, fido, fidoMade, lightReport, pagina = false }: { scores: ScoreCervedVista[]; fido: Obj | null | undefined; fidoMade: number | null | undefined; lightReport?: Obj | null; pagina?: boolean }) {
+export function CardScore({ scores, fido, fidoMade, datiMade = true, lightReport, pagina = false }: { scores: ScoreCervedVista[]; fido: Obj | null | undefined; fidoMade: number | null | undefined; datiMade?: boolean; lightReport?: Obj | null; pagina?: boolean }) {
   const certificato: number | null = lightReport?.fido_certificato?.valore ?? null;
-  const confronto = testoConfrontoFido(fidoMade, certificato);
+  const confronto = datiMade ? testoConfrontoFido(fidoMade, certificato) : null;
   const cgs = scoreCervedPresentazione(lightReport, scores);
   const semaforo = cgs.semaforo;
   const valore = cgs.valore;
@@ -523,15 +543,15 @@ export function CardScore({ scores, fido, fidoMade, lightReport, pagina = false 
       ) : <NonDisp />}
       {certificato != null ? (
         <div className="mt-4 rounded-sm bg-muted p-3">
-          <div className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${pagina ? "xl:grid-cols-1 min-[1700px]:grid-cols-2" : ""}`}>
+          <div className={`grid grid-cols-1 gap-3 ${datiMade ? "sm:grid-cols-2" : ""} ${datiMade && pagina ? "xl:grid-cols-1 min-[1700px]:grid-cols-2" : ""}`}>
             <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{ETICHETTE_LIGHT_REPORT.fidoCertificato}</p>
               <p className="text-2xl font-bold tabular-nums">{formatEuro(certificato)}</p>
             </div>
-            <div className="min-w-0">
+            {datiMade && <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Fido MADE</p>
               <p className="text-2xl font-bold tabular-nums">{formatEuro(fidoMade ?? 0)}</p>
-            </div>
+            </div>}
           </div>
           {confronto && <p className="mt-2 border-t pt-2 text-sm">{confronto}</p>}
         </div>
@@ -544,7 +564,7 @@ export function CardScore({ scores, fido, fidoMade, lightReport, pagina = false 
             {fido.fmed?.valore != null && <p className="text-xs text-muted-foreground">Fido medio: {formatEuro(fido.fmed.valore)}</p>}
           </>
         ) : <p className="text-sm font-bold text-muted-foreground">Non ancora attivo</p>}
-        <p className="mt-2 border-t pt-2 text-sm">Fido MADE: <span className="font-bold tabular-nums">{formatEuro(fidoMade ?? 0)}</span></p>
+        {datiMade && <p className="mt-2 border-t pt-2 text-sm">Fido MADE: <span className="font-bold tabular-nums">{formatEuro(fidoMade ?? 0)}</span></p>}
       </div>
       )}
     </Sezione>
@@ -724,12 +744,12 @@ function NonDisp() {
 
 
 /** Solo apertura del PDF del Light Report (dialog con visualizzatore e "Scarica"), se il cliente ha un report. */
-function BarraReportCerved({ clienteId, puo, inline = false }: { clienteId: string; puo: boolean; inline?: boolean }) {
+function BarraReportCerved({ entita, id, puo, inline = false }: { entita: EntitaCerved; id: string; puo: boolean; inline?: boolean }) {
   const [urlPdf, setUrlPdf] = useState<string | null>(null);
   const rep = useQuery({
-    queryKey: ["cerved-report", clienteId],
+    queryKey: chiaveReportCerved(entita, id),
     queryFn: async () => {
-      const idSoggetto = await idSoggettoDiEntita("cliente", clienteId);
+      const idSoggetto = await idSoggettoDiEntita(entita, id);
       if (!idSoggetto) return null;
       const { data, error } = await supabase.from("cerved_report")
         .select("percorso_pdf, stato, request_id").eq("id_soggetto", idSoggetto)
@@ -738,9 +758,9 @@ function BarraReportCerved({ clienteId, puo, inline = false }: { clienteId: stri
       return data;
     },
   });
-  const apri = useServerFn(apriPdfReportCervedCliente);
+  const apri = useServerFn(apriPdfReportCerved);
   const mutPdf = useMutation({
-    mutationFn: () => apri({ data: { clienteId } }),
+    mutationFn: () => apri({ data: { entita, id } }),
     onSuccess: (r) => setUrlPdf(r.url),
     onError: (e: Error) => toast.error(e.message || "Impossibile aprire il PDF"),
   });
@@ -781,7 +801,7 @@ function Voce({ k, v }: { k: string; v: string | null | undefined }) {
   );
 }
 
-function BloccoPayline({ payline, clienteId, className }: { payline: Obj | null | undefined; clienteId: string; className?: string }) {
+function BloccoPayline({ payline, clienteId, className }: { payline: Obj | null | undefined; clienteId: string | null; className?: string }) {
   const pl = payline ?? {};
   const giorni = testoGiorniPayline(pl.giorni_effettivi, pl.giorni_concordati);
   const trim: Obj[] = Array.isArray(pl.trimestri) ? pl.trimestri : [];
@@ -815,7 +835,7 @@ function BloccoPayline({ payline, clienteId, className }: { payline: Obj | null 
             </div>
           </div>
         )}
-        <ComePagaMade clienteId={clienteId} />
+        {clienteId && <ComePagaMade clienteId={clienteId} />}
       </div>
     </Sezione>
   );
@@ -910,8 +930,8 @@ function BloccoEventiStraordinari({ ev, className }: { ev: Obj | null | undefine
   );
 }
 
-function BloccoLettura({ lr, fidoMade, esposizione, className }: { lr: Obj; fidoMade?: number | null; esposizione?: number | null; className?: string }) {
-  const lettura = letturaReportCerved(lr, fidoMade, esposizione);
+function BloccoLettura({ lr, datiMade = true, fidoMade, esposizione, className }: { lr: Obj; datiMade?: boolean; fidoMade?: number | null; esposizione?: number | null; className?: string }) {
+  const lettura = letturaReportCerved(lr, datiMade ? fidoMade : null, datiMade ? esposizione : null);
   return <Sezione titolo="Lettura del report" className={className}>
     <div className={`border-l-4 pl-3 ${lettura.tono === "ambra" ? "border-l-warning" : lettura.tono === "verde" ? "border-l-success" : "border-l-border"}`}>
       <p className="text-sm font-semibold">In sintesi</p><p className="mt-1 text-sm leading-relaxed">{lettura.sintesi}</p>
@@ -919,7 +939,7 @@ function BloccoLettura({ lr, fidoMade, esposizione, className }: { lr: Obj; fido
     <div className="mt-4 grid grid-cols-1 gap-5 lg:grid-cols-2">
       {([["Punti di forza", lettura.forza], ["Da tenere d'occhio", lettura.attenzione]] as const).map(([titolo, segnali]) => segnali.length > 0 && <div key={titolo} className="min-w-0"><h4 className="mb-2 text-sm font-semibold">{titolo}</h4><ul className="space-y-2">{segnali.map(s => <li key={s.id} className={`border-l-2 pl-3 text-sm leading-relaxed ${s.tono === "verde" ? "border-l-success" : s.tono === "rosso" ? "border-l-destructive" : "border-l-warning"}`}>{s.testo}</li>)}</ul></div>)}
     </div>
-    {(lettura.certificato != null || lettura.made != null || lettura.esposizione != null) && <div className="mt-5 border-t pt-4"><h4 className="text-sm font-semibold">Confronto con MADE</h4><div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">{([["Fido certificato Cerved",lettura.certificato],["Fido MADE",lettura.made],["Esposizione attuale",lettura.esposizione]] as const).map(([k,v]) => v != null && <Voce key={k} k={k} v={formatEuro(v)} />)}</div>{lettura.confronto && <p className="mt-3 text-sm">{lettura.confronto}</p>}</div>}
+    {datiMade && (lettura.certificato != null || lettura.made != null || lettura.esposizione != null) && <div className="mt-5 border-t pt-4"><h4 className="text-sm font-semibold">Confronto con MADE</h4><div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">{([["Fido certificato Cerved",lettura.certificato],["Fido MADE",lettura.made],["Esposizione attuale",lettura.esposizione]] as const).map(([k,v]) => v != null && <Voce key={k} k={k} v={formatEuro(v)} />)}</div>{lettura.confronto && <p className="mt-3 text-sm">{lettura.confronto}</p>}</div>}
   </Sezione>;
 }
 

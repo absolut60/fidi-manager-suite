@@ -1744,6 +1744,13 @@
       "when": 1795190404210,
       "tag": "0248_fm90_cerved_soggetti_lead",
       "breakpoints": true
+    },
+    {
+      "idx": 249,
+      "version": "7",
+      "when": 1795191676071,
+      "tag": "0249_fm90_cerved_lead_cliente",
+      "breakpoints": true
     }
   ]
 }

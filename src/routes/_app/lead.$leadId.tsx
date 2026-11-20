@@ -50,6 +50,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { OpportunitaSoggettoLista } from "@/components/opportunita-soggetto-lista";
 import { AllegatiSection } from "@/components/allegati-section";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SchedaCervedEntita } from "@/components/cliente-cerved-tab";
 import { CampagneEntitaTab } from "@/components/marketing/campagne-entita-tab";
 import {
   Select,
@@ -645,6 +646,7 @@ function LeadDettaglioPage() {
           <TabsTrigger value="contatti">Contatti</TabsTrigger>
           <TabsTrigger value="cantieri">Cantieri</TabsTrigger>
           <TabsTrigger value="commerciale">Commerciale</TabsTrigger>
+          <TabsTrigger value="cerved">Cerved</TabsTrigger>
           {puoConsultarePreventivi(roles as string[]) && <TabsTrigger value="preventivi">Preventivi</TabsTrigger>}
           <TabsTrigger value="richieste">Richieste</TabsTrigger>
           <TabsTrigger value="allegati">Allegati</TabsTrigger>
@@ -1039,6 +1041,10 @@ function LeadDettaglioPage() {
 
         <TabsContent value="cantieri" className="mt-4">
           <LeadCantieriTab leadId={leadId} clienteId={lead.cliente_id} etichetta={nomeLead(lead)} />
+        </TabsContent>
+
+        <TabsContent value="cerved" className="mt-4">
+          <SchedaCervedEntita entita="lead" id={leadId} partitaIva={lead.partita_iva} pagina />
         </TabsContent>
 
         <TabsContent value="commerciale" className="mt-4">
