@@ -5,7 +5,7 @@ import { RUOLI_AGGIORNANO_CERVED } from "@/lib/permessi-cerved";
 /** Rilegge lo stato prima del recupero; la transizione e gli avvisi sono atomici nel DB. */
 export async function recuperaReportCervedInAttesa(id: string) {
   const { data: report, error } = await supabaseAdmin.from("cerved_report")
-    .select("id, cliente_id, id_soggetto, request_id, stato").eq("id", id).maybeSingle();
+    .select("id, cliente_id, lead_id, id_soggetto, request_id, stato").eq("id", id).maybeSingle();
   if (error) throw new Error(error.message);
   if (!report || report.stato !== "in_attesa") return { saltato: true };
   let erroreRecupero: string | null = null;

@@ -35,7 +35,7 @@ function scenario(xml: boolean, erroreFoto = false) {
   };
   const mod: any = {};
   new Function("exports", "admin", "fetch", "process", js)(mod, admin, fetch, { env: { CERVED_API_KEY: "test" } });
-  return { eventi, run: () => mod.recuperaESalvaLightReport({ id: "report", cliente_id: "cli", id_soggetto: 42, request_id: "4839611059" }, { utenteId: "op", clienteId: "cli" }) };
+  return { eventi, run: () => mod.recuperaESalvaLightReport({ id: "report", cliente_id: "cli", lead_id: null, id_soggetto: 42, request_id: "4839611059" }, { utenteId: "op", clienteId: "cli" }) };
 }
 
 describe("FM85 recupero e stato", () => {

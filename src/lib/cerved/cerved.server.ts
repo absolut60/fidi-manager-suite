@@ -1205,7 +1205,7 @@ export type EsitoRecuperoReport = { xml_ok: boolean; pdf_ok: boolean; percorso_p
  * (sovrascrivendo), una fotografia 'light_report' e ultimo_recupero_il/da. Solo service_role.
  */
 export async function recuperaESalvaLightReport(
-  report: { id: string; cliente_id: string | null; id_soggetto: number; request_id: string },
+  report: { id: string; cliente_id: string | null; lead_id: string | null; id_soggetto: number; request_id: string },
   ctx: Ctx,
 ): Promise<EsitoRecuperoReport> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -1222,7 +1222,7 @@ export async function recuperaESalvaLightReport(
   const inPreparazione = !doc?.contenuto_xml && x.esito === "ok";
   if (doc?.contenuto_xml) {
     const { error } = await supabaseAdmin.from("cerved_fotografie").insert({
-      cliente_id: report.cliente_id, id_soggetto: report.id_soggetto, tipo: "light_report",
+      cliente_id: report.cliente_id, lead_id: report.lead_id, id_soggetto: report.id_soggetto, tipo: "light_report",
       dati: normalizzaLightReportXml(doc.contenuto_xml) as never, chiamata_id: x.chiamata_id, letta_da: ctx.utenteId,
     });
     if (error) { console.error("[cerved] fotografia light_report non salvata", error.message); errori.push("Light Report: dati letti ma non salvati"); }

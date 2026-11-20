@@ -10,7 +10,7 @@ export const riprovaReportCerved = createServerFn({ method: "POST" })
     const { data: puo, error: errPerm } = await context.supabase.rpc("auth_puo_aggiornare_cerved");
     if (errPerm || !puo) throw new Error("Non hai il permesso di aggiornare i dati Cerved");
     const { data: report, error } = await context.supabase.from("cerved_report")
-      .select("id, cliente_id, id_soggetto, request_id, stato").eq("id", data.reportId).maybeSingle();
+      .select("id, cliente_id, lead_id, id_soggetto, request_id, stato").eq("id", data.reportId).maybeSingle();
     if (error || !report) throw new Error("Report Cerved non trovato");
     if (report.stato === "consegnato") return { xml_ok: true, errori: [] as string[] };
     const { recuperaESalvaLightReport } = await import("./cerved.server");
