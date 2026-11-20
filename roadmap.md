@@ -1,3 +1,8 @@
+# FM91 — Kit, motore a regole, fetta 2a
+- [x] Schema additivo 0251 + restrizione grant ereditati 0252: operandi, parametri, varianti/articoli per ruolo; gate/MFA identici, 3 kit e 33 componenti invariati, zero righe nuove.
+- [x] Calcolo canonico kit-regole con dipendenze, precedenze, UM1, errori italiani; 36 test Excel/casi limite/33 incidenze reali.
+- [x] Suite 1196/0, build automatico OK, schema/dati verificati, regole e rapporto fm91-kit-2a.md; schermate/import/prezzi invariati. Tsgo autonomo non eseguito per vincolo della sessione.
+
 # FM90 — Kit motore unico, fetta 1b
 - [x] Lista, creazione ed editor su struttura nuova, Gamma/manuale condivisi e configurazione per linea; nessuna migrazione.
 - [x] API nuove e duplicazione completa; ponte kit-legacy per i due chiamanti documento ancora storici, senza cambiarne handler/prezzi.

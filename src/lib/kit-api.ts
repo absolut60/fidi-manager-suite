@@ -12,7 +12,8 @@ export type Kit = Pick<Tabelle['kit']['Row'], 'id' | 'codice' | 'nome' | 'linea'
 export type KitInsert = Pick<Tabelle['kit']['Insert'], 'nome' | 'um_base' | 'descrizione_tecnica' | 'specifiche'> & { codice: string; linea: LineaPreventivo; famiglia_id: string };
 export type KitUpdate = Partial<Omit<KitInsert, 'linea'>>;
 export type KitFamiglia = Tabelle['kit_famiglie']['Row'];
-export type KitComponente = Omit<Tabelle['kit_componenti']['Row'], 'articolo_id'>;
+// DTO della schermata 1b: mantiene solo i campi effettivamente selezionati, fino alla fetta 2b.
+export type KitComponente = Omit<Tabelle['kit_componenti']['Row'], 'articolo_id' | 'regola_base' | 'regola_moltiplica' | 'regola_dividi_1' | 'regola_dividi_2' | 'regola_confezione' | 'regola_aggiunta' | 'variante_ruolo'>;
 export type KitComponenteInsert = Omit<Tabelle['kit_componenti']['Insert'], 'articolo_id'>;
 export type KitComponenteUpdate = Omit<Tabelle['kit_componenti']['Update'], 'articolo_id'>;
 export type FasciaListino = Database['public']['Enums']['fascia_listino'];

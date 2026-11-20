@@ -4629,12 +4629,19 @@ export type Database = {
           marca: string | null
           note: string | null
           ordine: number
+          regola_aggiunta: string | null
+          regola_base: string | null
+          regola_confezione: string | null
+          regola_dividi_1: string | null
+          regola_dividi_2: string | null
+          regola_moltiplica: string | null
           ruolo: string | null
           strato: number | null
           tipo_driver: Database["public"]["Enums"]["tipo_driver"] | null
           um: string | null
           updated_at: string
           valore_driver: number | null
+          variante_ruolo: string | null
         }
         Insert: {
           articolo_codice?: string | null
@@ -4652,12 +4659,19 @@ export type Database = {
           marca?: string | null
           note?: string | null
           ordine?: number
+          regola_aggiunta?: string | null
+          regola_base?: string | null
+          regola_confezione?: string | null
+          regola_dividi_1?: string | null
+          regola_dividi_2?: string | null
+          regola_moltiplica?: string | null
           ruolo?: string | null
           strato?: number | null
           tipo_driver?: Database["public"]["Enums"]["tipo_driver"] | null
           um?: string | null
           updated_at?: string
           valore_driver?: number | null
+          variante_ruolo?: string | null
         }
         Update: {
           articolo_codice?: string | null
@@ -4675,12 +4689,19 @@ export type Database = {
           marca?: string | null
           note?: string | null
           ordine?: number
+          regola_aggiunta?: string | null
+          regola_base?: string | null
+          regola_confezione?: string | null
+          regola_dividi_1?: string | null
+          regola_dividi_2?: string | null
+          regola_moltiplica?: string | null
           ruolo?: string | null
           strato?: number | null
           tipo_driver?: Database["public"]["Enums"]["tipo_driver"] | null
           um?: string | null
           updated_at?: string
           valore_driver?: number | null
+          variante_ruolo?: string | null
         }
         Relationships: [
           {
@@ -4738,6 +4759,172 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      kit_parametri: {
+        Row: {
+          codice: string
+          created_at: string
+          etichetta: string
+          id: string
+          kit_id: string
+          note: string | null
+          ordine: number
+          tipo: string
+          um: string | null
+          updated_at: string
+          valore_default: number
+          valori_ammessi: number[] | null
+        }
+        Insert: {
+          codice: string
+          created_at?: string
+          etichetta: string
+          id?: string
+          kit_id: string
+          note?: string | null
+          ordine?: number
+          tipo: string
+          um?: string | null
+          updated_at?: string
+          valore_default: number
+          valori_ammessi?: number[] | null
+        }
+        Update: {
+          codice?: string
+          created_at?: string
+          etichetta?: string
+          id?: string
+          kit_id?: string
+          note?: string | null
+          ordine?: number
+          tipo?: string
+          um?: string | null
+          updated_at?: string
+          valore_default?: number
+          valori_ammessi?: number[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kit_parametri_kit_id_fkey"
+            columns: ["kit_id"]
+            isOneToOne: false
+            referencedRelation: "kit"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kit_varianti: {
+        Row: {
+          codice: string
+          created_at: string
+          descrizione_struttura: string | null
+          id: string
+          imposta_parametri: Json
+          kit_id: string
+          nome_commerciale: string
+          ordine: number
+          predefinita: boolean
+          updated_at: string
+        }
+        Insert: {
+          codice: string
+          created_at?: string
+          descrizione_struttura?: string | null
+          id?: string
+          imposta_parametri?: Json
+          kit_id: string
+          nome_commerciale: string
+          ordine?: number
+          predefinita?: boolean
+          updated_at?: string
+        }
+        Update: {
+          codice?: string
+          created_at?: string
+          descrizione_struttura?: string | null
+          id?: string
+          imposta_parametri?: Json
+          kit_id?: string
+          nome_commerciale?: string
+          ordine?: number
+          predefinita?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kit_varianti_kit_id_fkey"
+            columns: ["kit_id"]
+            isOneToOne: false
+            referencedRelation: "kit"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kit_varianti_articoli: {
+        Row: {
+          articolo_codice: string | null
+          codice_articolo_fornitore: string | null
+          costo: number | null
+          created_at: string
+          descrizione: string | null
+          fornitore_id: string | null
+          id: string
+          listino_fornitore: number | null
+          marca: string | null
+          note: string | null
+          ruolo: string
+          um: string | null
+          updated_at: string
+          variante_id: string
+        }
+        Insert: {
+          articolo_codice?: string | null
+          codice_articolo_fornitore?: string | null
+          costo?: number | null
+          created_at?: string
+          descrizione?: string | null
+          fornitore_id?: string | null
+          id?: string
+          listino_fornitore?: number | null
+          marca?: string | null
+          note?: string | null
+          ruolo: string
+          um?: string | null
+          updated_at?: string
+          variante_id: string
+        }
+        Update: {
+          articolo_codice?: string | null
+          codice_articolo_fornitore?: string | null
+          costo?: number | null
+          created_at?: string
+          descrizione?: string | null
+          fornitore_id?: string | null
+          id?: string
+          listino_fornitore?: number | null
+          marca?: string | null
+          note?: string | null
+          ruolo?: string
+          um?: string | null
+          updated_at?: string
+          variante_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kit_varianti_articoli_fornitore_id_fkey"
+            columns: ["fornitore_id"]
+            isOneToOne: false
+            referencedRelation: "fornitori"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kit_varianti_articoli_variante_id_fkey"
+            columns: ["variante_id"]
+            isOneToOne: false
+            referencedRelation: "kit_varianti"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lead: {
         Row: {

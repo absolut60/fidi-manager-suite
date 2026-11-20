@@ -1758,6 +1758,20 @@
       "when": 1795200792912,
       "tag": "0250_fm90_kit_motore_unico",
       "breakpoints": true
+    },
+    {
+      "idx": 251,
+      "version": "7",
+      "when": 1795203018059,
+      "tag": "0251_fm91_kit_motore_regole",
+      "breakpoints": true
+    },
+    {
+      "idx": 252,
+      "version": "7",
+      "when": 1795203304796,
+      "tag": "0252_fm91_kit_regole_accesso_autenticato",
+      "breakpoints": true
     }
   ]
 }

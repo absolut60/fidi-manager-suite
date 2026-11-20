@@ -1,0 +1,299 @@
+[
+  {
+    "kit_id": "93e392fc-3755-44c1-b1cb-cef97f62d218",
+    "ordine": 1,
+    "incidenza": 1.0,
+    "tipo_driver": "LATI",
+    "valore_driver": 2.0,
+    "articolo_codice": "KNA515940",
+    "codice_articolo_fornitore": null
+  },
+  {
+    "kit_id": "93e392fc-3755-44c1-b1cb-cef97f62d218",
+    "ordine": 2,
+    "incidenza": 0.716667,
+    "tipo_driver": "INCIDENZA_FISSA",
+    "valore_driver": null,
+    "articolo_codice": "COG10U100/40",
+    "codice_articolo_fornitore": null
+  },
+  {
+    "kit_id": "93e392fc-3755-44c1-b1cb-cef97f62d218",
+    "ordine": 3,
+    "incidenza": 1.716667,
+    "tipo_driver": "PASSO",
+    "valore_driver": 0.6,
+    "articolo_codice": "COG10C100/50",
+    "codice_articolo_fornitore": null
+  },
+  {
+    "kit_id": "93e392fc-3755-44c1-b1cb-cef97f62d218",
+    "ordine": 4,
+    "incidenza": 1.0,
+    "tipo_driver": "INCIDENZA_FISSA",
+    "valore_driver": null,
+    "articolo_codice": "KNI730060",
+    "codice_articolo_fornitore": null
+  },
+  {
+    "kit_id": "93e392fc-3755-44c1-b1cb-cef97f62d218",
+    "ordine": 5,
+    "incidenza": 1.0,
+    "tipo_driver": "LATI",
+    "valore_driver": 1.0,
+    "articolo_codice": "FASL00A003300A0",
+    "codice_articolo_fornitore": null
+  },
+  {
+    "kit_id": "93e392fc-3755-44c1-b1cb-cef97f62d218",
+    "ordine": 6,
+    "incidenza": 0.05,
+    "tipo_driver": "INCIDENZA_FISSA",
+    "valore_driver": null,
+    "articolo_codice": "AKINAF07005",
+    "codice_articolo_fornitore": null
+  },
+  {
+    "kit_id": "93e392fc-3755-44c1-b1cb-cef97f62d218",
+    "ordine": 7,
+    "incidenza": 0.007167,
+    "tipo_driver": "PASSO",
+    "valore_driver": 0.5,
+    "articolo_codice": "AKINF02002B",
+    "codice_articolo_fornitore": null
+  },
+  {
+    "kit_id": "93e392fc-3755-44c1-b1cb-cef97f62d218",
+    "ordine": 8,
+    "incidenza": 0.017167,
+    "tipo_driver": "PASSO",
+    "valore_driver": 0.2,
+    "articolo_codice": "AKINF57002JY",
+    "codice_articolo_fornitore": null
+  },
+  {
+    "kit_id": "93e392fc-3755-44c1-b1cb-cef97f62d218",
+    "ordine": 9,
+    "incidenza": 0.08,
+    "tipo_driver": "CONSUMO",
+    "valore_driver": 0.4,
+    "articolo_codice": "FAS351E1",
+    "codice_articolo_fornitore": null
+  },
+  {
+    "kit_id": "93e392fc-3755-44c1-b1cb-cef97f62d218",
+    "ordine": 10,
+    "incidenza": 0.032,
+    "tipo_driver": "CONSUMO",
+    "valore_driver": 1.44,
+    "articolo_codice": "AKINAF01005",
+    "codice_articolo_fornitore": null
+  },
+  {
+    "kit_id": "eebeb886-2477-43f8-907d-969739289125",
+    "ordine": 1,
+    "incidenza": 1.0,
+    "tipo_driver": "LATI",
+    "valore_driver": 2.0,
+    "articolo_codice": "KNA68367",
+    "codice_articolo_fornitore": null
+  },
+  {
+    "kit_id": "eebeb886-2477-43f8-907d-969739289125",
+    "ordine": 2,
+    "incidenza": 1.0,
+    "tipo_driver": "INCIDENZA_FISSA",
+    "valore_driver": null,
+    "articolo_codice": "KNA68367",
+    "codice_articolo_fornitore": null
+  },
+  {
+    "kit_id": "eebeb886-2477-43f8-907d-969739289125",
+    "ordine": 3,
+    "incidenza": 0.716667,
+    "tipo_driver": "INCIDENZA_FISSA",
+    "valore_driver": null,
+    "articolo_codice": "COG10U050/40",
+    "codice_articolo_fornitore": null
+  },
+  {
+    "kit_id": "eebeb886-2477-43f8-907d-969739289125",
+    "ordine": 4,
+    "incidenza": 1.716667,
+    "tipo_driver": "PASSO",
+    "valore_driver": 0.6,
+    "articolo_codice": "COG10C050/50",
+    "codice_articolo_fornitore": null
+  },
+  {
+    "kit_id": "eebeb886-2477-43f8-907d-969739289125",
+    "ordine": 5,
+    "incidenza": 1.0,
+    "tipo_driver": "INCIDENZA_FISSA",
+    "valore_driver": null,
+    "articolo_codice": "KNI73124",
+    "codice_articolo_fornitore": null
+  },
+  {
+    "kit_id": "eebeb886-2477-43f8-907d-969739289125",
+    "ordine": 6,
+    "incidenza": 1.0,
+    "tipo_driver": "INCIDENZA_FISSA",
+    "valore_driver": null,
+    "articolo_codice": "KNA63461",
+    "codice_articolo_fornitore": null
+  },
+  {
+    "kit_id": "eebeb886-2477-43f8-907d-969739289125",
+    "ordine": 7,
+    "incidenza": 1.0,
+    "tipo_driver": "LATI",
+    "valore_driver": 1.0,
+    "articolo_codice": "KNA68367",
+    "codice_articolo_fornitore": null
+  },
+  {
+    "kit_id": "eebeb886-2477-43f8-907d-969739289125",
+    "ordine": 8,
+    "incidenza": 0.05,
+    "tipo_driver": "INCIDENZA_FISSA",
+    "valore_driver": null,
+    "articolo_codice": "AKINAF07003",
+    "codice_articolo_fornitore": null
+  },
+  {
+    "kit_id": "eebeb886-2477-43f8-907d-969739289125",
+    "ordine": 9,
+    "incidenza": 0.007167,
+    "tipo_driver": "PASSO",
+    "valore_driver": 0.5,
+    "articolo_codice": "AKINF02002B",
+    "codice_articolo_fornitore": null
+  },
+  {
+    "kit_id": "eebeb886-2477-43f8-907d-969739289125",
+    "ordine": 10,
+    "incidenza": 0.008583,
+    "tipo_driver": "PASSO",
+    "valore_driver": 0.4,
+    "articolo_codice": "AKINF57002JY",
+    "codice_articolo_fornitore": null
+  },
+  {
+    "kit_id": "eebeb886-2477-43f8-907d-969739289125",
+    "ordine": 11,
+    "incidenza": 0.017167,
+    "tipo_driver": "PASSO",
+    "valore_driver": 0.2,
+    "articolo_codice": "AKINF57003JY",
+    "codice_articolo_fornitore": null
+  },
+  {
+    "kit_id": "eebeb886-2477-43f8-907d-969739289125",
+    "ordine": 12,
+    "incidenza": 0.08,
+    "tipo_driver": "CONSUMO",
+    "valore_driver": 0.4,
+    "articolo_codice": "KNA3112_N",
+    "codice_articolo_fornitore": null
+  },
+  {
+    "kit_id": "eebeb886-2477-43f8-907d-969739289125",
+    "ordine": 13,
+    "incidenza": 0.032,
+    "tipo_driver": "CONSUMO",
+    "valore_driver": 1.44,
+    "articolo_codice": "AKINAF01005",
+    "codice_articolo_fornitore": null
+  },
+  {
+    "kit_id": "eebeb886-2477-43f8-907d-969739289125",
+    "ordine": 14,
+    "incidenza": 0.0162,
+    "tipo_driver": "INCIDENZA_FISSA",
+    "valore_driver": 0.0003,
+    "articolo_codice": "AKINAF01007",
+    "codice_articolo_fornitore": null
+  },
+  {
+    "kit_id": "f5e602fb-be6d-4323-a287-abd9a9955c66",
+    "ordine": 1,
+    "incidenza": 1.0,
+    "tipo_driver": "INCIDENZA_FISSA",
+    "valore_driver": null,
+    "articolo_codice": "KNA713526",
+    "codice_articolo_fornitore": null
+  },
+  {
+    "kit_id": "f5e602fb-be6d-4323-a287-abd9a9955c66",
+    "ordine": 2,
+    "incidenza": 0.883333,
+    "tipo_driver": "PASSO",
+    "valore_driver": 1.2,
+    "articolo_codice": null,
+    "codice_articolo_fornitore": "COG8C9X/360/501_N"
+  },
+  {
+    "kit_id": "f5e602fb-be6d-4323-a287-abd9a9955c66",
+    "ordine": 3,
+    "incidenza": 1.716667,
+    "tipo_driver": "PASSO",
+    "valore_driver": 0.6,
+    "articolo_codice": null,
+    "codice_articolo_fornitore": "COG8C9X/120/501_N"
+  },
+  {
+    "kit_id": "f5e602fb-be6d-4323-a287-abd9a9955c66",
+    "ordine": 4,
+    "incidenza": 0.883333,
+    "tipo_driver": "PASSO",
+    "valore_driver": 1.2,
+    "articolo_codice": null,
+    "codice_articolo_fornitore": "COG8C9X/060/501_N"
+  },
+  {
+    "kit_id": "f5e602fb-be6d-4323-a287-abd9a9955c66",
+    "ordine": 5,
+    "incidenza": 0.8,
+    "tipo_driver": "INCIDENZA_FISSA",
+    "valore_driver": 1.0,
+    "articolo_codice": "COG8CLM/300/501_N",
+    "codice_articolo_fornitore": null
+  },
+  {
+    "kit_id": "f5e602fb-be6d-4323-a287-abd9a9955c66",
+    "ordine": 6,
+    "incidenza": 0.008,
+    "tipo_driver": "PASSO",
+    "valore_driver": 0.5,
+    "articolo_codice": "AKINF02002B",
+    "codice_articolo_fornitore": null
+  },
+  {
+    "kit_id": "f5e602fb-be6d-4323-a287-abd9a9955c66",
+    "ordine": 7,
+    "incidenza": 0.006944,
+    "tipo_driver": "PASSO",
+    "valore_driver": 1.2,
+    "articolo_codice": "AKINF41001",
+    "codice_articolo_fornitore": null
+  },
+  {
+    "kit_id": "f5e602fb-be6d-4323-a287-abd9a9955c66",
+    "ordine": 8,
+    "incidenza": 0.006944,
+    "tipo_driver": "PASSO",
+    "valore_driver": 1.2,
+    "articolo_codice": "AKINAMCSU11001K",
+    "codice_articolo_fornitore": null
+  },
+  {
+    "kit_id": "f5e602fb-be6d-4323-a287-abd9a9955c66",
+    "ordine": 9,
+    "incidenza": 0.006944,
+    "tipo_driver": "PASSO",
+    "valore_driver": 1.2,
+    "articolo_codice": "AKINAMCSU14002E",
+    "codice_articolo_fornitore": null
+  }
+]

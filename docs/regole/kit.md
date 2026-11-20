@@ -9,7 +9,7 @@
 ## Unità e incidenza
 
 - Una riga componente esprime la quantità dell'articolo per **una unità base** del kit.
-- L'incidenza esplicita prevale sempre sul driver, anche se è zero. I driver sono soltanto il ripiego quando l'incidenza non è scritta.
+- Senza BASE di regola, l'incidenza esplicita prevale sempre sul driver, anche se è zero. I driver sono soltanto il ripiego quando l'incidenza non è scritta.
 - Sistema MADE: base predefinita `mq`, etichetta `Incidenza per {um}`. Altre linee: base `kit`, etichetta `Quantità per kit`.
 
 ## Catalogo Gamma e manuale
@@ -46,3 +46,17 @@
 - Incidenza esplicita, incluso zero, prioritaria: cambiare driver/valore non la cancella. Il valore del driver è solo informativo quando l'incidenza non è scritta. Colonne e quantità derivano dalla configurazione; peso per unità base soltanto con peso Gamma e incidenza noti.
 - Telefono/tablet sotto 1024: schede componenti. Da 1024: tabella; a 1280 colonne e azioni a larghezza fissa senza uscire dallo schermo.
 - Transizione preventivi ancora separata: `kit-legacy.ts` conserva soltanto le letture storiche di `AggiungiBloccoDialog` e `addBloccoDaKit`, con chiave `kits-with-comp` invariata; nuove schermate usano `kit-lista-v2`/`kit-v2`. L'inserimento dei kit nuovi nei documenti non è migrato in 1b e va completato nella tappa dedicata prima di usarli in produzione nei preventivi.
+
+## Motore a regole (FM91)
+
+- Fonte unica TypeScript: `src/lib/kit-regole.ts`, funzione pura `calcolaKitRegole`. Non ancora collegata a schermate, import o percorso “Da kit”. Se servirà un calcolo SQL, sarà un gemello documentato di questo modulo, non una seconda logica autonoma.
+- Quantità per **una unità base** = `BASE × MOLTIPLICA ÷ DIVIDI_1 ÷ DIVIDI_2 ÷ CONFEZIONE + AGGIUNTA`. Nessun arrotondamento intermedio o finale: si arrotonda solo in visualizzazione.
+- Operandi testuali: numero con punto/virgola decimale; `PARAM:CODICE` (A–Z, 0–9, underscore); `RIGA:n` (ordine numerico univoco nello stesso kit). `RIGA:guide`/`RIGA:montanti` sono soltanto nomi descrittivi nell'esempio Excel: si salvano gli ordini numerici effettivi.
+- Al salvataggio `normalizzaOperandoKit` converte la virgola in punto, elimina spazi esterni e rende i vuoti `null`; rifiuta formule libere e operandi malformati. Sarà riusata dalle fette 2b/2c, che gestiranno le scritture.
+- Vuoti: MOLTIPLICA, DIVIDI_1, DIVIDI_2 e CONFEZIONE = 1, AGGIUNTA = 0. BASE vuota disattiva tutta la regola; BASE `0` la attiva. Precedenza: regola con BASE → incidenza esplicita (zero incluso) → driver storico (`calcIncidenzaFromDriver`).
+- La quantità è **sempre nell'unità primaria dell'articolo Gamma (`articoli_gamma.um`, UM1)**. CONFEZIONE è un divisore manuale, soltanto quando UM1 è una confezione: viti CO/1000, sacco NR/10 kg, rotolo RT/90 ml. Niente fallback dai metadati Gamma. Il driver storico può ricevere la propria confezione esplicita dal chiamante, ma il motore non la ricava da Gamma e non interpreta UM2.
+- Parametri: `kit_parametri` (numero oppure scelta numerica); ordine dei valori **default → `imposta_parametri` della variante → valori esterni**. Vince l'ultimo; valori non finiti, codici sconosciuti o scelte fuori elenco producono errori.
+- Varianti: `kit_varianti`, al massimo una predefinita per kit; scelta per ID o predefinita se non specificata. I ruoli di `kit_varianti_articoli` sostituiscono le righe con `variante_ruolo`, che non salvano un articolo fisso o campi manuali. Un ruolo mancante/non univoco è un errore esplicito, mai quantità zero.
+- Gli articoli della variante sono Gamma oppure manuali con gli stessi campi dei componenti; nessun prezzo viene calcolato. `RIGA:n` usa la quantità finale della dipendenza, a prescindere dall'ordine degli elementi in input; cicli, righe inesistenti e divisioni per zero sono errori italiani sulla riga e sulle dipendenze coinvolte.
+- Output: ordine, articolo risolto Gamma/manuale, quantità per unità, fonte (`regola`, `incidenza`, `driver`) ed eventuale errore. Su errore quantità `null`, mai `NaN`/`Infinity` o zero silenzioso; righe indipendenti continuano a essere calcolate.
+- Schema FM91 additivo: sei operandi nullable e `variante_ruolo`, ordine univoco per kit, parametri/varianti/articoli per ruolo. Permessi e trigger aggiornamento come `kit_componenti`, inclusa restrittiva FM44; nessun dato esistente modificato, nessun parametro/variante di prova creato.
