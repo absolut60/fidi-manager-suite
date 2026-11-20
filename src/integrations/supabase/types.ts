@@ -2267,30 +2267,33 @@ export type Database = {
       cerved_fotografie: {
         Row: {
           chiamata_id: string | null
-          cliente_id: string
+          cliente_id: string | null
           dati: Json
           id: string
           id_soggetto: number
+          lead_id: string | null
           letta_da: string | null
           letta_il: string
           tipo: string
         }
         Insert: {
           chiamata_id?: string | null
-          cliente_id: string
+          cliente_id?: string | null
           dati: Json
           id?: string
           id_soggetto: number
+          lead_id?: string | null
           letta_da?: string | null
           letta_il?: string
           tipo: string
         }
         Update: {
           chiamata_id?: string | null
-          cliente_id?: string
+          cliente_id?: string | null
           dati?: Json
           id?: string
           id_soggetto?: number
+          lead_id?: string | null
           letta_da?: string | null
           letta_il?: string
           tipo?: string
@@ -2317,6 +2320,13 @@ export type Database = {
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
           },
+          {
+            foreignKeyName: "cerved_fotografie_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "lead"
+            referencedColumns: ["id"]
+          },
         ]
       }
       cerved_report: {
@@ -2324,11 +2334,12 @@ export type Database = {
           acquistato_da: string | null
           acquistato_il: string
           chiamata_acquisto_id: string | null
-          cliente_id: string
+          cliente_id: string | null
           consegnato_il: string | null
           created_at: string | null
           id: string
           id_soggetto: number
+          lead_id: string | null
           percorso_pdf: string | null
           prodotto: number
           request_id: string
@@ -2344,11 +2355,12 @@ export type Database = {
           acquistato_da?: string | null
           acquistato_il?: string
           chiamata_acquisto_id?: string | null
-          cliente_id: string
+          cliente_id?: string | null
           consegnato_il?: string | null
           created_at?: string | null
           id?: string
           id_soggetto: number
+          lead_id?: string | null
           percorso_pdf?: string | null
           prodotto?: number
           request_id: string
@@ -2364,11 +2376,12 @@ export type Database = {
           acquistato_da?: string | null
           acquistato_il?: string
           chiamata_acquisto_id?: string | null
-          cliente_id?: string
+          cliente_id?: string | null
           consegnato_il?: string | null
           created_at?: string | null
           id?: string
           id_soggetto?: number
+          lead_id?: string | null
           percorso_pdf?: string | null
           prodotto?: number
           request_id?: string
@@ -2402,36 +2415,49 @@ export type Database = {
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
           },
+          {
+            foreignKeyName: "cerved_report_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "lead"
+            referencedColumns: ["id"]
+          },
         ]
       }
       cerved_soggetti: {
         Row: {
           aggiornato_da: string | null
-          cliente_id: string
+          cliente_id: string | null
           collegato_da: string | null
           collegato_il: string
           denominazione_cerved: string | null
+          id: string
           id_soggetto: number
+          lead_id: string | null
           partita_iva: string | null
           ultimo_aggiornamento: string | null
         }
         Insert: {
           aggiornato_da?: string | null
-          cliente_id: string
+          cliente_id?: string | null
           collegato_da?: string | null
           collegato_il?: string
           denominazione_cerved?: string | null
+          id?: string
           id_soggetto: number
+          lead_id?: string | null
           partita_iva?: string | null
           ultimo_aggiornamento?: string | null
         }
         Update: {
           aggiornato_da?: string | null
-          cliente_id?: string
+          cliente_id?: string | null
           collegato_da?: string | null
           collegato_il?: string
           denominazione_cerved?: string | null
+          id?: string
           id_soggetto?: number
+          lead_id?: string | null
           partita_iva?: string | null
           ultimo_aggiornamento?: string | null
         }
@@ -2449,6 +2475,13 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "cerved_soggetti_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: true
+            referencedRelation: "lead"
+            referencedColumns: ["id"]
           },
         ]
       }

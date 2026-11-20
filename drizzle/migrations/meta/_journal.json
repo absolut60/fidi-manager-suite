@@ -1737,6 +1737,13 @@
       "when": 1795071542656,
       "tag": "0247_cerved_blocco_report_notifica",
       "breakpoints": true
+    },
+    {
+      "idx": 248,
+      "version": "7",
+      "when": 1795190404210,
+      "tag": "0248_fm90_cerved_soggetti_lead",
+      "breakpoints": true
     }
   ]
 }

@@ -1205,7 +1205,7 @@ export type EsitoRecuperoReport = { xml_ok: boolean; pdf_ok: boolean; percorso_p
  * (sovrascrivendo), una fotografia 'light_report' e ultimo_recupero_il/da. Solo service_role.
  */
 export async function recuperaESalvaLightReport(
-  report: { id: string; cliente_id: string; id_soggetto: number; request_id: string },
+  report: { id: string; cliente_id: string | null; id_soggetto: number; request_id: string },
   ctx: Ctx,
 ): Promise<EsitoRecuperoReport> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

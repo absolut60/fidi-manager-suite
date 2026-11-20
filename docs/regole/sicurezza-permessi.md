@@ -101,6 +101,8 @@ Estratto dal knowledge di progetto il 08/10/2026 (sessione 40). Si aggiorna modi
 
 ## Cerved (FM57)
 
+- FM90 — il dato Cerved appartiene al soggetto (id_soggetto); cliente e lead si collegano tramite cerved_soggetti (esattamente uno dei due per riga); visibilità di report e fotografie = vedere almeno un cliente o lead collegato al soggetto.
+
 - Chi può collegare/aggiornare Cerved: fonte unica `puoAggiornareCerved` (`src/lib/permessi-cerved.ts`, ruoli amministratore, amministrazione, recupero_crediti), gemello SQL `public.auth_puo_aggiornare_cerved()`.
 - `cerved_soggetti` (collegamento cliente ↔ soggetto) e `cerved_fotografie` (dati datati, solo in aggiunta): lettura per chi vede il cliente (stesso schema di `scadenze`), scrittura solo dal server con service_role; RESTRICTIVE "Secondo fattore (FM44)". Nessun accesso anon.
 - Unico punto che parla con Cerved: `src/lib/cerved/cerved.server.ts`. Mai chiamare l'endpoint di acquisto senza decisione del proprietario.
