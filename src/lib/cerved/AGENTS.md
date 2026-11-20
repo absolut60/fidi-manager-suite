@@ -9,3 +9,4 @@
 - One Cerved update path for cliente and lead (aggiornaCervedSoggetto); purchase guard is per id_soggetto; a new link reuses the id_soggetto of any existing link with the same VAT number before calling entitySearch; aggiornaCervedCliente/apriPdfReportCervedCliente are thin wrappers only.
 - Screens read cerved_report/cerved_fotografie only by id_soggetto obtained from cerved_soggetti via cerved-letture; never by cliente_id/lead_id (those are origin only).
 - SchedaCervedEntita is the only Cerved card (cliente and lead); MADE-internal parts (fido MADE, come paga MADE, confronto MADE) depend only on datiMade; trigger trg_lead_cerved_cliente copies the lead's subject link to the client on conversion when VAT matches, never purchasing again.
+- Cerved list gauge for clienti and lead comes only from useEntitaConReportCerved.

@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { nomeLead } from "@/lib/lead-costanti";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
@@ -25,7 +26,7 @@ export function ReportCervedAttesaCard() {
       const righe = [];
       for (let offset = 0; ; offset += 500) {
         const { data, error } = await supabase.from("cerved_report")
-          .select("id, cliente_id, request_id, acquistato_il, tentativi_recupero, ultimo_tentativo_il, ultimo_esito_cerved, stato, clienti(ragione_sociale)")
+          .select("id, cliente_id, request_id, acquistato_il, tentativi_recupero, ultimo_tentativo_il, ultimo_esito_cerved, stato, lead_id, clienti(ragione_sociale), lead(ragione_sociale, nome, cognome)")
           .in("stato", ["in_attesa", "bloccato"]).order("acquistato_il").order("id").range(offset, offset + 499);
         if (error) throw error;
         righe.push(...(data ?? []));
@@ -56,7 +57,9 @@ export function ReportCervedAttesaCard() {
           <div className="min-w-0 flex-1">
             {r.cliente_id
               ? <Link className="break-words font-medium text-primary hover:underline" to="/clienti/$clienteId" params={{ clienteId: r.cliente_id }} search={{ tab: "cerved" }}>{r.clienti?.ragione_sociale ?? "—"}</Link>
-              : <p className="break-words font-medium">{r.clienti?.ragione_sociale ?? "—"}</p>}
+              : r.lead_id
+                ? <Link className="break-words font-medium text-primary hover:underline" to="/lead/$leadId" params={{ leadId: r.lead_id }} search={{ tab: "cerved" }}>{r.lead ? nomeLead(r.lead) : "—"}</Link>
+                : <p className="break-words font-medium">—</p>}
             <p className="break-words text-sm text-muted-foreground">Richiesta n. {r.request_id}</p>
           </div>
           <Badge variant={r.stato === "bloccato" ? "destructive" : "secondary"}>{r.stato === "bloccato" ? "Bloccato" : "In attesa"}</Badge>

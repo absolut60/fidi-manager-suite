@@ -105,6 +105,7 @@ import { campiCondizioniCommercialiLead, type CondizioniCommercialiLead } from "
 import { opzioniCataloghiRiferimento } from "@/lib/condizioni-riferimento";
 
 export const Route = createFileRoute("/_app/lead/$leadId")({
+  validateSearch: (s: Record<string, unknown>): { tab?: string } => (typeof s["tab"] === "string" ? { tab: s["tab"] } : {}),
   head: () => ({ meta: [{ title: "Scheda lead — FidiManager" }, { name: "description", content: "Anagrafica, contatti e cantieri del lead MADE." }, { property: "og:title", content: "Scheda lead — FidiManager" }, { property: "og:description", content: "Anagrafica, contatti e cantieri del lead MADE." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: LeadDettaglioPage,
 });
@@ -140,6 +141,7 @@ type Form = Partial<CondizioniCommercialiLead> & {
 
 function LeadDettaglioPage() {
   const { leadId } = Route.useParams();
+  const { tab: tabIniziale } = Route.useSearch();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { roles, loading: authLoading, user } = useAuth();
@@ -640,7 +642,7 @@ function LeadDettaglioPage() {
         </DialogContent>
       </Dialog>
 
-      <Tabs defaultValue="anagrafica">
+      <Tabs defaultValue={tabIniziale ?? "anagrafica"}>
         <TabsList className="md:justify-start">
           <TabsTrigger value="anagrafica">Anagrafica</TabsTrigger>
           <TabsTrigger value="contatti">Contatti</TabsTrigger>

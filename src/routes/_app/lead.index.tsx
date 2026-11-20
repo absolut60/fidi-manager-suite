@@ -12,6 +12,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/lista-responsive";
+import { IconaCervedCollegato } from "@/components/cerved/IconaCervedCollegato";
+import { useEntitaConReportCerved } from "@/hooks/use-clienti-con-report-cerved";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -392,6 +394,12 @@ function LeadListaPage() {
 
 
   const rows = data?.rows ?? [];
+  // FM90: simbolo Cerved, lookup leggero sui soli id della pagina visibile.
+  const { data: leadConCerved } = useEntitaConReportCerved("lead", rows.map((r) => r.id));
+  const iconaCerved = (id: string) => leadConCerved?.has(id) ? (
+    <IconaCervedCollegato classe={leadConCerved.get(id)?.classe} score={leadConCerved.get(id)?.score}
+      onApri={() => navigate({ to: "/lead/$leadId", params: { leadId: id }, search: { tab: "cerved" } })} />
+  ) : null;
   const totale = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(totale / pageSize));
   const tuttaPaginaSel = rows.length > 0 && rows.every((r) => selezionati.has(r.id));
@@ -763,6 +771,7 @@ function LeadListaPage() {
                 key={l.id}
                 onClick={() => navigate({ to: "/lead/$leadId", params: { leadId: l.id } })}
                 titolo={nomeLead(l)}
+                angolo={iconaCerved(l.id)}
                 selezione={canManage ? { checked: selezionati.has(l.id), onChange: (v) => toggleSel(l.id, v) } : undefined}
                 badge={
                   <Badge className={`${LEAD_STATO_CLASS[l.stato]} shrink-0`}>{LEAD_STATO_LABEL[l.stato]}</Badge>
@@ -835,6 +844,7 @@ function LeadListaPage() {
                     <TableHead><SortHeader col="prossima_azione_il" label="Prossima azione" /></TableHead>
                   )}
                   <TableHead className="tablet:hidden"><SortHeader col="created_at" label="Creato" /></TableHead>
+                  <TableHead className="sticky right-0 z-10 w-16 border-l bg-card text-right">Cerved</TableHead>
                 </TableRow>
               </TableHeader>
 
@@ -904,6 +914,7 @@ function LeadListaPage() {
                       <TableCell className="text-xs">{formatData(l.prossima_azione_il)}</TableCell>
                     )}
                     <TableCell className="text-xs tablet:hidden">{formatData(l.created_at)}</TableCell>
+                    <TableCell className="sticky right-0 z-10 border-l bg-card p-1 align-bottom text-right">{iconaCerved(l.id)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
