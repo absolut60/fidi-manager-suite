@@ -54,7 +54,9 @@ export function ReportCervedAttesaCard() {
       : <ul className="divide-y divide-border">{q.data.map(r => <li key={r.id} className="min-w-0 py-4 first:pt-0 last:pb-0">
         <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <Link className="break-words font-medium text-primary hover:underline" to="/clienti/$clienteId" params={{ clienteId: r.cliente_id ?? "" }} search={{ tab: "cerved" }}>{r.clienti?.ragione_sociale ?? "—"}</Link>
+            {r.cliente_id
+              ? <Link className="break-words font-medium text-primary hover:underline" to="/clienti/$clienteId" params={{ clienteId: r.cliente_id }} search={{ tab: "cerved" }}>{r.clienti?.ragione_sociale ?? "—"}</Link>
+              : <p className="break-words font-medium">{r.clienti?.ragione_sociale ?? "—"}</p>}
             <p className="break-words text-sm text-muted-foreground">Richiesta n. {r.request_id}</p>
           </div>
           <Badge variant={r.stato === "bloccato" ? "destructive" : "secondary"}>{r.stato === "bloccato" ? "Bloccato" : "In attesa"}</Badge>

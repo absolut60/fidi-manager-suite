@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Loader2, RefreshCw, Link2, Check, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { idSoggettoDiEntita } from "@/lib/cerved/cerved-letture";
 import { useAuth } from "@/hooks/use-auth";
 import { useNomiUtentiQuery, formatNomeUtente } from "@/hooks/use-nomi-utenti";
 import { puoAggiornareCerved } from "@/lib/permessi-cerved";
@@ -60,10 +61,12 @@ export function ClienteCervedTab({ clienteId, partitaIva, fidoMade, esposizione,
       const { data: soggetto, error } = await supabase
         .from("cerved_soggetti").select("*").eq("cliente_id", clienteId).maybeSingle();
       if (error) throw error;
+      const idSoggetto = (soggetto?.id_soggetto as number | undefined) ?? null;
       const tipi = ["ricerca", "profilo", "score", "bilancio", "eventi_negativi", "fido"] as const;
       const righe = await Promise.all(tipi.map(async (t) => {
+        if (!idSoggetto) return null; // FM90: fotografie del soggetto; cliente non collegato → nessuna
         const { data, error: e } = await supabase.from("cerved_fotografie")
-          .select("dati, letta_il").eq("cliente_id", clienteId).eq("tipo", t)
+          .select("dati, letta_il").eq("id_soggetto", idSoggetto).eq("tipo", t)
           .order("letta_il", { ascending: false }).limit(1).maybeSingle();
         if (e) throw e;
         return (data?.dati as Obj) ?? null;
@@ -726,8 +729,10 @@ function BarraReportCerved({ clienteId, puo, inline = false }: { clienteId: stri
   const rep = useQuery({
     queryKey: ["cerved-report", clienteId],
     queryFn: async () => {
+      const idSoggetto = await idSoggettoDiEntita("cliente", clienteId);
+      if (!idSoggetto) return null;
       const { data, error } = await supabase.from("cerved_report")
-        .select("percorso_pdf, stato, request_id").eq("cliente_id", clienteId)
+        .select("percorso_pdf, stato, request_id").eq("id_soggetto", idSoggetto)
         .order("scade_il", { ascending: false }).limit(1).maybeSingle();
       if (error) throw error;
       return data;

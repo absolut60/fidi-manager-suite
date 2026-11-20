@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { ScoreCervedVista } from "@/lib/cerved-presentazione";
+import { idSoggettiDiEntita } from "@/lib/cerved/cerved-letture";
 
 /** Per cliente: estratto dell'ultimo Light Report e dell'ultima fotografia 'score'. */
 export type CervedCompattoCliente = {
@@ -25,18 +26,24 @@ export function useCervedCompattoClienti(ids: string[], enabled = true) {
     staleTime: 5 * 60_000,
     queryFn: async (): Promise<Record<string, CervedCompattoCliente>> => {
       const out: Record<string, CervedCompattoCliente> = {};
-      const unici = [...new Set(ids)];
-      for (let i = 0; i < unici.length; i += BLOCCO) {
-        const blocco = unici.slice(i, i + BLOCCO);
+      // FM90: fotografie per id_soggetto; il risultato resta per cliente.
+      const soggetti = await idSoggettiDiEntita("cliente", ids);
+      const clientiDi = new Map<number, string[]>();
+      for (const [c, s] of soggetti) clientiDi.set(s, [...(clientiDi.get(s) ?? []), c]);
+      const idSoggetti = [...clientiDi.keys()];
+      for (let i = 0; i < idSoggetti.length; i += BLOCCO) {
+        const blocco = idSoggetti.slice(i, i + BLOCCO);
         const { data, error } = await supabase.from("cerved_fotografie")
-          .select("cliente_id, tipo, letta_il, score_cgs:dati->score_cgs, fido_certificato:dati->fido_certificato, scores:dati->scores")
-          .in("cliente_id", blocco).in("tipo", ["light_report", "score"])
+          .select("id_soggetto, tipo, letta_il, score_cgs:dati->score_cgs, fido_certificato:dati->fido_certificato, scores:dati->scores")
+          .in("id_soggetto", blocco).in("tipo", ["light_report", "score"])
           .order("letta_il", { ascending: false });
         if (error) throw error;
         for (const r of (data ?? []) as any[]) {
-          const c = (out[r.cliente_id] ??= { lightReport: null, scores: null });
-          if (r.tipo === "light_report" && c.lightReport == null) c.lightReport = { score_cgs: r.score_cgs, fido_certificato: r.fido_certificato };
-          if (r.tipo === "score" && c.scores == null && Array.isArray(r.scores)) c.scores = r.scores;
+          for (const cliente of clientiDi.get(r.id_soggetto) ?? []) {
+            const c = (out[cliente] ??= { lightReport: null, scores: null });
+            if (r.tipo === "light_report" && c.lightReport == null) c.lightReport = { score_cgs: r.score_cgs, fido_certificato: r.fido_certificato };
+            if (r.tipo === "score" && c.scores == null && Array.isArray(r.scores)) c.scores = r.scores;
+          }
         }
       }
       return out;

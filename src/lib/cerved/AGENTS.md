@@ -7,3 +7,4 @@
 - Connection wording, ordering and related negative-event aggregation live only in cerved-collegati; EndDate closes a role, cancellation limits undated roles, and explicit ActiveLink false never becomes an ongoing link. Revenue/Profit here are already euros, unlike CEBI balance thousands.
 - Cerved data belongs to the subject (id_soggetto): cerved_soggetti links exactly one cliente or lead per row, and report/photo cliente_id/lead_id only record who originated them, so one purchase serves every linked record.
 - One Cerved update path for cliente and lead (aggiornaCervedSoggetto); purchase guard is per id_soggetto; a new link reuses the id_soggetto of any existing link with the same VAT number before calling entitySearch; aggiornaCervedCliente/apriPdfReportCervedCliente are thin wrappers only.
+- Screens read cerved_report/cerved_fotografie only by id_soggetto obtained from cerved_soggetti via cerved-letture; never by cliente_id/lead_id (those are origin only).
