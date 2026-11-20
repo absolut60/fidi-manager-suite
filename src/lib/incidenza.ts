@@ -54,6 +54,13 @@ export function round4(x: number): number {
   return Math.round(x * 10000) / 10000;
 }
 
+/** Incidenza esplicita prioritaria, anche a zero; il driver non modifica mai l'override salvato. */
+export function incidenzaEffettivaKit(input: IncidenzaInput & { incidenza?: number | null }): number | null {
+  return input.incidenza != null && Number.isFinite(input.incidenza)
+    ? round4(input.incidenza)
+    : calcIncidenzaFromDriver(input);
+}
+
 export const FAMIGLIE_KIT = [
   "PARETE",
   "CONTROPARETE",

@@ -23,10 +23,12 @@ const fmt4 = (v: number | null | undefined) => (v == null ? "" : formatNumeroIt(
 const vuotoNull = (s: string) => (s.trim() === "" ? null : s.trim());
 
 /** FM75 F4b: finestra della riga manuale showroom ("articolo in definizione"). Salva solo dati via onPatch. */
-export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch, onSceltaGamma }: {
+export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch, onSceltaGamma, soloAnagrafica = false }: {
   open: boolean; onOpenChange: (o: boolean) => void; row: RigaManuale; onPatch: (p: Patch) => void;
   /** F4c: percorso esistente di cambio articolo Gamma della riga. */
   onSceltaGamma: (a: ArticoloGammaScelto) => void;
+  /** Kit: stessi campi anagrafici, senza leve o totali di vendita. Default preventivi invariato. */
+  soloAnagrafica?: boolean;
 }) {
   const [fornitoreId, setFornitoreId] = useState<string | null>(null);
   const [cerca, setCerca] = useState("");
@@ -56,7 +58,8 @@ export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch, 
   const scelto = useQuery({
     queryKey: ["fornitore-nome", fornitoreId], enabled: open && !!fornitoreId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("fornitori").select("id, ragione_sociale").eq("id", fornitoreId!).maybeSingle();
+      if (!fornitoreId) return null;
+      const { data, error } = await supabase.from("fornitori").select("id, ragione_sociale").eq("id", fornitoreId).maybeSingle();
       if (error) throw error; return data;
     },
   });
@@ -102,7 +105,7 @@ export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch, 
   const listinoNum = parseNumeroIt(listino);
   const numeriValidi = (costo.trim() === "" || costoNum != null) && (listino.trim() === "" || listinoNum != null);
   const cascata = parseCascata(cascataTxt);
-  const patchLeva = leva === null ? null : applicaLeva({
+  const patchLeva = soloAnagrafica || leva === null ? null : applicaLeva({
     leva, costoUnit: costo.trim() === "" ? null : costoNum, listinoFornitore: listino.trim() === "" ? null : listinoNum,
     cascata, ricaricoPerc: parseNumeroIt(ricaricoTxt), prezzoManuale: parseNumeroIt(prezzoTxt),
   });
@@ -140,7 +143,7 @@ export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch, 
           {(aCatalogo.data ?? []).length > 0 && (
             <div className="grid gap-2 rounded-md border border-l-4 border-l-primary bg-muted/30 p-3">
               <p className="text-sm font-semibold">Articolo già a catalogo</p>
-              {aCatalogo.data!.map((a) => (
+              {(aCatalogo.data ?? []).map((a) => (
                 <div key={a.codice} className="flex flex-col gap-2 sm:flex-row sm:items-center">
                   <div className="min-w-0 flex-1 text-sm">
                     <span className="font-mono font-semibold">{a.codice}</span>
@@ -177,11 +180,11 @@ export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch, 
                   <div className="max-h-48 overflow-y-auto rounded-md border">
                     {risultati.isLoading ? <p className="p-2 text-sm text-muted-foreground">Ricerca…</p>
                       : (risultati.data ?? []).length === 0 ? <p className="p-2 text-sm text-muted-foreground">Nessun fornitore trovato</p>
-                      : risultati.data!.map((f) => (
-                        <button key={f.id} type="button" className="block min-h-10 w-full break-words px-3 py-2 text-left text-sm hover:bg-muted"
+                      : (risultati.data ?? []).map((f) => (
+                        <Button key={f.id} type="button" variant="ghost" className="h-auto min-h-10 w-full justify-start whitespace-normal break-words rounded-none px-3 py-2 text-left text-sm hover:bg-muted"
                           onClick={() => { setFornitoreId(f.id); setCerca(""); if (cascataTxt.trim() === "" && f.sconti_base?.length) setCascataTxt(formatCascata(f.sconti_base)); }}>
                           {f.ragione_sociale}{f.alias ? <span className="text-muted-foreground"> · {f.alias}</span> : null}
-                        </button>
+                        </Button>
                       ))}
                   </div>
                 )}
@@ -194,7 +197,7 @@ export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch, 
             <div className="grid gap-1.5"><Label htmlFor="aid-costo">Costo (€)</Label><Input id="aid-costo" inputMode="decimal" value={costo} onChange={(e) => setCosto(e.target.value)} /></div>
             <div className="grid gap-1.5"><Label htmlFor="aid-list">Listino fornitore (€)</Label><Input id="aid-list" inputMode="decimal" value={listino} onChange={(e) => setListino(e.target.value)} /></div>
           </div>
-          <div className="grid gap-2 rounded-md border p-3">
+          {!soloAnagrafica && <div className="grid gap-2 rounded-md border p-3">
             <p className="text-sm font-semibold">Prezzo di vendita</p>
             <p className="text-xs text-muted-foreground">Comanda l'ultimo campo che modifichi.</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -217,7 +220,7 @@ export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch, 
                 Margine € {formatNumeroIt(margineEuro, { minDecimals: 2, maxDecimals: 2 })} · {formatNumeroIt(marginePerc, { minDecimals: 1, maxDecimals: 1 })}%
               </span>
             </div>
-          </div>
+          </div>}
           {!numeriValidi && <p className="text-xs text-destructive">Costo e listino devono essere numeri (es. 12,5000)</p>}
         </div>
         <DialogFooter className="gap-2">

@@ -1,190 +1,58 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/use-auth";
-import { puoGestireAnagrafichePreventivi } from "@/lib/permessi-preventivi";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Plus, Copy, Eye, Layers } from "lucide-react";
-import { toast } from "sonner";
-import {
-  duplicateKit,
-  fetchKitsWithComponenti,
-  calcolaTotaliKit,
-  type FasciaListino,
-  type KitConComponenti,
-} from "@/lib/kit-api";
-import { FAMIGLIE_KIT, FAMIGLIA_LABEL } from "@/lib/incidenza";
-import { FASCE } from "@/lib/articoli-api";
-import { NuovoKitDialog } from "@/components/kit/NuovoKitDialog";
+import { createFileRoute, Link } from '@tanstack/react-router';
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/use-auth';
+import { puoGestireAnagrafichePreventivi } from '@/lib/permessi-preventivi';
+import { Card, CardContent } from '@/components/ui/card';
+import { FiltroMultiplo } from '@/components/filtro-multiplo';
+import { BadgeLinea } from '@/components/preventivatore/BadgeLinea';
+import { Plus, Copy, ArrowUpRight, Layers } from 'lucide-react';
+import { toast } from 'sonner';
+import { duplicateKit, fetchKitsWithComponenti, fetchKitFamiglie, type KitConComponenti, type KitFamiglia } from '@/lib/kit-api';
+import { lineeKitAbilitate } from '@/lib/kit-config';
+import type { ConfigurazioneLineaPreventivo } from '@/lib/linee-preventivo';
+import { useLineeUtente } from '@/lib/use-linee-utente';
+import { useFiltriPagina } from '@/hooks/use-filtri-pagina';
+import { NuovoKitDialog } from '@/components/kit/NuovoKitDialog';
 
-export const Route = createFileRoute("/_app/kit/")({
-  head: () => ({ meta: [{ title: "Kit / Lavorazioni — Sistema MADE" }] }),
-  component: KitListPage,
+export const Route=createFileRoute('/_app/kit/')({
+  head:()=>({meta:[{title:'Kit e lavorazioni — FidiManager'},{name:'description',content:'Catalogo kit per linea e famiglia, con componenti Gamma e manuali.'},{property:'og:title',content:'Kit e lavorazioni — FidiManager'},{property:'og:description',content:'Catalogo kit per linea e famiglia, con componenti Gamma e manuali.'},{property:'og:type',content:'website'},{name:'twitter:card',content:'summary'}]}),
+  component:KitListPage,
 });
-
-function KitListPage() {
-  const { roles } = useAuth();
-  // FM63: in sola consultazione (es. store manager) i campi restano bloccati; il DB resta il controllo vero.
-  const gestisce = puoGestireAnagrafichePreventivi(roles as string[]);
-  const qc = useQueryClient();
-  const [fascia, setFascia] = useState<FasciaListino>("A");
-  const [openNew, setOpenNew] = useState(false);
-
-  const { data: kits = [], isLoading } = useQuery({
-    queryKey: ["kits-with-comp"],
-    queryFn: fetchKitsWithComponenti,
-  });
-
-  const grouped = useMemo(() => {
-    const m = new Map<string, KitConComponenti[]>();
-    for (const f of FAMIGLIE_KIT) m.set(f, []);
-    for (const k of kits) {
-      const arr = m.get(k.famiglia) ?? [];
-      arr.push(k);
-      m.set(k.famiglia, arr);
-    }
-    return m;
-  }, [kits]);
-
-  const dupMut = useMutation({
-    mutationFn: (id: string) => duplicateKit(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["kits-with-comp"] });
-      toast.success("Kit duplicato");
-    },
-    onError: (e: unknown) => toast.error((e as Error).message),
-  });
-
-  return (
-    <div className="flex flex-col gap-4 p-3 md:p-4 lg:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-semibold">Kit / Lavorazioni</h1>
-          <p className="text-sm text-muted-foreground">
-            Libreria delle lavorazioni-tipo con regole di incidenza standard MADE.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>Fascia listino:</span>
-            <Select value={fascia} onValueChange={(v) => setFascia(v as FasciaListino)}>
-              <SelectTrigger className="h-8 w-24">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {FASCE.map((f) => (
-                  <SelectItem key={f} value={f}>{f}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          {gestisce && <Button onClick={() => setOpenNew(true)}>
-            <Plus className="mr-1 h-4 w-4" /> Nuovo kit
-          </Button>}
-        </div>
-      </div>
-
-      {isLoading ? (
-        <p className="text-sm text-muted-foreground">Caricamento…</p>
-      ) : kits.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-2 p-12 text-center">
-            <Layers className="h-8 w-8 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">
-              {gestisce ? "Nessun kit ancora. Inizia creandone uno." : "Nessun kit ancora."}
-            </p>
-            {gestisce && <Button onClick={() => setOpenNew(true)}>
-              <Plus className="mr-1 h-4 w-4" /> Nuovo kit
-            </Button>}
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="flex flex-col gap-6">
-          {FAMIGLIE_KIT.map((f) => {
-            const arr = grouped.get(f) ?? [];
-            if (!arr.length) return null;
-            return (
-              <section key={f} className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                    {FAMIGLIA_LABEL[f]}
-                  </h2>
-                  <Badge variant="secondary">{arr.length}</Badge>
-                </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {arr.map((k) => {
-                    const tot = calcolaTotaliKit(k.componenti, fascia);
-                    return (
-                      <Card key={k.id} className="transition hover:shadow-md">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="flex items-start justify-between gap-2 text-base">
-                            <span className="truncate">{k.nome}</span>
-                            <span className="font-mono text-xs text-muted-foreground">
-                              {k.um_base}
-                            </span>
-                          </CardTitle>
-                          <div className="flex flex-wrap gap-1 text-xs text-muted-foreground">
-                            {k.spessore != null && <span>sp. {Number(k.spessore)} mm</span>}
-                            {k.tipo_struttura && <span>· {k.tipo_struttura}</span>}
-                            {k.h_max != null && <span>· h.max {Number(k.h_max)} m</span>}
-                          </div>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                          <div className="grid grid-cols-3 gap-2 rounded-md bg-muted/50 p-2 font-mono text-xs">
-                            <div>
-                              <div className="text-[10px] uppercase text-muted-foreground">Prezzo/{k.um_base}</div>
-                              <div className="text-sm font-semibold">€ {tot.prezzo_mq.toFixed(2)}</div>
-                            </div>
-                            <div>
-                              <div className="text-[10px] uppercase text-muted-foreground">Costo/{k.um_base}</div>
-                              <div className="text-sm">€ {tot.costo_mq.toFixed(2)}</div>
-                            </div>
-                            <div>
-                              <div className="text-[10px] uppercase text-muted-foreground">Margine</div>
-                              <div className={`text-sm font-semibold ${tot.margine_perc < 0 ? "text-destructive" : ""}`}>
-                                {tot.margine_perc.toFixed(1)}%
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between text-xs text-muted-foreground">
-                            <span>{k.componenti.length} componenti · {tot.kg_mq.toFixed(2)} kg/{k.um_base}</span>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button asChild size="sm" variant="outline" className="flex-1">
-                              <Link to="/kit/$id" params={{ id: k.id }}>
-                                <Eye className="mr-1 h-3 w-3" /> Apri
-                              </Link>
-                            </Button>
-                            {gestisce && <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => dupMut.mutate(k.id)}
-                              disabled={dupMut.isPending}
-                            >
-                              <Copy className="mr-1 h-3 w-3" /> Duplica
-                            </Button>}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              </section>
-            );
-          })}
-        </div>
-      )}
-
-      <NuovoKitDialog open={openNew} onOpenChange={setOpenNew} />
-    </div>
-  );
+function KitListPage(){
+  const {user,roles}=useAuth();const qc=useQueryClient();const [open,setOpen]=useState(false);
+  const profilo=useLineeUtente(user?.id);
+  const linee=lineeKitAbilitate(profilo.data?.linee_abilitate);
+  const kit=useQuery({queryKey:['kit-lista-v2'],queryFn:fetchKitsWithComponenti});
+  const famiglie=useQuery({queryKey:['kit-famiglie'],queryFn:fetchKitFamiglie});
+  const {filtri,setCampo}=useFiltriPagina('kit',{linee:[] as string[]},{userId:user?.id,valida:{linee:Array.isArray}});
+  const dup=useMutation({mutationFn:async(id:string)=>{
+    const k=kit.data?.find(k=>k.id===id);
+    if(!puoGestireAnagrafichePreventivi(roles)||!k||!linee.some(l=>l.codice===k.linea))throw new Error('Linea non abilitata alla gestione');
+    return duplicateKit(id);
+  },onSuccess:()=>{qc.invalidateQueries({queryKey:['kit-lista-v2']});qc.invalidateQueries({queryKey:['kit-codici']});toast.success('Kit duplicato');},onError:(e:Error)=>toast.error(e.message)});
+  return <><KitListView kits={kit.data??[]} famiglie={famiglie.data??[]} linee={linee} selezionate={filtri.linee} onFilter={v=>setCampo('linee',v)}
+    gestisce={puoGestireAnagrafichePreventivi(roles)} onNew={()=>setOpen(true)} onDuplicate={id=>dup.mutate(id)} busy={dup.isPending}
+    loading={kit.isPending||famiglie.isPending||profilo.isPending} error={kit.isError||famiglie.isError||profilo.isError}/><NuovoKitDialog open={open} onOpenChange={setOpen}/></>;
+}
+export function KitListView({kits,famiglie,linee,selezionate,onFilter,gestisce,onNew,onDuplicate,busy=false,loading=false,error=false}:{
+  kits:KitConComponenti[];famiglie:KitFamiglia[];linee:ConfigurazioneLineaPreventivo[];selezionate:string[];onFilter:(v:string[])=>void;
+  gestisce:boolean;onNew:()=>void;onDuplicate:(id:string)=>void;busy?:boolean;loading?:boolean;error?:boolean;
+}){
+  const selezioneValida=selezionate.filter(s=>linee.some(l=>l.codice===s));
+  const visibili=linee.filter(l=>linee.length===1||!selezioneValida.length||selezioneValida.includes(l.codice));
+  const presenti=kits.filter(k=>visibili.some(l=>l.codice===k.linea));
+  return <div className="flex min-w-0 flex-col gap-5 p-3 md:p-4 lg:p-6">
+    <header className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-2xl font-semibold">Kit e lavorazioni</h1>{gestisce&&linee.length>0&&<Button className="min-h-10" onClick={onNew}><Plus className="h-4 w-4"/>Nuovo kit</Button>}</header>
+    {linee.length>1&&<div className="w-full sm:max-w-sm"><FiltroMultiplo etichetta="Linea" opzioni={linee.map(l=>({valore:l.codice,label:l.etichetta}))} selezionati={selezionate.filter(s=>linee.some(l=>l.codice===s))} onChange={onFilter} testoTutti="Tutte le linee" /></div>}
+    {error?<p role="alert" className="text-sm text-destructive">Caricamento dei kit non riuscito.</p>:loading?<p role="status" className="text-sm text-muted-foreground">Caricamento…</p>:presenti.length===0?<div className="flex items-center gap-3 border-y py-8 text-muted-foreground"><Layers className="h-6 w-6"/><p>Nessun kit per le linee selezionate.</p></div>:
+      visibili.map(linea=>{
+        const dellaLinea=presenti.filter(k=>k.linea===linea.codice);if(!dellaLinea.length)return null;
+        const gruppi=famiglie.filter(f=>f.linea===linea.codice).sort((a,b)=>a.ordine-b.ordine).map(f=>({id:f.id,nome:f.nome,kits:dellaLinea.filter(k=>k.famiglia_id===f.id)}));
+        const senza=dellaLinea.filter(k=>!famiglie.some(f=>f.id===k.famiglia_id&&f.linea===linea.codice));
+        if(senza.length)gruppi.push({id:'senza',nome:'Senza famiglia',kits:senza});
+        return <section key={linea.codice} className="min-w-0 space-y-4"><div className="flex items-center gap-2 border-b pb-2"><BadgeLinea linea={linea.codice}/><span className="text-sm text-muted-foreground">{dellaLinea.length} kit</span></div>{gruppi.filter(g=>g.kits.length).map(g=><section key={g.id} className="space-y-2"><h2 className="text-sm font-semibold">{g.nome}</h2><div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">{g.kits.map(k=><Card key={k.id} className={`min-w-0 border-l-4 ${linea.classiBordo}`}><CardContent className="space-y-3 p-3 sm:p-4"><div className="flex items-start justify-between gap-3"><span className="min-w-0 break-all font-mono text-xs text-muted-foreground">{k.codice}</span><span className="shrink-0 font-mono text-xs">{k.um_base}</span></div><h3 className="break-words text-base font-semibold">{k.nome}</h3><div className="flex flex-wrap items-center justify-between gap-2"><span className="text-xs text-muted-foreground">{k.componenti.length} componenti</span><div className="flex items-center gap-1"><Button asChild variant="outline" size="sm" className="min-h-10"><Link to="/kit/$id" params={{id:k.id}}><ArrowUpRight className="h-4 w-4"/>Apri</Link></Button>{gestisce&&<Button size="icon" variant="ghost" className="h-10 w-10" title={`Duplica ${k.codice}`} aria-label={`Duplica ${k.codice}`} disabled={busy} onClick={()=>onDuplicate(k.id)}><Copy className="h-4 w-4"/></Button>}</div></div></CardContent></Card>)}</div></section>)}</section>;
+      })}
+  </div>;
 }

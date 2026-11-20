@@ -9,12 +9,12 @@ import type { Database } from "@/integrations/supabase/types";
 import { round2 } from "./pricing";
 import {
   calcolaRigaKit,
-  fetchKit,
   getCostoNettoCorrente,
   getPrezzoVendita,
   type ArticoloConListini,
   type FasciaListino,
 } from "./kit-api";
+import { fetchKitStorico as fetchKit } from './kit-legacy';
 import {
   fetchCantieri as _fetchCantieri,
   fetchAgenti as _fetchAgenti,

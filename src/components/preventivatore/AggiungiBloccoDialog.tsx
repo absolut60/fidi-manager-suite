@@ -12,7 +12,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { fetchKitsWithComponenti } from "@/lib/kit-api";
+import { fetchKitsStorici as fetchKitsWithComponenti } from "@/lib/kit-legacy";
 import { FAMIGLIE_KIT, FAMIGLIA_LABEL } from "@/lib/incidenza";
 import { addBloccoDaKit, addBloccoVuoto, fractionalOrder } from "@/lib/preventivi-api";
 import type { FasciaListino } from "@/lib/articoli-api";

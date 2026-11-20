@@ -1,3 +1,9 @@
+# FM90 — Kit motore unico, fetta 1b
+- [x] Lista, creazione ed editor su struttura nuova, Gamma/manuale condivisi e configurazione per linea; nessuna migrazione.
+- [x] API nuove e duplicazione completa; ponte kit-legacy per i due chiamanti documento ancora storici, senza cambiarne handler/prezzi.
+- [x] 1160 test verdi, tsgo pulito, fotografie lista/nuovo/editor 375/1280 e misure 320–1920 senza overflow; regole e rapporto fm90-kit-1b.md con residui 1c.
+- [ ] Verifica autenticata dei form e ricerca Gamma reale: sessione personale non disponibile; flusso locale verificato con dati simulati, nessun dato scritto nel database.
+
 # FM90 — Kit motore unico, tappa 1a
 - [x] Schema additivo 0250 e backfill: 3 kit completi, 6 famiglie, 33 componenti (30 Gamma, 3 manuali); campi storici/date immutati, prova DB annullata e RLS verificata.
 - [x] Configurazione kit nel catalogo linee non usata a schermo; default per INSERT attuali e codice nuovo in duplicazione; 1146 test verdi, tsgo pulito, regole kit e rapporto fm90-kit-1a.md.
