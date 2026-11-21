@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { statoEvasionePreventivo, statoEvasioneRiga, mostraColonnaEvasione, evasioneRigaInUnita, quantitaOrdineUm1, motivoTrasformazioneDisabilitata, type RigaQta } from '../src/lib/evasione';
+import { statoEvasionePreventivo, statoEvasioneRiga, etichettaEvasioneDocumento, mostraColonnaEvasione, evasioneRigaInUnita, quantitaOrdineUm1, motivoTrasformazioneDisabilitata, type RigaQta } from '../src/lib/evasione';
 
 const riga = (ordinata: number, tipo_riga = 'articolo_singolo'): RigaQta => ({ tipo_riga, quantita: 10, qta_ordinata: ordinata });
 test('riga aperta: 10 residue su 10', () => {
@@ -20,10 +20,12 @@ for (const [ordinata, stato] of [[0, 'aperto'], [4, 'parziale'], [10, 'evaso']] 
 }
 test('chiuso parzialmente evaso; riapertura conserva il parziale', () => {
   expect(statoEvasionePreventivo({ righe: [riga(4)], chiuso_at: '2026-11-21T16:52:00Z' })).toEqual({ stato: 'chiuso', evaso_in_parte: true });
+  expect(etichettaEvasioneDocumento(statoEvasionePreventivo({ righe: [riga(4)], chiuso_at: '2026-11-21T16:52:00Z' }))).toEqual({ etichetta: 'Chiuso', sottotesto: 'evaso in parte' });
   expect(statoEvasionePreventivo({ righe: [riga(4)], chiuso_at: null }).stato).toBe('parziale');
 });
 test('chiuso non ordinato o completamente evaso non è evaso in parte', () => {
   for (const ordinata of [0, 10]) expect(statoEvasionePreventivo({ righe: [riga(ordinata)], chiuso_at: '2026-11-21T16:52:00Z' })).toEqual({ stato: 'chiuso', evaso_in_parte: false });
+  expect(etichettaEvasioneDocumento({ stato: 'chiuso', evaso_in_parte: false })).toEqual({ etichetta: 'Chiuso', sottotesto: null });
 });
 test('nota, separatore e sotto totale non contano', () => {
   const testi = ['nota', 'separatore', 'sotto_totale'].map(t => riga(0, t));

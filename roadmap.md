@@ -1,3 +1,8 @@
+# FM93 — Fetta 3
+- [x] Migrazioni 0258/0259: stato Ordinato automatico e ripristino dopo ultimo ordine.
+- [x] Stato/filtro condivisi, menu protetto e badge Chiuso con sottotesto separato.
+- [x] Prove SQL ROLLBACK superate, 1248 test, controllo tipi OK, fotografie 320/375/390/768/1280/1920; query e limiti della verifica autenticata nel rapporto fm93-stato-ordinato.md.
+
 # FM93 — Fetta 2 interfaccia
 - [x] Badge e chiusura/riapertura, trasformazione per chi vede.
 - [x] Colonna condizionata e conversione quantità ordine, elenco ed errore eliminazione.

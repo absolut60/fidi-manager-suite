@@ -1,0 +1,1 @@
+ALTER TYPE public.stato_preventivo ADD VALUE IF NOT EXISTS 'ordinato';

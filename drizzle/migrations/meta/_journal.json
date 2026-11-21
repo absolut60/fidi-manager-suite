@@ -1807,6 +1807,20 @@
       "when": 1795280126385,
       "tag": "0257_fm93_evasione_preventivi",
       "breakpoints": true
+    },
+    {
+      "idx": 258,
+      "version": "7",
+      "when": 1795285676113,
+      "tag": "0258_fm93_stato_preventivo_ordinato",
+      "breakpoints": true
+    },
+    {
+      "idx": 259,
+      "version": "7",
+      "when": 1795285753574,
+      "tag": "0259_fm93_stato_ordine_ripristino",
+      "breakpoints": true
     }
   ]
 }

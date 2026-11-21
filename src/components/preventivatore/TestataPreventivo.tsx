@@ -10,7 +10,7 @@ import { Select,SelectContent,SelectItem,SelectTrigger,SelectValue } from "@/com
 import { AzioneRiquadro } from "./AzioneRiquadro";
 import { CantiereTestata } from "./CantiereTestata";
 import { useCodiciPagamento, CondizionePagamentoRichiestaSelect, etichettaCondizionePagamento } from "@/components/condizione-pagamento-richiesta-select";
-import { STATI,STATI_LABEL,TIPI_DOC,TIPI_DOC_LABEL,type PreventivoConDettagli,type PreventivoUpdate,type DatiClientePreventivo,type Agente } from "@/lib/preventivi-api";
+import { STATI,STATI_LABEL,statiManualiPreventivo,puoCambiareStatoPreventivo,TIPI_DOC,TIPI_DOC_LABEL,type PreventivoConDettagli,type PreventivoUpdate,type DatiClientePreventivo,type Agente } from "@/lib/preventivi-api";
 import { formatNumeroIt,parseNumeroIt } from "@/lib/numero-it";
 import { formatDate } from "@/lib/fidi";
 import { ExternalLink, FileText, Percent, Paperclip, StickyNote, UserRound } from "lucide-react";
@@ -63,9 +63,9 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
         {field('Data',formatDate(prev.data),<Input aria-label="Data" className="h-7 bg-card px-2 text-xs md:text-xs" type="date" defaultValue={prev.data} onBlur={e=>{if(e.target.value&&e.target.value!==prev.data)save({data:e.target.value});}}/>)}
         {field('Validità',prev.validita?formatDate(prev.validita):'—',<Input aria-label="Validità" className="h-7 bg-card px-2 text-xs md:text-xs" type="date" defaultValue={prev.validita||''} onBlur={e=>{if((e.target.value||null)!==prev.validita)save({validita:e.target.value||null});}}/>)}
         {field('Tipo documento',TIPI_DOC_LABEL[prev.tipo_doc],select('Tipo documento',prev.tipo_doc,TIPI_DOC.map(v=>({value:v,label:TIPI_DOC_LABEL[v]})),v=>{if(TIPI_DOC.includes(v as typeof prev.tipo_doc))save({tipo_doc:v as typeof prev.tipo_doc});}))}
-        {/* FM65 punto 3: lo Stato resta modificabile per chi ha il permesso anche da confermato/ordine (serve per riportarlo a Bozza/Inviato). */}
+        {/* Ordinato è assegnato/ripristinato dagli ordini; gli altri stati conservano le regole FM65. */}
         {(modificabile||statoEditabile)
-          ? <div className="min-w-0 grid content-start gap-1"><Label className="text-[11px] text-muted-foreground">Stato</Label>{select('Stato',prev.stato,STATI.map(v=>({value:v,label:STATI_LABEL[v]})),v=>{if(STATI.includes(v as typeof prev.stato))save({stato:v as typeof prev.stato});})}</div>
+          ? <div className="min-w-0 grid content-start gap-1"><Label className="text-[11px] text-muted-foreground">Stato</Label>{select('Stato',prev.stato,statiManualiPreventivo(prev.stato).map(v=>({value:v,label:STATI_LABEL[v]})),v=>{if(STATI.includes(v as typeof prev.stato)&&puoCambiareStatoPreventivo(prev.stato,v as typeof prev.stato))save({stato:v as typeof prev.stato});},prev.stato==='ordinato')}</div>
           : field('Stato',STATI_LABEL[prev.stato],<span/>)}
         {field('Agente',agenti.find(a=>a.id===prev.agente_codice)?.nome,select('Agente',prev.agente_codice||'',agenti.map(a=>({value:a.id,label:a.nome})),v=>save({agente_codice:v==='__none__'?null:v})))}
         {field('Alternativa di',principali.find(p=>p.id===prev.alternativa_di)?.numero||'— Nessuna: è un preventivo principale',<div><Select value={prev.alternativa_di||'__none__'} disabled={haAlternative||prev.tipo!=='preventivo'} onValueChange={v=>save({alternativa_di:v==='__none__'?null:v})}><SelectTrigger aria-label="Alternativa di" className="h-7 w-full min-w-0 bg-card px-2 text-xs [&>span]:truncate [&>span]:text-left"><SelectValue/></SelectTrigger><SelectContent className="max-w-[calc(100vw-2rem)]"><SelectItem value="__none__">— Nessuna: è un preventivo principale</SelectItem>{principali.map(p=><SelectItem key={p.id} value={p.id}>{p.numero} {p.titolo?`· ${p.titolo}`:''}</SelectItem>)}</SelectContent></Select>{haAlternative&&<p className="text-xs text-muted-foreground mt-1">Ha alternative collegate</p>}</div>,true)}

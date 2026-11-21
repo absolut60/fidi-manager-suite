@@ -70,8 +70,8 @@ export function mostraColonnaEvasione({ tipo, righe, chiuso_at }: {
   return tipo === 'preventivo' && (!!chiuso_at || righe.some(r => statoEvasioneRiga(r).ordinata > 0));
 }
 
-export function etichettaEvasioneDocumento(esito: ReturnType<typeof statoEvasionePreventivo>): string {
-  return esito.evaso_in_parte ? 'Chiuso · evaso in parte' : EVASIONE_LABEL[esito.stato];
+export function etichettaEvasioneDocumento(esito: ReturnType<typeof statoEvasionePreventivo>): { etichetta: string; sottotesto: string | null } {
+  return { etichetta: EVASIONE_LABEL[esito.stato], sottotesto: esito.evaso_in_parte ? 'evaso in parte' : null };
 }
 
 export function motivoTrasformazioneDisabilitata(esito: ReturnType<typeof statoEvasionePreventivo>): string | null {

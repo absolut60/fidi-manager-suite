@@ -62,6 +62,7 @@ test('stato dopo invio: solo bozza diventa inviato', async () => {
   expect(statoDopoInvioPreventivo('bozza')).toBe('inviato');
   expect(statoDopoInvioPreventivo('inviato')).toBeNull();
   expect(statoDopoInvioPreventivo('confermato')).toBeNull();
+  expect(statoDopoInvioPreventivo('ordinato')).toBeNull();
   expect(statoDopoInvioPreventivo(null)).toBeNull();
 });
 test('attività registrata: email completata con destinatari, operatore e copia archiviata', async () => {

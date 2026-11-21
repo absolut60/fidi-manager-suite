@@ -16,12 +16,13 @@ const STATO: Record<StatoPreventivo, string> = {
   bozza: "border-border bg-pv-grigio-tenue text-muted-foreground",
   inviato: "border-pv-verde/30 bg-pv-verde-tenue text-pv-verde",
   confermato: "border-pv-blu bg-pv-blu text-primary-foreground",
+  ordinato: "border-pv-azzurro-bordo bg-pv-azzurro text-pv-blu",
 };
 const EVASIONE: Record<StatoEvasioneDocumento, string> = {
   aperto: "border-border bg-card text-muted-foreground",
   parziale: "border-pv-arancio/30 bg-pv-arancio-tenue text-pv-arancio",
   evaso: "border-pv-verde/30 bg-pv-verde-tenue text-pv-verde",
-  chiuso: "border-muted-foreground bg-muted-foreground text-background",
+  chiuso: "border-border bg-card text-muted-foreground",
 };
 
 /** Pezzi condivisi con l'elenco preventivi: stessa resa della scheda. */
@@ -32,7 +33,8 @@ export function BadgeStato({ stato, className }: { stato: StatoPreventivo; class
   return <span className={cn(base, STATO[stato], className)}>{stato === "bozza" && <span aria-hidden>●</span>}{STATI_LABEL[stato]}</span>;
 }
 export function BadgeEvasione({ stato, evaso_in_parte = false, className }: { stato: StatoEvasioneDocumento; evaso_in_parte?: boolean; className?: string }) {
-  return <span className={cn(base, 'whitespace-normal', EVASIONE[stato], className)}>{etichettaEvasioneDocumento({ stato, evaso_in_parte })}</span>;
+  const { etichetta, sottotesto } = etichettaEvasioneDocumento({ stato, evaso_in_parte });
+  return <span className={cn("inline-flex shrink-0 flex-col items-start gap-0.5 text-xs", className)}><span className={cn(base, "text-[length:inherit]", EVASIONE[stato])}>{etichetta}</span>{sottotesto && <span className="whitespace-nowrap text-xs text-muted-foreground">{sottotesto}</span>}</span>;
 }
 
 /** Badge colorati accanto al numero: tipo documento, stato, evasione (solo preventivi). */

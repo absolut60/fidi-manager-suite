@@ -191,12 +191,20 @@ export const TIPI_DOC_LABEL: Record<TipoDoc, string> = {
   LISTA_MATERIALI: "Lista materiali",
   LISTA_MAT_FORNITORE: "Lista mat. fornitore",
 };
-export const STATI: StatoPreventivo[] = ["bozza", "inviato", "confermato"];
+export const STATI: StatoPreventivo[] = ["bozza", "inviato", "confermato", "ordinato"];
 export const STATI_LABEL: Record<StatoPreventivo, string> = {
   bozza: "Bozza",
   inviato: "Inviato",
   confermato: "Confermato",
+  ordinato: "Ordinato",
 };
+/** Ordinato è automatico: non si assegna né si abbandona dal menu Stato. */
+export function statiManualiPreventivo(stato: StatoPreventivo): StatoPreventivo[] {
+  return stato === 'ordinato' ? ['ordinato'] : STATI.filter(s => s !== 'ordinato');
+}
+export function puoCambiareStatoPreventivo(stato: StatoPreventivo, prossimo: StatoPreventivo): boolean {
+  return stato !== 'ordinato' && prossimo !== 'ordinato';
+}
 export const TIPI_RIGA: TipoRiga[] = [
   "articolo_singolo",
   "da_kit",

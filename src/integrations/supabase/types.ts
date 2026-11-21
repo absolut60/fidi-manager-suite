@@ -6069,6 +6069,9 @@ export type Database = {
           regime_iva: Database["public"]["Enums"]["regime_iva_preventivo"]
           sconto_piede_perc: number
           stato: Database["public"]["Enums"]["stato_preventivo"]
+          stato_prima_ordine:
+            | Database["public"]["Enums"]["stato_preventivo"]
+            | null
           store_id: string | null
           tipo: Database["public"]["Enums"]["tipo_documento"]
           tipo_doc: Database["public"]["Enums"]["tipo_doc_preventivo"]
@@ -6109,6 +6112,9 @@ export type Database = {
           regime_iva?: Database["public"]["Enums"]["regime_iva_preventivo"]
           sconto_piede_perc?: number
           stato?: Database["public"]["Enums"]["stato_preventivo"]
+          stato_prima_ordine?:
+            | Database["public"]["Enums"]["stato_preventivo"]
+            | null
           store_id?: string | null
           tipo?: Database["public"]["Enums"]["tipo_documento"]
           tipo_doc?: Database["public"]["Enums"]["tipo_doc_preventivo"]
@@ -6149,6 +6155,9 @@ export type Database = {
           regime_iva?: Database["public"]["Enums"]["regime_iva_preventivo"]
           sconto_piede_perc?: number
           stato?: Database["public"]["Enums"]["stato_preventivo"]
+          stato_prima_ordine?:
+            | Database["public"]["Enums"]["stato_preventivo"]
+            | null
           store_id?: string | null
           tipo?: Database["public"]["Enums"]["tipo_documento"]
           tipo_doc?: Database["public"]["Enums"]["tipo_doc_preventivo"]
@@ -11624,7 +11633,7 @@ export type Database = {
         | "chiusa_pagamento"
         | "chiusa_perdita"
         | "sospesa"
-      stato_preventivo: "bozza" | "inviato" | "confermato"
+      stato_preventivo: "bozza" | "inviato" | "confermato" | "ordinato"
       stato_richiesta:
         | "bozza"
         | "in_approvazione"
@@ -11954,7 +11963,7 @@ export const Constants = {
         "chiusa_perdita",
         "sospesa",
       ],
-      stato_preventivo: ["bozza", "inviato", "confermato"],
+      stato_preventivo: ["bozza", "inviato", "confermato", "ordinato"],
       stato_richiesta: [
         "bozza",
         "in_approvazione",
