@@ -4617,6 +4617,8 @@ export type Database = {
           articolo_codice: string | null
           articolo_id: string | null
           codice_articolo_fornitore: string | null
+          confezione: number | null
+          consumo: number | null
           costo: number | null
           created_at: string
           descrizione: string | null
@@ -4624,18 +4626,25 @@ export type Database = {
           id: string
           incidenza: number | null
           kit_id: string
+          lati: number | null
           lato: number | null
           listino_fornitore: number | null
           marca: string | null
+          n_pezzi: number | null
           note: string | null
           ordine: number
+          passo: number | null
+          passo_2: number | null
+          peso_unitario: number | null
           regola_aggiunta: string | null
           regola_base: string | null
           regola_confezione: string | null
           regola_dividi_1: string | null
           regola_dividi_2: string | null
           regola_moltiplica: string | null
+          riga_rif: number | null
           ruolo: string | null
+          sfrido: number | null
           strato: number | null
           tipo_driver: Database["public"]["Enums"]["tipo_driver"] | null
           um: string | null
@@ -4647,6 +4656,8 @@ export type Database = {
           articolo_codice?: string | null
           articolo_id?: string | null
           codice_articolo_fornitore?: string | null
+          confezione?: number | null
+          consumo?: number | null
           costo?: number | null
           created_at?: string
           descrizione?: string | null
@@ -4654,18 +4665,25 @@ export type Database = {
           id?: string
           incidenza?: number | null
           kit_id: string
+          lati?: number | null
           lato?: number | null
           listino_fornitore?: number | null
           marca?: string | null
+          n_pezzi?: number | null
           note?: string | null
           ordine?: number
+          passo?: number | null
+          passo_2?: number | null
+          peso_unitario?: number | null
           regola_aggiunta?: string | null
           regola_base?: string | null
           regola_confezione?: string | null
           regola_dividi_1?: string | null
           regola_dividi_2?: string | null
           regola_moltiplica?: string | null
+          riga_rif?: number | null
           ruolo?: string | null
+          sfrido?: number | null
           strato?: number | null
           tipo_driver?: Database["public"]["Enums"]["tipo_driver"] | null
           um?: string | null
@@ -4677,6 +4695,8 @@ export type Database = {
           articolo_codice?: string | null
           articolo_id?: string | null
           codice_articolo_fornitore?: string | null
+          confezione?: number | null
+          consumo?: number | null
           costo?: number | null
           created_at?: string
           descrizione?: string | null
@@ -4684,18 +4704,25 @@ export type Database = {
           id?: string
           incidenza?: number | null
           kit_id?: string
+          lati?: number | null
           lato?: number | null
           listino_fornitore?: number | null
           marca?: string | null
+          n_pezzi?: number | null
           note?: string | null
           ordine?: number
+          passo?: number | null
+          passo_2?: number | null
+          peso_unitario?: number | null
           regola_aggiunta?: string | null
           regola_base?: string | null
           regola_confezione?: string | null
           regola_dividi_1?: string | null
           regola_dividi_2?: string | null
           regola_moltiplica?: string | null
+          riga_rif?: number | null
           ruolo?: string | null
+          sfrido?: number | null
           strato?: number | null
           tipo_driver?: Database["public"]["Enums"]["tipo_driver"] | null
           um?: string | null

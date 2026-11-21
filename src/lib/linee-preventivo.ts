@@ -29,11 +29,13 @@ export interface ConfigurazioneKitLinea {
   specifiche: readonly SpecificaKitLinea[];
   regole: 'complete' | 'solo_base';
   parametri: boolean;
+  calcoloSemplice: 'completo' | 'solo_quantita';
 }
 
 const KIT_SISTEMA: ConfigurazioneKitLinea = {
   prefissoCodice: 'SM', umBaseDefault: 'mq', etichettaQuantita: 'Incidenza per {um}',
   regole: 'complete', parametri: true,
+  calcoloSemplice: 'completo',
   colonneComponente: ['ruolo', 'lato', 'strato', 'tipo_driver', 'valore_driver', 'incidenza'],
   specifiche: [
     { codice: 'tipo_struttura', etichetta: 'Tipo struttura', tipo: 'testo' },
@@ -47,6 +49,7 @@ const KIT_SISTEMA: ConfigurazioneKitLinea = {
 const KIT_BASE: Omit<ConfigurazioneKitLinea, 'prefissoCodice'> = {
   umBaseDefault: 'kit', etichettaQuantita: 'Quantità per kit',
   regole: 'solo_base', parametri: false,
+  calcoloSemplice: 'solo_quantita',
   colonneComponente: ['ruolo', 'incidenza'], specifiche: [],
 };
 

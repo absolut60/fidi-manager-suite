@@ -13,6 +13,7 @@ test('FM90 Sistema MADE: prefisso SM, mq, sei colonne e sei specifiche tipizzate
   expect(LINEE_PREVENTIVO.sistema_made.kit).toEqual({
     prefissoCodice: 'SM', umBaseDefault: 'mq', etichettaQuantita: 'Incidenza per {um}',
     regole: 'complete', parametri: true,
+    calcoloSemplice: 'completo',
     colonneComponente: ['ruolo', 'lato', 'strato', 'tipo_driver', 'valore_driver', 'incidenza'],
     specifiche: [
       { codice: 'tipo_struttura', etichetta: 'Tipo struttura', tipo: 'testo' },
@@ -30,6 +31,7 @@ for (const [linea, prefissoCodice] of [ ['showroom', 'SR'], ['edilizia', 'ED'], 
     expect(LINEE_PREVENTIVO[linea].kit).toEqual({
       prefissoCodice, umBaseDefault: 'kit', etichettaQuantita: 'Quantità per kit',
       regole: 'solo_base', parametri: false,
+      calcoloSemplice: 'solo_quantita',
       colonneComponente: ['ruolo', 'incidenza'], specifiche: [],
     });
   });

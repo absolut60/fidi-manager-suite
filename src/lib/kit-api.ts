@@ -22,7 +22,7 @@ export interface ArticoloKitGamma { codice: string; descrizione: string | null; 
 export interface KitConComponenti extends Kit { componenti: (KitComponente & { articolo: ArticoloKitGamma | null })[] }
 
 const KIT_CAMPI = 'id,codice,nome,linea,famiglia_id,um_base,descrizione_tecnica,specifiche,created_at,updated_at' as const;
-const COMPONENTE_CAMPI = 'id,kit_id,articolo_codice,codice_articolo_fornitore,descrizione,um,fornitore_id,marca,costo,listino_fornitore,note,ruolo,lato,strato,tipo_driver,valore_driver,incidenza,ordine,regola_base,regola_moltiplica,regola_dividi_1,regola_dividi_2,regola_confezione,regola_aggiunta,variante_ruolo,created_at,updated_at' as const;
+const COMPONENTE_CAMPI = 'id,kit_id,articolo_codice,codice_articolo_fornitore,descrizione,um,fornitore_id,marca,costo,listino_fornitore,note,ruolo,lato,strato,tipo_driver,valore_driver,incidenza,ordine,n_pezzi,passo,passo_2,consumo,lati,confezione,sfrido,peso_unitario,riga_rif,regola_base,regola_moltiplica,regola_dividi_1,regola_dividi_2,regola_confezione,regola_aggiunta,variante_ruolo,created_at,updated_at' as const;
 const KIT_SELECT = `${KIT_CAMPI},componenti:kit_componenti(${COMPONENTE_CAMPI})` as const;
 
 export async function fetchKitFamiglie(): Promise<KitFamiglia[]> {

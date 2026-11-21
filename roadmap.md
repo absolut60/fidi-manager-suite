@@ -1,3 +1,8 @@
+# FM91 — Kit semplice a righe
+- [ ] Schema additivo, conteggi e integrità dati/RLS invariati.
+- [ ] Motore semplice e pesi; scheda Excel e finestra unica, API/copia e configurazione.
+- [ ] Test, guardia AST, fotografie 375/768/1280/1920 e rapporto finale.
+
 # FM91 — Kit, parametri e regole nella scheda, fetta 2b1
 - [x] API parametri/regole e duplicazione; configurazione complete/solo_base, nessuna migrazione o modifica ai preventivi.
 - [x] Parametri con avvisi sui riferimenti, operandi a menu, anteprima dal motore unico e sola lettura.

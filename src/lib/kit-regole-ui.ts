@@ -1,5 +1,6 @@
 import type { Database } from '@/integrations/supabase/types';
-import { normalizzaOperandoKit, calcolaKitRegole, type CampiRegolaKit, type ComponenteRegoleKit, type ParametroRegoleKit } from './kit-regole';
+import { normalizzaOperandoKit, calcolaKitRegole, type CampiRegolaKit, type CampiSempliciKit, type ComponenteRegoleKit, type ParametroRegoleKit } from './kit-regole';
+import { normalizzaPatchSempliceKit } from './kit-semplice-ui';
 import { parseNumeroIt } from './numero-it';
 
 export const CAMPI_REGOLA_KIT = [
@@ -16,8 +17,8 @@ export type SalvataggioParametroKit = Pick<KitParametro, 'codice' | 'etichetta' 
 type EtichettaParametro = ParametroRegoleKit & { etichetta: string; um?: string | null };
 export type RigaMenuKit = { ordine: number; descrizione: string };
 
-export function normalizzaPatchRegoleKit<T extends Partial<CampiRegolaKit>>(patch: T): T {
-  const risultato = { ...patch };
+export function normalizzaPatchRegoleKit<T extends Partial<CampiRegolaKit & CampiSempliciKit>>(patch: T): T {
+  const risultato = normalizzaPatchSempliceKit(patch);
   for (const campo of CAMPI_REGOLA_KIT) {
     if (Object.hasOwn(patch, campo.codice)) Object.assign(risultato, { [campo.codice]: normalizzaOperandoKit(patch[campo.codice]) });
   }

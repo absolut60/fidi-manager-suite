@@ -6,7 +6,13 @@ export type CampiRegolaKit = Pick<Tabelle['kit_componenti']['Row'],
   'regola_base' | 'regola_moltiplica' | 'regola_dividi_1' | 'regola_dividi_2' | 'regola_confezione' | 'regola_aggiunta' | 'variante_ruolo'>;
 export type CampiArticoloKit = Partial<Pick<Tabelle['kit_componenti']['Row'],
   'articolo_codice' | 'codice_articolo_fornitore' | 'descrizione' | 'um' | 'fornitore_id' | 'marca' | 'costo' | 'listino_fornitore' | 'note'>>;
-export type ComponenteRegoleKit = CampiArticoloKit & Partial<CampiRegolaKit> & IncidenzaInput & {
+export type CampiSempliciKit = Pick<Tabelle['kit_componenti']['Row'],
+  'n_pezzi' | 'passo' | 'passo_2' | 'consumo' | 'lati' | 'confezione' | 'sfrido' | 'riga_rif' | 'peso_unitario'>;
+export const CAMPI_CALCOLO_SEMPLICE = ['n_pezzi', 'passo', 'passo_2', 'consumo', 'lati', 'confezione', 'sfrido', 'riga_rif'] as const;
+export function rigaKitSemplice(c: Partial<CampiSempliciKit>): boolean {
+  return CAMPI_CALCOLO_SEMPLICE.some(campo => c[campo] != null);
+}
+export type ComponenteRegoleKit = CampiArticoloKit & Partial<CampiRegolaKit & CampiSempliciKit> & IncidenzaInput & {
   ordine: number;
   incidenza?: number | null;
 };
@@ -33,7 +39,8 @@ export interface RigaRegoleKit {
   articolo: ArticoloRisoltoKit | null;
   /** Quantità UM1 per una unità base; null su errore, mai zero di ripiego. */
   quantitaPerUnita: number | null;
-  fonte: 'regola' | 'incidenza' | 'driver';
+  fonte: 'semplice' | 'regola' | 'incidenza' | 'driver';
+  pesoPerUnita: number | null;
   errore?: string;
 }
 
@@ -124,12 +131,12 @@ export function calcolaKitRegole(input: InputRegoleKit): RigaRegoleKit[] {
     if (precedente) return precedente;
     const c = righe.get(ordine);
     if (!c) throw new Error(`La riga ${ordine} non esiste nel kit.`);
-    const fonte = c.regola_base?.trim() ? 'regola' : c.incidenza != null ? 'incidenza' : 'driver';
+    const fonte = rigaKitSemplice(c) ? 'semplice' : c.regola_base?.trim() ? 'regola' : c.incidenza != null ? 'incidenza' : 'driver';
     let articolo: ArticoloRisoltoKit | null = null;
     inCalcolo.set(ordine, true);
     let risultato: RigaRegoleKit;
     try {
-      if (erroreConfigurazione) throw new Error(erroreConfigurazione);
+      if (erroreConfigurazione && (fonte !== 'semplice' || c.variante_ruolo != null)) throw new Error(erroreConfigurazione);
       if (duplicati.has(ordine)) throw new Error(`Ordine duplicato: ${ordine}.`);
       if (c.variante_ruolo != null) {
         const corrispondenti = variante?.articoli.filter(a => a.ruolo === c.variante_ruolo) ?? [];
@@ -162,7 +169,30 @@ export function calcolaKitRegole(input: InputRegoleKit): RigaRegoleKit[] {
       }
 
       let quantita: number;
-      if (fonte === 'regola') {
+      if (fonte === 'semplice') {
+        for (const campo of CAMPI_CALCOLO_SEMPLICE) {
+          const valore = c[campo];
+          if (valore != null) finito(valore);
+        }
+        for (const campo of ['n_pezzi', 'consumo', 'lati'] as const) {
+          if ((c[campo] ?? 0) < 0) throw new Error('Pezzi, consumo e lati non possono essere negativi.');
+        }
+        let base = 1;
+        if (c.riga_rif != null) {
+          if (!Number.isInteger(c.riga_rif) || c.riga_rif < 1) throw new Error('La riga collegata deve avere un ordine intero da 1.');
+          const collegata = righe.get(c.riga_rif);
+          if (!collegata) throw new Error(`La riga ${c.riga_rif} non esiste nel kit.`);
+          const dipendenza = calcola(c.riga_rif);
+          if (dipendenza.errore || dipendenza.quantitaPerUnita == null) throw new Error(`La riga ${c.riga_rif} contiene un errore: ${dipendenza.errore ?? 'quantità assente'}`);
+          const pezzi = finito(collegata.n_pezzi ?? 1);
+          if (pezzi === 0) throw new Error('Divisione per zero: N. pezzi della riga collegata è zero.');
+          base = finito(dipendenza.quantitaPerUnita / pezzi);
+        }
+        const divisori = [c.passo ?? 1, c.passo_2 ?? 1, c.confezione ?? 1];
+        if (divisori.some(d => d === 0)) throw new Error('Divisione per zero: passo o confezione è zero.');
+        if (divisori.some(d => d < 0)) throw new Error('Passo, passo 2 e confezione devono essere maggiori di zero.');
+        quantita = divisori.reduce((q, d) => finito(q / d), finito(base * (c.n_pezzi ?? 1) * (c.consumo ?? 1) * (c.lati ?? 1))) + (c.sfrido ?? 0);
+      } else if (fonte === 'regola') {
         const base = operando(c.regola_base, 0);
         const moltiplica = operando(c.regola_moltiplica, 1);
         const divisori = [operando(c.regola_dividi_1, 1), operando(c.regola_dividi_2, 1), operando(c.regola_confezione, 1)];
@@ -176,9 +206,14 @@ export function calcolaKitRegole(input: InputRegoleKit): RigaRegoleKit[] {
         if (driver == null) throw new Error('Incidenza assente e driver non determinabile.');
         quantita = driver;
       }
-      risultato = { ordine, articolo, quantitaPerUnita: finito(quantita), fonte };
+      let pesoPerUnita: number | null = null;
+      if (c.peso_unitario != null) {
+        if (c.peso_unitario < 0) throw new Error('Il peso unitario non può essere negativo.');
+        pesoPerUnita = finito(finito(c.peso_unitario) * finito(quantita));
+      }
+      risultato = { ordine, articolo, quantitaPerUnita: finito(quantita), fonte, pesoPerUnita };
     } catch (e) {
-      risultato = { ordine, articolo, quantitaPerUnita: null, fonte,
+      risultato = { ordine, articolo, quantitaPerUnita: null, fonte, pesoPerUnita: null,
         errore: `Riga ${ordine}: ${e instanceof Error ? e.message : 'Calcolo non riuscito.'}` };
     } finally {
       inCalcolo.set(ordine, false);
@@ -187,4 +222,13 @@ export function calcolaKitRegole(input: InputRegoleKit): RigaRegoleKit[] {
     return risultato;
   }
   return input.componenti.map(c => calcola(c.ordine));
+}
+
+/** Totale dei soli pesi noti; le righe in errore non sono considerate senza peso. */
+export function totalePesoKit(componenti: readonly ComponenteRegoleKit[], risultati: readonly RigaRegoleKit[]) {
+  return {
+    pesoTotale: finito(risultati.reduce((totale, r) => totale + (r.pesoPerUnita ?? 0), 0)),
+    righeSenzaPeso: componenti.filter(c => c.peso_unitario == null).length,
+    righeConErrore: risultati.filter(r => r.errore != null).length,
+  };
 }
