@@ -1,1 +1,3 @@
 - Site branding is composed only by brandingSede with the existing email fallbacks; settings use verified reference updates before removing Storage files, so failed permissions never remove a referenced logo and email senders remain unchanged.
+- Customer email logos use only branding-email with injected Storage clients after existing authorization; private PNG bytes serve CID and durable data-URL archives, while browser previews use user-signed URLs and preserve original footer data to keep fallback HTML byte-identical.
+- Estimator PDF branding uses only branding-pdf with the user's client and persisted document store_id; load once per export, preserve native image proportions, and never infer a store from customer or branch text.

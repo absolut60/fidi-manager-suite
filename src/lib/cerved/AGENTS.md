@@ -11,3 +11,5 @@
 - SchedaCervedEntita is the only Cerved card (cliente and lead); MADE-internal parts (fido MADE, come paga MADE, confronto MADE) depend only on datiMade; trigger trg_lead_cerved_cliente copies the lead's subject link to the client on conversion when VAT matches, never purchasing again.
 - Cerved list gauge for clienti and lead comes only from useEntitaConReportCerved.
 - Compila da P.IVA uses only entity_search (free quota ~10,000/year, counted from cerved_chiamate); it never purchases, links or monitors.
+- Light Report extraction stays in normalizzaLightReportXml with root-scoped verified paths; CEBI PD is separate from CGS, rounded thousands convert to euros without reconciling granular balances, and undecoded CgrFlags/relationship flags stay raw to avoid invented negatives.
+- Cerved sheet presentation uses only normalized Light Report data when present; decoding lives in cerved-presentazione and fixed reading thresholds in cerved-lettura. Compact views retain their existing CGS resolver, so this sheet change does not alter list gauges.
