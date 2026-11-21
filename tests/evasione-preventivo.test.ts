@@ -67,3 +67,41 @@ test('chiuso ed evaso impediscono la trasformazione, parziale no', () => {
   expect(motivoTrasformazioneDisabilitata(statoEvasionePreventivo({ righe: [riga(10)], chiuso_at: null }))).not.toBeNull();
   expect(motivoTrasformazioneDisabilitata(statoEvasionePreventivo({ righe: [riga(4)], chiuso_at: null }))).toBeNull();
 });
+
+// --- FM93: invio ordine con fattori di conversione non interi ---
+const rigaUm2F = (quantita: number, ordinata: number, fattore: number) => ({
+  tipo_riga: 'articolo_singolo' as const, quantita, qta_ordinata: ordinata,
+  um: 'PZ', um_scelta: 'um2', unita_gamma: { um: 'PZ', um2: 'CF', fattore_conversione: fattore },
+});
+
+test('fattore 3,6: residuo intero → inviato il residuo UM1 esatto 400,0003', () => {
+  const r = rigaUm2F(400.0003, 0, 3.6);
+  expect(evasioneRigaInUnita(r).residuo).toBeCloseTo(111.1112, 4);
+  expect(111.1112 * 3.6).toBeGreaterThan(400.0003); // la conversione grezza eccederebbe il residuo
+  expect(quantitaOrdineUm1(r, 111.1112)).toBe(400.0003);
+  expect(quantitaOrdineUm1(r, 111.11119444444444)).toBe(400.0003);
+});
+test('fattore 0,72: residuo intero → inviato esattamente 400', () => {
+  const r = rigaUm2F(400, 0, 0.72);
+  expect(555.5556 * 0.72).toBeGreaterThan(400);
+  expect(quantitaOrdineUm1(r, 555.5556)).toBe(400);
+});
+test('fattore 0,72 con riga parziale: residuo UM1 300, mostrato 416,6667', () => {
+  const r = rigaUm2F(400, 100, 0.72);
+  expect(416.6667 * 0.72).toBeGreaterThan(300);
+  expect(quantitaOrdineUm1(r, 416.6667)).toBe(300);
+});
+test('quantità minore del residuo resta invariata', () => {
+  const r = rigaUm2F(400.0003, 0, 3.6);
+  expect(quantitaOrdineUm1(r, 50)).toBe(180);
+  expect(quantitaOrdineUm1(r, 111.11)).toBe(399.996);
+});
+test('mai oltre il residuo: il valore digitato in eccesso è limitato al residuo UM1', () => {
+  const r = rigaUm2F(400.0003, 0, 3.6);
+  expect(quantitaOrdineUm1(r, 200)).toBe(400.0003);
+});
+test('UM1: quantità invariata e comunque mai oltre il residuo', () => {
+  const r = { ...rigaUm2F(10, 4, 2), um_scelta: 'um1' };
+  expect(quantitaOrdineUm1(r, 3)).toBe(3);
+  expect(quantitaOrdineUm1(r, 999)).toBe(6);
+});

@@ -16,6 +16,8 @@ export const EVASIONE_LABEL: Record<StatoEvasioneDocumento, string> = {
 };
 
 const EPS = 0.0001;
+/** Tolleranza di confronto alla precisione di visualizzazione (4 decimali). */
+const EPS_VISUALIZZAZIONE = 0.0001;
 
 export interface RigaQta {
   tipo_riga: string;
@@ -85,6 +87,18 @@ export function evasioneRigaInUnita(riga: RigaUnitaEvasione) {
     quantita: converti(esito.quantita), ordinata: converti(esito.ordinata), residuo: converti(esito.residuo) };
 }
 
+/**
+ * Quantità da inviare in UM1 a partire da quella mostrata nell'unità scelta.
+ * Il risultato non supera MAI il residuo UM1 reale: con fattori non interi
+ * (es. 3,6 o 0,72) il residuo mostrato, arrotondato, riconvertito può
+ * eccedere il residuo e la RPC rifiuterebbe con "Quantità richiesta superiore
+ * al residuo". Se la quantità mostrata coincide col residuo mostrato (entro
+ * la precisione di visualizzazione) si invia esattamente il residuo UM1.
+ */
 export function quantitaOrdineUm1(riga: RigaUnitaEvasione, quantitaMostrata: number): number {
-  return rigaInUnita({ ...riga, prezzo_unit: null }, riga.unita_gamma, { quantita: quantitaMostrata }).patchUm1.quantita ?? 0;
+  const { residuo: residuoUm1 } = statoEvasioneRiga(riga);
+  const { residuo: residuoMostrato } = evasioneRigaInUnita(riga);
+  if (Math.abs(quantitaMostrata - residuoMostrato) <= EPS_VISUALIZZAZIONE) return residuoUm1;
+  const convertita = rigaInUnita({ ...riga, prezzo_unit: null }, riga.unita_gamma, { quantita: quantitaMostrata }).patchUm1.quantita ?? 0;
+  return Math.max(0, Math.min(convertita, residuoUm1));
 }
