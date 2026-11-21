@@ -4549,37 +4549,23 @@ export type Database = {
           codice: string
           created_at: string
           descrizione_tecnica: string | null
-          famiglia: Database["public"]["Enums"]["kit_famiglia"]
           famiglia_id: string | null
-          h_max: number | null
           id: string
-          isolante: string | null
           linea: Database["public"]["Enums"]["linea_preventivo"]
           nome: string
-          passo: number | null
-          passo_um: string | null
           specifiche: Json
-          spessore: number | null
-          tipo_struttura: string | null
           um_base: string
           updated_at: string
         }
         Insert: {
-          codice?: string
+          codice: string
           created_at?: string
           descrizione_tecnica?: string | null
-          famiglia?: Database["public"]["Enums"]["kit_famiglia"]
           famiglia_id?: string | null
-          h_max?: number | null
           id?: string
-          isolante?: string | null
           linea?: Database["public"]["Enums"]["linea_preventivo"]
           nome: string
-          passo?: number | null
-          passo_um?: string | null
           specifiche?: Json
-          spessore?: number | null
-          tipo_struttura?: string | null
           um_base?: string
           updated_at?: string
         }
@@ -4587,18 +4573,11 @@ export type Database = {
           codice?: string
           created_at?: string
           descrizione_tecnica?: string | null
-          famiglia?: Database["public"]["Enums"]["kit_famiglia"]
           famiglia_id?: string | null
-          h_max?: number | null
           id?: string
-          isolante?: string | null
           linea?: Database["public"]["Enums"]["linea_preventivo"]
           nome?: string
-          passo?: number | null
-          passo_um?: string | null
           specifiche?: Json
-          spessore?: number | null
-          tipo_struttura?: string | null
           um_base?: string
           updated_at?: string
         }
@@ -4615,7 +4594,6 @@ export type Database = {
       kit_componenti: {
         Row: {
           articolo_codice: string | null
-          articolo_id: string | null
           codice_articolo_fornitore: string | null
           confezione: number | null
           consumo: number | null
@@ -4624,10 +4602,8 @@ export type Database = {
           descrizione: string | null
           fornitore_id: string | null
           id: string
-          incidenza: number | null
           kit_id: string
           lati: number | null
-          lato: number | null
           listino_fornitore: number | null
           marca: string | null
           n_pezzi: number | null
@@ -4636,25 +4612,14 @@ export type Database = {
           passo: number | null
           passo_2: number | null
           peso_unitario: number | null
-          regola_aggiunta: string | null
-          regola_base: string | null
-          regola_confezione: string | null
-          regola_dividi_1: string | null
-          regola_dividi_2: string | null
-          regola_moltiplica: string | null
           riga_rif: number | null
           ruolo: string | null
           sfrido: number | null
-          strato: number | null
-          tipo_driver: Database["public"]["Enums"]["tipo_driver"] | null
           um: string | null
           updated_at: string
-          valore_driver: number | null
-          variante_ruolo: string | null
         }
         Insert: {
           articolo_codice?: string | null
-          articolo_id?: string | null
           codice_articolo_fornitore?: string | null
           confezione?: number | null
           consumo?: number | null
@@ -4663,10 +4628,8 @@ export type Database = {
           descrizione?: string | null
           fornitore_id?: string | null
           id?: string
-          incidenza?: number | null
           kit_id: string
           lati?: number | null
-          lato?: number | null
           listino_fornitore?: number | null
           marca?: string | null
           n_pezzi?: number | null
@@ -4675,25 +4638,14 @@ export type Database = {
           passo?: number | null
           passo_2?: number | null
           peso_unitario?: number | null
-          regola_aggiunta?: string | null
-          regola_base?: string | null
-          regola_confezione?: string | null
-          regola_dividi_1?: string | null
-          regola_dividi_2?: string | null
-          regola_moltiplica?: string | null
           riga_rif?: number | null
           ruolo?: string | null
           sfrido?: number | null
-          strato?: number | null
-          tipo_driver?: Database["public"]["Enums"]["tipo_driver"] | null
           um?: string | null
           updated_at?: string
-          valore_driver?: number | null
-          variante_ruolo?: string | null
         }
         Update: {
           articolo_codice?: string | null
-          articolo_id?: string | null
           codice_articolo_fornitore?: string | null
           confezione?: number | null
           consumo?: number | null
@@ -4702,10 +4654,8 @@ export type Database = {
           descrizione?: string | null
           fornitore_id?: string | null
           id?: string
-          incidenza?: number | null
           kit_id?: string
           lati?: number | null
-          lato?: number | null
           listino_fornitore?: number | null
           marca?: string | null
           n_pezzi?: number | null
@@ -4714,30 +4664,13 @@ export type Database = {
           passo?: number | null
           passo_2?: number | null
           peso_unitario?: number | null
-          regola_aggiunta?: string | null
-          regola_base?: string | null
-          regola_confezione?: string | null
-          regola_dividi_1?: string | null
-          regola_dividi_2?: string | null
-          regola_moltiplica?: string | null
           riga_rif?: number | null
           ruolo?: string | null
           sfrido?: number | null
-          strato?: number | null
-          tipo_driver?: Database["public"]["Enums"]["tipo_driver"] | null
           um?: string | null
           updated_at?: string
-          valore_driver?: number | null
-          variante_ruolo?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "kit_componenti_articolo_id_fkey"
-            columns: ["articolo_id"]
-            isOneToOne: false
-            referencedRelation: "articoli"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "kit_componenti_fornitore_id_fkey"
             columns: ["fornitore_id"]
@@ -4786,172 +4719,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
-      }
-      kit_parametri: {
-        Row: {
-          codice: string
-          created_at: string
-          etichetta: string
-          id: string
-          kit_id: string
-          note: string | null
-          ordine: number
-          tipo: string
-          um: string | null
-          updated_at: string
-          valore_default: number
-          valori_ammessi: number[] | null
-        }
-        Insert: {
-          codice: string
-          created_at?: string
-          etichetta: string
-          id?: string
-          kit_id: string
-          note?: string | null
-          ordine?: number
-          tipo: string
-          um?: string | null
-          updated_at?: string
-          valore_default: number
-          valori_ammessi?: number[] | null
-        }
-        Update: {
-          codice?: string
-          created_at?: string
-          etichetta?: string
-          id?: string
-          kit_id?: string
-          note?: string | null
-          ordine?: number
-          tipo?: string
-          um?: string | null
-          updated_at?: string
-          valore_default?: number
-          valori_ammessi?: number[] | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "kit_parametri_kit_id_fkey"
-            columns: ["kit_id"]
-            isOneToOne: false
-            referencedRelation: "kit"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      kit_varianti: {
-        Row: {
-          codice: string
-          created_at: string
-          descrizione_struttura: string | null
-          id: string
-          imposta_parametri: Json
-          kit_id: string
-          nome_commerciale: string
-          ordine: number
-          predefinita: boolean
-          updated_at: string
-        }
-        Insert: {
-          codice: string
-          created_at?: string
-          descrizione_struttura?: string | null
-          id?: string
-          imposta_parametri?: Json
-          kit_id: string
-          nome_commerciale: string
-          ordine?: number
-          predefinita?: boolean
-          updated_at?: string
-        }
-        Update: {
-          codice?: string
-          created_at?: string
-          descrizione_struttura?: string | null
-          id?: string
-          imposta_parametri?: Json
-          kit_id?: string
-          nome_commerciale?: string
-          ordine?: number
-          predefinita?: boolean
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "kit_varianti_kit_id_fkey"
-            columns: ["kit_id"]
-            isOneToOne: false
-            referencedRelation: "kit"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      kit_varianti_articoli: {
-        Row: {
-          articolo_codice: string | null
-          codice_articolo_fornitore: string | null
-          costo: number | null
-          created_at: string
-          descrizione: string | null
-          fornitore_id: string | null
-          id: string
-          listino_fornitore: number | null
-          marca: string | null
-          note: string | null
-          ruolo: string
-          um: string | null
-          updated_at: string
-          variante_id: string
-        }
-        Insert: {
-          articolo_codice?: string | null
-          codice_articolo_fornitore?: string | null
-          costo?: number | null
-          created_at?: string
-          descrizione?: string | null
-          fornitore_id?: string | null
-          id?: string
-          listino_fornitore?: number | null
-          marca?: string | null
-          note?: string | null
-          ruolo: string
-          um?: string | null
-          updated_at?: string
-          variante_id: string
-        }
-        Update: {
-          articolo_codice?: string | null
-          codice_articolo_fornitore?: string | null
-          costo?: number | null
-          created_at?: string
-          descrizione?: string | null
-          fornitore_id?: string | null
-          id?: string
-          listino_fornitore?: number | null
-          marca?: string | null
-          note?: string | null
-          ruolo?: string
-          um?: string | null
-          updated_at?: string
-          variante_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "kit_varianti_articoli_fornitore_id_fkey"
-            columns: ["fornitore_id"]
-            isOneToOne: false
-            referencedRelation: "fornitori"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "kit_varianti_articoli_variante_id_fkey"
-            columns: ["variante_id"]
-            isOneToOne: false
-            referencedRelation: "kit_varianti"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       lead: {
         Row: {
@@ -11786,13 +11553,6 @@ export type Database = {
         | "presentato"
         | "no_show"
       fascia_listino: "A" | "B" | "C" | "SOCI"
-      kit_famiglia:
-        | "PARETE"
-        | "CONTROPARETE"
-        | "CTS_CARTONGESSO"
-        | "CTS_MODULARE"
-        | "VELETTA"
-        | "ALTRO"
       lead_fonte: "web" | "hubspot" | "manuale" | "fiera" | "evento" | "altro"
       lead_priorita: "alta" | "media" | "bassa"
       lead_richiesta_stato: "aperta" | "in_lavorazione" | "evasa" | "respinta"
@@ -11887,7 +11647,6 @@ export type Database = {
         | "LISTA_MATERIALI"
         | "LISTA_MAT_FORNITORE"
       tipo_documento: "preventivo" | "ordine"
-      tipo_driver: "CONSUMO" | "PASSO" | "LATI" | "INCIDENZA_FISSA"
       tipo_opportunita: "vendita" | "fornitura" | "preventivo" | "altro"
       tipo_pratica_legale:
         | "decreto_ingiuntivo"
@@ -12116,14 +11875,6 @@ export const Constants = {
         "no_show",
       ],
       fascia_listino: ["A", "B", "C", "SOCI"],
-      kit_famiglia: [
-        "PARETE",
-        "CONTROPARETE",
-        "CTS_CARTONGESSO",
-        "CTS_MODULARE",
-        "VELETTA",
-        "ALTRO",
-      ],
       lead_fonte: ["web", "hubspot", "manuale", "fiera", "evento", "altro"],
       lead_priorita: ["alta", "media", "bassa"],
       lead_richiesta_stato: ["aperta", "in_lavorazione", "evasa", "respinta"],
@@ -12231,7 +11982,6 @@ export const Constants = {
         "LISTA_MAT_FORNITORE",
       ],
       tipo_documento: ["preventivo", "ordine"],
-      tipo_driver: ["CONSUMO", "PASSO", "LATI", "INCIDENZA_FISSA"],
       tipo_opportunita: ["vendita", "fornitura", "preventivo", "altro"],
       tipo_pratica_legale: [
         "decreto_ingiuntivo",
