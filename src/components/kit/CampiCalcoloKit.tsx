@@ -30,9 +30,10 @@ export function NumeroKit({ campo, etichetta, valore, disabled, onChange, onSave
     } catch (e) { setErrore(e instanceof Error ? e.message : 'Salvataggio non riuscito.'); }
     finally { setBusy(false); }
   };
+  if (disabled && compatto) return <p className="min-h-10 break-all px-1 py-2 text-right font-mono text-xs" title={valore == null ? '' : String(valore).replace('.', ',')}>{valore == null ? '—' : formatNumeroIt(valore, { maxDecimals: 6 })}</p>;
   return <div className="min-w-0"><Input aria-label={etichetta} aria-invalid={!!errore} title={testo} inputMode="decimal" value={testo}
     disabled={disabled || busy} placeholder="—" className={compatto ? 'h-10 min-w-0 rounded-sm px-1 text-right font-mono text-xs' : 'min-h-11 min-w-0 text-right font-mono text-base sm:text-sm'}
-    onChange={e => cambia(e.target.value)} onBlur={() => void salva()} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') { setTesto(valore == null ? '' : String(valore).replace('.', ',')); setEditing(false); setErrore(''); } }}/>
+    onChange={e => cambia(e.target.value)} onBlur={() => void salva()} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') { setTesto(valore == null ? '' : String(valore).replace('.', ',')); setEditing(false); setErrore(''); onChange(valore ?? null); } }}/>
     {errore && <p role="alert" className="mt-1 break-words text-xs text-destructive">{errore}</p>}</div>;
 }
 

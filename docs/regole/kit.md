@@ -47,7 +47,21 @@
 - Telefono/tablet sotto 1024: schede componenti. Da 1024: tabella; a 1280 colonne e azioni a larghezza fissa senza uscire dallo schermo.
 - Transizione preventivi ancora separata: `kit-legacy.ts` conserva soltanto le letture storiche di `AggiungiBloccoDialog` e `addBloccoDaKit`, con chiave `kits-with-comp` invariata; nuove schermate usano `kit-lista-v2`/`kit-v2`. L'inserimento dei kit nuovi nei documenti non è migrato in 1b e va completato nella tappa dedicata prima di usarli in produzione nei preventivi.
 
-## Motore a regole (FM91)
+## Kit semplice a righe (FM91)
+
+Decisione di Andrea: questo è il metodo principale, in sostituzione della gestione di parametri, varianti e regole a sei operandi. Il codice e i dati precedenti restano per compatibilità; non sono riproposti nella scheda.
+
+- Ogni riga conserva `n_pezzi`, `passo`, `passo_2`, `consumo`, `lati`, `confezione`, `sfrido`, `riga_rif`, `peso_unitario`. Colonne nullable aggiunte dalla **0253_fm91_kit_semplice.sql**, senza backfill o cambi RLS. Passi/confezione positivi, pezzi/consumo/lati/peso non negativi, riferimento intero da 1; sfrido può essere negativo.
+- Quantità per unità base: `BASE × N_PEZZI × CONSUMO × LATI ÷ PASSO ÷ PASSO_2 ÷ CONFEZIONE + SFRIDO`. Vuoti = 1, sfrido vuoto = 0. BASE = 1 senza collegamento, altrimenti quantità finale della riga collegata divisa per il suo N. pezzi (vuoto = 1). `riga_rif` è l'ordine della riga nello stesso kit, non un ID né una FK.
+- Fonte unica: `calcolaKitRegole` in `kit-regole.ts`; precedenza **semplice → regola con BASE → incidenza esplicita → driver**. Basta uno dei primi otto campi, anche zero, per attivare il metodo semplice; il solo peso non lo attiva. Nessun arrotondamento. Riferimenti inesistenti, cicli, divisori zero e valori non finiti producono quantità null ed errore italiano sulla riga; quelle indipendenti continuano.
+- Quantità sempre UM primaria Gamma. Confezione è solo il divisore scritto quando UM1 è già confezione (CO/1000, sacco NR/10 kg, rotolo RT/90 ml), mai dedotto dai metadati. Peso per unità base = quantità × peso unitario; `totalePesoKit` somma i pesi noti e conta righe senza peso. Peso zero è noto; errori indicano totale parziale.
+- `LINEE_PREVENTIVO[linea].kit.calcoloSemplice`: `completo` mostra tutti i campi, `solo_quantita` solo N. pezzi con etichetta «Quantità per kit» e peso. Nessun confronto di linea nei chiamanti. Configurazione precedente conservata per il codice nascosto.
+- Tabella compatta da 1024px, schede Articolo/Calcolo/Risultato sotto 1024px; quantità/pesi a sei decimali massimi, senza zeri finali, con virgola. Celle numeriche salvate all'uscita; riferimenti tramite menu delle altre righe. Modifica e aggiunta aprono `RigaKitDialog`, Gamma tramite picker condiviso, manuale tramite finestra in definizione in modalità anagrafica. Ordine nuovo = massimo + 1. Anteprima solo dal motore; errori dei campi impediscono il salvataggio.
+- Nessuna sezione Parametri/Prova parametri né operandi nella scheda. Letture dei parametri precedenti mantenute solo per eventuali vecchie regole. Le righe con `variante_ruolo` restano senza comandi. Incidenza storica nella modifica, gruppo «Valore fisso (vecchio metodo)», preservata e superata appena si attiva il calcolo semplice.
+- `normalizzaPatchSempliceKit`, chiamato da `normalizzaPatchRegoleKit`, valida tutte le scritture API e le copie senza duplicare formule. Duplicazione conserva i nove campi e segnala anche gli errori di validazione dopo la creazione del kit; non è una transazione atomica.
+- Permessi di gestione identici: anagrafiche + linea abilitata; RLS/secondo fattore invariati. Preventivi, «Da kit», `kit-legacy.ts`, prezzi e import esclusi.
+
+## Motore a regole (FM91) — storico, non più metodo principale
 
 - Fonte unica TypeScript: `src/lib/kit-regole.ts`, funzione pura `calcolaKitRegole`. Collegata all'anteprima della scheda kit dalla 2b1; import e percorso “Da kit” restano esclusi. Se servirà un calcolo SQL, sarà un gemello documentato di questo modulo, non una seconda logica autonoma.
 - Quantità per **una unità base** = `BASE × MOLTIPLICA ÷ DIVIDI_1 ÷ DIVIDI_2 ÷ CONFEZIONE + AGGIUNTA`. Nessun arrotondamento intermedio o finale: si arrotonda solo in visualizzazione.
@@ -61,7 +75,7 @@
 - Output: ordine, articolo risolto Gamma/manuale, quantità per unità, fonte (`regola`, `incidenza`, `driver`) ed eventuale errore. Su errore quantità `null`, mai `NaN`/`Infinity` o zero silenzioso; righe indipendenti continuano a essere calcolate.
 - Schema FM91 additivo: sei operandi nullable e `variante_ruolo`, ordine univoco per kit, parametri/varianti/articoli per ruolo. Permessi e trigger aggiornamento come `kit_componenti`, inclusa restrittiva FM44; nessun dato esistente modificato, nessun parametro/variante di prova creato.
 
-## Scheda parametri e regole — FM91 2b1
+## Scheda parametri e regole — FM91 2b1 (storico, sostituito dalla scheda semplice)
 
 - Configurazione unica: Sistema MADE `regole: complete`, `parametri: true`; altre linee `regole: solo_base`, `parametri: false`. Stesso motore, nessun confronto di linea nei chiamanti.
 - Parametri: creazione/modifica/eliminazione e frecce d'ordine con gate anagrafiche + linea abilitata, RLS invariata. Codice maiuscolo univoco nel kit, numeri italiani, scelta numerica con elenco separato da punto e virgola. Eliminazione/rinomina segnala tutte le righe referenti e richiede conferma; nessuna sostituzione automatica degli operandi.

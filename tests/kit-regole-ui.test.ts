@@ -82,7 +82,9 @@ test('FM91 API: INSERT/UPDATE passano sempre dal normalizzatore prima di scriver
     })}}));
     const {insertComponente,updateComponente}=await import('./src/lib/kit-api.ts');
     await insertComponente({kit_id:'k',regola_base:'0,6',regola_confezione:' 1000 '});
-    await updateComponente('c',{regola_base:'',regola_moltiplica:'PARAM:PASSO'});
+    await updateComponente('c',{regola_base:'',regola_moltiplica:'PARAM:PASSO',n_pezzi:2,passo:0.6,peso_unitario:8.7,riga_rif:1});
+    if(patches[1].n_pezzi!==2||patches[1].passo!==0.6||patches[1].peso_unitario!==8.7||patches[1].riga_rif!==1)throw Error('Campi semplici persi');
+    let invalid=false;try{await updateComponente('c',{passo:0});}catch{invalid=true;}if(!invalid||patches.length!==2)throw Error('Divisore invalido scritto');
     if(patches[0].regola_base!=='0.6'||patches[0].regola_confezione!=='1000'||patches[1].regola_base!==null)throw Error('Operandi non normalizzati');
     let fail=false;try{await updateComponente('c',{regola_dividi_1:'1/2'});}catch{fail=true;}
     if(!fail||patches.length!==2)throw Error('Scrittura operando invalido');
@@ -93,7 +95,7 @@ for (const erroreCopia of [null, 'kit_parametri', 'kit_componenti']) {
     await esegui(`
       import {mock} from 'bun:test';
       const errorTable=${JSON.stringify(erroreCopia)}, inserts={};
-      const kit={id:'orig',nome:'Kit',linea:'sistema_made',codice:'SM-1',famiglia_id:'f',um_base:'mq',specifiche:{},componenti:[{id:'c',kit_id:'orig',ordine:1,articolo_codice:null,descrizione:'Manuale',regola_base:'PARAM:PASSO',regola_moltiplica:'2,5',regola_dividi_1:'2',regola_dividi_2:null,regola_confezione:'1000',regola_aggiunta:'0,05'}]};
+      const kit={id:'orig',nome:'Kit',linea:'sistema_made',codice:'SM-1',famiglia_id:'f',um_base:'mq',specifiche:{},componenti:[{id:'c',kit_id:'orig',ordine:1,articolo_codice:null,descrizione:'Manuale',n_pezzi:2,passo:0.6,passo_2:0.5,consumo:0.716666666666667,lati:2,confezione:1000,sfrido:0.05,peso_unitario:8.7,riga_rif:3,regola_base:'PARAM:PASSO',regola_moltiplica:'2,5',regola_dividi_1:'2',regola_dividi_2:null,regola_confezione:'1000',regola_aggiunta:'0,05'}]};
       const parametro={id:'p',kit_id:'orig',codice:'PASSO',etichetta:'Passo',tipo:'scelta',valori_ammessi:[0.4,0.6],valore_default:0.6,ordine:0,created_at:'ieri',updated_at:'ieri'};
       mock.module('@/integrations/supabase/client',()=>({supabase:{from:table=>({
         select:()=>({eq:()=>table==='kit_parametri'?{order:()=>({order:async()=>({data:[parametro],error:null})})}:{single:async()=>({data:kit,error:null})},like:()=>({order:()=>({range:async()=>({data:[{codice:'SM-1'}],error:null})})}),order:()=>({order:async()=>({data:[{id:'f',linea:'sistema_made',codice:'PARETE',attiva:true}],error:null})})}),
@@ -104,6 +106,7 @@ for (const erroreCopia of [null, 'kit_parametri', 'kit_componenti']) {
       if(errorTable){if(!message.includes('copia '+(errorTable==='kit_parametri'?'parametri':'componenti')+' non completata'))throw Error('Errore parziale non esplicito');}
       else{
         const c=inserts.kit_componenti[0],p=inserts.kit_parametri[0];
+        for(const [campo,valore]of Object.entries({n_pezzi:2,passo:0.6,passo_2:0.5,consumo:0.716666666666667,lati:2,confezione:1000,sfrido:0.05,peso_unitario:8.7,riga_rif:3}))if(c[campo]!==valore)throw Error('Campo semplice perso: '+campo);
         if(c.regola_base!=='PARAM:PASSO'||c.regola_moltiplica!=='2.5'||c.regola_aggiunta!=='0.05'||c.regola_confezione!=='1000')throw Error('Regole perse');
         if(p.kit_id!=='new'||p.valori_ammessi.length!==2||p.valore_default!==0.6||'id'in p||'created_at'in p||'updated_at'in p)throw Error('Parametri non copiati correttamente');
       }

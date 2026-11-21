@@ -1,7 +1,9 @@
 # FM91 — Kit semplice a righe
-- [ ] Schema additivo, conteggi e integrità dati/RLS invariati.
-- [ ] Motore semplice e pesi; scheda Excel e finestra unica, API/copia e configurazione.
-- [ ] Test, guardia AST, fotografie 375/768/1280/1920 e rapporto finale.
+- [x] Schema 0253 verificato; 1 kit/10 componenti/0 parametri/varianti e impronte complete invariati, RLS intatta.
+- [x] Motore semplice/pesi collegati; tabella Excel e schede, finestra unica, API/copia e configurazione senza confronti di linea.
+- [x] Suite 1247/0 con guardia AST, fotografie 375/768/1280/1920 senza overflow/runtime e rapporto fm91-kit-semplice.md.
+- [ ] Apertura/salvataggio autenticati: account personale non disponibile; kit reale visualizzato in copia temporanea e flusso verificato solo nello stato locale, nessuna scrittura DB.
+- Ripresa da 74e1a319: kit reale in sola lettura, nessuna scrittura di prova; attesi 1 kit, 10 componenti, 0 parametri/varianti.
 
 # FM91 — Kit, parametri e regole nella scheda, fetta 2b1
 - [x] API parametri/regole e duplicazione; configurazione complete/solo_base, nessuna migrazione o modifica ai preventivi.

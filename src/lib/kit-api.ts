@@ -140,12 +140,16 @@ export async function duplicateKit(id: string, newName?: string): Promise<Kit> {
   }
   if (!newKit) throw new Error('Duplicazione non riuscita');
   if (orig.componenti.length) {
+    try {
     const rows: KitComponenteInsert[] = orig.componenti.map(c => {
       const { id: _id, kit_id: _kit, created_at: _c, updated_at: _u, articolo: _a, ...campi } = c;
       return normalizzaPatchRegoleKit({ ...campi, kit_id: newKit.id });
     });
     const { error } = await supabase.from('kit_componenti').insert(rows);
-    if (error) throw new Error(`Kit ${newKit.codice} creato, copia componenti non completata: ${error.message}`);
+    if (error) throw error;
+    } catch (e) {
+      throw new Error(`Kit ${newKit.codice} creato, copia componenti non completata: ${e instanceof Error ? e.message : 'Dati non validi o salvataggio non riuscito.'}`);
+    }
   }
   if (parametri.length) {
     const rows = parametri.map(({ id: _id, kit_id: _kit, created_at: _c, updated_at: _u, ...p }) => ({ ...p, kit_id: newKit.id }));
@@ -156,11 +160,15 @@ export async function duplicateKit(id: string, newName?: string): Promise<Kit> {
 }
 export async function insertComponente(row: KitComponenteInsert) {
   const { data, error } = await supabase.from('kit_componenti').insert(normalizzaPatchRegoleKit(row)).select(COMPONENTE_CAMPI).single();
-  if (error) throw error; return data;
+  if (error) throw error;
+  if (!data) throw new Error('La riga non è stata creata. Verifica i permessi e riprova.');
+  return data;
 }
 export async function updateComponente(id: string, patch: KitComponenteUpdate) {
   const { data, error } = await supabase.from('kit_componenti').update(normalizzaPatchRegoleKit(patch)).eq('id',id).select(COMPONENTE_CAMPI).single();
-  if (error) throw error; return data;
+  if (error) throw error;
+  if (!data) throw new Error('La riga non è stata aggiornata. Verifica i permessi e riprova.');
+  return data;
 }
 export async function deleteComponente(id: string) {
   return eliminaConEsito("kit_componenti", id);
