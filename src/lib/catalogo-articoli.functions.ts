@@ -67,7 +67,7 @@ export const dettaglioArticoloGamma = createServerFn({ method: "POST" }).middlew
     const tecnico = tecnici.data?.find((a) => a.cod_gamma?.trim() === data.codice) ?? null;
     const utilizzo = tecnico ? await (async () => {
       const [kit, preventivi] = await Promise.all([
-        context.supabase.from("kit_componenti").select("id,ruolo,kit:kit(id,nome)").eq("articolo_id", tecnico.id),
+        context.supabase.from("kit_componenti").select("id,ruolo,kit:kit(id,nome)").eq("articolo_codice", data.codice),
         (async () => {
           const rows: { blocchi_preventivo: { preventivo_id: string } | null }[] = [];
           // PostgREST caps pages at 1,000 rows: count distinct documents over all pages.
