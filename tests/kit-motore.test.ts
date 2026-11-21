@@ -1,6 +1,5 @@
 import { expect, test } from 'bun:test';
-import { etichettaIncidenzaKit, famigliaKitLegacy, lineeKitAbilitate, patchArticoloKit, patchManualeKit, proponiCodiceKit, specificheKitDaValori, valoriSpecificheKit } from '../src/lib/kit-config';
-import { incidenzaEffettivaKit } from '../src/lib/incidenza';
+import { etichettaIncidenzaKit, lineeKitAbilitate, patchArticoloKit, patchManualeKit, proponiCodiceKit, specificheKitDaValori, valoriSpecificheKit } from '../src/lib/kit-config';
 
 for (const [linea,prefisso] of [['sistema_made','SM'],['showroom','SR'],['edilizia','ED'],['fotovoltaico','FV']] as const) {
   test(`FM90 codice ${linea}: prefisso, progressivo libero e codici personalizzati ignorati`,()=>{
@@ -30,20 +29,10 @@ test('FM90 finestra manuale salva costo unitario e listino, mai prezzo o margine
   const patch=patchManualeKit({codice_articolo_fornitore:'F01',fornitore_id:'f',marca:'Marca',descrizione:'Manuale',um:'PZ',costo:12.5,listino_fornitore:25,prezzo_unit:99,ricarico:50});
   expect(patch).toEqual({articolo_codice:null,codice_articolo_fornitore:'F01',fornitore_id:'f',marca:'Marca',descrizione:'Manuale',um:'PZ',costo:12.5,listino_fornitore:25});
 });
-test('FM90 specifiche tipizzate: virgola italiana, nulli omessi e nessuna specifica inventata',()=>{
-  expect(specificheKitDaValori('sistema_made',{spessore_mm:'12,5',h_max_m:'3',tipo_struttura:' SINGOLO ',isolante:'',nonPrevisto:'x'})).toEqual({spessore_mm:12.5,h_max_m:3,tipo_struttura:'SINGOLO'});
-  expect(specificheKitDaValori('showroom',{spessore_mm:'12,5'})).toEqual({});
-  expect(()=>specificheKitDaValori('sistema_made',{spessore_mm:'abc'})).toThrow();
-  expect(valoriSpecificheKit({spessore_mm:12.5,tipo_struttura:'A.B'})).toEqual({spessore_mm:'12,5',tipo_struttura:'A.B'});
-});
-test('FM90 driver non cancella l’incidenza esplicita, nemmeno zero',()=>{
-  expect(incidenzaEffettivaKit({incidenza:2,tipo_driver:'PASSO',valore_driver:0.5})).toBe(2);
-  expect(incidenzaEffettivaKit({incidenza:0,tipo_driver:'PASSO',valore_driver:0.5})).toBe(0);
-  expect(incidenzaEffettivaKit({incidenza:null,tipo_driver:'PASSO',valore_driver:0.5})).toBe(2);
-});
-test('FM90 solo l’inserimento rispetta il vincolo enum storico con famiglia coerente o ALTRO',()=>{
-  expect(famigliaKitLegacy('PARETE')).toBe('PARETE');
-  expect(famigliaKitLegacy('BAGNO')).toBe('ALTRO');
+test('FM92 specifiche non configurate non entrano nel salvataggio',()=>{
+  expect(specificheKitDaValori('sistema_made',{nonPrevisto:'x'})).toEqual({});
+  expect(specificheKitDaValori('showroom',{nonPrevisto:'x'})).toEqual({});
+  expect(valoriSpecificheKit(null)).toEqual({});
 });
 test('FM90 il codice duplicato del database produce un errore chiaro e nessun successo',async()=>{
   const script=`

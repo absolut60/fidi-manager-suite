@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { patchConFontePrezzo, prezzoConPrioritaCantiere, confrontoAggiornamento, costoRiga, importoRiga, isIntestazioneKit, isRigaValorizzata, marginePercRiga, pesoRigaGamma, pesoUnitarioRigaPreventivo, patchConImporto, quantitaDaIncidenza, segnoRiga, type PrezzoClienteGamma, type UnitaGammaRiga } from "./riga-preventivo";
 import type { Database } from "@/integrations/supabase/types";
 import { round2 } from "./pricing";
-import { fetchKit, fetchKitParametri } from './kit-api';
+import { fetchKit } from './kit-api';
 import { preparaRigheKitPreventivo, type RigaKitSaltata } from './kit-preventivo';
 import type { FasciaListino } from './articoli-api';
 import {
@@ -833,10 +833,9 @@ export async function addBloccoDaKit(args: {
   if (docErrore) throw docErrore;
   const kit = await fetchKit(args.kit_id);
   if (kit.linea !== documento.linea) throw new Error('Il kit deve appartenere alla stessa linea del preventivo.');
-  const parametri = await fetchKitParametri(kit.id);
   const codici = kit.componenti.map(c => c.articolo_codice).filter((c): c is string => !!c);
   const prezzi = await fetchPrezziPreventivo(condizioni, codici).catch(e => { if (!dedicati.size) throw e; return new Map(); });
-  const { righe, saltate } = preparaRigheKitPreventivo({ kit, quantitaBase: args.quantita_base, scontoPiede: args.sconto_piede, parametri, prezzi, dedicati });
+  const { righe, saltate } = preparaRigheKitPreventivo({ kit, quantitaBase: args.quantita_base, scontoPiede: args.sconto_piede, prezzi, dedicati });
   const totale = round2(righe.reduce((s, r) => s + n(r.importo), 0));
   const blocco = await insertBlocco({
     preventivo_id: args.preventivo_id, kit_id: args.kit_id, descrizione: kit.nome,

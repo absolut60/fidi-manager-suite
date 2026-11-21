@@ -11,11 +11,10 @@ export interface ConfigurazioneLineaPreventivo {
   blocchi: ComportamentiBlocchiLinea;
   /** F6: parametri di stampa dei PDF (pdf-export.ts legge solo da qui). */
   stampa: StampaLinea;
-  /** FM90 1a: configurazione del motore kit unico, non ancora usata dalle schermate. */
+  /** FM90 1a: configurazione del kit semplice, condivisa da schermate e inserimento. */
   kit: ConfigurazioneKitLinea;
 }
 
-export type ColonnaComponenteKit = 'ruolo' | 'lato' | 'strato' | 'tipo_driver' | 'valore_driver' | 'incidenza';
 export interface SpecificaKitLinea {
   codice: string;
   etichetta: string;
@@ -25,30 +24,19 @@ export interface ConfigurazioneKitLinea {
   prefissoCodice: 'SM' | 'SR' | 'ED' | 'FV';
   umBaseDefault: 'mq' | 'kit';
   etichettaQuantita: 'Incidenza per {um}' | 'Quantità per kit';
-  colonneComponente: readonly ColonnaComponenteKit[];
   specifiche: readonly SpecificaKitLinea[];
-  regole: 'complete' | 'solo_base';
-  parametri: boolean;
   calcoloSemplice: 'completo' | 'solo_quantita';
 }
 
 const KIT_SISTEMA: ConfigurazioneKitLinea = {
   prefissoCodice: 'SM', umBaseDefault: 'mq', etichettaQuantita: 'Incidenza per {um}',
-  regole: 'complete', parametri: true,
   calcoloSemplice: 'completo',
-  colonneComponente: ['ruolo', 'lato', 'strato', 'tipo_driver', 'valore_driver', 'incidenza'],
-  specifiche: [
-    { codice: 'tipo_struttura', etichetta: 'Tipo struttura', tipo: 'testo' },
-    { codice: 'spessore_mm', etichetta: 'Spessore (mm)', tipo: 'numero' },
-    { codice: 'h_max_m', etichetta: 'Altezza massima (m)', tipo: 'numero' },
-    { codice: 'isolante', etichetta: 'Isolante', tipo: 'testo' },
-  ],
+  specifiche: [],
 };
 const KIT_BASE: Omit<ConfigurazioneKitLinea, 'prefissoCodice'> = {
   umBaseDefault: 'kit', etichettaQuantita: 'Quantità per kit',
-  regole: 'solo_base', parametri: false,
   calcoloSemplice: 'solo_quantita',
-  colonneComponente: ['ruolo', 'incidenza'], specifiche: [],
+  specifiche: [],
 };
 
 export interface BandaStampa { titolo: string[]; sottotitolo: string[] }

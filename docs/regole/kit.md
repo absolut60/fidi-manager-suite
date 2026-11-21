@@ -105,3 +105,15 @@ Decisione di Andrea: questo è il metodo principale, in sostituzione della gesti
 - Import: intestazioni tolleranti (maiuscole, spazi, accenti, asterisco), numeri con virgola o punto, colonne in qualsiasi ordine. Validazioni per CODICE_KIT: testata coerente su tutte le righe, linea riconosciuta e abilitata, linea uguale al kit esistente, famiglia attiva della linea, ORDINE intero unico, numeri con `numeroCampoKit`, motore `calcolaKitRegole` (righe collegate inesistenti, cicli, divisori). Codice in `articoli_gamma` = Gamma (descrizione/UM del file ignorate), altrimenti manuale con DESCRIZIONE_ARTICOLO obbligatoria e UM consigliata. INCIDENZA del file diversa di oltre 0,000001 = avviso, non blocca.
 - Anteprima per kit (Nuovo / Aggiorna con righe sostituite, righe, manuali, avvisi, errori); i kit con errori sono esclusi. Salvataggio con `public.importa_kit_excel` (SECURITY INVOKER, RLS e secondo fattore invariati, linea controllata con `auth_linee_abilitate`), una chiamata atomica per kit: aggiorna testata e sostituisce tutte le righe, oppure crea. Specifiche della scheda conservate; per gli articoli manuali fornitore/marca/costo/listino passano dalla riga precedente con stesso ordine e codice. Kit non nel file intatti; un kit fallito non annulla gli altri. Le righe dei preventivi sono copie e non cambiano.
 - Righe senza alcun campo semplice (solo incidenza storica o regole) non sono esprimibili nel file: all'import risultano errore del motore.
+
+## Pulizia codice kit — FM92 fetta 1 (regola corrente)
+
+Questa sezione sostituisce le precedenze e i percorsi storici descritti nelle tappe precedenti, che restano documentazione storica.
+
+- Unico metodo: **kit semplice a righe**; `calcolaKitRegole` conserva formula, dipendenze numeriche tramite `riga_rif`, pesi, precisione ed errori. Nessun parametro, variante, operando testuale, incidenza esplicita o driver di ripiego.
+- Nessun campo semplice valorizzato (il solo peso non basta): quantità null, «Compila almeno un campo di calcolo (es. N. pezzi o Consumo)». Vale anche con incidenza storica valorizzata.
+- API e DTO usano un elenco positivo dei campi attuali, letture esplicite; scritture e duplicazione validano soltanto con `normalizzaPatchSempliceKit`. La famiglia è solo `famiglia_id`; l'enum storico non viene scritto.
+- Configurazione kit: `calcoloSemplice` completo o solo_quantita; niente colonne o specifiche del metodo precedente e nessuna conservazione/copertura dei valori storici nascosti nelle scritture della scheda o duplicazione.
+- Scheda e «Da kit» non caricano più tabelle dei parametri/varianti. Inserimento Gamma, condizioni FM71, peso e `righe_preventivo.incidenza` restano invariati; sottocategoria `kit_componenti.ruolo` conservata.
+- Template/export/import invariati. Nelle mappe Excel le colonne DB ritirate sono marcate «escluso: in rimozione FM92» finché i tipi generati le contengono. INCIDENZA nel file resta calcolata e non viene importata.
+- Nessuna migrazione né modifica al database in questa fetta. Prima della rimozione strutturale della fetta 2 va pubblicato questo codice; quella fetta dovrà adeguare anche le funzioni SQL coinvolte.

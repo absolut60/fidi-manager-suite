@@ -26,7 +26,7 @@ async def main():
     elif table=='rpc/get_user_roles':data=['amministratore']
     elif table=='task':data=dict(id=ID,titolo='Task prova allegato',stato='da_fare',titolare_id=ID,esecutore_id=None)
     elif table=='template_email':data=[dict(id=ID,nome='Template prova',oggetto='Prova',corpo='Prova',tipo='libero',attivo=True)] if files else []
-    elif table=='kit':data=dict(id=ID,nome='Kit prova',famiglia='ALTRO',um_base='PZ',componenti=[dict(id=ID,kit_id=ID,ordine=1,articolo_id=None,articolo=None,tipo_driver='INCIDENZA_FISSA',incidenza=1,valore_driver=1)] if files else [])
+    elif table=='kit':data=dict(id=ID,nome='Kit prova',linea='sistema_made',famiglia_id=None,um_base='PZ',componenti=[dict(id=ID,kit_id=ID,ordine=1,articolo_codice=None,articolo=None,n_pezzi=1)] if files else [])
     elif table=='eventi':data=dict(id=ID,nome='Evento prova',data_evento='2026-11-14',iscrizioni_aperte=False)
     elif table=='v_eventi_partecipanti_stato':data=people
     await route.fulfill(status=200,json=data)

@@ -1,5 +1,5 @@
 import type { KitConComponenti, KitFamiglia } from './kit-api';
-import { calcolaKitRegole, type ParametroRegoleKit } from './kit-regole';
+import { calcolaKitRegole } from './kit-regole';
 import { campiRigaGammaPreventivo } from './riga-gamma-preventivo';
 import { costoRiga, patchConFontePrezzo, pesoRigaGamma, quantitaDaIncidenza, type PrezzoClienteGamma, type PrezzoDedicatoCantiere } from './riga-preventivo';
 import type { LineaPreventivo } from './linee-preventivo';
@@ -18,11 +18,10 @@ export function gruppiKitPreventivo(kits: readonly KitConComponenti[], famiglie:
 /** Adatta il motore unico alle righe documento; nessuna formula kit o prezzo locale. */
 export function preparaRigheKitPreventivo(args: {
   kit: KitConComponenti; quantitaBase: number; scontoPiede: number;
-  parametri?: readonly ParametroRegoleKit[];
   prezzi: ReadonlyMap<string, PrezzoClienteGamma & { um?: string | null }>;
   dedicati: ReadonlyMap<string, PrezzoDedicatoCantiere>;
 }) {
-  const risultati = calcolaKitRegole({ componenti: args.kit.componenti, ...(args.parametri ? { parametri: args.parametri } : {}) });
+  const risultati = calcolaKitRegole({ componenti: args.kit.componenti });
   const righe: Omit<RigaInsert, 'blocco_id'>[] = [];
   const saltate: RigaKitSaltata[] = [];
   for (const c of args.kit.componenti) {

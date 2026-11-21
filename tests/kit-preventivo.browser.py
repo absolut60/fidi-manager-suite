@@ -20,7 +20,6 @@ async def main():
     data=[]
     if table=='kit':data=kit if 'id' in qs else [kit,{**kit,'id':'showroom','linea':'showroom','nome':'KIT SHOWROOM NON VISIBILE'}]
     elif table=='kit_famiglie':data=[dict(id='pareti',linea='sistema_made',nome='Pareti',ordine=1,attiva=True)]
-    elif table=='kit_parametri':data=[]
     elif table=='articoli_gamma':data=gamma
     elif table=='rpc/prezzi_preventivo_riferimento':
      calls.append(payload);data=[dict(articolo_codice=c,um='MQ',prezzo_base=10,sc1=17,sc2=5,sc3=0,sc4=0,sc5=0,sc6=0,maggiorazione_perc=10,costo_ultimo=3) for c in payload['_codici']]

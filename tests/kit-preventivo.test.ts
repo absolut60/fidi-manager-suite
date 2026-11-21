@@ -112,7 +112,7 @@ for (const altraLinea of [false, true]) test(`FM91 API inserimento kit: ${altraL
         };return q;
       }
     }}));
-    mock.module('@/lib/kit-api',()=>({fetchKit:async()=>kit,fetchKitParametri:async()=>[]}));
+    mock.module('@/lib/kit-api',()=>({fetchKit:async()=>kit}));
     const {addBloccoDaKit,ricalcolaBloccoSuNuovaQuantita}=await import('./src/lib/preventivi-api.ts');
     let errore='';let risultato;
     try{risultato=await addBloccoDaKit({preventivo_id:'prev',kit_id:'kit',quantita_base:100,ordine:1,cliente_id:null,sconto_piede:2,condizioni_prezzi:{cliente_id:null,listino_rif:1,macrocategoria_rif:'01',categoria_rif:'02',store_id:'sede'}});}catch(e){errore=e.message}

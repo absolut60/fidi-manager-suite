@@ -11,12 +11,11 @@ import { lineaPreventivo } from '@/lib/linee-preventivo';
 import { patchArticoloKit, patchManualeKit } from '@/lib/kit-config';
 import { prossimoOrdineKit } from '@/lib/kit-semplice-ui';
 import type { KitConComponenti, KitComponenteUpdate } from '@/lib/kit-api';
-import type { KitParametro } from '@/lib/kit-regole-ui';
 import { CampiCalcoloKit, NumeroKit, formatoQuantitaKit } from './CampiCalcoloKit';
 
 type Riga = KitConComponenti['componenti'][number];
-export function RigaKitDialog({ kit, row, parametri, onClose, onSave }: {
-  kit: KitConComponenti; row: Riga | null; parametri: readonly KitParametro[];
+export function RigaKitDialog({ kit, row, onClose, onSave }: {
+  kit: KitConComponenti; row: Riga | null;
   onClose: () => void; onSave: (patch: KitComponenteUpdate) => Promise<void>;
 }) {
   const [patch, setPatch] = useState<KitComponenteUpdate>({});
@@ -29,7 +28,7 @@ export function RigaKitDialog({ kit, row, parametri, onClose, onSave }: {
   const completa = lineaPreventivo(kit.linea).kit.calcoloSemplice === 'completo';
   const draft = { ...row, ...patch, ordine };
   const componenti = row ? kit.componenti.map(c => c.id === row.id ? draft : c) : [...kit.componenti, draft];
-  const risultato = calcolaKitRegole({ componenti, parametri }).find(r => r.ordine === ordine);
+  const risultato = calcolaKitRegole({ componenti }).find(r => r.ordine === ordine);
   const indicazione = !row && risultato?.errore === `Riga ${ordine}: Compila almeno un campo di calcolo (es. N. pezzi o Consumo)`;
   const righe = kit.componenti.map(c => ({ ordine: c.ordine, descrizione: c.articolo?.descrizione ?? c.descrizione ?? c.articolo_codice ?? 'Articolo da definire' }));
   const cambia = (p: KitComponenteUpdate) => setPatch(s => ({ ...s, ...p }));

@@ -26,9 +26,7 @@ import { lineaPreventivo } from '@/lib/linee-preventivo';
 import { lineeKitAbilitate, specificheKitDaValori, valoriSpecificheKit } from '@/lib/kit-config';
 import { deleteComponente, deleteKit, duplicateKit, fetchKit, fetchKitFamiglie, insertComponente, updateComponente, updateKit, type KitConComponenti, type KitComponenteUpdate, type KitUpdate, type KitFamiglia } from '@/lib/kit-api';
 import { messaggioEsitoEliminazione } from '@/lib/esito-eliminazione';
-import type { KitParametro } from '@/lib/kit-regole-ui';
 import { calcolaKitRegole, totalePesoKit } from '@/lib/kit-regole';
-import { fetchKitParametri } from '@/lib/kit-api';
 
 export const Route=createFileRoute('/_app/kit/$id')({
   head:()=>({meta:[{title:'Editor kit — FidiManager'},{name:'description',content:'Dati e componenti del kit: catalogo Gamma, articoli manuali e incidenze.'},{property:'og:title',content:'Editor kit — FidiManager'},{property:'og:description',content:'Dati e componenti del kit: catalogo Gamma, articoli manuali e incidenze.'},{property:'og:type',content:'website'},{name:'twitter:card',content:'summary'}]}),component:KitEditorPage,
@@ -38,10 +36,9 @@ function KitEditorPage(){
   const profilo=useLineeUtente(user?.id);
   const kit=useQuery({queryKey:['kit-v2',id],queryFn:()=>fetchKit(id)});
   const famiglie=useQuery({queryKey:['kit-famiglie'],queryFn:fetchKitFamiglie});
-  const parametri=useQuery({queryKey:['kit-parametri',id],queryFn:()=>fetchKitParametri(id)});
   const modificabile=puoGestireAnagrafichePreventivi(roles)&&lineeKitAbilitate(profilo.data?.linee_abilitate).some(l=>l.codice===kit.data?.linea);
   const verifica=()=>{if(!modificabile)throw new Error('Kit in sola lettura: linea non abilitata alla gestione');};
-  const invalidate=async()=>{await Promise.all([qc.invalidateQueries({queryKey:['kit-v2',id]}),qc.invalidateQueries({queryKey:['kit-lista-v2']}),qc.invalidateQueries({queryKey:['kit-codici']}),qc.invalidateQueries({queryKey:['kit-parametri',id]})]);};
+  const invalidate=async()=>{await Promise.all([qc.invalidateQueries({queryKey:['kit-v2',id]}),qc.invalidateQueries({queryKey:['kit-lista-v2']}),qc.invalidateQueries({queryKey:['kit-codici']})]);};
   const save=useMutation({scope:{id:`kit:${id}`},mutationFn:async(p:KitUpdate)=>{verifica();return updateKit(id,p);},onSuccess:invalidate,onError:(e:Error)=>toast.error(e.message)});
   const upd=useMutation({scope:{id:`componenti-kit:${id}`},mutationFn:async({rowId,patch}:{rowId:string;patch:KitComponenteUpdate})=>{verifica();return updateComponente(rowId,patch);},onSuccess:invalidate,onError:(e:Error)=>toast.error(e.message)});
   const ordineNuovo=()=>prossimoOrdineKit(kit.data?.componenti??[]);
@@ -49,34 +46,33 @@ function KitEditorPage(){
   const del=useMutation({mutationFn:async(rowId:string)=>{verifica();return deleteComponente(rowId);},onSuccess:async esito=>{if(esito.tipo !== "eliminato")toast.error(messaggioEsitoEliminazione(esito,'il componente'));await invalidate();},onError:(e:Error)=>toast.error(e.message)});
   const dup=useMutation({mutationFn:async()=>{verifica();return duplicateKit(id);},onSuccess:async k=>{await invalidate();toast.success('Kit duplicato');await navigate({to:'/kit/$id',params:{id:k.id}});},onError:(e:Error)=>toast.error(e.message)});
   const remove=useMutation({mutationFn:async()=>{verifica();return deleteKit(id);},onSuccess:async esito=>{if(esito.tipo !== "eliminato"){toast.error(messaggioEsitoEliminazione(esito,'il kit'));await invalidate();return;}await invalidate();toast.success('Kit eliminato');await navigate({to:'/kit'});},onError:(e:Error)=>toast.error(e.message)});
-  if(kit.isError||famiglie.isError||profilo.isError||parametri.isError)return <p role="alert" className="p-4 text-destructive">Caricamento del kit non riuscito.</p>;
-  if(!kit.data||!famiglie.data||!parametri.data||profilo.isPending)return <p role="status" className="p-4">Caricamento…</p>;
+  if(kit.isError||famiglie.isError||profilo.isError)return <p role="alert" className="p-4 text-destructive">Caricamento del kit non riuscito.</p>;
+  if(!kit.data||!famiglie.data||profilo.isPending)return <p role="status" className="p-4">Caricamento…</p>;
   return <KitEditorView key={kit.data.id} kit={kit.data} famiglie={famiglie.data} modificabile={modificabile} busy={add.isPending||dup.isPending||remove.isPending}
     onSave={async p=>{await save.mutateAsync(p);}} onPatch={async(rowId,patch)=>{await upd.mutateAsync({rowId,patch});}}
-    parametri={parametri.data} onAdd={async p=>{await add.mutateAsync(p);}} onDuplicate={()=>dup.mutate()} onDelete={()=>remove.mutate()} onDeleteRow={rowId=>del.mutate(rowId)}/>;
+    onAdd={async p=>{await add.mutateAsync(p);}} onDuplicate={()=>dup.mutate()} onDelete={()=>remove.mutate()} onDeleteRow={rowId=>del.mutate(rowId)}/>;
 }
 
-export function KitEditorView({kit,famiglie,modificabile,busy=false,onSave,onPatch,onAdd,onDuplicate,onDelete,onDeleteRow,parametri=[]}:{
+export function KitEditorView({kit,famiglie,modificabile,busy=false,onSave,onPatch,onAdd,onDuplicate,onDelete,onDeleteRow}:{
   kit:KitConComponenti;famiglie:KitFamiglia[];modificabile:boolean;busy?:boolean;
   onSave:(p:KitUpdate)=>Promise<void>;onPatch:(id:string,p:KitComponenteUpdate)=>Promise<void>;
   onAdd:(p:KitComponenteUpdate)=>Promise<void>;onDuplicate:()=>void;onDelete:()=>void;onDeleteRow:(id:string)=>void;
-  parametri?:readonly KitParametro[];
 
 }){
   const linea=lineaPreventivo(kit.linea);const config=linea.kit;
-  const [specifiche,setSpecifiche]=useState(()=>valoriSpecificheKit(kit.specifiche));
+  const [specifiche,setSpecifiche]=useState(()=>valoriSpecificheKit(kit.specifiche,kit.linea));
   const [dialog,setDialog]=useState<{row:ComponenteKitVista|null}|null>(null);
   const [errore,setErrore]=useState('');
   const [bozze,setBozze]=useState<Record<string,KitComponenteUpdate>>({});
   const componenti=kit.componenti.map(c=>({...c,...bozze[c.id]}));
-  const anteprima=calcolaKitRegole({componenti,parametri});
+  const anteprima=calcolaKitRegole({componenti});
   const totale=totalePesoKit(componenti,anteprima);
   const campi=config.calcoloSemplice==='completo'?CAMPI_SEMPLICI_KIT:CAMPI_SEMPLICI_KIT.filter(c=>c.codice==='n_pezzi');
   const testoTotale=<div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm"><strong>Peso totale: {formatoQuantitaKit(totale.pesoTotale)} kg/{kit.um_base}</strong>{totale.righeSenzaPeso>0&&<span className="text-muted-foreground">{totale.righeSenzaPeso} righe senza peso</span>}{totale.righeConErrore>0&&<span className="text-destructive">Totale parziale: {totale.righeConErrore} righe in errore</span>}</div>;
   const righeMenu=componenti.map(c=>({ordine:c.ordine,descrizione:c.articolo?.descrizione??c.descrizione??c.articolo_codice??c.codice_articolo_fornitore??'Articolo da definire'}));
   const famigliaLinea=famiglie.filter(f=>f.linea===kit.linea&&(f.attiva||f.id===kit.famiglia_id));
   const salva=async(p:KitUpdate)=>{try{setErrore('');await onSave(p);}catch(e){setErrore(e instanceof Error?e.message:'Salvataggio non riuscito');}};
-  const salvaSpecifiche=()=>{try{void salva({specifiche:specificheKitDaValori(kit.linea,specifiche,kit.specifiche)});}catch(e){setErrore(e instanceof Error?e.message:'Specifiche non valide');}};
+  const salvaSpecifiche=()=>{try{void salva({specifiche:specificheKitDaValori(kit.linea,specifiche)});}catch(e){setErrore(e instanceof Error?e.message:'Specifiche non valide');}};
   const props=(c:ComponenteKitVista)=>({row:c,linea:kit.linea,um:kit.um_base,modificabile,righe:righeMenu,anteprima:anteprima.find(r=>r.ordine===c.ordine),
     onChange:(p:KitComponenteUpdate)=>setBozze(s=>({...s,[c.id]:{...s[c.id],...p}})),
     onPatch:async(p:KitComponenteUpdate)=>{try{await onPatch(c.id,p);setErrore('');}catch(e){setErrore(e instanceof Error?e.message:'Salvataggio non riuscito');throw e;}finally{setBozze(s=>{const resto={...s[c.id]};for(const campo of Object.keys(p))Reflect.deleteProperty(resto,campo);return{...s,[c.id]:resto};});}},
@@ -102,7 +98,7 @@ export function KitEditorView({kit,famiglie,modificabile,busy=false,onSave,onPat
       <TableHead className="w-[9%] break-words px-1 text-xs">Incidenza</TableHead><TableHead className="break-words px-0.5 text-xs">Peso unit. (kg)</TableHead><TableHead className="w-[9%] break-words px-1 text-xs">Peso/{kit.um_base} (kg)</TableHead><TableHead className="w-11 px-0.5"><span className="sr-only">Azioni</span></TableHead></TableRow></TableHeader>
       <TableBody>{componenti.map(c=><ComponenteKit key={c.id} {...props(c)}/>)}</TableBody><TableFooter><TableRow><TableCell colSpan={campi.length+6} className="p-3">{testoTotale}</TableCell></TableRow></TableFooter></Table></div></>}
     </section>
-    {dialog&&modificabile&&<RigaKitDialog kit={kit} row={dialog.row} parametri={parametri} onClose={()=>setDialog(null)} onSave={async p=>{if(dialog.row)await onPatch(dialog.row.id,p);else await onAdd(p);}}/>}
+    {dialog&&modificabile&&<RigaKitDialog kit={kit} row={dialog.row} onClose={()=>setDialog(null)} onSave={async p=>{if(dialog.row)await onPatch(dialog.row.id,p);else await onAdd(p);}}/>}
 
   </div>;
 }

@@ -9,7 +9,7 @@ BID='33333333-3333-4333-8333-333333333333'
 CLIENT='99999999-9999-4999-8999-999999999999'
 base=dict(id='22222222-2222-4222-8222-222222222222',blocco_id=BID,tipo_riga='articolo_singolo',descrizione='Articolo da scegliere',articolo_codice=None,articolo_id=None,quantita=1,prezzo_unit=None,sconti_gamma=[],maggiorazione_perc=0,sconto_perc=0,costo=None,um='PZ',ordine=10,segno=1,importo=0,incidenza=1,articolo=None)
 site=dict(id=CID,nome='Cantiere Empoli',cliente_id=CLIENT,lead_id=None,created_by=None,agente_codice=None)
-dedicati=[dict(id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',cantiere_id=CID,cod_gamma='AKIBLUE12.1.A',descrizione='Articolo dedicato',prezzo_vendita_speciale=6.5,sconti=[],maggiorazione_perc=0,costo_netto_speciale=3.1,created_at='2026-11-14'),dict(id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',cantiere_id=CID,cod_gamma='ABBALB-G02562',descrizione='Altro articolo dedicato',prezzo_vendita_speciale=6.462,sconti=[],maggiorazione_perc=0,costo_netto_speciale=None,created_at='2026-11-14')]
+dedicati=[dict(id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',cantiere_id=CID,codice='AKIBLUE12.1.A',descrizione='Articolo dedicato',prezzo_vendita_speciale=6.5,sconti=[],maggiorazione_perc=0,costo_netto_speciale=3.1,created_at='2026-11-14'),dict(id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',cantiere_id=CID,cod_gamma='ABBALB-G02562',descrizione='Altro articolo dedicato',prezzo_vendita_speciale=6.462,sconti=[],maggiorazione_perc=0,costo_netto_speciale=None,created_at='2026-11-14')]
 async def main():
  async with async_playwright() as p:
   browser=await p.chromium.launch(headless=True)
@@ -39,7 +39,7 @@ async def main():
     elif table=='rpc/prezzi_preventivo_cliente':
      data=[dict(articolo_codice=c,prezzo_base=12,sc1=10,sc2=0,sc3=0,sc4=0,sc5=0,sc6=0,maggiorazione_perc=5,costo_ultimo=20 if c=='ART-MANUALE-SOTTO' else 4,um='PZ') for c in route.request.post_data_json['_codici']]
     elif table=='kit':
-     kit=dict(id='cccccccc-cccc-4ccc-8ccc-cccccccccccc',nome='Kit prezzi prova',famiglia='parete',um_base='PZ',componenti=[dict(id='comp',articolo_id='art',incidenza=2,ordine=1,tipo_driver=None,valore_driver=None,articolo=dict(id='art',cod_gamma='AKIBLUE12.1.A',descrizione='Componente dedicato',um='PZ',peso_unit=1,listini_acquisto=[],listini_vendita=[]))])
+     kit=dict(id='cccccccc-cccc-4ccc-8ccc-cccccccccccc',nome='Kit prezzi prova',linea='sistema_made',famiglia_id=None,um_base='PZ',componenti=[dict(id='comp',articolo_codice='AKIBLUE12.1.A',n_pezzi=2,ordine=1,articolo=dict(id='art',codice='AKIBLUE12.1.A',descrizione='Componente dedicato',um='PZ',peso_netto=1))])
      data=kit if 'id=eq.' in url else [kit]
     elif table=='righe_preventivo' and method=='POST' and isinstance(route.request.post_data_json,list):
      data=route.request.post_data_json

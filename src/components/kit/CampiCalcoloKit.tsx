@@ -5,11 +5,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CAMPI_SEMPLICI_KIT, numeroCampoKit, testoNumeroKit, type CampoSempliceKit } from '@/lib/kit-semplice-ui';
 import { formatNumeroIt } from '@/lib/numero-it';
 import type { CampiSempliciKit } from '@/lib/kit-regole';
-import type { RigaMenuKit } from '@/lib/kit-regole-ui';
+import type { RigaMenuKit } from '@/lib/kit-semplice-ui';
 import { AiutoCalcolaDallaRiga } from './AiutoCalcolaDallaRiga';
 
 export function NumeroKit({ campo, etichetta, valore, disabled, onChange, onSave, compatto = false }: {
-  campo: CampoSempliceKit | 'incidenza'; etichetta: string; valore: number | null | undefined;
+  campo: CampoSempliceKit; etichetta: string; valore: number | null | undefined;
   disabled: boolean; onChange: (v: number | null) => void; onSave?: (v: number | null) => Promise<void>; compatto?: boolean;
 }) {
   const [testo, setTesto] = useState(testoNumeroKit(valore, false));

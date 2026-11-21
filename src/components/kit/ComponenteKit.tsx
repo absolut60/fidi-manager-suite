@@ -6,7 +6,7 @@ import { TableCell, TableRow } from '@/components/ui/table';
 import type { KitConComponenti, KitComponenteUpdate } from '@/lib/kit-api';
 import { lineaPreventivo, type LineaPreventivo } from '@/lib/linee-preventivo';
 import type { RigaRegoleKit } from '@/lib/kit-regole';
-import type { RigaMenuKit } from '@/lib/kit-regole-ui';
+import type { RigaMenuKit } from '@/lib/kit-semplice-ui';
 import { CAMPI_SEMPLICI_KIT, type CampoSempliceKit } from '@/lib/kit-semplice-ui';
 import { CampiCalcoloKit, campoCalcoloKit, NumeroKit, formatoQuantitaKit } from './CampiCalcoloKit';
 
@@ -19,13 +19,8 @@ export function ComponenteKit({ row, linea, um, modificabile: autorizzato, mobil
   const config = lineaPreventivo(linea);
   const completa = config.kit.calcoloSemplice === 'completo';
   const campi = completa ? CAMPI_SEMPLICI_KIT : CAMPI_SEMPLICI_KIT.filter(c => c.codice === 'n_pezzi');
-  const modificabile = autorizzato && row.variante_ruolo == null;
+  const modificabile = autorizzato;
   const colSpan = campi.length + 6;
-  if (row.variante_ruolo != null) {
-    const testo = <p className="break-words text-xs text-muted-foreground">Articolo da variante: {row.variante_ruolo}</p>;
-    return mobile ? <Card className={`min-w-0 border-l-4 ${config.classiBordo}`}><CardContent className="p-3">{testo}</CardContent></Card>
-      : <TableRow><TableCell colSpan={colSpan}>{testo}</TableCell></TableRow>;
-  }
   const cambia = (campo: CampoSempliceKit, n: number | null) => onChange({ [campo]: n });
   const salva = (campo: CampoSempliceKit, n: number | null) => onPatch({ [campo]: n });
   const campoProps = { row, completa, righe, disabled: !modificabile, onChange: cambia, onSave: salva };
@@ -37,7 +32,7 @@ export function ComponenteKit({ row, linea, um, modificabile: autorizzato, mobil
     {row.note && <p className="break-words text-xs text-muted-foreground">{row.note}</p>}
   </div>;
   const quantita = <div className="space-y-1" data-quantita-riga={row.ordine}><strong className="break-all font-mono text-xs">{formatoQuantitaKit(anteprima?.quantitaPerUnita)}</strong>
-    {anteprima && <p className="text-xs text-muted-foreground">{({ semplice: 'Calcolo', regola: 'Regola', incidenza: 'Incidenza', driver: 'Calcolo storico' })[anteprima.fonte]}</p>}</div>;
+    {anteprima && <p className="text-xs text-muted-foreground">Calcolo</p>}</div>;
   const peso = <NumeroKit campo="peso_unitario" etichetta={`Peso unitario riga ${row.ordine}`} valore={row.peso_unitario} disabled={!modificabile} compatto={!mobile}
     onChange={n => cambia('peso_unitario', n)} onSave={n => salva('peso_unitario', n)}/>;
   const azioni = modificabile && <div className="flex shrink-0 flex-col gap-1"><Button variant="ghost" size="icon" className="h-10 w-10" aria-label={`Modifica riga ${row.ordine}`} title="Modifica riga" onClick={onEdit}><Pencil className="h-4 w-4"/></Button>

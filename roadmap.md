@@ -543,3 +543,9 @@
 - [x] FM67 linguette Testata/Corpo/Piede (variante opt-in tabs.tsx) + Margine/Totale imponibile allineati a destra
 - [x] FM67 cella U.M.: esponente solo "1"/"2" (tolto "UM"), title/aria-label "Unità 1"/"Unità 2"; 732 test verdi, schermate 375/1280, nessuna modifica DB
 - [x] FM68 loghi allineati alla regola MADE: login `w-[341px] max-w-full h-auto` + aspectRatio (48 px come l'old h-12), header mobile `w-32` anche sotto sm; 732 test verdi, nessuna modifica DB
+
+## FM92 — Pulizia kit, fetta 1
+- [x] Solo motore semplice, tipi/select/scritture senza campi ritirati; nessuna migrazione o scrittura DB.
+- [x] 1217 test verdi (guardia AST inclusa), controllo automatico tipi/build OK, dieci incidenze P60 identiche.
+- [x] Verifica temporanea 375/1280 senza overflow o errori; percorso autenticato non verificato.
+- [x] Ricerca residui limitata a tipi generati e mappa Excel; rapporto e regole aggiornati.

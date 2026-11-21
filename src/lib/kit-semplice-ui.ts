@@ -20,7 +20,7 @@ export const CAMPI_SEMPLICI_KIT = [
 ] as const;
 export type CampoSempliceKit = keyof CampiSempliciKit;
 
-export function numeroCampoKit(campo: CampoSempliceKit | 'incidenza', testo: string): number | null {
+export function numeroCampoKit(campo: CampoSempliceKit, testo: string): number | null {
   if (!testo.trim()) return null;
   const n = parseNumeroIt(testo);
   if (n == null) throw new Error('Scrivi un numero valido, es. 0,6.');
@@ -44,3 +44,4 @@ export function normalizzaPatchSempliceKit<T extends Partial<CampiSempliciKit>>(
 export function prossimoOrdineKit(righe: readonly { ordine: number }[]): number {
   return Math.max(0, ...righe.map(r => r.ordine)) + 1;
 }
+export type RigaMenuKit = { ordine: number; descrizione: string };
