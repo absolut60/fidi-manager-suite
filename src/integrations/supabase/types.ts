@@ -10958,6 +10958,7 @@ export type Database = {
         Args: { _importazione: string; _righe: Json; _tabella: string }
         Returns: Json
       }
+      importa_kit_excel: { Args: { _kit: Json }; Returns: Json }
       imposta_iscrizioni_evento: {
         Args: { _aperte: boolean; _evento_id: string }
         Returns: {

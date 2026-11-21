@@ -7,7 +7,11 @@ import { puoGestireAnagrafichePreventivi } from '@/lib/permessi-preventivi';
 import { Card, CardContent } from '@/components/ui/card';
 import { FiltroMultiplo } from '@/components/filtro-multiplo';
 import { BadgeLinea } from '@/components/preventivatore/BadgeLinea';
-import { Plus, Copy, ArrowUpRight, Layers } from 'lucide-react';
+import { Plus, Copy, ArrowUpRight, Layers, Upload, Download, FileSpreadsheet, MoreHorizontal } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ImportaKitDialog } from '@/components/kit/ImportaKitDialog';
+import { costruisciWorkbookKit, KIT_ESEMPIO_SINTETICO, kitExcelDaKit } from '@/lib/kit-excel';
+import { salvaWorkbook } from '@/lib/salva-workbook';
 import { toast } from 'sonner';
 import { duplicateKit, fetchKitsWithComponenti, fetchKitFamiglie, type KitConComponenti, type KitFamiglia } from '@/lib/kit-api';
 import { lineeKitAbilitate } from '@/lib/kit-config';
@@ -21,7 +25,7 @@ export const Route=createFileRoute('/_app/kit/')({
   component:KitListPage,
 });
 function KitListPage(){
-  const {user,roles}=useAuth();const qc=useQueryClient();const [open,setOpen]=useState(false);
+  const {user,roles}=useAuth();const qc=useQueryClient();const [open,setOpen]=useState(false);const [imp,setImp]=useState(false);
   const profilo=useLineeUtente(user?.id);
   const linee=lineeKitAbilitate(profilo.data?.linee_abilitate);
   const kit=useQuery({queryKey:['kit-lista-v2'],queryFn:fetchKitsWithComponenti});
@@ -32,19 +36,34 @@ function KitListPage(){
     if(!puoGestireAnagrafichePreventivi(roles)||!k||!linee.some(l=>l.codice===k.linea))throw new Error('Linea non abilitata alla gestione');
     return duplicateKit(id);
   },onSuccess:()=>{qc.invalidateQueries({queryKey:['kit-lista-v2']});qc.invalidateQueries({queryKey:['kit-codici']});toast.success('Kit duplicato');},onError:(e:Error)=>toast.error(e.message)});
+  const fam=famiglie.data??[];
+  const scarica=(kits:KitConComponenti[],nome:string,esempio=false)=>{
+    const dati=kits.map(k=>kitExcelDaKit(k,fam));
+    salvaWorkbook(costruisciWorkbookKit(esempio&&!dati.length?[KIT_ESEMPIO_SINTETICO]:dati,fam),nome).catch((e:Error)=>toast.error(e.message));
+  };
+  const oggi=new Date().toLocaleDateString('it-IT').split('/').reverse().join('-');
   return <><KitListView kits={kit.data??[]} famiglie={famiglie.data??[]} linee={linee} selezionate={filtri.linee} onFilter={v=>setCampo('linee',v)}
     gestisce={puoGestireAnagrafichePreventivi(roles)} onNew={()=>setOpen(true)} onDuplicate={id=>dup.mutate(id)} busy={dup.isPending}
-    loading={kit.isPending||famiglie.isPending||profilo.isPending} error={kit.isError||famiglie.isError||profilo.isError}/><NuovoKitDialog open={open} onOpenChange={setOpen}/></>;
+    onImporta={()=>setImp(true)} onTemplate={()=>scarica((kit.data??[]).filter(k=>k.codice==='SM-PAR-2L-75-50'),'modello-kit.xlsx',true)} onEsporta={ks=>scarica(ks,`kit-${oggi}.xlsx`)}
+    loading={kit.isPending||famiglie.isPending||profilo.isPending} error={kit.isError||famiglie.isError||profilo.isError}/><NuovoKitDialog open={open} onOpenChange={setOpen}/><ImportaKitDialog open={imp} onOpenChange={setImp} lineeAbilitate={linee.map(l=>l.codice)} famiglie={fam}/></>;
 }
-export function KitListView({kits,famiglie,linee,selezionate,onFilter,gestisce,onNew,onDuplicate,busy=false,loading=false,error=false}:{
+export function KitListView({kits,famiglie,linee,selezionate,onFilter,gestisce,onNew,onDuplicate,onImporta,onTemplate,onEsporta,busy=false,loading=false,error=false}:{
   kits:KitConComponenti[];famiglie:KitFamiglia[];linee:ConfigurazioneLineaPreventivo[];selezionate:string[];onFilter:(v:string[])=>void;
-  gestisce:boolean;onNew:()=>void;onDuplicate:(id:string)=>void;busy?:boolean;loading?:boolean;error?:boolean;
+  gestisce:boolean;onNew:()=>void;onDuplicate:(id:string)=>void;onImporta?:()=>void;onTemplate?:()=>void;onEsporta?:(kits:KitConComponenti[])=>void;busy?:boolean;loading?:boolean;error?:boolean;
 }){
   const selezioneValida=selezionate.filter(s=>linee.some(l=>l.codice===s));
   const visibili=linee.filter(l=>linee.length===1||!selezioneValida.length||selezioneValida.includes(l.codice));
   const presenti=kits.filter(k=>visibili.some(l=>l.codice===k.linea));
   return <div className="flex min-w-0 flex-col gap-5 p-3 md:p-4 lg:p-6">
-    <header className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-2xl font-semibold">Kit e lavorazioni</h1>{gestisce&&linee.length>0&&<Button className="min-h-10" onClick={onNew}><Plus className="h-4 w-4"/>Nuovo kit</Button>}</header>
+    <header className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-2xl font-semibold">Kit e lavorazioni</h1>{gestisce&&linee.length>0&&<div className="flex items-center gap-2">
+      <div className="hidden items-center gap-2 md:flex">
+        <Button variant="outline" className="min-h-10" onClick={onImporta}><Upload className="h-4 w-4"/>Importa da Excel</Button>
+        <Button variant="outline" className="min-h-10" onClick={onTemplate}><FileSpreadsheet className="h-4 w-4"/>Scarica template</Button>
+        <Button variant="outline" className="min-h-10" disabled={!presenti.length} onClick={()=>onEsporta?.(presenti)}><Download className="h-4 w-4"/>Esporta kit</Button>
+      </div>
+      <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="min-h-10 md:hidden"><MoreHorizontal className="h-4 w-4"/>Altro</Button></DropdownMenuTrigger>
+        <DropdownMenuContent align="end"><DropdownMenuItem className="min-h-10" onSelect={()=>onImporta?.()}><Upload className="h-4 w-4"/>Importa da Excel</DropdownMenuItem><DropdownMenuItem className="min-h-10" onSelect={()=>onTemplate?.()}><FileSpreadsheet className="h-4 w-4"/>Scarica template</DropdownMenuItem><DropdownMenuItem className="min-h-10" disabled={!presenti.length} onSelect={()=>onEsporta?.(presenti)}><Download className="h-4 w-4"/>Esporta kit</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
+      <Button className="min-h-10" onClick={onNew}><Plus className="h-4 w-4"/>Nuovo kit</Button></div>}</header>
     {linee.length>1&&<div className="w-full sm:max-w-sm"><FiltroMultiplo etichetta="Linea" opzioni={linee.map(l=>({valore:l.codice,label:l.etichetta}))} selezionati={selezionate.filter(s=>linee.some(l=>l.codice===s))} onChange={onFilter} testoTutti="Tutte le linee" /></div>}
     {error?<p role="alert" className="text-sm text-destructive">Caricamento dei kit non riuscito.</p>:loading?<p role="status" className="text-sm text-muted-foreground">Caricamento…</p>:presenti.length===0?<div className="flex items-center gap-3 border-y py-8 text-muted-foreground"><Layers className="h-6 w-6"/><p>Nessun kit per le linee selezionate.</p></div>:
       visibili.map(linea=>{

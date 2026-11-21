@@ -169,3 +169,37 @@ export async function updateComponente(id: string, patch: KitComponenteUpdate) {
 export async function deleteComponente(id: string) {
   return eliminaConEsito("kit_componenti", id);
 }
+
+// ——— FM91 2c: import Excel (formato solo in kit-excel.ts) ———
+export async function codiciGammaEsistenti(codici: readonly string[]): Promise<Set<string>> {
+  const trovati = new Set<string>();
+  for (let i = 0; i < codici.length; i += 150) {
+    const { data, error } = await supabase.from('articoli_gamma').select('codice').in('codice', codici.slice(i, i + 150));
+    if (error) throw error;
+    for (const a of data ?? []) trovati.add(a.codice);
+  }
+  return trovati;
+}
+export async function kitEsistentiPerCodice(codici: readonly string[]): Promise<Map<string, { linea: LineaPreventivo; righe: number }>> {
+  const esito = new Map<string, { linea: LineaPreventivo; righe: number }>();
+  for (let i = 0; i < codici.length; i += 150) {
+    const { data, error } = await supabase.from('kit').select('codice,linea,componenti:kit_componenti(count)').in('codice', codici.slice(i, i + 150));
+    if (error) throw error;
+    for (const k of (data ?? []) as unknown as { codice: string; linea: LineaPreventivo; componenti: { count: number }[] }[]) {
+      esito.set(k.codice, { linea: k.linea, righe: k.componenti[0]?.count ?? 0 });
+    }
+  }
+  return esito;
+}
+export interface EsitoImportKit { codice: string; esito: 'creato' | 'aggiornato' | 'fallito'; messaggio?: string }
+/** Un kit per chiamata: ogni RPC è atomica; un fallimento non annulla gli altri kit. */
+export async function salvaKitImportati(payloads: readonly import('./kit-excel').PayloadKitImport[]): Promise<EsitoImportKit[]> {
+  const esiti: EsitoImportKit[] = [];
+  for (const p of payloads) {
+    const { data, error } = await supabase.rpc('importa_kit_excel', { _kit: p as unknown as Database['public']['Functions']['importa_kit_excel']['Args']['_kit'] });
+    if (error) { esiti.push({ codice: p.codice, esito: 'fallito', messaggio: error.message }); continue; }
+    const esito = (data as { esito?: string } | null)?.esito === 'creato' ? 'creato' : 'aggiornato';
+    esiti.push({ codice: p.codice, esito });
+  }
+  return esiti;
+}
