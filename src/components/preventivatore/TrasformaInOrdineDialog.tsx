@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { importoRiga } from "@/lib/riga-preventivo";
-import { isRigaOrdinabile, statoEvasioneRiga } from "@/lib/evasione";
+import { isRigaOrdinabile, evasioneRigaInUnita, quantitaOrdineUm1 } from "@/lib/evasione";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -27,7 +27,7 @@ type Stato = {
 };
 
 const fmt = (v: number) =>
-  v.toLocaleString("it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 4 });
+  v.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
 
 export function TrasformaInOrdineDialog({
   open,
@@ -47,7 +47,7 @@ export function TrasformaInOrdineDialog({
     const next: Stato["righe"] = {};
     for (const b of prev.blocchi) {
       for (const r of b.righe) {
-        const { residuo } = statoEvasioneRiga(r);
+        const { residuo } = evasioneRigaInUnita(r);
         if (residuo <= 0) continue;
         next[r.id] = { selected: true, qta: residuo };
       }
@@ -61,7 +61,7 @@ export function TrasformaInOrdineDialog({
       for (const r of b.righe) {
         const s = stato.righe[r.id];
         if (!s?.selected || !s.qta) continue;
-        tot += importoRiga({ ...r, quantita: s.qta });
+        tot += importoRiga({ ...r, quantita: quantitaOrdineUm1(r, s.qta) });
       }
     }
     return tot;
@@ -80,7 +80,7 @@ export function TrasformaInOrdineDialog({
         for (const r of b.righe) {
           const s = stato.righe[r.id];
           if (!s?.selected || !s.qta || s.qta <= 0) continue;
-          righe.push({ riga_id: r.id, quantita: s.qta });
+          righe.push({ riga_id: r.id, quantita: quantitaOrdineUm1(r, s.qta) });
         }
         if (righe.length) selezione.push({ blocco_id: b.id, righe });
       }
@@ -144,7 +144,7 @@ export function TrasformaInOrdineDialog({
           {prev.blocchi.map((b, bi) => {
             const righeValorizzate = b.righe.filter((r) => isRigaOrdinabile(r.tipo_riga));
             const righeOrdinabili = righeValorizzate.filter((r) => {
-              const { residuo } = statoEvasioneRiga(r);
+              const { residuo } = evasioneRigaInUnita(r);
               return residuo > 0;
             });
             const tutteSel =
@@ -166,7 +166,7 @@ export function TrasformaInOrdineDialog({
                     {righeOrdinabili.length}/{righeValorizzate.length} ordinabili
                   </div>
                 </div>
-                <table className="w-full text-xs">
+                <table className="w-full min-w-[680px] text-xs">
                   <thead className="text-[10px] uppercase text-muted-foreground">
                     <tr>
                       <th className="w-8 p-2"></th>
@@ -187,7 +187,7 @@ export function TrasformaInOrdineDialog({
                       </tr>
                     )}
                     {righeValorizzate.map((r) => {
-                      const { ordinata: qOrd, quantita: qTot, residuo } = statoEvasioneRiga(r);
+                      const { ordinata: qOrd, quantita: qTot, residuo, um } = evasioneRigaInUnita(r);
                       const evasa = residuo <= 0;
                       const s = stato.righe[r.id];
                       return (
@@ -210,7 +210,7 @@ export function TrasformaInOrdineDialog({
                               </Badge>
                             )}
                           </td>
-                          <td className="p-2 font-mono">{r.um ?? ""}</td>
+                          <td className="p-2 font-mono">{um ?? ""}</td>
                           <td className="p-2 text-right font-mono">{fmt(qTot)}</td>
                           <td className="p-2 text-right font-mono">{fmt(qOrd)}</td>
                           <td className="p-2 text-right font-mono font-semibold">
@@ -222,6 +222,7 @@ export function TrasformaInOrdineDialog({
                             ) : (
                               <EditableNumberCell
                                 value={s?.qta ?? residuo}
+                                decimali={4}
                                 step={0.01}
                                 onCommit={(v) => {
                                   const q = Math.max(0, Math.min(residuo, Number(v ?? 0)));

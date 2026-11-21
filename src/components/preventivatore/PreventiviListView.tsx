@@ -26,7 +26,7 @@ import { lettereElenco } from "@/lib/preventivo-creazione";
 import { NuovoPreventivoDialog } from "@/components/preventivatore/NuovoPreventivoDialog";
 import { BadgeEvasione, BadgeStato, BadgeTipoDoc } from "@/components/preventivatore/BadgeTestata";
 import { SchedaLista, ElencoSchede } from "@/components/lista-responsive";
-import { computeEvasione } from "@/lib/evasione";
+import { statoEvasionePreventivo } from "@/lib/evasione";
 import { nomeLeadPreventivo } from "@/lib/soggetto-preventivo";
 import { useUtentiAssegnabili } from '@/lib/use-utenti-assegnabili';
 import { nomeAssegnato } from '@/lib/assegnazione-preventivo';
@@ -43,7 +43,7 @@ function SoggettoElenco({ r }: { r: ElencoPreventivoItem }) {
 const euro = (v: number | null | undefined) =>
   `€ ${formatNumeroIt(v ?? 0, { minDecimals: 2, maxDecimals: 2 })}`;
 const evasioneDi = (r: ElencoPreventivoItem) =>
-  computeEvasione((r.blocchi ?? []).flatMap((b) => b.righe ?? []));
+  statoEvasionePreventivo({ righe: (r.blocchi ?? []).flatMap((b) => b.righe ?? []), chiuso_at: r.chiuso_at });
 
 /** Testo che va a capo su massimo 2 righe, intero nel title. */
 function Testo({ children, className }: { children: string | null | undefined; className?: string }) {
@@ -173,8 +173,8 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
         <TableCell className="px-2 py-2 align-top tabular-nums">{formatDate(r.data)}{!isOrdine && <span className="mt-1 block text-[11px] text-muted-foreground 2xl:hidden">{`Valido al ${r.validita ? formatDate(r.validita) : "—"}`}</span>}</TableCell>
         {!isOrdine && <TableCell className="hidden px-2 py-2 align-top tabular-nums 2xl:table-cell">{r.validita ? formatDate(r.validita) : "—"}</TableCell>}
         {!isOrdine && <TableCell className="hidden px-2 py-2 align-top 2xl:table-cell"><BadgeTipoDoc tipoDoc={r.tipo_doc} className="whitespace-normal px-2 text-[11px] leading-tight" /></TableCell>}
-        <TableCell className="px-2 py-2 align-top"><BadgeStato stato={r.stato} className="px-2 text-[11px]" />{!isOrdine && <BadgeTipoDoc tipoDoc={r.tipo_doc} className="mt-1 whitespace-normal px-2 text-[11px] leading-tight 2xl:hidden" />}<BadgeEvasione stato={evasioneDi(r)} className="mt-1 px-2 text-[11px] 2xl:hidden" /></TableCell>
-        <TableCell className="hidden px-2 py-2 align-top 2xl:table-cell"><BadgeEvasione stato={evasioneDi(r)} className="px-2 text-[11px]" /></TableCell>
+        <TableCell className="px-2 py-2 align-top"><BadgeStato stato={r.stato} className="px-2 text-[11px]" />{!isOrdine && <BadgeTipoDoc tipoDoc={r.tipo_doc} className="mt-1 whitespace-normal px-2 text-[11px] leading-tight 2xl:hidden" />}<BadgeEvasione {...evasioneDi(r)} className="mt-1 px-2 text-[11px] 2xl:hidden" /></TableCell>
+        <TableCell className="hidden px-2 py-2 align-top 2xl:table-cell"><BadgeEvasione {...evasioneDi(r)} className="px-2 text-[11px]" /></TableCell>
         <TableCell className={cn("px-2 py-2 align-top text-right tabular-nums", alternativa ? "text-muted-foreground" : "font-semibold")}>{euro(r.totale)}</TableCell>
       </TableRow>
     );
@@ -297,7 +297,7 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
                         <span className="flex flex-wrap justify-end gap-1">
                           <BadgeLinea linea={r.linea} />
                           <BadgeStato stato={r.stato} className="px-2 text-[11px]" />
-                          <BadgeEvasione stato={evasioneDi(r)} className="px-2 text-[11px]" />
+                          <BadgeEvasione {...evasioneDi(r)} className="px-2 text-[11px]" />
                           {!isOrdine && r.assegnato_a === user?.id && <Badge variant="outline" className="text-xs">Per te</Badge>}
                         </span>
                       }

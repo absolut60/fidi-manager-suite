@@ -1,4 +1,5 @@
 import { fetchPrezzoPreventivoArticolo, type CondizioniPrezziPreventivo } from "@/lib/prezzi-preventivo";
+import { CellaEvasione } from "./CellaEvasione";
 import { statoEvasioneRiga } from "@/lib/evasione";
 import { messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { opzioniPrezziCantiere } from "@/lib/cantiere-listini-api";
@@ -66,6 +67,7 @@ import { useIsTablet } from "@/hooks/use-tablet";
 
 export function RigheTable({
   blocco,
+  mostraEvasione = false,
   preventivoId,
   fascia,
   readOnly = false,
@@ -76,6 +78,7 @@ export function RigheTable({
 }: {
   /** FM75 F3c: regime IVA del documento (toggle BS solo con regimiIva e agevolata_10_bs). */
   regimeIva?: string | null;
+  mostraEvasione?: boolean;
   /** FM75 F1: linea del preventivo, passata dalla pagina. */
   linea?: unknown;
   condizioniPrezzi: CondizioniPrezziPreventivo;
@@ -108,7 +111,7 @@ export function RigheTable({
 
   const { bloccoConMisure: conMisure, righeStampabili, regimiIva, articoloInDefinizione, colonneGammaRiga: gamma, importoInTestataBlocco } = lineaPreventivo(linea).blocchi;
   // Colonne della tabella: 17 complete (+1 incidenza), senza colonne Gamma −4 +1 (Ricarico %).
-  const nColonne = (gamma ? 17 : 14) + (conMisure ? 1 : 0);
+  const nColonne = (gamma ? 17 : 14) + (conMisure ? 1 : 0) + (mostraEvasione ? 1 : 0);
   const conBs = regimiIva && regimeIva === "agevolata_10_bs";
   const calcs = useMemo(() => calcolaBlocco(blocco.righe), [blocco.righe]);
   const [riepilogoRigaId, setRiepilogoRigaId] = useState<string | null>(null);
@@ -256,7 +259,7 @@ export function RigheTable({
 
   const righeProps = (r: (typeof blocco.righe)[number], idx: number) => ({
     row: r,
-    conMisure, righeStampabili, conBs, articoloInDefinizione, gamma,
+    conMisure, righeStampabili, conBs, articoloInDefinizione, gamma, mostraEvasione,
     prezzoCantiere: segnoPrezzoCantiere(r, dedicati.get(r.articolo_codice ?? r.articolo?.cod_gamma ?? "")),
     idx,
     fascia,
@@ -289,7 +292,7 @@ export function RigheTable({
       <div className="hidden max-w-full overflow-x-auto pv-tabella:block">
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <table className={cn("w-full table-fixed", tabellaKit ? "[&_th]:!w-auto [&_th]:!static [&_td]:!static [&_th]:whitespace-normal [&_td]:break-words" : !gamma ? (conMisure ? "min-w-[1326px]" : "min-w-[1266px]") : conMisure ? "min-w-[1470px]" : "min-w-[1410px]", "border-separate border-spacing-0 text-xs")}>
-          {tabellaKit && <colgroup>{['w-[1%]', 'w-[3%]', 'w-[10%]', 'w-[19%]', 'w-[4%]', 'w-[5%]', 'w-[5%]', 'w-[6%]', 'w-[4%]', 'w-[4%]', 'w-[4%]', 'w-[6%]', 'w-[3%]', 'w-[7%]', 'w-[5%]', 'w-[5%]', 'w-[4%]', 'w-[5%]'].map((c, i) => <col key={i} className={c}/>)}</colgroup>}
+          {tabellaKit && <colgroup>{['w-[1%]', 'w-[3%]', 'w-[10%]', 'w-[19%]', 'w-[4%]', 'w-[5%]', 'w-[5%]', ...(mostraEvasione ? ['w-[10%]'] : []), 'w-[6%]', 'w-[4%]', 'w-[4%]', 'w-[4%]', 'w-[6%]', 'w-[3%]', 'w-[7%]', 'w-[5%]', 'w-[5%]', 'w-[4%]', 'w-[5%]'].map((c, i) => <col key={i} className={c}/>)}</colgroup>}
           <thead>
             <tr className="whitespace-nowrap bg-pv-testa text-[10px] uppercase tracking-wide text-muted-foreground [&>th]:bg-pv-testa [&>th]:border-b">
               <th className="w-[18px] px-1 py-1.5 sticky left-0 z-10"></th>
@@ -299,6 +302,7 @@ export function RigheTable({
               <th className="w-[64px] px-1 py-1.5 text-left">U.M.</th>
               {conMisure && <th className="w-[60px] px-1 py-1.5 text-right">Incid.</th>}
               <th className="w-[76px] px-1 py-1.5 text-right">Quantità</th>
+              {mostraEvasione && <th className="w-[160px] px-1 py-1.5 text-right">Evasione</th>}
               <th className="w-[84px] px-1 py-1.5 text-right">Prezzo lordo</th>
               <th className="w-[68px] px-1 py-1.5 text-right">Sconti</th>
               {gamma ? <>
@@ -442,6 +446,7 @@ function AddRowMenu({
 
 
 type RigaProps = {
+  mostraEvasione: boolean;
   conMisure: boolean;
   /** FM75 F2c: mostra il flag Stampabile (solo linee che lo prevedono). */
   righeStampabili: boolean;
@@ -586,9 +591,7 @@ function useCelleRiga(p: RigaProps) {
     </>
   );
 
-  const { ordinata: qOrd, stato: evasione } = statoEvasioneRiga(row);
-  const evasa = evasione === "evasa";
-  const parziale = evasione === "parziale";
+  const evasa = statoEvasioneRiga(row).stato === "evasa";
 
   return {
     tipo, isCompact, isSubtotal, valorizzata, segno, kitSenzaPrezzo,
@@ -605,16 +608,8 @@ function useCelleRiga(p: RigaProps) {
         onCommit={(v) => salvaInUnita({ incidenza: v })} />
     ),
     quantita: (
-      <div className="flex flex-col items-end gap-0.5">
-        <EditableNumberCell value={unita.quantita} decimali={2} ariaLabel="Quantità riga"
-          onCommit={(v) => salvaInUnita({ quantita: v })} {...(evasa ? { disabled: true } : {})} />
-        {(parziale || evasa) && (
-          <span className={cn("text-[10px] font-semibold", evasa ? "text-[#009246]" : "text-amber-600")}
-            title={evasa ? "Riga completamente evasa" : "Ordinato parzialmente"}>
-            {evasa ? "✓ Evasa " : "Ord. "}{qOrd.toLocaleString("it-IT")}/{q.toLocaleString("it-IT")}
-          </span>
-        )}
-      </div>
+      <EditableNumberCell value={unita.quantita} decimali={2} ariaLabel="Quantità riga"
+        onCommit={(v) => salvaInUnita({ quantita: v })} {...(evasa ? { disabled: true } : {})} />
     ),
     lordo: (
       <span className={cn("relative block", p.prezzoCantiere && "text-pv-verde [&_input]:text-pv-verde")} title={p.prezzoCantiere ? "Prezzo cantiere" : undefined}>
@@ -804,7 +799,7 @@ function RigaRow(p: RigaProps) {
     return (
       <tr ref={sortable.setNodeRef} style={style} className={rowClass}>
         {grip}
-        <td colSpan={(p.gamma ? 15 : 12) + (p.conMisure ? 1 : 0)}></td>
+        <td colSpan={(p.gamma ? 15 : 12) + (p.conMisure ? 1 : 0) + (p.mostraEvasione ? 1 : 0)}></td>
         <td className="text-right"><AzioniRiga {...p} /></td>
       </tr>
     );
@@ -821,6 +816,7 @@ function RigaRow(p: RigaProps) {
       <td className="px-0.5 py-0.5">{v && c.um}</td>
       {p.conMisure && <td className="px-0.5 py-0.5 text-right">{v && c.incidenza}</td>}
       <td className="px-0.5 py-0.5 text-right">{v && c.quantita}</td>
+      {p.mostraEvasione && <td className="px-1 py-1.5 text-right"><CellaEvasione riga={p.row} /></td>}
       <td className="px-0.5 py-0.5 text-right">{v && c.lordo}</td>
       <td className="px-0.5 py-0.5 text-right">{v && c.sconti}</td>
       {p.gamma ? <>
@@ -886,6 +882,7 @@ function RigaScheda(p: RigaProps) {
         <div className="mt-2 grid grid-cols-3 gap-x-2 gap-y-1.5 sm:grid-cols-4">
           {campo("U.M.", c.um)}
           {campo("Quantità", c.quantita)}
+          {p.mostraEvasione && valore("Evasione", <CellaEvasione riga={p.row} />, "col-span-2")}
           {campo("Prezzo lordo", c.lordo)}
           {campo("Sconti", c.sconti)}
           {p.gamma ? campo("Extra %", c.extra, undefined, "Sconto extra %") : campo("Ricarico %", c.ricarico)}

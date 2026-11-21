@@ -3,14 +3,16 @@
  * delle sue righe (qta_ordinata vs quantita). Si applica SOLO ai documenti
  * di tipo 'preventivo' — gli ordini mantengono il loro stato proprio.
  */
-/** Stati già presentati dall'interfaccia; la chiusura sarà esposta nella fetta 2. */
+import { rigaInUnita, type UnitaGammaRiga } from './riga-preventivo';
+
 export type StatoEvasione = "aperto" | "parziale" | "evaso";
 export type StatoEvasioneDocumento = StatoEvasione | "chiuso";
 
-export const EVASIONE_LABEL: Record<StatoEvasione, string> = {
+export const EVASIONE_LABEL: Record<StatoEvasioneDocumento, string> = {
   aperto: "Aperto",
   parziale: "Parz. evaso",
   evaso: "Evaso",
+  chiuso: "Chiuso",
 };
 
 const EPS = 0.0001;
@@ -60,8 +62,29 @@ export function statoEvasionePreventivo({ righe, chiuso_at }: {
   return { stato: chiuso_at ? "chiuso" : stato, evaso_in_parte: !!chiuso_at && stato === "parziale" };
 }
 
-/** Adattatore di compatibilità: nessun nuovo stato visibile prima della fetta 2. */
-export function computeEvasione(righe: readonly RigaQta[]): StatoEvasione {
-  const { stato } = statoEvasionePreventivo({ righe, chiuso_at: null });
-  return stato === "chiuso" ? "aperto" : stato;
+export function mostraColonnaEvasione({ tipo, righe, chiuso_at }: {
+  tipo: string; righe: readonly RigaQta[]; chiuso_at: string | null;
+}): boolean {
+  return tipo === 'preventivo' && (!!chiuso_at || righe.some(r => statoEvasioneRiga(r).ordinata > 0));
+}
+
+export function etichettaEvasioneDocumento(esito: ReturnType<typeof statoEvasionePreventivo>): string {
+  return esito.evaso_in_parte ? 'Chiuso · evaso in parte' : EVASIONE_LABEL[esito.stato];
+}
+
+export function motivoTrasformazioneDisabilitata(esito: ReturnType<typeof statoEvasionePreventivo>): string | null {
+  return esito.stato === 'chiuso' ? 'Preventivo chiuso: riaprilo per trasformarlo'
+    : esito.stato === 'evaso' ? 'Tutte le righe sono già state ordinate' : null;
+}
+
+type RigaUnitaEvasione = RigaQta & { um?: string | null; um_scelta?: string | null; unita_gamma?: UnitaGammaRiga | null };
+export function evasioneRigaInUnita(riga: RigaUnitaEvasione) {
+  const esito = statoEvasioneRiga(riga);
+  const converti = (quantita: number) => rigaInUnita({ ...riga, prezzo_unit: null, quantita }, riga.unita_gamma).quantita ?? 0;
+  return { ...esito, um: rigaInUnita({ ...riga, prezzo_unit: null }, riga.unita_gamma).um,
+    quantita: converti(esito.quantita), ordinata: converti(esito.ordinata), residuo: converti(esito.residuo) };
+}
+
+export function quantitaOrdineUm1(riga: RigaUnitaEvasione, quantitaMostrata: number): number {
+  return rigaInUnita({ ...riga, prezzo_unit: null }, riga.unita_gamma, { quantita: quantitaMostrata }).patchUm1.quantita ?? 0;
 }

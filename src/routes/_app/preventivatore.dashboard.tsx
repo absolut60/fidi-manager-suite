@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { FileText, Package, AlertCircle, CheckCircle2, ShoppingCart, CircleDashed, CircleDot } from "lucide-react";
-import { computeEvasione, statoEvasioneRiga, type StatoEvasione } from "@/lib/evasione";
+import { statoEvasionePreventivo, statoEvasioneRiga, type StatoEvasioneDocumento } from "@/lib/evasione";
 import { EvasioneBadge } from "@/components/preventivatore/EvasioneBadge";
 
 export const Route = createFileRoute("/_app/preventivatore/dashboard")({
@@ -35,7 +35,7 @@ interface DocRecente {
   stato: string;
   totale: number | null;
   cliente: string | null;
-  evasione?: StatoEvasione;
+  evasione?: StatoEvasioneDocumento;
 }
 
 interface DashStats {
@@ -68,7 +68,7 @@ function round2(n: number) {
 
 /** Valore residuo non ordinato di un preventivo, coerente col totale documento mostrato. */
 function residuoPreventivo(righe: RigaMini[], totaleDocumento: number | null | undefined): number {
-  const evasione = computeEvasione(righe);
+  const evasione = statoEvasionePreventivo({ righe, chiuso_at: null }).stato;
   const totale = Number(totaleDocumento ?? 0);
 
   if (evasione === "evaso") return 0;
@@ -160,7 +160,7 @@ async function fetchDashboardStats(): Promise<DashStats> {
   let valoreOfferteMese = 0;
   for (const p of (tuttiPrev ?? []) as any[]) {
     const righe = flatten(p.blocchi);
-    const stato = computeEvasione(righe);
+    const stato = statoEvasionePreventivo({ righe, chiuso_at: null }).stato;
     if (stato === "aperto") prevAperti++;
     else if (stato === "parziale") prevParziali++;
     else prevEvasi++;
@@ -185,7 +185,7 @@ async function fetchDashboardStats(): Promise<DashStats> {
       stato: p.stato,
       totale: p.totale,
       cliente: p.cliente_id ? (nomiMap.get(p.cliente_id) ?? null) : null,
-      evasione: computeEvasione(flatten(p.blocchi)),
+      evasione: statoEvasionePreventivo({ righe: flatten(p.blocchi), chiuso_at: null }).stato,
     }));
 
   const mapOrd = (rows: any[] | null): DocRecente[] =>

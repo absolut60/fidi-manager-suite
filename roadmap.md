@@ -1,3 +1,8 @@
+# FM93 — Fetta 2 interfaccia
+- [x] Badge e chiusura/riapertura, trasformazione per chi vede.
+- [x] Colonna condizionata e conversione quantità ordine, elenco ed errore eliminazione.
+- [x] 1239 test verdi, controllo tipi OK, fotografie 320/375/768/812/1280/1920 e commit; nessuna migrazione.
+
 # FM93 — Evasione preventivi, fetta 1
 - [x] Migrazione unica 0257: quantità derivate, riallineamento, chiusura/riapertura, permessi e protezione cancellazione.
 - [x] Fonte unica TypeScript e API senza nuovi controlli interfaccia; 1232 test verdi.

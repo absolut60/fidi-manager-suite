@@ -11,6 +11,9 @@ import type { CantiereRow } from "@/lib/cantieri";
 import { FasciaPreventivo, type RiepilogoPreventivo } from '@/components/preventivatore/FasciaPreventivo';
 import { TestataPreventivo } from '@/components/preventivatore/TestataPreventivo';
 import { PiedePreventivo } from '@/components/preventivatore/PiedePreventivo';
+import { AzioniEvasione } from "@/components/preventivatore/AzioniEvasione";
+import { statoEvasionePreventivo, mostraColonnaEvasione } from "@/lib/evasione";
+import { chiudiPreventivo, riapriPreventivo } from "@/lib/preventivi-api";
 import { BadgeTestata } from '@/components/preventivatore/BadgeTestata';
 import { ClientePreventivoDialog } from '@/components/preventivatore/ClientePreventivoDialog';
 import { LeadPreventivoDialog } from '@/components/preventivatore/LeadPreventivoDialog';
@@ -195,6 +198,12 @@ function PreventivoEditorPage() {
     await save.mutateAsync(patch);
     if (prev?.blocchi.some(b => b.righe.length > 0)) toast.info("Le righe esistenti non cambiano: usa Aggiorna listini per vedere le differenze");
   };
+
+  const chiusura = useMutation({
+    mutationFn: (chiudi: boolean) => chiudi ? chiudiPreventivo(id) : riapriPreventivo(id),
+    onSuccess: (_, chiudi) => { toast.success(chiudi ? "Preventivo chiuso" : "Preventivo riaperto"); invalidate(); qc.invalidateQueries({ queryKey: ["preventivi", "elenco"] }); qc.invalidateQueries({ queryKey: ["dashboard-stats"] }); },
+    onError: (e: unknown) => toast.error((e as Error).message),
+  });
 
   const delPrev = useMutation({
     mutationFn: () => deletePreventivo(id),
@@ -537,13 +546,12 @@ function PreventivoEditorPage() {
               </Dialog>
             )}
 
+            {prev.tipo === "preventivo" ? <AzioniEvasione
+              esito={statoEvasionePreventivo({ righe: prev.blocchi.flatMap(b => b.righe), chiuso_at: prev.chiuso_at })}
+              inCorso={chiusura.isPending} onTrasforma={() => setTrasformaOpen(true)} onChiusura={v => chiusura.mutate(v)}
+              {...(puoScrivere ? { onElimina: () => setEliminaOpen(true) } : {})}
+            /> : puoScrivere && <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="Altre azioni"><MoreHorizontal className="size-5"/></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem className="text-destructive" onSelect={()=>setEliminaOpen(true)}><Trash2 className="size-4 mr-2"/>Elimina</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}
 
-            {puoScrivere && prev.tipo === "preventivo" && (
-              <Button size="sm" variant="outline" className="border-pv-verde text-pv-verde hover:bg-pv-verde-tenue hover:text-pv-verde" onClick={() => setTrasformaOpen(true)}>
-                <ShoppingCart className="mr-1 h-4 w-4" /> Trasforma in ordine
-              </Button>
-            )}
-            {puoScrivere && <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="Altre azioni"><MoreHorizontal className="size-5"/></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem className="text-destructive" onSelect={()=>setEliminaOpen(true)}><Trash2 className="size-4 mr-2"/>Elimina</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}
 
           </div>
         </div>
@@ -626,7 +634,7 @@ function PreventivoEditorPage() {
                       </Card>
                     ) : (
                       prev.blocchi.map((b, idx) => (
-                        <BloccoCard linea={prev.linea} regimeIva={prev.regime_iva} condizioniPrezzi={prev} key={b.id} blocco={b} index={idx} preventivoId={id} fascia={(prev.fascia_listino ?? "A") as FasciaListino} readOnly={!modificabile} clienteId={prev.cliente_id ?? null} cantiereId={prev.cantiere_id} {...sedeGiacenze} scontoPiede={Number(prev.sconto_piede_perc ?? 0)} />
+                        <BloccoCard mostraEvasione={mostraColonnaEvasione({ tipo: prev.tipo, righe: prev.blocchi.flatMap(b => b.righe), chiuso_at: prev.chiuso_at })} linea={prev.linea} regimeIva={prev.regime_iva} condizioniPrezzi={prev} key={b.id} blocco={b} index={idx} preventivoId={id} fascia={(prev.fascia_listino ?? "A") as FasciaListino} readOnly={!modificabile} clienteId={prev.cliente_id ?? null} cantiereId={prev.cantiere_id} {...sedeGiacenze} scontoPiede={Number(prev.sconto_piede_perc ?? 0)} />
                       ))
                     )}
                   </div>
@@ -691,8 +699,8 @@ function PreventivoEditorPage() {
 }
 
 function BloccoCard({
-  blocco, index, preventivoId, fascia, readOnly = false, clienteId, scontoPiede, cantiereId, sedeGiacenzaId, sedeNome, condizioniPrezzi, linea, regimeIva,
-}: { linea: unknown; regimeIva?: string | null; condizioniPrezzi: CondizioniPrezziPreventivo; blocco: BloccoConRighe; index: number; preventivoId: string; fascia: FasciaListino; readOnly?: boolean; clienteId: string | null; scontoPiede: number; cantiereId: string | null; sedeGiacenzaId?: string | null; sedeNome?: string | null }) {
+  mostraEvasione, blocco, index, preventivoId, fascia, readOnly = false, clienteId, scontoPiede, cantiereId, sedeGiacenzaId, sedeNome, condizioniPrezzi, linea, regimeIva,
+}: { mostraEvasione: boolean; linea: unknown; regimeIva?: string | null; condizioniPrezzi: CondizioniPrezziPreventivo; blocco: BloccoConRighe; index: number; preventivoId: string; fascia: FasciaListino; readOnly?: boolean; clienteId: string | null; scontoPiede: number; cantiereId: string | null; sedeGiacenzaId?: string | null; sedeNome?: string | null }) {
   const qc = useQueryClient();
   const conMisure = lineaPreventivo(linea).blocchi.bloccoConMisure;
   const sortable = useSortable({ id: blocco.id });
@@ -824,7 +832,7 @@ function BloccoCard({
             </div>
           )}
 
-          <RigheTable linea={linea} regimeIva={regimeIva} condizioniPrezzi={condizioniPrezzi} blocco={blocco} preventivoId={preventivoId} fascia={fascia} readOnly={readOnly} clienteId={clienteId} cantiereId={cantiereId} sedeGiacenzaId={sedeGiacenzaId} sedeNome={sedeNome} scontoPiede={scontoPiede} />
+          <RigheTable mostraEvasione={mostraEvasione} linea={linea} regimeIva={regimeIva} condizioniPrezzi={condizioniPrezzi} blocco={blocco} preventivoId={preventivoId} fascia={fascia} readOnly={readOnly} clienteId={clienteId} cantiereId={cantiereId} sedeGiacenzaId={sedeGiacenzaId} sedeNome={sedeNome} scontoPiede={scontoPiede} />
         </CardContent>
       </Card>
     </div>

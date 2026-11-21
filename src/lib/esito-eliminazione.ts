@@ -52,7 +52,8 @@ export function messaggioEsitoEliminazione(esito: EsitoEliminazione, cosa: strin
   }
   if (esito.tipo === "permessi") return `Non hai i permessi per eliminare ${cosa}.`;
   if (esito.tipo === "parziale") return `Eliminati ${esito.eliminati} su ${esito.richiesti}: per gli altri non hai i permessi.`;
-  if (esito.tipo === "errore") return `Eliminazione non riuscita: ${esito.messaggio}`;
+  if (esito.tipo === "errore") return /^Questo preventivo ha \d+ ordini collegati: elimina prima gli ordini\.$/.test(esito.messaggio)
+    ? esito.messaggio : `Eliminazione non riuscita: ${esito.messaggio}`;
   return "";
 }
 

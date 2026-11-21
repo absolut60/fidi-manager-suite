@@ -4,6 +4,7 @@
 - Article list stock per site/logistics reads only public.giacenze_articoli_sede, an aggregated copy of _giacenze_articoli_catalogo rebuilt only by ricalcola_giacenze_articoli_sede (Inngest step after the price-list import), because aggregating all stock on every search was slow; price stays in _prezzo_vendita_articoli (_codici filter).
 - Quote-line net price and amount are computed only in src/lib/riga-preventivo.ts (Gamma cascade, amount rounded to 2 decimals half-up), so every save path, dialog and PDF agree.
 - Quote-unit display and edit patches share rigaInUnita (delegating to scheda-articolo helpers) with PDF rows; unit metadata extends the existing Gamma weight batch so no per-row metadata query is added.
+- Quote fulfilment states, column visibility and order-unit quantities live only in evasione; it delegates display/reverse conversion to rigaInUnita, so header, list, rows and order submission cannot diverge.
 - Quote incidence and quantity share quantitaDaIncidenza/incidenzaDaQuantita/patchConImporto for row saves, block changes and kits, avoiding duplicated bidirectional formulas.
 - Block/document margins share margineTotaliRighe; kit headings have no article links; Gamma weights are read in batches with user RLS, never inferred from technical weights.
 - Quote creation uses dedicated client RPCs without changing shared lite readers; alternative letters use the read-only SQL function and its documented TS twin, while dates/defaults live in preventivo-creazione.ts to keep creation rules testable.
