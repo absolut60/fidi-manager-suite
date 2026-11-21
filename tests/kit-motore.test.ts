@@ -30,9 +30,20 @@ test('FM90 finestra manuale salva costo unitario e listino, mai prezzo o margine
   expect(patch).toEqual({articolo_codice:null,codice_articolo_fornitore:'F01',fornitore_id:'f',marca:'Marca',descrizione:'Manuale',um:'PZ',costo:12.5,listino_fornitore:25});
 });
 test('FM92 specifiche non configurate non entrano nel salvataggio',()=>{
-  expect(specificheKitDaValori('sistema_made',{nonPrevisto:'x'})).toEqual({});
-  expect(specificheKitDaValori('showroom',{nonPrevisto:'x'})).toEqual({});
+  expect(specificheKitDaValori('sistema_made',{passo:'600',passo_um:'mm',nonPrevisto:'x'})).toEqual({});
+  for (const linea of ['showroom','edilizia','fotovoltaico'] as const) expect(specificheKitDaValori(linea,{isolante:'Lana minerale',nonPrevisto:'x'})).toEqual({});
   expect(valoriSpecificheKit(null)).toEqual({});
+});
+test('FM92 lettura e copia delle quattro specifiche configurate, senza chiavi storiche',()=>{
+  const originali={tipo_struttura:'Parete',spessore_mm:75,h_max_m:3.5,isolante:'Lana minerale',passo:600,passo_um:'mm'};
+  const valori=valoriSpecificheKit(originali,'sistema_made');
+  expect(valori).toEqual({tipo_struttura:'Parete',spessore_mm:'75',h_max_m:'3,5',isolante:'Lana minerale'});
+  expect(specificheKitDaValori('sistema_made',valori)).toEqual({tipo_struttura:'Parete',spessore_mm:75,h_max_m:3.5,isolante:'Lana minerale'});
+  expect(originali.passo).toBe(600);
+});
+test('FM92 specifiche numeriche configurate rifiutano valori non validi',()=>{
+  expect(()=>specificheKitDaValori('sistema_made',{spessore_mm:'non numerico'})).toThrow();
+  expect(()=>specificheKitDaValori('sistema_made',{h_max_m:'non numerico'})).toThrow();
 });
 test('FM90 il codice duplicato del database produce un errore chiaro e nessun successo',async()=>{
   const script=`

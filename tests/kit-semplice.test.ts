@@ -122,7 +122,7 @@ test('FM91 celle a quattro decimali, modifica completa e valore invariato', () =
   expect(calcolaKitRegole({ componenti: [{ ordine: 1, consumo: valore }] })[0]?.quantitaPerUnita).toBe(valore);
 });
 
-test('FM92 nessuna specifica storica configurata o riscritta', () => {
-  expect(LINEE_PREVENTIVO.sistema_made.kit.specifiche).toEqual([]);
-  expect(specificheKitDaValori('sistema_made', { passo: '600', nonPrevisto: 'x' })).toEqual({});
+test('FM92 specifiche di testata indipendenti dal motore semplice, senza passo storico', () => {
+  expect(LINEE_PREVENTIVO.sistema_made.kit.specifiche.map(campo => campo.codice)).toEqual(['tipo_struttura', 'spessore_mm', 'h_max_m', 'isolante']);
+  expect(specificheKitDaValori('sistema_made', { tipo_struttura: 'Parete', spessore_mm: '75', h_max_m: '3,5', isolante: 'Lana minerale', passo: '600', passo_um: 'mm', nonPrevisto: 'x' })).toEqual({ tipo_struttura: 'Parete', spessore_mm: 75, h_max_m: 3.5, isolante: 'Lana minerale' });
 });

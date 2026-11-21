@@ -1,7 +1,7 @@
 import { eliminaConEsito } from "./esito-eliminazione";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
-import { ERRORE_CODICE_KIT, proponiCodiceKit, specificheKitDaValori } from './kit-config';
+import { ERRORE_CODICE_KIT, proponiCodiceKit, specificheKitDaValori, valoriSpecificheKit } from './kit-config';
 import { lineaPreventivo, type LineaPreventivo } from './linee-preventivo';
 import { normalizzaPatchSempliceKit } from './kit-semplice-ui';
 
@@ -100,7 +100,7 @@ export async function duplicateKit(id: string, newName?: string): Promise<Kit> {
     const codice = proponiCodiceKit(orig.linea, await fetchCodiciKit(orig.linea));
     try {
       newKit = await createKit({ codice, linea: orig.linea, famiglia_id: orig.famiglia_id,
-        nome: newName ?? `${orig.nome} (copia)`, um_base: orig.um_base, descrizione_tecnica: orig.descrizione_tecnica, specifiche: specificheKitDaValori(orig.linea, {}) });
+        nome: newName ?? `${orig.nome} (copia)`, um_base: orig.um_base, descrizione_tecnica: orig.descrizione_tecnica, specifiche: specificheKitDaValori(orig.linea, valoriSpecificheKit(orig.specifiche, orig.linea)) });
       break;
     } catch (e) { if (!(e instanceof Error) || e.message!==ERRORE_CODICE_KIT || tentativo===2) throw e; }
   }

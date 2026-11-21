@@ -1,3 +1,7 @@
+# FM92 — Correzione specifiche di testata
+- [x] Ripristinate quattro specifiche Sistema MADE e duplicazione delle sole chiavi configurate; nessuna modifica al database.
+- [x] Suite completa: 1219 test verdi, zero fallimenti; compilazione automatica OK, controlli del commit obbligatori.
+
 # FM91 — Kit nel preventivo, tappa 3
 - [x] Nuovo selettore linea/famiglia, inserimento Gamma condiviso/motore semplice, ruolo kit nullable 0254 e ritiro residui senza chiamanti.
 - [x] 1257 test/0 errori con guardie AST, foto 375/1280, rapporto; 1 kit/10 componenti/10 preventivi/12 blocchi/62 righe e impronte invariati, zero scritture di prova.

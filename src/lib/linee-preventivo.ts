@@ -31,7 +31,12 @@ export interface ConfigurazioneKitLinea {
 const KIT_SISTEMA: ConfigurazioneKitLinea = {
   prefissoCodice: 'SM', umBaseDefault: 'mq', etichettaQuantita: 'Incidenza per {um}',
   calcoloSemplice: 'completo',
-  specifiche: [],
+  specifiche: [
+    { codice: 'tipo_struttura', etichetta: 'Tipo struttura', tipo: 'testo' },
+    { codice: 'spessore_mm', etichetta: 'Spessore (mm)', tipo: 'numero' },
+    { codice: 'h_max_m', etichetta: 'Altezza massima (m)', tipo: 'numero' },
+    { codice: 'isolante', etichetta: 'Isolante', tipo: 'testo' },
+  ],
 };
 const KIT_BASE: Omit<ConfigurazioneKitLinea, 'prefissoCodice'> = {
   umBaseDefault: 'kit', etichettaQuantita: 'Quantità per kit',
