@@ -59,23 +59,16 @@ export const COLONNE_KIT_EXCEL: readonly ColonnaKitExcel[] = [
  * esclusa con il motivo. Le chiavi devono coincidere con types.ts (test e typecheck).
  */
 export const MAPPA_DB_KIT: Record<keyof Tabelle['kit']['Row'], string> = {
-  id: 'escluso: identificativo tecnico', codice: 'CODICE_KIT', nome: 'NOME_KIT', linea: 'LINEA', famiglia_id: 'FAMIGLIA',
-  famiglia: 'escluso: in rimozione FM92', um_base: 'UM_BASE', descrizione_tecnica: 'DESCRIZIONE_KIT',
-  specifiche: 'escluso: specifiche della scheda, conservate in aggiornamento', tipo_struttura: 'escluso: in rimozione FM92',
-  spessore: 'escluso: in rimozione FM92', h_max: 'escluso: in rimozione FM92', passo: 'escluso: in rimozione FM92', passo_um: 'escluso: in rimozione FM92',
-  isolante: 'escluso: in rimozione FM92', created_at: 'escluso: tecnico', updated_at: 'escluso: tecnico',
+  id: 'escluso: identificativo tecnico', codice: 'CODICE_KIT', nome: 'NOME_KIT', linea: 'LINEA', famiglia_id: 'FAMIGLIA', um_base: 'UM_BASE', descrizione_tecnica: 'DESCRIZIONE_KIT',
+  specifiche: 'escluso: specifiche della scheda, conservate in aggiornamento', created_at: 'escluso: tecnico', updated_at: 'escluso: tecnico',
 };
 export const MAPPA_DB_KIT_COMPONENTI: Record<keyof Tabelle['kit_componenti']['Row'], string> = {
-  id: 'escluso: tecnico', kit_id: 'escluso: tecnico', articolo_id: 'escluso: in rimozione FM92', created_at: 'escluso: tecnico', updated_at: 'escluso: tecnico',
+  id: 'escluso: tecnico', kit_id: 'escluso: tecnico', created_at: 'escluso: tecnico', updated_at: 'escluso: tecnico',
   ordine: 'ORDINE', ruolo: 'CATEGORIA', articolo_codice: 'CODICE_ARTICOLO', codice_articolo_fornitore: 'CODICE_ARTICOLO',
   descrizione: 'DESCRIZIONE_ARTICOLO', um: 'UM', n_pezzi: 'N_PEZZI', passo: 'PASSO', passo_2: 'PASSO_2', consumo: 'CONSUMO', lati: 'LATI',
-  confezione: 'CONFEZIONE', sfrido: 'SFRIDO', riga_rif: 'CALCOLA_DALLA_RIGA', incidenza: 'escluso: in rimozione FM92', peso_unitario: 'PESO_UNITARIO', note: 'NOTE',
+  confezione: 'CONFEZIONE', sfrido: 'SFRIDO', riga_rif: 'CALCOLA_DALLA_RIGA', peso_unitario: 'PESO_UNITARIO', note: 'NOTE',
   fornitore_id: 'escluso: articolo manuale, conservato dalla riga precedente con stesso ordine e codice',
   marca: 'escluso: articolo manuale, conservato', costo: 'escluso: articolo manuale, conservato', listino_fornitore: 'escluso: articolo manuale, conservato',
-  lato: 'escluso: in rimozione FM92', strato: 'escluso: in rimozione FM92', tipo_driver: 'escluso: in rimozione FM92', valore_driver: 'escluso: in rimozione FM92',
-  regola_base: 'escluso: in rimozione FM92', regola_moltiplica: 'escluso: in rimozione FM92', regola_dividi_1: 'escluso: in rimozione FM92',
-  regola_dividi_2: 'escluso: in rimozione FM92', regola_confezione: 'escluso: in rimozione FM92', regola_aggiunta: 'escluso: in rimozione FM92',
-  variante_ruolo: 'escluso: in rimozione FM92',
 };
 
 export const FOGLIO_KIT = 'KIT';

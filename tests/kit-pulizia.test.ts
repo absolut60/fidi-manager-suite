@@ -16,10 +16,20 @@ test('FM92 kit di controllo P60: dieci incidenze identiche e peso noto invariato
   });
 });
 
-test('FM92 API: select e tipi dei kit includono solo campi non ritirati', () => {
+const RITIRATI_KIT = ['famiglia', 'tipo_struttura', 'spessore', 'h_max', 'passo', 'passo_um', 'isolante'];
+const RITIRATI_COMPONENTI = ['articolo_id', 'incidenza', 'lato', 'strato', 'tipo_driver', 'valore_driver', 'regola_base',
+  'regola_moltiplica', 'regola_dividi_1', 'regola_dividi_2', 'regola_confezione', 'regola_aggiunta', 'variante_ruolo'];
+
+test('FM92 fetta 2: mappe DB senza campi rimossi né voci «in rimozione»', () => {
+  expect(Object.keys(MAPPA_DB_KIT).filter(c => RITIRATI_KIT.includes(c))).toEqual([]);
+  expect(Object.keys(MAPPA_DB_KIT_COMPONENTI).filter(c => RITIRATI_COMPONENTI.includes(c))).toEqual([]);
+  for (const v of [...Object.values(MAPPA_DB_KIT), ...Object.values(MAPPA_DB_KIT_COMPONENTI)]) expect(v).not.toContain('in rimozione');
+});
+
+test('FM92 API: select dei kit includono solo campi non ritirati', () => {
   const api = readFileSync('src/lib/kit-api.ts', 'utf8');
   for (const mappa of [MAPPA_DB_KIT, MAPPA_DB_KIT_COMPONENTI]) {
-    const ritirati = Object.entries(mappa).filter(([, stato]) => stato === 'escluso: in rimozione FM92').map(([campo]) => campo);
+    const ritirati = mappa === MAPPA_DB_KIT ? RITIRATI_KIT : RITIRATI_COMPONENTI;
     const selezione = api.match(mappa === MAPPA_DB_KIT ? /const KIT_CAMPI = '([^']+)'/ : /const COMPONENTE_CAMPI = '([^']+)'/)?.[1]?.split(',');
     if (!selezione) throw new Error('Selezione esplicita mancante');
     expect(selezione.filter(c => ritirati.includes(c))).toEqual([]);

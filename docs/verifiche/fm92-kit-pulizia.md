@@ -68,3 +68,10 @@ Pubblicare il codice prima della rimozione delle colonne/tabelle. Le mappe Excel
 - `tests/preventivo-prezzi-cantiere.browser.py`
 - `docs/verifiche/fm92-kit-pulizia.md` (nuovo)
 - `tests/kit-pulizia.test.ts` (nuovo)
+
+
+## Fetta 2 — schema (21/11/2026)
+
+- Migrazione applicata manualmente da Claude sul database (permesso agente sui DROP non attivo). Registrata in `docs/migrazioni-manuali/0257_fm92_kit_pulizia_schema.sql`, idempotente, NON nel journal Drizzle: il migratore applica ogni voce più recente dell'ultima applicata, quindi la rieseguirebbe.
+- `types.ts` rigenerato dal database reale; `MAPPA_DB_KIT`/`MAPPA_DB_KIT_COMPONENTI` senza voci «in rimozione FM92»; template/export/import invariati; guardia `tests/kit-excel.test.ts` invariata.
+- `docs/regole/kit.md` riscritto sul solo stato attuale.
