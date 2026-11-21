@@ -1,3 +1,6 @@
+# FM91 — Correzioni dopo collaudo
+- [x] Cinque correzioni mirate, 1249 test/0 errori con guardia AST, fotografie 375/1280 e documenti; 1 kit/10 componenti e impronte invariati. Verifica visiva su pagina temporanea rimossa, sessione personale non disponibile.
+
 # FM91 — Kit semplice a righe
 - [x] Schema 0253 verificato; 1 kit/10 componenti/0 parametri/varianti e impronte complete invariati, RLS intatta.
 - [x] Motore semplice/pesi collegati; tabella Excel e schede, finestra unica, API/copia e configurazione senza confronti di linea.

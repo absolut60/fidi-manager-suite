@@ -37,7 +37,7 @@ export function ComponenteKit({ row, linea, um, modificabile: autorizzato, mobil
     {row.note && <p className="break-words text-xs text-muted-foreground">{row.note}</p>}
   </div>;
   const quantita = <div className="space-y-1" data-quantita-riga={row.ordine}><strong className="break-all font-mono text-xs">{formatoQuantitaKit(anteprima?.quantitaPerUnita)}</strong>
-    {anteprima && <p className="text-xs text-muted-foreground">{({ semplice: 'Calcolo', regola: 'Regola', incidenza: 'Incidenza', driver: 'Driver' })[anteprima.fonte]}</p>}</div>;
+    {anteprima && <p className="text-xs text-muted-foreground">{({ semplice: 'Calcolo', regola: 'Regola', incidenza: 'Incidenza', driver: 'Calcolo storico' })[anteprima.fonte]}</p>}</div>;
   const peso = <NumeroKit campo="peso_unitario" etichetta={`Peso unitario riga ${row.ordine}`} valore={row.peso_unitario} disabled={!modificabile} compatto={!mobile}
     onChange={n => cambia('peso_unitario', n)} onSave={n => salva('peso_unitario', n)}/>;
   const azioni = modificabile && <div className="flex shrink-0 flex-col gap-1"><Button variant="ghost" size="icon" className="h-10 w-10" aria-label={`Modifica riga ${row.ordine}`} title="Modifica riga" onClick={onEdit}><Pencil className="h-4 w-4"/></Button>

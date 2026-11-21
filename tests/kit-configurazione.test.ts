@@ -9,7 +9,7 @@ test('FM90 ogni linea dell’enum database ha una configurazione kit', () => {
   }
 });
 
-test('FM90 Sistema MADE: prefisso SM, mq, sei colonne e sei specifiche tipizzate', () => {
+test('FM91 Sistema MADE: prefisso SM, mq, sei colonne e quattro specifiche senza passo', () => {
   expect(LINEE_PREVENTIVO.sistema_made.kit).toEqual({
     prefissoCodice: 'SM', umBaseDefault: 'mq', etichettaQuantita: 'Incidenza per {um}',
     regole: 'complete', parametri: true,
@@ -19,8 +19,6 @@ test('FM90 Sistema MADE: prefisso SM, mq, sei colonne e sei specifiche tipizzate
       { codice: 'tipo_struttura', etichetta: 'Tipo struttura', tipo: 'testo' },
       { codice: 'spessore_mm', etichetta: 'Spessore (mm)', tipo: 'numero' },
       { codice: 'h_max_m', etichetta: 'Altezza massima (m)', tipo: 'numero' },
-      { codice: 'passo', etichetta: 'Passo', tipo: 'numero' },
-      { codice: 'passo_um', etichetta: 'U.M. passo', tipo: 'testo' },
       { codice: 'isolante', etichetta: 'Isolante', tipo: 'testo' },
     ],
   });

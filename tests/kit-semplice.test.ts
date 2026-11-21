@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { calcolaKitRegole, rigaKitSemplice, totalePesoKit, type ComponenteRegoleKit } from '../src/lib/kit-regole';
-import { normalizzaPatchSempliceKit, numeroCampoKit, prossimoOrdineKit } from '../src/lib/kit-semplice-ui';
+import { normalizzaPatchSempliceKit, numeroCampoKit, prossimoOrdineKit, testoNumeroKit } from '../src/lib/kit-semplice-ui';
+import { specificheKitDaValori } from '../src/lib/kit-config';
 import { normalizzaPatchRegoleKit } from '../src/lib/kit-regole-ui';
 import { LINEE_PREVENTIVO } from '../src/lib/linee-preventivo';
 
@@ -111,4 +112,22 @@ test('FM91 validazione API non modifica campi estranei o precisione', () => {
 test('FM91 configurazione campi semplici per ogni linea', () => {
   expect(LINEE_PREVENTIVO.sistema_made.kit.calcoloSemplice).toBe('completo');
   for (const linea of ['showroom', 'edilizia', 'fotovoltaico'] as const) expect(LINEE_PREVENTIVO[linea].kit.calcoloSemplice).toBe('solo_quantita');
+});
+
+test('FM91 celle a quattro decimali, modifica completa e valore invariato', () => {
+  const valore = 0.716666666666667;
+  expect(testoNumeroKit(valore, false)).toBe('0,7167');
+  expect(testoNumeroKit(valore, true)).toBe('0,716666666666667');
+  expect(numeroCampoKit('consumo', testoNumeroKit(valore, true))).toBe(valore);
+  expect(testoNumeroKit(1.2, false)).toBe('1,2');
+  expect(testoNumeroKit(0, false)).toBe('0');
+  expect(testoNumeroKit(null, false)).toBe('');
+  expect(calcolaKitRegole({ componenti: [{ ordine: 1, consumo: valore }] })[0]?.quantitaPerUnita).toBe(valore);
+});
+
+test('FM91 specifiche senza passo: salva i visibili e conserva i valori storici nascosti', () => {
+  const originali = { passo: 600, passo_um: 'mm', spessore_mm: 75, isolante: 'Vecchio' };
+  expect(specificheKitDaValori('sistema_made', { spessore_mm: '80', isolante: '' }, originali))
+    .toEqual({ passo: 600, passo_um: 'mm', spessore_mm: 80 });
+  expect(originali).toEqual({ passo: 600, passo_um: 'mm', spessore_mm: 75, isolante: 'Vecchio' });
 });

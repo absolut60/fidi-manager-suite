@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, Table
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { BadgeLinea } from '@/components/preventivatore/BadgeLinea';
 import { RigaKitDialog } from '@/components/kit/RigaKitDialog';
+import { AiutoCalcolaDallaRiga } from '@/components/kit/AiutoCalcolaDallaRiga';
 import { formatoQuantitaKit } from '@/components/kit/CampiCalcoloKit';
 import { CAMPI_SEMPLICI_KIT, prossimoOrdineKit } from '@/lib/kit-semplice-ui';
 import { SpecificheKitFields } from '@/components/kit/SpecificheKitFields';
@@ -75,7 +76,7 @@ export function KitEditorView({kit,famiglie,modificabile,busy=false,onSave,onPat
   const righeMenu=componenti.map(c=>({ordine:c.ordine,descrizione:c.articolo?.descrizione??c.descrizione??c.articolo_codice??c.codice_articolo_fornitore??'Articolo da definire'}));
   const famigliaLinea=famiglie.filter(f=>f.linea===kit.linea&&(f.attiva||f.id===kit.famiglia_id));
   const salva=async(p:KitUpdate)=>{try{setErrore('');await onSave(p);}catch(e){setErrore(e instanceof Error?e.message:'Salvataggio non riuscito');}};
-  const salvaSpecifiche=()=>{try{void salva({specifiche:specificheKitDaValori(kit.linea,specifiche)});}catch(e){setErrore(e instanceof Error?e.message:'Specifiche non valide');}};
+  const salvaSpecifiche=()=>{try{void salva({specifiche:specificheKitDaValori(kit.linea,specifiche,kit.specifiche)});}catch(e){setErrore(e instanceof Error?e.message:'Specifiche non valide');}};
   const props=(c:ComponenteKitVista)=>({row:c,linea:kit.linea,um:kit.um_base,modificabile,righe:righeMenu,anteprima:anteprima.find(r=>r.ordine===c.ordine),
     onChange:(p:KitComponenteUpdate)=>setBozze(s=>({...s,[c.id]:{...s[c.id],...p}})),
     onPatch:async(p:KitComponenteUpdate)=>{try{await onPatch(c.id,p);setErrore('');}catch(e){setErrore(e instanceof Error?e.message:'Salvataggio non riuscito');throw e;}finally{setBozze(s=>{const resto={...s[c.id]};for(const campo of Object.keys(p))Reflect.deleteProperty(resto,campo);return{...s,[c.id]:resto};});}},
@@ -97,7 +98,7 @@ export function KitEditorView({kit,famiglie,modificabile,busy=false,onSave,onPat
     <section className="min-w-0 space-y-3"><div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2"><h2 className="text-base font-semibold">Componenti <span className="text-sm font-normal text-muted-foreground">({kit.componenti.length})</span></h2>{modificabile&&<Button size="sm" className="min-h-10" onClick={()=>setDialog({row:null})} disabled={busy}><Plus className="h-4 w-4"/>Aggiungi riga</Button>}</div>
       {componenti.length===0?<p className="py-6 text-sm text-muted-foreground">Nessun componente.</p>:<><div className="space-y-3 lg:hidden">{componenti.map(c=><ComponenteKit key={c.id} {...props(c)} mobile/>)}<div className="border-t py-3">{testoTotale}</div></div>
       <div className={`hidden min-w-0 rounded-md border border-l-4 bg-card lg:block ${linea.classiBordo}`}><Table className="w-full table-fixed"><TableHeader><TableRow className="text-xs"><TableHead className="w-12 break-words px-1 text-xs">Ordine</TableHead><TableHead className="w-[20%] px-2 text-xs">Articolo</TableHead>
-      {campi.map(c=><TableHead className={`${c.codice==='consumo'||c.codice==='riga_rif'?'w-[8%]':''} break-words px-0.5 text-xs`} title={c.aiuto} key={c.codice}>{c.codice==='n_pezzi'&&config.calcoloSemplice==='solo_quantita'?'Quantità per kit':c.etichetta}</TableHead>)}
+      {campi.map(c=><TableHead className={`${c.codice==='consumo'||c.codice==='riga_rif'?'w-[8%]':''} break-words px-0.5 text-xs`} title={c.codice==='riga_rif'?undefined:c.aiuto} key={c.codice}>{c.codice==='riga_rif'?<div className="flex flex-wrap items-center">{c.etichetta}<AiutoCalcolaDallaRiga/></div>:c.codice==='n_pezzi'&&config.calcoloSemplice==='solo_quantita'?'Quantità per kit':c.etichetta}</TableHead>)}
       <TableHead className="w-[9%] break-words px-1 text-xs">Incidenza</TableHead><TableHead className="break-words px-0.5 text-xs">Peso unit. (kg)</TableHead><TableHead className="w-[9%] break-words px-1 text-xs">Peso/{kit.um_base} (kg)</TableHead><TableHead className="w-11 px-0.5"><span className="sr-only">Azioni</span></TableHead></TableRow></TableHeader>
       <TableBody>{componenti.map(c=><ComponenteKit key={c.id} {...props(c)}/>)}</TableBody><TableFooter><TableRow><TableCell colSpan={campi.length+6} className="p-3">{testoTotale}</TableCell></TableRow></TableFooter></Table></div></>}
     </section>

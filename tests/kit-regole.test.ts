@@ -167,7 +167,8 @@ describe('FM91 errori per riga, mai numeri non finiti o zero silenzioso', () => 
   });
   test('nessuna incidenza/regola/driver: errore esplicito, non zero', () => {
     expect(singola({ ordine: 1 }).quantitaPerUnita).toBeNull();
-    expect(singola({ ordine: 1 }).errore).toContain('driver non determinabile');
+    expect(singola({ ordine: 1 }).errore).toBe('Riga 1: Compila almeno un campo di calcolo (es. N. pezzi o Consumo)');
+    expect(singola({ ordine: 1 }).errore?.toLowerCase()).not.toContain('driver');
   });
   test('variante non selezionata e nessuna predefinita non sceglie la prima arbitrariamente', () => {
     const risultato = riga(1, { componenti: [{ ordine: 1, variante_ruolo: 'GUIDA', incidenza: 1 }], varianti: [{ ...variante, predefinita: false, imposta_parametri: {} }] });

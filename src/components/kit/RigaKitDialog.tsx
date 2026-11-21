@@ -30,6 +30,7 @@ export function RigaKitDialog({ kit, row, parametri, onClose, onSave }: {
   const draft = { ...row, ...patch, ordine };
   const componenti = row ? kit.componenti.map(c => c.id === row.id ? draft : c) : [...kit.componenti, draft];
   const risultato = calcolaKitRegole({ componenti, parametri }).find(r => r.ordine === ordine);
+  const indicazione = !row && risultato?.errore === `Riga ${ordine}: Compila almeno un campo di calcolo (es. N. pezzi o Consumo)`;
   const righe = kit.componenti.map(c => ({ ordine: c.ordine, descrizione: c.articolo?.descrizione ?? c.descrizione ?? c.articolo_codice ?? 'Articolo da definire' }));
   const cambia = (p: KitComponenteUpdate) => setPatch(s => ({ ...s, ...p }));
   const salva = async () => {
@@ -56,11 +57,10 @@ export function RigaKitDialog({ kit, row, parametri, onClose, onSave }: {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><div className="space-y-1"><Label>Peso unitario (kg per unità Gamma)</Label><NumeroKit campo="peso_unitario" etichetta={`Peso unitario riga ${ordine}`} valore={draft.peso_unitario} disabled={busy} onChange={n => cambia({ peso_unitario: n })}/></div>
             <div className="space-y-1"><Label htmlFor="riga-kit-note">Note</Label><Textarea id="riga-kit-note" value={draft.note ?? ''} onChange={e => cambia({ note: e.target.value || null })}/></div></div>
         </section>
-        {row && <section className="space-y-2 border-t pt-3"><h3 className="text-sm font-semibold">Valore fisso (vecchio metodo)</h3><div className="max-w-xs"><Label>Incidenza</Label><NumeroKit campo="incidenza" etichetta={`Incidenza fissa riga ${ordine}`} valore={draft.incidenza} disabled={busy} onChange={n => cambia({ incidenza: n })}/></div><p className="text-xs text-muted-foreground">Vale solo se tutti i campi di calcolo sono vuoti e non c’è una regola precedente.</p></section>}
       </fieldset>
       {errore && <p role="alert" className="break-words text-sm text-destructive">{errore}</p>}
     </div>
-    <div className="shrink-0 border-t bg-card px-4 py-3 text-sm" data-anteprima-dialog><div className="flex flex-wrap gap-x-6 gap-y-1"><span>Incidenza: <strong>{formatoQuantitaKit(risultato?.quantitaPerUnita)}</strong> {draft.articolo_codice ? gamma?.um : draft.um} / {kit.um_base}</span><span>Peso: <strong>{formatoQuantitaKit(risultato?.pesoPerUnita)}</strong> kg/{kit.um_base}</span></div>{risultato?.errore && <p role="alert" className="mt-1 break-words text-xs text-destructive">{risultato.errore}</p>}</div>
+    <div className="shrink-0 border-t bg-card px-4 py-3 text-sm" data-anteprima-dialog><div className="flex flex-wrap gap-x-6 gap-y-1"><span>Incidenza: <strong>{formatoQuantitaKit(risultato?.quantitaPerUnita)}</strong> {draft.articolo_codice ? gamma?.um : draft.um} / {kit.um_base}</span><span>Peso: <strong>{formatoQuantitaKit(risultato?.pesoPerUnita)}</strong> kg/{kit.um_base}</span></div>{risultato?.errore && <p role={indicazione ? 'status' : 'alert'} className={`mt-1 break-words text-xs ${indicazione ? 'text-muted-foreground' : 'text-destructive'}`}>{indicazione ? risultato.errore.replace(`Riga ${ordine}: `, '') : risultato.errore}</p>}</div>
     <DialogFooter className="shrink-0 gap-2 border-t p-4"><Button variant="outline" disabled={busy} onClick={onClose}>Annulla</Button><Button disabled={busy} onClick={() => void salva()}>{busy ? 'Salvataggio…' : 'Salva riga'}</Button></DialogFooter>
     {manuale && <ArticoloInDefinizioneDialog open soloAnagrafica row={{ ...draft, quantita: 1, prezzo_unit: null }} onOpenChange={setManuale}
       onPatch={p => { cambia(patchManualeKit(p)); setGamma(null); }} onSceltaGamma={a => { cambia(patchArticoloKit(a.codice, a)); setGamma({ codice: a.codice, descrizione: a.descrizione, um: a.um, peso_netto: null }); }}/>}

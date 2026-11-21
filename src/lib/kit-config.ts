@@ -48,8 +48,10 @@ export function valoriSpecificheKit(specifiche: Database['public']['Tables']['ki
   return Object.fromEntries(Object.entries(specifiche).filter(([,v]) => typeof v==='string' || typeof v==='number')
     .map(([k,v]) => [k,typeof v==='number'?String(v).replace('.',','):String(v)]));
 }
-export function specificheKitDaValori(linea: LineaPreventivo, valori: Record<string,string>) {
-  const out: Record<string,string|number> = {};
+export function specificheKitDaValori(linea: LineaPreventivo, valori: Record<string,string>, originali?: Database['public']['Tables']['kit']['Row']['specifiche']) {
+  const out: Record<string,Database['public']['Tables']['kit']['Row']['specifiche'] | undefined> =
+    originali && typeof originali === 'object' && !Array.isArray(originali) ? { ...originali } : {};
+  for (const campo of lineaPreventivo(linea).kit.specifiche) Reflect.deleteProperty(out, campo.codice);
   for (const campo of lineaPreventivo(linea).kit.specifiche) {
     const testo = valori[campo.codice]?.trim() ?? '';
     if (!testo) continue;

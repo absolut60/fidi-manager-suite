@@ -203,7 +203,7 @@ export function calcolaKitRegole(input: InputRegoleKit): RigaRegoleKit[] {
       else {
         // Riusa il driver storico; nessuna confezione dedotta dai metadati Gamma.
         const driver = calcIncidenzaFromDriver(c);
-        if (driver == null) throw new Error('Incidenza assente e driver non determinabile.');
+        if (driver == null) throw new Error('Compila almeno un campo di calcolo (es. N. pezzi o Consumo)');
         quantita = driver;
       }
       let pesoPerUnita: number | null = null;

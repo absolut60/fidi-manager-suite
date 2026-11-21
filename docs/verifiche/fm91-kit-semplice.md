@@ -46,3 +46,15 @@
 - `roadmap.md`
 
 Motore, configurazione linee, normalizzatore e migrazione 0253 già presenti nella tappa precedente e conservati.
+
+## Cinque correzioni dopo il collaudo — 21/11/2026
+
+- «Calcola dalla riga» in tabella, schede e finestra, con il testo completo richiesto sotto il campo e nell'icona informazioni condivisa (passaggio mouse / tocco verificati).
+- Nel motore cambiata esclusivamente la stringa dell'errore di calcolo assente; logica, precedenze e formule immutate. Riga nuova vuota: indicazione grigia, senza ruolo alert. Fonte storica visualizzata come «Calcolo storico», mai “driver”.
+- Eliminata l'inseribilità dell'incidenza storica dalla finestra; dati e calcolo retrocompatibile invariati.
+- Passo/U.M. passo rimossi dalla configurazione delle specifiche. Il salvataggio delle altre specifiche conserva le chiavi originali nascoste, senza conversioni né perdita dei valori preesistenti.
+- Numeri non in modifica a quattro decimali, virgola, senza zeri finali; al focus valore integrale. Focus/uscita senza cambiamenti non invia scritture. Incidenza e peso calcolati restano a sei decimali in visualizzazione.
+- Test unitari: messaggio concreto senza driver, formattazione/precisione/quantità immutata e conservazione delle specifiche nascoste; suite completa **1249 pass, 0 fail**, guardia AST inclusa. Compilazione automatica OK.
+- Playwright **375 e 1280px**: pagina, icona aiuto, modifica e nuova riga; overflow pagina/dialog **0**, errori runtime **0**. Verificati testi richiesti, assenza campo incidenza manuale, indicazione grigia e valore completo 0,716666666666667 al focus; modifica locale a 0,716666666666668 riletta completa, senza arrotondamento del payload. Foto `collaudo-375-*` / `collaudo-1280-*` nella cartella del rapporto; script `tests/kit-semplice-collaudo.browser.py` conserva le asserzioni di collaudo per una pagina temporanea equivalente.
+- Nessun account personale disponibile (`auth-session --self` senza corrispondenza): verificata una pagina temporanea con gli stessi componenti e valori di calcolo letti, senza scritture DB; pagina rimossa. Apertura autenticata e salvataggi persistiti non verificati.
+- Dati reali prima/dopo: **1 kit, 10 componenti**. Impronta kit `f27ce8be5f23aec421ed8119dfe31b4c`; componenti `b5b9d0bf372b078edfa3d3f50ec92b9c`. Il dato letto ora ha Lati=4 alla riga 1 (modifica di Andrea precedente alla verifica); non corretto né riportato ai valori del collaudo precedente, totale risultante 44,929447 kg/mq. Nessuna migrazione, nessun intervento su preventivi/prezzi/dati.

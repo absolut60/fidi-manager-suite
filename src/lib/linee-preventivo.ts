@@ -41,8 +41,6 @@ const KIT_SISTEMA: ConfigurazioneKitLinea = {
     { codice: 'tipo_struttura', etichetta: 'Tipo struttura', tipo: 'testo' },
     { codice: 'spessore_mm', etichetta: 'Spessore (mm)', tipo: 'numero' },
     { codice: 'h_max_m', etichetta: 'Altezza massima (m)', tipo: 'numero' },
-    { codice: 'passo', etichetta: 'Passo', tipo: 'numero' },
-    { codice: 'passo_um', etichetta: 'U.M. passo', tipo: 'testo' },
     { codice: 'isolante', etichetta: 'Isolante', tipo: 'testo' },
   ],
 };
