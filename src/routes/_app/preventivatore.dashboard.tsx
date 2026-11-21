@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { FileText, Package, AlertCircle, CheckCircle2, ShoppingCart, CircleDashed, CircleDot } from "lucide-react";
-import { computeEvasione, type StatoEvasione } from "@/lib/evasione";
+import { computeEvasione, statoEvasioneRiga, type StatoEvasione } from "@/lib/evasione";
 import { EvasioneBadge } from "@/components/preventivatore/EvasioneBadge";
 
 export const Route = createFileRoute("/_app/preventivatore/dashboard")({
@@ -11,6 +11,10 @@ export const Route = createFileRoute("/_app/preventivatore/dashboard")({
     meta: [
       { title: "Dashboard — Sistema MADE" },
       { name: "description", content: "Dashboard del preventivatore Sistema MADE." },
+      { property: "og:title", content: "Dashboard — Sistema MADE" },
+      { property: "og:description", content: "Dashboard del preventivatore Sistema MADE." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: DashboardPage,
@@ -73,11 +77,9 @@ function residuoPreventivo(righe: RigaMini[], totaleDocumento: number | null | u
   let imponibileTotaleRighe = 0;
   let imponibileResiduoRighe = 0;
   for (const r of righe) {
-    if (r.tipo_riga !== "articolo_singolo" && r.tipo_riga !== "da_kit" && r.tipo_riga !== "manuale") continue;
-    const q = Number(r.quantita ?? 0);
+    const { valorizzata, quantita: q, residuo: resQ } = statoEvasioneRiga(r);
+    if (!valorizzata) continue;
     if (q <= 0) continue;
-    const o = Number(r.qta_ordinata ?? 0);
-    const resQ = Math.max(0, Math.min(q, q - o));
     const importoRiga = Number(r.importo ?? 0);
 
     imponibileTotaleRighe += importoRiga;

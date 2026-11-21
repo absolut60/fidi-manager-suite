@@ -498,6 +498,16 @@ export async function deletePreventivo(id: string) {
   return eliminaConEsito("preventivi", id);
 }
 
+export async function chiudiPreventivo(id: string): Promise<void> {
+  const { error } = await supabase.rpc("chiudi_preventivo", { _id: id });
+  if (error) throw error;
+}
+
+export async function riapriPreventivo(id: string): Promise<void> {
+  const { error } = await supabase.rpc("riapri_preventivo", { _id: id });
+  if (error) throw error;
+}
+
 /**
  * Principale a cui collegare una nuova alternativa: da un principale il suo id,
  * da un'alternativa il suo principale (mai alternativa di alternativa).

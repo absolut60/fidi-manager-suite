@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { importoRiga } from "@/lib/riga-preventivo";
+import { isRigaOrdinabile, statoEvasioneRiga } from "@/lib/evasione";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -25,8 +26,6 @@ type Stato = {
   righe: Record<string, { selected: boolean; qta: number }>;
 };
 
-const VALORIZZATE = new Set(["articolo_singolo", "da_kit", "manuale"]);
-const n = (v: unknown) => (v == null ? 0 : Number(v));
 const fmt = (v: number) =>
   v.toLocaleString("it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 4 });
 
@@ -48,8 +47,7 @@ export function TrasformaInOrdineDialog({
     const next: Stato["righe"] = {};
     for (const b of prev.blocchi) {
       for (const r of b.righe) {
-        if (!VALORIZZATE.has(r.tipo_riga)) continue;
-        const residuo = n(r.quantita) - n((r as unknown as { qta_ordinata: number }).qta_ordinata);
+        const { residuo } = statoEvasioneRiga(r);
         if (residuo <= 0) continue;
         next[r.id] = { selected: true, qta: residuo };
       }
@@ -144,9 +142,9 @@ export function TrasformaInOrdineDialog({
 
         <div className="max-h-[60vh] overflow-auto p-4">
           {prev.blocchi.map((b, bi) => {
-            const righeValorizzate = b.righe.filter((r) => VALORIZZATE.has(r.tipo_riga));
+            const righeValorizzate = b.righe.filter((r) => isRigaOrdinabile(r.tipo_riga));
             const righeOrdinabili = righeValorizzate.filter((r) => {
-              const residuo = n(r.quantita) - n((r as unknown as { qta_ordinata: number }).qta_ordinata);
+              const { residuo } = statoEvasioneRiga(r);
               return residuo > 0;
             });
             const tutteSel =
@@ -189,9 +187,7 @@ export function TrasformaInOrdineDialog({
                       </tr>
                     )}
                     {righeValorizzate.map((r) => {
-                      const qOrd = n((r as unknown as { qta_ordinata: number }).qta_ordinata);
-                      const qTot = n(r.quantita);
-                      const residuo = qTot - qOrd;
+                      const { ordinata: qOrd, quantita: qTot, residuo } = statoEvasioneRiga(r);
                       const evasa = residuo <= 0;
                       const s = stato.righe[r.id];
                       return (

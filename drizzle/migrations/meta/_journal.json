@@ -1800,6 +1800,13 @@
       "when": 1795265801749,
       "tag": "0256_fm92_annulla_conversione_lead_statica",
       "breakpoints": true
+    },
+    {
+      "idx": 257,
+      "version": "7",
+      "when": 1795280126385,
+      "tag": "0257_fm93_evasione_preventivi",
+      "breakpoints": true
     }
   ]
 }

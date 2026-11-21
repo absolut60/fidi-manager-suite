@@ -1,4 +1,5 @@
 import { fetchPrezzoPreventivoArticolo, type CondizioniPrezziPreventivo } from "@/lib/prezzi-preventivo";
+import { statoEvasioneRiga } from "@/lib/evasione";
 import { messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
 import { opzioniPrezziCantiere } from "@/lib/cantiere-listini-api";
 import { CellaUm } from "@/components/cella-um";
@@ -585,9 +586,9 @@ function useCelleRiga(p: RigaProps) {
     </>
   );
 
-  const qOrd = Number((row as unknown as { qta_ordinata?: number }).qta_ordinata ?? 0);
-  const evasa = qOrd > 0 && qOrd >= q;
-  const parziale = qOrd > 0 && qOrd < q;
+  const { ordinata: qOrd, stato: evasione } = statoEvasioneRiga(row);
+  const evasa = evasione === "evasa";
+  const parziale = evasione === "parziale";
 
   return {
     tipo, isCompact, isSubtotal, valorizzata, segno, kitSenzaPrezzo,

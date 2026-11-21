@@ -6046,6 +6046,8 @@ export type Database = {
           cantiere_descrizione: string | null
           cantiere_id: string | null
           categoria_rif: string | null
+          chiuso_at: string | null
+          chiuso_da: string | null
           cliente_id: string | null
           condizione_pagamento_cod: string | null
           created_at: string
@@ -6084,6 +6086,8 @@ export type Database = {
           cantiere_descrizione?: string | null
           cantiere_id?: string | null
           categoria_rif?: string | null
+          chiuso_at?: string | null
+          chiuso_da?: string | null
           cliente_id?: string | null
           condizione_pagamento_cod?: string | null
           created_at?: string
@@ -6122,6 +6126,8 @@ export type Database = {
           cantiere_descrizione?: string | null
           cantiere_id?: string | null
           categoria_rif?: string | null
+          chiuso_at?: string | null
+          chiuso_da?: string | null
           cliente_id?: string | null
           condizione_pagamento_cod?: string | null
           created_at?: string
@@ -6165,6 +6171,13 @@ export type Database = {
             columns: ["cantiere_id"]
             isOneToOne: false
             referencedRelation: "cantieri"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "preventivi_chiuso_da_fkey"
+            columns: ["chiuso_da"]
+            isOneToOne: false
+            referencedRelation: "profili"
             referencedColumns: ["id"]
           },
           {
@@ -9179,6 +9192,7 @@ export type Database = {
         Args: { _importazione: string }
         Returns: number
       }
+      chiudi_preventivo: { Args: { _id: string }; Returns: undefined }
       chiudi_regole_prezzo_gamma: {
         Args: { _importazione: string; _tabella: string }
         Returns: Json
@@ -11128,6 +11142,7 @@ export type Database = {
         }
         Returns: number
       }
+      riapri_preventivo: { Args: { _id: string }; Returns: undefined }
       riattiva_marketing: { Args: { _email: string }; Returns: boolean }
       ricalcola_collegamenti_fornitori_clienti: { Args: never; Returns: Json }
       ricalcola_fido_teorico: { Args: never; Returns: string }

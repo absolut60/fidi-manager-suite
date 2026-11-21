@@ -1,3 +1,8 @@
+# FM93 — Evasione preventivi, fetta 1
+- [x] Migrazione unica 0257: quantità derivate, riallineamento, chiusura/riapertura, permessi e protezione cancellazione.
+- [x] Fonte unica TypeScript e API senza nuovi controlli interfaccia; 1232 test verdi.
+- [x] Verifiche reali in transazione annullata (Andrea e non amministratore), scansione senza nuovi risultati, foto 375/1280 e commit.
+
 # FM92 — Correzione specifiche di testata
 - [x] Ripristinate quattro specifiche Sistema MADE e duplicazione delle sole chiavi configurate; nessuna modifica al database.
 - [x] Suite completa: 1219 test verdi, zero fallimenti; compilazione automatica OK, controlli del commit obbligatori.
