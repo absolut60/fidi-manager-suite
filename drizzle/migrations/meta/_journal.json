@@ -1779,6 +1779,13 @@
       "when": 1795255300002,
       "tag": "0253_fm91_kit_semplice",
       "breakpoints": true
+    },
+    {
+      "idx": 254,
+      "version": "7",
+      "when": 1795259969419,
+      "tag": "0254_fm91_kit_ruolo_preventivo",
+      "breakpoints": true
     }
   ]
 }

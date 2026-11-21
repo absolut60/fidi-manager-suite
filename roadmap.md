@@ -1,3 +1,8 @@
+# FM91 — Kit nel preventivo, tappa 3
+- [x] Nuovo selettore linea/famiglia, inserimento Gamma condiviso/motore semplice, ruolo kit nullable 0254 e ritiro residui senza chiamanti.
+- [x] 1257 test/0 errori con guardie AST, foto 375/1280, rapporto; 1 kit/10 componenti/10 preventivi/12 blocchi/62 righe e impronte invariati, zero scritture di prova.
+- [ ] Prova autenticata/persistita: account personale non disponibile; API e UI verificate con risposte locali intercettate, pagina temporanea rimossa.
+
 # FM91 — Correzioni dopo collaudo
 - [x] Cinque correzioni mirate, 1249 test/0 errori con guardia AST, fotografie 375/1280 e documenti; 1 kit/10 componenti e impronte invariati. Verifica visiva su pagina temporanea rimossa, sessione personale non disponibile.
 

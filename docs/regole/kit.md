@@ -45,7 +45,7 @@
 - Codice assente dal catalogo: manuale, con etichetta e la stessa `ArticoloInDefinizioneDialog` del preventivo in modalità anagrafica (nessuna leva o margine). Il costo del componente è unitario; l'adattamento passa `quantita=1` alla finestra condivisa. Selezione Gamma cancella i campi manuali, ma conserva incidenza/driver/ruolo/note.
 - Incidenza esplicita, incluso zero, prioritaria: cambiare driver/valore non la cancella. Il valore del driver è solo informativo quando l'incidenza non è scritta. Colonne e quantità derivano dalla configurazione; peso per unità base soltanto con peso Gamma e incidenza noti.
 - Telefono/tablet sotto 1024: schede componenti. Da 1024: tabella; a 1280 colonne e azioni a larghezza fissa senza uscire dallo schermo.
-- Transizione preventivi ancora separata: `kit-legacy.ts` conserva soltanto le letture storiche di `AggiungiBloccoDialog` e `addBloccoDaKit`, con chiave `kits-with-comp` invariata; nuove schermate usano `kit-lista-v2`/`kit-v2`. L'inserimento dei kit nuovi nei documenti non è migrato in 1b e va completato nella tappa dedicata prima di usarli in produzione nei preventivi.
+- Transizione 1b conclusa dalla tappa 3 FM91: inserimento nel preventivo ora tramite kit-api e motore semplice; ponte kit-legacy ritirato.
 
 ## Kit semplice a righe (FM91)
 
@@ -60,7 +60,18 @@ Decisione di Andrea: questo è il metodo principale, in sostituzione della gesti
 - «Calcola dalla riga»: spiegazione completa condivisa sotto il campo della finestra e nell'icona informazioni della tabella/schede (mouse, tastiera e tocco). La riga nuova senza calcolo mostra in grigio «Compila almeno un campo di calcolo (es. N. pezzi o Consumo)», non un errore rosso. Nessuna parola “driver” visibile nella scheda semplice.
 - Nessuna sezione Parametri/Prova parametri né operandi nella scheda. Letture dei parametri precedenti mantenute solo per eventuali vecchie regole. Le righe con `variante_ruolo` restano senza comandi. Incidenza storica conservata e calcolata come prima, ma mai inseribile a mano nella finestra. Passo e U.M. passo non sono più nelle specifiche di testata; i valori storici nascosti sono conservati anche al salvataggio delle specifiche visibili.
 - `normalizzaPatchSempliceKit`, chiamato da `normalizzaPatchRegoleKit`, valida tutte le scritture API e le copie senza duplicare formule. Duplicazione conserva i nove campi e segnala anche gli errori di validazione dopo la creazione del kit; non è una transazione atomica.
-- Permessi di gestione identici: anagrafiche + linea abilitata; RLS/secondo fattore invariati. Preventivi, «Da kit», `kit-legacy.ts`, prezzi e import esclusi.
+- Permessi di gestione identici: anagrafiche + linea abilitata; RLS/secondo fattore invariati. Import escluso; preventivi collegati dalla tappa 3 seguente.
+
+## Kit nel preventivo (FM91)
+
+- «Da kit» legge kit-api e kit_famiglie con RLS utente/secondo fattore invariati. Elenco per famiglia, codice/nome, solo linea documento; controllo linea ripetuto prima delle scritture. Cache condivisa kit-lista-v2, nessuna lettura dell'anagrafica tecnica.
+- calcolaKitRegole è la sola fonte dell'incidenza; quantità = quantitaDaIncidenza(incidenza, mq). Incidenza salvata completa; quantità a due decimali, come il percorso esistente di ricalcolo del blocco. Ordine componente conservato, nome/descrizione tecnica/unità del kit nella testata.
+- Gamma: campiRigaGammaPreventivo condivisa con la scelta ArticoloGammaPicker, prezzi batch dal dispatcher FM71, priorità cantiere identica, sconti/maggiorazione/extra/costo identici; descrizione/UM Gamma, UM1. Aliquota nullable, come una nuova riga Gamma: nessuna nuova regola fiscale.
+- Manuale: tipo manuale (non intestazione kit), dati in definizione, costo totale da costo unitario del componente, listino fornitore e prezzo inizialmente vuoto come una nuova manuale; nessuna vendita a fasce.
+- Peso salvato = totale riga (peso_unitario kit × quantità, altrimenti Gamma). pesoUnitarioRigaPreventivo conserva il peso importato sulle righe con ruolo_kit durante letture e cambi mq; righe Gamma ordinarie conservano il comportamento precedente. Importo/costo/peso ricalcolati tramite fonti uniche.
+- ruolo_kit text nullable, migrazione 0254_fm91_kit_ruolo_preventivo.sql: etichetta grigia sopra la descrizione in tabella/schede, copiato nei duplicati interni; escluso da PDF/email e dalla conversione in ordine Gamma. Nessun backfill.
+- Errori del motore o codice Gamma non disponibile: riga saltata con ordine/descrizione/motivo nel dialog finale, mai quantità zero silenziosa. Dipendenze errate segnalate anch'esse; inserimento parzialmente fallito segnala il blocco già creato, nessuna pulizia distruttiva.
+- kit-legacy, due picker tecnici non usati, funzioni/tipi di prezzo kit a fasce e costanti famiglia senza chiamanti ritirati; colonne storiche DB conservate. Nessuna modifica ai documenti esistenti.
 
 ## Motore a regole (FM91) — storico, non più metodo principale
 

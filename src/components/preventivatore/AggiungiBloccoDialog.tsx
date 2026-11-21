@@ -12,8 +12,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { fetchKitsStorici as fetchKitsWithComponenti } from "@/lib/kit-legacy";
-import { FAMIGLIE_KIT, FAMIGLIA_LABEL } from "@/lib/incidenza";
+import { fetchKitsWithComponenti, fetchKitFamiglie } from '@/lib/kit-api';
+import { gruppiKitPreventivo, type RigaKitSaltata } from '@/lib/kit-preventivo';
 import { addBloccoDaKit, addBloccoVuoto, fractionalOrder } from "@/lib/preventivi-api";
 import type { FasciaListino } from "@/lib/articoli-api";
 import { toast } from "sonner";
@@ -36,25 +36,29 @@ export function AggiungiBloccoDialog({
   cantiereId?: string | null;
 }) {
   const qc = useQueryClient();
-  const daKit = lineaPreventivo(linea).blocchi.bloccoDaKit;
+  const configLinea = lineaPreventivo(linea);
+  const daKit = configLinea.blocchi.bloccoDaKit;
   const [titolo, setTitolo] = useState("");
   const { data: dedicati = [] } = useQuery({ ...opzioniPrezziCantiere(cantiereId ?? ""), enabled: !!cantiereId });
   const [tab, setTab] = useState<"kit" | "vuoto">("kit");
   const [famiglia, setFamiglia] = useState<string>("ALL");
   const [kitId, setKitId] = useState<string | null>(null);
   const [quantita, setQuantita] = useState("1");
+  const [righeSaltate, setRigheSaltate] = useState<RigaKitSaltata[]>([]);
 
-  const { data: kits = [] } = useQuery({
-    queryKey: ["kits-with-comp"],
+  const { data: kits = [], isError: erroreKits } = useQuery({
+    queryKey: ["kit-lista-v2"],
     queryFn: fetchKitsWithComponenti,
     enabled: open && daKit,
   });
 
-  const filtered = kits.filter((k) => famiglia === "ALL" || k.famiglia === famiglia);
+  const { data: famiglie = [], isError: erroreFamiglie } = useQuery({ queryKey: ['kit-famiglie'], queryFn: fetchKitFamiglie, enabled: open && daKit });
+  const gruppi = gruppiKitPreventivo(kits, famiglie, configLinea.codice, famiglia);
+  const famiglieLinea = famiglie.filter(f => f.linea === configLinea.codice);
 
   const addKit = useMutation({
     mutationFn: async () => {
-      if (!kitId) throw new Error("Scegli un kit");
+      if (!kitId || !gruppi.some(g => g.kits.some(k => k.id === kitId))) throw new Error("Scegli un kit della linea del preventivo");
       return addBloccoDaKit({
         preventivo_id: preventivoId,
         kit_id: kitId,
@@ -66,11 +70,12 @@ export function AggiungiBloccoDialog({
         ordine: fractionalOrder(lastOrdine, null),
       });
     },
-    onSuccess: () => {
+    onSuccess: (blocco) => {
       qc.invalidateQueries({ queryKey: ["preventivo", preventivoId] });
       onOpenChange(false);
       setKitId(null);
       toast.success("Blocco aggiunto");
+      setRigheSaltate(blocco.righeSaltate);
     },
     onError: (e: unknown) => toast.error((e as Error).message),
   });
@@ -89,7 +94,7 @@ export function AggiungiBloccoDialog({
   });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <><Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader><DialogTitle>Aggiungi blocco</DialogTitle></DialogHeader>
         {!daKit ? (
@@ -108,12 +113,12 @@ export function AggiungiBloccoDialog({
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="grid gap-1.5">
                 <Label>Famiglia</Label>
-                <Select value={famiglia} onValueChange={setFamiglia}>
+                <Select value={famiglia} onValueChange={v => { setFamiglia(v); setKitId(null); }}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">Tutte</SelectItem>
-                    {FAMIGLIE_KIT.map((f) => (
-                      <SelectItem key={f} value={f}>{FAMIGLIA_LABEL[f]}</SelectItem>
+                    {famiglieLinea.map((f) => (
+                      <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -124,29 +129,25 @@ export function AggiungiBloccoDialog({
               </div>
             </div>
             <div className="max-h-72 overflow-auto rounded border">
-              {filtered.length === 0 ? (
+              {erroreFamiglie || erroreKits ? <p role="alert" className="p-3 text-sm text-destructive">Caricamento dei kit e delle famiglie non riuscito.</p> : gruppi.length === 0 ? (
                 <div className="p-4 text-center text-sm text-muted-foreground">Nessun kit disponibile.</div>
               ) : (
-                filtered.map((k) => {
-                  return (
-                    <button
+                gruppi.map(g => <section key={g.id} className="min-w-0"><h3 className="border-b bg-muted px-3 py-2 text-xs font-semibold">{g.nome}</h3>{g.kits.map((k) => (
+                    <Button variant="ghost"
                       key={k.id}
                       type="button"
                       onClick={() => setKitId(k.id)}
-                      className={`flex w-full items-center justify-between border-b px-3 py-2 text-left text-sm hover:bg-accent ${
+                      className={`flex h-auto min-h-11 w-full items-center justify-between gap-2 whitespace-normal rounded-none border-b px-3 py-2 text-left text-sm hover:bg-accent ${
                         kitId === k.id ? "bg-accent/50" : ""
                       }`}
                     >
-                      <div>
-                        <div className="font-medium">{k.nome}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {FAMIGLIA_LABEL[k.famiglia]}{k.spessore != null ? ` · sp. ${Number(k.spessore)} mm` : ""}
-                        </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="break-all font-mono text-xs text-muted-foreground">{k.codice}</div>
+                        <div className="break-words font-medium">{k.nome}</div>
                       </div>
                       <div className="shrink-0 text-xs text-muted-foreground">{k.componenti.length} componenti</div>
-                    </button>
-                  );
-                })
+                    </Button>
+                ))}</section>)
               )}
             </div>
           </TabsContent>
@@ -160,7 +161,7 @@ export function AggiungiBloccoDialog({
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
           {daKit && tab === "kit" ? (
-            <Button onClick={() => addKit.mutate()} disabled={!kitId || (condizioniPrezzi.listino_rif == null && !clienteId && !dedicati.length) || addKit.isPending}>
+            <Button onClick={() => addKit.mutate()} disabled={!kitId || !gruppi.some(g => g.kits.some(k => k.id === kitId)) || erroreFamiglie || erroreKits || (condizioniPrezzi.listino_rif == null && !clienteId && !dedicati.length) || addKit.isPending}>
               Aggiungi kit
             </Button>
           ) : (
@@ -170,6 +171,13 @@ export function AggiungiBloccoDialog({
           )}
         </DialogFooter>
       </DialogContent>
-    </Dialog>
+    </Dialog><Dialog open={righeSaltate.length > 0} onOpenChange={v => { if (!v) setRigheSaltate([]); }}>
+      <DialogContent className="max-h-[90dvh] min-w-0 max-w-2xl overflow-y-auto">
+        <DialogHeader><DialogTitle>Righe del kit non inserite</DialogTitle></DialogHeader>
+        <ul className="space-y-3">{righeSaltate.map((r, i) => <li key={`${r.ordine}-${i}`} className="min-w-0 border-b pb-2 text-sm">
+          <p className="break-words font-semibold">{r.ordine} · {r.descrizione}</p><p className="break-words text-muted-foreground">{r.motivo}</p>
+        </li>)}</ul><DialogFooter><Button onClick={() => setRigheSaltate([])}>Ho capito</Button></DialogFooter>
+      </DialogContent>
+    </Dialog></>
   );
 }

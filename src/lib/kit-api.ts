@@ -1,9 +1,6 @@
 import { eliminaConEsito } from "./esito-eliminazione";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
-import { calcCosto, round2 } from "./pricing";
-import { importoRiga } from "./riga-preventivo";
-import { calcIncidenzaFromDriver, round4, type TipoDriver } from "./incidenza";
 import { ERRORE_CODICE_KIT, famigliaKitLegacy, proponiCodiceKit } from './kit-config';
 import { lineaPreventivo, type LineaPreventivo } from './linee-preventivo';
 import { normalizzaPatchRegoleKit, validaParametroKit, type KitParametro, type SalvataggioParametroKit } from './kit-regole-ui';
@@ -17,7 +14,6 @@ export type KitFamiglia = Tabelle['kit_famiglie']['Row'];
 export type KitComponente = Omit<Tabelle['kit_componenti']['Row'], 'articolo_id'>;
 export type KitComponenteInsert = Omit<Tabelle['kit_componenti']['Insert'], 'articolo_id'>;
 export type KitComponenteUpdate = Omit<Tabelle['kit_componenti']['Update'], 'articolo_id'>;
-export type FasciaListino = Database['public']['Enums']['fascia_listino'];
 export interface ArticoloKitGamma { codice: string; descrizione: string | null; um: string | null; peso_netto: number | null }
 export interface KitConComponenti extends Kit { componenti: (KitComponente & { articolo: ArticoloKitGamma | null })[] }
 
@@ -172,98 +168,4 @@ export async function updateComponente(id: string, patch: KitComponenteUpdate) {
 }
 export async function deleteComponente(id: string) {
   return eliminaConEsito("kit_componenti", id);
-}
-
-/** Residui delle fasce storiche: non usati dalle schermate kit, rimozione nella 1c. */
-export interface ArticoloConListini {
-  id: string; cod_gamma: string | null; descrizione: string; um: string | null;
-  peso_unit: number | null; qta_fornitore: number | null; qta_cliente: number | null;
-  listini_acquisto: Tabelle['listini_acquisto']['Row'][];
-  listini_vendita: Tabelle['listini_vendita']['Row'][];
-}
-export function getCostoNettoCorrente(art: ArticoloConListini | null | undefined): number {
-  if (!art || !art.listini_acquisto?.length) return 0;
-  const sorted = [...art.listini_acquisto].sort((a, b) => {
-    const da = a.data_validita ?? a.created_at ?? "";
-    const db = b.data_validita ?? b.created_at ?? "";
-    return db.localeCompare(da);
-  });
-  const top = sorted[0];
-  if (top.costo_netto != null) return Number(top.costo_netto);
-  return calcCosto(top).costo_netto;
-}
-
-export function getPrezzoVendita(
-  art: ArticoloConListini | null | undefined,
-  fascia: FasciaListino,
-): number {
-  if (!art) return 0;
-  const lv = art.listini_vendita?.find((l) => l.fascia === fascia);
-  return Number(lv?.prezzo ?? 0);
-}
-
-export interface RigaCalcolata {
-  incidenza_effettiva: number;
-  costo_unit: number;
-  vendita_unit: number;
-  costo_riga: number;
-  vendita_riga: number;
-  peso_riga: number;
-}
-
-export function calcolaRigaKit(
-  c: Pick<KitComponente, "incidenza" | "tipo_driver" | "valore_driver">,
-  art: ArticoloConListini | null | undefined,
-  fascia: FasciaListino,
-): RigaCalcolata {
-  const incOverride = c.incidenza == null ? null : Number(c.incidenza);
-  const incDriver = calcIncidenzaFromDriver({
-    tipo_driver: c.tipo_driver as TipoDriver | null,
-    valore_driver: c.valore_driver,
-    qta_confezione: art?.qta_fornitore ?? art?.qta_cliente ?? null,
-  });
-  const incidenza =
-    incOverride != null && !Number.isNaN(incOverride) ? incOverride : incDriver ?? 0;
-
-  const costo_unit = getCostoNettoCorrente(art);
-  const vendita_unit = getPrezzoVendita(art, fascia);
-  const peso_unit = Number(art?.peso_unit ?? 0);
-
-  return {
-    incidenza_effettiva: round4(incidenza),
-    costo_unit: round2(costo_unit),
-    vendita_unit: round2(vendita_unit),
-    costo_riga: round2(costo_unit * incidenza),
-    vendita_riga: importoRiga({ quantita: incidenza, prezzo_unit: vendita_unit }),
-    peso_riga: round4(peso_unit * incidenza),
-  };
-}
-
-export interface TotaliKit {
-  costo_mq: number;
-  prezzo_mq: number;
-  margine_perc: number;
-  kg_mq: number;
-}
-
-export function calcolaTotaliKit(
-  componenti: (KitComponente & { articolo: ArticoloConListini | null })[],
-  fascia: FasciaListino,
-): TotaliKit {
-  let costo = 0;
-  let prezzo = 0;
-  let peso = 0;
-  for (const c of componenti) {
-    const r = calcolaRigaKit(c, c.articolo, fascia);
-    costo += r.costo_riga;
-    prezzo += r.vendita_riga;
-    peso += r.peso_riga;
-  }
-  const margine = prezzo > 0 ? ((prezzo - costo) / prezzo) * 100 : 0;
-  return {
-    costo_mq: round2(costo),
-    prezzo_mq: round2(prezzo),
-    margine_perc: round2(margine),
-    kg_mq: round4(peso),
-  };
 }

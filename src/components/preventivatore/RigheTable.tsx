@@ -46,9 +46,9 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 import { EditableNumberCell } from "@/components/preventivatore/EditableNumberCell";
-import { ArticoloPicker } from "@/components/preventivatore/ArticoloPicker";
 import { ArticoloGammaPicker, type ArticoloGammaScelto } from "@/components/preventivatore/ArticoloGammaPicker";
-import { campiPrezzoDaMotore, prezzoConPrioritaCantiere, patchConFontePrezzo, segnoPrezzoCantiere, costoRiga, formatScontiGamma, isIntestazioneKit, margineTotaliRighe, patchConImporto, parseScontiGamma, prezzoNettoRiga, rigaInUnita } from "@/lib/riga-preventivo";
+import { segnoPrezzoCantiere, costoRiga, formatScontiGamma, isIntestazioneKit, margineTotaliRighe, patchConImporto, parseScontiGamma, prezzoNettoRiga, rigaInUnita } from "@/lib/riga-preventivo";
+import { campiRigaGammaPreventivo } from '@/lib/riga-gamma-preventivo';
 import {
   calcolaBlocco, deleteRiga, salvaPatchRigaCalcolata, fractionalOrder, insertRiga, reorderRighe,
   TIPI_RIGA, TIPI_RIGA_LABEL, updateRiga,
@@ -112,6 +112,7 @@ export function RigheTable({
   const calcs = useMemo(() => calcolaBlocco(blocco.righe), [blocco.righe]);
   const [riepilogoRigaId, setRiepilogoRigaId] = useState<string | null>(null);
   const calcMap = useMemo(() => new Map(calcs.righe.map((r) => [r.id, r.calc])), [calcs]);
+  const tabellaKit = !!blocco.kit_id && gamma && conMisure && blocco.righe.some(r => r.ruolo_kit != null);
 
   // FM65 R2b: le modifiche di cella aggiornano subito la sola riga in cache (stesso calcolo
   // patchConImporto) e salvano in background, senza ricaricare preventivo e dati Gamma.
@@ -229,21 +230,9 @@ export function RigheTable({
         if (!dedicato) toast.warning(`Prezzo non disponibile: ${(e as Error).message}`);
       }
     }
-    const scelta = prezzoConPrioritaCantiere(prezzo, dedicato);
     upd.mutate({
       id: r.id,
-      patch: patchConFontePrezzo(r, {
-        // F4c: la riga manuale agganciata al catalogo diventa riga articolo.
-        ...(r.tipo_riga === "manuale" ? { tipo_riga: "articolo_singolo" as const } : {}),
-        articolo_codice: a.codice,
-        articolo_id: null,
-        um_scelta: "um1",
-        descrizione: a.descrizione,
-        um: a.um ?? prezzo?.um ?? null,
-        quantita,
-        vendita: null,
-        ...campiPrezzoDaMotore(scelta.prezzo, quantita, scontoPiede),
-      }, scelta.fonte),
+      patch: campiRigaGammaPreventivo(r, a, quantita, scontoPiede, prezzo, dedicato),
     });
   }
 
@@ -298,7 +287,8 @@ export function RigheTable({
       {/* Da 1024 px: tabella. Sotto: schede compatte con gli stessi campi. */}
       <div className="hidden max-w-full overflow-x-auto pv-tabella:block">
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        <table className={cn("w-full table-fixed", !gamma ? (conMisure ? "min-w-[1326px]" : "min-w-[1266px]") : conMisure ? "min-w-[1470px]" : "min-w-[1410px]", "border-separate border-spacing-0 text-xs")}>
+        <table className={cn("w-full table-fixed", tabellaKit ? "[&_th]:!w-auto [&_th]:!static [&_td]:!static [&_th]:whitespace-normal [&_td]:break-words" : !gamma ? (conMisure ? "min-w-[1326px]" : "min-w-[1266px]") : conMisure ? "min-w-[1470px]" : "min-w-[1410px]", "border-separate border-spacing-0 text-xs")}>
+          {tabellaKit && <colgroup>{['w-[1%]', 'w-[3%]', 'w-[10%]', 'w-[19%]', 'w-[4%]', 'w-[5%]', 'w-[5%]', 'w-[6%]', 'w-[4%]', 'w-[4%]', 'w-[4%]', 'w-[6%]', 'w-[3%]', 'w-[7%]', 'w-[5%]', 'w-[5%]', 'w-[4%]', 'w-[5%]'].map((c, i) => <col key={i} className={c}/>)}</colgroup>}
           <thead>
             <tr className="whitespace-nowrap bg-pv-testa text-[10px] uppercase tracking-wide text-muted-foreground [&>th]:bg-pv-testa [&>th]:border-b">
               <th className="w-[18px] px-1 py-1.5 sticky left-0 z-10"></th>
@@ -584,6 +574,7 @@ function useCelleRiga(p: RigaProps) {
   ) : valorizzata ? <span className="block break-all px-1 py-2 font-mono text-xs">{(p.articoloInDefinizione && row.codice_articolo_fornitore) || "MANUALE"}</span> : null;
   const articolo = (
     <>
+      {row.ruolo_kit && <span className="mb-0.5 block px-1.5 text-xs text-muted-foreground">{row.ruolo_kit}</span>}
       <textarea key={`${row.id}-${row.descrizione ?? ""}`} defaultValue={row.descrizione ?? ""}
         aria-label="Descrizione riga" disabled={readOnly} rows={1}
         ref={adattaAltezza} onInput={(e) => adattaAltezza(e.currentTarget)}

@@ -4,17 +4,12 @@ import { eliminaConEsito } from "./esito-eliminazione";
 import { getCantiereListini, type CantiereListinoRow } from "./cantiere-listini-api";
 import { copiaNotePreventivo } from "./preventivi-note";
 import { supabase } from "@/integrations/supabase/client";
-import { campiPrezzoDaMotore, patchConFontePrezzo, prezzoConPrioritaCantiere, confrontoAggiornamento, costoRiga, importoRiga, isIntestazioneKit, isRigaValorizzata, marginePercRiga, pesoRigaGamma, patchConImporto, quantitaDaIncidenza, segnoRiga, type PrezzoClienteGamma, type UnitaGammaRiga } from "./riga-preventivo";
+import { patchConFontePrezzo, prezzoConPrioritaCantiere, confrontoAggiornamento, costoRiga, importoRiga, isIntestazioneKit, isRigaValorizzata, marginePercRiga, pesoRigaGamma, pesoUnitarioRigaPreventivo, patchConImporto, quantitaDaIncidenza, segnoRiga, type PrezzoClienteGamma, type UnitaGammaRiga } from "./riga-preventivo";
 import type { Database } from "@/integrations/supabase/types";
 import { round2 } from "./pricing";
-import {
-  calcolaRigaKit,
-  getCostoNettoCorrente,
-  getPrezzoVendita,
-  type ArticoloConListini,
-  type FasciaListino,
-} from "./kit-api";
-import { fetchKitStorico as fetchKit } from './kit-legacy';
+import { fetchKit, fetchKitParametri } from './kit-api';
+import { preparaRigheKitPreventivo, type RigaKitSaltata } from './kit-preventivo';
+import type { FasciaListino } from './articoli-api';
 import {
   fetchCantieri as _fetchCantieri,
   fetchAgenti as _fetchAgenti,
@@ -410,7 +405,7 @@ export async function fetchPreventivo(id: string): Promise<PreventivoConDettagli
   for (const b of p.blocchi) {
     for (const r of b.righe) {
       if (r.articolo_codice) {
-        r.peso_gamma_unit = pesi.get(r.articolo_codice)?.peso_netto ?? null;
+        r.peso_gamma_unit = pesoUnitarioRigaPreventivo(r, pesi.get(r.articolo_codice)?.peso_netto);
         r.unita_gamma = pesi.get(r.articolo_codice) ?? null;
       }
     }
@@ -602,6 +597,7 @@ export async function duplicaPreventivo(
         um: r.um,
         um_scelta: r.um_scelta,
         incidenza: r.incidenza,
+        ruolo_kit: r.ruolo_kit,
         quantita: r.quantita,
         prezzo_unit: r.prezzo_unit,
         sconto_perc: r.sconto_perc,
@@ -830,56 +826,30 @@ export async function addBloccoDaKit(args: {
   sconto_piede: number;
   prezzi_cantiere?: CantiereListinoRow[];
   condizioni_prezzi?: CondizioniPrezziPreventivo;
-}): Promise<Blocco> {
+}): Promise<Blocco & { righeSaltate: RigaKitSaltata[] }> {
   const dedicati = new Map((args.prezzi_cantiere ?? []).map(p => [p.cod_gamma, p]));
   const condizioni = args.condizioni_prezzi ?? await fetchPreventivo(args.preventivo_id);
-  if (condizioni.listino_rif == null && !condizioni.cliente_id && !dedicati.size) throw new Error("Scegli prima il cliente: i prezzi del kit arrivano dalle sue condizioni Gamma.");
+  const { data: documento, error: docErrore } = await supabase.from('preventivi').select('linea,iva_perc,regime_iva').eq('id', args.preventivo_id).single();
+  if (docErrore) throw docErrore;
   const kit = await fetchKit(args.kit_id);
-  const codici = kit.componenti.map((c) => c.articolo?.cod_gamma).filter((c): c is string => !!c);
+  if (kit.linea !== documento.linea) throw new Error('Il kit deve appartenere alla stessa linea del preventivo.');
+  const parametri = await fetchKitParametri(kit.id);
+  const codici = kit.componenti.map(c => c.articolo_codice).filter((c): c is string => !!c);
   const prezzi = await fetchPrezziPreventivo(condizioni, codici).catch(e => { if (!dedicati.size) throw e; return new Map(); });
-  const pesi = await fetchPesiGamma(codici);
-
-  const qBaseEff = args.quantita_base > 0 ? args.quantita_base : 1;
-  const righe = kit.componenti.map((c, idx) => {
-    // FASCIA_KIT_SOLO_INCIDENZA: calcolaRigaKit serve qui solo per l'incidenza; il prezzo è del motore.
-    const incidenza = calcolaRigaKit(c, c.articolo, "A").incidenza_effettiva;
-    const quantita = quantitaDaIncidenza(incidenza, qBaseEff) ?? 0;
-    const codice = c.articolo?.cod_gamma ?? null;
-    const scelta = prezzoConPrioritaCantiere(codice ? prezzi.get(codice) : null, codice ? dedicati.get(codice) : null);
-    const campi = patchConFontePrezzo({}, campiPrezzoDaMotore(scelta.prezzo, quantita, args.sconto_piede), scelta.fonte);
-    return {
-      tipo_riga: c.articolo_id == null ? "nota" as const : "da_kit" as const,
-      articolo_id: c.articolo_id,
-      articolo_codice: codice,
-      descrizione: c.articolo?.descrizione ?? c.ruolo ?? null,
-      um: c.articolo?.um ?? null,
-      incidenza,
-      quantita,
-      segno: 1,
-      vendita: null,
-      peso: codice ? pesoRigaGamma(pesi.get(codice)?.peso_netto, quantita) : c.articolo_id ? round2((c.articolo?.peso_unit ?? 0) * quantita) : null,
-      ordine: idx + 1,
-      ...campi,
-    };
-  });
-  const totale = round2(righe.reduce((s, r) => s + r.importo, 0));
-
+  const { righe, saltate } = preparaRigheKitPreventivo({ kit, quantitaBase: args.quantita_base, scontoPiede: args.sconto_piede, parametri, prezzi, dedicati });
+  const totale = round2(righe.reduce((s, r) => s + n(r.importo), 0));
   const blocco = await insertBlocco({
-    preventivo_id: args.preventivo_id,
-    kit_id: args.kit_id,
-    descrizione: kit.nome,
-    um_base: kit.um_base,
-    quantita_base: args.quantita_base,
+    preventivo_id: args.preventivo_id, kit_id: args.kit_id, descrizione: kit.nome,
+    um_base: kit.um_base, quantita_base: args.quantita_base,
     prezzo_um: args.quantita_base > 0 ? round2(totale / args.quantita_base) : null,
-    importo: totale,
-    note_tecniche: kit.descrizione_tecnica,
-    ordine: args.ordine,
+    importo: totale, note_tecniche: kit.descrizione_tecnica, ordine: args.ordine,
   });
   if (righe.length) {
-    const { error } = await supabase.from("righe_preventivo").insert(righe.map((r) => ({ ...r, blocco_id: blocco.id })));
-    if (error) throw error;
+    const { error } = await supabase.from('righe_preventivo').insert(righe.map(r => ({ ...r, blocco_id: blocco.id })));
+    if (error) throw new Error(`Blocco creato, inserimento delle righe non completato: ${error.message}`);
   }
-  return blocco;
+  await ricalcolaTotaliPreventivo(args.preventivo_id, documento);
+  return { ...blocco, righeSaltate: saltate };
 }
 
 export async function insertRiga(row: RigaInsert): Promise<Riga> {
@@ -899,7 +869,7 @@ export async function updateRiga(id: string, patch: RigaUpdate): Promise<Riga> {
   const codice = patch.articolo_codice ?? corrente.articolo_codice;
   const cambiaQuantita = "quantita" in patch || "incidenza" in patch;
   const pesi = codice && cambiaQuantita ? await fetchPesiGamma([codice]) : null;
-  const riga = { ...corrente, ...(pesi && codice ? { peso_gamma_unit: pesi.get(codice)?.peso_netto ?? null } : {}) };
+  const riga = { ...corrente, ...(pesi && codice ? { peso_gamma_unit: pesoUnitarioRigaPreventivo(corrente, pesi.get(codice)?.peso_netto) } : {}) };
   const calcolata = patchConImporto(riga, patch, corrente.blocco?.quantita_base);
   const { data, error } = await supabase.from("righe_preventivo")
     .update(calcolata).eq("id", id).select().single();
@@ -942,7 +912,7 @@ export async function ricalcolaBloccoSuNuovaQuantita(
       if (!isRigaValorizzata(r)) return;
       const nuovaQta = quantitaDaIncidenza(r.incidenza, qBase);
       if (nuovaQta == null) return;
-      const corrente = r.articolo_codice ? { ...r, peso_gamma_unit: pesi?.get(r.articolo_codice)?.peso_netto ?? null } : r;
+      const corrente = r.articolo_codice ? { ...r, peso_gamma_unit: pesoUnitarioRigaPreventivo(r, pesi?.get(r.articolo_codice)?.peso_netto) } : r;
       const patch = patchConImporto(corrente, { incidenza: r.incidenza }, qBase);
       const { error } = await supabase.from("righe_preventivo").update(patch).eq("id", r.id);
       if (error) throw error;
@@ -1016,7 +986,7 @@ export function calcolaRiga(r: Partial<Riga> & { peso_gamma_unit?: number | null
     costo,
     vendita: venditaSnapshot,
     margine_perc: round2(margine),
-    peso: r.articolo_codice ? n(pesoRigaGamma(r.peso_gamma_unit, q)) : round2(n(r.peso) || 0),
+    peso: r.articolo_codice ? n(pesoRigaGamma(pesoUnitarioRigaPreventivo(r, r.peso_gamma_unit), q)) : round2(n(r.peso) || 0),
   };
 }
 

@@ -7406,6 +7406,7 @@ export type Database = {
           quantita: number | null
           ricarico: number | null
           riga_origine_id: string | null
+          ruolo_kit: string | null
           sconti_gamma: number[]
           sconto_perc: number | null
           segno: number
@@ -7445,6 +7446,7 @@ export type Database = {
           quantita?: number | null
           ricarico?: number | null
           riga_origine_id?: string | null
+          ruolo_kit?: string | null
           sconti_gamma?: number[]
           sconto_perc?: number | null
           segno?: number
@@ -7484,6 +7486,7 @@ export type Database = {
           quantita?: number | null
           ricarico?: number | null
           riga_origine_id?: string | null
+          ruolo_kit?: string | null
           sconti_gamma?: number[]
           sconto_perc?: number | null
           segno?: number

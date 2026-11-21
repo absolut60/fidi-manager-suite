@@ -60,21 +60,3 @@ export function incidenzaEffettivaKit(input: IncidenzaInput & { incidenza?: numb
     ? round4(input.incidenza)
     : calcIncidenzaFromDriver(input);
 }
-
-export const FAMIGLIE_KIT = [
-  "PARETE",
-  "CONTROPARETE",
-  "CTS_CARTONGESSO",
-  "CTS_MODULARE",
-  "VELETTA",
-  "ALTRO",
-] as const;
-
-export const FAMIGLIA_LABEL: Record<(typeof FAMIGLIE_KIT)[number], string> = {
-  PARETE: "Parete",
-  CONTROPARETE: "Controparete",
-  CTS_CARTONGESSO: "CTS Cartongesso",
-  CTS_MODULARE: "CTS Modulare",
-  VELETTA: "Veletta",
-  ALTRO: "Altro",
-};

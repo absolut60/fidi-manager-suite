@@ -217,6 +217,12 @@ export function pesoRigaGamma(pesoNetto: number | string | null | undefined, qua
   return pesoNetto == null ? null : num(pesoNetto) * num(quantita);
 }
 
+/** Kit imported rows carry their total weight snapshot; ordinary Gamma rows retain live Gamma weight. */
+export function pesoUnitarioRigaPreventivo(riga: { ruolo_kit?: string | null; peso?: number | null; quantita?: number | null }, gamma?: number | null): number | null {
+  return riga.ruolo_kit != null && riga.peso != null && num(riga.quantita) > 0
+    ? num(riga.peso) / num(riga.quantita) : gamma ?? null;
+}
+
 const CAMPI_IMPORTO = ["quantita", "prezzo_unit", "sconti_gamma", "maggiorazione_perc", "sconto_perc", "segno", "costo"] as const;
 
 type RigaBase = {
@@ -226,6 +232,7 @@ type RigaBase = {
   quantita?: number | null; prezzo_unit?: number | null; sconto_perc?: number | null;
   sconti_gamma?: number[] | null; maggiorazione_perc?: number | null; segno?: number | null; costo?: number | null;
   incidenza?: number | null; peso?: number | null; peso_gamma_unit?: number | null;
+  ruolo_kit?: string | null;
 };
 
 export type FontePrezzo = "listino" | "cantiere" | "manuale";
@@ -267,7 +274,7 @@ export function patchConImporto<P extends Partial<RigaBase>>(riga: RigaBase, pat
   }
   if ("quantita" in out && !("peso" in patch)) {
     if (riga.articolo_codice && "peso_gamma_unit" in riga) {
-      out.peso = pesoRigaGamma(riga.peso_gamma_unit, out.quantita);
+      out.peso = pesoRigaGamma(pesoUnitarioRigaPreventivo(riga, riga.peso_gamma_unit), out.quantita);
     } else if (riga.peso != null && num(riga.quantita) > 0) {
       out.peso = num(riga.peso) / num(riga.quantita) * num(out.quantita);
     }

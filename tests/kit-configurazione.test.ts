@@ -60,10 +60,10 @@ test('FM90 incidenza esplicita, anche zero, prevale sul driver nel motore attual
   const script = `
     import {mock} from 'bun:test';
     mock.module('@/integrations/supabase/client',()=>({supabase:{}}));
-    const {calcolaRigaKit}=await import('./src/lib/kit-api.ts');
+    const {calcolaKitRegole}=await import('./src/lib/kit-regole.ts');
     const c={tipo_driver:'CONSUMO',valore_driver:5,incidenza:2};
-    if(calcolaRigaKit(c,null,'A').incidenza_effettiva!==2) throw Error('Driver prevale su incidenza 2');
-    if(calcolaRigaKit({...c,incidenza:0},null,'A').incidenza_effettiva!==0) throw Error('Driver prevale su incidenza zero');
+    if(calcolaKitRegole({componenti:[{...c,ordine:1}]})[0].quantitaPerUnita!==2) throw Error('Driver prevale su incidenza 2');
+    if(calcolaKitRegole({componenti:[{...c,incidenza:0,ordine:1}]})[0].quantitaPerUnita!==0) throw Error('Driver prevale su incidenza zero');
   `;
   const processo = Bun.spawn(['bun', '-e', script], { cwd: process.cwd(), stdout: 'pipe', stderr: 'pipe' });
   const errore = await new Response(processo.stderr).text();

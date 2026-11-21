@@ -1,0 +1,2 @@
+ALTER TABLE public.righe_preventivo ADD COLUMN ruolo_kit text;
+COMMENT ON COLUMN public.righe_preventivo.ruolo_kit IS 'FM91: sottocategoria del componente kit, solo UI interna; esclusa da PDF, email e ordine Gamma.';
