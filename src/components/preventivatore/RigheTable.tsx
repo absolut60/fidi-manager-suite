@@ -1,3 +1,5 @@
+import { FornitoreRigaOrdine } from './FornitoreRigaOrdine';
+import { fornitoriRigheOrdine, type FornitoreOrdine } from '@/lib/fornitori-riga-ordine';
 import { fetchPrezzoPreventivoArticolo, type CondizioniPrezziPreventivo } from "@/lib/prezzi-preventivo";
 import { CellaEvasione } from "./CellaEvasione";
 import { statoEvasioneRiga } from "@/lib/evasione";
@@ -68,6 +70,7 @@ import { useIsTablet } from "@/hooks/use-tablet";
 export function RigheTable({
   blocco,
   mostraEvasione = false,
+  tipoDocumento = "preventivo", fornitoreModificabile = false,
   preventivoId,
   fascia,
   readOnly = false,
@@ -79,6 +82,7 @@ export function RigheTable({
   /** FM75 F3c: regime IVA del documento (toggle BS solo con regimiIva e agevolata_10_bs). */
   regimeIva?: string | null;
   mostraEvasione?: boolean;
+  tipoDocumento?: string; fornitoreModificabile?: boolean;
   /** FM75 F1: linea del preventivo, passata dalla pagina. */
   linea?: unknown;
   condizioniPrezzi: CondizioniPrezziPreventivo;
@@ -96,6 +100,10 @@ export function RigheTable({
   const qc = useQueryClient();
   const { data: prezziCantiere = [] } = useQuery({ ...opzioniPrezziCantiere(cantiereId ?? ""), enabled: !!cantiereId });
   const dedicati = useMemo(() => new Map(prezziCantiere.map(p => [p.cod_gamma, p])), [prezziCantiere]);
+  const fornitori = useQuery({
+    queryKey: ['fornitori-righe-ordine', blocco.righe.map(r => [r.id, r.articolo_codice, r.fornitore_id])],
+    queryFn: () => fornitoriRigheOrdine(blocco.righe), enabled: tipoDocumento === 'ordine',
+  });
   const invalidate = () => qc.invalidateQueries({ queryKey: ["preventivo", preventivoId] });
 
   useEffect(() => {
@@ -156,6 +164,10 @@ export function RigheTable({
       if (ctx?.prima) qc.setQueryData(chiave, ctx.prima);
       toast.error(`Modifica non salvata: ${(e as Error).message}`);
     },
+  });
+  const salvaFornitore = useMutation({ mutationKey: ["salva-preventivo", preventivoId],
+    mutationFn: ({ id, fornitoreId }: { id: string; fornitoreId: string }) => updateRiga(id, { fornitore_id: fornitoreId }),
+    onSuccess: invalidate,
   });
   const del = useMutation({ mutationKey: ["salva-preventivo", preventivoId],
     mutationFn: (id: string) => deleteRiga(id),
@@ -258,7 +270,9 @@ export function RigheTable({
   }
 
   const righeProps = (r: (typeof blocco.righe)[number], idx: number) => ({
-    row: r,
+    row: r, tipoDocumento, fornitoreModificabile,
+    fornitore: fornitori.data?.get(r.id) ?? null, fornitoreCaricamento: fornitori.isPending, fornitoreErrore: !!fornitori.error,
+    onFornitore: async (id: string) => { await salvaFornitore.mutateAsync({ id: r.id, fornitoreId: id }); },
     conMisure, righeStampabili, conBs, articoloInDefinizione, gamma, mostraEvasione,
     prezzoCantiere: segnoPrezzoCantiere(r, dedicati.get(r.articolo_codice ?? r.articolo?.cod_gamma ?? "")),
     idx,
@@ -374,7 +388,7 @@ export function RigheTable({
         const cc = rr ? calcMap.get(rr.id) : null;
         return rr?.articolo_codice && (clienteId || condizioniPrezzi.listino_rif != null) && cc ? (
           <RiepilogoArticoloDialog open onOpenChange={(b) => { if (!b) setRiepilogoRigaId(null); }}
-            clienteId={clienteId} condizioni={condizioniPrezzi} codice={rr.articolo_codice} riga={rr} calc={cc} />
+            tipoDocumento={tipoDocumento} clienteId={clienteId} condizioni={condizioniPrezzi} codice={rr.articolo_codice} riga={rr} calc={cc} />
         ) : null;
       })()}
     </div>
@@ -446,6 +460,8 @@ function AddRowMenu({
 
 
 type RigaProps = {
+  tipoDocumento: string; fornitoreModificabile: boolean; fornitore: FornitoreOrdine | null;
+  fornitoreCaricamento: boolean; fornitoreErrore: boolean; onFornitore: (id: string) => Promise<void>;
   mostraEvasione: boolean;
   conMisure: boolean;
   /** FM75 F2c: mostra il flag Stampabile (solo linee che lo prevedono). */
@@ -587,6 +603,7 @@ function useCelleRiga(p: RigaProps) {
         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } }}
         onBlur={(e) => { if ((e.target.value || null) !== row.descrizione) onPatch({ descrizione: e.target.value || null }); }}
         className="block min-h-[26px] w-full min-w-0 resize-none overflow-hidden whitespace-pre-wrap break-words rounded border border-transparent bg-transparent px-1.5 py-1 font-sans text-xs leading-4 shadow-none outline-none [field-sizing:content] hover:border-input focus:border-ring focus:bg-card focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50" placeholder={isText ? "Nota libera…" : isSubtotal ? "Sotto-totale" : "Descrizione…"} />
+      {p.tipoDocumento === 'ordine' && valorizzata && tipo !== 'manuale' && row.articolo_codice && <FornitoreRigaOrdine codice={row.articolo_codice} fornitore={p.fornitore} modificabile={p.fornitoreModificabile} caricamento={p.fornitoreCaricamento} errore={p.fornitoreErrore} onSave={p.onFornitore} />}
       {prezzoMancante && <span role="alert" className="mt-0.5 block font-sans text-[11px] font-semibold text-destructive">Prezzo non disponibile: inseriscilo a mano</span>}
     </>
   );

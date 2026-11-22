@@ -1,3 +1,4 @@
+import { etichetteDocumento } from '@/lib/etichette-documento';
 import type { ReactNode } from "react";
 import { ChevronRight, HardHat, MapPin, Navigation, Plus, Store } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
@@ -132,7 +133,7 @@ export function CantiereTestata({ prev, modificabile, onCantiere, clienteEtichet
     {modificabile && <Button variant="outline" size="sm" className="min-h-10" onClick={() => setScelta(true)}><Plus className="size-3.5"/>{c ? "Cambia cantiere" : "Inserisci cantiere"}</Button>}
     <Dialog open={scelta} onOpenChange={setScelta}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader><DialogTitle>{c ? "Cambia cantiere" : "Inserisci cantiere"}</DialogTitle><DialogDescription>{prev.lead_id ? "I cantieri del lead non sono ancora collegabili al preventivo." : "Scegli un cantiere del cliente oppure creane uno nuovo."}</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{c ? "Cambia cantiere" : "Inserisci cantiere"}</DialogTitle><DialogDescription>{prev.lead_id ? etichetteDocumento(prev.tipo).testo("I cantieri del lead non sono ancora collegabili al preventivo.") : "Scegli un cantiere del cliente oppure creane uno nuovo."}</DialogDescription></DialogHeader>
         {prev.cliente_id && <div className="grid gap-4">
           <div className="grid gap-2"><p className="text-sm font-medium">Cantiere del cliente</p><CantierePicker cliente_id={prev.cliente_id} value={prev.cantiere_id} onChange={collega}/></div>
           <Button variant="outline" className="min-h-10" onClick={() => { setScelta(false); setFinestra(true); }}><Plus className="size-4"/>Nuovo cantiere</Button>

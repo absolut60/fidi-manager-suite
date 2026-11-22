@@ -1,3 +1,4 @@
+import { etichetteDocumento } from '@/lib/etichette-documento';
 import { nomeFileDocumentoPreventivo, nomeIntestatarioPdf } from "./soggetto-preventivo";
 import jsPDF from "jspdf";
 import { prezzoNettoRiga, rigaInUnita, formatScontiGamma, isIntestazioneKit } from "./riga-preventivo";
@@ -371,7 +372,7 @@ export async function exportPreventivoPdf(prev: PreventivoConDettagli, opzioni: 
   const col: ColonneRighePdf = { ...COLONNE_RIGHE_DEFAULT, ...(opzioni.colonne ?? {}) };
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const w = doc.internal.pageSize.getWidth();
-  const headerEnd = drawHeader(doc, prev.tipo === "ordine" ? "Ordine" : "Preventivo", prev, branding, "sistema");
+  const headerEnd = drawHeader(doc, etichetteDocumento(prev.tipo).titolo, prev, branding, "sistema");
 
   const blocchi = buildBlocchiOutput(prev);
   const stampa = lineaPreventivo(prev.linea).stampa;
@@ -612,7 +613,7 @@ export async function exportPreventivoPdf(prev: PreventivoConDettagli, opzioni: 
   if (riepilogo.regime !== "ordinaria") {
     drawRiepilogoIvaPdf(doc, riepilogo, w - 14 - 80, y, 80);
     drawFooter(doc, branding, prev);
-    const nomeAgev = fileName(prev, prev.tipo === "ordine" ? "ordine" : "preventivo");
+    const nomeAgev = fileName(prev, etichetteDocumento(prev.tipo).nome);
     return { blob: doc.output("blob") as Blob, fileName: nomeAgev };
   }
 
@@ -638,7 +639,7 @@ export async function exportPreventivoPdf(prev: PreventivoConDettagli, opzioni: 
   doc.setTextColor(...NAVY); doc.text(fmtEur(tot.totale), tx + tw - 4, ty + 22.5, { align: "right" });
 
   drawFooter(doc, branding, prev);
-  const name = fileName(prev, prev.tipo === "ordine" ? "ordine" : "preventivo");
+  const name = fileName(prev, etichetteDocumento(prev.tipo).nome);
   return { blob: doc.output("blob") as Blob, fileName: name };
 }
 

@@ -1,3 +1,4 @@
+import { etichetteDocumento } from '@/lib/etichette-documento';
 import { AllegatiSection } from "@/components/allegati-section";
 import { NotePreventivo } from "./NotePreventivo";
 import { AttivitaPreventivo } from "./AttivitaPreventivo";
@@ -34,6 +35,7 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
   prev: PreventivoConDettagli; cliente: DatiClientePreventivo|null|undefined; modificabile:boolean; statoEditabile:boolean; agenti:Agente[]; principali:{id:string;numero:string|null;titolo:string|null}[]; haAlternative:boolean; listino:string; categoria:string; sede:string; sedeClienteId?:string|null;
   onSave:(patch:PreventivoUpdate)=>void; onCliente:()=>void; onChangeCliente:(id:string)=>void; onCantiere:(id:string)=>void|Promise<void>;
 }) {
+  const etichette = etichetteDocumento(prev.tipo);
   const {data:codici=[]}=useCodiciPagamento();
   const {profilo}=useAuth();
   const {data:stores=[]}=useQuery({queryKey:["stores-attivi"],queryFn:async()=>{const {data,error}=await supabase.from("stores").select("id, codice, nome").eq("attivo",true).order("codice");if(error)throw error;return data??[];}});
@@ -42,7 +44,7 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
   const sedeRisolta=prev.store_id ?? risolviSedePreventivo({cliente:{store_id:sedeClienteId??null},lead:prev.lead,utente:profilo});
   const save=(patch:PreventivoUpdate)=>{
     const sedeId=patch.store_id===undefined?sedeRisolta:patch.store_id;
-    if(!sedeId){toast.error("Scegli la sede prima di salvare il preventivo.");return;}
+    if(!sedeId){toast.error(etichette.testo("Scegli la sede prima di salvare il preventivo."));return;}
     onSave({...(!prev.store_id?campiSedePreventivo(stores.find(s=>s.id===sedeId)??{id:sedeId,nome:null}):{}),...(!prev.condizione_pagamento_cod&&pagamento?{condizione_pagamento_cod:pagamento}:{}),...patch});
   };
   const field=(label:string,value:ReactNode,control:ReactNode,wide=false)=><div key={label} className={`min-w-0 grid content-start gap-1 ${wide?'col-span-2':''}`}><Label className="text-[11px] text-muted-foreground">{label}</Label>{modificabile?control:<div className="min-h-7 text-xs break-words whitespace-pre-wrap py-1">{value||'—'}</div>}</div>;
@@ -61,14 +63,15 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
         {text('titolo','Titolo',true)}
         <div className="grid min-w-0 content-start gap-1"><Label className="text-[11px] text-muted-foreground">Numero</Label><p aria-label="Numero" className="min-h-7 break-words py-1 font-mono text-xs">{prev.numero || '—'}</p></div>
         {field('Data',formatDate(prev.data),<Input aria-label="Data" className="h-7 bg-card px-2 text-xs md:text-xs" type="date" defaultValue={prev.data} onBlur={e=>{if(e.target.value&&e.target.value!==prev.data)save({data:e.target.value});}}/>)}
+        {prev.tipo === 'ordine' && <div className="grid min-w-0 gap-1"><Label className="text-[11px] text-muted-foreground">Data di consegna</Label>{statoEditabile ? <Input aria-label="Data di consegna" key={prev.data_consegna ?? ''} type="date" className="h-7 tablet:min-h-11 bg-card px-2 text-xs" defaultValue={prev.data_consegna ?? ''} onBlur={e => { if ((e.target.value || null) !== prev.data_consegna) save({ data_consegna: e.target.value || null }); }} /> : <p className="py-1 text-xs">{prev.data_consegna ? formatDate(prev.data_consegna) : '—'}</p>}</div>}
         {field('Validità',prev.validita?formatDate(prev.validita):'—',<Input aria-label="Validità" className="h-7 bg-card px-2 text-xs md:text-xs" type="date" defaultValue={prev.validita||''} onBlur={e=>{if((e.target.value||null)!==prev.validita)save({validita:e.target.value||null});}}/>)}
-        {field('Tipo documento',TIPI_DOC_LABEL[prev.tipo_doc],select('Tipo documento',prev.tipo_doc,TIPI_DOC.map(v=>({value:v,label:TIPI_DOC_LABEL[v]})),v=>{if(TIPI_DOC.includes(v as typeof prev.tipo_doc))save({tipo_doc:v as typeof prev.tipo_doc});}))}
+        {field('Tipo documento',etichette.testo(TIPI_DOC_LABEL[prev.tipo_doc]),select('Tipo documento',prev.tipo_doc,TIPI_DOC.map(v=>({value:v,label:etichette.testo(TIPI_DOC_LABEL[v])})),v=>{if(TIPI_DOC.includes(v as typeof prev.tipo_doc))save({tipo_doc:v as typeof prev.tipo_doc});}))}
         {/* Ordinato è assegnato/ripristinato dagli ordini; gli altri stati conservano le regole FM65. */}
         {(modificabile||statoEditabile)
           ? <div className="min-w-0 grid content-start gap-1"><Label className="text-[11px] text-muted-foreground">Stato</Label>{select('Stato',prev.stato,statiManualiPreventivo(prev.stato).map(v=>({value:v,label:STATI_LABEL[v]})),v=>{if(STATI.includes(v as typeof prev.stato)&&puoCambiareStatoPreventivo(prev.stato,v as typeof prev.stato))save({stato:v as typeof prev.stato});},prev.stato==='ordinato')}</div>
           : field('Stato',STATI_LABEL[prev.stato],<span/>)}
         {field('Agente',agenti.find(a=>a.id===prev.agente_codice)?.nome,select('Agente',prev.agente_codice||'',agenti.map(a=>({value:a.id,label:a.nome})),v=>save({agente_codice:v==='__none__'?null:v})))}
-        {field('Alternativa di',principali.find(p=>p.id===prev.alternativa_di)?.numero||'— Nessuna: è un preventivo principale',<div><Select value={prev.alternativa_di||'__none__'} disabled={haAlternative||prev.tipo!=='preventivo'} onValueChange={v=>save({alternativa_di:v==='__none__'?null:v})}><SelectTrigger aria-label="Alternativa di" className="h-7 w-full min-w-0 bg-card px-2 text-xs [&>span]:truncate [&>span]:text-left"><SelectValue/></SelectTrigger><SelectContent className="max-w-[calc(100vw-2rem)]"><SelectItem value="__none__">— Nessuna: è un preventivo principale</SelectItem>{principali.map(p=><SelectItem key={p.id} value={p.id}>{p.numero} {p.titolo?`· ${p.titolo}`:''}</SelectItem>)}</SelectContent></Select>{haAlternative&&<p className="text-xs text-muted-foreground mt-1">Ha alternative collegate</p>}</div>,true)}
+        {field('Alternativa di',principali.find(p=>p.id===prev.alternativa_di)?.numero||etichette.testo('— Nessuna: è un preventivo principale'),<div><Select value={prev.alternativa_di||'__none__'} disabled={haAlternative||prev.tipo!=='preventivo'} onValueChange={v=>save({alternativa_di:v==='__none__'?null:v})}><SelectTrigger aria-label="Alternativa di" className="h-7 w-full min-w-0 bg-card px-2 text-xs [&>span]:truncate [&>span]:text-left"><SelectValue/></SelectTrigger><SelectContent className="max-w-[calc(100vw-2rem)]"><SelectItem value="__none__">{etichette.testo('— Nessuna: è un preventivo principale')}</SelectItem>{principali.map(p=><SelectItem key={p.id} value={p.id}>{p.numero} {p.titolo?`· ${p.titolo}`:''}</SelectItem>)}</SelectContent></Select>{haAlternative&&<p className="text-xs text-muted-foreground mt-1">Ha alternative collegate</p>}</div>,true)}
       </div>
     </RiquadroScheda>
     <RiquadroScheda titolo={prev.lead_id ? "Lead" : "Cliente"} icona={UserRound} tono="azzurro" densita="compatta" azioni={<AzioneRiquadro icona={ExternalLink} etichetta={prev.lead_id ? "Apri scheda lead" : "Apri scheda cliente"} onClick={onCliente}/>} intestazione={<div className="flex min-w-0 flex-wrap items-center gap-2"><h3 className="text-xs font-semibold">{prev.lead_id ? "Lead" : "Cliente"}</h3>{etichettaSoggetto&&<span className="shrink-0 rounded-full border border-pv-blu/30 bg-pv-azzurro px-1.5 text-[10px] font-medium leading-4 text-pv-blu">{etichettaSoggetto}</span>}<IndicatoreClientePreventivo clienteId={prev.cliente_id}/></div>}>

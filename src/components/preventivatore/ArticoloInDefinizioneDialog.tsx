@@ -1,3 +1,4 @@
+import { cercaFornitoriRiga } from '@/lib/fornitori-riga-ordine';
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -76,12 +77,7 @@ export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch, 
   const termine = cerca.trim();
   const risultati = useQuery({
     queryKey: ["fornitori-ricerca-riga", termine], enabled: open && termine.length >= 2,
-    queryFn: async () => {
-      const t = termine.replace(/[%,()]/g, " ");
-      const { data, error } = await supabase.from("fornitori").select("id, ragione_sociale, alias, sconti_base")
-        .or(`ragione_sociale.ilike.%${t}%,alias.ilike.%${t}%`).order("ragione_sociale").limit(20);
-      if (error) throw error; return data ?? [];
-    },
+    queryFn: () => cercaFornitoriRiga(termine),
   });
 
   const marcaScelta = useQuery({

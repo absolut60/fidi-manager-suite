@@ -1,3 +1,4 @@
+import { etichetteDocumento } from '@/lib/etichette-documento';
 import type { CondizioniPrezziPreventivo } from "@/lib/prezzi-preventivo";
 import { opzioniPrezziCantiere } from "@/lib/cantiere-listini-api";
 import { useState } from "react";
@@ -21,10 +22,10 @@ import { parseNumeroIt } from "@/lib/numero-it";
 import { lineaPreventivo } from "@/lib/linee-preventivo";
 
 export function AggiungiBloccoDialog({
-  open, onOpenChange, preventivoId, lastOrdine, clienteId, scontoPiede = 0, cantiereId, condizioniPrezzi, linea,
+  open, onOpenChange, preventivoId, lastOrdine, clienteId, scontoPiede = 0, cantiereId, condizioniPrezzi, linea, tipoDocumento,
 }: {
   /** FM75 F1: linea del preventivo (comportamenti dal catalogo). */
-  linea?: unknown;
+  linea?: unknown; tipoDocumento?: string;
   condizioniPrezzi: CondizioniPrezziPreventivo;
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -58,7 +59,7 @@ export function AggiungiBloccoDialog({
 
   const addKit = useMutation({
     mutationFn: async () => {
-      if (!kitId || !gruppi.some(g => g.kits.some(k => k.id === kitId))) throw new Error("Scegli un kit della linea del preventivo");
+      if (!kitId || !gruppi.some(g => g.kits.some(k => k.id === kitId))) throw new Error(etichetteDocumento(tipoDocumento).testo("Scegli un kit della linea del preventivo"));
       return addBloccoDaKit({
         preventivo_id: preventivoId,
         kit_id: kitId,

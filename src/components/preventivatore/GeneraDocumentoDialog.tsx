@@ -1,3 +1,4 @@
+import { etichetteDocumento } from '@/lib/etichette-documento';
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -23,13 +24,11 @@ import { supabase } from "@/integrations/supabase/client";
 
 type Modalita = "PREVENTIVO" | "PROPOSTA_RAPIDA" | "LISTA_MATERIALI" | "LISTA_FORNITORE";
 
-function buildModi(isOrdine: boolean): { id: Modalita; label: string; desc: string; icon: typeof FileText; excel: boolean }[] {
+function buildModi(tipo: string): { id: Modalita; label: string; desc: string; icon: typeof FileText; excel: boolean }[] {
   return [
     {
-      id: "PREVENTIVO", label: isOrdine ? "Ordine" : "Preventivo",
-      desc: isOrdine
-        ? "PDF ufficiale per il cliente: intestazione MADE, dati cantiere, blocchi con materiali, totali e IVA."
-        : "PDF ufficiale per il cliente: intestazione MADE, dati cantiere, blocchi con materiali, totali e IVA.",
+      id: "PREVENTIVO", label: etichetteDocumento(tipo).titolo,
+      desc: "PDF ufficiale per il cliente: intestazione MADE, dati cantiere, blocchi con materiali, totali e IVA.",
       icon: FileText, excel: false,
     },
     {
@@ -74,9 +73,8 @@ export function GeneraDocumentoDialog({
   const PREZZI_DA_ESPOSIZIONE: (keyof ColonneRighePdf)[] = ["prezzo_unit", "sconto", "prezzo_scontato"];
   const colonneScelta = vistaCommerciale ? COLONNE_LABEL.filter(c => !PREZZI_DA_ESPOSIZIONE.includes(c.key)) : COLONNE_LABEL;
 
-  const isOrdine = prev.tipo === "ordine";
-  const docDa = isOrdine ? "dall'ordine" : "dal preventivo";
-  const MODI = buildModi(isOrdine);
+  const docDa = etichetteDocumento(prev.tipo).da;
+  const MODI = buildModi(prev.tipo);
 
   // Carica preferenze utente all'apertura
   useEffect(() => {

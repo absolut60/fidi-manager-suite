@@ -1,3 +1,4 @@
+import { etichetteDocumento } from '@/lib/etichette-documento';
 import { CondizioniClienteGamma } from "@/components/preventivatore/CondizioniClienteGamma";
 import { CondizionePagamentoRichiestaSelect } from "@/components/condizione-pagamento-richiesta-select";
 import { campiSedePreventivo, risolviSedePreventivo, riallineaValidita, validitaProposta } from "@/lib/preventivo-creazione";
@@ -36,6 +37,7 @@ import { scritturaPreventiviVincolataAgente, writeOnlyMissingCodice as mancaCodi
 export function NuovoPreventivoDialog({
   open, onOpenChange, tipo = "preventivo", soggettoIniziale,
 }: { open: boolean; onOpenChange: (v: boolean) => void; tipo?: TipoDocumento; soggettoIniziale?: SoggettoTabPreventivi }) {
+  const etichette = etichetteDocumento(tipo);
   const qc = useQueryClient();
   const navigate = useNavigate();
   const today = new Date().toISOString().slice(0, 10);
@@ -54,6 +56,7 @@ export function NuovoPreventivoDialog({
   const [tipoDoc, setTipoDoc] = useState<TipoDoc>("PREVENTIVO");
   const [numero, setNumero] = useState("");
   const [data, setData] = useState(today);
+  const [dataConsegna, setDataConsegna] = useState("");
   const [validita, setValidita] = useState(() => validitaProposta(today));
   const validitaManuale = useRef(false);
 
@@ -72,7 +75,7 @@ export function NuovoPreventivoDialog({
     enabled: open && soggettoIniziale?.tipo === "lead",
     queryFn: async () => {
       const { data, error } = await supabase.from("lead").select(LEAD_PREVENTIVO_SELECT).eq("id", soggettoIniziale?.id ?? "").single();
-      if (error) throw new Error("Impossibile leggere il lead per il nuovo preventivo. Riprova.");
+      if (error) throw new Error(etichette.testo("Impossibile leggere il lead per il nuovo preventivo. Riprova."));
       return data;
     },
   });
@@ -107,8 +110,8 @@ export function NuovoPreventivoDialog({
   });
 
   const isOrdine = tipo === "ordine";
-  const labelDoc = isOrdine ? "ordine" : "preventivo";
-  const labelDocCap = isOrdine ? "Ordine" : "Preventivo";
+  const labelDoc = etichette.nome;
+  const labelDocCap = etichette.titolo;
 
   // All'apertura del dialog: proponi il prossimo numero progressivo (anteprima
   // di sola lettura, senza consumare il contatore).
@@ -167,7 +170,7 @@ export function NuovoPreventivoDialog({
       if (!soggetto) throw new Error("Scegli un cliente o un lead");
       if (!linea) throw new Error("Non hai linee del preventivatore abilitate: chiedi all'amministratore.");
       const sedeScelta = stores.find(s => s.id === filiale);
-      if (!sedeScelta) throw new Error("Scegli la sede prima di salvare il preventivo.");
+      if (!sedeScelta) throw new Error(etichette.testo("Scegli la sede prima di salvare il preventivo."));
       const dataFinal = data || today;
       const tipoDocFinal: TipoDoc = tipoDoc || "PREVENTIVO";
       return creaConPrimoBlocco(() => createPreventivo({
@@ -181,6 +184,7 @@ export function NuovoPreventivoDialog({
         tipo_doc: tipoDocFinal,
         tipo,
         data: dataFinal,
+        ...(isOrdine ? { data_consegna: dataConsegna || null } : {}),
         validita: validita || null,
       }, { linea }), addBloccoVuoto);
     },
@@ -204,12 +208,12 @@ export function NuovoPreventivoDialog({
         <div className="grid gap-3">
           <div className="grid gap-1.5 min-w-0">
             <Label htmlFor="nuovo-preventivo-titolo">Titolo <span className="text-muted-foreground font-normal">(facoltativo, consigliato)</span></Label>
-            <Input id="nuovo-preventivo-titolo" value={titolo} onChange={(e) => setTitolo(e.target.value)} placeholder="Titolo del preventivo" />
+            <Input id="nuovo-preventivo-titolo" value={titolo} onChange={(e) => setTitolo(e.target.value)} placeholder={etichette.testo("Titolo del preventivo")} />
           </div>
           {statoLinea.mostra && (
             <div className="grid gap-1.5">
               <Label>Linea *</Label>
-              <div className="flex flex-wrap gap-1" role="group" aria-label="Linea del preventivo">
+              <div className="flex flex-wrap gap-1" role="group" aria-label={etichette.testo("Linea del preventivo")}>
                 {statoLinea.linee.map(l => (
                   <Button key={l.codice} type="button" size="sm" className="min-h-10" variant={linea === l.codice ? "default" : "outline"} aria-pressed={linea === l.codice} onClick={() => setLineaScelta(l.codice)}>
                     {l.etichetta}
@@ -218,6 +222,7 @@ export function NuovoPreventivoDialog({
               </div>
             </div>
           )}
+          {isOrdine && <div className="grid gap-1.5"><Label htmlFor="nuovo-ordine-data-consegna">Data di consegna</Label><Input id="nuovo-ordine-data-consegna" type="date" value={dataConsegna} onChange={e => setDataConsegna(e.target.value)} /></div>}
           <div className="grid gap-1.5">
             <Label>Soggetto *</Label>
             {soggettoIniziale?.tipo === "lead" && leadIniziale.isPending ? <p className="text-sm text-muted-foreground">Caricamento lead…</p> : soggettoIniziale?.tipo === "lead" && leadIniziale.error ? <p role="alert" className="text-sm text-destructive">{leadIniziale.error.message}</p> : <SoggettoPreventivoPicker key={soggettoIniziale?.id} value={soggetto} riferimento={riferimento} onRiferimento={setRiferimento} consentiLead={!isOrdine} sedeId={filiale || null} onChange={v => {
@@ -307,7 +312,7 @@ export function NuovoPreventivoDialog({
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {TIPI_DOC.map((t) => (
-                      <SelectItem key={t} value={t}>{TIPI_DOC_LABEL[t]}</SelectItem>
+                      <SelectItem key={t} value={t}>{etichette.testo(TIPI_DOC_LABEL[t])}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

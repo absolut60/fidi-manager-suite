@@ -1,0 +1,1 @@
+ALTER TABLE public.preventivi ADD COLUMN data_consegna date;

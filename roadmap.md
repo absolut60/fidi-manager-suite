@@ -1,3 +1,8 @@
+# FM94 — Fetta 2
+- [x] Data di consegna nullable 0262, testi condivisi e scelta fornitore sulle sole righe Gamma degli ordini.
+- [x] 1263 test verdi, verifiche 320/375/390/768/1280/1920 e rapporto fm94-fetta2.md; pagina temporanea rimossa.
+- [ ] Verifica autenticata persistita: account personale non disponibile; data e fornitori salvati/riletti con risposte locali, nessun dato DB di prova.
+
 # FM94 — Fetta 1
 - [x] Schema nullable 0260, vista famiglie e copie SQL verbatim 0261; nessun aggiornamento dati.
 - [x] Fonte unica codice Gamma, finestra manuale, conversioni e copie TS.

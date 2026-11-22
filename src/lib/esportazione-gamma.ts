@@ -1,6 +1,14 @@
 /** Limiti del tracciato Gamma, condivisi da compilazione ed esportazione. */
 export const LIMITI_GAMMA = { codiceArticolo: 25, descrizione: 70 } as const;
 
+/** Il fornitore scelto sulla riga prevale sul preferenziale del catalogo Gamma. */
+export function fornitoreRigaOrdine(
+  riga: { fornitore_id?: string | null },
+  articolo?: { fornitore_pref_id?: string | null } | null,
+): string | null {
+  return riga.fornitore_id || articolo?.fornitore_pref_id || null;
+}
+
 export function codiceArticoloNuovo(marcaCodice: string | null | undefined, codiceFornitore: string | null | undefined): string | null {
   const marca = marcaCodice?.replace(/\s/g, '').toUpperCase();
   const fornitore = codiceFornitore?.replace(/\s/g, '').toUpperCase();

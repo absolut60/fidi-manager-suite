@@ -1,3 +1,4 @@
+import { etichetteDocumento } from '@/lib/etichette-documento';
 import { RiepilogoIvaPreventivo } from "@/components/preventivatore/RiepilogoIvaPreventivo";
 import type { CondizioniPrezziPreventivo } from "@/lib/prezzi-preventivo";
 import { messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
@@ -94,10 +95,10 @@ import { campiRiferimentoPreventivo } from "@/lib/condizioni-riferimento";
 export const Route = createFileRoute("/_app/preventivatore/$id")({
   validateSearch: zodValidator(z.object({tab:fallback(z.string(),'corpo').default('corpo')})),
   head: () => ({ meta: [
-    { title: "Editor Preventivo — Sistema MADE" },
-    { name: "description", content: "Articoli, kit e condizioni cliente nel preventivo MADE." },
-    { property: "og:title", content: "Editor Preventivo — Sistema MADE" },
-    { property: "og:description", content: "Articoli, kit e condizioni cliente nel preventivo MADE." },
+    { title: "Editor documenti — Sistema MADE" },
+    { name: "description", content: "Articoli, kit e condizioni cliente nei preventivi e negli ordini MADE." },
+    { property: "og:title", content: "Editor documenti — Sistema MADE" },
+    { property: "og:description", content: "Articoli, kit e condizioni cliente nei preventivi e negli ordini MADE." },
     { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
   ] }),
   component: PreventivoEditorPage,
@@ -123,7 +124,7 @@ function PreventivoEditorPage() {
     setSalvaAttesa(true);
     try {
       const ok = await salvataggio.salvaOra();
-      if (ok) toast.success("Preventivo salvato"); else toast.error("Errore nel salvataggio");
+      if (ok) toast.success(etichette.testo("Preventivo salvato")); else toast.error("Errore nel salvataggio");
     } finally { setSalvaAttesa(false); }
   };
   const [addBloccoOpen, setAddBloccoOpen] = useState(false);
@@ -138,6 +139,8 @@ function PreventivoEditorPage() {
     queryKey: ["preventivo", id],
     queryFn: () => fetchPreventivo(id),
   });
+
+  const etichette = etichetteDocumento(prev?.tipo);
 
   const { data: prezziCantiere = [] } = useQuery({ ...opzioniPrezziCantiere(prev?.cantiere_id ?? ""), enabled: !!prev?.cantiere_id });
   const { data: cantierePrezzi } = useQuery({ queryKey: ["cantiere-preventivo-posizione", prev?.cantiere_id], enabled: prezziOpen && !!prev?.cantiere_id, queryFn: async () => {
@@ -208,9 +211,8 @@ function PreventivoEditorPage() {
   const delPrev = useMutation({
     mutationFn: () => deletePreventivo(id),
     onSuccess: (esito) => {
-      const isOrd = prev?.tipo === "ordine";
-      if (esito.tipo !== "eliminato") { toast.error(messaggioEsitoEliminazione(esito, isOrd ? "l’ordine" : "il preventivo")); return; }
-      toast.success(isOrd ? "Ordine eliminato" : "Preventivo eliminato");
+      if (esito.tipo !== "eliminato") { toast.error(messaggioEsitoEliminazione(esito, etichette.articolo)); return; }
+      toast.success(etichette.testo("Preventivo eliminato"));
       navigate({ to: "/preventivatore" });
     },
     onError: (e: unknown) => toast.error((e as Error).message),
@@ -362,7 +364,7 @@ function PreventivoEditorPage() {
   }
 
   // FM65 B3: finestra d'uscita solo con modifiche/salvataggio/errore; il cambio tab (?tab=) non blocca mai.
-  const bloccaUscita = !!prev && preventivoModificabile(prev, puoScrivere) && devoBloccareUscita(salvataggio.stato);
+  const bloccaUscita = !!prev && (preventivoModificabile(prev, puoScrivere) || prev.tipo === "ordine" && puoScrivere) && devoBloccareUscita(salvataggio.stato);
   const uscita = useBlocker({
     shouldBlockFn: ({ current, next }) => bloccaUscita && current.pathname !== next.pathname,
     enableBeforeUnload: bloccaUscita,
@@ -422,9 +424,9 @@ function PreventivoEditorPage() {
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-2 bg-card p-3">
           <div className="flex flex-wrap min-w-0 items-center gap-2">
-            <BackButton fallbackTo="/preventivatore" fallbackLabel="Preventivi" />
+            <BackButton fallbackTo="/preventivatore" fallbackLabel={etichette.testo("Preventivi")} />
             <h1 className="text-xl font-semibold">
-              {prev.numero ?? (prev.tipo === "ordine" ? "Nuovo ordine" : "Nuovo preventivo")}
+              {prev.numero ?? etichette.nuovo}
             </h1>
             <BadgeLinea linea={prev.linea} />
             <BadgeTestata prev={prev} />
@@ -454,7 +456,7 @@ function PreventivoEditorPage() {
                 </AlertDialogContent>
               </AlertDialog>
             )}
-            {modificabile && (
+            {(modificabile || prev.tipo === "ordine" && puoScrivere) && (
               <>
                 <BadgeSalvataggio stato={salvataggio.stato} />
                 <Button size="sm" onClick={onSalva} disabled={salvaAttesa}>
@@ -561,7 +563,7 @@ function PreventivoEditorPage() {
         {puoScrivere && !modificabile && (
           <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
             <Lock className="size-4 shrink-0" />
-            <span>{prev.tipo === "ordine" ? "Ordine: in sola lettura." : "Preventivo confermato: in sola lettura. Per modificarlo riporta lo stato a Bozza o Inviato in Testata."}</span>
+            <span>{etichette.testo(prev.tipo === "ordine" ? "Preventivo: altri campi in sola lettura." : "Preventivo confermato: in sola lettura. Per modificarlo riporta lo stato a Bozza o Inviato in Testata.")}</span>
           </div>
         )}
         {/* Link incrociati preventivo ↔ ordini */}
@@ -634,7 +636,7 @@ function PreventivoEditorPage() {
                       </Card>
                     ) : (
                       prev.blocchi.map((b, idx) => (
-                        <BloccoCard mostraEvasione={mostraColonnaEvasione({ tipo: prev.tipo, righe: prev.blocchi.flatMap(b => b.righe), chiuso_at: prev.chiuso_at })} linea={prev.linea} regimeIva={prev.regime_iva} condizioniPrezzi={prev} key={b.id} blocco={b} index={idx} preventivoId={id} fascia={(prev.fascia_listino ?? "A") as FasciaListino} readOnly={!modificabile} clienteId={prev.cliente_id ?? null} cantiereId={prev.cantiere_id} {...sedeGiacenze} scontoPiede={Number(prev.sconto_piede_perc ?? 0)} />
+                        <BloccoCard tipoDocumento={prev.tipo} fornitoreModificabile={prev.tipo === "ordine" && puoScrivere} mostraEvasione={mostraColonnaEvasione({ tipo: prev.tipo, righe: prev.blocchi.flatMap(b => b.righe), chiuso_at: prev.chiuso_at })} linea={prev.linea} regimeIva={prev.regime_iva} condizioniPrezzi={prev} key={b.id} blocco={b} index={idx} preventivoId={id} fascia={(prev.fascia_listino ?? "A") as FasciaListino} readOnly={!modificabile} clienteId={prev.cliente_id ?? null} cantiereId={prev.cantiere_id} {...sedeGiacenze} scontoPiede={Number(prev.sconto_piede_perc ?? 0)} />
                       ))
                     )}
                   </div>
@@ -677,6 +679,7 @@ function PreventivoEditorPage() {
         open={addBloccoOpen}
         onOpenChange={setAddBloccoOpen}
         preventivoId={id}
+        tipoDocumento={prev.tipo}
         fascia={(prev.fascia_listino ?? "A") as FasciaListino}
         clienteId={prev.cliente_id ?? null}
         cantiereId={prev.cantiere_id} scontoPiede={Number(prev.sconto_piede_perc ?? 0)}
@@ -699,8 +702,8 @@ function PreventivoEditorPage() {
 }
 
 function BloccoCard({
-  mostraEvasione, blocco, index, preventivoId, fascia, readOnly = false, clienteId, scontoPiede, cantiereId, sedeGiacenzaId, sedeNome, condizioniPrezzi, linea, regimeIva,
-}: { mostraEvasione: boolean; linea: unknown; regimeIva?: string | null; condizioniPrezzi: CondizioniPrezziPreventivo; blocco: BloccoConRighe; index: number; preventivoId: string; fascia: FasciaListino; readOnly?: boolean; clienteId: string | null; scontoPiede: number; cantiereId: string | null; sedeGiacenzaId?: string | null; sedeNome?: string | null }) {
+  tipoDocumento, fornitoreModificabile, mostraEvasione, blocco, index, preventivoId, fascia, readOnly = false, clienteId, scontoPiede, cantiereId, sedeGiacenzaId, sedeNome, condizioniPrezzi, linea, regimeIva,
+}: { tipoDocumento: string; fornitoreModificabile: boolean; mostraEvasione: boolean; linea: unknown; regimeIva?: string | null; condizioniPrezzi: CondizioniPrezziPreventivo; blocco: BloccoConRighe; index: number; preventivoId: string; fascia: FasciaListino; readOnly?: boolean; clienteId: string | null; scontoPiede: number; cantiereId: string | null; sedeGiacenzaId?: string | null; sedeNome?: string | null }) {
   const qc = useQueryClient();
   const conMisure = lineaPreventivo(linea).blocchi.bloccoConMisure;
   const sortable = useSortable({ id: blocco.id });
@@ -832,7 +835,7 @@ function BloccoCard({
             </div>
           )}
 
-          <RigheTable mostraEvasione={mostraEvasione} linea={linea} regimeIva={regimeIva} condizioniPrezzi={condizioniPrezzi} blocco={blocco} preventivoId={preventivoId} fascia={fascia} readOnly={readOnly} clienteId={clienteId} cantiereId={cantiereId} sedeGiacenzaId={sedeGiacenzaId} sedeNome={sedeNome} scontoPiede={scontoPiede} />
+          <RigheTable tipoDocumento={tipoDocumento} fornitoreModificabile={fornitoreModificabile} mostraEvasione={mostraEvasione} linea={linea} regimeIva={regimeIva} condizioniPrezzi={condizioniPrezzi} blocco={blocco} preventivoId={preventivoId} fascia={fascia} readOnly={readOnly} clienteId={clienteId} cantiereId={cantiereId} sedeGiacenzaId={sedeGiacenzaId} sedeNome={sedeNome} scontoPiede={scontoPiede} />
         </CardContent>
       </Card>
     </div>

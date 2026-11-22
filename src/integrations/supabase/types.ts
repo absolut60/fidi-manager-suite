@@ -6065,6 +6065,7 @@ export type Database = {
           created_at: string
           creato_da: string | null
           data: string
+          data_consegna: string | null
           fascia_listino: Database["public"]["Enums"]["fascia_listino"] | null
           filiale: string | null
           id: string
@@ -6108,6 +6109,7 @@ export type Database = {
           created_at?: string
           creato_da?: string | null
           data?: string
+          data_consegna?: string | null
           fascia_listino?: Database["public"]["Enums"]["fascia_listino"] | null
           filiale?: string | null
           id?: string
@@ -6151,6 +6153,7 @@ export type Database = {
           created_at?: string
           creato_da?: string | null
           data?: string
+          data_consegna?: string | null
           fascia_listino?: Database["public"]["Enums"]["fascia_listino"] | null
           filiale?: string | null
           id?: string

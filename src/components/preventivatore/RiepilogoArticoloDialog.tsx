@@ -1,3 +1,4 @@
+import { etichetteDocumento } from '@/lib/etichette-documento';
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Boxes, ExternalLink, FileText, ShoppingCart, Tag, Truck, X } from "lucide-react";
@@ -19,6 +20,7 @@ import { cn } from "@/lib/utils";
 type RigaRiepilogo = ImportoRigaInput & { incidenza?: number | null; costo?: number | null; um?: string | null; um_scelta?: string | null };
 
 export type RiepilogoArticoloDialogProps = {
+  tipoDocumento?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Con cliente: condizioni del cliente (invariato). Senza cliente (lead): condizioni di riferimento e sede del preventivo. */
@@ -41,7 +43,8 @@ function Voce({ etichetta, valore, forte }: { etichetta: ReactNode; valore: Reac
 }
 
 /** FM65 punto 4: riepilogo dell'articolo di una riga, sola lettura. Dati: riepilogo_articolo_preventivo + prezzi_preventivo_cliente. */
-export function RiepilogoArticoloDialog({ open, onOpenChange, clienteId, condizioni, codice, riga, calc }: RiepilogoArticoloDialogProps) {
+export function RiepilogoArticoloDialog({ open, onOpenChange, clienteId, condizioni, codice, riga, calc, tipoDocumento }: RiepilogoArticoloDialogProps) {
+  const etichette = etichetteDocumento(tipoDocumento);
   const rif = !clienteId && condizioni?.listino_rif != null ? condizioni : null;
   const attivo = open && !!codice && (!!clienteId || !!rif);
   const qRiep = useQuery({ queryKey: rif ? ["riepilogo-articolo-riferimento", rif.listino_rif, rif.store_id, codice] : ["riepilogo-articolo-preventivo", clienteId, codice],
@@ -64,7 +67,7 @@ export function RiepilogoArticoloDialog({ open, onOpenChange, clienteId, condizi
         <div className="min-w-0 flex-1">
           <p className="break-all font-mono text-xs text-muted-foreground">{codice}</p>
           <DialogTitle className="mt-0.5 break-words text-lg font-bold leading-snug">{a?.descrizione ?? (caricamento ? "Caricamento…" : "Riepilogo articolo")}</DialogTitle>
-          <DialogDescription className="sr-only">Riepilogo dell'articolo per il cliente del preventivo</DialogDescription>
+          <DialogDescription className="sr-only">{etichette.testo("Riepilogo dell'articolo per il cliente del preventivo")}</DialogDescription>
           {a && <div className="mt-2 flex flex-wrap items-center gap-2">
             {a.marca && <span className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-pv-azzurro-bordo bg-pv-azzurro px-2 py-0.5 text-xs font-semibold text-pv-blu"><Tag className="size-3.5 shrink-0" aria-hidden /><span className="min-w-0 break-words">{a.marca}</span></span>}
             <Badge variant="outline" className={statoClass}>{!a.attivo ? "Dismesso in Gamma" : a.stato_gamma === "in_esaurimento" ? "In esaurimento" : "In uso"}</Badge>
@@ -92,7 +95,7 @@ export function RiepilogoArticoloDialog({ open, onOpenChange, clienteId, condizi
             <Voce etichetta="Sconti" valore={scontiAcquistoTesto(a)} />
             <Voce etichetta="Trasporto" valore={trasportoAcquistoTesto(a)} />
             <Voce etichetta="Costo netto da listino fornitore" valore={p4(a.costo_acquisto)} />
-            <Voce etichetta="Costo ultimo (usato nel preventivo)" valore={p4(a.costo_ultimo)} forte />
+            <Voce etichetta={etichette.testo("Costo ultimo (usato nel preventivo)")} valore={p4(a.costo_ultimo)} forte />
           </dl><p className="mt-2 text-xs text-muted-foreground">{condizioniListinoSede(a.sede_cliente_nome)}</p></RiquadroScheda>
 
           <RiquadroScheda titolo="Giacenze" icona={Boxes} tono="verde">
@@ -112,7 +115,7 @@ export function RiepilogoArticoloDialog({ open, onOpenChange, clienteId, condizi
               </table>}
           </RiquadroScheda>
 
-          <RiquadroScheda titolo="In questo preventivo" icona={FileText} tono="grigio"><dl>
+          <RiquadroScheda titolo={etichette.testo("In questo preventivo")} icona={FileText} tono="grigio"><dl>
             <Voce etichetta="Quantità" valore={qt(vista.quantita, vista.um)} />
             <Voce etichetta="Importo" valore={e2(calc.importo)} />
             <Voce etichetta="Margine" valore={<span className={cn("inline-flex rounded-full px-2 py-0.5 font-sans text-xs font-semibold", calc.margine_perc < 0 ? "bg-destructive/10 text-destructive" : "bg-pv-verde-tenue text-pv-verde")}>{formatNumeroIt(calc.margine_perc, { minDecimals: 1, maxDecimals: 1 })}%</span>} />

@@ -1,3 +1,4 @@
+import { etichetteDocumento } from '@/lib/etichette-documento';
 // Fetta 2: finestra "Invia per email" del preventivo (stile dell'email libera del recupero).
 // Invio solo tramite inviaPreventivoPerEmail; nessun tracciamento né cambio stato qui (fetta 3).
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -29,6 +30,7 @@ const pesoFile = (b: number) => b < 1024 * 1024 ? `${Math.max(1, Math.round(b / 
 export function InviaPreventivoEmailDialog({ open, onOpenChange, prev, blob, fileName }: {
   open: boolean; onOpenChange: (v: boolean) => void; prev: PreventivoConDettagli; blob: Blob | null; fileName: string;
 }) {
+  const etichette = etichetteDocumento(prev.tipo);
   const { profilo } = useAuth();
   const qc = useQueryClient();
   const nomeOperatore = `${profilo?.nome ?? ""} ${profilo?.cognome ?? ""}`.trim() || "Operatore";
@@ -73,7 +75,7 @@ export function InviaPreventivoEmailDialog({ open, onOpenChange, prev, blob, fil
   const soggetto = nomeIntestatarioPdf(prev);
   const applicaTemplate = (t: TemplateEmail | undefined) => {
     if (!t) return;
-    const r = renderTemplate({ oggetto: t.oggetto, corpo: t.corpo }, {
+    const r = renderTemplate({ oggetto: etichette.testo(t.oggetto), corpo: etichette.testo(t.corpo) }, {
       ragione_sociale: soggetto === "—" ? "" : soggetto, nome_operatore: nomeOperatore, scadenze: [],
       preventivo: { numero: prev.numero, titolo: prev.titolo, validita: prev.validita, totale_ivato: prev.totale == null ? null : Number(prev.totale), sede: sedeNome ?? null },
     }, { tipo: t.tipo });
@@ -86,7 +88,7 @@ export function InviaPreventivoEmailDialog({ open, onOpenChange, prev, blob, fil
     if (!open || iniziato || !templates || (prev.cliente_id && !emailPronte) || (prev.store_id && sedeNome === undefined)) return;
     setTo(destinatarioPropostoPreventivo(prev.cliente_id ? emailCliente : null, prev.lead));
     if (templates.length) applicaTemplate(templates[0]);
-    else setOggetto(`Preventivo ${prev.numero ?? ""}${prev.titolo ? ` — ${prev.titolo}` : ""}`.trim());
+    else setOggetto(`${etichette.titolo} ${prev.numero ?? ""}${prev.titolo ? ` — ${prev.titolo}` : ""}`.trim());
     setIniziato(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, iniziato, templates, emailPronte, emailCliente, sedeNome]);
@@ -103,7 +105,7 @@ export function InviaPreventivoEmailDialog({ open, onOpenChange, prev, blob, fil
     try {
       const r = await inviaPreventivoPerEmail({ preventivoId: prev.id, pdf: blob, nomeFile: fileName, oggetto: oggetto.trim(), corpo, to: [to.trim()], cc, bcc });
       onOpenChange(false);
-      toast.success(`Preventivo inviato a ${r.destinatari.join(", ")}${r.statoNuovo ? " · stato: Inviato" : ""}`);
+      toast.success(`${etichette.titolo} inviato a ${r.destinatari.join(", ")}${r.statoNuovo ? " · stato: Inviato" : ""}`);
       r.avvisi.forEach(a => toast.warning(a));
       void qc.invalidateQueries({ queryKey: ["preventivo", prev.id] });
       void qc.invalidateQueries({ queryKey: ["attivita-commerciale", "preventivo", prev.id] });
@@ -118,8 +120,8 @@ export function InviaPreventivoEmailDialog({ open, onOpenChange, prev, blob, fil
     <Dialog open={open} onOpenChange={v => !sending && onOpenChange(v)}>
       <DialogContent className={contentCls}>
         <DialogHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 border-b border-border text-left shrink-0">
-          <DialogTitle className="flex items-center gap-2 pr-8"><Send className="size-5 shrink-0" /> Invia il preventivo per email</DialogTitle>
-          <DialogDescription className="break-words">Preventivo <strong>{prev.numero ?? "—"}</strong>{soggetto !== "—" ? <> · {prev.lead_id && !prev.cliente_id ? "Lead" : "Cliente"}: <strong>{soggetto}</strong></> : null}</DialogDescription>
+          <DialogTitle className="flex items-center gap-2 pr-8"><Send className="size-5 shrink-0" /> {etichette.testo("Invia il preventivo per email")}</DialogTitle>
+          <DialogDescription className="break-words">{etichette.titolo} <strong>{prev.numero ?? "—"}</strong>{soggetto !== "—" ? <> · {prev.lead_id && !prev.cliente_id ? "Lead" : "Cliente"}: <strong>{soggetto}</strong></> : null}</DialogDescription>
         </DialogHeader>
         <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 sm:px-6 space-y-4">
           <Sezione titolo="Destinatario">
@@ -139,11 +141,11 @@ export function InviaPreventivoEmailDialog({ open, onOpenChange, prev, blob, fil
                 <Label>Modello</Label>
                 <Select value={templateId ?? undefined} onValueChange={id => applicaTemplate(templates!.find(t => t.id === id))} disabled={sending}>
                   <SelectTrigger><SelectValue placeholder="Scegli un modello" /></SelectTrigger>
-                  <SelectContent>{templates!.map(t => <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>)}</SelectContent>
+                  <SelectContent>{templates!.map(t => <SelectItem key={t.id} value={t.id}>{etichette.testo(t.nome)}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             )}
-            {templates && templates.length === 0 && <p className="text-xs text-muted-foreground">Nessun modello "Invio preventivo" attivo: scrivi il testo a mano.</p>}
+            {templates && templates.length === 0 && <p className="text-xs text-muted-foreground">{etichette.testo('Nessun modello "Invio preventivo" attivo: scrivi il testo a mano.')}</p>}
             <div className="space-y-1.5"><Label htmlFor="ip-oggetto">Oggetto</Label><Input id="ip-oggetto" value={oggetto} onChange={e => setOggetto(e.target.value)} disabled={sending} /></div>
             <div className="space-y-1.5"><Label htmlFor="ip-corpo">Testo</Label><Textarea id="ip-corpo" value={corpo} onChange={e => setCorpo(e.target.value)} rows={10} disabled={sending} /></div>
           </Sezione>

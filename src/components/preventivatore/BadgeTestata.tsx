@@ -1,3 +1,4 @@
+import { etichetteDocumento } from '@/lib/etichette-documento';
 import { cn } from "@/lib/utils";
 import { statoEvasionePreventivo, etichettaEvasioneDocumento, type StatoEvasioneDocumento } from "@/lib/evasione";
 import { useQuery } from '@tanstack/react-query';
@@ -26,8 +27,8 @@ const EVASIONE: Record<StatoEvasioneDocumento, string> = {
 };
 
 /** Pezzi condivisi con l'elenco preventivi: stessa resa della scheda. */
-export function BadgeTipoDoc({ tipoDoc, className }: { tipoDoc: TipoDoc; className?: string }) {
-  return <span className={cn(base, TIPO[tipoDoc], className)}>{TIPI_DOC_LABEL[tipoDoc]}</span>;
+export function BadgeTipoDoc({ tipoDoc, className, tipoDocumento }: { tipoDoc: TipoDoc; className?: string; tipoDocumento?: string }) {
+  return <span className={cn(base, TIPO[tipoDoc], className)}>{etichetteDocumento(tipoDocumento).testo(TIPI_DOC_LABEL[tipoDoc])}</span>;
 }
 export function BadgeStato({ stato, className }: { stato: StatoPreventivo; className?: string }) {
   return <span className={cn(base, STATO[stato], className)}>{stato === "bozza" && <span aria-hidden>●</span>}{STATI_LABEL[stato]}</span>;
@@ -49,7 +50,7 @@ export function BadgeTestata({ prev }: { prev: PreventivoConDettagli }) {
     } });
   const badge = ev ? <BadgeEvasione {...ev} /> : null;
   return <>
-    <BadgeTipoDoc tipoDoc={prev.tipo_doc} />
+    <BadgeTipoDoc tipoDocumento={prev.tipo} tipoDoc={prev.tipo_doc} />
     <BadgeStato stato={prev.stato} />
     {ev && prev.chiuso_at ? <TooltipProvider><Tooltip><TooltipTrigger asChild><span tabIndex={0}>{badge}</span></TooltipTrigger>
       <TooltipContent>Chiuso il {new Date(prev.chiuso_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome' })} da {autore || 'collaboratore non disponibile'}</TooltipContent>
