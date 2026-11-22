@@ -225,7 +225,7 @@ export function NuovoPreventivoDialog({
           {isOrdine && <div className="grid gap-1.5"><Label htmlFor="nuovo-ordine-data-consegna">Data di consegna</Label><Input id="nuovo-ordine-data-consegna" type="date" value={dataConsegna} onChange={e => setDataConsegna(e.target.value)} /></div>}
           <div className="grid gap-1.5">
             <Label>Soggetto *</Label>
-            {soggettoIniziale?.tipo === "lead" && leadIniziale.isPending ? <p className="text-sm text-muted-foreground">Caricamento lead…</p> : soggettoIniziale?.tipo === "lead" && leadIniziale.error ? <p role="alert" className="text-sm text-destructive">{leadIniziale.error.message}</p> : <SoggettoPreventivoPicker key={soggettoIniziale?.id} value={soggetto} riferimento={riferimento} onRiferimento={setRiferimento} consentiLead={!isOrdine} sedeId={filiale || null} onChange={v => {
+            {soggettoIniziale?.tipo === "lead" && leadIniziale.isPending ? <p className="text-sm text-muted-foreground">Caricamento lead…</p> : soggettoIniziale?.tipo === "lead" && leadIniziale.error ? <p role="alert" className="text-sm text-destructive">{leadIniziale.error.message}</p> : <SoggettoPreventivoPicker key={soggettoIniziale?.id} value={soggetto} riferimento={riferimento} onRiferimento={setRiferimento} consentiLead sedeId={filiale || null} onChange={v => {
               setSoggetto(v); setClienteId(v?.tipo === "cliente" ? v.id : null); setCantiereId(null);
               if (v?.tipo === "lead") { setPagamento(v.lead.condizione_pagamento_cod ?? ""); if (!isWriteOnly) setAgenteId(v.lead.agente_codice ?? (roles.includes("agente") ? profiloCodiceAgente ?? null : null)); }
             }}/>}

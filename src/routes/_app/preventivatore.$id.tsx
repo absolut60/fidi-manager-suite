@@ -1,4 +1,5 @@
 import { etichetteDocumento } from '@/lib/etichette-documento';
+import { FileGammaDiProvaDialog } from '@/components/preventivatore/FileGammaDiProvaDialog';
 import { RiepilogoIvaPreventivo } from "@/components/preventivatore/RiepilogoIvaPreventivo";
 import type { CondizioniPrezziPreventivo } from "@/lib/prezzi-preventivo";
 import { messaggioEsitoEliminazione } from "@/lib/esito-eliminazione";
@@ -115,6 +116,7 @@ function PreventivoEditorPage() {
   const [soggettoScelto, setSoggettoScelto] = useState<SoggettoPreventivo | null>(null);
   const [riferimentoScelto, setRiferimentoScelto] = useState<RiferimentoPreventivo>(riferimentoVuoto);
   const [eliminaOpen,setEliminaOpen]=useState(false);
+  const [fileGammaOpen, setFileGammaOpen] = useState(false);
   const {data:codiciPagamento=[]}=useCodiciPagamento();
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -130,7 +132,7 @@ function PreventivoEditorPage() {
   const [addBloccoOpen, setAddBloccoOpen] = useState(false);
   const [outputOpen, setOutputOpen] = useState(false);
   const [vistaOpen, setVistaOpen] = useState(false);
-  const { roles } = useAuth();
+  const { roles, hasRole } = useAuth();
   // FM63: chi consulta soltanto (es. store manager) non vede comandi di modifica; il DB resta il controllo vero.
   const puoScrivere = puoScriverePreventivi(roles as string[]);
   const [trasformaOpen, setTrasformaOpen] = useState(false);
@@ -552,7 +554,10 @@ function PreventivoEditorPage() {
               esito={statoEvasionePreventivo({ righe: prev.blocchi.flatMap(b => b.righe), chiuso_at: prev.chiuso_at })}
               inCorso={chiusura.isPending} onTrasforma={() => setTrasformaOpen(true)} onChiusura={v => chiusura.mutate(v)}
               {...(puoScrivere ? { onElimina: () => setEliminaOpen(true) } : {})}
-            /> : puoScrivere && <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="Altre azioni"><MoreHorizontal className="size-5"/></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem className="text-destructive" onSelect={()=>setEliminaOpen(true)}><Trash2 className="size-4 mr-2"/>Elimina</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}
+            /> : (puoScrivere || hasRole('amministratore')) && <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="Altre azioni"><MoreHorizontal className="size-5"/></Button></DropdownMenuTrigger><DropdownMenuContent align="end">
+              {hasRole('amministratore') && <DropdownMenuItem onSelect={() => setFileGammaOpen(true)}><FileDown className="mr-2 size-4" />File Gamma di prova</DropdownMenuItem>}
+              {puoScrivere && <DropdownMenuItem className="text-destructive" onSelect={()=>setEliminaOpen(true)}><Trash2 className="size-4 mr-2"/>Elimina</DropdownMenuItem>}
+            </DropdownMenuContent></DropdownMenu>}
 
 
           </div>
@@ -690,6 +695,7 @@ function PreventivoEditorPage() {
         onApplica={(sc) => applicaListini.mutate(sc)} inCorso={applicaListini.isPending} />
       {vistaOpen && <VistaCommercialeDialog open onOpenChange={setVistaOpen} blocchi={prev.blocchi} riepilogoIva={lineaPreventivo(prev.linea).blocchi.regimiIva ? <RiepilogoIvaPreventivo regime={prev.regime_iva} ivaPerc={prev.iva_perc} blocchi={prev.blocchi}/> : undefined} />}
       <GeneraDocumentoDialog open={outputOpen} onOpenChange={setOutputOpen} prev={prev} />
+      {prev.tipo === 'ordine' && hasRole('amministratore') && fileGammaOpen && <FileGammaDiProvaDialog ordineId={id} open onOpenChange={setFileGammaOpen} />}
       {prev.tipo === "preventivo" && (
         <TrasformaInOrdineDialog
           open={trasformaOpen}

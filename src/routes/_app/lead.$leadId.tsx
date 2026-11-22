@@ -1,5 +1,7 @@
 import { BloccoIndirizzo } from "@/components/blocco-indirizzo";
 import { CompilaDaPiva } from "@/components/lead/compila-da-piva";
+import { CampoCodiceSdi } from '@/components/lead/campo-codice-sdi';
+import { normalizzaCodiceSdi } from '@/lib/codice-sdi';
 import { eliminaLeadConFile } from "@/lib/lead-elimina.functions";
 import { isSoloShowroom } from "@/lib/permessi-showroom";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -120,6 +122,7 @@ type Form = Partial<CondizioniCommercialiLead> & {
   cognome: string;
   partita_iva: string;
   codice_fiscale: string;
+  codice_sdi: string;
   email: string;
   telefono: string;
   cellulare: string;
@@ -231,6 +234,7 @@ function LeadDettaglioPage() {
     cognome: l.cognome ?? "",
     partita_iva: l.partita_iva ?? "",
     codice_fiscale: l.codice_fiscale ?? "",
+    codice_sdi: l.codice_sdi ?? "",
     email: l.email ?? "",
     telefono: l.telefono ?? "",
     cellulare: l.cellulare ?? "",
@@ -269,6 +273,7 @@ function LeadDettaglioPage() {
         cognome: f.cognome.trim() || null,
         partita_iva: f.partita_iva.trim() || null,
         codice_fiscale: f.codice_fiscale.trim() || null,
+        codice_sdi: normalizzaCodiceSdi(f.codice_sdi) || null,
         email: f.email.trim() || null,
         telefono: f.telefono.trim() || null,
         cellulare: f.cellulare.trim() || null,
@@ -672,6 +677,7 @@ function LeadDettaglioPage() {
                   <LeadField label="Cognome" value={lead.cognome} />
                   <LeadField label="Partita IVA" value={lead.partita_iva} />
                   <LeadField label="Codice fiscale" value={lead.codice_fiscale} />
+                  <LeadField label="Codice SDI (fatturazione elettronica)" value={lead.codice_sdi} />
                 </div>
               </LeadSection>
 
@@ -830,6 +836,7 @@ function LeadDettaglioPage() {
                     onChange={(e) => set("codice_fiscale", e.target.value)}
                   />
                 </div>
+                <CampoCodiceSdi value={f.codice_sdi} onChange={v => set('codice_sdi', v)} />
                 <div>
                   <Label className="text-xs">Email</Label>
                   <Input

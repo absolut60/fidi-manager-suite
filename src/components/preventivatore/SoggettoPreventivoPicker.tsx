@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cercaLeadPreventivo, creaLeadPreventivo } from "@/lib/lead-preventivo-api";
 import { nomeLeadPreventivo, riferimentoVuoto, type SoggettoPreventivo } from "@/lib/soggetto-preventivo";
 import { opzioniCataloghiRiferimento, type RiferimentoPreventivo } from "@/lib/condizioni-riferimento";
+import { CampoCodiceSdi } from '@/components/lead/campo-codice-sdi';
 
 /** Stesso selettore e stesse condizioni per creazione e cambio destinatario. */
 export function SoggettoPreventivoPicker({ value, onChange, sedeId, riferimento, onRiferimento, consentiLead = true }: {
@@ -22,7 +23,7 @@ export function SoggettoPreventivoPicker({ value, onChange, sedeId, riferimento,
   useEffect(() => { if (value) setTipo(value.tipo); }, [value?.tipo]);
   const [open, setOpen] = useState(false); const [testo, setTesto] = useState("");
   const [nuovo, setNuovo] = useState(false);
-  const [form, setForm] = useState({ ragione_sociale: "", nome: "", cognome: "", telefono: "", email: "", store_id: sedeId ?? null as string | null });
+  const [form, setForm] = useState({ ragione_sociale: "", nome: "", cognome: "", telefono: "", email: "", codice_sdi: "", store_id: sedeId ?? null as string | null });
   const lead = useQuery({ queryKey: ["lead-preventivo-search", testo], queryFn: () => cercaLeadPreventivo(testo), enabled: open });
   const cataloghi = useQuery({ ...opzioniCataloghiRiferimento, enabled: tipo === "lead" });
   const stores = useQuery({ queryKey: ["stores-attivi"], queryFn: async () => {
@@ -47,6 +48,7 @@ export function SoggettoPreventivoPicker({ value, onChange, sedeId, riferimento,
       <Button type="button" size="sm" variant="ghost" className="justify-self-start" onClick={() => { setNuovo(!nuovo); setForm(f => ({ ...f, store_id: sedeId ?? null })); }}><Plus className="mr-1 size-4"/>Nuovo lead</Button>
       {nuovo && <div className="grid min-w-0 gap-2 border-t pt-2">
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{([['ragione_sociale','Ragione sociale'],['nome','Nome'],['cognome','Cognome'],['telefono','Telefono'],['email','Email']] as const).map(([k,label]) => <div key={k} className="grid min-w-0 gap-1"><Label>{label}</Label><Input aria-label={`Nuovo lead: ${label}`} value={form[k]} onChange={e => setForm(f => ({ ...f,[k]:e.target.value }))}/></div>)}</div>
+        <CampoCodiceSdi value={form.codice_sdi} onChange={v => setForm(f => ({ ...f, codice_sdi: v }))} />
         <Label>Sede del lead</Label><Select value={form.store_id ?? "__none__"} onValueChange={v => setForm(f => ({ ...f,store_id:v === "__none__" ? null : v }))}><SelectTrigger aria-label="Sede del lead" className="h-auto min-h-10 [&>span]:whitespace-normal"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="__none__">— Nessuna —</SelectItem>{stores.data?.map(s => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}</SelectContent></Select>
         {crea.error && <p role="alert" className="text-xs text-destructive">{crea.error.message}</p>}
         <Button type="button" className="justify-self-start" disabled={crea.isPending} onClick={() => crea.mutate()}>Crea e seleziona lead</Button>

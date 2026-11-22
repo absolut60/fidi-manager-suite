@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { LeadFonte, LeadPriorita, LeadTipo } from "@/lib/lead-costanti";
+import { normalizzaCodiceSdi } from './codice-sdi';
 
 /**
  * Creazione lead: unica via applicativa.
@@ -13,6 +14,7 @@ export type CreaLeadInput = {
   cognome?: string | null;
   partita_iva?: string | null;
   codice_fiscale?: string | null;
+  codice_sdi?: string | null;
   email?: string | null;
   telefono?: string | null;
   cellulare?: string | null;
@@ -46,6 +48,7 @@ export async function creaLead(input: CreaLeadInput): Promise<{ id: string }> {
     cognome: t(input.cognome),
     partita_iva: t(input.partita_iva),
     codice_fiscale: t(input.codice_fiscale),
+    ...(input.codice_sdi !== undefined ? { codice_sdi: normalizzaCodiceSdi(input.codice_sdi) || null } : {}),
     email: t(input.email),
     telefono: t(input.telefono),
     cellulare: t(input.cellulare),

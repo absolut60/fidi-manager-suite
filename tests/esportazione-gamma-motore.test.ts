@@ -214,3 +214,13 @@ test('FM95: migrazione mantiene RPC verbatim salvo i tre campi di testata', () =
   expect(estrai(prima)).toBeDefined(); expect(estrai(dopo)?.replace(', listino_rif, macrocategoria_rif, categoria_rif', '')
     .replace(', v_prev.listino_rif, v_prev.macrocategoria_rif, v_prev.categoria_rif', '')).toBe(estrai(prima));
 });
+test('FM95 3b: funzione finale copia solo lead_id, resto verbatim dopo correzione 0265', () => {
+  const prima = readFileSync('drizzle/migrations/0263_fm95_ordini_riferimenti_gamma.sql', 'utf8');
+  const dopo = readFileSync('drizzle/migrations/0264_fm95_ordini_lead.sql', 'utf8');
+  const correzione = readFileSync('drizzle/migrations/0265_fm95_ordini_lead_correzione_verbatim.sql', 'utf8');
+  const estrai = (s: string) => s.match(/CREATE OR REPLACE FUNCTION public\.trasforma_preventivo_in_ordine[\s\S]*?\$function\$;/)?.[0];
+  expect(correzione).toContain("replace(definizione, 'iva_importo = t.imp + t.iva - t.imp', 'iva_importo = t.iva')");
+  const finale = estrai(dopo)?.replace('iva_importo = t.imp + t.iva - t.imp', 'iva_importo = t.iva');
+  expect(finale).toContain(', v_prev.lead_id');
+  expect(finale?.replace(', lead_id\n', '\n').replace(', v_prev.lead_id\n', '\n')).toBe(estrai(prima));
+});

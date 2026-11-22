@@ -1,3 +1,10 @@
+# FM95 — Fetta 3b
+- [x] Migrazioni 0264/0265: copia lead_id, definizione finale verbatim; CHECK reale e RPC/riaggancio clone SQL con ROLLBACK.
+- [x] Lead anche in Nuovo ordine, SDI condiviso nei tre moduli anagrafici e visibile nella scheda.
+- [x] File Gamma di prova solo amministratore, download BIFF8 senza scritture; ORD-104/26 esportabile con due avvisi.
+- [x] 1322 test verdi, typecheck automatico OK, foto/scarichi 320/375/390/768/1280/1920, rapporto fm95-fetta3b.md; route temporanea rimossa, nessuna pubblicazione.
+- [ ] Prova live RPC/riaggancio e salvataggio SDI con utente autorizzato: ruolo tecnico senza UPDATE/EXECUTE e sessione personale assente; nessun permesso alterato.
+
 # FM95 — Fetta 3a
 - [x] Migrazione 0263: SDI lead nullable e copia verbatim dei tre riferimenti nell'ordine; ACL e schema verificati, dati non modificati.
 - [x] Motore puro Gamma, scrittura BIFF8 e letture a blocchi con RLS esistente; 1313 test verdi, typecheck automatico OK, rapporto fm95-fetta3a.md.

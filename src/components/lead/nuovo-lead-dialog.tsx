@@ -26,6 +26,7 @@ import {
   type LeadFonte, type LeadPriorita, type LeadTipo, puoGestireLead,
 } from "@/lib/lead-costanti";
 import { creaLead } from "@/lib/lead-crea";
+import { CampoCodiceSdi } from './campo-codice-sdi';
 import { cercaDuplicati, DEDUP_CAMPO_LABEL, type DedupMatch } from "@/lib/lead-dedup";
 
 type Form = {
@@ -35,6 +36,7 @@ type Form = {
   cognome: string;
   partita_iva: string;
   codice_fiscale: string;
+  codice_sdi: string;
   email: string;
   telefono: string;
   cellulare: string;
@@ -54,7 +56,7 @@ type Form = {
 const EMPTY: Form = {
   tipo_soggetto: "azienda",
   ragione_sociale: "", nome: "", cognome: "",
-  partita_iva: "", codice_fiscale: "", email: "", telefono: "", cellulare: "",
+  partita_iva: "", codice_fiscale: "", codice_sdi: "", email: "", telefono: "", cellulare: "",
   indirizzo: "", citta: "", cap: "", provincia: "",
   fonte: "manuale", fonte_dettaglio: "",
   tipo_lead: "potenziale_cliente", priorita: "media",
@@ -141,6 +143,7 @@ export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
         cognome: f.cognome,
         partita_iva: f.partita_iva,
         codice_fiscale: f.codice_fiscale,
+        codice_sdi: f.codice_sdi,
         email: f.email,
         telefono: f.telefono,
         cellulare: f.cellulare,
@@ -264,6 +267,7 @@ export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
           <Label className="text-xs">Codice fiscale</Label>
           <Input value={f.codice_fiscale} maxLength={20} onChange={(e) => set("codice_fiscale", e.target.value)} />
         </div>
+        <CampoCodiceSdi value={f.codice_sdi} onChange={v => set('codice_sdi', v)} />
         <div>
           <Label className="text-xs">Email</Label>
           <Input type="email" value={f.email} maxLength={255} onChange={(e) => set("email", e.target.value)} />
