@@ -49,16 +49,15 @@ export function validazioneManualeGamma(descrizione: string, um2: string, fattor
 }
 
 export const COLONNE_FILE_GAMMA = [
-  'CODICE_DOCUMENTO', 'COD_COD_CLI', 'Ragione_sociale_anagrafica', 'Indirizzo_anagrafica', 'NOTE',
-  'IND_CLIFOR', 'TESTATA_RIGHE', 'SEDE', 'DATA_CONSEG', 'Codice_agente', 'Cap_anagrafica',
-  'Citta_anagrafica', 'Partita_iva', 'Flag_persona_fisica', 'Telefono_1', 'Cellulare',
-  'Indirizzo_email', 'Cognome', 'Nome', 'Codice_fiscale', 'Condizione_pagamento',
-  'Descrizione_pagamento', 'Codice_sede', 'Raggruppamento_clienti_1', 'Raggruppamento_clienti_2',
-  'Raggruppamento_clienti_3', 'Codice_listino', 'Codice_deposito', 'Codice_macrocategoria',
-  'Codice_categoria', 'Codice_destinatario_prevalente', 'COD_ART', 'QTA1', 'PRZ1', 'SCT1', 'SCT2',
-  'sct3', 'magg %', 'SCONT_IMP', 'MAGG_Import', 'descrizione', 'Codice_famiglia',
-  'Codice_sottofamiglia', 'Marca', 'Unita_misura_1_articolo', 'Unita_misura_2_articolo',
-  'Fattore_conversione_articolo',
+  'TESTATA_RIGHE', 'CODICE_DOCUMENTO', 'COD_COD_CLI', 'Ragione_sociale_anagrafica', 'Cognome', 'Nome',
+  'IND_CLIFOR', 'SEDE', 'Codice_deposito', 'COD_ART', 'descrizione', 'Unita_misura_1_articolo',
+  'Unita_misura_2_articolo', 'Fattore_conversione_articolo', 'QTA1', 'PRZ1', 'SCT1', 'SCT2',
+  'sct3', 'magg %', 'SCONT_IMP', 'MAGG_Import', 'NOTE', 'DATA_CONSEG', 'Indirizzo_anagrafica',
+  'Cap_anagrafica', 'Citta_anagrafica', 'Partita_iva', 'Flag_persona_fisica', 'Telefono_1',
+  'Cellulare', 'Indirizzo_email', 'Codice_fiscale', 'Condizione_pagamento', 'Descrizione_pagamento',
+  'Codice_sede', 'Raggruppamento_clienti_1', 'Raggruppamento_clienti_2', 'Raggruppamento_clienti_3',
+  'Codice_listino', 'Codice_macrocategoria', 'Codice_categoria', 'Codice_destinatario_prevalente',
+  'Codice_agente', 'Codice_famiglia', 'Codice_sottofamiglia', 'Marca',
 ] as const;
 export type ColonnaGamma = typeof COLONNE_FILE_GAMMA[number];
 export type ValoreGamma = string | number | Date;
@@ -198,13 +197,13 @@ export function costruisciEsportazioneGamma(dati: DatiOrdineGamma[]) {
         Unita_misura_2_articolo: unita.um2 ?? unita.um1 ?? '', Fattore_conversione_articolo: unita.um2 ? unita.fattore : 1 });
       const acquisto = gamma ? acquisti.get(r.articolo_codice ?? undefined) : undefined;
       if (gamma && (!acquisto || acquisto.acq_prezzo == null)) problema('avviso', 'acquisto_assente', "Mancano i dati d'acquisto dell'articolo per il listino della sede: il prezzo fornitore resta vuoto.", r);
-      const rf = { ...base, CODICE_DOCUMENTO: 'MD-F-ORDINE', COD_COD_CLI: testo(f?.codice_gestionale), IND_CLIFOR: 1,
+      const rf = { ...base,
         // costo è TOTALIZZATO nel DB: riuso la fonte unica per ottenere il costo unitario UM1.
         PRZ1: prezzo4(gamma ? acquisto?.acq_prezzo : rigaInUnita({ ...r, um_scelta: 'um1', quantita: r.quantita ?? null, prezzo_unit: r.prezzo_unit ?? null }).costo_unit),
         SCT1: gamma ? nonZero(acquisto?.acq_sc1) : '', SCT2: gamma ? nonZero(acquisto?.acq_sc2) : '', sct3: gamma ? nonZero(acquisto?.acq_sc3) : '',
         'magg %': gamma ? nonZero(acquisto?.acq_trasporto_perc) : '', MAGG_Import: gamma ? nonZero(acquisto?.acq_trasporto_euro) : '' };
       if (fid) { const g = gruppi.get(fid) ?? []; g.push(rf); gruppi.set(fid, g); }
-      righeCliente.push({ ...base, CODICE_DOCUMENTO: 'MD-C-ORDINE', COD_COD_CLI: o.cliente_id ? testo(d.cliente?.codice_gestionale) : '', IND_CLIFOR: 0,
+      righeCliente.push({ ...base,
         PRZ1: prezzo4(inUnita(r.prezzo_unit, 'prezzo', 'primaria', unita.fattore)),
         SCT1: nonZero(sconti[0]), SCT2: nonZero(sconti[1]), sct3: nonZero(sconti[2]), 'magg %': nonZero(r.maggiorazione_perc) });
     }

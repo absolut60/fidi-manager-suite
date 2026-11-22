@@ -125,5 +125,9 @@ test('Gamma flusso completo: lettura → motore → XLS → rilettura con prezzi
   const wb = XLSX.read(scriviFileGammaXls(e.righe), { type: 'array' }); const ws = wb.Sheets['Sheet1'];
   if (!ws) throw new Error('Sheet1 assente');
   const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws);
-  expect(rows.filter(r => r['CODICE_DOCUMENTO'] === 'MD-F-ORDINE' && r['TESTATA_RIGHE'] === 'R').map(r => r['PRZ1'])).toEqual([8, 9]);
+  let documento: unknown;
+  expect(rows.filter(r => {
+    if (r['TESTATA_RIGHE'] === 'T') documento = r['CODICE_DOCUMENTO'];
+    return documento === 'MD-F-ORDINE' && r['TESTATA_RIGHE'] === 'R';
+  }).map(r => r['PRZ1'])).toEqual([8, 9]);
 });

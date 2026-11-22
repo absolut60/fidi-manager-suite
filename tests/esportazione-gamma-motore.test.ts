@@ -1,12 +1,12 @@
 import { expect, test } from 'bun:test';
 import * as XLSX from 'xlsx';
 import * as CFB from 'cfb';
-import { COLONNE_FILE_GAMMA, costruisciEsportazioneGamma, type DatiOrdineGamma, type RigaOrdineGamma } from '../src/lib/esportazione-gamma';
+import { COLONNE_FILE_GAMMA, costruisciEsportazioneGamma, type DatiOrdineGamma, type RigaOrdineGamma, type RigaFileGamma } from '../src/lib/esportazione-gamma';
 import { nomeFileGamma, scriviFileGammaXls } from '../src/lib/esportazione-gamma-file';
 import { readFileSync } from 'node:fs';
 import { rigaInUnita } from '../src/lib/riga-preventivo';
 
-const INTESTAZIONE = 'CODICE_DOCUMENTO,COD_COD_CLI,Ragione_sociale_anagrafica,Indirizzo_anagrafica,NOTE,IND_CLIFOR,TESTATA_RIGHE,SEDE,DATA_CONSEG,Codice_agente,Cap_anagrafica,Citta_anagrafica,Partita_iva,Flag_persona_fisica,Telefono_1,Cellulare,Indirizzo_email,Cognome,Nome,Codice_fiscale,Condizione_pagamento,Descrizione_pagamento,Codice_sede,Raggruppamento_clienti_1,Raggruppamento_clienti_2,Raggruppamento_clienti_3,Codice_listino,Codice_deposito,Codice_macrocategoria,Codice_categoria,Codice_destinatario_prevalente,COD_ART,QTA1,PRZ1,SCT1,SCT2,sct3,magg %,SCONT_IMP,MAGG_Import,descrizione,Codice_famiglia,Codice_sottofamiglia,Marca,Unita_misura_1_articolo,Unita_misura_2_articolo,Fattore_conversione_articolo'.split(',');
+const INTESTAZIONE = 'TESTATA_RIGHE,CODICE_DOCUMENTO,COD_COD_CLI,Ragione_sociale_anagrafica,Cognome,Nome,IND_CLIFOR,SEDE,Codice_deposito,COD_ART,descrizione,Unita_misura_1_articolo,Unita_misura_2_articolo,Fattore_conversione_articolo,QTA1,PRZ1,SCT1,SCT2,sct3,magg %,SCONT_IMP,MAGG_Import,NOTE,DATA_CONSEG,Indirizzo_anagrafica,Cap_anagrafica,Citta_anagrafica,Partita_iva,Flag_persona_fisica,Telefono_1,Cellulare,Indirizzo_email,Codice_fiscale,Condizione_pagamento,Descrizione_pagamento,Codice_sede,Raggruppamento_clienti_1,Raggruppamento_clienti_2,Raggruppamento_clienti_3,Codice_listino,Codice_macrocategoria,Codice_categoria,Codice_destinatario_prevalente,Codice_agente,Codice_famiglia,Codice_sottofamiglia,Marca'.split(',');
 
 function dati(id = 'o1', numeroOrdine = 'ORD-1/26'): DatiOrdineGamma {
   return {
@@ -35,8 +35,18 @@ function lead(): DatiOrdineGamma {
   d.sedeLead = { id: 's2', codice: 'ME' }; return d;
 }
 const clienteT = (d: DatiOrdineGamma) => costruisciEsportazioneGamma([d]).righe.find(r => r.CODICE_DOCUMENTO === 'MD-C-ORDINE' && r.TESTATA_RIGHE === 'T');
-const fornitoreR = (d: DatiOrdineGamma) => costruisciEsportazioneGamma([d]).righe.find(r => r.CODICE_DOCUMENTO === 'MD-F-ORDINE' && r.TESTATA_RIGHE === 'R');
-const clienteR = (d: DatiOrdineGamma) => costruisciEsportazioneGamma([d]).righe.find(r => r.CODICE_DOCUMENTO === 'MD-C-ORDINE' && r.TESTATA_RIGHE === 'R');
+/** Le R appartengono alla T precedente, senza duplicarne i campi. */
+function righeDocumento(righe: readonly RigaFileGamma[], documento: string): RigaFileGamma[] {
+  let testata: RigaFileGamma | undefined;
+  return righe.filter(r => {
+    if (r.TESTATA_RIGHE === 'T') testata = r;
+    return testata?.CODICE_DOCUMENTO === documento;
+  });
+}
+const righeFornitore = (righe: readonly RigaFileGamma[]) => righeDocumento(righe, 'MD-F-ORDINE').filter(r => r.TESTATA_RIGHE === 'R');
+const righeCliente = (righe: readonly RigaFileGamma[]) => righeDocumento(righe, 'MD-C-ORDINE').filter(r => r.TESTATA_RIGHE === 'R');
+const fornitoreR = (d: DatiOrdineGamma) => righeFornitore(costruisciEsportazioneGamma([d]).righe)[0];
+const clienteR = (d: DatiOrdineGamma) => righeCliente(costruisciEsportazioneGamma([d]).righe)[0];
 function bloccato(d: DatiOrdineGamma, codice: string) {
   const e = costruisciEsportazioneGamma([d]);
   expect(e.ordiniBloccati).toEqual(['o1']); expect(e.righe).toEqual([]);
@@ -59,13 +69,13 @@ test('Gamma: tutti i fornitori prima dei clienti, numero ordine naturale e forni
 test('Gamma: raggruppa più righe dello stesso fornitore sotto una sola T', () => {
   const d = dati(); d.righe.push({ ...d.righe[0], id: 'r2' }, { ...d.righe[0], id: 'r3', fornitore_id: 'f2' });
   const e = costruisciEsportazioneGamma([d]);
-  expect(e.righe.filter(r => r.CODICE_DOCUMENTO === 'MD-F-ORDINE').map(r => [r.TESTATA_RIGHE, r.COD_COD_CLI])).toEqual([
-    ['T', '100'], ['R', '100'], ['T', '200'], ['R', '200'],
+  expect(righeDocumento(e.righe, 'MD-F-ORDINE').map(r => [r.TESTATA_RIGHE, r.COD_COD_CLI])).toEqual([
+    ['T', '100'], ['R', ''], ['T', '200'], ['R', ''],
   ]);
 });
 test('Gamma: fornitore preferenziale e scelta della riga prevalente', () => {
-  const d = dati(); expect(fornitoreR(d)?.COD_COD_CLI).toBe('100');
-  d.righe = d.righe.map(r => ({ ...r, fornitore_id: 'f2' })); expect(fornitoreR(d)?.COD_COD_CLI).toBe('200');
+  const d = dati(); expect(costruisciEsportazioneGamma([d]).righe.find(r => r.TESTATA_RIGHE === 'T' && r.IND_CLIFOR === 1)?.COD_COD_CLI).toBe('100');
+  d.righe = d.righe.map(r => ({ ...r, fornitore_id: 'f2' })); expect(costruisciEsportazioneGamma([d]).righe.find(r => r.TESTATA_RIGHE === 'T' && r.IND_CLIFOR === 1)?.COD_COD_CLI).toBe('200');
 });
 test('Gamma: manuale genera codice ABC + codice fornitore e usa costo unitario netto, senza sconti', () => {
   const d = dati(); d.righe = [manuale()];
@@ -224,13 +234,13 @@ test('Gamma: file vero BIFF8/CFB con Sheet1, 47 colonne, data italiana e prezzo 
   const wb = XLSX.read(bytes, { type: 'array', cellNF: true }); expect(wb.SheetNames).toEqual(['Sheet1']);
   const ws = wb.Sheets['Sheet1']; if (!ws) throw new Error('Sheet1 assente');
   const righe = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: '' });
-  expect(righe[0]).toEqual(INTESTAZIONE); expect(ws['I2']?.w).toBe('10/12/2026');
-  expect(ws['AH3']?.w).toBe('12.1235'); expect(ws['AU3']?.v).toBe(1.44);
+  expect(righe[0]).toEqual(INTESTAZIONE); expect(ws['X2']?.w).toBe('10/12/2026');
+  expect(ws['P3']?.w).toBe('12.1235'); expect(ws['N3']?.v).toBe(1.44);
 });
-test('Gamma: file vuoto conserva tutte le intestazioni e nome .xls con calendario italiano', () => {
+test('Gamma: file vuoto conserva tutte le intestazioni e nome fisso .xls', () => {
   const wb = XLSX.read(scriviFileGammaXls([]), { type: 'array' }); const ws = wb.Sheets['Sheet1'];
   if (!ws) throw new Error('Sheet1 assente'); expect(XLSX.utils.sheet_to_json(ws, { header: 1 })[0]).toEqual(INTESTAZIONE);
-  expect(nomeFileGamma(new Date('2026-11-22T17:29:00Z'))).toBe('Gamma_ordini_20261122_1829.xls');
+  expect(nomeFileGamma(new Date('2026-11-22T17:29:00Z'))).toBe('ORDINI_CLIENTI_FORNITORI.xls');
 });
 test('FM95: migrazione mantiene RPC verbatim salvo i tre campi di testata', () => {
   const prima = readFileSync('drizzle/migrations/0261_fm94_copia_campi_gamma.sql', 'utf8');
@@ -270,14 +280,14 @@ test('FM96: ORD-104/26, 600 + 100 Fassa = 700 e 11 + 11 righe R nel BIFF8', () =
   const prima = JSON.stringify(d);
   const e = costruisciEsportazioneGamma([d]);
   for (const documento of ['MD-F-ORDINE', 'MD-C-ORDINE']) {
-    const righe = e.righe.filter(r => r.CODICE_DOCUMENTO === documento && r.TESTATA_RIGHE === 'R');
+    const righe = righeDocumento(e.righe, documento).filter(r => r.TESTATA_RIGHE === 'R');
     expect(righe).toHaveLength(11);
     expect(righe.filter(r => r.COD_ART === 'FASL00A003300A0')).toHaveLength(1);
     expect(righe.find(r => r.COD_ART === 'FASL00A003300A0')?.QTA1).toBe(700);
   }
   expect(clienteR(d)).toBeDefined();
-  expect(e.righe.find(r => r.COD_ART === 'FASL00A003300A0' && r.IND_CLIFOR === 0)).toMatchObject({ PRZ1: 2.695, SCT1: 10 });
-  expect(e.righe.find(r => r.COD_ART === 'FASL00A003300A0' && r.IND_CLIFOR === 1)?.PRZ1).toBe(1.98);
+  expect(righeCliente(e.righe).find(r => r.COD_ART === 'FASL00A003300A0')).toMatchObject({ PRZ1: 2.695, SCT1: 10 });
+  expect(righeFornitore(e.righe).find(r => r.COD_ART === 'FASL00A003300A0')?.PRZ1).toBe(1.98);
   const wb = XLSX.read(scriviFileGammaXls(e.righe), { type: 'array' });
   const ws = wb.Sheets['Sheet1']; if (!ws) throw new Error('Sheet1 assente');
   const file = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws);
@@ -288,19 +298,19 @@ test('FM96: prezzi diversi, due righe cliente e avviso unico per articolo/docume
   const d = dati(); const prima = d.righe[0]; if (!prima) throw new Error('Riga assente');
   d.righe.push({ ...prima, id: 'r2', prezzo_unit: 22 }, { ...prima, id: 'r3', prezzo_unit: 23 });
   const e = costruisciEsportazioneGamma([d]);
-  expect(e.righe.filter(r => r.CODICE_DOCUMENTO === 'MD-C-ORDINE' && r.TESTATA_RIGHE === 'R')).toHaveLength(3);
-  expect(e.righe.filter(r => r.CODICE_DOCUMENTO === 'MD-F-ORDINE' && r.TESTATA_RIGHE === 'R')).toHaveLength(1);
+  expect(righeCliente(e.righe)).toHaveLength(3);
+  expect(righeFornitore(e.righe)).toHaveLength(1);
   expect(e.problemi.filter(p => p.codice === 'articolo_ripetuto_condizioni_diverse')).toHaveLength(1);
   d.righe.pop();
-  expect(costruisciEsportazioneGamma([d]).righe.filter(r => r.CODICE_DOCUMENTO === 'MD-C-ORDINE' && r.TESTATA_RIGHE === 'R')).toHaveLength(2);
+  expect(righeCliente(costruisciEsportazioneGamma([d]).righe)).toHaveLength(2);
 });
 test('FM96: due fornitori restano separati, cliente sommato e nessuna unione tra ordini', () => {
   const d = dati(); const prima = d.righe[0]; if (!prima) throw new Error('Riga assente');
   d.righe.push({ ...prima, id: 'r2', fornitore_id: 'f2', quantita: 5 });
   const e = costruisciEsportazioneGamma([d, dati('o2', 'ORD-2/26')]);
   expect(e.righe.filter(r => r.TESTATA_RIGHE === 'T' && r.IND_CLIFOR === 1)).toHaveLength(3);
-  expect(e.righe.filter(r => r.TESTATA_RIGHE === 'R' && r.IND_CLIFOR === 1).map(r => r.QTA1)).toEqual([10, 5, 10]);
-  expect(e.righe.filter(r => r.TESTATA_RIGHE === 'R' && r.IND_CLIFOR === 0).map(r => r.QTA1)).toEqual([15, 10]);
+  expect(righeFornitore(e.righe).map(r => r.QTA1)).toEqual([10, 5, 10]);
+  expect(righeCliente(e.righe).map(r => r.QTA1)).toEqual([15, 10]);
   expect(e.problemi).toEqual([]);
 });
 test('FM96: riga inserita UM2 e riga UM1 unite in UM1 tramite patch canonica', () => {
@@ -319,7 +329,7 @@ test('FM96: confronto prezzi già a 4 decimali, somma quantità a 4 e posizione/
   d.righe = [{ ...prima, quantita: 0.1, prezzo_unit: 2.69501, descrizione: 'Prima' },
     { ...manuale(), id: 'intermedia' }, { ...prima, id: 'r2', quantita: 0.2, prezzo_unit: 2.69502, descrizione: 'Seconda' }];
   expect(clienteR(d)).toMatchObject({ QTA1: 0.3, PRZ1: 2.695, descrizione: 'Prima' });
-  expect(costruisciEsportazioneGamma([d]).righe.filter(r => r.IND_CLIFOR === 0 && r.TESTATA_RIGHE === 'R').map(r => r.COD_ART)).toEqual(['GAM-1', 'ABX12']);
+  expect(righeCliente(costruisciEsportazioneGamma([d]).righe).map(r => r.COD_ART)).toEqual(['GAM-1', 'ABX12']);
   d.righe = [{ ...prima, quantita: 0.123456 }, { ...prima, id: 'r2', quantita: 0.000006 }];
   expect(clienteR(d)?.QTA1).toBe(0.1235);
   d.righe.pop();
@@ -341,8 +351,8 @@ for (const campo of ['acq_sc1', 'acq_sc2', 'acq_sc3', 'acq_trasporto_perc', 'acq
       { ...manuale(), id: 'manuale', marca: 'GAM', codice_articolo_fornitore: '-1', quantita: 5, costo: 100 }];
     d.listiniAcquisto = [{ articolo_codice: 'GAM-1', listino: 10, acq_prezzo: 20, [campo]: campo === 'acq_prezzo' ? 21 : 2 }];
     const e = costruisciEsportazioneGamma([d]);
-    expect(e.righe.filter(r => r.TESTATA_RIGHE === 'R' && r.IND_CLIFOR === 1)).toHaveLength(2);
-    expect(e.righe.filter(r => r.TESTATA_RIGHE === 'R' && r.IND_CLIFOR === 0)).toHaveLength(1);
+    expect(righeFornitore(e.righe)).toHaveLength(2);
+    expect(righeCliente(e.righe)).toHaveLength(1);
     expect(e.problemi.filter(p => p.codice === 'articolo_ripetuto_condizioni_diverse')).toHaveLength(1);
   });
 for (const campo of ['SCT1', 'SCT2', 'sct3', 'magg %'] as const)
@@ -352,7 +362,7 @@ for (const campo of ['SCT1', 'SCT2', 'sct3', 'magg %'] as const)
       : { sconti_gamma: campo === 'SCT1' ? [12, 5, 2] : campo === 'SCT2' ? [10, 6, 2] : [10, 5, 4], sconto_perc: 0 };
     d.righe.push({ ...prima, id: 'r2', ...patch });
     const e = costruisciEsportazioneGamma([d]);
-    expect(e.righe.filter(r => r.TESTATA_RIGHE === 'R' && r.IND_CLIFOR === 0)).toHaveLength(2);
+    expect(righeCliente(e.righe)).toHaveLength(2);
     expect(e.problemi.filter(p => p.codice === 'articolo_ripetuto_condizioni_diverse')).toHaveLength(1);
   });
 test('FM96: avviso una volta per articolo in ciascun documento, anche con tre condizioni', () => {
@@ -366,4 +376,24 @@ test('FM96: trigger verbatim salvo filtro ordine e FOR SHARE', () => {
   const prima = readFileSync('drizzle/migrations/0267_fm96_gamma_campi_servizio_ruoli.sql', 'utf8');
   const dopo = readFileSync('drizzle/migrations/0268_fm96_gamma_lock_solo_ordini.sql', 'utf8');
   expect(dopo.replace(" AND p.tipo = 'ordine' ORDER BY p.id FOR SHARE LOOP", ' ORDER BY p.id FOR UPDATE LOOP').trimEnd()).toBe(prima.trimEnd());
+});
+test('FM97: campi documento/destinatario solo sulle T, anche dopo rilettura BIFF8', () => {
+  const esito = costruisciEsportazioneGamma([dati(), lead()]);
+  const bytes = scriviFileGammaXls(esito.righe);
+  const wb = XLSX.read(bytes, { type: 'array' });
+  const ws = wb.Sheets['Sheet1']; if (!ws) throw new Error('Sheet1 assente');
+  const rilette = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '' });
+  const righeR = esito.righe.filter(r => r.TESTATA_RIGHE === 'R');
+  expect(righeR).toHaveLength(4);
+  for (const campo of ['CODICE_DOCUMENTO', 'COD_COD_CLI', 'IND_CLIFOR'] as const) {
+    expect(righeR.map(r => r[campo])).toEqual(['', '', '', '']);
+    expect(rilette.filter(r => r['TESTATA_RIGHE'] === 'R').map(r => r[campo])).toEqual(['', '', '', '']);
+  }
+  expect(rilette.filter(r => r['TESTATA_RIGHE'] === 'T').map(r => [r['CODICE_DOCUMENTO'], r['COD_COD_CLI'], r['IND_CLIFOR']])).toEqual([
+    ['MD-F-ORDINE', '100', 1], ['MD-F-ORDINE', '100', 1], ['MD-C-ORDINE', '005003', 0], ['MD-C-ORDINE', '', 0],
+  ]);
+});
+test('FM97: nome file sempre ORDINI_CLIENTI_FORNITORI.xls, indipendente dalla data', () => {
+  expect(nomeFileGamma()).toBe('ORDINI_CLIENTI_FORNITORI.xls');
+  expect(nomeFileGamma(new Date('2027-07-01T00:00:00Z'))).toBe('ORDINI_CLIENTI_FORNITORI.xls');
 });

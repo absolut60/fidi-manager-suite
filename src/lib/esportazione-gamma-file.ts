@@ -21,10 +21,7 @@ export function scriviFileGammaXls(righe: readonly RigaFileGamma[]): Uint8Array 
   return new Uint8Array(XLSX.write(libro, { bookType: 'biff8', type: 'array' }));
 }
 
-/** Data/ora del calendario italiano, indipendente dal fuso del dispositivo. */
-export function nomeFileGamma(data: Date): string {
-  const parti = new Intl.DateTimeFormat('it-IT', { timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit',
-    day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(data);
-  const valore = (tipo: Intl.DateTimeFormatPartTypes) => parti.find(p => p.type === tipo)?.value ?? '';
-  return `Gamma_ordini_${valore('year')}${valore('month')}${valore('day')}_${valore('hour')}${valore('minute')}.xls`;
+/** Nome fisso; il parametro data resta accettato per i chiamanti preesistenti. */
+export function nomeFileGamma(_data?: Date): string {
+  return 'ORDINI_CLIENTI_FORNITORI.xls';
 }

@@ -19,9 +19,20 @@ test('FM96 esporta solo il pronto, un unico XLS e 5 testate fornitore + 1 client
   const r=await esportaOrdiniGamma([a.ordine.id,b.ordine.id],client,async()=>[a,b]);
   assert(calls[0][1]==='esportazioni-gamma'&&calls[0][3]>0,'bucket/blob');
   const args=calls[1][1];assert(args._ordine_ids.length===1&&args._ordine_ids[0]===a.ordine.id,'solo pronto');
+  assert(r.nome==='ORDINI_CLIENTI_FORNITORI.xls'&&args._nome_file===r.nome,'nome download e storico');
+  const parti=args._file_path.split('/');
+  assert(args._file_path===calls[0][2]&&parti.length===2&&/^[0-9a-f-]{36}$/.test(parti[0])&&parti[1]===r.nome,'percorso UUID');
   assert(args._n_doc_fornitore===5&&args._n_doc_cliente===1,'5+1');
   assert(r.esito.ordiniBloccati[0]===b.ordine.id,'bloccato resta');
   assert(new Uint8Array(await r.blob.arrayBuffer())[0]===0xd0,'BIFF8');
+`));
+test('FM97: esportazioni con nome fisso conservano percorsi UUID distinti', () => esegui(`
+  const a=ordineFm96(),paths=[],names=[];
+  const client={storage:{from:()=>({upload:async p=>{paths.push(p);return {error:null}}})},rpc:async(n,args)=>{names.push(args._nome_file);return {error:null}}};
+  await esportaOrdiniGamma([a.ordine.id],client,async()=>[a]);
+  await esportaOrdiniGamma([a.ordine.id],client,async()=>[a]);
+  assert(paths.length===2&&paths[0]!==paths[1],'UUID distinti');
+  assert(names.length===2&&names.every(n=>n==='ORDINI_CLIENTI_FORNITORI.xls'),'nome storico fisso');
 `));
 test('FM96 errore della RPC rimuove esattamente il file caricato e conserva il messaggio', () => esegui(`
   const a=ordineFm96(),calls=[];
