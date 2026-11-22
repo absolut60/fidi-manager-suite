@@ -119,3 +119,11 @@ Il file reale non è copiato nei documenti del progetto né allegato, perché co
 4. Download riusa `salvaFile` anziché una seconda implementazione, per mantenere il comportamento iPhone/iPad dell'app.
 
 **Non pubblicato.**
+## Ritocco listino di ripiego (22/11/2026)
+
+Decisione provvisoria di Andrea: le sedi senza `stores.listino_riferimento` (oggi Mergozzo 10 e Verbania 11) usano per il prezzo d'acquisto dell'export il listino 20, come il resto del Piemonte.
+
+- `src/lib/esportazione-gamma.ts`: nuova costante `LISTINO_ACQUISTO_RIPIEGO = 20` (commento "decisione Andrea FM95, provvisoria") e funzione unica `listinoAcquistoSede(sede)` = `sede.listino_riferimento ?? 20`, usata da motore e loader. Il bloccante `listino_sede_assente` è sostituito dall'avviso `listino_ripiego` (una volta per ordine): "La sede non ha un listino di riferimento: per i prezzi d'acquisto è stato usato il listino 20." Se la lettura del listino 20 non restituisce righe vale l'avviso esistente `acquisto_assente`.
+- `src/lib/esportazione-gamma-dati.ts`: il loader usa `listinoAcquistoSede` sia per raggruppare le letture per listino sia per filtrare i listini dell'ordine; nessuna doppia logica.
+- Nessuna modifica a dati, RLS, prezzi di vendita o altri file.
+- Test: `esportazione-gamma-motore.test.ts` — sede senza listino esporta con prezzi dal 20 e un solo avviso `listino_ripiego` (assente se l'ordine ha solo righe manuali); `esportazione-gamma-dati.test.ts` — nuovo caso Mergozzo: sede senza listino legge `articoli_gamma_listini` con `listino=20`. Suite completa: 1.323 verdi, 0 falliti.

@@ -1,7 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { fornitoreRigaOrdine, type DatiOrdineGamma } from './esportazione-gamma';
+import { fornitoreRigaOrdine, listinoAcquistoSede, type DatiOrdineGamma } from './esportazione-gamma';
 
 type Tabelle = Database['public']['Tables'];
 type Riga<T extends keyof Tabelle> = Tabelle[T]['Row'];
@@ -64,8 +64,7 @@ export async function caricaDatiEsportazioneGamma(
   }
   const codiciPerListino = new Map<number, Set<string>>();
   for (const o of ordini) {
-    const listino = sedi.find(s => s.id === o.store_id)?.listino_riferimento;
-    if (listino == null) continue;
+    const listino = listinoAcquistoSede(sedi.find(s => s.id === o.store_id));
     const codici = codiciPerListino.get(listino) ?? new Set<string>();
     for (const r of righePerOrdine.get(o.id) ?? []) if (r.articolo_codice) codici.add(r.articolo_codice);
     codiciPerListino.set(listino, codici);
@@ -85,7 +84,7 @@ export async function caricaDatiEsportazioneGamma(
     const codici = new Set(rr.map(r => r.articolo_codice));
     const idsFornitore = new Set(rr.map(r => fornitoreRigaOrdine(r, articoloPerCodice.get(r.articolo_codice ?? ''))));
     return { ordine: { ...o, numero: o.numero, tipo: 'ordine' }, righe: rr, articoli: articoli.filter(a => codici.has(a.codice)),
-      listiniAcquisto: listini.filter(a => codici.has(a.articolo_codice) && a.listino === sede?.listino_riferimento),
+      listiniAcquisto: listini.filter(a => codici.has(a.articolo_codice) && a.listino === listinoAcquistoSede(sede)),
       fornitori: fornitori.filter(f => idsFornitore.has(f.id)), cliente: clienti.find(c => c.id === o.cliente_id) ?? null,
       lead: l, sede, sedeLead: sedi.find(s => s.id === l?.store_id) ?? null,
       deposito: depositi.find(d => d.store_id === o.store_id) ?? null, codiciPagamento,

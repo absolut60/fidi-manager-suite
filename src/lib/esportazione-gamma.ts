@@ -6,6 +6,14 @@ import { lineaPreventivo } from './linee-preventivo';
 /** Limiti del tracciato Gamma, condivisi da compilazione ed esportazione. */
 export const LIMITI_GAMMA = { codiceArticolo: 25, descrizione: 70 } as const;
 
+/** Listino d'acquisto usato quando la sede non ha un listino di riferimento (decisione Andrea FM95, provvisoria). */
+export const LISTINO_ACQUISTO_RIPIEGO = 20;
+
+/** Fonte unica del listino d'acquisto: quello della sede, altrimenti il ripiego. */
+export function listinoAcquistoSede(sede: { listino_riferimento?: number | null } | null | undefined): number {
+  return sede?.listino_riferimento ?? LISTINO_ACQUISTO_RIPIEGO;
+}
+
 /** Il fornitore scelto sulla riga prevale sul preferenziale del catalogo Gamma. */
 export function fornitoreRigaOrdine(
   riga: { fornitore_id?: string | null },
@@ -123,7 +131,7 @@ export function costruisciEsportazioneGamma(dati: DatiOrdineGamma[]) {
 
     const articoli = new Map(d.articoli.map(a => [a.codice, a]));
     const fornitori = new Map(d.fornitori.map(f => [f.id, f]));
-    const acquisti = new Map(d.listiniAcquisto.filter(l => l.listino === d.sede?.listino_riferimento).map(l => [l.articolo_codice, l]));
+    const acquisti = new Map(d.listiniAcquisto.filter(l => l.listino === listinoAcquistoSede(d.sede)).map(l => [l.articolo_codice, l]));
     const gruppi = new Map<string, RigaFileGamma[]>();
     const righeCliente: RigaFileGamma[] = [];
     const esportabili = d.righe.filter(isRigaValorizzata).filter(r => {
@@ -133,7 +141,7 @@ export function costruisciEsportazioneGamma(dati: DatiOrdineGamma[]) {
       return true;
     });
     if (esportabili.some(r => presente(r.articolo_codice)) && d.sede?.listino_riferimento == null)
-      problema('bloccante', 'listino_sede_assente', "La sede dell'ordine non ha un listino di riferimento per gli articoli Gamma.");
+      problema('avviso', 'listino_ripiego', `La sede non ha un listino di riferimento: per i prezzi d'acquisto è stato usato il listino ${LISTINO_ACQUISTO_RIPIEGO}.`);
 
     for (const r of esportabili) {
       const gamma = presente(r.articolo_codice);

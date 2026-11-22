@@ -148,9 +148,17 @@ test('Gamma: costo manuale zero valido e codice esattamente 25 valido', () => {
 test('Gamma: fornitore assente bloccante', () => { const d = dati(); d.articoli = d.articoli.map(a => ({ ...a, fornitore_pref_id: null })); bloccato(d, 'fornitore_assente'); });
 test('Gamma: fornitore senza codice bloccante', () => { const d = dati(); d.fornitori = [{ id: 'f1', codice_gestionale: null }]; bloccato(d, 'fornitore_senza_codice'); });
 test('Gamma: cliente senza codice bloccante', () => { const d = dati(); d.cliente = { id: 'c1', codice_gestionale: null }; bloccato(d, 'cliente_senza_codice'); });
-test('Gamma: sede senza listino bloccante solo per articoli Gamma', () => {
-  const d = dati(); d.sede = { ...d.sede, listino_riferimento: null }; bloccato(d, 'listino_sede_assente');
-  d.righe = [manuale()]; expect(costruisciEsportazioneGamma([d]).ordiniEsportati).toEqual(['o1']);
+test('Gamma: sede senza listino usa il ripiego 20 con avviso, senza bloccare', () => {
+  const d = dati(); d.sede = { ...d.sede, listino_riferimento: null };
+  const e = costruisciEsportazioneGamma([d]);
+  expect(e.ordiniEsportati).toEqual(['o1']); expect(e.ordiniBloccati).toEqual([]);
+  expect(fornitoreR(d)?.PRZ1).toBe(18);
+  const avvisi = e.problemi.filter(p => p.codice === 'listino_ripiego');
+  expect(avvisi).toHaveLength(1); expect(avvisi[0]?.livello).toBe('avviso');
+  expect(avvisi[0]?.messaggio).toContain('listino 20');
+  expect(e.problemi.map(p => p.codice)).not.toContain('listino_sede_assente');
+  d.righe = [manuale()]; const solo = costruisciEsportazioneGamma([d]);
+  expect(solo.ordiniEsportati).toEqual(['o1']); expect(solo.problemi.map(p => p.codice)).not.toContain('listino_ripiego');
 });
 test('Gamma: deposito di altra sede, non centrale o inattivo bloccante', () => {
   for (const patch of [{ store_id: 'altra' }, { tipo: 'Periferico' }, { attivo: false }]) {

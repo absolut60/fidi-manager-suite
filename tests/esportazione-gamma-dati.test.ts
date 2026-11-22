@@ -60,6 +60,16 @@ test('Gamma letture: a blocchi, coppie articolo/listino solo necessarie e sede l
   ]);
   expect(s.richieste.find(u => u.pathname.endsWith('/codici_pagamento'))?.searchParams.get('cod')).toBe('in.(BO02)');
 });
+test('Gamma letture: sede senza listino di riferimento legge il ripiego 20 (Mergozzo)', async () => {
+  const s = sorgente();
+  s.dati['preventivi'] = [...(s.dati['preventivi'] ?? []), { id: 'o3', tipo: 'ordine', numero: 'ORD-3/26', store_id: 's3', cliente_id: 'c1' }];
+  s.dati['blocchi_preventivo'] = [...(s.dati['blocchi_preventivo'] ?? []), { id: 'b3', preventivo_id: 'o3', ordine: 0 }];
+  s.dati['righe_preventivo'] = [{ id: 'r00003', blocco_id: 'b3', ordine: 0, tipo_riga: 'articolo_singolo', articolo_codice: 'G1', quantita: 1, prezzo_unit: 20, descrizione: 'Articolo' }];
+  const d = await caricaDatiEsportazioneGamma(['o3'], s.client);
+  expect(d[0]?.listiniAcquisto).toEqual([{ articolo_codice: 'G1', listino: 20, acq_prezzo: 80 }]);
+  const listini = s.richieste.filter(u => u.pathname.endsWith('/articoli_gamma_listini'));
+  expect(listini.map(u => [u.searchParams.get('listino'), u.searchParams.get('articolo_codice')])).toEqual([['eq.20', 'in.(G1)']]);
+});
 test('Gamma letture: oltre 1000 righe nessuna perdita né lettura per riga', async () => {
   const s = sorgente(1205); const d = await caricaDatiEsportazioneGamma(['o1', 'o2'], s.client);
   expect(d.reduce((somma, o) => somma + o.righe.length, 0)).toBe(1205);
