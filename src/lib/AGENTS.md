@@ -32,4 +32,4 @@
 - Kit Excel template, export and import are generated only from COLONNE_KIT_EXCEL in kit-excel.ts; MAPPA_DB_KIT* must list every kit/kit_componenti column (guard test), and saves go only through public.importa_kit_excel per kit, so the three formats can never drift.
 
 - Kit calculations and DTOs use only simple-row fields and configured specifications; obsolete columns stay solely in generated types and Excel exclusion metadata until schema cleanup, preventing reads/writes after their removal.
-- Gamma rules/columns stay in esportazione-gamma; separate BIFF8/RLS readers keep one format.
+- Gamma roles/lock: esportazione-gamma + SQL twin; purchases via acquisti_gamma_ordini, never site RLS.

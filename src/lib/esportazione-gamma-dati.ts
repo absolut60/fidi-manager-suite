@@ -17,7 +17,7 @@ interface Lettura<T> extends PromiseLike<{ data: T[] | null; error: { message: s
   range(da: number, a: number): Lettura<T>;
 }
 
-/** Letture client autenticato: RLS invariata, nessun bypass con client privilegiati. */
+/** Letture RLS invariate; solo gli acquisti passano dalla RPC dedicata con gate Gamma. */
 export async function caricaDatiEsportazioneGamma(
   ordineIds: string[], client: SupabaseClient<Database> = supabase,
 ): Promise<DatiOrdineGamma[]> {
@@ -62,19 +62,24 @@ export async function caricaDatiEsportazioneGamma(
     const oid = bloccoPerId.get(r.blocco_id)?.preventivo_id;
     if (oid) { const elenco = righePerOrdine.get(oid) ?? []; elenco.push(r); righePerOrdine.set(oid, elenco); }
   }
-  const codiciPerListino = new Map<number, Set<string>>();
-  for (const o of ordini) {
-    const listino = listinoAcquistoSede(sedi.find(s => s.id === o.store_id));
-    const codici = codiciPerListino.get(listino) ?? new Set<string>();
-    for (const r of righePerOrdine.get(o.id) ?? []) if (r.articolo_codice) codici.add(r.articolo_codice);
-    codiciPerListino.set(listino, codici);
+  async function leggiAcquisti() {
+    const tutti: Database['public']['Functions']['acquisti_gamma_ordini']['Returns'] = [];
+    for (let i = 0; i < ordini.length; i += BLOCCO_LETTURA) {
+      for (let offset = 0; ; offset += PAGINA_LETTURA) {
+        const { data, error } = await client.rpc('acquisti_gamma_ordini', { _ordine_ids: ordini.slice(i, i + BLOCCO_LETTURA).map(o => o.id) })
+          .order('articolo_codice').order('listino').range(offset, offset + PAGINA_LETTURA - 1);
+        if (error) throw new Error(`Impossibile leggere i dati per l'esportazione (acquisti_gamma_ordini): ${error.message}`);
+        tutti.push(...(data ?? []));
+        if ((data ?? []).length < PAGINA_LETTURA) break;
+      }
+    }
+    return [...new Map(tutti.map(a => [`${a.articolo_codice}/${a.listino}`, a])).values()];
   }
-  const [fornitori, codiciPagamento, gruppiListini] = await Promise.all([
+  const [fornitori, codiciPagamento, listini] = await Promise.all([
     leggi('fornitori', 'id', unici(righe.map(r => fornitoreRigaOrdine(r, articoloPerCodice.get(r.articolo_codice ?? ''))))),
     leggi('codici_pagamento', 'cod', unici([...ordini.map(o => o.condizione_pagamento_cod), ...lead.map(l => l.condizione_pagamento_cod)]), {}, 'cod'),
-    Promise.all([...codiciPerListino].map(([listino, codici]) => leggi('articoli_gamma_listini', 'articolo_codice', [...codici], { listino }, 'articolo_codice'))),
+    leggiAcquisti(),
   ]);
-  const listini = gruppiListini.flat();
   return ordini.map(o => {
     if (!o.numero) throw new Error("Un ordine non ha un numero: verifica il documento prima di esportare.");
     const l = lead.find(l => l.id === o.lead_id) ?? null;

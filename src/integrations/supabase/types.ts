@@ -3509,6 +3509,87 @@ export type Database = {
           },
         ]
       }
+      esportazioni_gamma: {
+        Row: {
+          creata_at: string
+          creata_da: string
+          file_path: string
+          id: string
+          n_documenti_cliente: number
+          n_documenti_fornitore: number
+          n_ordini: number
+          nome_file: string
+        }
+        Insert: {
+          creata_at?: string
+          creata_da: string
+          file_path: string
+          id?: string
+          n_documenti_cliente: number
+          n_documenti_fornitore: number
+          n_ordini: number
+          nome_file: string
+        }
+        Update: {
+          creata_at?: string
+          creata_da?: string
+          file_path?: string
+          id?: string
+          n_documenti_cliente?: number
+          n_documenti_fornitore?: number
+          n_ordini?: number
+          nome_file?: string
+        }
+        Relationships: []
+      }
+      esportazioni_gamma_eventi: {
+        Row: {
+          at: string
+          esportazione_id: string | null
+          id: string
+          motivo: string | null
+          numero_ordine: string
+          ordine_id: string | null
+          tipo: string
+          utente: string
+        }
+        Insert: {
+          at?: string
+          esportazione_id?: string | null
+          id?: string
+          motivo?: string | null
+          numero_ordine: string
+          ordine_id?: string | null
+          tipo: string
+          utente: string
+        }
+        Update: {
+          at?: string
+          esportazione_id?: string | null
+          id?: string
+          motivo?: string | null
+          numero_ordine?: string
+          ordine_id?: string | null
+          tipo?: string
+          utente?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esportazioni_gamma_eventi_esportazione_id_fkey"
+            columns: ["esportazione_id"]
+            isOneToOne: false
+            referencedRelation: "esportazioni_gamma"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esportazioni_gamma_eventi_ordine_id_fkey"
+            columns: ["ordine_id"]
+            isOneToOne: false
+            referencedRelation: "preventivi"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       eventi: {
         Row: {
           codice_pubblico: string | null
@@ -6069,6 +6150,9 @@ export type Database = {
           creato_da: string | null
           data: string
           data_consegna: string | null
+          esportato_gamma_at: string | null
+          esportato_gamma_da: string | null
+          esportazione_gamma_id: string | null
           fascia_listino: Database["public"]["Enums"]["fascia_listino"] | null
           filiale: string | null
           id: string
@@ -6113,6 +6197,9 @@ export type Database = {
           creato_da?: string | null
           data?: string
           data_consegna?: string | null
+          esportato_gamma_at?: string | null
+          esportato_gamma_da?: string | null
+          esportazione_gamma_id?: string | null
           fascia_listino?: Database["public"]["Enums"]["fascia_listino"] | null
           filiale?: string | null
           id?: string
@@ -6157,6 +6244,9 @@ export type Database = {
           creato_da?: string | null
           data?: string
           data_consegna?: string | null
+          esportato_gamma_at?: string | null
+          esportato_gamma_da?: string | null
+          esportazione_gamma_id?: string | null
           fascia_listino?: Database["public"]["Enums"]["fascia_listino"] | null
           filiale?: string | null
           id?: string
@@ -6220,6 +6310,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "preventivi_esportazione_gamma_id_fkey"
+            columns: ["esportazione_gamma_id"]
+            isOneToOne: false
+            referencedRelation: "esportazioni_gamma"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "preventivi_lead_id_fkey"
@@ -8808,6 +8905,19 @@ export type Database = {
         }[]
       }
       _segmento_filtro_elenco: { Args: { _v: Json }; Returns: string[] }
+      acquisti_gamma_ordini: {
+        Args: { _ordine_ids: string[] }
+        Returns: {
+          acq_prezzo: number
+          acq_sc1: number
+          acq_sc2: number
+          acq_sc3: number
+          acq_trasporto_euro: number
+          acq_trasporto_perc: number
+          articolo_codice: string
+          listino: number
+        }[]
+      }
       agente_codice_corrente: { Args: never; Returns: string }
       agente_vede_record: {
         Args: {
@@ -8938,6 +9048,7 @@ export type Database = {
       auth_puo_accedere_marketing: { Args: never; Returns: boolean }
       auth_puo_aggiornare_cerved: { Args: never; Returns: boolean }
       auth_puo_eliminare_contatti_clienti: { Args: never; Returns: boolean }
+      auth_puo_esportare_gamma: { Args: never; Returns: boolean }
       auth_puo_gestire_anagrafiche_prev: { Args: never; Returns: boolean }
       auth_puo_gestire_fornitori: { Args: never; Returns: boolean }
       auth_puo_gestire_legale: { Args: never; Returns: boolean }
@@ -11144,6 +11255,16 @@ export type Database = {
         }
         Returns: Json
       }
+      registra_esportazione_gamma: {
+        Args: {
+          _file_path: string
+          _n_doc_cliente: number
+          _n_doc_fornitore: number
+          _nome_file: string
+          _ordine_ids: string[]
+        }
+        Returns: string
+      }
       registra_iscrizione_evento_pubblica: {
         Args: {
           _azienda?: string
@@ -11189,6 +11310,10 @@ export type Database = {
           _profilazione?: boolean
         }
         Returns: number
+      }
+      riapri_ordine_gamma: {
+        Args: { _motivo?: string; _ordine_id: string }
+        Returns: undefined
       }
       riapri_preventivo: { Args: { _id: string }; Returns: undefined }
       riattiva_marketing: { Args: { _email: string }; Returns: boolean }

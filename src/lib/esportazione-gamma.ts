@@ -6,6 +6,17 @@ import { lineaPreventivo } from './linee-preventivo';
 /** Limiti del tracciato Gamma, condivisi da compilazione ed esportazione. */
 export const LIMITI_GAMMA = { codiceArticolo: 25, descrizione: 70 } as const;
 
+/** Gemello SQL: auth_puo_esportare_gamma (FM96); aggiungere qui i futuri ruoli e allineare il gemello. */
+export const RUOLI_ESPORTAZIONE_GAMMA = ['amministratore', 'responsabile_showroom'] as const;
+export function puoEsportareGamma(hasRole: (ruolo: typeof RUOLI_ESPORTAZIONE_GAMMA[number]) => boolean): boolean {
+  return RUOLI_ESPORTAZIONE_GAMMA.some(hasRole);
+}
+
+/** Fonte unica del blocco a schermo; il database protegge tutte le scritture. */
+export function ordineBloccatoGamma(ordine: { tipo?: string | null; esportato_gamma_at?: string | null } | null | undefined): boolean {
+  return ordine?.tipo === 'ordine' && !!ordine.esportato_gamma_at;
+}
+
 /** Listino d'acquisto usato quando la sede non ha un listino di riferimento (decisione Andrea FM95, provvisoria). */
 export const LISTINO_ACQUISTO_RIPIEGO = 20;
 

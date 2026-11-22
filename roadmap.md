@@ -1,3 +1,10 @@
+# FM96 — Fetta 4a
+- [x] Inventario scritture, schema storico e bucket privato; gate ruoli/MFA e acquisti dedicati senza cambiare RLS esistente.
+- [x] Registrazione atomica, riapertura singola e blocco ordini esportati; fonte unica TS e loader RPC.
+- [x] Test SQL/TS, verifica definizioni/schema applicati e rapporto fm96-fetta4a.md; nessuna schermata o pubblicazione.
+
+- [ ] Prova live con sessione personale autorizzata: nessun account dell’app corrispondente al richiedente; test SQL su clone isolato, non come Ombretta.
+
 # FM95 — Fetta 3b
 - [x] Migrazioni 0264/0265: copia lead_id, definizione finale verbatim; CHECK reale e RPC/riaggancio clone SQL con ROLLBACK.
 - [x] Lead anche in Nuovo ordine, SDI condiviso nei tre moduli anagrafici e visibile nella scheda.

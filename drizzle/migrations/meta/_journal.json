@@ -1863,6 +1863,20 @@
       "when": 1795369661636,
       "tag": "0265_fm95_ordini_lead_correzione_verbatim",
       "breakpoints": true
+    },
+    {
+      "idx": 266,
+      "version": "7",
+      "when": 1795372681722,
+      "tag": "0266_fm96_esportazioni_gamma",
+      "breakpoints": true
+    },
+    {
+      "idx": 267,
+      "version": "7",
+      "when": 1795372918563,
+      "tag": "0267_fm96_gamma_campi_servizio_ruoli",
+      "breakpoints": true
     }
   ]
 }

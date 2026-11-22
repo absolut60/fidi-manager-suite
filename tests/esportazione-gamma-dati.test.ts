@@ -26,6 +26,7 @@ function sorgente(numeroRighe = 2) {
     codici_pagamento: [{ cod: 'BO02', descrizione: 'Bonifico' }],
   };
   const richieste: URL[] = [];
+  const richiesteAcquisti: string[][] = [];
   let erroreTabella = '';
   const client = createClient<Database>('https://gamma-test.invalid', 'test-key', { auth: { persistSession: false, autoRefreshToken: false },
     global: { fetch: async (input, init) => {
@@ -33,6 +34,13 @@ function sorgente(numeroRighe = 2) {
       const tabella = url.pathname.split('/').at(-1) ?? '';
       if (tabella === erroreTabella) return new Response(JSON.stringify({ message: 'lettura negata', code: '42501' }), { status: 403 });
       let rows = [...(dati[tabella] ?? [])];
+      if (tabella === 'acquisti_gamma_ordini') {
+        const body = JSON.parse(String(init?.body)) as { _ordine_ids: string[] };
+        richiesteAcquisti.push(body._ordine_ids);
+        const blocchi = new Set((dati['blocchi_preventivo'] ?? []).filter(b => body._ordine_ids.includes(String(b['preventivo_id']))).map(b => b['id']));
+        const codici = new Set((dati['righe_preventivo'] ?? []).filter(r => blocchi.has(r['blocco_id'])).map(r => r['articolo_codice']));
+        rows = (dati['articoli_gamma_listini'] ?? []).filter(a => codici.has(a['articolo_codice']) && a['listino'] !== 9);
+      }
       for (const [campo, filtro] of url.searchParams) {
         if (filtro.startsWith('in.(')) {
           const valori = filtro.slice(4, -1).split(',').map(v => v.replace(/^"|"$/g, ''));
@@ -46,7 +54,7 @@ function sorgente(numeroRighe = 2) {
       const limit = Number(url.searchParams.get('limit') ?? (range ? Number(range[1]) - offset + 1 : 1000));
       return new Response(JSON.stringify(rows.slice(offset, offset + limit)), { status: 200, headers: { 'Content-Type': 'application/json' } });
     } } });
-  return { dati, richieste, client, errore: (tabella: string) => { erroreTabella = tabella; } };
+  return { dati, richieste, richiesteAcquisti, client, errore: (tabella: string) => { erroreTabella = tabella; } };
 }
 
 test('Gamma letture: a blocchi, coppie articolo/listino solo necessarie e sede lead separata', async () => {
@@ -55,9 +63,8 @@ test('Gamma letture: a blocchi, coppie articolo/listino solo necessarie e sede l
   expect(d[1]?.listiniAcquisto).toEqual([{ articolo_codice: 'G2', listino: 20, acq_prezzo: 9 }]);
   expect(d[1]?.sedeLead?.codice).toBe('CI'); expect(d[0]?.preventivoOrigine?.numero).toBe('PRV-1/26');
   const listini = s.richieste.filter(u => u.pathname.endsWith('/articoli_gamma_listini'));
-  expect(listini.map(u => [u.searchParams.get('listino'), u.searchParams.get('articolo_codice')])).toEqual([
-    ['eq.10', 'in.(G1)'], ['eq.20', 'in.(G2)'],
-  ]);
+  expect(listini).toEqual([]);
+  expect(s.richiesteAcquisti).toEqual([['o1', 'o2']]);
   expect(s.richieste.find(u => u.pathname.endsWith('/codici_pagamento'))?.searchParams.get('cod')).toBe('in.(BO02)');
 });
 test('Gamma letture: sede senza listino di riferimento legge il ripiego 20 (Mergozzo)', async () => {
@@ -67,8 +74,8 @@ test('Gamma letture: sede senza listino di riferimento legge il ripiego 20 (Merg
   s.dati['righe_preventivo'] = [{ id: 'r00003', blocco_id: 'b3', ordine: 0, tipo_riga: 'articolo_singolo', articolo_codice: 'G1', quantita: 1, prezzo_unit: 20, descrizione: 'Articolo' }];
   const d = await caricaDatiEsportazioneGamma(['o3'], s.client);
   expect(d[0]?.listiniAcquisto).toEqual([{ articolo_codice: 'G1', listino: 20, acq_prezzo: 80 }]);
-  const listini = s.richieste.filter(u => u.pathname.endsWith('/articoli_gamma_listini'));
-  expect(listini.map(u => [u.searchParams.get('listino'), u.searchParams.get('articolo_codice')])).toEqual([['eq.20', 'in.(G1)']]);
+  expect(s.richieste.filter(u => u.pathname.endsWith('/articoli_gamma_listini'))).toEqual([]);
+  expect(s.richiesteAcquisti).toEqual([['o3']]);
 });
 test('Gamma letture: oltre 1000 righe nessuna perdita né lettura per riga', async () => {
   const s = sorgente(1205); const d = await caricaDatiEsportazioneGamma(['o1', 'o2'], s.client);
@@ -84,9 +91,25 @@ test('Gamma letture: 151 ordini divisi in blocchi 150, ID duplicati eliminati', 
   const q = s.richieste.filter(u => u.pathname.endsWith('/preventivi'));
   expect(q).toHaveLength(2); expect(q[0]?.searchParams.get('id')?.split(',')).toHaveLength(150);
   expect(q[1]?.searchParams.get('id')).toBe('in.(o150)');
+  expect(s.richiesteAcquisti.map(ids => ids.length)).toEqual([150, 1]);
+});
+test('Gamma acquisti: oltre 1000 prezzi paginati senza perdere coppie articolo/listino', async () => {
+  const s = sorgente(1205);
+  s.dati['righe_preventivo'] = (s.dati['righe_preventivo'] ?? []).map((r, i) => ({ ...r, articolo_codice: `G${i}` }));
+  s.dati['articoli_gamma_listini'] = Array.from({ length: 1205 }, (_, i) => ({ articolo_codice: `G${i}`, listino: i % 2 ? 20 : 10, acq_prezzo: i + 1 }));
+  const d = await caricaDatiEsportazioneGamma(['o1', 'o2'], s.client);
+  expect(d.reduce((n, o) => n + o.listiniAcquisto.length, 0)).toBe(1205);
+  expect(s.richiesteAcquisti).toHaveLength(2);
+  expect(s.richieste.filter(u => u.pathname.endsWith('/articoli_gamma_listini'))).toEqual([]);
+});
+test('Gamma acquisti: RPC senza righe conserva acquisto_assente, nessun ripiego diretto alla tabella', async () => {
+  const s = sorgente(); s.dati['articoli_gamma_listini'] = [];
+  const e = costruisciEsportazioneGamma(await caricaDatiEsportazioneGamma(['o1'], s.client));
+  expect(e.problemi.filter(p => p.codice === 'acquisto_assente')).toHaveLength(1);
+  expect(s.richieste.filter(u => u.pathname.endsWith('/articoli_gamma_listini'))).toEqual([]);
 });
 test('Gamma letture: errore non trasformato in catalogo vuoto', async () => {
-  const s = sorgente(); s.errore('articoli_gamma_listini');
+  const s = sorgente(); s.errore('acquisti_gamma_ordini');
   await expect(caricaDatiEsportazioneGamma(['o1'], s.client)).rejects.toThrow('lettura negata');
 });
 test('Gamma letture: ordini nascosti/mancanti e documenti non ordine rifiutati', async () => {
