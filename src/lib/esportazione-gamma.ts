@@ -208,6 +208,33 @@ export function costruisciEsportazioneGamma(dati: DatiOrdineGamma[]) {
         PRZ1: prezzo4(inUnita(r.prezzo_unit, 'prezzo', 'primaria', unita.fattore)),
         SCT1: nonZero(sconti[0]), SCT2: nonZero(sconti[1]), sct3: nonZero(sconti[2]), 'magg %': nonZero(r.maggiorazione_perc) });
     }
+    // Confronto sul tracciato già pronto in UM1; ogni chiamata riguarda un solo documento.
+    const sommaRighe = (righe: RigaFileGamma[], fornitore: boolean): RigaFileGamma[] => {
+      const unite: RigaFileGamma[] = [];
+      const condizioni = new Map<string, { riga: RigaFileGamma; quantita: number; occorrenze: number }>();
+      const articoliDocumento = new Set<ValoreGamma>();
+      const avvisati = new Set<ValoreGamma>();
+      for (const riga of righe) {
+        const chiave = JSON.stringify([riga.COD_ART, riga.PRZ1, riga.SCT1, riga.SCT2, riga.sct3,
+          riga['magg %'], ...(fornitore ? [riga.MAGG_Import] : [])]);
+        const precedente = condizioni.get(chiave);
+        if (precedente) {
+          precedente.quantita += Number(riga.QTA1);
+          precedente.occorrenze++;
+        } else {
+          if (articoliDocumento.has(riga.COD_ART) && !avvisati.has(riga.COD_ART)) {
+            problema('avviso', 'articolo_ripetuto_condizioni_diverse', "L'articolo compare più volte nell'ordine con prezzi o sconti diversi: righe lasciate separate.");
+            avvisati.add(riga.COD_ART);
+          }
+          const prima = { ...riga };
+          condizioni.set(chiave, { riga: prima, quantita: Number(riga.QTA1), occorrenze: 1 });
+          articoliDocumento.add(riga.COD_ART);
+          unite.push(prima);
+        }
+      }
+      for (const gruppo of condizioni.values()) if (gruppo.occorrenze > 1) gruppo.riga.QTA1 = Number(gruppo.quantita.toFixed(4));
+      return unite;
+    };
     if (problemi.slice(inizioProblemi).some(p => p.livello === 'bloccante')) { ordiniBloccati.push(o.id); continue; }
     const nota = `${o.numero}${d.preventivoOrigine ? ` da ${d.preventivoOrigine.numero}` : ''} - ${lineaPreventivo(o.linea).etichetta}`;
     const testata = (fornitore: boolean): RigaFileGamma => ({ ...vuota(), CODICE_DOCUMENTO: fornitore ? 'MD-F-ORDINE' : 'MD-C-ORDINE',
@@ -215,7 +242,7 @@ export function costruisciEsportazioneGamma(dati: DatiOrdineGamma[]) {
       DATA_CONSEG: o.data_consegna ? new Date(`${o.data_consegna}T00:00:00Z`) : '', Codice_deposito: testo(d.deposito?.codice), NOTE: nota });
     const nomeSoggetto = testo(d.cliente?.ragione_sociale || d.lead?.ragione_sociale || [d.lead?.cognome, d.lead?.nome].filter(Boolean).join(' '));
     for (const [fid, righe] of [...gruppi].sort(([a], [b]) => testo(fornitori.get(a)?.codice_gestionale).localeCompare(testo(fornitori.get(b)?.codice_gestionale), 'it-IT', { numeric: true }))) {
-      documentiFornitore.push({ ...testata(true), COD_COD_CLI: testo(fornitori.get(fid)?.codice_gestionale), NOTE: `${nota} - ${nomeSoggetto}` }, ...righe);
+      documentiFornitore.push({ ...testata(true), COD_COD_CLI: testo(fornitori.get(fid)?.codice_gestionale), NOTE: `${nota} - ${nomeSoggetto}` }, ...sommaRighe(righe, true));
     }
     const tc = testata(false);
     if (o.cliente_id) tc.COD_COD_CLI = testo(d.cliente?.codice_gestionale);
@@ -231,7 +258,7 @@ export function costruisciEsportazioneGamma(dati: DatiOrdineGamma[]) {
         Codice_macrocategoria: testo(macro), Codice_categoria: testo(categoria),
         Codice_destinatario_prevalente: testo(l.codice_sdi) || (l.tipo_soggetto === 'persona_fisica' ? '0000000' : '') });
     }
-    documentiCliente.push(tc, ...righeCliente);
+    documentiCliente.push(tc, ...sommaRighe(righeCliente, false));
     ordiniEsportati.push(o.id);
   }
   return { righe: [...documentiFornitore, ...documentiCliente], problemi, ordiniEsportati, ordiniBloccati };

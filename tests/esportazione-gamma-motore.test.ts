@@ -4,6 +4,7 @@ import * as CFB from 'cfb';
 import { COLONNE_FILE_GAMMA, costruisciEsportazioneGamma, type DatiOrdineGamma, type RigaOrdineGamma } from '../src/lib/esportazione-gamma';
 import { nomeFileGamma, scriviFileGammaXls } from '../src/lib/esportazione-gamma-file';
 import { readFileSync } from 'node:fs';
+import { rigaInUnita } from '../src/lib/riga-preventivo';
 
 const INTESTAZIONE = 'CODICE_DOCUMENTO,COD_COD_CLI,Ragione_sociale_anagrafica,Indirizzo_anagrafica,NOTE,IND_CLIFOR,TESTATA_RIGHE,SEDE,DATA_CONSEG,Codice_agente,Cap_anagrafica,Citta_anagrafica,Partita_iva,Flag_persona_fisica,Telefono_1,Cellulare,Indirizzo_email,Cognome,Nome,Codice_fiscale,Condizione_pagamento,Descrizione_pagamento,Codice_sede,Raggruppamento_clienti_1,Raggruppamento_clienti_2,Raggruppamento_clienti_3,Codice_listino,Codice_deposito,Codice_macrocategoria,Codice_categoria,Codice_destinatario_prevalente,COD_ART,QTA1,PRZ1,SCT1,SCT2,sct3,magg %,SCONT_IMP,MAGG_Import,descrizione,Codice_famiglia,Codice_sottofamiglia,Marca,Unita_misura_1_articolo,Unita_misura_2_articolo,Fattore_conversione_articolo'.split(',');
 
@@ -59,7 +60,7 @@ test('Gamma: raggruppa più righe dello stesso fornitore sotto una sola T', () =
   const d = dati(); d.righe.push({ ...d.righe[0], id: 'r2' }, { ...d.righe[0], id: 'r3', fornitore_id: 'f2' });
   const e = costruisciEsportazioneGamma([d]);
   expect(e.righe.filter(r => r.CODICE_DOCUMENTO === 'MD-F-ORDINE').map(r => [r.TESTATA_RIGHE, r.COD_COD_CLI])).toEqual([
-    ['T', '100'], ['R', '100'], ['R', '100'], ['T', '200'], ['R', '200'],
+    ['T', '100'], ['R', '100'], ['T', '200'], ['R', '200'],
   ]);
 });
 test('Gamma: fornitore preferenziale e scelta della riga prevalente', () => {
@@ -231,4 +232,122 @@ test('FM95 3b: funzione finale copia solo lead_id, resto verbatim dopo correzion
   const finale = estrai(dopo)?.replace('iva_importo = t.imp + t.iva - t.imp', 'iva_importo = t.iva');
   expect(finale).toContain(', v_prev.lead_id');
   expect(finale?.replace(', lead_id\n', '\n').replace(', v_prev.lead_id\n', '\n')).toBe(estrai(prima));
+});
+
+test('FM96: ORD-104/26, 600 + 100 Fassa = 700 e 11 + 11 righe R nel BIFF8', () => {
+  const d = dati('o104', 'ORD-104/26');
+  const articoli = [
+    ['FASL00H003300A0', 40, 4.167, 120.40], ['MANUALE', 2, 10, 14],
+    ['FASL00A003300A0', 600, 2.695, 1188], ['COG10U050/40', 71.67, 1.026, 52.18],
+    ['COG10C050/50', 338.33, 1.278, 272.06], ['KNI730060', 100, 2.171, 142],
+    ['FASL00A003300A0', 100, 2.695, 198], ['AKINAF07003', 5, 8.068, 16],
+    ['AKINF02002B', 143.33, 0.042, 3.08], ['AKINF57002JY', 1.69, 8.604, 10.99],
+    ['FAS351E1', 8, 8.7136, 44.80], ['AKINAF01005', 3.2, 5.868, 9.41],
+  ] as const;
+  // Quantità/prezzi/costi reali; anagrafiche sintetiche, nessun accesso o scrittura DB.
+  d.articoli = articoli.filter(([c]) => c !== 'MANUALE').map(([codice]) => ({ codice, um: 'KG', fornitore_pref_id: 'f1' }));
+  d.listiniAcquisto = [...new Map(articoli.map(([codice, q, , costo]) => [codice,
+    { articolo_codice: codice, listino: 10, acq_prezzo: costo / q }])).values()];
+  d.righe = articoli.map(([codice, quantita, prezzo_unit, costo], i) => codice === 'MANUALE'
+    ? { ...manuale(), id: `r${i}`, quantita, prezzo_unit, costo, um2: null, fattore_conversione: null }
+    : { id: `r${i}`, tipo_riga: 'articolo_singolo', articolo_codice: codice, quantita, prezzo_unit, costo, sconti_gamma: [10] });
+  const prima = JSON.stringify(d);
+  const e = costruisciEsportazioneGamma([d]);
+  for (const documento of ['MD-F-ORDINE', 'MD-C-ORDINE']) {
+    const righe = e.righe.filter(r => r.CODICE_DOCUMENTO === documento && r.TESTATA_RIGHE === 'R');
+    expect(righe).toHaveLength(11);
+    expect(righe.filter(r => r.COD_ART === 'FASL00A003300A0')).toHaveLength(1);
+    expect(righe.find(r => r.COD_ART === 'FASL00A003300A0')?.QTA1).toBe(700);
+  }
+  expect(clienteR(d)).toBeDefined();
+  expect(e.righe.find(r => r.COD_ART === 'FASL00A003300A0' && r.IND_CLIFOR === 0)).toMatchObject({ PRZ1: 2.695, SCT1: 10 });
+  expect(e.righe.find(r => r.COD_ART === 'FASL00A003300A0' && r.IND_CLIFOR === 1)?.PRZ1).toBe(1.98);
+  const wb = XLSX.read(scriviFileGammaXls(e.righe), { type: 'array' });
+  const ws = wb.Sheets['Sheet1']; if (!ws) throw new Error('Sheet1 assente');
+  const file = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws);
+  expect(file.filter(r => r['TESTATA_RIGHE'] === 'R')).toHaveLength(22);
+  expect(JSON.stringify(d)).toBe(prima);
+});
+test('FM96: prezzi diversi, due righe cliente e avviso unico per articolo/documento', () => {
+  const d = dati(); const prima = d.righe[0]; if (!prima) throw new Error('Riga assente');
+  d.righe.push({ ...prima, id: 'r2', prezzo_unit: 22 }, { ...prima, id: 'r3', prezzo_unit: 23 });
+  const e = costruisciEsportazioneGamma([d]);
+  expect(e.righe.filter(r => r.CODICE_DOCUMENTO === 'MD-C-ORDINE' && r.TESTATA_RIGHE === 'R')).toHaveLength(3);
+  expect(e.righe.filter(r => r.CODICE_DOCUMENTO === 'MD-F-ORDINE' && r.TESTATA_RIGHE === 'R')).toHaveLength(1);
+  expect(e.problemi.filter(p => p.codice === 'articolo_ripetuto_condizioni_diverse')).toHaveLength(1);
+  d.righe.pop();
+  expect(costruisciEsportazioneGamma([d]).righe.filter(r => r.CODICE_DOCUMENTO === 'MD-C-ORDINE' && r.TESTATA_RIGHE === 'R')).toHaveLength(2);
+});
+test('FM96: due fornitori restano separati, cliente sommato e nessuna unione tra ordini', () => {
+  const d = dati(); const prima = d.righe[0]; if (!prima) throw new Error('Riga assente');
+  d.righe.push({ ...prima, id: 'r2', fornitore_id: 'f2', quantita: 5 });
+  const e = costruisciEsportazioneGamma([d, dati('o2', 'ORD-2/26')]);
+  expect(e.righe.filter(r => r.TESTATA_RIGHE === 'T' && r.IND_CLIFOR === 1)).toHaveLength(3);
+  expect(e.righe.filter(r => r.TESTATA_RIGHE === 'R' && r.IND_CLIFOR === 1).map(r => r.QTA1)).toEqual([10, 5, 10]);
+  expect(e.righe.filter(r => r.TESTATA_RIGHE === 'R' && r.IND_CLIFOR === 0).map(r => r.QTA1)).toEqual([15, 10]);
+  expect(e.problemi).toEqual([]);
+});
+test('FM96: riga inserita UM2 e riga UM1 unite in UM1 tramite patch canonica', () => {
+  const d = dati(); const prima = d.righe[0]; if (!prima) throw new Error('Riga assente');
+  const r = { ...prima, um: 'KG', um2: 'NR', fattore_conversione: 25, um_scelta: 'um2' };
+  d.righe = [{ ...r, id: 'um2', ...rigaInUnita(r, { um: 'KG', um2: 'NR', fattore_conversione: 25 }, { quantita: 4, prezzo_unit: 50 }).patchUm1 },
+    { ...r, id: 'um1', um_scelta: 'um1', quantita: 50, prezzo_unit: 2 }];
+  d.articoli = d.articoli.map(a => ({ ...a, um: 'KG', um2: 'NR', fattore_conversione: 25 }));
+  const e = costruisciEsportazioneGamma([d]);
+  expect(e.righe.filter(r => r.TESTATA_RIGHE === 'R')).toHaveLength(2);
+  expect(clienteR(d)).toMatchObject({ QTA1: 150, PRZ1: 2, Unita_misura_1_articolo: 'KG' });
+  expect(fornitoreR(d)?.QTA1).toBe(150);
+});
+test('FM96: confronto prezzi già a 4 decimali, somma quantità a 4 e posizione/descrizione prima occorrenza', () => {
+  const d = dati(); const prima = d.righe[0]; if (!prima) throw new Error('Riga assente');
+  d.righe = [{ ...prima, quantita: 0.1, prezzo_unit: 2.69501, descrizione: 'Prima' },
+    { ...manuale(), id: 'intermedia' }, { ...prima, id: 'r2', quantita: 0.2, prezzo_unit: 2.69502, descrizione: 'Seconda' }];
+  expect(clienteR(d)).toMatchObject({ QTA1: 0.3, PRZ1: 2.695, descrizione: 'Prima' });
+  expect(costruisciEsportazioneGamma([d]).righe.filter(r => r.IND_CLIFOR === 0 && r.TESTATA_RIGHE === 'R').map(r => r.COD_ART)).toEqual(['GAM-1', 'ABX12']);
+  d.righe = [{ ...prima, quantita: 0.123456 }, { ...prima, id: 'r2', quantita: 0.000006 }];
+  expect(clienteR(d)?.QTA1).toBe(0.1235);
+  d.righe.pop();
+  expect(clienteR(d)?.QTA1).toBe(0.123456);
+});
+test('FM96: avvisi preesistenti restano uno per riga anche dopo somma', () => {
+  const d = dati(); const prima = d.righe[0]; if (!prima) throw new Error('Riga assente');
+  d.righe = [{ ...prima, descrizione: 'X'.repeat(80) }, { ...prima, id: 'r2', descrizione: 'Y'.repeat(80) }];
+  d.listiniAcquisto = [];
+  const e = costruisciEsportazioneGamma([d]);
+  expect(e.problemi.filter(p => p.codice === 'descrizione_troncata').map(p => p.rigaId)).toEqual(['r1', 'r2']);
+  expect(e.problemi.filter(p => p.codice === 'acquisto_assente').map(p => p.rigaId)).toEqual(['r1', 'r2']);
+  expect(e.righe.filter(r => r.TESTATA_RIGHE === 'R')).toHaveLength(2);
+});
+for (const campo of ['acq_sc1', 'acq_sc2', 'acq_sc3', 'acq_trasporto_perc', 'acq_trasporto_euro', 'acq_prezzo'] as const)
+  test(`FM96: condizioni fornitore diverse ${campo}, righe separate solo nel fornitore`, () => {
+    const d = dati();
+    d.righe = [{ id: 'gamma', tipo_riga: 'articolo_singolo', articolo_codice: 'GAM-1', quantita: 10, prezzo_unit: 30 },
+      { ...manuale(), id: 'manuale', marca: 'GAM', codice_articolo_fornitore: '-1', quantita: 5, costo: 100 }];
+    d.listiniAcquisto = [{ articolo_codice: 'GAM-1', listino: 10, acq_prezzo: 20, [campo]: campo === 'acq_prezzo' ? 21 : 2 }];
+    const e = costruisciEsportazioneGamma([d]);
+    expect(e.righe.filter(r => r.TESTATA_RIGHE === 'R' && r.IND_CLIFOR === 1)).toHaveLength(2);
+    expect(e.righe.filter(r => r.TESTATA_RIGHE === 'R' && r.IND_CLIFOR === 0)).toHaveLength(1);
+    expect(e.problemi.filter(p => p.codice === 'articolo_ripetuto_condizioni_diverse')).toHaveLength(1);
+  });
+for (const campo of ['SCT1', 'SCT2', 'sct3', 'magg %'] as const)
+  test(`FM96: condizioni cliente diverse ${campo} non unite`, () => {
+    const d = dati(); const prima = d.righe[0]; if (!prima) throw new Error('Riga assente');
+    const patch = campo === 'magg %' ? { maggiorazione_perc: 5 }
+      : { sconti_gamma: campo === 'SCT1' ? [12, 5, 2] : campo === 'SCT2' ? [10, 6, 2] : [10, 5, 4], sconto_perc: 0 };
+    d.righe.push({ ...prima, id: 'r2', ...patch });
+    const e = costruisciEsportazioneGamma([d]);
+    expect(e.righe.filter(r => r.TESTATA_RIGHE === 'R' && r.IND_CLIFOR === 0)).toHaveLength(2);
+    expect(e.problemi.filter(p => p.codice === 'articolo_ripetuto_condizioni_diverse')).toHaveLength(1);
+  });
+test('FM96: avviso una volta per articolo in ciascun documento, anche con tre condizioni', () => {
+  const d = dati(); const r = manuale();
+  d.righe = [r, { ...r, id: 'r2', costo: 200, prezzo_unit: 60 }, { ...r, id: 'r3', costo: 300, prezzo_unit: 90 }];
+  const e = costruisciEsportazioneGamma([d]);
+  expect(e.righe.filter(r => r.TESTATA_RIGHE === 'R')).toHaveLength(6);
+  expect(e.problemi.filter(p => p.codice === 'articolo_ripetuto_condizioni_diverse')).toHaveLength(2);
+});
+test('FM96: trigger verbatim salvo filtro ordine e FOR SHARE', () => {
+  const prima = readFileSync('drizzle/migrations/0267_fm96_gamma_campi_servizio_ruoli.sql', 'utf8');
+  const dopo = readFileSync('drizzle/migrations/0268_fm96_gamma_lock_solo_ordini.sql', 'utf8');
+  expect(dopo.replace(" AND p.tipo = 'ordine' ORDER BY p.id FOR SHARE LOOP", ' ORDER BY p.id FOR UPDATE LOOP').trimEnd()).toBe(prima.trimEnd());
 });

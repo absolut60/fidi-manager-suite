@@ -1877,6 +1877,13 @@
       "when": 1795372918563,
       "tag": "0267_fm96_gamma_campi_servizio_ruoli",
       "breakpoints": true
+    },
+    {
+      "idx": 268,
+      "version": "7",
+      "when": 1795373364780,
+      "tag": "0268_fm96_gamma_lock_solo_ordini",
+      "breakpoints": true
     }
   ]
 }

@@ -1,3 +1,8 @@
+# FM96 — Ritocco somma righe
+- [x] Somma nel solo motore per articolo/condizioni del documento, avvisi conservati e test ORD-104/26/UM2/fornitori.
+- [x] Migrazione trigger: solo tipo ordine, FOR SHARE; confronto definizione e prove SQL clone inclusa assenza lock preventivi.
+- [x] Suite completa, rapporto in coda alla fetta 4a e commit; nessuna pubblicazione.
+
 # FM96 — Fetta 4a
 - [x] Inventario scritture, schema storico e bucket privato; gate ruoli/MFA e acquisti dedicati senza cambiare RLS esistente.
 - [x] Registrazione atomica, riapertura singola e blocco ordini esportati; fonte unica TS e loader RPC.

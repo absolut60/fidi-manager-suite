@@ -311,3 +311,142 @@ BEGIN
 END;
 $function$;
 ```
+
+
+## Ritocco somma righe
+
+Decisione Andrea del 22/11/2026, 19:46 Europe/Rome. Base `b04016a3`.
+
+### Motore, fonte unica e perimetro
+
+Solo `costruisciEsportazioneGamma` in `src/lib/esportazione-gamma.ts` somma
+le righe già pronte per il file, in UM1, per articolo e condizioni del documento:
+- Fornitore: ogni gruppo ordine cliente × fornitore rimane indipendente; chiave
+  COD_ART, PRZ1 (già a quattro decimali), SCT1, SCT2, sct3, magg %, MAGG_Import.
+- Cliente: COD_ART, PRZ1, SCT1, SCT2, sct3, magg %. Il fornitore non è nella chiave.
+- QTA1 viene sommata e arrotondata a quattro decimali solo nelle righe unite;
+  le quantità delle righe non unite restano invariate. Nessuna conversione nuova:
+  `um_scelta` è solo la scelta d'inserimento/visualizzazione e i dati persistiti
+  sono già in UM1, come documentato nelle regole delle unità.
+- Posizione, descrizione, famiglia, sottofamiglia, marca, unità e fattore sono
+  quelli della prima occorrenza. Input originale non modificato.
+- Condizioni diverse: righe separate e un avviso
+  `articolo_ripetuto_condizioni_diverse` per articolo e documento; il messaggio
+  è quello richiesto. Gli avvisi originali restano calcolati per ogni riga.
+- Testate, NOTE con numero ordine/nome cliente, selezione fornitori, motore
+  prezzi e loader non cambiati. Nessuna modifica a RLS, dati o schermate;
+  nessuna pubblicazione. Regola tecnica della fonte unica aggiornata nella
+  nota Gamma di `src/lib/AGENTS.md` (root già oltre budget).
+
+### Correzione del trigger: confronto con la definizione reale precedente
+
+Applicata `drizzle/migrations/0268_fm96_gamma_lock_solo_ordini.sql`.
+La definizione letta sul database prima della modifica coincideva con la 0267.
+Unica differenza nel corpo, nel ramo blocchi/righe:
+
+```diff
+- FOR v_p IN SELECT p.* FROM public.preventivi p WHERE p.id IN (v_old, v_new) ORDER BY p.id FOR UPDATE LOOP
++ FOR v_p IN SELECT p.* FROM public.preventivi p WHERE p.id IN (v_old, v_new) AND p.tipo = 'ordine' ORDER BY p.id FOR SHARE LOOP
+```
+
+Nessun'altra differenza: confronto automatico dell'intera migrazione,
+normalizzato soltanto l'a-capo finale aggiunto/omesso dallo strumento.
+Firma, eccezioni RPC/service_role, colonne di servizio, errore e ACL invariati.
+Il FOR SHARE sugli ordini è incompatibile con il FOR UPDATE della registrazione;
+le testate tipo preventivo non vengono più bloccate da questo trigger.
+Le definizioni sopra restano la fotografia della fetta 4a: la definizione
+attualmente applicata del solo trigger è riportata qui sotto.
+
+Verifica database: corpo `prosrc` identico alla migrazione, MD5
+`09528557315005bb9fc13cc0e5cd9a7a`; SECURITY DEFINER, search_path=public;
+EXECUTE negato ad anon/authenticated e concesso a service_role, come prima.
+Nessun backfill o DML applicativo nella migrazione. Nessuna firma cambiata.
+
+### Test e risultati
+
+- **1.348 test TS verdi, zero falliti**, 163 file, 4.507 asserzioni
+  (`bun test ./tests`), contro 1.330 della base.
+- ORD-104/26 ricostruito con le 12 quantità/prezzi/costi reali letti in sola
+  lettura dal DB e anagrafiche sintetiche: FASL00A003300A0 600 + 100 = **700**,
+  una riga fornitore (PRZ1 1,98) e una cliente (PRZ1 2,695, SCT1 10);
+  totale R **11 + 11**, contro 12 + 12. Scrittura e rilettura BIFF8 confermano
+  22 righe R. I fornitori della fixture sono sintetici: non è una fotografia
+  completa dell'anagrafica/assegnazione fornitori dell'ordine reale.
+- Prezzi cliente diversi → due righe; tre condizioni distinte → ancora un
+  solo avviso per articolo/documento. Guardie separate per sconti/maggiorazione
+  cliente e tutti i sei termini acquisto. Due fornitori → una riga per ciascun
+  fornitore e una sola cliente; due ordini cliente non vengono mai uniti.
+- Inserimento UM2 tramite la vera patch di `rigaInUnita`: 4 NR × 25 = 100 KG
+  più 50 KG in UM1 → 150 KG, prezzo cliente 2 €/KG; nessuna doppia conversione.
+- Prezzi distinti prima dell'arrotondamento ma uguali nel tracciato si uniscono;
+  0,1 + 0,2 = 0,3 senza rumore binario. Prima posizione/descrizione conservate,
+  acquisto_assente e descrizione_troncata ancora per ogni riga sorgente.
+- **45 prove SQL della 4a ancora verdi**, `tests/sql/fm96-esportazioni-gamma.sql`,
+  eseguite sul clone `fm96_run2` con 0268, chiusura **ROLLBACK**: ruoli/MFA,
+  acquisti cross-sede, atomicità, riapertura singola, trigger e riaggancio lead.
+- **10 verifiche concorrenti** aggiuntive in `tests/sql/fm96-gamma-lock.ts`,
+  con due connessioni reali al solo socket locale del clone: modificando una
+  riga o un blocco ordine, un secondo FOR SHARE riesce e FOR UPDATE NOWAIT
+  fallisce; modificando una riga o un blocco preventivo, FOR UPDATE NOWAIT
+  della testata riesce. Con FOR UPDATE già sulla testata, la modifica riga
+  ordine attende e va in lock_timeout, quella del preventivo procede.
+- Il test concorrente **fallisce con il trigger 0267** e passa con 0268.
+  Fixture sintetiche rese visibili alla seconda connessione solo nel clone,
+  modifiche di prova annullate e fixture rimosse; conteggi finali clone:
+  **0 preventivi, 0 righe, 0 esportazioni, 0 eventi**. Nessuna fixture nell'app.
+- Per ripetere i test concorrenti: dopo clone-base, 0266/0267/0268, eseguire
+  `bun tests/sql/fm96-gamma-lock.ts fm96_<nome_clone>` sul cluster locale
+  `/tmp/fm96-socket`, porta 55496, utente locale fm96. Il comando non legge
+  URL o credenziali del database dell'app e rifiuta nomi diversi da fm96_*.
+- Compilazione automatica **build OK**; nessun controllo tipi/build manuale.
+  Nessuna modifica presentazionale: nessun nuovo giro screenshot richiesto.
+  Restano i limiti della prova live autenticata già dichiarati nella fetta 4a.
+
+### Definizione finale applicata del trigger
+
+```sql
+CREATE OR REPLACE FUNCTION public.blocca_ordine_esportato_gamma()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
+AS $$
+DECLARE
+  v_old uuid;
+  v_new uuid;
+  v_p public.preventivi%ROWTYPE;
+  v_servizio text[] := ARRAY['esportato_gamma_at','esportato_gamma_da','esportazione_gamma_id','updated_at','cliente_id','lead_id','lead_origine_id'];
+BEGIN
+  IF current_setting('role', true) = 'service_role' OR COALESCE(auth.role(), '') = 'service_role'
+     OR (current_setting('app.gamma_scrittura', true) = 'rpc' AND COALESCE(public.auth_puo_esportare_gamma(), false)) THEN
+    IF TG_OP = 'DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
+  END IF;
+  IF TG_TABLE_NAME = 'preventivi' THEN
+    -- L'eccezione di servizio non deve permettere riaperture fuori dai ruoli Gamma.
+    IF TG_OP = 'UPDATE' AND OLD.tipo = 'ordine'
+       AND (NEW.esportato_gamma_at, NEW.esportato_gamma_da, NEW.esportazione_gamma_id)
+           IS DISTINCT FROM (OLD.esportato_gamma_at, OLD.esportato_gamma_da, OLD.esportazione_gamma_id)
+       AND NOT COALESCE(public.auth_puo_esportare_gamma(), false) THEN
+      RAISE EXCEPTION 'Ordine già esportato in Gamma: riaprilo per modificarlo' USING ERRCODE = '42501';
+    END IF;
+    IF OLD.tipo = 'ordine' AND OLD.esportato_gamma_at IS NOT NULL THEN
+      IF TG_OP = 'UPDATE' AND (to_jsonb(NEW) - v_servizio) IS NOT DISTINCT FROM (to_jsonb(OLD) - v_servizio) THEN RETURN NEW; END IF;
+      RAISE EXCEPTION 'Ordine già esportato in Gamma: riaprilo per modificarlo' USING ERRCODE = '42501';
+    END IF;
+  ELSE
+    IF TG_TABLE_NAME = 'blocchi_preventivo' THEN
+      IF TG_OP <> 'INSERT' THEN v_old := OLD.preventivo_id; END IF;
+      IF TG_OP <> 'DELETE' THEN v_new := NEW.preventivo_id; END IF;
+    ELSE
+      IF TG_OP <> 'INSERT' THEN SELECT preventivo_id INTO v_old FROM public.blocchi_preventivo WHERE id = OLD.blocco_id; END IF;
+      IF TG_OP <> 'DELETE' THEN SELECT preventivo_id INTO v_new FROM public.blocchi_preventivo WHERE id = NEW.blocco_id; END IF;
+    END IF;
+    FOR v_p IN SELECT p.* FROM public.preventivi p WHERE p.id IN (v_old, v_new) AND p.tipo = 'ordine' ORDER BY p.id FOR SHARE LOOP
+      IF v_p.tipo = 'ordine' AND v_p.esportato_gamma_at IS NOT NULL THEN
+        RAISE EXCEPTION 'Ordine già esportato in Gamma: riaprilo per modificarlo' USING ERRCODE = '42501';
+      END IF;
+    END LOOP;
+  END IF;
+  IF TG_OP = 'DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION public.blocca_ordine_esportato_gamma() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.blocca_ordine_esportato_gamma() TO service_role;
+```
