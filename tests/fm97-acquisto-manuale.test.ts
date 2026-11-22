@@ -48,17 +48,29 @@ test('FM97: export manuale listino e condizioni acquisto, vendita invariata', ()
 });
 test('FM97: export riga vecchia costo solo mantiene prezzo e condizioni vuote', () => {
   const d = ordineFm96(); d.righe = [{ ...d.righe[0], id: 'vecchia', quantita: 5, costo: 100 }];
-  expect(costruisciEsportazioneGamma([d]).righe[1]).toMatchObject({ PRZ1: 20, SCT1: '', SCT2: '', sct3: '', 'magg %': '', MAGG_Import: '' });
+  const e = costruisciEsportazioneGamma([d]);
+  expect(e.righe[1]).toMatchObject({ PRZ1: 20, SCT1: '', SCT2: '', sct3: '', 'magg %': '', MAGG_Import: '' });
+  expect(e.problemi.map(p => p.codice)).not.toContain('costo_manuale_diverso');
 });
-test('FM97: costo diverso oltre 0,0001 è solo un avviso associato alla riga', () => {
-  const d = ordineFm96(); d.righe = [{ ...d.righe[0], id: 'diversa', quantita: 1, listino_fornitore: 100, costo: 100.0002 }];
+test('FM97: 10 × 87,8037 arrotondato a costo totale 878,04 non genera avviso', () => {
+  const d = ordineFm96(); d.righe = [{ ...d.righe[0], id: 'arrotondata', quantita: 10, listino_fornitore: 100,
+    acq_sc1: 10, acq_sc2: 5, acq_sc3: 2, acq_magg_perc: 3, acq_magg_euro: 1.5, costo: 878.04 }];
+  expect(costruisciEsportazioneGamma([d]).problemi.map(p => p.codice)).not.toContain('costo_manuale_diverso');
+});
+test('FM97: 10 × 87,8037 con costo totale 870,00 genera solo avviso associato alla riga', () => {
+  const d = ordineFm96(); d.righe = [{ ...d.righe[0], id: 'diversa', quantita: 10, listino_fornitore: 100,
+    acq_sc1: 10, acq_sc2: 5, acq_sc3: 2, acq_magg_perc: 3, acq_magg_euro: 1.5, costo: 870 }];
   const e = costruisciEsportazioneGamma([d]);
   expect(e.problemi.find(p => p.codice === 'costo_manuale_diverso')).toMatchObject({ livello: 'avviso', rigaId: 'diversa' });
   expect(e.ordiniEsportati).toEqual([d.ordine.id]);
 });
-test('FM97: scarto esattamente 0,0001 non genera avviso', () => {
-  const d = ordineFm96(); d.righe = [{ ...d.righe[0], id: 'soglia', quantita: 1, listino_fornitore: 100, costo: 100.0001 }];
+test('FM97: scarto esattamente un centesimo sul totale non genera avviso', () => {
+  const d = ordineFm96(); d.righe = [{ ...d.righe[0], id: 'soglia', quantita: 10, listino_fornitore: 100, costo: 1000.01 }];
   expect(costruisciEsportazioneGamma([d]).problemi.map(p => p.codice)).not.toContain('costo_manuale_diverso');
+});
+test('FM97: scarto oltre un centesimo sul totale genera avviso anche se unitario sotto 0,0001', () => {
+  const d = ordineFm96(); d.righe = [{ ...d.righe[0], id: 'oltre-soglia', quantita: 1000, listino_fornitore: 100, costo: 100000.02 }];
+  expect(costruisciEsportazioneGamma([d]).problemi.find(p => p.codice === 'costo_manuale_diverso')).toMatchObject({ livello: 'avviso', rigaId: 'oltre-soglia' });
 });
 test('FM97: trasformazione reale cambia solo le cinque colonne copiate', () => {
   const report = readFileSync('docs/verifiche/fm97-prezzo-acquisto-manuale.md', 'utf8');

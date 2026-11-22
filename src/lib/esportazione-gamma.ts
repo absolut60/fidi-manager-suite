@@ -198,8 +198,10 @@ export function costruisciEsportazioneGamma(dati: DatiOrdineGamma[]) {
       const acquisto = gamma ? acquisti.get(r.articolo_codice ?? undefined) : undefined;
       const costoUnitManuale = gamma ? null : rigaInUnita({ ...r, um_scelta: 'um1', quantita: r.quantita ?? null, prezzo_unit: r.prezzo_unit ?? null }).costo_unit;
       const manualeAcquisto = preparaAcquistoManuale(r, costoUnitManuale);
-      if (!gamma && r.listino_fornitore != null && costoUnitManuale != null && manualeAcquisto.costo_unit != null &&
-        Math.abs(manualeAcquisto.costo_unit - costoUnitManuale) > 0.0001 + Number.EPSILON * Math.max(1, Math.abs(manualeAcquisto.costo_unit), Math.abs(costoUnitManuale)))
+      const costoTotaleAcquisto = manualeAcquisto.costo_unit == null || r.quantita == null ? null : manualeAcquisto.costo_unit * r.quantita;
+      // Gli ordini conservano il costo totale arrotondato a centesimi: confrontare gli unitari genera falsi avvisi.
+      if (!gamma && r.listino_fornitore != null && r.costo != null && costoTotaleAcquisto != null &&
+        Math.abs(costoTotaleAcquisto - r.costo) > 0.01 + Number.EPSILON * Math.max(1, Math.abs(costoTotaleAcquisto), Math.abs(r.costo)))
         problema('avviso', 'costo_manuale_diverso', "Il costo salvato della riga manuale è diverso dal netto del listino e delle condizioni d'acquisto.", r);
       if (gamma && (!acquisto || acquisto.acq_prezzo == null)) problema('avviso', 'acquisto_assente', "Mancano i dati d'acquisto dell'articolo per il listino della sede: il prezzo fornitore resta vuoto.", r);
       const rf = { ...base,

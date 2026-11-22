@@ -159,3 +159,11 @@ $function$
 La verifica autenticata persistita resta indisponibile (account personale non corrispondente nell'app, già verificato nelle fette precedenti): salvataggio/riapertura UI con dati locali e copia SQL su clone, nessun dato reale modificato. La nuova fonte unica acquisto è documentata in root AGENTS.md; `docs/regole/prezzi-preventivo.md` contiene ancora la vecchia precompilazione vendita del fornitore e deve essere aggiornato dal proprietario alla decisione FM97, senza cambiare le leve di vendita.
 
 Nessuna pubblicazione, nessuna modifica a PreventiviListView, ordine colonne o nome file Gamma; file storici non modificati.
+
+## Ritocco soglia avviso
+
+Il confronto `costo_manuale_diverso` ora usa il **totale di riga in UM1**: `abs(netto_unitario × quantita − costo salvato) > 0,01`, con protezione EPSILON del confronto alla soglia esatta. Netto dalla stessa `preparaAcquistoManuale`, quantità già persistita UM1 e costo totale salvato; `rigaInUnita` continua a fornire il costo unitario per il ripiego storico. Nessun cambiamento ai valori esportati o alla formula d'acquisto.
+
+Questo ritocco sostituisce la precedente soglia unitaria 0,0001 documentata sopra ed elimina i falsi avvisi causati dal ROUND SQL preesistente: 10 × 87,8037 = 878,037, costo ordine 878,04 → scarto 0,003, nessun avviso. Stesse condizioni con costo 870,00 → avviso, senza bloccare l'ordine. Riga storica senza listino → nessun avviso. Scarto esatto 0,01 → nessun avviso; scarto totale 0,02 su quantità 1.000 → avviso anche se lo scarto unitario è inferiore a 0,0001.
+
+File modificati solo `src/lib/esportazione-gamma.ts`, `tests/fm97-acquisto-manuale.test.ts` e questo rapporto. **1.389 test superati, 0 fallimenti, 4.579 assertions**; compilazione automatica senza errori. Nessuna modifica DB, trasformazione, RLS, finestra o completamento lead; nessun dato reale modificato e nessuna pubblicazione.
