@@ -1,3 +1,7 @@
+import { ordineBloccatoGamma, puoEsportareGamma } from "@/lib/esportazione-gamma";
+import { modoEditorGamma, dataOraGamma, opzioniNomiGamma, nomeUtenteGamma } from "@/lib/esportazioni-gamma-storico";
+import { RiapriOrdineGammaDialog } from "@/components/preventivatore/RiapriOrdineGammaDialog";
+import { RiquadroAnagrafica } from "@/components/ui/riquadro-anagrafica";
 import { etichetteDocumento } from '@/lib/etichette-documento';
 import { FileGammaDiProvaDialog } from '@/components/preventivatore/FileGammaDiProvaDialog';
 import { RiepilogoIvaPreventivo } from "@/components/preventivatore/RiepilogoIvaPreventivo";
@@ -116,6 +120,7 @@ function PreventivoEditorPage() {
   const [soggettoScelto, setSoggettoScelto] = useState<SoggettoPreventivo | null>(null);
   const [riferimentoScelto, setRiferimentoScelto] = useState<RiferimentoPreventivo>(riferimentoVuoto);
   const [eliminaOpen,setEliminaOpen]=useState(false);
+  const [riapriGammaOpen, setRiapriGammaOpen] = useState(false);
   const [fileGammaOpen, setFileGammaOpen] = useState(false);
   const {data:codiciPagamento=[]}=useCodiciPagamento();
   const qc = useQueryClient();
@@ -142,6 +147,9 @@ function PreventivoEditorPage() {
     queryFn: () => fetchPreventivo(id),
   });
 
+  const bloccatoGamma = ordineBloccatoGamma(prev);
+  const puoGamma = puoEsportareGamma(hasRole);
+  const { data: nomiGamma } = useQuery({ ...opzioniNomiGamma, enabled: bloccatoGamma });
   const etichette = etichetteDocumento(prev?.tipo);
 
   const { data: prezziCantiere = [] } = useQuery({ ...opzioniPrezziCantiere(prev?.cantiere_id ?? ""), enabled: !!prev?.cantiere_id });
@@ -331,7 +339,7 @@ function PreventivoEditorPage() {
   });
 
   useEffect(() => {
-    if (!prev) return;
+    if (!prev || bloccatoGamma) return;
     const stored = {
       imp: Number(prev.totale_imponibile ?? 0),
       iva: Number(prev.iva_importo ?? 0),
@@ -345,7 +353,7 @@ function PreventivoEditorPage() {
       saveTotali.mutate(totali);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [totali.imponibile, totali.iva, totali.totale, prev?.totale_imponibile, prev?.iva_importo, prev?.totale]);
+  }, [totali.imponibile, totali.iva, totali.totale, prev?.totale_imponibile, prev?.iva_importo, prev?.totale, bloccatoGamma]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -353,7 +361,7 @@ function PreventivoEditorPage() {
   );
 
   function onDragEndBlocchi(e: DragEndEvent) {
-    if (!prev) return;
+    if (!prev || bloccatoGamma) return;
     const { active, over } = e;
     if (!over || active.id === over.id) return;
     const oldIdx = prev.blocchi.findIndex((b) => b.id === active.id);
@@ -366,7 +374,7 @@ function PreventivoEditorPage() {
   }
 
   // FM65 B3: finestra d'uscita solo con modifiche/salvataggio/errore; il cambio tab (?tab=) non blocca mai.
-  const bloccaUscita = !!prev && (preventivoModificabile(prev, puoScrivere) || prev.tipo === "ordine" && puoScrivere) && devoBloccareUscita(salvataggio.stato);
+  const bloccaUscita = !!prev && !bloccatoGamma && (preventivoModificabile(prev, puoScrivere) || prev.tipo === "ordine" && puoScrivere) && devoBloccareUscita(salvataggio.stato);
   const uscita = useBlocker({
     shouldBlockFn: ({ current, next }) => bloccaUscita && current.pathname !== next.pathname,
     enableBeforeUnload: bloccaUscita,
@@ -381,7 +389,8 @@ function PreventivoEditorPage() {
     ? Number(prev.blocchi[prev.blocchi.length - 1].ordine ?? 0)
     : 0;
   // FM65 punto 3: scheda sempre modificabile per chi ha il permesso; confermati e ordini in sola lettura.
-  const modificabile = preventivoModificabile(prev, puoScrivere);
+  const modoGamma = modoEditorGamma(prev, puoScrivere);
+  const modificabile = modoGamma.modificabile;
 
   const fmt = (n: number) =>
     formatNumeroIt(n, { minDecimals: 2, maxDecimals: 2 });
@@ -458,7 +467,7 @@ function PreventivoEditorPage() {
                 </AlertDialogContent>
               </AlertDialog>
             )}
-            {(modificabile || prev.tipo === "ordine" && puoScrivere) && (
+            {modoGamma.salva && (
               <>
                 <BadgeSalvataggio stato={salvataggio.stato} />
                 <Button size="sm" onClick={onSalva} disabled={salvaAttesa}>
@@ -554,8 +563,8 @@ function PreventivoEditorPage() {
               esito={statoEvasionePreventivo({ righe: prev.blocchi.flatMap(b => b.righe), chiuso_at: prev.chiuso_at })}
               inCorso={chiusura.isPending} onTrasforma={() => setTrasformaOpen(true)} onChiusura={v => chiusura.mutate(v)}
               {...(puoScrivere ? { onElimina: () => setEliminaOpen(true) } : {})}
-            /> : (puoScrivere || hasRole('amministratore')) && <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="Altre azioni"><MoreHorizontal className="size-5"/></Button></DropdownMenuTrigger><DropdownMenuContent align="end">
-              {hasRole('amministratore') && <DropdownMenuItem onSelect={() => setFileGammaOpen(true)}><FileDown className="mr-2 size-4" />File Gamma di prova</DropdownMenuItem>}
+            /> : !bloccatoGamma && (puoScrivere || puoGamma) && <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="Altre azioni"><MoreHorizontal className="size-5"/></Button></DropdownMenuTrigger><DropdownMenuContent align="end">
+              {puoGamma && <DropdownMenuItem onSelect={() => setFileGammaOpen(true)}><FileDown className="mr-2 size-4" />File Gamma di prova</DropdownMenuItem>}
               {puoScrivere && <DropdownMenuItem className="text-destructive" onSelect={()=>setEliminaOpen(true)}><Trash2 className="size-4 mr-2"/>Elimina</DropdownMenuItem>}
             </DropdownMenuContent></DropdownMenu>}
 
@@ -563,9 +572,10 @@ function PreventivoEditorPage() {
           </div>
         </div>
 
+        {bloccatoGamma && <RiquadroAnagrafica tono="azzurro"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><p role="status" className="min-w-0 break-words text-sm"><Lock className="mr-2 inline size-4" />Esportato in Gamma il {dataOraGamma(prev.esportato_gamma_at ?? "")} da {nomeUtenteGamma(nomiGamma, prev.esportato_gamma_da)} — l’ordine è bloccato</p>{puoGamma && <Button variant="outline" className="min-h-11 shrink-0" onClick={() => setRiapriGammaOpen(true)}>Riapri per reimportare</Button>}</div></RiquadroAnagrafica>}
         <div className="flex min-w-0 flex-col gap-3" {...salvataggio.contenitoreProps}>
         <FasciaPreventivo leadId={prev.lead_id} dati={riepilogo} titolo={prev.titolo} clienteId={prev.cliente_id} onCliente={apriSchedaSoggetto}/>
-        {puoScrivere && !modificabile && (
+        {puoScrivere && !modificabile && !bloccatoGamma && (
           <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
             <Lock className="size-4 shrink-0" />
             <span>{etichette.testo(prev.tipo === "ordine" ? "Preventivo: altri campi in sola lettura." : "Preventivo confermato: in sola lettura. Per modificarlo riporta lo stato a Bozza o Inviato in Testata.")}</span>
@@ -615,7 +625,7 @@ function PreventivoEditorPage() {
           <TabsList variant="linguette" className="w-full justify-start">
             {(['testata','corpo','piede'] as const).map(t=><TabsTrigger key={t} variant="linguette" value={t}>{t==='testata'?'Testata':t==='piede'?'Piede':`Corpo · ${prev.blocchi.length} blocchi`}</TabsTrigger>)}
           </TabsList>
-          <TabsContent value="testata"><TestataPreventivo prev={prev} cliente={clienteDati} modificabile={modificabile} statoEditabile={puoScrivere} agenti={agenti} principali={principali} haAlternative={haAlternative} listino={listino} categoria={categoria} sede={condizioni?.sede_nome||'—'} sedeClienteId={condizioni?.store_id??null} onSave={p=>save.mutate(p)} cataloghiRiferimento={cataloghiRiferimento.data} erroreCataloghi={cataloghiRiferimento.error?.message} caricamentoCataloghi={cataloghiRiferimento.isLoading} onRiferimento={salvaRiferimento} badgeRiferimento={<BadgeCondizioniRiferimento riferimento={prev} cataloghi={cataloghiRiferimento.data}/>} onCliente={apriSchedaSoggetto} onChangeCliente={onChangeCliente} onCambiaSoggetto={apriSoggetto} onCantiere={async cid=>{await save.mutateAsync({cantiere_id:cid,cantiere_descrizione:null});}}/></TabsContent>
+          <TabsContent value="testata"><TestataPreventivo prev={prev} cliente={clienteDati} modificabile={modificabile} statoEditabile={modoGamma.statoEditabile} agenti={agenti} principali={principali} haAlternative={haAlternative} listino={listino} categoria={categoria} sede={condizioni?.sede_nome||'—'} sedeClienteId={condizioni?.store_id??null} onSave={p=>save.mutate(p)} cataloghiRiferimento={cataloghiRiferimento.data} erroreCataloghi={cataloghiRiferimento.error?.message} caricamentoCataloghi={cataloghiRiferimento.isLoading} onRiferimento={salvaRiferimento} badgeRiferimento={<BadgeCondizioniRiferimento riferimento={prev} cataloghi={cataloghiRiferimento.data}/>} onCliente={apriSchedaSoggetto} onChangeCliente={onChangeCliente} onCambiaSoggetto={apriSoggetto} onCantiere={async cid=>{await save.mutateAsync({cantiere_id:cid,cantiere_descrizione:null});}}/></TabsContent>
           <TabsContent value="corpo"><div className="mb-2 flex min-w-0 flex-wrap items-center gap-2"><BadgePrezziDedicati conteggio={prezziCantiere.length} mostraNumero onClick={() => setPrezziOpen(true)} /><BadgeCondizioniRiferimento riferimento={prev} cataloghi={cataloghiRiferimento.data}/></div><fieldset disabled={!modificabile} className={cn('min-w-0',!modificabile&&'readonly-mode')}>
             {/* ===== CORPO ===== */}
             <section className="flex flex-col gap-3">
@@ -641,7 +651,7 @@ function PreventivoEditorPage() {
                       </Card>
                     ) : (
                       prev.blocchi.map((b, idx) => (
-                        <BloccoCard tipoDocumento={prev.tipo} fornitoreModificabile={prev.tipo === "ordine" && puoScrivere} mostraEvasione={mostraColonnaEvasione({ tipo: prev.tipo, righe: prev.blocchi.flatMap(b => b.righe), chiuso_at: prev.chiuso_at })} linea={prev.linea} regimeIva={prev.regime_iva} condizioniPrezzi={prev} key={b.id} blocco={b} index={idx} preventivoId={id} fascia={(prev.fascia_listino ?? "A") as FasciaListino} readOnly={!modificabile} clienteId={prev.cliente_id ?? null} cantiereId={prev.cantiere_id} {...sedeGiacenze} scontoPiede={Number(prev.sconto_piede_perc ?? 0)} />
+                        <BloccoCard tipoDocumento={prev.tipo} solaLetturaGamma={bloccatoGamma} fornitoreModificabile={prev.tipo === "ordine" && modoGamma.statoEditabile} mostraEvasione={mostraColonnaEvasione({ tipo: prev.tipo, righe: prev.blocchi.flatMap(b => b.righe), chiuso_at: prev.chiuso_at })} linea={prev.linea} regimeIva={prev.regime_iva} condizioniPrezzi={prev} key={b.id} blocco={b} index={idx} preventivoId={id} fascia={(prev.fascia_listino ?? "A") as FasciaListino} readOnly={!modificabile} clienteId={prev.cliente_id ?? null} cantiereId={prev.cantiere_id} {...sedeGiacenze} scontoPiede={Number(prev.sconto_piede_perc ?? 0)} />
                       ))
                     )}
                   </div>
@@ -659,10 +669,11 @@ function PreventivoEditorPage() {
               )}
             </section>
             </fieldset></TabsContent>
-          <TabsContent value="piede"><PiedePreventivo dati={riepilogo} iva={totali.iva} totale={totali.totale} ivaPerc={Number(prev.iva_perc??22)} sconto={Number(prev.sconto_piede_perc??0)} modificabile={modificabile} inCorso={applicaSconto.isPending} onSconto={v=>applicaSconto.mutate(v)} onTestata={()=>cambiaTab('testata')} riepilogoIva={lineaPreventivo(prev.linea).blocchi.regimiIva ? <RiepilogoIvaPreventivo regime={prev.regime_iva} ivaPerc={prev.iva_perc} blocchi={prev.blocchi}/> : undefined}/></TabsContent>
+          <TabsContent value="piede"><PiedePreventivo solaLetturaGamma={bloccatoGamma} dati={riepilogo} iva={totali.iva} totale={totali.totale} ivaPerc={Number(prev.iva_perc??22)} sconto={Number(prev.sconto_piede_perc??0)} modificabile={modificabile} inCorso={applicaSconto.isPending} onSconto={v=>applicaSconto.mutate(v)} onTestata={()=>cambiaTab('testata')} riepilogoIva={lineaPreventivo(prev.linea).blocchi.regimiIva ? <RiepilogoIvaPreventivo regime={prev.regime_iva} ivaPerc={prev.iva_perc} blocchi={prev.blocchi}/> : undefined}/></TabsContent>
         </Tabs>
         </div>
       </div>
+      {riapriGammaOpen && bloccatoGamma && <RiapriOrdineGammaDialog ordine={{ id, numero: prev.numero }} onClose={() => setRiapriGammaOpen(false)} />}
       <UscitaNonSalvataDialog
         open={uscita.status === "blocked"}
         stato={salvataggio.stato}
@@ -695,7 +706,7 @@ function PreventivoEditorPage() {
         onApplica={(sc) => applicaListini.mutate(sc)} inCorso={applicaListini.isPending} />
       {vistaOpen && <VistaCommercialeDialog open onOpenChange={setVistaOpen} blocchi={prev.blocchi} riepilogoIva={lineaPreventivo(prev.linea).blocchi.regimiIva ? <RiepilogoIvaPreventivo regime={prev.regime_iva} ivaPerc={prev.iva_perc} blocchi={prev.blocchi}/> : undefined} />}
       <GeneraDocumentoDialog open={outputOpen} onOpenChange={setOutputOpen} prev={prev} />
-      {prev.tipo === 'ordine' && hasRole('amministratore') && fileGammaOpen && <FileGammaDiProvaDialog ordineId={id} open onOpenChange={setFileGammaOpen} />}
+      {prev.tipo === 'ordine' && puoGamma && !bloccatoGamma && fileGammaOpen && <FileGammaDiProvaDialog ordineId={id} open onOpenChange={setFileGammaOpen} />}
       {prev.tipo === "preventivo" && (
         <TrasformaInOrdineDialog
           open={trasformaOpen}
@@ -708,11 +719,11 @@ function PreventivoEditorPage() {
 }
 
 function BloccoCard({
-  tipoDocumento, fornitoreModificabile, mostraEvasione, blocco, index, preventivoId, fascia, readOnly = false, clienteId, scontoPiede, cantiereId, sedeGiacenzaId, sedeNome, condizioniPrezzi, linea, regimeIva,
-}: { tipoDocumento: string; fornitoreModificabile: boolean; mostraEvasione: boolean; linea: unknown; regimeIva?: string | null; condizioniPrezzi: CondizioniPrezziPreventivo; blocco: BloccoConRighe; index: number; preventivoId: string; fascia: FasciaListino; readOnly?: boolean; clienteId: string | null; scontoPiede: number; cantiereId: string | null; sedeGiacenzaId?: string | null; sedeNome?: string | null }) {
+  solaLetturaGamma = false, tipoDocumento, fornitoreModificabile, mostraEvasione, blocco, index, preventivoId, fascia, readOnly = false, clienteId, scontoPiede, cantiereId, sedeGiacenzaId, sedeNome, condizioniPrezzi, linea, regimeIva,
+}: { solaLetturaGamma?: boolean; tipoDocumento: string; fornitoreModificabile: boolean; mostraEvasione: boolean; linea: unknown; regimeIva?: string | null; condizioniPrezzi: CondizioniPrezziPreventivo; blocco: BloccoConRighe; index: number; preventivoId: string; fascia: FasciaListino; readOnly?: boolean; clienteId: string | null; scontoPiede: number; cantiereId: string | null; sedeGiacenzaId?: string | null; sedeNome?: string | null }) {
   const qc = useQueryClient();
   const conMisure = lineaPreventivo(linea).blocchi.bloccoConMisure;
-  const sortable = useSortable({ id: blocco.id });
+  const sortable = useSortable({ id: blocco.id, disabled: solaLetturaGamma });
   const style = {
     transform: CSS.Transform.toString(sortable.transform),
     transition: sortable.transition,
@@ -756,7 +767,7 @@ function BloccoCard({
       <Card>
         <CardContent className="space-y-3 p-0">
           {/* Header blocco */}
-          <div className="flex flex-wrap items-start gap-3 rounded-t-lg border-b-2 border-pv-blu bg-pv-azzurro p-3">
+          {solaLetturaGamma ? <div className="flex min-w-0 flex-wrap items-center gap-3 border-b p-3 text-sm"><span className="font-semibold">Blocco {index + 1}</span><span className="min-w-0 flex-1 whitespace-pre-wrap break-words">{blocco.descrizione ?? "—"}</span>{conMisure && <span>{formatNumeroIt(blocco.quantita_base ?? 0)} {blocco.um_base}</span>}{importoInTestata && <strong>€ {formatNumeroIt(totaleBlocco, { minDecimals: 2, maxDecimals: 2 })}</strong>}</div> : <div className="flex flex-wrap items-start gap-3 rounded-t-lg border-b-2 border-pv-blu bg-pv-azzurro p-3">
             <button {...sortable.attributes} {...sortable.listeners} className="cursor-grab pt-2" title="Trascina">
               <GripVertical className="h-4 w-4 text-muted-foreground" />
             </button>
@@ -833,7 +844,7 @@ function BloccoCard({
                 </AlertDialogContent>
               </AlertDialog>
             )}
-          </div>
+          </div>}
 
           {blocco.note_tecniche && (
             <div className="px-3 text-xs italic text-muted-foreground">
@@ -841,7 +852,7 @@ function BloccoCard({
             </div>
           )}
 
-          <RigheTable tipoDocumento={tipoDocumento} fornitoreModificabile={fornitoreModificabile} mostraEvasione={mostraEvasione} linea={linea} regimeIva={regimeIva} condizioniPrezzi={condizioniPrezzi} blocco={blocco} preventivoId={preventivoId} fascia={fascia} readOnly={readOnly} clienteId={clienteId} cantiereId={cantiereId} sedeGiacenzaId={sedeGiacenzaId} sedeNome={sedeNome} scontoPiede={scontoPiede} />
+          <RigheTable solaLetturaGamma={solaLetturaGamma} tipoDocumento={tipoDocumento} fornitoreModificabile={fornitoreModificabile} mostraEvasione={mostraEvasione} linea={linea} regimeIva={regimeIva} condizioniPrezzi={condizioniPrezzi} blocco={blocco} preventivoId={preventivoId} fascia={fascia} readOnly={readOnly} clienteId={clienteId} cantiereId={cantiereId} sedeGiacenzaId={sedeGiacenzaId} sedeNome={sedeNome} scontoPiede={scontoPiede} />
         </CardContent>
       </Card>
     </div>

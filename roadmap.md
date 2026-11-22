@@ -1,3 +1,8 @@
+# FM96 — Fetta 4c
+- [x] Editor bloccato e riapertura singola condivisa.
+- [x] Storico, eventi, download firmato e menu prova per ruoli Gamma.
+- [x] Correzione SDI NULL, test SQL/TS/browser, rapporto e commit.
+
 # FM96 — Fetta 4b
 - [x] Schede/date server, selezione di tutti i principali filtrati e autore export.
 - [x] Finestra Gamma, completamento lead via RPC, caricamento/registrazione/ripulitura e download.

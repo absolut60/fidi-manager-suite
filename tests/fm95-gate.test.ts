@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import ts from 'typescript';
+import { puoEsportareGamma } from '../src/lib/esportazione-gamma';
 
 function sorgente(path: string) {
   return ts.createSourceFile(path, readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
@@ -18,15 +19,19 @@ test('FM95: creazione ordine ammette lead tramite lo stesso selettore, senza gat
   expect(attr && ts.isJsxAttribute(attr) && attr.initializer === undefined).toBe(true);
 });
 
-test('FM95: guardia effettiva finestra solo ordine amministratore, nessuna concessione a manage o direzione', () => {
+test('FM96: guardia file di prova solo ordini non esportati e ruoli Gamma, mai manage o direzione', () => {
   const sf = sorgente('src/routes/_app/preventivatore.$id.tsx');
   const dialog = trova(sf, (n): n is ts.JsxSelfClosingElement => ts.isJsxSelfClosingElement(n) && n.tagName.getText(sf) === 'FileGammaDiProvaDialog');
   if (!ts.isBinaryExpression(dialog.parent)) throw new Error('Guardia del dialog assente');
-  const valuta = new Function('prev', 'hasRole', 'fileGammaOpen', `return Boolean(${dialog.parent.left.getText(sf)});`) as (prev: { tipo: string }, hasRole: (role: string) => boolean, aperta: boolean) => boolean;
-  expect(valuta({ tipo: 'ordine' }, r => r === 'amministratore', true)).toBe(true);
-  for (const ruolo of ['preventivi_manage', 'direzione', 'store_manager', 'showroom', 'responsabile_showroom'])
-    expect(valuta({ tipo: 'ordine' }, r => r === ruolo, true)).toBe(false);
-  expect(valuta({ tipo: 'preventivo' }, r => r === 'amministratore', true)).toBe(false);
+  const valuta = new Function('prev', 'puoGamma', 'bloccatoGamma', 'fileGammaOpen', `return Boolean(${dialog.parent.left.getText(sf)});`) as (prev: { tipo: string }, autorizzato: boolean, bloccato: boolean, aperta: boolean) => boolean;
+  for (const ruolo of ['amministratore', 'responsabile_showroom']) {
+    const autorizzato = puoEsportareGamma(r => r === ruolo);
+    expect(valuta({ tipo: 'ordine' }, autorizzato, false, true)).toBe(true);
+    expect(valuta({ tipo: 'ordine' }, autorizzato, true, true)).toBe(false);
+  }
+  for (const ruolo of ['preventivi_manage', 'direzione', 'store_manager', 'showroom'])
+    expect(valuta({ tipo: 'ordine' }, puoEsportareGamma(r => r === ruolo), false, true)).toBe(false);
+  expect(valuta({ tipo: 'preventivo' }, true, false, true)).toBe(false);
 });
 
 test('FM95: download assente con bloccanti o senza file, presente solo con ordine esportabile', () => {

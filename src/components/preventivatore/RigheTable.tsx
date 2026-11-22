@@ -68,6 +68,7 @@ import { toast } from "sonner";
 import { useIsTablet } from "@/hooks/use-tablet";
 
 export function RigheTable({
+  solaLetturaGamma = false,
   blocco,
   mostraEvasione = false,
   tipoDocumento = "preventivo", fornitoreModificabile = false,
@@ -80,6 +81,7 @@ export function RigheTable({
   sedeGiacenzaId = null, sedeNome = null, condizioniPrezzi, linea, regimeIva,
 }: {
   /** FM75 F3c: regime IVA del documento (toggle BS solo con regimiIva e agevolata_10_bs). */
+  solaLetturaGamma?: boolean;
   regimeIva?: string | null;
   mostraEvasione?: boolean;
   tipoDocumento?: string; fornitoreModificabile?: boolean;
@@ -270,7 +272,7 @@ export function RigheTable({
   }
 
   const righeProps = (r: (typeof blocco.righe)[number], idx: number) => ({
-    row: r, tipoDocumento, fornitoreModificabile,
+    row: r, tipoDocumento, fornitoreModificabile, solaLetturaGamma,
     fornitore: fornitori.data?.get(r.id) ?? null, fornitoreCaricamento: fornitori.isPending, fornitoreErrore: !!fornitori.error,
     onFornitore: async (id: string) => { await salvaFornitore.mutateAsync({ id: r.id, fornitoreId: id }); },
     conMisure, righeStampabili, conBs, articoloInDefinizione, gamma, mostraEvasione,
@@ -479,6 +481,7 @@ type RigaProps = {
   calc: ReturnType<typeof calcolaBlocco>["righe"][number]["calc"];
   fascia: FasciaListino;
   readOnly: boolean;
+  solaLetturaGamma: boolean;
   /** FM65 F4: memoria dei filtri del selettore articolo. */
   preventivoId: string;
   sedeGiacenzaId?: string | null; sedeNome?: string | null;
@@ -610,7 +613,7 @@ function useCelleRiga(p: RigaProps) {
 
   const evasa = statoEvasioneRiga(row).stato === "evasa";
 
-  return {
+  const celle = {
     tipo, isCompact, isSubtotal, valorizzata, segno, kitSenzaPrezzo,
     articolo,
     codice,
@@ -676,6 +679,15 @@ function useCelleRiga(p: RigaProps) {
     margineEuro: `€ ${fmt2(calc.importo - calc.costo)}`,
     peso: row.articolo_codice && row.peso_gamma_unit == null ? "—" : fmt2(calc.peso),
     onRowClick: readOnly && vecchioCatalogo ? () => row.articolo_id && onOpenArticolo(row.articolo_id) : undefined,
+  };
+  if (!p.solaLetturaGamma) return celle;
+  const numero = (v: number | null | undefined, decimali = 4) => v == null ? "—" : formatNumeroIt(v, { minDecimals: decimali, maxDecimals: decimali });
+  return { ...celle,
+    codice: valorizzata ? <span className="block break-all py-1 font-mono text-xs">{row.articolo_codice ?? row.codice_articolo_fornitore ?? "MANUALE"}</span> : null,
+    articolo: <div className="whitespace-pre-wrap break-words px-1.5 py-1 text-xs">{row.descrizione ?? "—"}{p.fornitore && <span className="mt-1 block text-muted-foreground">{p.fornitore.ragione_sociale}</span>}</div>,
+    um: unita.um ?? row.um ?? "—", quantita: numero(unita.quantita, 2), incidenza: numero(unita.incidenza), lordo: numero(unita.prezzo_unit),
+    sconti: (row.sconti_gamma ?? []).map(v => formatNumeroIt(v)).join("+") || "—", magg: numero(row.maggiorazione_perc), extra: numero(row.sconto_perc),
+    ricarico: numero(row.leva_prezzo === "ricarico" && row.ricarico != null ? Number(row.ricarico) : row.prezzo_unit == null ? null : ricaricoImplicito(unita.netto ?? 0, unita.costo_unit), 2), segnoSel: segno === -1 ? "−" : "+", costo: numero(unita.costo_unit),
   };
 }
 
@@ -758,13 +770,14 @@ function BadgeBs({ p, valorizzata }: { p: RigaProps; valorizzata: boolean }) {
 /** Finestra "articolo in definizione": si apre dal codice della riga manuale (linee con articoloInDefinizione). */
 function useArticoloInDefinizione(p: RigaProps) {
   const [open, setOpen] = useState(false);
-  const attivo = p.articoloInDefinizione && p.row.tipo_riga === "manuale";
+  const attivo = !p.solaLetturaGamma && p.articoloInDefinizione && p.row.tipo_riga === "manuale";
   const dialog = attivo && open ? <ArticoloInDefinizioneDialog open onOpenChange={setOpen} row={p.row} onPatch={p.onPatch} onSceltaGamma={p.onSceltaGamma} /> : null;
   return { apri: attivo ? () => setOpen(true) : undefined, dialog };
 }
 
 function AzioniRiga(p: RigaProps & { valorizzata?: boolean }) {
   const isTablet = useIsTablet();
+  if (p.solaLetturaGamma) return null;
   // FM81, solo tablet: BS, stampabile ed elimina passano nel menu "⋯", così la colonna resta larga 60px senza sovrapposizioni.
   if (isTablet) return (
     <div className="flex items-center justify-end">
@@ -790,7 +803,7 @@ function AzioniRiga(p: RigaProps & { valorizzata?: boolean }) {
 function RigaRow(p: RigaProps) {
   const def = useArticoloInDefinizione(p);
   p = { ...p, onApriDefinizione: def.apri };
-  const sortable = useSortable({ id: p.row.id });
+  const sortable = useSortable({ id: p.row.id, disabled: p.solaLetturaGamma });
   const style = {
     transform: CSS.Transform.toString(sortable.transform),
     transition: sortable.transition,
@@ -807,9 +820,9 @@ function RigaRow(p: RigaProps) {
   );
   const grip = (
     <td className="sticky left-0 z-[1]">
-      <button {...sortable.attributes} {...sortable.listeners} className="cursor-grab px-0.5" title="Trascina">
+      {!p.solaLetturaGamma && <button {...sortable.attributes} {...sortable.listeners} className="cursor-grab px-0.5" title="Trascina">
         <GripVertical className="h-3 w-3 text-muted-foreground" />
-      </button>
+      </button>}
     </td>
   );
   if (c.tipo === "separatore") {

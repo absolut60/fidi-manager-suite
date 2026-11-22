@@ -12,6 +12,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { puoEsportareGamma } from "@/lib/esportazione-gamma";
+import { DataExportFiltro } from "./DataExportFiltro";
+import { StoricoGamma } from "./StoricoGamma";
+import { RiapriOrdineGammaDialog } from "./RiapriOrdineGammaDialog";
 import { EsportaGammaDialog } from "./EsportaGammaDialog";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -50,24 +53,6 @@ const euro = (v: number | null | undefined) =>
 const evasioneDi = (r: ElencoPreventivoItem) =>
   statoEvasionePreventivo({ righe: (r.blocchi ?? []).flatMap((b) => b.righe ?? []), chiuso_at: r.chiuso_at });
 
-/** Data sempre italiana, senza la lingua del controllo nativo del browser. */
-function DataExportFiltro({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-  const visualizza = (v: string) => v ? v.split('-').reverse().join('/') : '';
-  const [testo, setTesto] = useState(() => visualizza(value));
-  const [errore, setErrore] = useState(false);
-  useEffect(() => { setTesto(visualizza(value)); setErrore(false); }, [value]);
-  const salva = (v: string) => {
-    if (!v) { onChange(''); setErrore(false); return; }
-    const parti = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(v);
-    if (!parti) { setErrore(true); return; }
-    const iso = `${parti[3]}-${parti[2]}-${parti[1]}`;
-    const data = new Date(`${iso}T12:00:00Z`);
-    if (Number.isNaN(data.getTime()) || data.toISOString().slice(0, 10) !== iso) { setErrore(true); return; }
-    setErrore(false); onChange(iso);
-  };
-  return <Label className="grid min-w-0 gap-1 text-xs">{label}<Input aria-label={label} placeholder="gg/mm/aaaa" inputMode="numeric" maxLength={10} className="min-h-11" value={testo} aria-invalid={errore} onChange={e => { setTesto(e.target.value); if (!e.target.value || /^\d{2}\/\d{2}\/\d{4}$/.test(e.target.value)) salva(e.target.value); }} onBlur={() => salva(testo)} />{errore && <span className="text-destructive">Data non valida: gg/mm/aaaa.</span>}</Label>;
-}
-
 /** Testo che va a capo su massimo 2 righe, intero nel title. */
 function Testo({ children, className }: { children: string | null | undefined; className?: string }) {
   const t = children?.trim() || "—";
@@ -100,10 +85,11 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
   const { user, roles, hasRole } = useAuth();
   const queryClient = useQueryClient();
   const puoEsportare = isOrdine && puoEsportareGamma(hasRole);
-  const [schedaGamma, setSchedaGamma] = useState<"da_esportare" | "esportati">("da_esportare");
+  const [schedaGamma, setSchedaGamma] = useState<"da_esportare" | "esportati" | "storico">("da_esportare");
   const [selezionati, setSelezionati] = useState<string[]>([]);
   const [selezionando, setSelezionando] = useState(false);
   const [tuttiSelezionati, setTuttiSelezionati] = useState(false);
+  const [riapriGamma, setRiapriGamma] = useState<{ id: string; numero: string | null } | null>(null);
   const [openGamma, setOpenGamma] = useState(false);
   const filtriCorrenti = useRef<unknown>(null);
   const selezionabile = puoEsportare && schedaGamma === "da_esportare";
@@ -135,14 +121,14 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
   }, [search]);
 
   const filters = useMemo(
-    () => ({ search: dSearch, cliente_id: clienteId, stato, tipo_doc: tipoDoc, creato_da: creatoDa, linea: mostraFiltroLinee ? linea : [], tipo, ...(isOrdine ? { esportazione_gamma: schedaGamma, esportato_dal: FV.esportatoDal, esportato_al: FV.esportatoAl } : {}), per_me: !isOrdine && perMe ? user?.id : null }),
+    () => ({ search: dSearch, cliente_id: clienteId, stato, tipo_doc: tipoDoc, creato_da: creatoDa, linea: mostraFiltroLinee ? linea : [], tipo, ...(isOrdine ? { esportazione_gamma: schedaGamma === "storico" ? "esportati" as const : schedaGamma, esportato_dal: FV.esportatoDal, esportato_al: FV.esportatoAl } : {}), per_me: !isOrdine && perMe ? user?.id : null }),
     [dSearch, clienteId, stato, tipoDoc, creatoDa, linea, tipo, isOrdine, perMe, user?.id, schedaGamma, FV.esportatoDal, FV.esportatoAl],
   );
   filtriCorrenti.current = filters;
 
   const { data, isLoading } = useQuery({
     queryKey: ["preventivi", "elenco", filters],
-    queryFn: () => fetchElencoPreventivi(filters),
+    queryFn: () => fetchElencoPreventivi(filters), enabled: schedaGamma !== "storico",
   });
   const { data: conteggi } = useQuery({ queryKey: ["preventivi", "gamma-conteggi", filters],
     queryFn: () => fetchConteggiOrdiniGamma(filters), enabled: isOrdine });
@@ -213,7 +199,7 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
         <TableCell className="px-2 py-2 align-top"><Testo className="font-medium">{r.titolo}</Testo>{!isOrdine && etichettaAssegnazione(r)}{r.cantiere?.nome && <Testo className="mt-1 text-muted-foreground 2xl:hidden">{r.cantiere.nome}</Testo>}</TableCell>
         <TableCell className="px-2 py-2 align-top">
           <SoggettoElenco r={r} intero={isOrdine} />
-          {isOrdine && testoExport(r) && <p className="mt-1 break-words text-xs text-muted-foreground">{testoExport(r)}</p>}
+          {isOrdine && testoExport(r) && <p className="mt-1 break-words text-xs text-muted-foreground">{testoExport(r)}</p>}{puoEsportare && schedaGamma === "esportati" && r.esportato_gamma_at && <Button variant="outline" size="sm" className="mt-2 min-h-10" onClick={e => { e.stopPropagation(); setRiapriGamma({ id: r.id, numero: r.numero }); }}>Riapri</Button>}
           {r.creato_da_nome && <span className="mt-1 block text-[11px] text-muted-foreground 2xl:hidden"><Testo>{`Creato da ${r.creato_da_nome}`}</Testo></span>}
         </TableCell>
         <TableCell className="hidden px-2 py-2 align-top text-muted-foreground 2xl:table-cell"><Testo>{r.cantiere?.nome}</Testo></TableCell>
@@ -243,9 +229,10 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
           )}
         </div>
 
-        {isOrdine && <Tabs value={schedaGamma} onValueChange={v => setSchedaGamma(v === 'esportati' ? 'esportati' : 'da_esportare')}>
-          <TabsList className="h-auto min-h-11 w-full sm:w-auto"><TabsTrigger value="da_esportare" className="min-h-10 flex-1">Da esportare ({conteggi?.da_esportare ?? '…'})</TabsTrigger><TabsTrigger value="esportati" className="min-h-10 flex-1">Esportati ({conteggi?.esportati ?? '…'})</TabsTrigger></TabsList>
+        {isOrdine && <Tabs value={schedaGamma} onValueChange={v => setSchedaGamma(v === 'storico' && puoEsportare ? 'storico' : v === 'esportati' ? 'esportati' : 'da_esportare')}>
+          <TabsList className="h-auto min-h-11 w-full flex-wrap sm:w-auto"><TabsTrigger value="da_esportare" className="min-h-10 flex-1">Da esportare ({conteggi?.da_esportare ?? '…'})</TabsTrigger><TabsTrigger value="esportati" className="min-h-10 flex-1">Esportati ({conteggi?.esportati ?? '…'})</TabsTrigger>{puoEsportare && <TabsTrigger value="storico" className="min-h-10 flex-1">Storico</TabsTrigger>}</TabsList>
         </Tabs>}
+        {schedaGamma === "storico" && puoEsportare ? <StoricoGamma /> : <>
         {!isOrdine && <div className="flex min-h-10 items-center gap-2"><Switch id="preventivi-per-me" checked={perMe} disabled={!user} onCheckedChange={v => setCampoLista('perMe', v)}/><Label htmlFor="preventivi-per-me" className="text-sm">Per me</Label></div>}
         <div className="flex items-center gap-2 lg:hidden">
           <div className="relative min-w-0 flex-1">
@@ -365,7 +352,7 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
                         ...(isOrdine && testoExport(r) ? [{ etichetta: "Gamma", valore: testoExport(r) }] : []),
                       ]}
                       footer={
-                        alt.length > 0 ? (
+                        puoEsportare && schedaGamma === "esportati" && r.esportato_gamma_at ? <Button variant="outline" className="min-h-10" onClick={e => { e.stopPropagation(); setRiapriGamma({ id: r.id, numero: r.numero }); }}>Riapri</Button> : alt.length > 0 ? (
                           <div className="flex flex-col gap-1">
                             {alt.map((a) => (
                               <button
@@ -428,10 +415,12 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
             </Table>
           </div>
         </div>
+        </>}
       </div>
 
+      {riapriGamma && <RiapriOrdineGammaDialog ordine={riapriGamma} onClose={() => setRiapriGamma(null)} />}
       {selezionabile && selezionati.length > 0 && <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-card p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-sm"><div className="mx-auto flex max-w-7xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-end"><Button variant="outline" className="min-h-11" onClick={() => { setSelezionati([]); setTuttiSelezionati(false); }}>Annulla selezione</Button><Button className="min-h-11" disabled={selezionando} onClick={() => setOpenGamma(true)}>Esporta in Gamma ({selezionati.length})</Button></div></div>}
-      {openGamma && <EsportaGammaDialog ids={selezionati} open={openGamma} onOpenChange={setOpenGamma} onSuccess={() => { setSelezionati([]); setTuttiSelezionati(false); void queryClient.invalidateQueries({ queryKey: ['preventivi'] }); }} />}
+      {openGamma && <EsportaGammaDialog ids={selezionati} open={openGamma} onOpenChange={setOpenGamma} onSuccess={() => { setSelezionati([]); setTuttiSelezionati(false); void queryClient.invalidateQueries({ queryKey: ['preventivi'] }); void queryClient.invalidateQueries({ queryKey: ['gamma'] }); }} />}
       <NuovoPreventivoDialog open={openNew} onOpenChange={setOpenNew} tipo={tipo} />
     </>
   );

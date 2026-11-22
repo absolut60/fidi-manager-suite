@@ -1891,6 +1891,13 @@
       "when": 1795375012101,
       "tag": "0269_fm96_completa_dati_esportazione_gamma",
       "breakpoints": true
+    },
+    {
+      "idx": 270,
+      "version": "7",
+      "when": 1795376219718,
+      "tag": "0270_fm96_gamma_sdi_vuoto_null",
+      "breakpoints": true
     }
   ]
 }

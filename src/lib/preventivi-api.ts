@@ -342,7 +342,7 @@ export function inizioGiornoExport(data: string): string {
   return new Date(mezzanotte.getTime() - oraRoma * 3_600_000).toISOString();
 }
 
-function giornoSuccessivoExport(data: string): string {
+export function giornoSuccessivoExport(data: string): string {
   const d = new Date(`${data}T12:00:00Z`);
   d.setUTCDate(d.getUTCDate() + 1);
   return inizioGiornoExport(d.toISOString().slice(0, 10));

@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { AlertCircle, CheckCircle2, Download, Loader2, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { caricaDatiEsportazioneGamma } from '@/lib/esportazione-gamma-dati';
-import { costruisciEsportazioneGamma, type DatiOrdineGamma } from '@/lib/esportazione-gamma';
+import { costruisciEsportazioneGamma, puoEsportareGamma, ordineBloccatoGamma, type DatiOrdineGamma } from '@/lib/esportazione-gamma';
 import { salvaFile } from '@/lib/salva-file';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -52,11 +52,12 @@ export function FileGammaDiProvaDialog({ ordineId, open, onOpenChange }: {
   ordineId: string; open: boolean; onOpenChange: (v: boolean) => void;
 }) {
   const { hasRole } = useAuth();
-  const amministratore = hasRole('amministratore');
+  const autorizzato = puoEsportareGamma(hasRole);
   const query = useQuery({
-    queryKey: ['file-gamma-prova', ordineId], enabled: open && amministratore, staleTime: 0, gcTime: 0,
+    queryKey: ['file-gamma-prova', ordineId], enabled: open && autorizzato, staleTime: 0, gcTime: 0,
     queryFn: async (): Promise<ProvaGammaPronta> => {
       const dati = await caricaDatiEsportazioneGamma([ordineId]);
+      if (dati.some(d => ordineBloccatoGamma(d.ordine))) throw new Error("Ordine già esportato: scarica il file dallo storico.");
       const esito = costruisciEsportazioneGamma(dati);
       let file: ProvaGammaPronta['file'] = null;
       if (esito.ordiniBloccati.length === 0 && esito.ordiniEsportati.length > 0) {
@@ -67,7 +68,7 @@ export function FileGammaDiProvaDialog({ ordineId, open, onOpenChange }: {
       return { dati, esito, file };
     },
   });
-  if (!amministratore) return null;
+  if (!autorizzato) return null;
   return <FileGammaDiProvaVista open={open} onOpenChange={onOpenChange} pronta={query.data}
     inCorso={query.isPending} errore={!!query.error} onRiprova={() => void query.refetch()} />;
 }
