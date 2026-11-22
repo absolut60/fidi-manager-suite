@@ -2,11 +2,12 @@
 Generare dati.json con ordineFm96 in /tmp/browser/fm96c; risposte locali soltanto.
 Rimuovere la route dopo la prova. Sessione sintetica scritta solo su localhost.
 """
-import asyncio, json, base64, time, copy
+import asyncio, json, base64, time, copy, sys
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 from playwright.async_api import async_playwright
 OUT=Path('/tmp/browser/fm96c')
+COLONNE='--colonne-fm97' in sys.argv
 USER='96000000-0000-0000-0000-000000000099'
 EX='96000000-0000-0000-0000-000000000088'
 def jwt():
@@ -16,11 +17,17 @@ async def main():
  async with async_playwright() as p:
   browser=await p.chromium.launch(headless=True)
   sizes=[(320,760),(375,812),(390,844),(768,1024),(1024,768),(1024,1366),(1366,1024),(1280,1800),(1920,1800)]
+  if COLONNE: sizes=[(320,760),(375,812),(390,844),(768,1024),(1280,1800),(1920,1800)]
   for width,height,role in [(w,h,'amministratore') for w,h in sizes]+[(375,812,r) for r in ['responsabile_showroom','showroom','store_manager']]:
    data=json.loads((OUT/'dati.json').read_text());errors=[];calls=[];writes=[];firmate=[]
    for i,d in enumerate(data):
     d['ordine'].update({'titolo':'Fornitura materiali per cantiere di prova','data':'2026-11-22','created_at':'2026-11-22T10:00:00Z','stato':'bozza','tipo_doc':'PREVENTIVO','totale':1220,'totale_imponibile':1000,'iva_importo':220,'iva_perc':22,'creato_da':USER,'alternativa_di':None,'esportato_gamma_at':'2026-11-22T19:00:00Z' if i==0 else None,'esportato_gamma_da':USER if i==0 else None,'esportazione_gamma_id':EX if i==0 else None,'assegnato_a':None,'assegnati_copia':[],'cantiere_id':None,'preventivo_origine_id':None,'fascia_listino':'A','note':'Nota di testata conservata','regime_iva':'ordinaria','sconto_piede_perc':0,'data_consegna':'2026-12-01'})
     for n,r in enumerate(d['righe']):r.update({'blocco_id':'b'+d['ordine']['id'],'ordine':n,'sconti_gamma':[],'sconto_perc':0,'maggiorazione_perc':0,'segno':1,'importo':200,'costo':12,'costo_unit':12,'quantita':10,'qta_ordinata':0,'articolo_codice':None,'articolo_id':None,'um_scelta':None})
+   if COLONNE:
+    for i,d in enumerate(data):
+     if i<2:d['ordine'].update({'esportato_gamma_at':'2026-11-22T19:00:00Z','esportato_gamma_da':USER,'esportazione_gamma_id':EX})
+    data[1]['ordine'].update({'cliente_id':None,'lead_id':'97000000-0000-0000-0000-000000000011'})
+    data[1]['lead']={'id':data[1]['ordine']['lead_id'],'ragione_sociale':'Lead di prova con un nome completo molto lungo per verificare le colonne','nome':None,'cognome':None,'store_id':data[1]['ordine']['store_id']}
    export={'id':EX,'creata_at':'2026-11-22T19:00:00Z','creata_da':USER,'nome_file':'Gamma-prova.xls','file_path':'uuid/Gamma-prova.xls','n_ordini':1,'n_documenti_fornitore':5,'n_documenti_cliente':1}
    events=[{'id':'event1','esportazione_id':EX,'ordine_id':data[0]['ordine']['id'],'numero_ordine':'ORD-104/26','tipo':'esportato','utente':USER,'at':'2026-11-22T19:00:00Z','motivo':None}]
    context=await browser.new_context(viewport={'width':width,'height':height},has_touch=width in [768,1024,1366],accept_downloads=True)
@@ -51,7 +58,7 @@ async def main():
        exp=qs['esportato_gamma_at'][0]=='not.is.null';selected=[d for d in data if bool(d['ordine']['esportato_gamma_at'])==exp]
       if 'id' in qs:
        cond=qs['id'][0];ids=cond[3:] if cond.startswith('eq.') else cond[4:-1].split(',');selected=[d for d in selected if d['ordine']['id'] in ids]
-      result=[{**d['ordine'],'lead':None,'cliente':d['cliente'],'cantiere':None,'blocchi':[blocco(d)]} for d in selected]
+      result=[{**d['ordine'],'lead':d.get('lead'),'cliente':d['cliente'],'cantiere':None,'blocchi':[blocco(d)]} for d in selected]
       headers={'Content-Range':f'0-{max(0,len(result)-1)}/{len(result)}','Access-Control-Expose-Headers':'Content-Range'}
       if 'vnd.pgrst.object' in req.headers.get('accept',''):result=result[0] if result else None
     elif table=='blocchi_preventivo':result=[blocco(d) for d in data]
@@ -70,15 +77,39 @@ async def main():
     else:assert req.method in ['GET','HEAD'] or table.startswith('rpc/'),(table,req.method)
     await route.fulfill(status=200,json=result,headers=headers)
    await page.route('**/rest/v1/**',rest);await page.route('**/auth/v1/**',auth);await page.route('**/storage/v1/**',storage)
-   await page.goto('http://localhost:8080/verifica-fm96c',wait_until='domcontentloaded')
+   await page.goto('http://localhost:8080/'+('verifica-fm97' if COLONNE else 'verifica-fm96c'),wait_until='domcontentloaded')
+   await page.get_by_role('heading',name='Ordini',exact=True).wait_for()
+   await page.wait_for_timeout(500)
    await page.evaluate('''async token=>{const {supabase}=await import('/src/integrations/supabase/client.ts');const {error}=await supabase.auth.setSession({access_token:token,refresh_token:'synthetic-local-test'});if(error)throw error}''',jwt())
-   await page.get_by_role('tab',name='Esportati (1)').click();await page.get_by_text('Esportato il 22/11/2026 20:00 da Andrea Prova',exact=False).filter(visible=True).first.wait_for()
+   await page.get_by_role('tab',name='Esportati (2)' if COLONNE else 'Esportati (1)').click();await page.get_by_text('22/11/2026 20:00',exact=False).filter(visible=True).first.wait_for()
    allowed=role in ['amministratore','responsabile_showroom']
    if allowed:
     await page.get_by_role('button',name='Riapri',exact=True).filter(visible=True).first.click();await page.get_by_role('dialog').wait_for();await page.get_by_label('Motivo (facoltativo)').wait_for();await page.wait_for_timeout(250);await page.screenshot(path=str(OUT/f'{width}x{height}-{role}-conferma.png'));await page.get_by_role('button',name='Annulla',exact=True).click()
    else:
     assert await page.get_by_role('button',name='Riapri',exact=True).count()==0;assert await page.get_by_role('tab',name='Storico',exact=True).count()==0
    await page.screenshot(path=str(OUT/f'{width}x{height}-{role}-lista.png'))
+   if COLONNE:
+    if width>=768:
+     heads=await page.locator('table:visible thead th').all_text_contents()
+     assert heads[-4:] == ['Totale','Esportato il','Esportato da','Azioni'] if allowed else heads[-3:] == ['Totale','Esportato il','Esportato da'],heads
+     rows=page.locator('table:visible tbody tr')
+     assert await rows.count()==2
+     for row in await rows.all():
+      cells=row.locator('td')
+      assert 'Esportato' not in await cells.nth(2).inner_text()
+      assert await cells.nth(2).get_by_role('button',name='Riapri',exact=True).count()==0
+      if allowed:assert await cells.last.get_by_role('button',name='Riapri',exact=True).count()==1
+    assert await page.evaluate('document.documentElement.scrollWidth <= window.innerWidth+1'),'overflow pagina'
+    assert await page.evaluate('''()=>[...document.querySelectorAll('table')].filter(t=>t.offsetWidth).every(t=>t.scrollWidth<=t.clientWidth+1)'''),'overflow tabella'
+    await page.get_by_role('tab',name='Da esportare (1)').click()
+    await page.get_by_text('ORD-PROVA/26',exact=True).filter(visible=True).first.wait_for()
+    assert await page.get_by_role('button',name='Riapri',exact=True).filter(visible=True).count()==0
+    assert await page.get_by_text('Esportato il',exact=True).filter(visible=True).count()==0
+    await page.screenshot(path=str(OUT/f'{width}x{height}-{role}-da-esportare.png'))
+    assert not errors,errors
+    print(width,height,role,'PASS colonne Esportati, Riapri singolo, Da esportare invariata, nessun overflow',flush=True)
+    await context.close()
+    continue
    await page.goto('http://localhost:8080/preventivatore/'+data[0]['ordine']['id']+'?vista=incorporata',wait_until='domcontentloaded')
    await page.get_by_text('Esportato in Gamma il 22/11/2026 20:00 da Andrea Prova',exact=False).wait_for(timeout=20000)
    await page.screenshot(path=str(OUT/f'{width}x{height}-{role}-editor.png'))

@@ -82,3 +82,13 @@ Editor preventivatore.$id, RigheTable, PiedePreventivo, PreventiviListView, File
 - `tests/esportazione-gamma.test.ts`: limite 72, 72 valida, 73 rifiutata.
 - `tests/esportazione-gamma-motore.test.ts`: bloccante manuale con 73; caso codice 25 con descrizione 72; troncatura attesa a 72; nuovi casi FM97: Gamma 72 (AKINAF01005, intera, nessun avviso), Gamma 73 (avviso con "72", troncata a 72), manuale 72 ammessa.
 - Nessuna modifica a DB, RLS o altra logica del motore.
+
+## FM97 — colonne Esportati
+
+- `src/components/preventivatore/PreventiviListView.tsx`: solo Esportati presenta, dopo Totale, Esportato il, Esportato da e l'ultima colonna stretta con Riapri allineato a destra (solo `puoEsportareGamma`). Cliente/Lead conserva nome, codice/badge e le informazioni preesistenti, senza data export o azioni. Conteggio colonne aggiornato anche per caricamento/elenco vuoto.
+- Esportati usa la tabella da 768px, con larghezze compatte e intestazioni a capo; telefono conserva ElencoSchede/SchedaLista, data e autore in campi propri e Riapri nel footer. Da esportare e Preventivi mantengono breakpoint e colonne precedenti.
+- Data/ora tramite `dataOraGamma` condiviso (gg/mm/aaaa hh:mm, Europe/Rome); autore dal già popolato `esportato_gamma_nome`, lettura nomi condivisa esistente. Nessuna query per riga. La lista non prevede ordinamento cliccando le intestazioni: mantenuto l'ordinamento server preesistente (export decrescente, poi data/creazione/id), senza introdurre un nuovo sistema di ordinamento.
+- `tests/fm96-gamma-4c.browser.py`: opzione `--colonne-fm97` per lista reale con due esportati sintetici (cliente e lead con nomi lunghi) e un ordine da esportare. Verificate colonne/cella cliente, Riapri singolo → conferma → Annulla, azioni nascoste per ruoli non ammessi, ritorno a Da esportare, nessun overflow pagina/tabella e nessun errore runtime.
+- Playwright superato a **320×760, 375×812, 390×844, 768×1024 touch, 1280×1800, 1920×1800** con amministratore; responsabile_showroom/showroom/store_manager verificati a 375px. Screenshot acquisiti e ispezionati a 375, 768, 1280 e 1920px: colonne separate e pulsante finale, nessuna intestazione sovrapposta sul tablet. Immagini locali in `/tmp/browser/fm96c`; route temporanea `/verifica-fm97` rimossa.
+- Suite completa: **1.367 test, 0 fallimenti, 4.532 assertions**; test mirati Gamma/storico/ordini: 93 superati. Compilazione automatica senza errori.
+- Nessuna modifica a database, RLS, motore o file Gamma; nessuna pubblicazione. Accesso personale reale tentato con `auth-session --self` ma account corrispondente non disponibile: verifica interfaccia con sessione/API sintetiche locali, senza modificare dati reali o eseguire riaperture reali.

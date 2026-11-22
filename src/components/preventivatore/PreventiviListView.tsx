@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { puoEsportareGamma } from "@/lib/esportazione-gamma";
+import { dataOraGamma } from "@/lib/esportazioni-gamma-storico";
 import { DataExportFiltro } from "./DataExportFiltro";
 import { StoricoGamma } from "./StoricoGamma";
 import { RiapriOrdineGammaDialog } from "./RiapriOrdineGammaDialog";
@@ -93,6 +94,7 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
   const [openGamma, setOpenGamma] = useState(false);
   const filtriCorrenti = useRef<unknown>(null);
   const selezionabile = puoEsportare && schedaGamma === "da_esportare";
+  const mostraColonneExport = isOrdine && schedaGamma === "esportati";
   const puoScrivere = puoScriverePreventivi(roles as string[]);
   const { filtri: FV, setCampo: setCampoLista } = useFiltriPagina(isOrdine ? "ordini" : "preventivatore", {
     search: "", clienteId: [] as string[], stato: [] as string[], tipoDoc: [] as string[],
@@ -141,8 +143,6 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
     catch (e) { toast.error(e instanceof Error ? e.message : 'Impossibile selezionare gli ordini.'); }
     finally { setSelezionando(false); }
   };
-  const testoExport = (r: ElencoPreventivoItem) => r.esportato_gamma_at
-    ? `Esportato il ${new Date(r.esportato_gamma_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', '')} da ${r.esportato_gamma_nome ?? 'Utente senza nome'}` : null;
   const { data: clienti = [] } = useQuery({
     queryKey: ["clienti-list"],
     queryFn: () => searchClienti(""),
@@ -176,7 +176,7 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
   }, [data, creatoDa]);
 
   const apri = (id: string) => navigate({ to: "/preventivatore/$id", params: { id } });
-  const nColonne = (isOrdine ? 9 : 11) + (selezionabile ? 1 : 0);
+  const nColonne = (isOrdine ? 9 : 11) + (selezionabile ? 1 : 0) + (mostraColonneExport ? 2 + (puoEsportare ? 1 : 0) : 0);
 
   const riga = (r: ElencoPreventivoItem, alternativa: boolean, haAlt: boolean, indiceGruppo: number) => {
     const lettera = lettere.get(r.id) ?? "A";
@@ -199,7 +199,6 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
         <TableCell className="px-2 py-2 align-top"><Testo className="font-medium">{r.titolo}</Testo>{!isOrdine && etichettaAssegnazione(r)}{r.cantiere?.nome && <Testo className="mt-1 text-muted-foreground 2xl:hidden">{r.cantiere.nome}</Testo>}</TableCell>
         <TableCell className="px-2 py-2 align-top">
           <SoggettoElenco r={r} intero={isOrdine} />
-          {isOrdine && testoExport(r) && <p className="mt-1 break-words text-xs text-muted-foreground">{testoExport(r)}</p>}{puoEsportare && schedaGamma === "esportati" && r.esportato_gamma_at && <Button variant="outline" size="sm" className="mt-2 min-h-10" onClick={e => { e.stopPropagation(); setRiapriGamma({ id: r.id, numero: r.numero }); }}>Riapri</Button>}
           {r.creato_da_nome && <span className="mt-1 block text-[11px] text-muted-foreground 2xl:hidden"><Testo>{`Creato da ${r.creato_da_nome}`}</Testo></span>}
         </TableCell>
         <TableCell className="hidden px-2 py-2 align-top text-muted-foreground 2xl:table-cell"><Testo>{r.cantiere?.nome}</Testo></TableCell>
@@ -210,6 +209,11 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
         <TableCell className="px-2 py-2 align-top"><BadgeStato stato={r.stato} className="px-2 text-[11px]" />{!isOrdine && <BadgeTipoDoc tipoDoc={r.tipo_doc} className="mt-1 whitespace-normal px-2 text-[11px] leading-tight 2xl:hidden" />}<BadgeEvasione {...evasioneDi(r)} className="mt-1 px-2 text-[11px] 2xl:hidden" /></TableCell>
         <TableCell className="hidden px-2 py-2 align-top 2xl:table-cell"><BadgeEvasione {...evasioneDi(r)} className="px-2 text-[11px]" /></TableCell>
         <TableCell className={cn("px-2 py-2 align-top text-right tabular-nums", alternativa ? "text-muted-foreground" : "font-semibold")}>{euro(r.totale)}</TableCell>
+        {mostraColonneExport && <>
+          <TableCell className="px-2 py-2 align-top tabular-nums">{r.esportato_gamma_at ? dataOraGamma(r.esportato_gamma_at) : "—"}</TableCell>
+          <TableCell className="px-2 py-2 align-top"><Testo>{r.esportato_gamma_nome ?? "Utente senza nome"}</Testo></TableCell>
+          {puoEsportare && <TableCell className="px-2 py-2 align-top text-right" onClick={e => e.stopPropagation()}>{r.esportato_gamma_at && <Button variant="outline" size="sm" className="min-h-10 px-2" onClick={() => setRiapriGamma({ id: r.id, numero: r.numero })}>Riapri</Button>}</TableCell>}
+        </>}
       </TableRow>
     );
   };
@@ -309,13 +313,13 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
         )}
 
         <div className="rounded-md border bg-card">
-          <div className="divide-y lg:hidden">
+          <div className={cn("divide-y", mostraColonneExport ? "md:hidden" : "lg:hidden")}>
             {isLoading ? (
               <div className="py-8 text-center text-sm text-muted-foreground">Caricamento…</div>
             ) : principali.length === 0 ? (
               <div className="py-8 text-center text-sm text-muted-foreground">{labelEmpty}</div>
             ) : (
-              <ElencoSchede finoA="lg" {...(selezionabile ? { selezioneTutti: { tutti: tuttiSelezionati, alcuni: selezionati.length > 0, disabled: selezionando, onChange: v => void selezionaTutti(v), etichetta: `Seleziona tutte (${conteggi?.da_esportare ?? principali.length})` } } : {})}>
+              <ElencoSchede finoA={mostraColonneExport ? "md" : "lg"} {...(selezionabile ? { selezioneTutti: { tutti: tuttiSelezionati, alcuni: selezionati.length > 0, disabled: selezionando, onChange: v => void selezionaTutti(v), etichetta: `Seleziona tutte (${conteggi?.da_esportare ?? principali.length})` } } : {})}>
                 {principali.map((r, indiceGruppo) => {
                   const alt = mostraAlternative ? (altPer.get(r.id) ?? []) : [];
                   return (
@@ -349,7 +353,10 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
                         { etichetta: "Totale", valore: <span className="font-semibold tabular-nums">{euro(r.totale)}</span> },
                         { etichetta: "Creato da", valore: r.creato_da_nome ?? "—" },
                         { etichetta: "Data", valore: formatDate(r.data) },
-                        ...(isOrdine && testoExport(r) ? [{ etichetta: "Gamma", valore: testoExport(r) }] : []),
+                        ...(mostraColonneExport ? [
+                          { etichetta: "Esportato il", valore: r.esportato_gamma_at ? dataOraGamma(r.esportato_gamma_at) : "—" },
+                          { etichetta: "Esportato da", valore: r.esportato_gamma_nome ?? "Utente senza nome" },
+                        ] : []),
                       ]}
                       footer={
                         puoEsportare && schedaGamma === "esportati" && r.esportato_gamma_at ? <Button variant="outline" className="min-h-10" onClick={e => { e.stopPropagation(); setRiapriGamma({ id: r.id, numero: r.numero }); }}>Riapri</Button> : alt.length > 0 ? (
@@ -377,22 +384,27 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
               </ElencoSchede>
             )}
           </div>
-          <div className="hidden overflow-x-auto lg:block">
+          <div className={cn("hidden overflow-x-auto", mostraColonneExport ? "md:block" : "lg:block")}>
             <Table className="table-fixed">
               <TableHeader>
                 <TableRow className="bg-pv-testa text-[11px] uppercase tracking-wide hover:bg-pv-testa">
                   {selezionabile && <TableHead className="w-12 px-2"><label className="flex min-h-10 items-center justify-center"><Checkbox aria-label="Seleziona tutte" checked={tuttiSelezionati ? true : selezionati.length ? "indeterminate" : false} disabled={selezionando} onCheckedChange={() => void selezionaTutti(!tuttiSelezionati)} /></label></TableHead>}
-                  <TableHead className="w-[6.5rem] px-2 2xl:w-[7.5rem]">Numero</TableHead>
+                  <TableHead className={cn("px-2 2xl:w-[7.5rem]", mostraColonneExport ? "w-20 lg:w-[6.5rem]" : "w-[6.5rem]")}>Numero</TableHead>
                   <TableHead className="min-w-0 px-2">Titolo</TableHead>
-                  <TableHead className="min-w-0 px-2">Cliente/Lead</TableHead>
+                  <TableHead className={cn("min-w-0 px-2", mostraColonneExport && "whitespace-normal break-words")}>Cliente/Lead</TableHead>
                   <TableHead className="hidden w-[7rem] px-2 2xl:table-cell">Cantiere</TableHead>
                   <TableHead className="hidden w-[7rem] px-2 2xl:table-cell">Creato da</TableHead>
-                  <TableHead className="w-[5.5rem] px-2">Data</TableHead>
+                  <TableHead className={cn("px-2", mostraColonneExport ? "w-[4.5rem] lg:w-[5.5rem]" : "w-[5.5rem]")}>Data</TableHead>
                   {!isOrdine && <TableHead className="hidden w-[5.5rem] px-2 2xl:table-cell">Validità</TableHead>}
                   {!isOrdine && <TableHead className="hidden w-[7rem] px-2 2xl:table-cell">Tipo</TableHead>}
-                  <TableHead className="w-[7rem] px-2">Stato</TableHead>
+                  <TableHead className={cn("px-2", mostraColonneExport ? "w-[5.25rem] lg:w-[7rem]" : "w-[7rem]")}>Stato</TableHead>
                   <TableHead className="hidden w-[6.25rem] px-2 2xl:table-cell">Evasione</TableHead>
-                  <TableHead className="w-[7rem] px-2 text-right">Totale</TableHead>
+                  <TableHead className={cn("px-2 text-right", mostraColonneExport ? "w-[5.75rem] lg:w-[7rem]" : "w-[7rem]")}>Totale</TableHead>
+                  {mostraColonneExport && <>
+                    <TableHead className="w-[5.75rem] px-2 lg:w-[7rem] whitespace-normal">Esportato il</TableHead>
+                    <TableHead className="w-[5.75rem] px-2 lg:w-[7rem] whitespace-normal">Esportato da</TableHead>
+                    {puoEsportare && <TableHead className="w-[4.5rem] px-2 text-right"><span className="sr-only">Azioni</span></TableHead>}
+                  </>}
                 </TableRow>
               </TableHeader>
               <TableBody>
