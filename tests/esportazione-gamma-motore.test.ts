@@ -137,13 +137,13 @@ test('Gamma: ordine bloccato escluso interamente, gli altri esportati', () => {
 for (const [campo, valore, codice] of [
   ['marca', null, 'manuale_senza_marca'], ['codice_articolo_fornitore', null, 'manuale_senza_codice_fornitore'],
   ['um', null, 'manuale_senza_um'], ['codice_famiglia', null, 'manuale_senza_famiglia'], ['costo', null, 'manuale_senza_costo'],
-  ['codice_articolo_fornitore', 'X'.repeat(24), 'codice_troppo_lungo'], ['descrizione', 'X'.repeat(71), 'descrizione_troppo_lunga'],
+  ['codice_articolo_fornitore', 'X'.repeat(24), 'codice_troppo_lungo'], ['descrizione', 'X'.repeat(73), 'descrizione_troppo_lunga'],
   ['fattore_conversione', 0, 'fattore_non_valido'], ['fattore_conversione', -1, 'fattore_non_valido'], ['fattore_conversione', null, 'fattore_non_valido'],
 ] as const) test(`Gamma: manuale bloccante ${codice} (${valore})`, () => {
   const d = dati(); d.righe = [{ ...manuale(), [campo]: valore }]; bloccato(d, codice);
 });
 test('Gamma: costo manuale zero valido e codice esattamente 25 valido', () => {
-  const d = dati(); d.righe = [{ ...manuale(), costo: 0, marca: 'A', codice_articolo_fornitore: 'X'.repeat(24), descrizione: 'X'.repeat(70) }];
+  const d = dati(); d.righe = [{ ...manuale(), costo: 0, marca: 'A', codice_articolo_fornitore: 'X'.repeat(24), descrizione: 'X'.repeat(72) }];
   expect(fornitoreR(d)?.PRZ1).toBe(0); expect(fornitoreR(d)?.COD_ART).toBe('A' + 'X'.repeat(24));
 });
 test('Gamma: fornitore assente bloccante', () => { const d = dati(); d.articoli = d.articoli.map(a => ({ ...a, fornitore_pref_id: null })); bloccato(d, 'fornitore_assente'); });
@@ -173,8 +173,24 @@ test('Gamma: acquisto assente avviso con prezzo vuoto (nessun fallback da altro 
 });
 test('Gamma: descrizione Gamma troncata con avviso ma input intatto', () => {
   const d = dati(); d.righe = d.righe.map(r => ({ ...r, descrizione: 'X'.repeat(80) }));
-  const e = costruisciEsportazioneGamma([d]); expect(fornitoreR(d)?.descrizione).toBe('X'.repeat(70));
+  const e = costruisciEsportazioneGamma([d]); expect(fornitoreR(d)?.descrizione).toBe('X'.repeat(72));
   expect(e.problemi.map(p => p.codice)).toContain('descrizione_troncata'); expect(d.righe[0]?.descrizione?.length).toBe(80);
+});
+test('FM97: descrizione Gamma di 72 intera senza avviso', () => {
+  const desc = 'NASTRO A RETE COPRIGIUNTO AUTOADESIVO FIBRA DI VETRO FIBATAPE MM.48x90MT'; expect(desc.length).toBe(72);
+  const d = dati(); d.righe = d.righe.map(r => ({ ...r, descrizione: desc }));
+  const e = costruisciEsportazioneGamma([d]); expect(fornitoreR(d)?.descrizione).toBe(desc);
+  expect(e.problemi.map(p => p.codice)).not.toContain('descrizione_troncata');
+});
+test('FM97: descrizione Gamma di 73 troncata a 72 con avviso', () => {
+  const d = dati(); d.righe = d.righe.map(r => ({ ...r, descrizione: 'Y'.repeat(73) }));
+  const e = costruisciEsportazioneGamma([d]); expect(fornitoreR(d)?.descrizione).toBe('Y'.repeat(72));
+  const p = e.problemi.find(x => x.codice === 'descrizione_troncata'); expect(p?.messaggio).toContain('72');
+});
+test('FM97: riga manuale con descrizione di 72 ammessa', () => {
+  const d = dati(); d.righe = [{ ...manuale(), descrizione: 'Z'.repeat(72) }];
+  const e = costruisciEsportazioneGamma([d]); expect(e.problemi.map(p => p.codice)).not.toContain('descrizione_troppo_lunga');
+  expect(fornitoreR(d)?.descrizione).toBe('Z'.repeat(72));
 });
 test('Gamma: caratteri provvisori permessi e avviso per gli altri', () => {
   const d = dati(); d.righe = [{ ...manuale(), codice_articolo_fornitore: 'a-1.2/3' }];

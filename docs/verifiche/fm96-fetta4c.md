@@ -73,3 +73,12 @@ Accesso personale reale tentato con auth-session --self: account corrispondente 
 
 ## File e fonti uniche
 Editor preventivatore.$id, RigheTable, PiedePreventivo, PreventiviListView, FileGammaDiProvaDialog; nuovi RiapriOrdineGammaDialog, StoricoGamma, DataExportFiltro estratto senza cambi di regole, esportazioni-gamma-storico; giornoSuccessivoExport reso esportato dalla fonte esistente. Test e rapporto sopra. Regola tecnica annotata nell'AGENTS dell'area, root già oltre budget non alterato. Nuova fonte condivisa per storico/riapertura/gate editor, senza nuove regole business.
+
+## FM97 — limite descrizione 72
+
+- `src/lib/esportazione-gamma.ts`: `LIMITI_GAMMA.descrizione` 70 → 72 (unica fonte); messaggi `codice_troppo_lungo`, `descrizione_troppo_lunga`, `descrizione_troncata` ora leggono il numero da `LIMITI_GAMMA` (template string).
+- `src/components/preventivatore/ArticoloInDefinizioneDialog.tsx`: già allineato (contatore e codice leggono `LIMITI_GAMMA`, nessun `maxLength`); nessuna modifica.
+- Nessun altro 70/25 su descrizione/codice Gamma in `src/` (PDF e altre schermate non hanno limiti propri).
+- `tests/esportazione-gamma.test.ts`: limite 72, 72 valida, 73 rifiutata.
+- `tests/esportazione-gamma-motore.test.ts`: bloccante manuale con 73; caso codice 25 con descrizione 72; troncatura attesa a 72; nuovi casi FM97: Gamma 72 (AKINAF01005, intera, nessun avviso), Gamma 73 (avviso con "72", troncata a 72), manuale 72 ammessa.
+- Nessuna modifica a DB, RLS o altra logica del motore.

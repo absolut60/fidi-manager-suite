@@ -4,7 +4,7 @@ import { unitaArticolo, inUnita } from './scheda-articolo';
 import { lineaPreventivo } from './linee-preventivo';
 
 /** Limiti del tracciato Gamma, condivisi da compilazione ed esportazione. */
-export const LIMITI_GAMMA = { codiceArticolo: 25, descrizione: 70 } as const;
+export const LIMITI_GAMMA = { codiceArticolo: 25, descrizione: 72 } as const;
 
 /** Gemello SQL: auth_puo_esportare_gamma (FM96); aggiungere qui i futuri ruoli e allineare il gemello. */
 export const RUOLI_ESPORTAZIONE_GAMMA = ['amministratore', 'responsabile_showroom'] as const;
@@ -169,10 +169,10 @@ export function costruisciEsportazioneGamma(dati: DatiOrdineGamma[]) {
           ['marca', r.marca, 'la marca'], ['codice_fornitore', r.codice_articolo_fornitore, 'il codice articolo del fornitore'],
           ['um', r.um, "l'unità di misura"], ['famiglia', r.codice_famiglia, 'la famiglia'], ['costo', r.costo, "il costo d'acquisto"],
         ] as const) if (!presente(valore)) problema('bloccante', `manuale_senza_${campo}`, `Completa ${etichetta} della riga manuale.`, r);
-        if (codice.length > LIMITI_GAMMA.codiceArticolo) problema('bloccante', 'codice_troppo_lungo', 'Il codice del nuovo articolo supera 25 caratteri.', r);
-        if (descrizione.length > LIMITI_GAMMA.descrizione) problema('bloccante', 'descrizione_troppo_lunga', 'La descrizione della riga manuale supera 70 caratteri.', r);
+        if (codice.length > LIMITI_GAMMA.codiceArticolo) problema('bloccante', 'codice_troppo_lungo', `Il codice del nuovo articolo supera ${LIMITI_GAMMA.codiceArticolo} caratteri.`, r);
+        if (descrizione.length > LIMITI_GAMMA.descrizione) problema('bloccante', 'descrizione_troppo_lunga', `La descrizione della riga manuale supera ${LIMITI_GAMMA.descrizione} caratteri.`, r);
       } else if (descrizione.length > LIMITI_GAMMA.descrizione)
-        problema('avviso', 'descrizione_troncata', 'La descrizione Gamma viene accorciata a 70 caratteri nel file.', r);
+        problema('avviso', 'descrizione_troncata', `La descrizione Gamma viene accorciata a ${LIMITI_GAMMA.descrizione} caratteri nel file.`, r);
       if (codice && !CARATTERI_CODICE_GAMMA.test(codice)) problema('avviso', 'caratteri_codice', 'Il codice articolo contiene caratteri da verificare in Gamma.', r);
       const scontiGamma = r.sconti_gamma ?? [];
       const sconti = Array.from({ length: 3 }, (_, i) => scontiGamma[i] ?? 0);

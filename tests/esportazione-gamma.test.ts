@@ -20,10 +20,10 @@ test('Gamma: limite codice 25 senza troncamento silenzioso', () => {
   expect(codiceArticoloNuovo('AB', 'x'.repeat(23))).toBe('AB' + 'X'.repeat(23));
   expect(codiceArticoloNuovo('AB', 'x'.repeat(24))?.length).toBe(26);
 });
-test('Gamma: descrizione fino a 70, 71 rifiutata e descrizione obbligatoria', () => {
-  expect(LIMITI_GAMMA.descrizione).toBe(70);
-  expect(validazioneManualeGamma('x'.repeat(70), '', null, false).descrizioneValida).toBe(true);
-  expect(validazioneManualeGamma('x'.repeat(71), '', null, false).descrizioneValida).toBe(false);
+test('Gamma: descrizione fino a 72, 73 rifiutata e descrizione obbligatoria', () => {
+  expect(LIMITI_GAMMA.descrizione).toBe(72);
+  expect(validazioneManualeGamma('x'.repeat(72), '', null, false).descrizioneValida).toBe(true);
+  expect(validazioneManualeGamma('x'.repeat(73), '', null, false).descrizioneValida).toBe(false);
   expect(validazioneManualeGamma(' ', '', null, false).descrizioneValida).toBe(false);
 });
 test('Gamma: UM2 richiede fattore positivo, virgola italiana e quattro decimali', () => {
