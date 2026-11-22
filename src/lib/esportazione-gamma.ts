@@ -53,10 +53,10 @@ export const COLONNE_FILE_GAMMA = [
   'IND_CLIFOR', 'SEDE', 'Codice_deposito', 'COD_ART', 'descrizione', 'Unita_misura_1_articolo',
   'Unita_misura_2_articolo', 'Fattore_conversione_articolo', 'QTA1', 'PRZ1', 'SCT1', 'SCT2',
   'sct3', 'magg %', 'SCONT_IMP', 'MAGG_Import', 'NOTE', 'DATA_CONSEG', 'Indirizzo_anagrafica',
-  'Cap_anagrafica', 'Citta_anagrafica', 'Partita_iva', 'Flag_persona_fisica', 'Telefono_1',
+  'Cap_anagrafica', 'Citta_anagrafica', 'Provincia_anagrafica', 'Partita_iva', 'Flag_persona_fisica', 'Telefono_1',
   'Cellulare', 'Indirizzo_email', 'Codice_fiscale', 'Condizione_pagamento', 'Descrizione_pagamento',
   'Codice_sede', 'Raggruppamento_clienti_1', 'Raggruppamento_clienti_2', 'Raggruppamento_clienti_3',
-  'Codice_listino', 'Codice_macrocategoria', 'Codice_categoria', 'Codice_destinatario_prevalente',
+  'Codice_listino', 'Codice_macrocategoria', 'Codice_categoria', 'Ufficio_PA',
   'Codice_agente', 'Codice_famiglia', 'Codice_sottofamiglia', 'Marca',
 ] as const;
 export type ColonnaGamma = typeof COLONNE_FILE_GAMMA[number];
@@ -256,13 +256,13 @@ export function costruisciEsportazioneGamma(dati: DatiOrdineGamma[]) {
       const l = d.lead;
       const pagamento = testo(o.condizione_pagamento_cod) || testo(l.condizione_pagamento_cod);
       Object.assign(tc, { Ragione_sociale_anagrafica: testo(l.ragione_sociale), Cognome: testo(l.cognome), Nome: testo(l.nome),
-        Indirizzo_anagrafica: testo(l.indirizzo), Cap_anagrafica: testo(l.cap), Citta_anagrafica: testo(l.citta), Partita_iva: testo(l.partita_iva),
+        Indirizzo_anagrafica: testo(l.indirizzo), Cap_anagrafica: testo(l.cap), Citta_anagrafica: testo(l.citta), Provincia_anagrafica: testo(l.provincia), Partita_iva: testo(l.partita_iva),
         Codice_fiscale: testo(l.codice_fiscale), Flag_persona_fisica: l.tipo_soggetto === 'persona_fisica' ? 1 : 0,
         Telefono_1: testo(l.telefono), Cellulare: testo(l.cellulare), Indirizzo_email: testo(l.email), Codice_agente: testo(l.agente_codice),
         Condizione_pagamento: pagamento, Descrizione_pagamento: testo(d.codiciPagamento.find(p => p.cod === pagamento)?.descrizione),
         Codice_sede: testo(d.sedeLead?.codice) || testo(d.sede?.codice), Codice_listino: listino ?? '',
         Codice_macrocategoria: testo(macro), Codice_categoria: testo(categoria),
-        Codice_destinatario_prevalente: testo(l.codice_sdi) || (l.tipo_soggetto === 'persona_fisica' ? '0000000' : '') });
+        Ufficio_PA: testo(l.codice_sdi) || (l.tipo_soggetto === 'persona_fisica' ? '0000000' : '') });
     }
     documentiCliente.push(tc, ...sommaRighe(righeCliente, false));
     ordiniEsportati.push(o.id);

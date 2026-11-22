@@ -6,7 +6,7 @@ import { nomeFileGamma, scriviFileGammaXls } from '../src/lib/esportazione-gamma
 import { readFileSync } from 'node:fs';
 import { rigaInUnita } from '../src/lib/riga-preventivo';
 
-const INTESTAZIONE = 'TESTATA_RIGHE,CODICE_DOCUMENTO,COD_COD_CLI,Ragione_sociale_anagrafica,Cognome,Nome,IND_CLIFOR,SEDE,Codice_deposito,COD_ART,descrizione,Unita_misura_1_articolo,Unita_misura_2_articolo,Fattore_conversione_articolo,QTA1,PRZ1,SCT1,SCT2,sct3,magg %,SCONT_IMP,MAGG_Import,NOTE,DATA_CONSEG,Indirizzo_anagrafica,Cap_anagrafica,Citta_anagrafica,Partita_iva,Flag_persona_fisica,Telefono_1,Cellulare,Indirizzo_email,Codice_fiscale,Condizione_pagamento,Descrizione_pagamento,Codice_sede,Raggruppamento_clienti_1,Raggruppamento_clienti_2,Raggruppamento_clienti_3,Codice_listino,Codice_macrocategoria,Codice_categoria,Codice_destinatario_prevalente,Codice_agente,Codice_famiglia,Codice_sottofamiglia,Marca'.split(',');
+const INTESTAZIONE = 'TESTATA_RIGHE,CODICE_DOCUMENTO,COD_COD_CLI,Ragione_sociale_anagrafica,Cognome,Nome,IND_CLIFOR,SEDE,Codice_deposito,COD_ART,descrizione,Unita_misura_1_articolo,Unita_misura_2_articolo,Fattore_conversione_articolo,QTA1,PRZ1,SCT1,SCT2,sct3,magg %,SCONT_IMP,MAGG_Import,NOTE,DATA_CONSEG,Indirizzo_anagrafica,Cap_anagrafica,Citta_anagrafica,Provincia_anagrafica,Partita_iva,Flag_persona_fisica,Telefono_1,Cellulare,Indirizzo_email,Codice_fiscale,Condizione_pagamento,Descrizione_pagamento,Codice_sede,Raggruppamento_clienti_1,Raggruppamento_clienti_2,Raggruppamento_clienti_3,Codice_listino,Codice_macrocategoria,Codice_categoria,Ufficio_PA,Codice_agente,Codice_famiglia,Codice_sottofamiglia,Marca'.split(',');
 
 function dati(id = 'o1', numeroOrdine = 'ORD-1/26'): DatiOrdineGamma {
   return {
@@ -30,7 +30,7 @@ function manuale(): RigaOrdineGamma {
 function lead(): DatiOrdineGamma {
   const d = dati(); d.ordine.cliente_id = null; d.ordine.lead_id = 'l1'; d.cliente = null;
   d.lead = { id: 'l1', nome: 'Mario', cognome: 'Rossi', ragione_sociale: 'Mario Rossi', tipo_soggetto: 'persona_fisica',
-    codice_fiscale: 'RSSMRA', indirizzo: 'Via Roma 1', cap: '20000', citta: 'Milano', telefono: '123', cellulare: '456',
+    codice_fiscale: 'RSSMRA', indirizzo: 'Via Roma 1', cap: '20000', citta: 'Milano', provincia: 'MI', telefono: '123', cellulare: '456',
     email: 'mario@example.test', agente_codice: '7', condizione_pagamento_cod: 'BO02', listino_rif: 10, macrocategoria_rif: '01', categoria_rif: '02', store_id: 's2' };
   d.sedeLead = { id: 's2', codice: 'ME' }; return d;
 }
@@ -53,8 +53,8 @@ function bloccato(d: DatiOrdineGamma, codice: string) {
   expect(e.problemi.some(p => p.codice === codice && p.livello === 'bloccante')).toBe(true);
 }
 
-test('Gamma: 47 intestazioni esatte, ordine e colonne vuote mantenuti', () => {
-  expect(COLONNE_FILE_GAMMA).toEqual(INTESTAZIONE); expect(COLONNE_FILE_GAMMA.length).toBe(47);
+test('Gamma: 48 intestazioni esatte, ordine e colonne vuote mantenuti', () => {
+  expect(COLONNE_FILE_GAMMA).toEqual(INTESTAZIONE); expect(COLONNE_FILE_GAMMA.length).toBe(48);
   for (const r of costruisciEsportazioneGamma([dati()]).righe) expect(Object.keys(r)).toEqual(INTESTAZIONE);
 });
 test('Gamma: tutti i fornitori prima dei clienti, numero ordine naturale e fornitore ordinato', () => {
@@ -111,9 +111,9 @@ for (const gamma of [true, false]) test(`Gamma: UM2 assente → UM1 e fattore 1 
   expect(fornitoreR(d)).toMatchObject({ Unita_misura_2_articolo: gamma ? 'MQ' : 'T.', Fattore_conversione_articolo: 1 });
 });
 test('Gamma: lead persona fisica senza SDI → 0000000, SDI presente conservato', () => {
-  const d = lead(); expect(clienteT(d)).toMatchObject({ COD_COD_CLI: '', Flag_persona_fisica: 1, Codice_destinatario_prevalente: '0000000' });
-  d.lead = { ...d.lead, codice_sdi: 'ABC1234' }; expect(clienteT(d)?.Codice_destinatario_prevalente).toBe('ABC1234');
-  d.lead = { ...d.lead, tipo_soggetto: 'societa', codice_sdi: null }; expect(clienteT(d)).toMatchObject({ Flag_persona_fisica: 0, Codice_destinatario_prevalente: '' });
+  const d = lead(); expect(clienteT(d)).toMatchObject({ COD_COD_CLI: '', Flag_persona_fisica: 1, Ufficio_PA: '0000000' });
+  d.lead = { ...d.lead, codice_sdi: 'ABC1234' }; expect(clienteT(d)?.Ufficio_PA).toBe('ABC1234');
+  d.lead = { ...d.lead, tipo_soggetto: 'societa', codice_sdi: null }; expect(clienteT(d)).toMatchObject({ Flag_persona_fisica: 0, Ufficio_PA: '' });
 });
 test('Gamma: ordine prevale sul lead per listino/macro/categoria e pagamento; descrizione dal catalogo', () => {
   const d = lead(); Object.assign(d.ordine, { listino_rif: 20, macrocategoria_rif: '03', categoria_rif: '04', condizione_pagamento_cod: 'BO99' });
@@ -122,7 +122,7 @@ test('Gamma: ordine prevale sul lead per listino/macro/categoria e pagamento; de
 });
 test('Gamma: fallback condizioni lead e sede lead, anagrafica completa', () => {
   const d = lead(); expect(clienteT(d)).toMatchObject({ Ragione_sociale_anagrafica: 'Mario Rossi', Cognome: 'Rossi', Nome: 'Mario',
-    Indirizzo_anagrafica: 'Via Roma 1', Cap_anagrafica: '20000', Citta_anagrafica: 'Milano', Codice_fiscale: 'RSSMRA',
+    Indirizzo_anagrafica: 'Via Roma 1', Cap_anagrafica: '20000', Citta_anagrafica: 'Milano', Provincia_anagrafica: 'MI', Codice_fiscale: 'RSSMRA',
     Telefono_1: '123', Cellulare: '456', Indirizzo_email: 'mario@example.test', Codice_agente: '7', Codice_sede: 'ME',
     Condizione_pagamento: 'BO02', Descrizione_pagamento: 'Bonifico 60 giorni', Codice_listino: 10, Codice_macrocategoria: '01', Codice_categoria: '02' });
   d.sedeLead = null; expect(clienteT(d)?.Codice_sede).toBe('LI');
@@ -130,7 +130,7 @@ test('Gamma: fallback condizioni lead e sede lead, anagrafica completa', () => {
 test('Gamma: cliente con codice non sovrascrive anagrafica né condizioni', () => {
   const d = dati(); Object.assign(d.ordine, { condizione_pagamento_cod: 'BO02', listino_rif: 20 });
   expect(clienteT(d)).toMatchObject({ COD_COD_CLI: '005003', Ragione_sociale_anagrafica: '', Indirizzo_anagrafica: '',
-    Codice_listino: '', Condizione_pagamento: '', Flag_persona_fisica: '', Codice_sede: '' });
+    Provincia_anagrafica: '', Ufficio_PA: '', Codice_listino: '', Condizione_pagamento: '', Flag_persona_fisica: '', Codice_sede: '' });
 });
 test('Gamma: note da origine e linea, nome soggetto solo al fornitore; date solo T', () => {
   const d = dati(); const e = costruisciEsportazioneGamma([d]);
@@ -223,7 +223,7 @@ test('Gamma: quantità zero/null esclusa con avviso, non con errore fornitore', 
   const e = costruisciEsportazioneGamma([d]); expect(e.ordiniEsportati).toEqual(['o1']); expect(e.righe).toHaveLength(4);
   expect(e.problemi.map(p => [p.rigaId, p.codice, p.livello])).toEqual([['zero', 'quantita_zero', 'avviso'], ['null', 'quantita_zero', 'avviso']]);
 });
-test('Gamma: file vero BIFF8/CFB con Sheet1, 47 colonne, data italiana e prezzo 4 decimali', () => {
+test('Gamma: file vero BIFF8/CFB con Sheet1, 48 colonne, data italiana e prezzo 4 decimali', () => {
   const bytes = scriviFileGammaXls(costruisciEsportazioneGamma([dati()]).righe);
   expect(Array.from(bytes.slice(0, 8))).toEqual([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
   const cfb = CFB.read(bytes, { type: 'array' }); const stream = CFB.find(cfb, 'Workbook');

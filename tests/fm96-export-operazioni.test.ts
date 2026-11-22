@@ -53,5 +53,5 @@ test('FM96 salvataggio lead usa i riferimenti del motore e ricalcola dopo normal
   const client={rpc:async(n,v)=>{assert(n==='completa_dati_lead_esportazione_gamma','RPC');assert(v._codice_sdi==='ABC1234','SDI');Object.assign(a.ordine,{listino_rif:v._listino,macrocategoria_rif:v._macrocategoria,categoria_rif:v._categoria});a.lead.codice_sdi=v._codice_sdi;return {error:null}}};
   await completaDatiGamma(a.ordine.id,{listino_rif:20,macrocategoria_rif:'01',categoria_rif:'02',codice_sdi:'ab c1234'},client);
   const after=costruisciEsportazioneGamma([a]);assert(!after.problemi.some(p=>['lead_senza_listino','lead_senza_macrocategoria','lead_senza_categoria'].includes(p.codice)),'ricalcolo');
-  assert(after.righe.find(r=>r.TESTATA_RIGHE==='T'&&r.IND_CLIFOR===0)?.Codice_destinatario_prevalente==='ABC1234','SDI file');
+  assert(after.righe.find(r=>r.TESTATA_RIGHE==='T'&&r.IND_CLIFOR===0)?.Ufficio_PA==='ABC1234','SDI file');
 `));

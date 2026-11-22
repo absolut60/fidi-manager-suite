@@ -103,3 +103,11 @@ Editor preventivatore.$id, RigheTable, PiedePreventivo, PreventiviListView, File
 - `tests/fm96-export-operazioni.test.ts`: nome restituito/download e `_nome_file` storico identici, UUID/nome nel percorso, due esportazioni con percorsi distinti; confermati conteggi 5 documenti fornitore + 1 cliente, registrazione solo pronti e ripulitura in caso di errore.
 - Suite completa: **1.370 test superati, 0 fallimenti, 4.543 assertions**; compilazione automatica senza errori. File BIFF8 generati e riletti nei test locali; nessun export o dato reale scritto.
 - Nessuna modifica a DB, RLS, prezzi, somme, bloccanti o `PreventiviListView`; nessuna pubblicazione. Gli export storici già salvati restano intatti: il nuovo nome/ordine vale per i file generati da questo codice.
+
+## FM97 — Ufficio_PA e Provincia_anagrafica (22/11, decisione Andrea 22:54)
+
+- `src/lib/esportazione-gamma.ts` (`COLONNE_FILE_GAMMA`, unica fonte): `Codice_destinatario_prevalente` rinominata `Ufficio_PA` nella stessa posizione; aggiunta `Provincia_anagrafica` subito dopo `Citta_anagrafica`. Totale 48 colonne, ordine esatto indicato da Andrea.
+- `costruisciEsportazioneGamma`: testata cliente da lead valorizza `Ufficio_PA` con la regola di prima (codice_sdi del lead, altrimenti `0000000` se persona fisica) e `Provincia_anagrafica = lead.provincia` (trim via `testo`). Cliente con codice Gamma: entrambe vuote, come gli altri dati anagrafici. Nessun'altra logica toccata.
+- Riferimenti allineati: `tests/esportazione-gamma-motore.test.ts` (elenco letterale guardia a 48 colonne, fixture lead con `provincia: 'MI'`, prove SDI/Ufficio_PA, anagrafica completa, cliente con codice, titolo prova BIFF8) e `tests/fm96-export-operazioni.test.ts` (controllo SDI file). Nessun altro riferimento a `Codice_destinatario_prevalente` in src/, tests/ o docs/regole.
+- Test: 1.389 test TS, 0 fallimenti; la prova BIFF8 rilegge il file generato e verifica le 48 intestazioni esatte, Sheet1, data italiana e prezzo a quattro decimali.
+- Nessuna modifica a DB, RLS o altra logica del motore.
