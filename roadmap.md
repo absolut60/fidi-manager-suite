@@ -1,3 +1,8 @@
+# FM97 — Prezzo d'acquisto manuale
+- [x] Colonne nullable e copia ordine verbatim, verifica definizione/impronte e RLS invariata.
+- [x] Formula unica, finestra acquisto e export manuale senza regressioni kit/vendita.
+- [x] Test formula/export/copia, Playwright 375/768/1280 e rapporto.
+
 # FM96 — Fetta 4c
 - [x] Editor bloccato e riapertura singola condivisa.
 - [x] Storico, eventi, download firmato e menu prova per ruoli Gamma.

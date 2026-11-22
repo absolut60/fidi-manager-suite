@@ -100,6 +100,38 @@ export function prezzoNettoRiga(r: PrezzoRigaInput): number {
   return netto;
 }
 
+/** Acquisto Gamma: cascata e maggiorazione percentuale come il netto riga, poi euro per UM1. */
+export function nettoAcquistoGamma(prezzo: number, sconti: readonly (number | null)[], maggiorazionePerc: number | null, maggiorazioneEuro: number | null): number {
+  return prezzoNettoRiga({ prezzo_unit: prezzo, sconti_gamma: sconti, maggiorazione_perc: maggiorazionePerc }) + num(maggiorazioneEuro);
+}
+
+export interface AcquistoManuale {
+  listino_fornitore?: number | null;
+  acq_sc1?: number | null; acq_sc2?: number | null; acq_sc3?: number | null;
+  acq_magg_perc?: number | null; acq_magg_euro?: number | null;
+}
+
+/** Solo costo: il salvataggio lo usa anche come listino, senza condizioni d'acquisto. */
+export function preparaAcquistoManuale(r: AcquistoManuale, costoUnit: number | null) {
+  const conListino = r.listino_fornitore != null;
+  const condizioni = {
+    acq_sc1: conListino ? r.acq_sc1 ?? null : null,
+    acq_sc2: conListino ? r.acq_sc2 ?? null : null,
+    acq_sc3: conListino ? r.acq_sc3 ?? null : null,
+    acq_magg_perc: conListino ? r.acq_magg_perc ?? null : null,
+    acq_magg_euro: conListino ? r.acq_magg_euro ?? null : null,
+  };
+  const listino_fornitore = r.listino_fornitore ?? costoUnit;
+  return { listino_fornitore, ...condizioni, costo_unit: listino_fornitore == null ? null : nettoAcquistoGamma(listino_fornitore,
+    [condizioni.acq_sc1, condizioni.acq_sc2, condizioni.acq_sc3], condizioni.acq_magg_perc, condizioni.acq_magg_euro) };
+}
+
+/** Precompila solo slot d'acquisto vuoti; gli sconti di vendita non sono un input. */
+export function precompilaScontiAcquisto(attuali: readonly string[], scontiBase: readonly number[]) {
+  return { slot: [0, 1, 2].map(i => attuali[i]?.trim() ? attuali[i] ?? '' : scontiBase[i] == null ? '' :
+    scontiBase[i].toLocaleString('it-IT', { maximumFractionDigits: 4, useGrouping: false })), oltreTre: scontiBase.length > 3 };
+}
+
 export function importoRiga(r: ImportoRigaInput): number {
   return round2Importo(num(r.quantita) * prezzoNettoRiga(r) * segnoRiga(r.segno));
 }

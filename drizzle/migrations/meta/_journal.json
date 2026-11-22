@@ -1898,6 +1898,13 @@
       "when": 1795376219718,
       "tag": "0270_fm96_gamma_sdi_vuoto_null",
       "breakpoints": true
+    },
+    {
+      "idx": 271,
+      "version": "7",
+      "when": 1795382047412,
+      "tag": "0271_fm97_acquisto_manuale",
+      "breakpoints": true
     }
   ]
 }

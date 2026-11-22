@@ -1,5 +1,5 @@
 import type { Database } from '@/integrations/supabase/types';
-import { isRigaValorizzata, rigaInUnita } from './riga-preventivo';
+import { isRigaValorizzata, preparaAcquistoManuale, rigaInUnita } from './riga-preventivo';
 import { unitaArticolo, inUnita } from './scheda-articolo';
 import { lineaPreventivo } from './linee-preventivo';
 
@@ -196,12 +196,17 @@ export function costruisciEsportazioneGamma(dati: DatiOrdineGamma[]) {
         Marca: testo(gamma ? a?.marca_codice : r.marca), Unita_misura_1_articolo: unita.um1 ?? '',
         Unita_misura_2_articolo: unita.um2 ?? unita.um1 ?? '', Fattore_conversione_articolo: unita.um2 ? unita.fattore : 1 });
       const acquisto = gamma ? acquisti.get(r.articolo_codice ?? undefined) : undefined;
+      const costoUnitManuale = gamma ? null : rigaInUnita({ ...r, um_scelta: 'um1', quantita: r.quantita ?? null, prezzo_unit: r.prezzo_unit ?? null }).costo_unit;
+      const manualeAcquisto = preparaAcquistoManuale(r, costoUnitManuale);
+      if (!gamma && r.listino_fornitore != null && costoUnitManuale != null && manualeAcquisto.costo_unit != null &&
+        Math.abs(manualeAcquisto.costo_unit - costoUnitManuale) > 0.0001 + Number.EPSILON * Math.max(1, Math.abs(manualeAcquisto.costo_unit), Math.abs(costoUnitManuale)))
+        problema('avviso', 'costo_manuale_diverso', "Il costo salvato della riga manuale è diverso dal netto del listino e delle condizioni d'acquisto.", r);
       if (gamma && (!acquisto || acquisto.acq_prezzo == null)) problema('avviso', 'acquisto_assente', "Mancano i dati d'acquisto dell'articolo per il listino della sede: il prezzo fornitore resta vuoto.", r);
       const rf = { ...base,
         // costo è TOTALIZZATO nel DB: riuso la fonte unica per ottenere il costo unitario UM1.
-        PRZ1: prezzo4(gamma ? acquisto?.acq_prezzo : rigaInUnita({ ...r, um_scelta: 'um1', quantita: r.quantita ?? null, prezzo_unit: r.prezzo_unit ?? null }).costo_unit),
-        SCT1: gamma ? nonZero(acquisto?.acq_sc1) : '', SCT2: gamma ? nonZero(acquisto?.acq_sc2) : '', sct3: gamma ? nonZero(acquisto?.acq_sc3) : '',
-        'magg %': gamma ? nonZero(acquisto?.acq_trasporto_perc) : '', MAGG_Import: gamma ? nonZero(acquisto?.acq_trasporto_euro) : '' };
+        PRZ1: prezzo4(gamma ? acquisto?.acq_prezzo : manualeAcquisto.listino_fornitore),
+        SCT1: nonZero(gamma ? acquisto?.acq_sc1 : manualeAcquisto.acq_sc1), SCT2: nonZero(gamma ? acquisto?.acq_sc2 : manualeAcquisto.acq_sc2), sct3: nonZero(gamma ? acquisto?.acq_sc3 : manualeAcquisto.acq_sc3),
+        'magg %': nonZero(gamma ? acquisto?.acq_trasporto_perc : manualeAcquisto.acq_magg_perc), MAGG_Import: nonZero(gamma ? acquisto?.acq_trasporto_euro : manualeAcquisto.acq_magg_euro) };
       if (fid) { const g = gruppi.get(fid) ?? []; g.push(rf); gruppi.set(fid, g); }
       righeCliente.push({ ...base,
         PRZ1: prezzo4(inUnita(r.prezzo_unit, 'prezzo', 'primaria', unita.fattore)),

@@ -9,14 +9,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { codiceArticoloNuovo, LIMITI_GAMMA, validazioneManualeGamma } from "@/lib/esportazione-gamma";
 import { formatNumeroIt, parseNumeroIt } from "@/lib/numero-it";
-import { costoRiga, importoRiga, marginePercRiga, prezzoNettoRiga, rigaInUnita } from "@/lib/riga-preventivo";
+import { importoRiga, marginePercRiga, preparaAcquistoManuale, precompilaScontiAcquisto, prezzoNettoRiga, rigaInUnita, type AcquistoManuale } from "@/lib/riga-preventivo";
 import { applicaLeva, formatCascata, parseCascata, type LevaPrezzoShowroom } from "@/lib/leve-prezzo-showroom";
 import type { updateRiga } from "@/lib/preventivi-api";
 import type { ArticoloGammaScelto } from "@/components/preventivatore/ArticoloGammaPicker";
 import { X } from "lucide-react";
 
 type Patch = Parameters<typeof updateRiga>[1];
-type RigaManuale = Parameters<typeof rigaInUnita>[0] & {
+type RigaManuale = Parameters<typeof rigaInUnita>[0] & AcquistoManuale & {
   descrizione?: string | null; fornitore_id?: string | null; marca?: string | null;
   codice_articolo_fornitore?: string | null; listino_fornitore?: number | null;
   codice_famiglia?: string | null; codice_sottofamiglia?: string | null;
@@ -24,6 +24,7 @@ type RigaManuale = Parameters<typeof rigaInUnita>[0] & {
 };
 
 const fmt4 = (v: number | null | undefined) => (v == null ? "" : formatNumeroIt(v, { minDecimals: 2, maxDecimals: 4 }));
+const fmtPrezzoAcquisto = (v: number | null | undefined) => v == null ? '' : formatNumeroIt(v, { minDecimals: 4, maxDecimals: 4 });
 const vuotoNull = (s: string) => (s.trim() === "" ? null : s.trim());
 
 /** FM75 F4b: finestra della riga manuale showroom ("articolo in definizione"). Salva solo dati via onPatch. */
@@ -47,6 +48,10 @@ export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch, 
   const [um, setUm] = useState("");
   const [costo, setCosto] = useState("");
   const [listino, setListino] = useState("");
+  const [scontiAcquisto, setScontiAcquisto] = useState<string[]>(['', '', '']);
+  const [maggAcquistoPerc, setMaggAcquistoPerc] = useState('');
+  const [maggAcquistoEuro, setMaggAcquistoEuro] = useState('');
+  const [oltreTreSconti, setOltreTreSconti] = useState(false);
   // F5b: leve prezzo, comanda l'ultima toccata.
   const [leva, setLeva] = useState<LevaPrezzoShowroom | null>(null);
   const [ricaricoTxt, setRicaricoTxt] = useState("");
@@ -60,7 +65,10 @@ export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch, 
     setCercaMarca(""); setFamiglia(row.codice_famiglia ?? ""); setSottofamiglia(row.codice_sottofamiglia ?? "");
     setUm2(row.um2 ?? ""); setFattore(fmt4(row.fattore_conversione));
     setDescrizione(row.descrizione ?? ""); setUm(row.um ?? "");
-    setCosto(fmt4(rigaInUnita({ ...row, um_scelta: 'um1' }, null).costo_unit)); setListino(fmt4(row.listino_fornitore));
+    const formatoAcquisto = soloAnagrafica ? fmt4 : fmtPrezzoAcquisto;
+    setCosto(formatoAcquisto(rigaInUnita({ ...row, um_scelta: 'um1' }, null).costo_unit)); setListino(formatoAcquisto(row.listino_fornitore));
+    setScontiAcquisto([row.acq_sc1, row.acq_sc2, row.acq_sc3].map(fmt4));
+    setMaggAcquistoPerc(fmt4(row.acq_magg_perc)); setMaggAcquistoEuro(formatoAcquisto(row.acq_magg_euro)); setOltreTreSconti(false);
     setLeva(null); setRicaricoTxt(fmt4(row.ricarico));
     setCascataTxt(row.leva_prezzo === "sconto_listino" ? formatCascata(row.sconti_gamma) : "");
     setPrezzoTxt(row.prezzo_unit == null ? "" : fmt4(prezzoNettoRiga({ prezzo_unit: row.prezzo_unit, sconti_gamma: row.sconti_gamma })));
@@ -136,15 +144,21 @@ export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch, 
 
   const costoNum = parseNumeroIt(costo);
   const listinoNum = parseNumeroIt(listino);
-  const numeriValidi = (costo.trim() === "" || costoNum != null) && (listino.trim() === "" || listinoNum != null);
+  const acqValori = [...scontiAcquisto, maggAcquistoPerc, maggAcquistoEuro].map(v => v.trim() === '' ? null : parseNumeroIt(v));
+  const acquisto = preparaAcquistoManuale({ listino_fornitore: listino.trim() === '' ? null : listinoNum,
+    acq_sc1: acqValori[0] ?? null, acq_sc2: acqValori[1] ?? null, acq_sc3: acqValori[2] ?? null,
+    acq_magg_perc: acqValori[3] ?? null, acq_magg_euro: acqValori[4] ?? null }, costo.trim() === '' ? null : costoNum);
+  const costoUnit = soloAnagrafica ? costo.trim() === '' ? null : costoNum : acquisto.costo_unit;
+  const numeriValidi = (costo.trim() === "" || costoNum != null) && (listino.trim() === "" || listinoNum != null) &&
+    (soloAnagrafica || [...scontiAcquisto, maggAcquistoPerc, maggAcquistoEuro].every(v => v.trim() === '' || parseNumeroIt(v) != null));
   const cascata = parseCascata(cascataTxt);
   const patchLeva = soloAnagrafica || leva === null ? null : applicaLeva({
-    leva, costoUnit: costo.trim() === "" ? null : costoNum, listinoFornitore: listino.trim() === "" ? null : listinoNum,
+    leva, costoUnit, listinoFornitore: acquisto.listino_fornitore,
     cascata, ricaricoPerc: parseNumeroIt(ricaricoTxt), prezzoManuale: parseNumeroIt(prezzoTxt),
   });
   const erroreLeva = leva === "sconto_listino" && cascata === null ? "Sconto non valido: scrivi ad esempio -45+5"
     : leva !== null && patchLeva === null ? "Dati insufficienti per questa leva (costo, listino o prezzo mancanti)" : null;
-  const patchCosto = rigaInUnita({ ...row, um_scelta: 'um1' }, null, { costo_unit: costo.trim() === "" ? null : costoNum }).patchUm1;
+  const patchCosto = rigaInUnita({ ...row, um_scelta: 'um1' }, null, { costo_unit: costoUnit }).patchUm1;
   const anteprima = { ...row, ...(patchLeva ?? {}), costo: numeriValidi ? patchCosto.costo ?? null : row.costo ?? null };
   const importoAnteprima = importoRiga(anteprima);
   const margineEuro = importoAnteprima - Number(anteprima.costo ?? 0);
@@ -161,7 +175,10 @@ export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch, 
     onPatch({
       descrizione: descrizione.trim(), um: vuotoNull(um), marca: vuotoNull(marca),
       codice_articolo_fornitore: vuotoNull(codice), fornitore_id: fornitoreId,
-      listino_fornitore: listino.trim() === "" ? null : listinoNum,
+      ...(soloAnagrafica ? { listino_fornitore: listino.trim() === "" ? null : listinoNum } : {
+        listino_fornitore: acquisto.listino_fornitore, acq_sc1: acquisto.acq_sc1, acq_sc2: acquisto.acq_sc2,
+        acq_sc3: acquisto.acq_sc3, acq_magg_perc: acquisto.acq_magg_perc, acq_magg_euro: acquisto.acq_magg_euro,
+      }),
       codice_famiglia: vuotoNull(famiglia), codice_sottofamiglia: vuotoNull(sottofamiglia),
       um2: vuotoNull(um2), fattore_conversione: fattore.trim() === "" ? null : fattoreNum,
       ...patchCosto,
@@ -222,7 +239,10 @@ export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch, 
                       : (risultati.data ?? []).length === 0 ? <p className="p-2 text-sm text-muted-foreground">Nessun fornitore trovato</p>
                       : (risultati.data ?? []).map((f) => (
                         <Button key={f.id} type="button" variant="ghost" className="h-auto min-h-10 w-full justify-start whitespace-normal break-words rounded-none px-3 py-2 text-left text-sm hover:bg-muted"
-                          onClick={() => { setFornitoreId(f.id); setCerca(""); if (cascataTxt.trim() === "" && f.sconti_base?.length) setCascataTxt(formatCascata(f.sconti_base)); }}>
+                          onClick={() => { setFornitoreId(f.id); setCerca("");
+                            if (soloAnagrafica) { if (cascataTxt.trim() === "" && f.sconti_base?.length) setCascataTxt(formatCascata(f.sconti_base)); }
+                            else { const proposta = precompilaScontiAcquisto(scontiAcquisto, f.sconti_base ?? []); setScontiAcquisto(proposta.slot); setOltreTreSconti(proposta.oltreTre); }
+                          }}>
                           {f.ragione_sociale}{f.alias ? <span className="text-muted-foreground"> · {f.alias}</span> : null}
                         </Button>
                       ))}
@@ -270,10 +290,20 @@ export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch, 
           </div>
           <p className="text-xs text-muted-foreground">Fattore = quante {um.trim() || '[UM1]'} ci sono in 1 {um2.trim() || '[UM2]'}. Esempio: sacco da 25 kg venduto a tonnellate → U.M. T., U.M. secondaria NR, fattore 0,025. Lascia vuoto se l'articolo ha una sola unità.</p>
           {!controlliGamma.fattoreValido && <p role="alert" className="text-xs text-destructive">Indica un fattore maggiore di zero, con al massimo 4 decimali, per la U.M. secondaria.</p>}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {soloAnagrafica ? <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="grid gap-1.5"><Label htmlFor="aid-costo">Costo (€)</Label><Input id="aid-costo" inputMode="decimal" value={costo} onChange={(e) => setCosto(e.target.value)} /></div>
             <div className="grid gap-1.5"><Label htmlFor="aid-list">Listino fornitore (€)</Label><Input id="aid-list" inputMode="decimal" value={listino} onChange={(e) => setListino(e.target.value)} /></div>
-          </div>
+          </div> : <div className="grid gap-2 rounded-md border border-l-4 border-l-primary bg-card p-3">
+            <p className="text-sm font-semibold">Prezzo di acquisto</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="min-w-0 space-y-1.5 sm:col-span-3"><Label htmlFor="aid-list">Listino fornitore (€)</Label><Input id="aid-list" className="min-h-11" inputMode="decimal" value={listino} onChange={e => setListino(e.target.value)} onBlur={() => { if (listinoNum != null) setListino(formatNumeroIt(listinoNum, { minDecimals: 4, maxDecimals: 4 })); }} /></div>
+              {[0, 1, 2].map(i => <div key={i} className="min-w-0 space-y-1.5"><Label htmlFor={`aid-acq-sc${i + 1}`}>Sc. {i + 1} %</Label><Input id={`aid-acq-sc${i + 1}`} className="min-h-11" inputMode="decimal" value={scontiAcquisto[i] ?? ''} onChange={e => setScontiAcquisto(p => p.map((v, n) => n === i ? e.target.value : v))} /></div>)}
+              <div className="min-w-0 space-y-1.5"><Label htmlFor="aid-acq-magg-perc">Magg. %</Label><Input id="aid-acq-magg-perc" className="min-h-11" inputMode="decimal" value={maggAcquistoPerc} onChange={e => setMaggAcquistoPerc(e.target.value)} /></div>
+              <div className="min-w-0 space-y-1.5"><Label htmlFor="aid-acq-magg-euro">Magg. €</Label><Input id="aid-acq-magg-euro" className="min-h-11" inputMode="decimal" value={maggAcquistoEuro} onChange={e => setMaggAcquistoEuro(e.target.value)} onBlur={() => { const n = parseNumeroIt(maggAcquistoEuro); if (n != null) setMaggAcquistoEuro(formatNumeroIt(n, { minDecimals: 4, maxDecimals: 4 })); }} /></div>
+              <div className="min-w-0 space-y-1.5"><Label htmlFor="aid-costo">Costo netto (€)</Label><Input id="aid-costo" className="min-h-11" inputMode="decimal" readOnly={listino.trim() !== ''} value={listino.trim() !== '' ? costoUnit == null ? '' : formatNumeroIt(costoUnit, { minDecimals: 4, maxDecimals: 4 }) : costo} onChange={e => setCosto(e.target.value)} onBlur={() => { if (costoNum != null) setCosto(formatNumeroIt(costoNum, { minDecimals: 4, maxDecimals: 4 })); }} /></div>
+            </div>
+            {oltreTreSconti && <p role="alert" className="text-xs text-pv-arancio">Il fornitore ha più di 3 sconti base: verifica le condizioni d’acquisto, sono stati proposti solo i primi tre.</p>}
+          </div>}
           {!soloAnagrafica && <div className="grid gap-2 rounded-md border border-l-4 border-l-primary bg-card p-3">
             <p className="text-sm font-semibold">Prezzo di vendita</p>
             <p className="text-xs text-muted-foreground">Comanda l'ultimo campo che modifichi.</p>
@@ -298,7 +328,7 @@ export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch, 
               </span>
             </div>
           </div>}
-          {!numeriValidi && <p className="text-xs text-destructive">Costo e listino devono essere numeri (es. 12,5000)</p>}
+          {!numeriValidi && <p className="text-xs text-destructive">Costo, listino e condizioni d’acquisto devono essere numeri (es. 12,5000)</p>}
         </div>
         <DialogFooter className="gap-2">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>

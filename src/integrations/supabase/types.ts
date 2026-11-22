@@ -7282,6 +7282,11 @@ export type Database = {
       }
       righe_preventivo: {
         Row: {
+          acq_magg_euro: number | null
+          acq_magg_perc: number | null
+          acq_sc1: number | null
+          acq_sc2: number | null
+          acq_sc3: number | null
           aliquota_iva: number | null
           articolo_codice: string | null
           articolo_id: string | null
@@ -7326,6 +7331,11 @@ export type Database = {
           vendita: number | null
         }
         Insert: {
+          acq_magg_euro?: number | null
+          acq_magg_perc?: number | null
+          acq_sc1?: number | null
+          acq_sc2?: number | null
+          acq_sc3?: number | null
           aliquota_iva?: number | null
           articolo_codice?: string | null
           articolo_id?: string | null
@@ -7370,6 +7380,11 @@ export type Database = {
           vendita?: number | null
         }
         Update: {
+          acq_magg_euro?: number | null
+          acq_magg_perc?: number | null
+          acq_sc1?: number | null
+          acq_sc2?: number | null
+          acq_sc3?: number | null
           aliquota_iva?: number | null
           articolo_codice?: string | null
           articolo_id?: string | null
