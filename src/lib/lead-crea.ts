@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { LeadFonte, LeadPriorita, LeadTipo } from "@/lib/lead-costanti";
 import { normalizzaCodiceSdi } from './codice-sdi';
+import { normalizzaTestoLead as t } from './lead-anagrafica';
 
 /**
  * Creazione lead: unica via applicativa.
@@ -33,12 +34,6 @@ export type CreaLeadInput = {
   /** Nota registrata nello storico alla creazione. */
   notaStorico?: string;
 };
-
-/** Trim + null se vuoto: stessa normalizzazione del dialog. */
-function t(v?: string | null): string | null {
-  const s = (v ?? "").trim();
-  return s.length > 0 ? s : null;
-}
 
 export async function creaLead(input: CreaLeadInput): Promise<{ id: string }> {
   const payload = {

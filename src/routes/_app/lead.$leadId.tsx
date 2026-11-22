@@ -2,6 +2,7 @@ import { BloccoIndirizzo } from "@/components/blocco-indirizzo";
 import { CompilaDaPiva } from "@/components/lead/compila-da-piva";
 import { CampoCodiceSdi } from '@/components/lead/campo-codice-sdi';
 import { normalizzaCodiceSdi } from '@/lib/codice-sdi';
+import { LIMITE_IDENTIFICATIVO_LEAD, normalizzaTestoLead } from '@/lib/lead-anagrafica';
 import { eliminaLeadConFile } from "@/lib/lead-elimina.functions";
 import { isSoloShowroom } from "@/lib/permessi-showroom";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -271,8 +272,8 @@ function LeadDettaglioPage() {
         ragione_sociale: f.ragione_sociale.trim() || null,
         nome: f.nome.trim() || null,
         cognome: f.cognome.trim() || null,
-        partita_iva: f.partita_iva.trim() || null,
-        codice_fiscale: f.codice_fiscale.trim() || null,
+        partita_iva: normalizzaTestoLead(f.partita_iva),
+        codice_fiscale: normalizzaTestoLead(f.codice_fiscale),
         codice_sdi: normalizzaCodiceSdi(f.codice_sdi) || null,
         email: f.email.trim() || null,
         telefono: f.telefono.trim() || null,
@@ -822,7 +823,7 @@ function LeadDettaglioPage() {
                   <Input
                     className="min-w-0 flex-1 basis-28"
                     value={f.partita_iva}
-                    maxLength={20}
+                    maxLength={LIMITE_IDENTIFICATIVO_LEAD}
                     onChange={(e) => set("partita_iva", e.target.value)}
                   />
                   <CompilaDaPiva form={f} leadId={leadId} onApply={patch => setF(p => p ? ({ ...p, ...patch }) : p)} />
@@ -832,7 +833,7 @@ function LeadDettaglioPage() {
                   <Label className="text-xs">Codice fiscale</Label>
                   <Input
                     value={f.codice_fiscale}
-                    maxLength={20}
+                    maxLength={LIMITE_IDENTIFICATIVO_LEAD}
                     onChange={(e) => set("codice_fiscale", e.target.value)}
                   />
                 </div>

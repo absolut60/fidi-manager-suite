@@ -5,18 +5,35 @@ import { caricaDatiEsportazioneGamma } from './esportazione-gamma-dati';
 import { costruisciEsportazioneGamma, type DatiOrdineGamma } from './esportazione-gamma';
 import { normalizzaCodiceSdi } from './codice-sdi';
 import type { RiferimentoPreventivo } from './condizioni-riferimento';
+import { normalizzaTestoLead } from './lead-anagrafica';
 
-export function datiNuovoClienteGamma(d: DatiOrdineGamma): RiferimentoPreventivo & { codice_sdi: string } {
+export const CAMPI_ANAGRAFICA_LEAD_GAMMA = ['ragione_sociale', 'nome', 'cognome', 'partita_iva', 'codice_fiscale',
+  'indirizzo', 'cap', 'citta', 'provincia', 'telefono', 'cellulare', 'email', 'tipo_soggetto'] as const;
+export type CampoAnagraficaLeadGamma = typeof CAMPI_ANAGRAFICA_LEAD_GAMMA[number];
+export type AnagraficaLeadGamma = Partial<Record<CampoAnagraficaLeadGamma, string | null>>;
+type DatiNuovoClienteGamma = RiferimentoPreventivo & { codice_sdi: string; anagrafica?: AnagraficaLeadGamma };
+
+/** In questa finestra i valori già compilati non sono riscrivibili, neppure con suggerimenti Google. */
+export function patchAnagraficaLeadGamma(d: DatiOrdineGamma, valori: AnagraficaLeadGamma): AnagraficaLeadGamma {
+  return Object.fromEntries(CAMPI_ANAGRAFICA_LEAD_GAMMA.filter(c => !normalizzaTestoLead(d.lead?.[c]) && valori[c] !== undefined)
+    .map(c => [c, valori[c]]));
+}
+
+export function datiNuovoClienteGamma(d: DatiOrdineGamma): DatiNuovoClienteGamma {
   return { listino_rif: d.ordine.listino_rif ?? d.lead?.listino_rif ?? null,
     macrocategoria_rif: d.ordine.macrocategoria_rif?.trim() || d.lead?.macrocategoria_rif || null,
     categoria_rif: d.ordine.categoria_rif?.trim() || d.lead?.categoria_rif || null,
-    codice_sdi: d.lead?.codice_sdi ?? '' };
+    codice_sdi: d.lead?.codice_sdi ?? '',
+    anagrafica: Object.fromEntries(CAMPI_ANAGRAFICA_LEAD_GAMMA.map(c => [c, d.lead?.[c] ?? ''])) };
 }
 
 export async function completaDatiGamma(id: string, valori: ReturnType<typeof datiNuovoClienteGamma>, client: SupabaseClient<Database> = supabase) {
-  const { error } = await client.rpc('completa_dati_esportazione_gamma', { _ordine_id: id,
+  const anagrafica = Object.fromEntries(CAMPI_ANAGRAFICA_LEAD_GAMMA.filter(c => valori.anagrafica?.[c] !== undefined)
+    .map(c => { const v = valori.anagrafica?.[c]; return [c, v == null ? null : normalizzaTestoLead(v) ?? '']; }));
+  const { error } = await client.rpc('completa_dati_lead_esportazione_gamma', { _ordine_id: id,
     _listino: valori.listino_rif, _macrocategoria: valori.macrocategoria_rif, _categoria: valori.categoria_rif,
-    _codice_sdi: normalizzaCodiceSdi(valori.codice_sdi) } as unknown as Database['public']['Functions']['completa_dati_esportazione_gamma']['Args']);
+    // Il generatore non rappresenta NULL nei parametri RPC, ma SQL lo usa per "invariato".
+    _codice_sdi: normalizzaCodiceSdi(valori.codice_sdi), _anagrafica: anagrafica } as unknown as Database['public']['Functions']['completa_dati_lead_esportazione_gamma']['Args']);
   if (error) throw new Error(error.message);
 }
 

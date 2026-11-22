@@ -14,4 +14,5 @@
 - Gamma trial downloads prepare the BIFF8 Blob before the click and reuse salvaFile; the admin-only dialog never persists export state, preserving iOS activation and read-only trials.
 - Trial and final Gamma dialogs share ProblemiGamma; final export edits reuse the reference catalogs and CampoCodiceSdi, so error descriptions and new-customer options cannot drift.
 - Final Gamma export re-reads orders before uploading and registers only motor-approved IDs; the shared operation removes its own file on registration failure, keeping partial export and recovery atomic.
+- Gamma lead completion derives actions from AVVISI_LEAD_GAMMA motor results, reuses BloccoIndirizzo with opt-in per-field protection, and remounts drafts after the single save/refetch so warnings and editable fields reflect persisted values.
 - Gamma history/reopening and editor gates live in esportazioni-gamma-storico; RiapriOrdineGammaDialog is shared by list/editor and never accepts multiple orders. Locked-order cells use the existing read-only path with display-only values, while unexported orders retain their previous gates.

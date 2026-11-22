@@ -6,12 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
-export function BloccoIndirizzo({ value, onChange, onCoordinate, onScelto, disabled, etichette, obbligatori, limiti, placeholder, className, descrizione, residenzaUnica = false }: {
+export function BloccoIndirizzo({ value, onChange, onCoordinate, onScelto, disabled, solaLettura, etichette, obbligatori, limiti, placeholder, className, descrizione, residenzaUnica = false }: {
   value: ValoreIndirizzo;
   onChange: (parziale: Partial<ValoreIndirizzo>) => void;
   onCoordinate?: (lat: number, lng: number) => void;
   onScelto?: () => void;
   disabled?: boolean;
+  /** Opt-in: conserva singoli campi già compilati anche quando Google restituisce tutto l'indirizzo. */
+  solaLettura?: Partial<Record<keyof ValoreIndirizzo, boolean>>;
   etichette?: Partial<Record<keyof ValoreIndirizzo, string>>;
   obbligatori?: Partial<Record<keyof ValoreIndirizzo, boolean>>;
   limiti?: LimitiIndirizzo;
@@ -23,12 +25,16 @@ export function BloccoIndirizzo({ value, onChange, onCoordinate, onScelto, disab
 }) {
   const id = useId();
   const { data: mapsKey } = useChiaveMappe();
-  const cambia = (parziale: Partial<ValoreIndirizzo>) => { if (!disabled) onChange(normalizzaIndirizzo(parziale, limiti)); };
+  const cambia = (parziale: Partial<ValoreIndirizzo>) => {
+    if (disabled) return;
+    const modificabili = Object.fromEntries(Object.entries(parziale).filter(([campo]) => !solaLettura?.[campo as keyof ValoreIndirizzo]));
+    onChange(normalizzaIndirizzo(modificabili, limiti));
+  };
   const label = (campo: keyof ValoreIndirizzo, testo: string) => <Label htmlFor={`${id}-${campo}`}>{etichette?.[campo] ?? testo}{obbligatori?.[campo] ? " *" : ""}</Label>;
   return <div className={cn("grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-4", className)}>
     <div className="min-w-0 space-y-1.5 sm:col-span-4">
       {label("indirizzo", "Indirizzo")}
-      <IndirizzoAutocomplete id={`${id}-indirizzo`} value={value.indirizzo} apiKey={mapsKey} disabled={disabled} maxLength={limiti?.indirizzo} required={obbligatori?.indirizzo} placeholder={placeholder}
+      <IndirizzoAutocomplete id={`${id}-indirizzo`} value={value.indirizzo} apiKey={mapsKey} disabled={disabled || solaLettura?.indirizzo} maxLength={limiti?.indirizzo} required={obbligatori?.indirizzo} placeholder={placeholder}
         onChange={(indirizzo) => cambia({ indirizzo })}
         onScelto={(d) => {
           if (disabled) return;
@@ -40,7 +46,7 @@ export function BloccoIndirizzo({ value, onChange, onCoordinate, onScelto, disab
     </div>
     {!residenzaUnica && ([ ["cap", "CAP"], ["citta", "Città"], ["provincia", "Provincia"] ] as const).map(([campo, testo]) => <div key={campo} className={cn("min-w-0 space-y-1.5", campo === "citta" && "sm:col-span-2")}>
       {label(campo, testo)}
-      <Input id={`${id}-${campo}`} value={value[campo]} disabled={disabled} required={obbligatori?.[campo]} maxLength={limiti?.[campo]} onChange={(e) => cambia({ [campo]: e.target.value })}/>
+      <Input id={`${id}-${campo}`} value={value[campo]} disabled={disabled || solaLettura?.[campo]} required={obbligatori?.[campo]} maxLength={limiti?.[campo]} onChange={(e) => cambia({ [campo]: e.target.value })}/>
     </div>)}
   </div>;
 }

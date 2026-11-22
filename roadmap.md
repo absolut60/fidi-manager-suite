@@ -1,3 +1,8 @@
+# FM97 — Completa lead nella finestra Gamma
+- [x] RPC atomica compatibile e ACL verificate, RLS e motore invariati.
+- [x] Dati mancanti modificabili sul posto, indirizzo e normalizzazioni condivisi.
+- [x] Test SQL/TS clone e Playwright 320/375/390/768/1280/1920 con dati locali, rapporto con limiti autenticati.
+
 # FM97 — Prezzo d'acquisto manuale
 - [x] Colonne nullable e copia ordine verbatim, verifica definizione/impronte e RLS invariata.
 - [x] Formula unica, finestra acquisto e export manuale senza regressioni kit/vendita.

@@ -26,6 +26,7 @@ import {
   type LeadFonte, type LeadPriorita, type LeadTipo, puoGestireLead,
 } from "@/lib/lead-costanti";
 import { creaLead } from "@/lib/lead-crea";
+import { LIMITE_IDENTIFICATIVO_LEAD } from '@/lib/lead-anagrafica';
 import { CampoCodiceSdi } from './campo-codice-sdi';
 import { cercaDuplicati, DEDUP_CAMPO_LABEL, type DedupMatch } from "@/lib/lead-dedup";
 
@@ -259,13 +260,13 @@ export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
         <div>
           <Label className="text-xs">Partita IVA {checking && <Loader2 className="inline size-3 animate-spin" />}</Label>
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <Input className="min-w-0 flex-1 basis-28" value={f.partita_iva} maxLength={20} onChange={(e) => set("partita_iva", e.target.value)} />
+            <Input className="min-w-0 flex-1 basis-28" value={f.partita_iva} maxLength={LIMITE_IDENTIFICATIVO_LEAD} onChange={(e) => set("partita_iva", e.target.value)} />
             <CompilaDaPiva form={f} creazione onApply={patch => setF(p => ({ ...p, ...patch, tipo_soggetto: patch.tipo_soggetto === "azienda" ? "azienda" : p.tipo_soggetto }))} />
           </div>
         </div>
         <div>
           <Label className="text-xs">Codice fiscale</Label>
-          <Input value={f.codice_fiscale} maxLength={20} onChange={(e) => set("codice_fiscale", e.target.value)} />
+          <Input value={f.codice_fiscale} maxLength={LIMITE_IDENTIFICATIVO_LEAD} onChange={(e) => set("codice_fiscale", e.target.value)} />
         </div>
         <CampoCodiceSdi value={f.codice_sdi} onChange={v => set('codice_sdi', v)} />
         <div>

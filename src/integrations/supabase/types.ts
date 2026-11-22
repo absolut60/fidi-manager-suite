@@ -9439,6 +9439,17 @@ export type Database = {
         }
         Returns: undefined
       }
+      completa_dati_lead_esportazione_gamma: {
+        Args: {
+          _anagrafica?: Json
+          _categoria: string
+          _codice_sdi: string
+          _listino: number
+          _macrocategoria: string
+          _ordine_id: string
+        }
+        Returns: undefined
+      }
       condizione_pagamento_cambiata: {
         Args: { _attuale: string; _proposta: string }
         Returns: boolean

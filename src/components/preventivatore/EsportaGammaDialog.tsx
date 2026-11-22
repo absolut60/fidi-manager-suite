@@ -4,8 +4,11 @@ import { Download, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/use-auth';
 import { caricaDatiEsportazioneGamma } from '@/lib/esportazione-gamma-dati';
-import { costruisciEsportazioneGamma, puoEsportareGamma, type DatiOrdineGamma } from '@/lib/esportazione-gamma';
-import { completaDatiGamma, datiNuovoClienteGamma, esportaOrdiniGamma } from '@/lib/esportazione-gamma-operazioni';
+import { AVVISI_LEAD_GAMMA, costruisciEsportazioneGamma, puoEsportareGamma, type DatiOrdineGamma, type ProblemaEsportazione } from '@/lib/esportazione-gamma';
+import { completaDatiGamma, datiNuovoClienteGamma, esportaOrdiniGamma, patchAnagraficaLeadGamma, type CampoAnagraficaLeadGamma } from '@/lib/esportazione-gamma-operazioni';
+import { LIMITE_IDENTIFICATIVO_LEAD, normalizzaTestoLead } from '@/lib/lead-anagrafica';
+import { BloccoIndirizzo } from '@/components/blocco-indirizzo';
+import { Input } from '@/components/ui/input';
 import { opzioniCataloghiRiferimento, type CataloghiRiferimento } from '@/lib/condizioni-riferimento';
 import { salvaFile } from '@/lib/salva-file';
 import { Button } from '@/components/ui/button';
@@ -17,13 +20,22 @@ import { RiquadroAnagrafica } from '@/components/ui/riquadro-anagrafica';
 import { CampoCodiceSdi } from '@/components/lead/campo-codice-sdi';
 import { ProblemiGamma } from './ProblemiGamma';
 
-function DatiLeadGamma({ dati, cataloghi, disabled, onSave }: {
+function DatiLeadGamma({ dati, problemi, cataloghi, disabled, onSave }: {
   dati: DatiOrdineGamma; cataloghi?: CataloghiRiferimento | undefined; disabled: boolean;
+  problemi: ProblemaEsportazione[];
   onSave: (id: string, valori: ReturnType<typeof datiNuovoClienteGamma>) => Promise<void>;
 }) {
   const [valori, setValori] = useState(() => datiNuovoClienteGamma(dati));
   const [salvando, setSalvando] = useState(false);
   const [errore, setErrore] = useState('');
+  const [aperti, setAperti] = useState({ indirizzo: false, nome: false, identificativo_fiscale: false });
+  const anagrafica = valori.anagrafica ?? {};
+  const compilato = (campo: CampoAnagraficaLeadGamma) => Boolean(normalizzaTestoLead(dati.lead?.[campo]));
+  const campo = (chiave: CampoAnagraficaLeadGamma, label: string, limite: number) => <div className="grid min-w-0 gap-1.5">
+    <Label className="text-xs" htmlFor={`${dati.ordine.id}-${chiave}`}>{label}</Label>
+    <Input id={`${dati.ordine.id}-${chiave}`} value={anagrafica[chiave] ?? ''} disabled={disabled || salvando || compilato(chiave)} maxLength={limite}
+      className="min-h-11" onChange={e => setValori(p => ({ ...p, anagrafica: { ...p.anagrafica, [chiave]: e.target.value } }))} />
+  </div>;
   const selettore = (campo: 'listino_rif' | 'macrocategoria_rif' | 'categoria_rif', label: string, opzioni: { valore: string; label: string }[]) =>
     <div className="grid min-w-0 gap-1.5"><Label className="text-xs">{label}</Label>
       <Select value={String(valori[campo] ?? '__none__')} disabled={disabled || salvando || !cataloghi} onValueChange={v => setValori(p => ({ ...p, [campo]: v === '__none__' ? null : campo === 'listino_rif' ? Number(v) : v }))}>
@@ -38,10 +50,27 @@ function DatiLeadGamma({ dati, cataloghi, disabled, onSave }: {
       {selettore('categoria_rif', 'Categoria', cataloghi?.categorie.map(c => ({ valore: c.codice, label: c.label })) ?? [])}
       <CampoCodiceSdi value={valori.codice_sdi} onChange={v => setValori(p => ({ ...p, codice_sdi: v }))} />
     </div>
+    <div className="flex min-w-0 flex-col items-start gap-1">
+      {AVVISI_LEAD_GAMMA.map(c => { const p = problemi.find(p => p.codice === `lead_senza_${c}`); if (!p) return null;
+        const gruppo = c === 'cap' || c === 'citta' ? 'indirizzo' : c;
+        return <Button key={c} variant="link" className="h-auto min-h-10 max-w-full justify-start whitespace-normal px-0 text-left text-pv-arancio"
+          disabled={disabled || salvando} aria-expanded={aperti[gruppo]} onClick={() => setAperti(a => ({ ...a, [gruppo]: true }))}>Completa: {p.messaggio}</Button>;
+      })}
+    </div>
+    {aperti.nome && <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+      {dati.lead?.tipo_soggetto === 'persona_fisica' ? <>{campo('nome', 'Nome', 100)}{campo('cognome', 'Cognome', 100)}</> : campo('ragione_sociale', 'Ragione sociale', 200)}
+    </div>}
+    {aperti.identificativo_fiscale && <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+      {campo('partita_iva', 'Partita IVA', LIMITE_IDENTIFICATIVO_LEAD)}{campo('codice_fiscale', 'Codice fiscale', LIMITE_IDENTIFICATIVO_LEAD)}
+    </div>}
+    {aperti.indirizzo && <BloccoIndirizzo value={{ indirizzo: anagrafica.indirizzo ?? '', cap: anagrafica.cap ?? '', citta: anagrafica.citta ?? '', provincia: anagrafica.provincia ?? '' }}
+      disabled={disabled || salvando} solaLettura={{ indirizzo: compilato('indirizzo'), cap: compilato('cap'), citta: compilato('citta'), provincia: compilato('provincia') }}
+      limiti={{ indirizzo: 200, citta: 100, cap: 10, provincia: 5 }} className="[&_input]:min-h-11 [&_label]:text-xs"
+      onChange={d => setValori(p => ({ ...p, anagrafica: { ...p.anagrafica, ...d } }))} />}
     {errore && <p role="alert" className="break-words text-sm text-destructive">{errore}</p>}
     <Button variant="outline" className="min-h-11" disabled={disabled || salvando || !cataloghi} onClick={async () => {
       setSalvando(true); setErrore('');
-      try { await onSave(dati.ordine.id, valori); } catch (e) { setErrore(e instanceof Error ? e.message : 'Dati non salvati.'); }
+      try { await onSave(dati.ordine.id, { ...valori, anagrafica: patchAnagraficaLeadGamma(dati, anagrafica) }); } catch (e) { setErrore(e instanceof Error ? e.message : 'Dati non salvati.'); }
       finally { setSalvando(false); }
     }}>{salvando && <Loader2 className="mr-2 size-4 animate-spin" />}Salva dati</Button>
   </fieldset>;
@@ -68,7 +97,7 @@ export function EsportaGammaContenuto({ dati, cataloghi, erroreCataloghi, inCors
             <Badge variant={pronto ? 'outline' : 'destructive'} className={pronto ? 'text-pv-verde' : ''}>{pronto ? 'Pronto' : 'Non esportabile'}</Badge>
           </div>
           <ProblemiGamma problemi={esito.problemi.filter(p => p.ordineId === d.ordine.id)} dati={[d]} />
-          {d.ordine.lead_id && d.lead && <DatiLeadGamma dati={d} cataloghi={cataloghi} disabled={occupato} onSave={async (id, valori) => {
+          {d.ordine.lead_id && d.lead && <DatiLeadGamma key={JSON.stringify(datiNuovoClienteGamma(d))} dati={d} problemi={esito.problemi.filter(p => p.ordineId === d.ordine.id)} cataloghi={cataloghi} disabled={occupato} onSave={async (id, valori) => {
             setSalvataggi(n => n + 1);
             try { await onSave(id, valori); } finally { setSalvataggi(n => n - 1); }
           }} />}
