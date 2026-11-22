@@ -1,3 +1,8 @@
+# FM96 — Fetta 4b
+- [x] Schede/date server, selezione di tutti i principali filtrati e autore export.
+- [x] Finestra Gamma, completamento lead via RPC, caricamento/registrazione/ripulitura e download.
+- [x] Test TS/SQL clone, verifiche schermi richiesti, rapporto e commit; nessuna pubblicazione.
+
 # FM96 — Ritocco somma righe
 - [x] Somma nel solo motore per articolo/condizioni del documento, avvisi conservati e test ORD-104/26/UM2/fornitori.
 - [x] Migrazione trigger: solo tipo ordine, FOR SHARE; confronto definizione e prove SQL clone inclusa assenza lock preventivi.

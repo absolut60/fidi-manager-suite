@@ -9414,6 +9414,16 @@ export type Database = {
           saltate: number
         }[]
       }
+      completa_dati_esportazione_gamma: {
+        Args: {
+          _categoria: string
+          _codice_sdi: string
+          _listino: number
+          _macrocategoria: string
+          _ordine_id: string
+        }
+        Returns: undefined
+      }
       condizione_pagamento_cambiata: {
         Args: { _attuale: string; _proposta: string }
         Returns: boolean

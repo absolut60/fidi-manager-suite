@@ -1884,6 +1884,13 @@
       "when": 1795373364780,
       "tag": "0268_fm96_gamma_lock_solo_ordini",
       "breakpoints": true
+    },
+    {
+      "idx": 269,
+      "version": "7",
+      "when": 1795375012101,
+      "tag": "0269_fm96_completa_dati_esportazione_gamma",
+      "breakpoints": true
     }
   ]
 }

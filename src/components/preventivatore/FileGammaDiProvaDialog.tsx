@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { RiquadroAnagrafica } from '@/components/ui/riquadro-anagrafica';
 import { toast } from 'sonner';
+import { ProblemiGamma } from './ProblemiGamma';
 
 type EsitoGamma = ReturnType<typeof costruisciEsportazioneGamma>;
 export interface ProvaGammaPronta {
@@ -21,7 +22,6 @@ export function FileGammaDiProvaContenuto({ pronta, onClose }: { pronta: ProvaGa
   const { esito, dati, file } = pronta;
   const bloccanti = esito.problemi.filter(p => p.livello === 'bloccante');
   const avvisi = esito.problemi.filter(p => p.livello === 'avviso');
-  const descrizioni = new Map(dati.flatMap(d => d.righe.map(r => [r.id, r.descrizione ?? 'Riga senza descrizione'] as const)));
   const pronto = bloccanti.length === 0 && esito.ordiniEsportati.length > 0;
   return <>
     <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pb-2">
@@ -35,12 +35,7 @@ export function FileGammaDiProvaContenuto({ pronta, onClose }: { pronta: ProvaGa
         { problemi: avvisi, titolo: 'Da verificare', tono: 'arancio', classi: '', testo: 'text-pv-arancio' }] as const).map(gruppo => gruppo.problemi.length > 0 &&
         <RiquadroAnagrafica key={gruppo.titolo} tono={gruppo.tono} className={gruppo.classi}>
           <h3 className={`text-sm font-semibold ${gruppo.testo}`}>{gruppo.titolo} · {gruppo.problemi.length}</h3>
-          <ul className="mt-2 divide-y divide-border text-sm">
-            {gruppo.problemi.map((p, i) => <li key={`${p.codice}-${p.rigaId ?? ''}-${i}`} className="min-w-0 py-2 first:pt-0 last:pb-0">
-              {p.rigaId && <p className="mb-1 break-words text-xs font-medium text-foreground">{descrizioni.get(p.rigaId) ?? 'Riga senza descrizione'}</p>}
-              <p className={`break-words ${gruppo.testo}`}>{p.messaggio}</p>
-            </li>)}
-          </ul>
+          <div className="mt-2"><ProblemiGamma problemi={gruppo.problemi} dati={dati} /></div>
         </RiquadroAnagrafica>)}
     </div>
     <p className="shrink-0 text-xs text-muted-foreground">File di prova: l'ordine non viene segnato come esportato.</p>

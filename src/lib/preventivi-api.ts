@@ -278,11 +278,15 @@ export async function fetchPreventivi(f: PreventiviFilters): Promise<PreventivoL
 export interface ElencoPreventiviFilters extends PreventiviFilters {
   creato_da?: string[];
   per_me?: string | null;
+  esportazione_gamma?: "da_esportare" | "esportati";
+  esportato_dal?: string;
+  esportato_al?: string;
 }
 
 export interface ElencoPreventivoItem extends Omit<PreventivoListItem, "cliente"> {
   cliente: { id: string; ragione_sociale: string; codice_gestionale: string | null } | null;
   creato_da_nome: string | null;
+  esportato_gamma_nome?: string | null;
 }
 
 export interface ElencoPreventivi {
@@ -297,14 +301,20 @@ const SELECT_ELENCO = `*,
        cantiere:cantieri(id, nome),
        blocchi:blocchi_preventivo(righe:righe_preventivo(tipo_riga, quantita, qta_ordinata))`;
 
-export async function fetchElencoPreventivi(f: ElencoPreventiviFilters): Promise<ElencoPreventivi> {
+async function queryElencoPreventivi(f: ElencoPreventiviFilters, select = SELECT_ELENCO, conteggio = false) {
   let q = supabase
     .from("preventivi")
-    .select(SELECT_ELENCO)
-    .is("alternativa_di", null)
-    .order("data", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(500);
+    .select(select, conteggio ? { count: "exact", head: true } : {})
+    .is("alternativa_di", null);
+  if (f.tipo === "ordine" && f.esportazione_gamma) {
+    q = f.esportazione_gamma === "da_esportare" ? q.is("esportato_gamma_at", null) : q.not("esportato_gamma_at", "is", null);
+    if (f.esportazione_gamma === "esportati") {
+      if (f.esportato_dal) q = q.gte("esportato_gamma_at", inizioGiornoExport(f.esportato_dal));
+      if (f.esportato_al) q = q.lt("esportato_gamma_at", giornoSuccessivoExport(f.esportato_al));
+      q = q.order("esportato_gamma_at", { ascending: false });
+    }
+  }
+  q = q.order("data", { ascending: false }).order("created_at", { ascending: false }).order("id");
   if (f.tipo) q = q.eq("tipo", f.tipo);
   if (f.cliente_id?.length) q = q.in("cliente_id", f.cliente_id);
   if (f.stato?.length) q = q.in("stato", f.stato);
@@ -322,7 +332,50 @@ export async function fetchElencoPreventivi(f: ElencoPreventiviFilters): Promise
   } else if (f.per_me) {
     q = q.or(filtroPreventiviPerMe(f.per_me));
   }
-  const { data, error } = await q;
+  return { q };
+}
+
+/** Estremi inclusivi delle date italiane, anche durante l'ora legale. */
+export function inizioGiornoExport(data: string): string {
+  const mezzanotte = new Date(`${data}T00:00:00Z`);
+  const oraRoma = Number(new Intl.DateTimeFormat('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', hourCycle: 'h23' }).format(mezzanotte));
+  return new Date(mezzanotte.getTime() - oraRoma * 3_600_000).toISOString();
+}
+
+function giornoSuccessivoExport(data: string): string {
+  const d = new Date(`${data}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return inizioGiornoExport(d.toISOString().slice(0, 10));
+}
+
+/** Stessa query della lista, senza il tetto di visualizzazione; solo principali sotto RLS. */
+export async function fetchIdsOrdiniGamma(f: ElencoPreventiviFilters): Promise<string[]> {
+  const ids: string[] = [];
+  for (let offset = 0; ; offset += 500) {
+    const { q } = await queryElencoPreventivi({ ...f, tipo: "ordine", esportazione_gamma: "da_esportare" }, "id");
+    const { data, error } = await q.range(offset, offset + 499);
+    if (error) throw error;
+    const rows = data as unknown as { id: string }[] | null;
+    ids.push(...(rows ?? []).map(r => r.id));
+    if ((rows ?? []).length < 500) break;
+  }
+  return ids;
+}
+
+export async function fetchConteggiOrdiniGamma(f: ElencoPreventiviFilters) {
+  const conta = async (scheda: "da_esportare" | "esportati") => {
+    const { q } = await queryElencoPreventivi({ ...f, tipo: "ordine", esportazione_gamma: scheda }, "id", true);
+    const { count, error } = await q;
+    if (error) throw error;
+    return count ?? 0;
+  };
+  const [da_esportare, esportati] = await Promise.all([conta("da_esportare"), conta("esportati")]);
+  return { da_esportare, esportati };
+}
+
+export async function fetchElencoPreventivi(f: ElencoPreventiviFilters): Promise<ElencoPreventivi> {
+  const { q } = await queryElencoPreventivi(f);
+  const { data, error } = await q.limit(500);
   if (error) throw error;
   const principali = (data ?? []) as unknown as ElencoPreventivoItem[];
   const alternative: ElencoPreventivoItem[] = [];
@@ -356,7 +409,7 @@ async function popolaClientiElenco(items: ElencoPreventivoItem[]): Promise<void>
 }
 
 async function popolaNomiCreatoDa(items: ElencoPreventivoItem[]): Promise<void> {
-  const ids = new Set(items.map((i) => i.creato_da).filter((v): v is string => !!v));
+  const ids = new Set(items.flatMap(i => [i.creato_da, i.esportato_gamma_da]).filter((v): v is string => !!v));
   const map = new Map<string, string>();
   if (ids.size) {
     const { data, error } = await supabase.rpc("get_nomi_utenti" as never);
@@ -367,7 +420,10 @@ async function popolaNomiCreatoDa(items: ElencoPreventivoItem[]): Promise<void> 
       if (nome) map.set(p.id, nome);
     }
   }
-  for (const it of items) it.creato_da_nome = it.creato_da ? (map.get(it.creato_da) ?? null) : null;
+  for (const it of items) {
+    it.creato_da_nome = it.creato_da ? (map.get(it.creato_da) ?? null) : null;
+    it.esportato_gamma_nome = it.esportato_gamma_da ? (map.get(it.esportato_gamma_da) ?? null) : null;
+  }
 }
 
 export interface PreventivoConDettagli extends Preventivo {

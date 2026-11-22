@@ -1,13 +1,18 @@
 import { formatNumeroIt } from "@/lib/numero-it";
 import { formatDate } from "@/lib/fidi";
 import { useNavigate } from "@tanstack/react-router";
-import { useMemo, useState, useEffect, Fragment } from "react";
+import { useMemo, useState, useEffect, useRef, Fragment } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { puoScriverePreventivi } from "@/lib/permessi-preventivi";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
+import { puoEsportareGamma } from "@/lib/esportazione-gamma";
+import { EsportaGammaDialog } from "./EsportaGammaDialog";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -18,7 +23,7 @@ import {
 import { CornerDownRight, Plus, Search, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  fetchElencoPreventivi, STATI, STATI_LABEL, TIPI_DOC, TIPI_DOC_LABEL,
+  fetchElencoPreventivi, fetchIdsOrdiniGamma, fetchConteggiOrdiniGamma, STATI, STATI_LABEL, TIPI_DOC, TIPI_DOC_LABEL,
   type ElencoPreventivoItem, type StatoPreventivo, type TipoDoc, type TipoDocumento,
 } from "@/lib/preventivi-api";
 import { searchClienti } from "@/lib/preventivi-api";
@@ -33,9 +38,9 @@ import { nomeAssegnato } from '@/lib/assegnazione-preventivo';
 import { lineeAttive, mostraFiltroLinee } from '@/lib/linee-preventivo';
 import { BadgeLinea } from './BadgeLinea';
 
-function SoggettoElenco({ r }: { r: ElencoPreventivoItem }) {
+function SoggettoElenco({ r, intero = false }: { r: ElencoPreventivoItem; intero?: boolean }) {
   return <div className="min-w-0">
-    <Testo className="font-medium">{r.lead_id ? nomeLeadPreventivo(r.lead) : r.cliente?.ragione_sociale}</Testo>
+    <Testo className={cn("font-medium", intero && "line-clamp-none")}>{r.lead_id ? nomeLeadPreventivo(r.lead) : r.cliente?.ragione_sociale}</Testo>
     {r.lead_id ? <Badge variant="outline" className="mt-1 border-pv-blu/30 bg-pv-azzurro px-1.5 text-[10px] text-pv-blu">Lead</Badge> : r.cliente?.codice_gestionale && <span className="block font-mono text-[10px] text-muted-foreground">{r.cliente.codice_gestionale}</span>}
   </div>;
 }
@@ -44,6 +49,24 @@ const euro = (v: number | null | undefined) =>
   `€ ${formatNumeroIt(v ?? 0, { minDecimals: 2, maxDecimals: 2 })}`;
 const evasioneDi = (r: ElencoPreventivoItem) =>
   statoEvasionePreventivo({ righe: (r.blocchi ?? []).flatMap((b) => b.righe ?? []), chiuso_at: r.chiuso_at });
+
+/** Data sempre italiana, senza la lingua del controllo nativo del browser. */
+function DataExportFiltro({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  const visualizza = (v: string) => v ? v.split('-').reverse().join('/') : '';
+  const [testo, setTesto] = useState(() => visualizza(value));
+  const [errore, setErrore] = useState(false);
+  useEffect(() => { setTesto(visualizza(value)); setErrore(false); }, [value]);
+  const salva = (v: string) => {
+    if (!v) { onChange(''); setErrore(false); return; }
+    const parti = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(v);
+    if (!parti) { setErrore(true); return; }
+    const iso = `${parti[3]}-${parti[2]}-${parti[1]}`;
+    const data = new Date(`${iso}T12:00:00Z`);
+    if (Number.isNaN(data.getTime()) || data.toISOString().slice(0, 10) !== iso) { setErrore(true); return; }
+    setErrore(false); onChange(iso);
+  };
+  return <Label className="grid min-w-0 gap-1 text-xs">{label}<Input aria-label={label} placeholder="gg/mm/aaaa" inputMode="numeric" maxLength={10} className="min-h-11" value={testo} aria-invalid={errore} onChange={e => { setTesto(e.target.value); if (!e.target.value || /^\d{2}\/\d{2}\/\d{4}$/.test(e.target.value)) salva(e.target.value); }} onBlur={() => salva(testo)} />{errore && <span className="text-destructive">Data non valida: gg/mm/aaaa.</span>}</Label>;
+}
 
 /** Testo che va a capo su massimo 2 righe, intero nel title. */
 function Testo({ children, className }: { children: string | null | undefined; className?: string }) {
@@ -74,11 +97,20 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
   const nomeConteggio = (n: number) =>
     isOrdine ? (n === 1 ? "ordine" : "ordini") : (n === 1 ? "preventivo" : "preventivi");
 
-  const { user, roles } = useAuth();
+  const { user, roles, hasRole } = useAuth();
+  const queryClient = useQueryClient();
+  const puoEsportare = isOrdine && puoEsportareGamma(hasRole);
+  const [schedaGamma, setSchedaGamma] = useState<"da_esportare" | "esportati">("da_esportare");
+  const [selezionati, setSelezionati] = useState<string[]>([]);
+  const [selezionando, setSelezionando] = useState(false);
+  const [tuttiSelezionati, setTuttiSelezionati] = useState(false);
+  const [openGamma, setOpenGamma] = useState(false);
+  const filtriCorrenti = useRef<unknown>(null);
+  const selezionabile = puoEsportare && schedaGamma === "da_esportare";
   const puoScrivere = puoScriverePreventivi(roles as string[]);
   const { filtri: FV, setCampo: setCampoLista } = useFiltriPagina(isOrdine ? "ordini" : "preventivatore", {
     search: "", clienteId: [] as string[], stato: [] as string[], tipoDoc: [] as string[],
-    creatoDa: [] as string[], linea: [] as string[], mostraAlternative: true, perMe: false,
+    creatoDa: [] as string[], linea: [] as string[], mostraAlternative: true, perMe: false, esportatoDal: "", esportatoAl: "",
   }, { userId: user?.id, valida: { clienteId: Array.isArray, stato: Array.isArray, tipoDoc: Array.isArray, creatoDa: Array.isArray, linea: Array.isArray } });
   const search = FV.search;
   const clienteId = FV.clienteId;
@@ -103,14 +135,28 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
   }, [search]);
 
   const filters = useMemo(
-    () => ({ search: dSearch, cliente_id: clienteId, stato, tipo_doc: tipoDoc, creato_da: creatoDa, linea: mostraFiltroLinee ? linea : [], tipo, per_me: !isOrdine && perMe ? user?.id : null }),
-    [dSearch, clienteId, stato, tipoDoc, creatoDa, linea, tipo, isOrdine, perMe, user?.id],
+    () => ({ search: dSearch, cliente_id: clienteId, stato, tipo_doc: tipoDoc, creato_da: creatoDa, linea: mostraFiltroLinee ? linea : [], tipo, ...(isOrdine ? { esportazione_gamma: schedaGamma, esportato_dal: FV.esportatoDal, esportato_al: FV.esportatoAl } : {}), per_me: !isOrdine && perMe ? user?.id : null }),
+    [dSearch, clienteId, stato, tipoDoc, creatoDa, linea, tipo, isOrdine, perMe, user?.id, schedaGamma, FV.esportatoDal, FV.esportatoAl],
   );
+  filtriCorrenti.current = filters;
 
   const { data, isLoading } = useQuery({
     queryKey: ["preventivi", "elenco", filters],
     queryFn: () => fetchElencoPreventivi(filters),
   });
+  const { data: conteggi } = useQuery({ queryKey: ["preventivi", "gamma-conteggi", filters],
+    queryFn: () => fetchConteggiOrdiniGamma(filters), enabled: isOrdine });
+  useEffect(() => { setSelezionati([]); setTuttiSelezionati(false); }, [filters]);
+  const scegli = (id: string, v: boolean) => { setTuttiSelezionati(false); setSelezionati(p => v ? [...new Set([...p, id])] : p.filter(x => x !== id)); };
+  const selezionaTutti = async (v: boolean) => {
+    if (!v) { setSelezionati([]); setTuttiSelezionati(false); return; }
+    setSelezionando(true);
+    try { const ids = await fetchIdsOrdiniGamma(filters); if (filtriCorrenti.current !== filters) return; setSelezionati(ids); setTuttiSelezionati(ids.length > 0); }
+    catch (e) { toast.error(e instanceof Error ? e.message : 'Impossibile selezionare gli ordini.'); }
+    finally { setSelezionando(false); }
+  };
+  const testoExport = (r: ElencoPreventivoItem) => r.esportato_gamma_at
+    ? `Esportato il ${new Date(r.esportato_gamma_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', '')} da ${r.esportato_gamma_nome ?? 'Utente senza nome'}` : null;
   const { data: clienti = [] } = useQuery({
     queryKey: ["clienti-list"],
     queryFn: () => searchClienti(""),
@@ -122,9 +168,9 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
     const lettere = lettereElenco([...principali, ...alternative]);
     const altPer = new Map<string, ElencoPreventivoItem[]>();
     for (const a of alternative) {
-      const l = altPer.get(a.alternativa_di!) ?? [];
+      const l = altPer.get(a.alternativa_di ?? "") ?? [];
       l.push(a);
-      altPer.set(a.alternativa_di!, l);
+      altPer.set(a.alternativa_di ?? "", l);
     }
     for (const l of altPer.values()) l.sort((x, y) => (lettere.get(x.id) ?? "").localeCompare(lettere.get(y.id) ?? ""));
     return { principali, altPer, lettere };
@@ -144,7 +190,7 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
   }, [data, creatoDa]);
 
   const apri = (id: string) => navigate({ to: "/preventivatore/$id", params: { id } });
-  const nColonne = isOrdine ? 9 : 11;
+  const nColonne = (isOrdine ? 9 : 11) + (selezionabile ? 1 : 0);
 
   const riga = (r: ElencoPreventivoItem, alternativa: boolean, haAlt: boolean, indiceGruppo: number) => {
     const lettera = lettere.get(r.id) ?? "A";
@@ -154,6 +200,7 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
         onClick={() => apri(r.id)}
         className={cn("cursor-pointer text-xs hover:bg-muted/50", indiceGruppo % 2 === 1 ? "bg-muted/30" : "bg-card")}
       >
+        {selezionabile && <TableCell className="px-2 py-2 align-top" onClick={e => e.stopPropagation()}>{!alternativa && <label className="flex min-h-10 items-center justify-center"><Checkbox aria-label={`Seleziona ${r.numero}`} checked={selezionati.includes(r.id)} onCheckedChange={v => scegli(r.id, v === true)} /></label>}</TableCell>}
         <TableCell className={cn("px-2 py-2 align-top", (alternativa || haAlt) && "border-l-[3px] border-l-pv-blu")}>
           <div className="flex flex-wrap items-center gap-1">
             {alternativa && <CornerDownRight className="size-3 shrink-0 text-muted-foreground" aria-hidden />}
@@ -165,7 +212,8 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
         </TableCell>
         <TableCell className="px-2 py-2 align-top"><Testo className="font-medium">{r.titolo}</Testo>{!isOrdine && etichettaAssegnazione(r)}{r.cantiere?.nome && <Testo className="mt-1 text-muted-foreground 2xl:hidden">{r.cantiere.nome}</Testo>}</TableCell>
         <TableCell className="px-2 py-2 align-top">
-          <SoggettoElenco r={r} />
+          <SoggettoElenco r={r} intero={isOrdine} />
+          {isOrdine && testoExport(r) && <p className="mt-1 break-words text-xs text-muted-foreground">{testoExport(r)}</p>}
           {r.creato_da_nome && <span className="mt-1 block text-[11px] text-muted-foreground 2xl:hidden"><Testo>{`Creato da ${r.creato_da_nome}`}</Testo></span>}
         </TableCell>
         <TableCell className="hidden px-2 py-2 align-top text-muted-foreground 2xl:table-cell"><Testo>{r.cantiere?.nome}</Testo></TableCell>
@@ -182,7 +230,7 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
 
   return (
     <>
-      <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-2 p-3 lg:gap-4 lg:p-6">
+      <div className={cn("mx-auto flex w-full max-w-[1600px] flex-col gap-2 p-3 lg:gap-4 lg:p-6", selezionati.length > 0 && "pb-36 lg:pb-28")}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h1 className="text-lg font-semibold lg:text-2xl">{titolo}</h1>
@@ -195,6 +243,9 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
           )}
         </div>
 
+        {isOrdine && <Tabs value={schedaGamma} onValueChange={v => setSchedaGamma(v === 'esportati' ? 'esportati' : 'da_esportare')}>
+          <TabsList className="h-auto min-h-11 w-full sm:w-auto"><TabsTrigger value="da_esportare" className="min-h-10 flex-1">Da esportare ({conteggi?.da_esportare ?? '…'})</TabsTrigger><TabsTrigger value="esportati" className="min-h-10 flex-1">Esportati ({conteggi?.esportati ?? '…'})</TabsTrigger></TabsList>
+        </Tabs>}
         {!isOrdine && <div className="flex min-h-10 items-center gap-2"><Switch id="preventivi-per-me" checked={perMe} disabled={!user} onCheckedChange={v => setCampoLista('perMe', v)}/><Label htmlFor="preventivi-per-me" className="text-sm">Per me</Label></div>}
         <div className="flex items-center gap-2 lg:hidden">
           <div className="relative min-w-0 flex-1">
@@ -251,6 +302,7 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
             selezionati={creatoDa} onChange={(v) => setCampoLista("creatoDa", v)}
           />
           {mostraFiltroLinee && <FiltroMultiplo etichetta="Linea" testoTutti="Tutte le linee" className="h-10 text-sm lg:w-48" opzioni={lineeAttive().map(l => ({ valore: l.codice, label: l.etichetta }))} selezionati={linea} onChange={v => setCampoLista('linea', v)} />}
+          {isOrdine && schedaGamma === 'esportati' && <><DataExportFiltro label="Esportato dal" value={FV.esportatoDal} onChange={v => setCampoLista('esportatoDal', v)} /><DataExportFiltro label="Esportato al" value={FV.esportatoAl} onChange={v => setCampoLista('esportatoAl', v)} /></>}
           <div className="flex h-10 items-center gap-2 px-1">
             <Switch
               id={`mostra-alternative-${tipo}`}
@@ -276,12 +328,13 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
             ) : principali.length === 0 ? (
               <div className="py-8 text-center text-sm text-muted-foreground">{labelEmpty}</div>
             ) : (
-              <ElencoSchede finoA="lg">
+              <ElencoSchede finoA="lg" {...(selezionabile ? { selezioneTutti: { tutti: tuttiSelezionati, alcuni: selezionati.length > 0, disabled: selezionando, onChange: v => void selezionaTutti(v), etichetta: `Seleziona tutte (${conteggi?.da_esportare ?? principali.length})` } } : {})}>
                 {principali.map((r, indiceGruppo) => {
                   const alt = mostraAlternative ? (altPer.get(r.id) ?? []) : [];
                   return (
                     <SchedaLista
                       key={r.id}
+                      {...(selezionabile ? { selezione: { checked: selezionati.includes(r.id), onChange: (v: boolean) => scegli(r.id, v) } } : {})}
                       className={cn(indiceGruppo % 2 === 1 ? "bg-muted/30" : "bg-card", (altPer.get(r.id)?.length ?? 0) > 0 && "border-l-[3px] border-l-pv-blu")}
                       onClick={() => apri(r.id)}
                       colonneCampi={2}
@@ -304,11 +357,12 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
                       campi={[
                         {
                           etichetta: "Cliente/Lead",
-                          valore: <SoggettoElenco r={r} />,
+                          valore: <SoggettoElenco r={r} intero={isOrdine} />,
                         },
                         { etichetta: "Totale", valore: <span className="font-semibold tabular-nums">{euro(r.totale)}</span> },
                         { etichetta: "Creato da", valore: r.creato_da_nome ?? "—" },
                         { etichetta: "Data", valore: formatDate(r.data) },
+                        ...(isOrdine && testoExport(r) ? [{ etichetta: "Gamma", valore: testoExport(r) }] : []),
                       ]}
                       footer={
                         alt.length > 0 ? (
@@ -340,6 +394,7 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
             <Table className="table-fixed">
               <TableHeader>
                 <TableRow className="bg-pv-testa text-[11px] uppercase tracking-wide hover:bg-pv-testa">
+                  {selezionabile && <TableHead className="w-12 px-2"><label className="flex min-h-10 items-center justify-center"><Checkbox aria-label="Seleziona tutte" checked={tuttiSelezionati ? true : selezionati.length ? "indeterminate" : false} disabled={selezionando} onCheckedChange={() => void selezionaTutti(!tuttiSelezionati)} /></label></TableHead>}
                   <TableHead className="w-[6.5rem] px-2 2xl:w-[7.5rem]">Numero</TableHead>
                   <TableHead className="min-w-0 px-2">Titolo</TableHead>
                   <TableHead className="min-w-0 px-2">Cliente/Lead</TableHead>
@@ -375,6 +430,8 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
         </div>
       </div>
 
+      {selezionabile && selezionati.length > 0 && <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-card p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-sm"><div className="mx-auto flex max-w-7xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-end"><Button variant="outline" className="min-h-11" onClick={() => { setSelezionati([]); setTuttiSelezionati(false); }}>Annulla selezione</Button><Button className="min-h-11" disabled={selezionando} onClick={() => setOpenGamma(true)}>Esporta in Gamma ({selezionati.length})</Button></div></div>}
+      {openGamma && <EsportaGammaDialog ids={selezionati} open={openGamma} onOpenChange={setOpenGamma} onSuccess={() => { setSelezionati([]); setTuttiSelezionati(false); void queryClient.invalidateQueries({ queryKey: ['preventivi'] }); }} />}
       <NuovoPreventivoDialog open={openNew} onOpenChange={setOpenNew} tipo={tipo} />
     </>
   );

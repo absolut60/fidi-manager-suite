@@ -12,3 +12,5 @@
 - Shared Gamma picker portals open only for laid-out triggers and close when hidden, so responsive copies never open duplicate searches or duplicate CSS breakpoint logic.
 - Quote assignment uses AssegnazionePreventivo and the shared assignable-user query; writes contain only assignment fields and share the quote save key, while notifications remain exclusively SQL-trigger-owned to avoid duplicates.
 - Gamma trial downloads prepare the BIFF8 Blob before the click and reuse salvaFile; the admin-only dialog never persists export state, preserving iOS activation and read-only trials.
+- Trial and final Gamma dialogs share ProblemiGamma; final export edits reuse the reference catalogs and CampoCodiceSdi, so error descriptions and new-customer options cannot drift.
+- Final Gamma export re-reads orders before uploading and registers only motor-approved IDs; the shared operation removes its own file on registration failure, keeping partial export and recovery atomic.
