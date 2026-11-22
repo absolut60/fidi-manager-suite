@@ -1,3 +1,8 @@
+# FM95 — Fetta 3a
+- [x] Migrazione 0263: SDI lead nullable e copia verbatim dei tre riferimenti nell'ordine; ACL e schema verificati, dati non modificati.
+- [x] Motore puro Gamma, scrittura BIFF8 e letture a blocchi con RLS esistente; 1313 test verdi, typecheck automatico OK, rapporto fm95-fetta3a.md.
+- [ ] Lettura live del loader con sessione amministratore: sessione personale assente, ruolo tecnico non può assumere authenticated; ACL/policy reali verificate, nessun bypass. Nessuna schermata o pubblicazione.
+
 # FM94 — Fetta 2
 - [x] Data di consegna nullable 0262, testi condivisi e scelta fornitore sulle sole righe Gamma degli ordini.
 - [x] 1263 test verdi, verifiche 320/375/390/768/1280/1920 e rapporto fm94-fetta2.md; pagina temporanea rimossa.

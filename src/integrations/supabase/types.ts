@@ -4744,6 +4744,7 @@ export type Database = {
           citta: string | null
           cliente_id: string | null
           codice_fiscale: string | null
+          codice_sdi: string | null
           cognome: string | null
           condizione_pagamento_cod: string | null
           conversione_tipo: string | null
@@ -4788,6 +4789,7 @@ export type Database = {
           citta?: string | null
           cliente_id?: string | null
           codice_fiscale?: string | null
+          codice_sdi?: string | null
           cognome?: string | null
           condizione_pagamento_cod?: string | null
           conversione_tipo?: string | null
@@ -4832,6 +4834,7 @@ export type Database = {
           citta?: string | null
           cliente_id?: string | null
           codice_fiscale?: string | null
+          codice_sdi?: string | null
           cognome?: string | null
           condizione_pagamento_cod?: string | null
           conversione_tipo?: string | null
