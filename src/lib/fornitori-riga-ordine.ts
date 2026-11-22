@@ -9,7 +9,19 @@ export async function cercaFornitoriRiga(termine: string) {
   return data ?? [];
 }
 
-export type FornitoreOrdine = { id: string; ragione_sociale: string | null };
+export type FornitoreOrdine = { id: string; ragione_sociale: string | null; cambiabile?: boolean };
+
+/** FM97: la matita del fornitore di riga compare solo quando serve. */
+export function fornitoreRigaCambiabile(
+  riga: { fornitore_id?: string | null },
+  articolo: { fornitore_pref_id?: string | null } | null | undefined,
+  numeroFornitori: number,
+): boolean {
+  if (numeroFornitori >= 2) return true;
+  const pref = articolo?.fornitore_pref_id || null;
+  if (!pref && !riga.fornitore_id) return true;
+  return !!riga.fornitore_id && riga.fornitore_id !== pref;
+}
 
 /** Due letture per gruppo di righe, mai una ricerca del nome per ogni riga. */
 export async function fornitoriRigheOrdine(righe: readonly { id: string; articolo_codice: string | null; fornitore_id: string | null }[]) {
@@ -18,6 +30,13 @@ export async function fornitoriRigheOrdine(righe: readonly { id: string; articol
   const { data: articoli, error } = await supabase.from('articoli_gamma').select('codice, fornitore_pref_id').in('codice', codici);
   if (error) throw error;
   const catalogo = new Map((articoli ?? []).map(a => [a.codice, a]));
+  const { data: collegati, error: erroreCollegati } = await supabase.from('articoli_gamma_fornitori').select('articolo_codice, fornitore_id').in('articolo_codice', codici);
+  if (erroreCollegati) throw erroreCollegati;
+  const perArticolo = new Map<string, Set<string>>();
+  for (const c of collegati ?? []) if (c.fornitore_id) {
+    const set = perArticolo.get(c.articolo_codice) ?? new Set<string>(); set.add(c.fornitore_id); perArticolo.set(c.articolo_codice, set);
+  }
+  const cambiabili = new Map(righe.map(r => [r.id, fornitoreRigaCambiabile(r, catalogo.get(r.articolo_codice ?? ''), perArticolo.get(r.articolo_codice ?? '')?.size ?? 0)]));
   const righeIds = new Map(righe.map(r => [r.id, fornitoreRigaOrdine(r, catalogo.get(r.articolo_codice ?? ''))]));
   const ids = [...new Set([...righeIds.values()].filter((id): id is string => !!id))];
   const nomi = new Map<string, FornitoreOrdine>();
@@ -26,7 +45,7 @@ export async function fornitoriRigheOrdine(righe: readonly { id: string; articol
     if (error) throw error;
     for (const f of data ?? []) nomi.set(f.id, f);
   }
-  return new Map([...righeIds].map(([rigaId, id]) => [rigaId, id ? nomi.get(id) ?? { id, ragione_sociale: null } : null]));
+  return new Map([...righeIds].map(([rigaId, id]) => [rigaId, id ? { ...(nomi.get(id) ?? { id, ragione_sociale: null }), cambiabile: cambiabili.get(rigaId) ?? true } : null]));
 }
 
 export async function fornitoriCollegatiArticolo(codice: string) {

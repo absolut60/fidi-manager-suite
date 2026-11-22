@@ -606,7 +606,7 @@ function useCelleRiga(p: RigaProps) {
         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } }}
         onBlur={(e) => { if ((e.target.value || null) !== row.descrizione) onPatch({ descrizione: e.target.value || null }); }}
         className="block min-h-[26px] w-full min-w-0 resize-none overflow-hidden whitespace-pre-wrap break-words rounded border border-transparent bg-transparent px-1.5 py-1 font-sans text-xs leading-4 shadow-none outline-none [field-sizing:content] hover:border-input focus:border-ring focus:bg-card focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50" placeholder={isText ? "Nota libera…" : isSubtotal ? "Sotto-totale" : "Descrizione…"} />
-      {p.tipoDocumento === 'ordine' && valorizzata && tipo !== 'manuale' && row.articolo_codice && <FornitoreRigaOrdine codice={row.articolo_codice} fornitore={p.fornitore} modificabile={p.fornitoreModificabile} caricamento={p.fornitoreCaricamento} errore={p.fornitoreErrore} onSave={p.onFornitore} />}
+      {p.tipoDocumento === 'ordine' && valorizzata && tipo !== 'manuale' && row.articolo_codice && <FornitoreRigaOrdine codice={row.articolo_codice} fornitore={p.fornitore} modificabile={p.fornitoreModificabile && !p.fornitoreCaricamento && (p.fornitore === null || p.fornitore.cambiabile !== false)} caricamento={p.fornitoreCaricamento} errore={p.fornitoreErrore} onSave={p.onFornitore} />}
       {prezzoMancante && <span role="alert" className="mt-0.5 block font-sans text-[11px] font-semibold text-destructive">Prezzo non disponibile: inseriscilo a mano</span>}
     </>
   );
