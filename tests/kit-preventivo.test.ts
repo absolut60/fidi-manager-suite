@@ -70,6 +70,10 @@ test('FM91 Da kit: ricalcolo mq usa incidenza salvata e mantiene il peso unitari
 
 test('FM91 Da kit: articolo manuale conserva anagrafica, costo unitario e prezzo nuovo vuoto', () => {
   const k = { ...kit, componenti: [{ ordine: 1, n_pezzi: 2, articolo_codice: null, articolo: null, codice_articolo_fornitore: 'MAN-1', descrizione: 'Articolo in definizione', um: 'NR', fornitore_id: 'fornitore', marca: 'Marca', costo: 3, listino_fornitore: 12, ruolo: 'LASTRE', peso_unitario: 4 }] } as unknown as KitConComponenti;
+  const componente = k.componenti[0];
+  if (!componente) throw new Error('Componente mancante');
+  Object.assign(componente, { codice_famiglia: '01', codice_sottofamiglia: '02', um2: 'CF', fattore_conversione: 1.44 });
+  expect(prepara(k).righe[0]).toMatchObject({ codice_famiglia: '01', codice_sottofamiglia: '02', um2: 'CF', fattore_conversione: 1.44 });
   expect(prepara(k).righe[0]).toMatchObject({ tipo_riga: 'manuale', articolo_codice: null, codice_articolo_fornitore: 'MAN-1', descrizione: 'Articolo in definizione', um: 'NR', fornitore_id: 'fornitore', marca: 'Marca', costo: 600, listino_fornitore: 12, incidenza: 2, quantita: 200, prezzo_unit: null, importo: 0, fonte_prezzo: 'manuale', peso: 800, ruolo_kit: 'LASTRE' });
 });
 

@@ -1821,6 +1821,20 @@
       "when": 1795285753574,
       "tag": "0259_fm93_stato_ordine_ripristino",
       "breakpoints": true
+    },
+    {
+      "idx": 260,
+      "version": "7",
+      "when": 1795360754069,
+      "tag": "0260_fm94_articoli_manuali_gamma",
+      "breakpoints": true
+    },
+    {
+      "idx": 261,
+      "version": "7",
+      "when": 1795360802911,
+      "tag": "0261_fm94_copia_campi_gamma",
+      "breakpoints": true
     }
   ]
 }

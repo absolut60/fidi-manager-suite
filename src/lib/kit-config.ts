@@ -33,6 +33,8 @@ export function patchManualeKit(p: Database['public']['Tables']['righe_preventiv
     articolo_codice: null, codice_articolo_fornitore: p.codice_articolo_fornitore ?? null,
     descrizione: p.descrizione ?? null, um: p.um ?? null, fornitore_id: p.fornitore_id ?? null,
     marca: p.marca ?? null, costo: p.costo ?? null, listino_fornitore: p.listino_fornitore ?? null,
+    codice_famiglia: p.codice_famiglia ?? null, codice_sottofamiglia: p.codice_sottofamiglia ?? null,
+    um2: p.um2 ?? null, fattore_conversione: p.fattore_conversione ?? null,
   };
 }
 

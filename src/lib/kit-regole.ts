@@ -2,7 +2,7 @@ import type { Database } from '@/integrations/supabase/types';
 
 type Tabelle = Database['public']['Tables'];
 export type CampiArticoloKit = Partial<Pick<Tabelle['kit_componenti']['Row'],
-  'articolo_codice' | 'codice_articolo_fornitore' | 'descrizione' | 'um' | 'fornitore_id' | 'marca' | 'costo' | 'listino_fornitore' | 'note'>>;
+  'articolo_codice' | 'codice_articolo_fornitore' | 'descrizione' | 'um' | 'fornitore_id' | 'marca' | 'costo' | 'listino_fornitore' | 'note' | 'codice_famiglia' | 'codice_sottofamiglia' | 'um2' | 'fattore_conversione'>>;
 export type CampiSempliciKit = Pick<Tabelle['kit_componenti']['Row'],
   'n_pezzi' | 'passo' | 'passo_2' | 'consumo' | 'lati' | 'confezione' | 'sfrido' | 'riga_rif' | 'peso_unitario'>;
 export const CAMPI_CALCOLO_SEMPLICE = ['n_pezzi', 'passo', 'passo_2', 'consumo', 'lati', 'confezione', 'sfrido', 'riga_rif'] as const;
@@ -15,6 +15,7 @@ export type ArticoloRisoltoKit = { tipo: 'gamma'; codice: string } | {
   tipo: 'manuale'; codice_articolo_fornitore: string | null; descrizione: string | null;
   um: string | null; fornitore_id: string | null; marca: string | null;
   costo: number | null; listino_fornitore: number | null; note: string | null;
+  codice_famiglia: string | null; codice_sottofamiglia: string | null; um2: string | null; fattore_conversione: number | null;
 };
 export interface RigaRegoleKit {
   ordine: number;
@@ -38,6 +39,8 @@ function risolviArticolo(campi: CampiArticoloKit): ArticoloRisoltoKit {
     descrizione: campi.descrizione ?? null, um: campi.um ?? null, fornitore_id: campi.fornitore_id ?? null,
     marca: campi.marca ?? null, costo: campi.costo ?? null, listino_fornitore: campi.listino_fornitore ?? null,
     note: campi.note ?? null,
+    codice_famiglia: campi.codice_famiglia ?? null, codice_sottofamiglia: campi.codice_sottofamiglia ?? null,
+    um2: campi.um2 ?? null, fattore_conversione: campi.fattore_conversione ?? null,
   };
 }
 

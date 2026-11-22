@@ -597,8 +597,8 @@ function useCelleRiga(p: RigaProps) {
     tipo, isCompact, isSubtotal, valorizzata, segno, kitSenzaPrezzo,
     articolo,
     codice,
-    um: row.articolo_codice ? <CellaUm idx={p.idx} um1={unita.um1 ?? unita.um ?? row.um ?? "—"} um2={unita.convertibile ? unita.um2 ?? null : null}
-      fattore={row.unita_gamma?.fattore_conversione ?? null} secondaria={!!unita.secondaria} disabled={readOnly}
+    um: row.articolo_codice || unita.convertibile ? <CellaUm idx={p.idx} um1={unita.um1 ?? unita.um ?? row.um ?? "—"} um2={unita.convertibile ? unita.um2 ?? null : null}
+      fattore={unita.fattore} secondaria={!!unita.secondaria} disabled={readOnly}
       onChange={(um_scelta) => onPatch({ um_scelta })} /> : (
       <CellaUm idx={p.idx} um1={row.um ?? ""} um2={null} fattore={null} secondaria={false} disabled={readOnly}
         onChange={() => {}} onManualCommit={(um) => onPatch({ um })} />

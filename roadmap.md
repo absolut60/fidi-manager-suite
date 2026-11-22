@@ -1,3 +1,9 @@
+# FM94 — Fetta 1
+- [x] Schema nullable 0260, vista famiglie e copie SQL verbatim 0261; nessun aggiornamento dati.
+- [x] Fonte unica codice Gamma, finestra manuale, conversioni e copie TS.
+- [x] 1258 test verdi, controllo tipi/compilazione automatica OK, fotografie 320/375/390/768/1280/1920 e rapporto fm94-fetta1.md; pagina temporanea rimossa.
+- [ ] Salvataggio autenticato persistito: account personale non disponibile; compilazione/salvataggio/rilettura verificati con risposte locali, nessun dato di prova nel database.
+
 # FM93 — Fetta 3
 - [x] Migrazioni 0258/0259: stato Ordinato automatico e ripristino dopo ultimo ordine.
 - [x] Stato/filtro condivisi, menu protetto e badge Chiuso con sottotesto separato.

@@ -69,6 +69,8 @@ export const MAPPA_DB_KIT_COMPONENTI: Record<keyof Tabelle['kit_componenti']['Ro
   confezione: 'CONFEZIONE', sfrido: 'SFRIDO', riga_rif: 'CALCOLA_DALLA_RIGA', peso_unitario: 'PESO_UNITARIO', note: 'NOTE',
   fornitore_id: 'escluso: articolo manuale, conservato dalla riga precedente con stesso ordine e codice',
   marca: 'escluso: articolo manuale, conservato', costo: 'escluso: articolo manuale, conservato', listino_fornitore: 'escluso: articolo manuale, conservato',
+  codice_famiglia: 'escluso: articolo manuale, conservato', codice_sottofamiglia: 'escluso: articolo manuale, conservato',
+  um2: 'escluso: articolo manuale, conservato', fattore_conversione: 'escluso: articolo manuale, conservato',
 };
 
 export const FOGLIO_KIT = 'KIT';

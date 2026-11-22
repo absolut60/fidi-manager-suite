@@ -32,6 +32,8 @@ export function preparaRigheKitPreventivo(args: {
     const incidenza = risultato.quantitaPerUnita;
     const quantita = quantitaDaIncidenza(incidenza, args.quantitaBase > 0 ? args.quantitaBase : 1) ?? 0;
     const comuni = { incidenza, quantita, ordine: c.ordine, ruolo_kit: c.ruolo, segno: 1, aliquota_iva: null,
+      codice_famiglia: c.codice_famiglia, codice_sottofamiglia: c.codice_sottofamiglia,
+      um2: c.um2, fattore_conversione: c.fattore_conversione,
       peso: pesoRigaGamma(c.peso_unitario ?? c.articolo?.peso_netto, quantita) };
     if (c.articolo_codice && c.articolo) {
       righe.push({ ...comuni, tipo_riga: 'articolo_singolo',

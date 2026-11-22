@@ -79,7 +79,7 @@ export function motivoTrasformazioneDisabilitata(esito: ReturnType<typeof statoE
     : esito.stato === 'evaso' ? 'Tutte le righe sono già state ordinate' : null;
 }
 
-type RigaUnitaEvasione = RigaQta & { um?: string | null; um_scelta?: string | null; unita_gamma?: UnitaGammaRiga | null };
+type RigaUnitaEvasione = RigaQta & { um?: string | null; um2?: string | null; fattore_conversione?: number | null; um_scelta?: string | null; unita_gamma?: UnitaGammaRiga | null };
 export function evasioneRigaInUnita(riga: RigaUnitaEvasione) {
   const esito = statoEvasioneRiga(riga);
   const converti = (quantita: number) => rigaInUnita({ ...riga, prezzo_unit: null, quantita }, riga.unita_gamma).quantita ?? 0;

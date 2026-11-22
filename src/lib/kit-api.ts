@@ -10,7 +10,7 @@ export type Kit = Pick<Tabelle['kit']['Row'], 'id' | 'codice' | 'nome' | 'linea'
 export type KitInsert = Pick<Tabelle['kit']['Insert'], 'nome' | 'um_base' | 'descrizione_tecnica' | 'specifiche'> & { codice: string; linea: LineaPreventivo; famiglia_id: string };
 export type KitUpdate = Partial<Omit<KitInsert, 'linea'>>;
 export type KitFamiglia = Tabelle['kit_famiglie']['Row'];
-type CampoComponenteKit = 'id' | 'kit_id' | 'articolo_codice' | 'codice_articolo_fornitore' | 'descrizione' | 'um' | 'fornitore_id' | 'marca' | 'costo' | 'listino_fornitore' | 'note' | 'ruolo' | 'ordine' | 'n_pezzi' | 'passo' | 'passo_2' | 'consumo' | 'lati' | 'confezione' | 'sfrido' | 'peso_unitario' | 'riga_rif' | 'created_at' | 'updated_at';
+type CampoComponenteKit = 'id' | 'kit_id' | 'articolo_codice' | 'codice_articolo_fornitore' | 'descrizione' | 'um' | 'fornitore_id' | 'marca' | 'costo' | 'listino_fornitore' | 'note' | 'ruolo' | 'ordine' | 'n_pezzi' | 'passo' | 'passo_2' | 'consumo' | 'lati' | 'confezione' | 'sfrido' | 'peso_unitario' | 'riga_rif' | 'created_at' | 'updated_at' | 'codice_famiglia' | 'codice_sottofamiglia' | 'um2' | 'fattore_conversione';
 export type KitComponente = Pick<Tabelle['kit_componenti']['Row'], CampoComponenteKit>;
 export type KitComponenteInsert = Pick<Tabelle['kit_componenti']['Insert'], CampoComponenteKit>;
 export type KitComponenteUpdate = Pick<Tabelle['kit_componenti']['Update'], CampoComponenteKit>;
@@ -18,7 +18,7 @@ export interface ArticoloKitGamma { codice: string; descrizione: string | null; 
 export interface KitConComponenti extends Kit { componenti: (KitComponente & { articolo: ArticoloKitGamma | null })[] }
 
 const KIT_CAMPI = 'id,codice,nome,linea,famiglia_id,um_base,descrizione_tecnica,specifiche,created_at,updated_at' as const;
-const COMPONENTE_CAMPI = 'id,kit_id,articolo_codice,codice_articolo_fornitore,descrizione,um,fornitore_id,marca,costo,listino_fornitore,note,ruolo,ordine,n_pezzi,passo,passo_2,consumo,lati,confezione,sfrido,peso_unitario,riga_rif,created_at,updated_at' as const;
+const COMPONENTE_CAMPI = 'id,kit_id,articolo_codice,codice_articolo_fornitore,descrizione,um,fornitore_id,marca,costo,listino_fornitore,note,ruolo,ordine,n_pezzi,passo,passo_2,consumo,lati,confezione,sfrido,peso_unitario,riga_rif,created_at,updated_at,codice_famiglia,codice_sottofamiglia,um2,fattore_conversione' as const;
 const KIT_SELECT = `${KIT_CAMPI},componenti:kit_componenti(${COMPONENTE_CAMPI})` as const;
 
 export async function fetchKitFamiglie(): Promise<KitFamiglia[]> {

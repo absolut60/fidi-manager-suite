@@ -13,11 +13,13 @@ export type UnitaGammaRiga = { um: string | null; um2: string | null; fattore_co
 
 /** Presentation and edits only: persisted quantities/prices/costs always remain UM1. */
 export function rigaInUnita(
-  riga: ImportoRigaInput & { incidenza?: number | null; costo?: number | null; um?: string | null; um_scelta?: string | null },
+  riga: ImportoRigaInput & { incidenza?: number | null; costo?: number | null; articolo_codice?: string | null; um?: string | null; um2?: string | null; fattore_conversione?: number | null; um_scelta?: string | null },
   gamma?: UnitaGammaRiga | null,
   patch: { quantita?: number | null; incidenza?: number | null; prezzo_unit?: number | null; costo_unit?: number | null } = {},
 ) {
-  const u = unitaArticolo(gamma ?? { um: riga.um ?? null, um2: null, fattore_conversione: null });
+  const u = unitaArticolo(gamma ?? { um: riga.um ?? null,
+    um2: riga.articolo_codice ? null : riga.um2 ?? null,
+    fattore_conversione: riga.articolo_codice ? null : riga.fattore_conversione ?? null });
   const secondaria = u.convertibile && riga.um_scelta === "um2";
   const scelta = secondaria ? "secondaria" : "primaria";
   const converti = (v: number | null | undefined, tipo: "quantita" | "prezzo", inversa = false) =>

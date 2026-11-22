@@ -4595,11 +4595,14 @@ export type Database = {
         Row: {
           articolo_codice: string | null
           codice_articolo_fornitore: string | null
+          codice_famiglia: string | null
+          codice_sottofamiglia: string | null
           confezione: number | null
           consumo: number | null
           costo: number | null
           created_at: string
           descrizione: string | null
+          fattore_conversione: number | null
           fornitore_id: string | null
           id: string
           kit_id: string
@@ -4616,16 +4619,20 @@ export type Database = {
           ruolo: string | null
           sfrido: number | null
           um: string | null
+          um2: string | null
           updated_at: string
         }
         Insert: {
           articolo_codice?: string | null
           codice_articolo_fornitore?: string | null
+          codice_famiglia?: string | null
+          codice_sottofamiglia?: string | null
           confezione?: number | null
           consumo?: number | null
           costo?: number | null
           created_at?: string
           descrizione?: string | null
+          fattore_conversione?: number | null
           fornitore_id?: string | null
           id?: string
           kit_id: string
@@ -4642,16 +4649,20 @@ export type Database = {
           ruolo?: string | null
           sfrido?: number | null
           um?: string | null
+          um2?: string | null
           updated_at?: string
         }
         Update: {
           articolo_codice?: string | null
           codice_articolo_fornitore?: string | null
+          codice_famiglia?: string | null
+          codice_sottofamiglia?: string | null
           confezione?: number | null
           consumo?: number | null
           costo?: number | null
           created_at?: string
           descrizione?: string | null
+          fattore_conversione?: number | null
           fornitore_id?: string | null
           id?: string
           kit_id?: string
@@ -4668,6 +4679,7 @@ export type Database = {
           ruolo?: string | null
           sfrido?: number | null
           um?: string | null
+          um2?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -7173,9 +7185,12 @@ export type Database = {
           bene_significativo: boolean
           blocco_id: string
           codice_articolo_fornitore: string | null
+          codice_famiglia: string | null
+          codice_sottofamiglia: string | null
           costo: number | null
           created_at: string
           descrizione: string | null
+          fattore_conversione: number | null
           fonte_prezzo: string | null
           fornitore_id: string | null
           id: string
@@ -7203,6 +7218,7 @@ export type Database = {
           tipo_riga: Database["public"]["Enums"]["tipo_riga_preventivo"]
           um: string | null
           um_scelta: string
+          um2: string | null
           updated_at: string
           vendita: number | null
         }
@@ -7213,9 +7229,12 @@ export type Database = {
           bene_significativo?: boolean
           blocco_id: string
           codice_articolo_fornitore?: string | null
+          codice_famiglia?: string | null
+          codice_sottofamiglia?: string | null
           costo?: number | null
           created_at?: string
           descrizione?: string | null
+          fattore_conversione?: number | null
           fonte_prezzo?: string | null
           fornitore_id?: string | null
           id?: string
@@ -7243,6 +7262,7 @@ export type Database = {
           tipo_riga?: Database["public"]["Enums"]["tipo_riga_preventivo"]
           um?: string | null
           um_scelta?: string
+          um2?: string | null
           updated_at?: string
           vendita?: number | null
         }
@@ -7253,9 +7273,12 @@ export type Database = {
           bene_significativo?: boolean
           blocco_id?: string
           codice_articolo_fornitore?: string | null
+          codice_famiglia?: string | null
+          codice_sottofamiglia?: string | null
           costo?: number | null
           created_at?: string
           descrizione?: string | null
+          fattore_conversione?: number | null
           fonte_prezzo?: string | null
           fornitore_id?: string | null
           id?: string
@@ -7283,6 +7306,7 @@ export type Database = {
           tipo_riga?: Database["public"]["Enums"]["tipo_riga_preventivo"]
           um?: string | null
           um_scelta?: string
+          um2?: string | null
           updated_at?: string
           vendita?: number | null
         }
@@ -8378,6 +8402,15 @@ export type Database = {
       }
     }
     Views: {
+      famiglie_articoli_gamma: {
+        Row: {
+          codice_famiglia: string | null
+          codice_sottofamiglia: string | null
+          famiglia: string | null
+          sottofamiglia: string | null
+        }
+        Relationships: []
+      }
       fatturato_annuale_globale: {
         Row: {
           anno: number | null

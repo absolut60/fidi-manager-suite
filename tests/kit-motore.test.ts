@@ -26,8 +26,8 @@ test('FM90 selezione Gamma cancella solo i campi anagrafici manuali',()=>{
   });
 });
 test('FM90 finestra manuale salva costo unitario e listino, mai prezzo o margine',()=>{
-  const patch=patchManualeKit({codice_articolo_fornitore:'F01',fornitore_id:'f',marca:'Marca',descrizione:'Manuale',um:'PZ',costo:12.5,listino_fornitore:25,prezzo_unit:99,ricarico:50});
-  expect(patch).toEqual({articolo_codice:null,codice_articolo_fornitore:'F01',fornitore_id:'f',marca:'Marca',descrizione:'Manuale',um:'PZ',costo:12.5,listino_fornitore:25});
+  const patch=patchManualeKit({codice_articolo_fornitore:'F01',fornitore_id:'f',marca:'Marca',descrizione:'Manuale',um:'PZ',costo:12.5,listino_fornitore:25,prezzo_unit:99,ricarico:50,codice_famiglia:'01',codice_sottofamiglia:'02',um2:'CF',fattore_conversione:1.44});
+  expect(patch).toEqual({articolo_codice:null,codice_articolo_fornitore:'F01',fornitore_id:'f',marca:'Marca',descrizione:'Manuale',um:'PZ',costo:12.5,listino_fornitore:25,codice_famiglia:'01',codice_sottofamiglia:'02',um2:'CF',fattore_conversione:1.44});
 });
 test('FM92 specifiche non configurate non entrano nel salvataggio',()=>{
   expect(specificheKitDaValori('sistema_made',{passo:'600',passo_um:'mm',nonPrevisto:'x'})).toEqual({});
