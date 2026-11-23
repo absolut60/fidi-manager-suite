@@ -7,7 +7,7 @@ export function testoRuoloCerved(r: RuoloCerved, societa?: SocietaCollegataCerve
   const stato = r.al ? `ruolo cessato il ${dataIsoIt(r.al) ?? r.al}` : societa?.stato_codice === "T" ? "fino alla cancellazione" : r.legame_attivo === false ? "ruolo cessato" : societa?.stato_codice === "A" || (!societa && r.legame_attivo === true) ? "in corso" : "stato del legame non indicato";
   return { testo: [r.tipo ?? r.codice ?? "Ruolo non indicato", date].filter(Boolean).join(" "), stato, inCorso: stato === "in corso" };
 }
-export function statoSocietaCerved(s: SocietaCollegataCerved) {
+export function statoSocietaCerved(s: Pick<SocietaCollegataCerved, "stato_codice" | "stato_descrizione" | "stato_dal">) {
   if (s.stato_codice === "A") return { testo: "Attiva", tono: "verde" as const };
   if (s.stato_codice === "T") return { testo: s.stato_dal ? `Cancellata il ${dataIsoIt(s.stato_dal) ?? s.stato_dal}` : "Cancellata", tono: "neutro" as const };
   return { testo: s.stato_descrizione ?? s.stato_codice ?? "Stato non indicato", tono: /liquidaz|fallim|procedur/i.test(s.stato_descrizione ?? "") ? "rosso" as const : "neutro" as const };

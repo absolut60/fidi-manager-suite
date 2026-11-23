@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { idSoggettoDiEntita } from "@/lib/cerved/cerved-letture";
+import { ultimoLightReportDiEntita } from "@/lib/cerved/cerved-letture";
 import type { EntitaCerved } from "@/lib/cerved/cerved-entita";
 
 /** Dati del Light Report (normalizzaLightReportXml) salvati nell'ultima fotografia. */
@@ -18,15 +17,7 @@ export function useLightReportEntita(entita: EntitaCerved, id: string | null | u
     queryKey: chiaveLightReportEntita(entita, id),
     enabled: !!id,
     staleTime: 5 * 60_000,
-    queryFn: async (): Promise<LightReportDati | null> => {
-      const idSoggetto = await idSoggettoDiEntita(entita, id!);
-      if (!idSoggetto) return null;
-      const { data, error } = await supabase.from("cerved_fotografie")
-        .select("dati, letta_il").eq("id_soggetto", idSoggetto).eq("tipo", "light_report")
-        .order("letta_il", { ascending: false }).limit(1).maybeSingle();
-      if (error) throw error;
-      return (data?.dati as LightReportDati) ?? null;
-    },
+    queryFn: (): Promise<LightReportDati | null> => ultimoLightReportDiEntita(entita, id!),
   });
 }
 

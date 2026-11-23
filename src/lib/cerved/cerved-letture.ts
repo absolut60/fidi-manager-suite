@@ -33,3 +33,17 @@ export async function idSoggettiDiEntita(entita: EntitaCerved, ids: string[], cl
   }
   return out;
 }
+
+/**
+ * FM100: fonte unica della lettura del Light Report salvato di un'entità (hook useLightReportEntita
+ * e server function del grafico): ultima fotografia 'light_report' del soggetto collegato, con la RLS del client.
+ */
+export async function ultimoLightReportDiEntita(entita: EntitaCerved, id: string, client: ClientMinimo = supabase): Promise<Record<string, any> | null> {
+  const idSoggetto = await idSoggettoDiEntita(entita, id, client);
+  if (!idSoggetto) return null;
+  const { data, error } = await client.from("cerved_fotografie")
+    .select("dati, letta_il").eq("id_soggetto", idSoggetto).eq("tipo", "light_report")
+    .order("letta_il", { ascending: false }).limit(1).maybeSingle();
+  if (error) throw error;
+  return (data?.dati as Record<string, any> | undefined) ?? null;
+}
