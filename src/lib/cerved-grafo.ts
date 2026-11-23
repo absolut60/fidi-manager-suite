@@ -244,7 +244,7 @@ export const TABELLA_RUOLI_GRAFO: [RegExp, FamigliaLegame, string][] = [
   [/RESPONSABILE TECNICO/, "altri", "Resp. tecnico"],
   [/DIRETTORE TECNICO/, "altri", "Dir. tecnico"],
   [/PREPOSTO/, "altri", "Preposto"],
-  [/INSTITORE/, "altri", "Institore"],
+  [/INSTITORE/, "altri", "Direttore"],
 ];
 /** Ruolo Cerved (testo grezzo, senza date) → famiglia/etichetta breve; sconosciuto = "altri", iniziale maiuscola, max 18 caratteri. */
 export function classificaRuoloCerved(ruolo: string | null | undefined): LegameBreve {

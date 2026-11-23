@@ -81,7 +81,7 @@ Fonte unica in `src/lib/cerved-grafo.ts`: `TABELLA_RUOLI_GRAFO` + `classificaRuo
 | MEMBRO CONSIGLIO/COMITATO DIRETTIVO | cariche | Membro direttivo |
 | PROCURATORE (anche speciale) | altri | Procuratore |
 | RESPONSABILE TECNICO / DIRETTORE TECNICO | altri | Resp. tecnico / Dir. tecnico |
-| PREPOSTO… / INSTITORE | altri | Preposto / Institore |
+| PREPOSTO… / INSTITORE | altri | Preposto / Direttore |
 | ruolo non riconosciuto | altri | testo Cerved con sola iniziale maiuscola, max 18 caratteri |
 
 Arco: famiglia = quote se c'è almeno un legame quote, altrimenti cariche, altrimenti altri. Etichetta = quote, poi cariche, poi altri, voci uniche unite con " · ", al massimo 2 + "+N". Testo completo con date solo nel dettaglio e nell'Elenco.

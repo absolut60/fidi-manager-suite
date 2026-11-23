@@ -17,7 +17,7 @@ test("tabella ruoli → famiglia ed etichetta breve", () => {
     ["REVISORE LEGALE", "altri", "Revisore"], ["REVISORE UNICO", "altri", "Revisore"], ["REVISORE DEI CONTI", "altri", "Revisore"],
     ["PROCURATORE", "altri", "Procuratore"], ["PROCURATORE SPECIALE", "altri", "Procuratore"],
     ["RESPONSABILE TECNICO", "altri", "Resp. tecnico"], ["DIRETTORE TECNICO", "altri", "Dir. tecnico"],
-    ["PREPOSTO ALLA GESTIONE TECNICA", "altri", "Preposto"], ["INSTITORE", "altri", "Institore"],
+    ["PREPOSTO ALLA GESTIONE TECNICA", "altri", "Preposto"], ["INSTITORE", "altri", "Direttore"],
     ["CURATORE SPECIALE DELLA PROCEDURA", "altri", "Curatore speciale…"],
   ];
   for (const [r, f, b] of casi) expect([r, classificaRuoloCerved(r)]).toEqual([r, { famiglia: f, breve: b }]);
