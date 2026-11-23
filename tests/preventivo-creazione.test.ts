@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { risolviSedePreventivo, campiSedePreventivo, sedeGiacenzePreventivo, letteraPreventivo, lettereElenco, riallineaValidita, validitaProposta } from "../src/lib/preventivo-creazione";
+import { GIORNI_VALIDITA_PREVENTIVO, risolviSedePreventivo, campiSedePreventivo, sedeGiacenzePreventivo, letteraPreventivo, lettereElenco, riallineaValidita, validitaProposta } from "../src/lib/preventivo-creazione";
 import { inUnita } from "../src/lib/scheda-articolo";
 
 describe("FM86 sede del preventivo", () => {
@@ -40,12 +40,13 @@ describe("FM65 R1a", () => {
     expect(campiSedePreventivo(null)).toEqual({ filiale: null, store_id: null });
     expect(campiSedePreventivo({ id: null, nome: "Filiale storica" })).toEqual({ filiale: "Filiale storica", store_id: null });
   });
-  test("validità proposta sette giorni dopo la data", () => {
-    expect(validitaProposta("2026-11-13")).toBe("2026-11-20");
-    expect(validitaProposta("2026-12-28")).toBe("2027-01-04");
+  test("validità proposta trenta giorni dopo la data", () => {
+    expect(GIORNI_VALIDITA_PREVENTIVO).toBe(30);
+    expect(validitaProposta("2026-11-13")).toBe("2026-12-13");
+    expect(validitaProposta("2026-12-28")).toBe("2027-01-27");
   });
   test("validità segue la data solo prima della modifica manuale", () => {
-    expect(riallineaValidita("2026-11-14", "2026-11-20", false)).toBe("2026-11-21");
+    expect(riallineaValidita("2026-11-14", "2026-11-20", false)).toBe("2026-12-14");
     expect(riallineaValidita("2026-11-14", "2026-11-30", true)).toBe("2026-11-30");
   });
   test("principale A e alternative ordinate per data e id", () => {

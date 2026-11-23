@@ -1,3 +1,9 @@
+# FM98 — Fetta 1
+- [x] Condizioni per linea, inserimento Showroom e modifica nelle Impostazioni.
+- [x] Pagine PDF cliente, rimozione frase fissa e validità unica 30 giorni.
+- [x] Suite completa 1400/0, verifiche PDF/Playwright 320–1920 e rapporto.
+- [ ] Salvataggio/rilettura e generazione reali autenticati: account personale non disponibile, flusso verificato con risposte locali.
+
 # FM97 — Completa lead nella finestra Gamma
 - [x] RPC atomica compatibile e ACL verificate, RLS e motore invariati.
 - [x] Dati mancanti modificabili sul posto, indirizzo e normalizzazioni condivisi.

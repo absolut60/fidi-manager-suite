@@ -1,4 +1,5 @@
 import { BloccoIndirizzo } from "@/components/blocco-indirizzo";
+import { CondizioniVenditaImpostazioni } from '@/components/impostazioni/condizioni-vendita';
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -129,6 +130,8 @@ function ImpostazioniPage() {
 
 
       <ConfigurazioniCard />
+
+      <CondizioniVenditaImpostazioni />
 
       <PromemoriaScadenzaCard />
 

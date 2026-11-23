@@ -1,4 +1,5 @@
 # Architecture rules
+- Sale conditions keys, reading, placeholder rendering and heading classification live only in condizioni-vendita; customer PDFs append through one renderer before drawFooter, keeping internal lists unchanged and numbering complete.
 - Share recovery UI/counts to prevent per-row queries.
 - Manual purchase terms use preparaAcquistoManuale/nettoAcquistoGamma in riga-preventivo for UI and export; cost persistence still uses rigaInUnita, preventing purchase-net and UM1 divergence.
 - Lead text normalization and fiscal-input limits live in lead-anagrafica to preserve existing form rules; Gamma completion uses the atomic companion RPC with the original gate/signature intact and BloccoIndirizzo per-field protection to avoid overwriting completed data.

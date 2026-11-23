@@ -54,12 +54,14 @@ export function lettereElenco(righe: readonly { id: string; alternativa_di: stri
   return esito;
 }
 
+export const GIORNI_VALIDITA_PREVENTIVO = 30;
+
 /** Date ISO, somma di giorni di calendario indipendente da DST/fuso del browser. */
 export function validitaProposta(data: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return "";
   const giorno = new Date(`${data}T12:00:00Z`);
   if (!Number.isFinite(giorno.getTime())) return "";
-  giorno.setUTCDate(giorno.getUTCDate() + 7);
+  giorno.setUTCDate(giorno.getUTCDate() + GIORNI_VALIDITA_PREVENTIVO);
   return giorno.toISOString().slice(0, 10);
 }
 
