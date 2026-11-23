@@ -21,6 +21,7 @@ import { InviaPreventivoEmailDialog } from "./InviaPreventivoEmailDialog";
 import { useAuth } from "@/hooks/use-auth";
 import { puoScriverePreventivi } from "@/lib/permessi-preventivi";
 import { supabase } from "@/integrations/supabase/client";
+import { accodaPrivacyPreventivo } from '@/lib/privacy-preventivo';
 
 type Modalita = "PREVENTIVO" | "PROPOSTA_RAPIDA" | "LISTA_MATERIALI" | "LISTA_FORNITORE";
 
@@ -63,6 +64,7 @@ export function GeneraDocumentoDialog({
 }: { open: boolean; onOpenChange: (v: boolean) => void; prev: PreventivoConDettagli }) {
   const [sel, setSel] = useState<Modalita>("PREVENTIVO");
   const [busy, setBusy] = useState(false);
+  const [accodaPrivacy, setAccodaPrivacy] = useState(false);
   const [preview, setPreview] = useState<{ blob: Blob; fileName: string } | null>(null);
   const [emailOpen, setEmailOpen] = useState(false);
   const { roles } = useAuth();
@@ -79,6 +81,7 @@ export function GeneraDocumentoDialog({
   // Carica preferenze utente all'apertura
   useEffect(() => {
     if (!open) return;
+    setAccodaPrivacy(false);
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -113,6 +116,11 @@ export function GeneraDocumentoDialog({
         else if (sel === "PROPOSTA_RAPIDA") result = await exportPropostaRapidaPdf(prev);
         else if (sel === "LISTA_MATERIALI") result = await exportListaMaterialiPdf(prev);
         else result = await exportListaFornitorePdf(prev);
+        if (sel === 'PREVENTIVO' || sel === 'PROPOSTA_RAPIDA') {
+          const unito = await accodaPrivacyPreventivo(result, prev, accodaPrivacy);
+          result = unito.documento;
+          if (unito.privacyNonAccodata) toast.warning('Informativa privacy non accodata');
+        }
         setPreview(result);
         onOpenChange(false);
       } else {
@@ -204,6 +212,14 @@ export function GeneraDocumentoDialog({
                 ))}
               </div>
             </div>
+          )}
+
+          {(sel === 'PREVENTIVO' || sel === 'PROPOSTA_RAPIDA') && (
+            <Label htmlFor="accoda-privacy-preventivo" className="flex min-h-10 cursor-pointer items-start gap-3 rounded-md border p-3 text-sm">
+              <Checkbox id="accoda-privacy-preventivo" checked={accodaPrivacy} disabled={busy}
+                onCheckedChange={v => setAccodaPrivacy(v === true)} className="shrink-0" />
+              <span className="min-w-0 break-words">Accoda informativa privacy da firmare</span>
+            </Label>
           )}
 
           <DialogFooter className="flex flex-wrap gap-2 sm:justify-end">

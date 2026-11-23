@@ -1,4 +1,5 @@
 # Architecture rules
+- Quote privacy mapping and PDF merge live only in privacy-preventivo, using existing authorized customer/lead reads; GeneraDocumentoDialog stores the merged blob once for preview/download/print/email and never persists the opt-in.
 - Sale conditions keys, reading, placeholder rendering and heading classification live only in condizioni-vendita; customer PDFs append through one renderer before drawFooter, keeping internal lists unchanged and numbering complete.
 - Share recovery UI/counts to prevent per-row queries.
 - Manual purchase terms use preparaAcquistoManuale/nettoAcquistoGamma in riga-preventivo for UI and export; cost persistence still uses rigaInUnita, preventing purchase-net and UM1 divergence.

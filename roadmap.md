@@ -1,3 +1,9 @@
+# FM98 — Fetta 2
+- [x] Modalità privacy da firmare e identità byte/raster dei cinque moduli esistenti.
+- [x] Mappatura anagrafica unica, spunta transitoria e PDF unito per anteprima/email.
+- [x] Suite completa, confronti PDF e Playwright 320–1920, rapporto.
+- [ ] Letture/invio reali autenticati: account personale non disponibile; prova locale con invio intercettato.
+
 # FM98 — Fetta 1
 - [x] Condizioni per linea, inserimento Showroom e modifica nelle Impostazioni.
 - [x] Pagine PDF cliente, rimozione frase fissa e validità unica 30 giorni.

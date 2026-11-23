@@ -3,6 +3,8 @@ import { LOGO_MADE_BASE64 } from "./logo-made-base64";
 import { INFORMATIVA_FULL } from "./consensi-testi";
 
 export interface SchedaPdfInput {
+  /** FM98: modulo cartaceo da compilare e firmare, senza consensi già espressi. */
+  daFirmare?: boolean;
   tipo: "nuovo" | "aggiornamento";
   ragioneSociale: string;
   dichiaranteNome?: string;
@@ -314,8 +316,8 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
     const h = drawWrapped(page, text, ML, yPos, CW, 8, font, BLACK, consLH);
     yPos -= h + 6;
     const cx = PAGE_W / 2 - 56;
-    const si = dato ? "[X]" : "[ ]";
-    const no = dato ? "[ ]" : "[X]";
+    const si = !input.daFirmare && dato ? "[X]" : "[ ]";
+    const no = !input.daFirmare && !dato ? "[X]" : "[ ]";
     page.drawText(`${si}  fornisce il consenso`, { x: cx, y: yPos, size: 8, font, color: BLACK });
     yPos -= consRiga;
     page.drawText(`${no}  nega il consenso`, { x: cx, y: yPos, size: 8, font, color: BLACK });
@@ -371,10 +373,10 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
     }
   }
 
-  page2.drawText(`Li ${fmtFirma(input.dataFirma)} _______________`, { x: ML, y: firmaY, size: 8, font, color: BLACK });
+  page2.drawText(input.daFirmare ? 'Li ____________' : `Li ${fmtFirma(input.dataFirma)} _______________`, { x: ML, y: firmaY, size: 8, font, color: BLACK });
   const firmaX = ML + CW * 0.55;
 
-  if (input.firmaPngDataUrl) {
+  if (input.daFirmare || input.firmaPngDataUrl) {
     page2.drawLine({
       start: { x: firmaX, y: firmaY },
       end: { x: PAGE_W - MR, y: firmaY },
@@ -391,7 +393,7 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
       color: BLACK,
     });
 
-    try {
+    if (!input.daFirmare && input.firmaPngDataUrl) try {
       const pngBytes = Uint8Array.from(atob(input.firmaPngDataUrl.split(",")[1]), (c) => c.charCodeAt(0));
       const firmaImg = await pdfDoc.embedPng(pngBytes);
       const firmaDims = firmaImg.scale(1);
