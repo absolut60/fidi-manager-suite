@@ -32,6 +32,7 @@ import { rilevaAgenziaRecupero } from "@/lib/inngest/agenzia-recupero.server";
 import { notificaEsitoImport } from "@/lib/inngest/esito-import.server";
 import { aggiornaCacheCruscotti } from "@/lib/inngest/cache-cruscotti.server";
 import { invioMultiploFornitori } from "@/lib/inngest/invio-fornitori.server";
+import { riconciliaLeadDopoImport } from "@/lib/inngest/lead-riconciliazione.server";
 
 
 
@@ -69,6 +70,7 @@ const handler = serve({
     notificaEsitoImport,
     aggiornaCacheCruscotti,
     invioMultiploFornitori,
+    riconciliaLeadDopoImport,
 
 
 

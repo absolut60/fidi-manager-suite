@@ -24,6 +24,12 @@ Leggere prima di toccare: collegamento lead → cliente, annullamento della conv
 ## Divieto di cancellare clienti da import
 - I collegamenti da riconciliazione hanno `conversione_tipo = 'import_gamma'`. In `annulla_conversione_lead` seguono il ramo di `contatto_cliente`: **il cliente non viene mai cancellato** e i preventivi già passati restano al cliente. Solo `nuovo_cliente` (cliente creato dal lead) può cancellare il cliente.
 
+## Quando parte (fetta 2)
+- Solo a fine import anagrafica clienti riuscito: in `finalizeAnagraficaImport`, step `emetti-riconciliazione-lead` subito dopo `read-and-finalize` (import già chiuso con `chiudiImportazione`) e prima di `cleanup-staging`. Invia con `sendInngestEvents` (non `step.sendEvent`) l'evento `lead/riconciliazione.rileva` con `{ importazioneId }`; un errore di emissione va solo nel logger e non fa fallire l'import.
+- Nessun aggancio nei rami di errore (`onFailure`, `catch`, `setAnagraficaFinalState`) né negli altri import.
+- Job `riconciliaLeadDopoImport` (`src/lib/inngest/lead-riconciliazione.server.ts`, id `lead-riconciliazione-clienti`, retries 2, concurrency 1): un solo step `riconcilia` che chiama la RPC con `supabaseAdmin` (`_operatore: null` → autore = `importazioni.eseguita_da`). Errore della chiamata → throw (Inngest ritenta); errori per singolo lead → solo `logger.warn`.
+- Dopo ogni pubblicazione che aggiunge job serve la risincronizzazione dell'app in Inngest.
+
 ## Notifiche
 Solo in app, raggruppate dal trigger esistente: `lead_riconciliato` a creatore del lead (se attivo) + amministratori attivi; `lead_da_riconciliare` ai soli amministratori attivi, solo per le righe nuove. Con «Controlla ora» si esclude chi l'ha lanciato. Un errore di notifica non annulla i collegamenti.
 

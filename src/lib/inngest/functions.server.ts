@@ -1452,6 +1452,21 @@ export const finalizeAnagraficaImport = inngest.createFunction(
         };
       });
 
+      // FM99: riconciliazione lead -> cliente, solo dopo la chiusura riuscita.
+      // Un errore di emissione resta nel logger e non fa fallire l'import.
+      await step.run("emetti-riconciliazione-lead", async () => {
+        try {
+          await sendInngestEvents([
+            { name: "lead/riconciliazione.rileva", data: { importazioneId } },
+          ]);
+        } catch (e) {
+          logger.error(
+            `Emissione riconciliazione lead fallita: ${e instanceof Error ? e.message : String(e)}`,
+          );
+        }
+        return true;
+      });
+
       // Cleanup residui staging (best-effort)
       await step.run("cleanup-staging", async () => {
         const base = `_anagrafica_staging/${importazioneId}`;
