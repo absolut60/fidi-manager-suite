@@ -35,11 +35,11 @@ const STILE_FAMIGLIA: Record<FamigliaLegame, { linea: string; punta: string; spe
   altri: { linea: "stroke-muted-foreground", punta: "fill-muted-foreground", spessore: 1 },
 };
 const statoLead = (s: string | null) => (s ? (LEAD_STATO_LABEL as Record<string, string>)[s] ?? s : null);
-/** Seconda riga del nodo cliente: "Cliente 13142" (+ bloccato / in legale / scaduto oltre 60 gg, in rosso). */
+/** Seconda riga del nodo cliente: "Cliente 13142" (+ bloccato / in legale / scaduto non incassato secondo la regola Alert fidi, in rosso). */
 export function rigaClienteNodo(clienti: ClienteMadeGrafo[]): { testo: string; rosso: boolean } | null {
   if (!clienti.length) return null;
   const codici = [...new Set(clienti.map((c) => c.codice).filter(Boolean))];
-  const avvisi = [clienti.some((c) => c.bloccato) && "bloccato", clienti.some((c) => c.in_gestione_legale) && "in legale", clienti.some((c) => c.scaduto_oltre_60 > 0) && "scaduto oltre 60 gg"].filter(Boolean) as string[];
+  const avvisi = [clienti.some((c) => c.bloccato) && "bloccato", clienti.some((c) => c.in_gestione_legale) && "in legale", clienti.some((c) => c.scaduto_da_alert) && "scaduto non incassato"].filter(Boolean) as string[];
   return { testo: [`Cliente${codici.length ? ` ${codici.join(", ")}` : ""}`, ...avvisi].join(" · "), rosso: avvisi.length > 0 };
 }
 /** Nome su al massimo 2 righe di ~20 caratteri (a capo sugli spazi). */
@@ -373,6 +373,7 @@ export function LegendaGrafo() {
   return <ul data-legenda aria-label="Legenda" className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
     <Voce segno={<span className="h-3 w-3 rounded-full bg-primary" />}>azienda che stai guardando</Voce>
     <Voce segno={<span className="h-3 w-4 rounded-sm border border-primary bg-primary/15" />}>"Cliente N" = già cliente MADE</Voce>
+    <Voce segno={<span className="font-semibold text-destructive">Cliente N</span>}>rosso = bloccato, in legale o scaduto non incassato (regola Alert fidi)</Voce>
     <Voce segno={<span className="h-3 w-4 rounded-sm border border-info bg-info/15" />}>"Lead" = già lead</Voce>
     <Voce segno={<span className="h-3 w-3 rounded-full border border-muted-foreground" />}>persona</Voce>
     <Voce segno={<span className="h-3 w-4 rounded-sm border border-muted-foreground" />}>società</Voce>

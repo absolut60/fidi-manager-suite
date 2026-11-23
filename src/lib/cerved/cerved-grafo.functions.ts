@@ -39,15 +39,20 @@ export async function eseguiDatiMadeGrafoCerved(entita: EntitaCerved, id: string
   const ids = [...righe.keys()];
   const scaduti = new Map<string, { eur_scaduto: number; eur_grave: number }>();
   const visibili = new Set<string>();
+  const scadutiAlert = new Set<string>();
   for (let i = 0; i < ids.length; i += BLOCCO_LETTURE_CERVED) {
     const b = ids.slice(i, i + BLOCCO_LETTURE_CERVED);
+    // Regola Alert fidi già calcolata: nessuna soglia locale.
+    const { data: ft, error: ef } = await supabaseAdmin.from("fido_teorico_v2").select("cliente_id").in("cliente_id", b).eq("regola", "scaduto_non_incassato");
+    if (ef) throw new Error("Impossibile leggere il fido teorico dei clienti collegati");
+    for (const f of ft ?? []) scadutiAlert.add(f.cliente_id);
     const { data: sc, error } = await supabaseAdmin.rpc("scaduto_semaforo_batch", { _ids: b });
     if (error) throw new Error("Impossibile leggere lo scaduto dei clienti collegati");
     for (const s of sc ?? []) scaduti.set(s.cliente_id, s);
     const { data: vis } = await context.supabase.from("clienti").select("id").in("id", b);
     for (const v of vis ?? []) visibili.add(v.id);
   }
-  const out = componiClientiGrafo([...righe.values()], { chiavi, chiaviCentro, scaduti, visibili, entita, id });
+  const out = componiClientiGrafo([...righe.values()], { chiavi, chiaviCentro, scaduti, visibili, scadutiAlert, entita, id });
   return { clienti: out, lead };
 }
 

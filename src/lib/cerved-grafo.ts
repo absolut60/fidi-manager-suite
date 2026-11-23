@@ -169,6 +169,8 @@ export type ClienteMadeGrafo = {
   chiave: string; cliente_id: string; ragione_sociale: string | null; codice: string | null; sede: string | null;
   fido: number; esposizione: number | null; scaduto: number; scaduto_oltre_60: number;
   bloccato: boolean; in_gestione_legale: boolean; visibile: boolean; e_questo_cliente: boolean;
+  /** regola = 'scaduto_non_incassato' nell'ultimo calcolo salvato in fido_teorico_v2 (stessa fonte Alert fidi). */
+  scaduto_da_alert: boolean;
   /** Trovato sulle chiavi del centro (P.IVA/CF dell'azienda del report): per il lead = "già cliente MADE". */
   chiave_centro: boolean;
 };
@@ -182,7 +184,7 @@ export type RigaClienteGrafo = {
  * Righe clienti → ClienteMadeGrafo (una per chiave abbinata). Cliente: e_questo_cliente = stesso id.
  * Lead: e_questo_cliente = trovato sulle chiavi del centro (il lead è già cliente MADE).
  */
-export function componiClientiGrafo(righe: RigaClienteGrafo[], o: { chiavi: string[]; chiaviCentro: string[]; scaduti: Map<string, { eur_scaduto: number; eur_grave: number }>; visibili: Set<string>; entita: "cliente" | "lead"; id: string }): ClienteMadeGrafo[] {
+export function componiClientiGrafo(righe: RigaClienteGrafo[], o: { chiavi: string[]; chiaviCentro: string[]; scaduti: Map<string, { eur_scaduto: number; eur_grave: number }>; visibili: Set<string>; scadutiAlert?: Set<string>; entita: "cliente" | "lead"; id: string }): ClienteMadeGrafo[] {
   const insieme = new Set(o.chiavi), centro = new Set(o.chiaviCentro);
   const out: ClienteMadeGrafo[] = [];
   for (const r of righe) {
@@ -195,7 +197,7 @@ export function componiClientiGrafo(righe: RigaClienteGrafo[], o: { chiavi: stri
         sede: (Array.isArray(r.stores) ? r.stores[0]?.nome : r.stores?.nome) ?? null,
         fido: getFidoAttuale(r), esposizione: r.totale_rischio == null ? null : Number(r.totale_rischio),
         scaduto: Number(s?.eur_scaduto ?? 0), scaduto_oltre_60: Number(s?.eur_grave ?? 0),
-        bloccato: !!r.bloccato, in_gestione_legale: !!r.in_gestione_legale, visibile: o.visibili.has(r.id),
+        bloccato: !!r.bloccato, in_gestione_legale: !!r.in_gestione_legale, visibile: o.visibili.has(r.id), scaduto_da_alert: !!o.scadutiAlert?.has(r.id),
         e_questo_cliente: o.entita === "cliente" ? r.id === o.id : chiave_centro, chiave_centro,
       });
     }

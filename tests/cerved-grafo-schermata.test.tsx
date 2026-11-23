@@ -3,11 +3,11 @@ import { readFileSync } from "fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { normalizzaLightReportXml } from "../src/lib/cerved/cerved.server";
 import { componiClientiGrafo, componiLeadGrafo, costruisciGrafoCerved, etichettaArco, type ClienteMadeGrafo, type RigaClienteGrafo } from "../src/lib/cerved-grafo";
-import { DettaglioNodoGrafo, VistaGrafoCollegati, clientiPerNodo, filtraGrafo } from "../src/components/cerved/grafo-collegati-cerved";
+import { DettaglioNodoGrafo, VistaGrafoCollegati, rigaClienteNodo, clientiPerNodo, filtraGrafo } from "../src/components/cerved/grafo-collegati-cerved";
 
 const r = normalizzaLightReportXml(readFileSync(`${import.meta.dir}/fixtures/cerved-light-report-ecocostruzioni.xml`, "utf8"));
 const grafo = costruisciGrafoCerved(r, { nome: r.anagrafica?.denominazione ?? null, partita_iva: r.anagrafica?.partita_iva ?? null, codice_fiscale: r.anagrafica?.codice_fiscale ?? null });
-const ecotema = (visibile: boolean): ClienteMadeGrafo => ({ chiave: "04835640162", cliente_id: "c-eco", ragione_sociale: "ECOTEMA SRL", codice: "C123", sede: "Lissone", fido: 10000, esposizione: 4000, scaduto: 500, scaduto_oltre_60: 100, bloccato: false, in_gestione_legale: false, visibile, e_questo_cliente: false, chiave_centro: false });
+const ecotema = (visibile: boolean): ClienteMadeGrafo => ({ chiave: "04835640162", cliente_id: "c-eco", ragione_sociale: "ECOTEMA SRL", codice: "C123", sede: "Lissone", fido: 10000, esposizione: 4000, scaduto: 500, scaduto_oltre_60: 100, bloccato: false, in_gestione_legale: false, visibile, e_questo_cliente: false, chiave_centro: false, scaduto_da_alert: false });
 const link = (id: string, t: unknown) => <a data-cliente={id}>{t as string}</a>;
 
 test("grafico ECOCOSTRUZIONI con cliente su ECOTEMA: riga Cliente C123, riepilogo, nessun testo MADE nel disegno", () => {
@@ -66,7 +66,7 @@ test("centro abbinato a un cliente: nessuna riga Cliente sul centro, sì su ECOT
   const html = renderToStaticMarkup(<VistaGrafoCollegati grafo={grafo} clienti={[self, { ...ecotema(true), codice: "13142", bloccato: true }]} entita="cliente" />);
   const i = html.indexOf(`data-nodo="${centro.id}"`);
   expect(html.slice(i, html.indexOf("</g>", i))).not.toContain("data-riga2");
-  expect(html).toMatch(/data-riga2[^>]*class="fill-destructive"[^>]*>Cliente 13142 · bloccato · scaduto oltre 60 gg</);
+  expect(html).toMatch(/data-riga2[^>]*class="fill-destructive"[^>]*>Cliente 13142 · bloccato</);
 });
 
 test("nodo lead: riga Lead; un cliente sulla stessa chiave vince", () => {
@@ -98,4 +98,17 @@ test("server: lead con cliente_id e lead della scheda esclusi", () => {
   const r = (id: string, cliente_id: string | null) => ({ id, ragione_sociale: id, stato: "nuovo", partita_iva: "04835640162", codice_fiscale: null, cliente_id });
   const out = componiLeadGrafo([r("libero", null), r("collegato", "c-1"), r("scheda", null)], { chiavi: ["04835640162"], visibili: new Set(["libero"]), escludi: "scheda" });
   expect(out).toEqual([{ chiave: "04835640162", lead_id: "libero", ragione_sociale: "libero", stato: "nuovo", visibile: true }]);
+});
+
+test("riga Cliente: scaduto oltre 60 senza regola Alert non è rossa; con scaduto_da_alert sì", () => {
+  const base = { ...ecotema(true), codice: "13142", scaduto_oltre_60: 2500 };
+  expect(rigaClienteNodo([base])).toEqual({ testo: "Cliente 13142", rosso: false });
+  expect(rigaClienteNodo([{ ...base, scaduto_da_alert: true }])).toEqual({ testo: "Cliente 13142 · scaduto non incassato", rosso: true });
+  expect(rigaClienteNodo([{ ...base, bloccato: true }])).toEqual({ testo: "Cliente 13142 · bloccato", rosso: true });
+});
+
+test("server: scaduto_da_alert solo per i clienti con regola scaduto_non_incassato", () => {
+  const r = (id: string): RigaClienteGrafo => ({ id, ragione_sociale: id, codice_gestionale: null, partita_iva: id === "a" ? "04835640162" : "01234567897", codice_fiscale: null, totale_rischio: 0, bloccato: false, in_gestione_legale: false });
+  const out = componiClientiGrafo([r("a"), r("b")], { chiavi: ["04835640162", "01234567897"], chiaviCentro: [], scaduti: new Map(), visibili: new Set(), scadutiAlert: new Set(["a"]), entita: "cliente", id: "x" });
+  expect(out.map((c) => [c.cliente_id, c.scaduto_da_alert])).toEqual([["a", true], ["b", false]]);
 });
