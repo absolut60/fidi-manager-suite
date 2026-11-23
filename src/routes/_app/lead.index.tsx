@@ -45,6 +45,7 @@ import {
   LEAD_AMBITI, LEAD_AMBITO_LABEL, type LeadAmbito,
 } from "@/lib/lead-costanti";
 import { testoPerFiltroOr } from "@/lib/ricerca-sicura";
+import { conteggioDaRiconciliareQuery } from "@/lib/lead-riconciliazione";
 
 
 export const Route = createFileRoute("/_app/lead/")({
@@ -177,6 +178,7 @@ function LeadListaPage() {
     },
     staleTime: 5 * 60_000,
   });
+  const { data: daRiconciliare } = useQuery(conteggioDaRiconciliareQuery(canSee));
   const { data: mestieriFiltro } = useCategorieSegmento("mestiere");
   const { data: eventiNomi } = useQuery({
     queryKey: ["lead-eventi-nomi"],
@@ -463,12 +465,25 @@ function LeadListaPage() {
             convertito in cliente.
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-1.5 w-full sm:w-auto"><Plus className="size-4" /> Nuovo lead</Button>
-          </DialogTrigger>
-          <NuovoLeadDialog onClose={() => setOpen(false)} />
-        </Dialog>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Button asChild variant="outline" className="gap-1.5 w-full sm:w-auto">
+            <Link to="/lead/riconciliazione" search={{ vista: "da-riconciliare" }}>
+              <ArrowRightLeft className="size-4" /> Riconciliazione
+              <Badge
+                variant="outline"
+                className={(daRiconciliare ?? 0) > 0 ? "border-amber-200 bg-amber-100 text-amber-800" : "text-muted-foreground"}
+              >
+                {(daRiconciliare ?? 0).toLocaleString("it-IT")}
+              </Badge>
+            </Link>
+          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-1.5 w-full sm:w-auto"><Plus className="size-4" /> Nuovo lead</Button>
+            </DialogTrigger>
+            <NuovoLeadDialog onClose={() => setOpen(false)} />
+          </Dialog>
+        </div>
       </div>
 
       <div className="space-y-2">
@@ -794,6 +809,9 @@ function LeadListaPage() {
                               {l.conversione_tipo === "contatto_cliente" && (
                                 <span className="block text-xs text-muted-foreground">come contatto</span>
                               )}
+                              {l.conversione_tipo === "import_gamma" && (
+                                <span className="block text-xs text-muted-foreground">da import Gamma</span>
+                              )}
                             </span>
                           ) : (
                             "Cliente non collegato"
@@ -904,6 +922,9 @@ function LeadListaPage() {
                           ) : l.cliente_id ? <span aria-disabled="true" title="Scheda cliente fuori dal tuo ambito" className="text-muted-foreground">Cliente non accessibile</span> : null}
                           {l.cliente_id && l.conversione_tipo === "contatto_cliente" && (
                             <div className="text-xs text-muted-foreground">come contatto</div>
+                          )}
+                          {l.cliente_id && l.conversione_tipo === "import_gamma" && (
+                            <div className="text-xs text-muted-foreground">da import Gamma</div>
                           )}
                           {l.cliente_id ? null : (
                             <span className="text-muted-foreground">Cliente non collegato</span>

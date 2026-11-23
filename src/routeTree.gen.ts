@@ -73,6 +73,7 @@ import { Route as AppKitIndexRouteImport } from './routes/_app/kit.index'
 import { Route as AppKitIdRouteImport } from './routes/_app/kit.$id'
 import { Route as AppLeadIndexRouteImport } from './routes/_app/lead.index'
 import { Route as AppLeadLeadIdRouteImport } from './routes/_app/lead.$leadId'
+import { Route as AppLeadRiconciliazioneRouteImport } from './routes/_app/lead.riconciliazione'
 import { Route as AppMarketingCampagneRouteImport } from './routes/_app/marketing.campagne'
 import { Route as AppMarketingDisiscrizioniRouteImport } from './routes/_app/marketing.disiscrizioni'
 import { Route as AppMarketingInviiRouteImport } from './routes/_app/marketing.invii'
@@ -429,6 +430,11 @@ const AppLeadLeadIdRoute = AppLeadLeadIdRouteImport.update({
   path: '/$leadId',
   getParentRoute: () => AppLeadRoute,
 } as any)
+const AppLeadRiconciliazioneRoute = AppLeadRiconciliazioneRouteImport.update({
+  id: '/riconciliazione',
+  path: '/riconciliazione',
+  getParentRoute: () => AppLeadRoute,
+} as any)
 const AppMarketingCampagneRoute = AppMarketingCampagneRouteImport.update({
   id: '/marketing/campagne',
   path: '/marketing/campagne',
@@ -646,6 +652,7 @@ export interface FileRoutesByFullPath {
   '/fornitori/$id': typeof AppFornitoriIdRoute
   '/kit/$id': typeof AppKitIdRoute
   '/lead/$leadId': typeof AppLeadLeadIdRoute
+  '/lead/riconciliazione': typeof AppLeadRiconciliazioneRoute
   '/marketing/campagne': typeof AppMarketingCampagneRoute
   '/marketing/disiscrizioni': typeof AppMarketingDisiscrizioniRoute
   '/marketing/invii': typeof AppMarketingInviiRoute
@@ -737,6 +744,7 @@ export interface FileRoutesByTo {
   '/fornitori/$id': typeof AppFornitoriIdRoute
   '/kit/$id': typeof AppKitIdRoute
   '/lead/$leadId': typeof AppLeadLeadIdRoute
+  '/lead/riconciliazione': typeof AppLeadRiconciliazioneRoute
   '/marketing/campagne': typeof AppMarketingCampagneRoute
   '/marketing/disiscrizioni': typeof AppMarketingDisiscrizioniRoute
   '/marketing/invii': typeof AppMarketingInviiRoute
@@ -833,6 +841,7 @@ export interface FileRoutesById {
   '/_app/fornitori/$id': typeof AppFornitoriIdRoute
   '/_app/kit/$id': typeof AppKitIdRoute
   '/_app/lead/$leadId': typeof AppLeadLeadIdRoute
+  '/_app/lead/riconciliazione': typeof AppLeadRiconciliazioneRoute
   '/_app/marketing/campagne': typeof AppMarketingCampagneRoute
   '/_app/marketing/disiscrizioni': typeof AppMarketingDisiscrizioniRoute
   '/_app/marketing/invii': typeof AppMarketingInviiRoute
@@ -929,6 +938,7 @@ export interface FileRouteTypes {
     | '/fornitori/$id'
     | '/kit/$id'
     | '/lead/$leadId'
+    | '/lead/riconciliazione'
     | '/marketing/campagne'
     | '/marketing/disiscrizioni'
     | '/marketing/invii'
@@ -1020,6 +1030,7 @@ export interface FileRouteTypes {
     | '/fornitori/$id'
     | '/kit/$id'
     | '/lead/$leadId'
+    | '/lead/riconciliazione'
     | '/marketing/campagne'
     | '/marketing/disiscrizioni'
     | '/marketing/invii'
@@ -1115,6 +1126,7 @@ export interface FileRouteTypes {
     | '/_app/fornitori/$id'
     | '/_app/kit/$id'
     | '/_app/lead/$leadId'
+    | '/_app/lead/riconciliazione'
     | '/_app/marketing/campagne'
     | '/_app/marketing/disiscrizioni'
     | '/_app/marketing/invii'
@@ -1620,6 +1632,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppLeadLeadIdRouteImport
       parentRoute: typeof AppLeadRoute
     }
+    '/_app/lead/riconciliazione': {
+      id: '/_app/lead/riconciliazione'
+      path: '/riconciliazione'
+      fullPath: '/lead/riconciliazione'
+      preLoaderRoute: typeof AppLeadRiconciliazioneRouteImport
+      parentRoute: typeof AppLeadRoute
+    }
     '/_app/marketing/campagne': {
       id: '/_app/marketing/campagne'
       path: '/marketing/campagne'
@@ -1840,11 +1859,13 @@ const AppClientiRouteWithChildren = AppClientiRoute._addFileChildren(
 
 interface AppLeadRouteChildren {
   AppLeadLeadIdRoute: typeof AppLeadLeadIdRoute
+  AppLeadRiconciliazioneRoute: typeof AppLeadRiconciliazioneRoute
   AppLeadIndexRoute: typeof AppLeadIndexRoute
 }
 
 const AppLeadRouteChildren: AppLeadRouteChildren = {
   AppLeadLeadIdRoute: AppLeadLeadIdRoute,
+  AppLeadRiconciliazioneRoute: AppLeadRiconciliazioneRoute,
   AppLeadIndexRoute: AppLeadIndexRoute,
 }
 

@@ -99,6 +99,7 @@ import {
   type LeadPriorita,
   LEAD_AMBITO_LABEL,
   type LeadAmbito,
+  conversioneSuClienteEsistente,
 } from "@/lib/lead-costanti";
 import { CollegaLeadClienteDialog } from "@/components/lead/collega-lead-cliente-dialog";
 import { ClienteVisibileLink } from "@/components/lead/cliente-visibile-link";
@@ -450,7 +451,7 @@ function LeadDettaglioPage() {
     );
   }
 
-  const isContattoCliente = lead.conversione_tipo === "contatto_cliente";
+  const isContattoCliente = conversioneSuClienteEsistente(lead.conversione_tipo);
   if (!f) return <Skeleton className="h-64 w-full" />;
 
   return (
@@ -479,8 +480,11 @@ function LeadDettaglioPage() {
                 Cliente collegato
               </ClienteVisibileLink>
             )}
-            {lead.cliente_id && isContattoCliente && (
+            {lead.cliente_id && lead.conversione_tipo === "contatto_cliente" && (
               <span className="text-xs text-muted-foreground">collegato come contatto</span>
+            )}
+            {lead.cliente_id && lead.conversione_tipo === "import_gamma" && (
+              <span className="text-xs text-muted-foreground">da import Gamma</span>
             )}
           </div>
           <CollegaLeadClienteDialog

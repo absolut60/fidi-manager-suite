@@ -12,10 +12,36 @@ export type LeadAmbito = "commerciale" | "eventi";
 export const LEAD_AMBITI: LeadAmbito[] = ["commerciale", "eventi"];
 export const LEAD_AMBITO_LABEL: Record<LeadAmbito, string> = { commerciale: "Commerciali", eventi: "Da eventi" };
 
-export type LeadConversioneTipo = "nuovo_cliente" | "contatto_cliente";
+export type LeadConversioneTipo = "nuovo_cliente" | "contatto_cliente" | "import_gamma";
 export const LEAD_CONVERSIONE_LABEL: Record<LeadConversioneTipo, string> = {
   nuovo_cliente: "Convertito in nuovo cliente",
   contatto_cliente: "Collegato come contatto di un cliente",
+  import_gamma: "Collegato al cliente arrivato da Gamma",
+};
+
+/**
+ * FM99: il cliente esisteva già (collegamento come contatto o da import Gamma):
+ * l'annullamento scollega soltanto e non cancella mai il cliente
+ * (gemello del ramo non distruttivo di annulla_conversione_lead).
+ */
+export function conversioneSuClienteEsistente(tipo: string | null | undefined): boolean {
+  return tipo === "contatto_cliente" || tipo === "import_gamma";
+}
+
+/** FM99: esiti del registro lead_riconciliazioni. */
+export type LeadRiconciliazioneEsito = "collegato_auto" | "collegato_manuale" | "da_riconciliare" | "annullato";
+export const LEAD_RICONCILIAZIONE_ESITI: LeadRiconciliazioneEsito[] = ["collegato_auto", "collegato_manuale", "da_riconciliare", "annullato"];
+export const LEAD_RICONCILIAZIONE_ESITO_LABEL: Record<LeadRiconciliazioneEsito, string> = {
+  collegato_auto: "Collegato in automatico",
+  collegato_manuale: "Collegato a mano",
+  da_riconciliare: "Da riconciliare",
+  annullato: "Annullato",
+};
+export const LEAD_RICONCILIAZIONE_ESITO_CLASS: Record<LeadRiconciliazioneEsito, string> = {
+  collegato_auto: "bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100",
+  collegato_manuale: "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100",
+  da_riconciliare: "bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100",
+  annullato: "bg-muted text-muted-foreground border-border hover:bg-muted",
 };
 
 /** Ruoli di GESTIONE lead, gemello di has_lead_module_access() (DB). */

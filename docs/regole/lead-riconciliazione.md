@@ -35,3 +35,8 @@ Solo in app, raggruppate dal trigger esistente: `lead_riconciliato` a creatore d
 
 ## Nota operativa
 `crea_o_riusa_contatto_in_soggetto` richiede `service_role` o un utente con accesso eventi: il motore va eseguito dal server come `service_role` (verificato).
+
+## Pagina (fetta 3)
+- Route `/lead/riconciliazione` (`src/routes/_app/lead.riconciliazione.tsx`), `?vista=da-riconciliare` (predefinita) o `?vista=riconciliati`, validata da `validaVistaRiconciliazione`; è dove portano le notifiche. Accesso: `puoAccedereLead`; le righe le filtra la RLS. Pulsante "Riconciliazione" con il conteggio dei da riconciliare nell'intestazione della pagina Lead (`conteggioDaRiconciliareQuery`).
+- Logica di presentazione solo in `src/lib/lead-riconciliazione.ts` (origine, corrispondenza, esito di «Controlla ora», righe annullabili); parti visive in `src/components/lead/riconciliazione-viste.tsx`. Etichette degli esiti e `conversioneSuClienteEsistente` in `lead-costanti.ts`.
+- Permessi dei pulsanti: «Controlla ora» (`riconcilia_lead_ora`) e «Annulla collegamento» (`annulla_conversione_lead`, solo righe collegato_auto/collegato_manuale) solo amministratore; «Collega» (`collega_lead_da_riconciliare`, con conferma) solo `puoGestireLead`. Dopo ogni azione si invalidano `lead-riconciliazione`, `lead-lista` e la scheda lead.
