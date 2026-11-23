@@ -5674,6 +5674,39 @@ export type Database = {
           },
         ]
       }
+      note_preventivo_libreria: {
+        Row: {
+          aggiornato_da: string | null
+          created_at: string | null
+          creato_da: string | null
+          id: string
+          linea: Database["public"]["Enums"]["linea_preventivo"]
+          testo: string
+          titolo: string
+          updated_at: string | null
+        }
+        Insert: {
+          aggiornato_da?: string | null
+          created_at?: string | null
+          creato_da?: string | null
+          id?: string
+          linea: Database["public"]["Enums"]["linea_preventivo"]
+          testo: string
+          titolo: string
+          updated_at?: string | null
+        }
+        Update: {
+          aggiornato_da?: string | null
+          created_at?: string | null
+          creato_da?: string | null
+          id?: string
+          linea?: Database["public"]["Enums"]["linea_preventivo"]
+          testo?: string
+          titolo?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       notifiche: {
         Row: {
           aggiornata_at: string
@@ -6164,6 +6197,7 @@ export type Database = {
           listino_rif: number | null
           macrocategoria_rif: string | null
           note: string | null
+          note_cliente: string | null
           numero: string | null
           preventivo_origine_id: string | null
           regime_iva: Database["public"]["Enums"]["regime_iva_preventivo"]
@@ -6211,6 +6245,7 @@ export type Database = {
           listino_rif?: number | null
           macrocategoria_rif?: string | null
           note?: string | null
+          note_cliente?: string | null
           numero?: string | null
           preventivo_origine_id?: string | null
           regime_iva?: Database["public"]["Enums"]["regime_iva_preventivo"]
@@ -6258,6 +6293,7 @@ export type Database = {
           listino_rif?: number | null
           macrocategoria_rif?: string | null
           note?: string | null
+          note_cliente?: string | null
           numero?: string | null
           preventivo_origine_id?: string | null
           regime_iva?: Database["public"]["Enums"]["regime_iva_preventivo"]
@@ -9046,6 +9082,10 @@ export type Database = {
       auth_ha_accesso_fornitori: { Args: never; Returns: boolean }
       auth_ha_accesso_preventivi: { Args: never; Returns: boolean }
       auth_ha_ruolo_globale_clienti: { Args: never; Returns: boolean }
+      auth_legge_note_preventivo: {
+        Args: { _linea: Database["public"]["Enums"]["linea_preventivo"] }
+        Returns: boolean
+      }
       auth_linee_abilitate: {
         Args: never
         Returns: Database["public"]["Enums"]["linea_preventivo"][]
@@ -9107,6 +9147,14 @@ export type Database = {
         Returns: boolean
       }
       auth_puo_vedere_lead: { Args: { _lead_id: string }; Returns: boolean }
+      auth_scrive_note_preventivo: {
+        Args: {
+          _autore: string
+          _azione: string
+          _linea: Database["public"]["Enums"]["linea_preventivo"]
+        }
+        Returns: boolean
+      }
       auth_solo_showroom: { Args: never; Returns: boolean }
       auth_vede_campagne_entita: {
         Args: { _cliente_id: string; _lead_id: string }

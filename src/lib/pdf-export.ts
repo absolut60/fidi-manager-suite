@@ -317,6 +317,37 @@ async function drawCondizioniVendita(doc: jsPDF, prev: PreventivoConDettagli, br
   }
 }
 
+/** FM98: renderer unico, solo PDF cliente; il ramo vuoto non tocca lo stato jsPDF.
+ * Righe vuote conservate e spazio riservato al piede/banda su ogni pagina.
+ */
+function drawNoteCliente(doc: jsPDF, prev: PreventivoConDettagli, branding: BrandingPdf, logo: 'sistema' | 'fidimanager', dopoTotale: number) {
+  if (!prev.note_cliente?.trim()) return;
+  const w = doc.internal.pageSize.getWidth();
+  const fondo = doc.internal.pageSize.getHeight() - (lineaPreventivo(prev.linea).stampa.banda ? 44 : 25);
+  const nuovaPagina = () => {
+    doc.addPage();
+    return Math.max(62, drawHeader(doc, logo === 'fidimanager' ? 'Proposta rapida' : etichetteDocumento(prev.tipo).nome, prev, branding, logo) + 5);
+  };
+  const titolo = (y: number) => {
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...NAVY);
+    doc.text('Note', 14, y);
+    return y + 5;
+  };
+  let y = dopoTotale + 7;
+  if (y + 9 > fondo) y = nuovaPagina();
+  y = titolo(y);
+  for (const riga of prev.note_cliente.split(/\r?\n/)) {
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+    const righe = riga.trim() ? doc.splitTextToSize(riga, w - 28) as string[] : [''];
+    for (const line of righe) {
+      if (y + 3.6 > fondo) y = titolo(nuovaPagina());
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...GRIGIO);
+      if (line) doc.text(line, 14, y);
+      y += 3.6;
+    }
+  }
+}
+
 function etichettaRegime(r: RiepilogoIva): string {
   return REGIMI_IVA.find(x => x.value === r.regime)?.label ?? r.regime;
 }
@@ -356,6 +387,7 @@ function drawRiepilogoIvaPdf(doc: jsPDF, r: RiepilogoIva, tx: number, ty: number
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...GRIGIO); doc.text("Totale con IVA", tx + 3, yy + 1.5);
   doc.setTextColor(...NAVY); doc.text(fmtEur(r.totale), tx + tw - 4, yy + 1.5, { align: "right" });
+  return ty + boxH;
 }
 
 const fileName = (prev: PreventivoConDettagli, tipo: string, ext = "pdf") => nomeFileDocumentoPreventivo(prev, tipo, ext);
@@ -638,7 +670,8 @@ export async function exportPreventivoPdf(prev: PreventivoConDettagli, opzioni: 
   const riepilogo = riepilogoIvaDocumento(blocchiTot, ivaPerc, prev.regime_iva);
 
   if (riepilogo.regime !== "ordinaria") {
-    drawRiepilogoIvaPdf(doc, riepilogo, w - 14 - 80, y, 80);
+    const fondoTotale = drawRiepilogoIvaPdf(doc, riepilogo, w - 14 - 80, y, 80);
+    drawNoteCliente(doc, prev, branding, 'sistema', fondoTotale);
     await drawCondizioniVendita(doc, prev, branding, 'sistema');
     drawFooter(doc, branding, prev);
     const nomeAgev = fileName(prev, etichetteDocumento(prev.tipo).nome);
@@ -666,6 +699,7 @@ export async function exportPreventivoPdf(prev: PreventivoConDettagli, opzioni: 
   doc.text("Totale con IVA", tx + 3, ty + 22.5);
   doc.setTextColor(...NAVY); doc.text(fmtEur(tot.totale), tx + tw - 4, ty + 22.5, { align: "right" });
 
+  drawNoteCliente(doc, prev, branding, 'sistema', ty + boxH);
   await drawCondizioniVendita(doc, prev, branding, 'sistema');
   drawFooter(doc, branding, prev);
   const name = fileName(prev, etichetteDocumento(prev.tipo).nome);
@@ -743,6 +777,7 @@ export async function exportPropostaRapidaPdf(prev: PreventivoConDettagli) {
   doc.text("Totale con IVA", tx + 3, ty + 22.5);
   doc.setTextColor(...NAVY); doc.text(fmtEur(tot.totale), tx + tw - 4, ty + 22.5, { align: "right" });
 
+  drawNoteCliente(doc, prev, branding, 'fidimanager', ty + boxH);
   await drawCondizioniVendita(doc, prev, branding, 'fidimanager');
   drawFooter(doc, branding, prev);
   const name = fileName(prev, "proposta-rapida");

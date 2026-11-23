@@ -633,6 +633,7 @@ export async function duplicaPreventivo(
     regime_iva: src.regime_iva,
     sconto_piede_perc: src.sconto_piede_perc,
     note: src.note,
+    note_cliente: src.note_cliente,
     titolo: src.titolo,
     condizione_pagamento_cod: src.condizione_pagamento_cod,
     alternativa_di: mode === "alternativa" ? principaleDiAlternativa(src) : null,

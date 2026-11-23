@@ -6,8 +6,12 @@ import type { RiepilogoPreventivo } from "./FasciaPreventivo";
 import { RiquadroScheda } from "./RiquadroScheda";
 import { Calculator, Percent } from "lucide-react";
 import type { ReactNode } from "react";
+import { NoteClientePreventivo } from './NoteClientePreventivo';
+import type { PreventivoConDettagli } from '@/lib/preventivi-api';
 
-export function PiedePreventivo({ solaLetturaGamma = false, dati, iva, totale, ivaPerc, sconto, modificabile, inCorso, onSconto, onTestata, riepilogoIva }: {
+export function PiedePreventivo({ solaLetturaGamma = false, dati, iva, totale, ivaPerc, sconto, modificabile, inCorso, onSconto, onTestata, riepilogoIva, prev, onNoteCliente }: {
+  prev: Pick<PreventivoConDettagli, 'id' | 'linea' | 'note_cliente'>;
+  onNoteCliente: (testo: string | null) => Promise<void>;
   /** FM75 F3c: presente solo con linee regimiIva; altrimenti il piede resta identico. */
   riepilogoIva?: ReactNode;
   solaLetturaGamma?: boolean;
@@ -25,5 +29,6 @@ export function PiedePreventivo({ solaLetturaGamma = false, dati, iva, totale, i
       <div className="mt-3 rounded-lg bg-primary text-primary-foreground p-4 flex flex-wrap justify-between gap-2 items-center"><span className="font-semibold text-sm">Totale con IVA</span><strong className="text-2xl tabular-nums">€ {fmt(totale)}</strong></div>
       {riepilogoIva && <div className="mt-4">{riepilogoIva}</div>}
     </div></RiquadroScheda>
+    <NoteClientePreventivo key={prev.id} prev={prev} modificabile={modificabile && !solaLetturaGamma} onSave={onNoteCliente}/>
   </section>;
 }

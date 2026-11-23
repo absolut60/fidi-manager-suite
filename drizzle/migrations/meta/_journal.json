@@ -1912,6 +1912,20 @@
       "when": 1795382628909,
       "tag": "0272_fm97_completa_lead_gamma",
       "breakpoints": true
+    },
+    {
+      "idx": 273,
+      "version": "7",
+      "when": 1795430287071,
+      "tag": "0273_fm98_note_cliente_libreria",
+      "breakpoints": true
+    },
+    {
+      "idx": 274,
+      "version": "7",
+      "when": 1795430419694,
+      "tag": "0274_fm98_note_libreria_privilegi_anon",
+      "breakpoints": true
     }
   ]
 }

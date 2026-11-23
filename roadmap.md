@@ -1,7 +1,8 @@
 # FM98 — Fetta 3
-- [ ] A: attende chiarimento lettura showroom/responsabile_showroom: auth_ha_accesso_preventivi reale li esclude, in contrasto con la condivisione per chi vede la linea; nessuna migrazione applicata.
-- [ ] B: note cliente nel Piede, libreria per linea, duplicazione e PDF cliente.
-- [ ] Test TS/SQL in ROLLBACK, confronti raster, verifiche schermi e rapporto.
+- [x] A: migrazione 0273 + 0274 per revocare privilegi anon ereditati; schema/policy/pg_proc verificati prima di B; gate esistente e ACL RPC invariati.
+- [x] B: note cliente nel Piede, libreria per linea, duplicazione/alternative e PDF cliente.
+- [x] 1431 test verdi, SQL clone in ROLLBACK, otto confronti raster identici, Playwright 320–1920 e rapporto fm98-fetta3.md.
+- [ ] Flusso sul database ospitato con sessione personale: account del richiedente non disponibile; collaudo UI con richieste locali intercettate e RLS nel clone isolato.
 
 # FM98 — Fetta 2
 - [x] Modalità privacy da firmare e identità byte/raster dei cinque moduli esistenti.

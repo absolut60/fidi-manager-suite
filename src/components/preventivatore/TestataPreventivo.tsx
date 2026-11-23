@@ -107,6 +107,7 @@ export function TestataPreventivo({prev,cliente,modificabile,statoEditabile,agen
     <div className="flex min-w-0 flex-col gap-3 [&>*]:min-w-0">
     <RiquadroScheda titolo="Note" icona={StickyNote} tono="viola" densita="compatta">
       {modificabile?<Textarea aria-label="Note" rows={3} className="min-h-0 resize-none bg-card px-2 py-1 text-xs md:text-xs" defaultValue={prev.note||''} onBlur={e=>{if((e.target.value||null)!==prev.note)save({note:e.target.value||null});}}/>:<p className="whitespace-pre-wrap break-words text-xs">{prev.note||'—'}</p>}
+      <p className="mt-1 text-xs text-muted-foreground">Note interne, non stampate</p>
       <NotePreventivo id={prev.id} modificabile={modificabile}/>
     </RiquadroScheda>
     <RiquadroScheda titolo="Allegati" icona={Paperclip} tono="grigio" densita="compatta" className="[&>header]:hidden">

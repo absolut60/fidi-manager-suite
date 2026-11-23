@@ -669,7 +669,7 @@ function PreventivoEditorPage() {
               )}
             </section>
             </fieldset></TabsContent>
-          <TabsContent value="piede"><PiedePreventivo solaLetturaGamma={bloccatoGamma} dati={riepilogo} iva={totali.iva} totale={totali.totale} ivaPerc={Number(prev.iva_perc??22)} sconto={Number(prev.sconto_piede_perc??0)} modificabile={modificabile} inCorso={applicaSconto.isPending} onSconto={v=>applicaSconto.mutate(v)} onTestata={()=>cambiaTab('testata')} riepilogoIva={lineaPreventivo(prev.linea).blocchi.regimiIva ? <RiepilogoIvaPreventivo regime={prev.regime_iva} ivaPerc={prev.iva_perc} blocchi={prev.blocchi}/> : undefined}/></TabsContent>
+          <TabsContent value="piede"><PiedePreventivo prev={prev} onNoteCliente={async note_cliente => { await save.mutateAsync({ note_cliente }); }} solaLetturaGamma={bloccatoGamma} dati={riepilogo} iva={totali.iva} totale={totali.totale} ivaPerc={Number(prev.iva_perc??22)} sconto={Number(prev.sconto_piede_perc??0)} modificabile={modificabile} inCorso={applicaSconto.isPending} onSconto={v=>applicaSconto.mutate(v)} onTestata={()=>cambiaTab('testata')} riepilogoIva={lineaPreventivo(prev.linea).blocchi.regimiIva ? <RiepilogoIvaPreventivo regime={prev.regime_iva} ivaPerc={prev.iva_perc} blocchi={prev.blocchi}/> : undefined}/></TabsContent>
         </Tabs>
         </div>
       </div>

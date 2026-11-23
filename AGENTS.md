@@ -1,4 +1,5 @@
 # Architecture rules
+- Customer note permissions and library CRUD live only in note-preventivo (SQL twins auth_legge_note_preventivo/auth_scrive_note_preventivo); NoteClientePreventivo queues blur/library writes through the existing quote save mutation, and one PDF renderer prints after totals before sale conditions, preserving empty-note output.
 - Quote privacy mapping and PDF merge live only in privacy-preventivo, using existing authorized customer/lead reads; GeneraDocumentoDialog stores the merged blob once for preview/download/print/email and never persists the opt-in.
 - Sale conditions keys, reading, placeholder rendering and heading classification live only in condizioni-vendita; customer PDFs append through one renderer before drawFooter, keeping internal lists unchanged and numbering complete.
 - Share recovery UI/counts to prevent per-row queries.
