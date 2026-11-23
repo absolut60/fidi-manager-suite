@@ -329,7 +329,8 @@ test("FM79: debiti banca sommano due componenti, una mancante non azzera l'altra
 
 test("FM79: eventi non confondono omonimia, codici numerici e flag collegati con negatività accertata", () => {
   const e = normalizzaLightReportXml(XML_BUILD).eventi_negativi;
-  expect(e.azienda).toEqual({ protesti: null, pregiudizievoli: null, procedure: false, eventi_crisi: null, cigs: null, fallimenti_propri: false });
+  // FM99: contenitore atti presente senza atti propri pregiudizievoli attivi → false (era null).
+  expect(e.azienda).toEqual({ protesti: null, pregiudizievoli: false, procedure: false, eventi_crisi: null, cigs: null, fallimenti_propri: false });
   expect(e.codici_azienda).toEqual({ CgrPr: 5, CgrPa: 10, CgrPb: 10, CgrPc: 0, CgrF: 99, CgrPrA: 99, CgrPrC: 1 });
   expect(e.persone.map((p) => p.nome)).toEqual(["FINARELLI MARCO", "MARTELLA LAILA"]);
   expect(e.persone[0].protesti).toBeNull();
@@ -343,8 +344,15 @@ test("FM79: nuovi dati assenti restano null, sezioni collegate non contaminano l
   expect(r.anagrafica).toBeNull();
   expect(r.gradings.dettagli.payline).toBeNull();
   expect(r.gradings.cebi).toBeNull();
-  expect(r.eventi_negativi).toEqual({ azienda: null, persone: [], codici_azienda: null, collegati: [] });
+  expect(r.eventi_negativi).toEqual({ azienda: null, persone: [], codici_azienda: null, collegati: [], altri_soggetti: [] });
+  expect(r.procedure_concorsuali).toEqual([]);
+  expect(r.atti_conservatoria).toEqual([]);
+  // FM99: un contenuto qualsiasi non basta più; serve una procedura propria (SubjectReport=true).
   const e = normalizzaLightReportXml("<LightReport><Bankruptcy><Event>procedura</Event></Bankruptcy><AgreedWindingUpProcedures><Event>procedura</Event></AgreedWindingUpProcedures></LightReport>");
-  expect(e.eventi_negativi.azienda?.procedure).toBe(true);
-  expect(e.eventi_negativi.azienda?.fallimenti_propri).toBe(true);
+  expect(e.eventi_negativi.azienda?.procedure).toBe(false);
+  const p = normalizzaLightReportXml("<LightReport><Bankruptcy><BankruptcyBlock><SubjectReport>true</SubjectReport><SingleBankruptcyBlock><EventDescription>FALLIMENTO</EventDescription></SingleBankruptcyBlock></BankruptcyBlock></Bankruptcy><AgreedWindingUpProcedures><ItemAgreeWindingUpProcedure><SubjectReport>true</SubjectReport><AgreedWindingUpProcedure><PrejudicialEventType>true</PrejudicialEventType><FormalityEvent><EventDescription>IPOTECA</EventDescription></FormalityEvent><AnnotationData/></AgreedWindingUpProcedure></ItemAgreeWindingUpProcedure></AgreedWindingUpProcedures></LightReport>");
+  expect(p.eventi_negativi.azienda?.procedure).toBe(true);
+  expect(p.eventi_negativi.azienda?.fallimenti_propri).toBe(true);
+  expect(p.eventi_negativi.azienda?.pregiudizievoli).toBe(true);
+  expect(p.protesti.fallimento).toBe(true);
 });

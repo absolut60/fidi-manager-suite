@@ -936,8 +936,6 @@ const bool = (n: NodoXml | null): boolean | null => {
   const t = txt(n)?.toLowerCase();
   return t === "true" ? true : t === "false" ? false : null;
 };
-/** Nodo presente con contenuto (figli o testo). null se il tag manca. */
-const nonVuoto = (n: NodoXml | null): boolean | null => (n ? n.figli.length > 0 || !!txt(n) : null);
 /** Data di un tag Cerved: dagli attributi day/month/year, altrimenti dal testo (AAAA-MM-GG). */
 function dataXml(n: NodoXml | null): string | null {
   if (!n) return null;
@@ -957,6 +955,19 @@ export type SocietaCollegataCerved = {
   fatturato: { valore: number | null; data: string | null; valuta: string | null } | null;
   utile: { valore: number | null; data: string | null; valuta: string | null } | null;
   eventi_negativi: boolean | null; gruppo: string | null; richieste_12_mesi: number | null; id_esponente: string | null; ruoli: RuoloCerved[];
+};
+
+export type ProceduraConcorsualeCerved = {
+  riguarda_azienda: boolean; soggetto: string | null; codice_fiscale: string | null;
+  tipo: string | null; codice_evento: string | null; classificazione: string | null; tribunale: string | null;
+  data_apertura: string | null; data_iscrizione_ri: string | null; data_registrazione: string | null;
+  numero_registrazione: string | null; respinta: boolean | null;
+};
+export type AttoConservatoriaCerved = {
+  riguarda_azienda: boolean; soggetto: string | null; codice_fiscale: string | null; pregiudizievole: boolean;
+  descrizione: string; data: string | null; cancellato: boolean; data_cancellazione: string | null;
+  conservatoria: string | null; importo_iscritto: number | null; importo_capitale: number | null;
+  a_favore_di: string | null; numero_registrazione: string | null;
 };
 
 export type LightReportCerved = {
@@ -984,8 +995,15 @@ export type LightReportCerved = {
   eventi_negativi: EventiNegativiCervedNorm & {
     /** Codici grezzi: non sono booleani e non hanno una decodifica verificata. */
     codici_azienda: Record<string, number | null> | null;
-    collegati: { nome: string | null; codice_fiscale: string | null; persona: boolean | null; flag_pc: boolean | null; flag_pp: boolean | null; codici: Record<string, number | null> | null }[];
+    /** `eventi` presente solo quando il collegato ha procedure o atti pregiudizievoli non cancellati (FM99). */
+    collegati: { nome: string | null; codice_fiscale: string | null; persona: boolean | null; flag_pc: boolean | null; flag_pp: boolean | null; codici: Record<string, number | null> | null; eventi?: string[] }[];
+    /** Soggetti non presenti fra i collegati con procedure o atti pregiudizievoli non cancellati (FM99). */
+    altri_soggetti: { nome: string | null; codice_fiscale: string | null; eventi: string[] }[];
   };
+  /** FM99: Bankruptcy/BankruptcyBlock/SingleBankruptcyBlock (procedure concorsuali vere). */
+  procedure_concorsuali: ProceduraConcorsualeCerved[];
+  /** FM99: AgreedWindingUpProcedures/ItemAgreeWindingUpProcedure/AgreedWindingUpProcedure (atti di Conservatoria). */
+  atti_conservatoria: AttoConservatoriaCerved[];
   payline: {
     score: number | null; trend: string | null; esperienze: number | null; non_scadute: number | null; aperte: number | null;
     importo_totale: number | null; incidenza_scaduto: number | null; aperte_scadute: number | null;
@@ -1003,6 +1021,96 @@ export type LightReportCerved = {
   } | null;
   protesti: { possibile_omonimia: boolean | null; fallimento: boolean | null; procedure: boolean | null };
 };
+
+const euroIt = (v: number) => `${new Intl.NumberFormat("it-IT", { maximumFractionDigits: 0 }).format(v)} €`;
+const frase = (t: string) => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
+const tribunaleBreve = (t: string) => {
+  const nome = t.replace(/^tribunale\s+(di\s+)?/i, "").replace(/\s*\([A-Z]{2}\)\s*$/, "").trim();
+  return `Tribunale di ${nome.toLowerCase().replace(/(^|[\s'-])(\p{L})/gu, (_m, a: string, b: string) => a + b.toUpperCase())}`;
+};
+
+/**
+ * FM99 — procedure concorsuali (Bankruptcy) e atti di Conservatoria (AgreedWindingUpProcedures,
+ * nonostante il nome) ancorati alla radice. Flag solo su eventi propri; null se il contenitore manca.
+ */
+function leggiEventiConcorsuali<C extends { nome: string | null; codice_fiscale: string | null; persona: boolean | null }>(root: NodoXml | null, collegati: C[]) {
+  const d = (n: NodoXml | null, k: string) => figli(n, k)[0] ?? null;
+  const t = (n: NodoXml | null, k: string) => txt(d(n, k));
+  const bank = d(root, "Bankruptcy");
+  const agreed = d(root, "AgreedWindingUpProcedures");
+  const procedure: ProceduraConcorsualeCerved[] = figli(bank, "BankruptcyBlock").flatMap((b) => {
+    const propria = bool(d(b, "SubjectReport")) === true;
+    const altro = d(b, "OtherSubsidiaries");
+    return figli(b, "SingleBankruptcyBlock").map((sb) => {
+      const contro = d(d(sb, "AgainstItemInformation"), "AgainstItemCompany");
+      return {
+        riguarda_azienda: propria,
+        soggetto: t(contro, "CompanyName") ?? t(altro, "OthersubsidiarieInfos"),
+        codice_fiscale: t(contro, "TaxCode") ?? t(altro, "TaxCode"),
+        tipo: t(sb, "EventDescription"), codice_evento: t(sb, "EventCode"), classificazione: t(sb, "ProcedureClassification"),
+        tribunale: t(sb, "Court"), data_apertura: dataXml(d(sb, "OpeningDate")), data_iscrizione_ri: dataXml(d(sb, "RIIscriptionDate")),
+        data_registrazione: dataXml(d(sb, "ProcedureRegistrationDate")), numero_registrazione: t(sb, "ProcedureRegistrationNumber"),
+        respinta: bool(d(sb, "Rejected")),
+      };
+    });
+  });
+  const atti: AttoConservatoriaCerved[] = figli(agreed, "ItemAgreeWindingUpProcedure").flatMap((it) => {
+    const propria = bool(d(it, "SubjectReport")) === true;
+    const info = d(it, "ItemInformation");
+    const sogg = d(info, "Company") ?? d(info, "Person");
+    return figli(it, "AgreedWindingUpProcedure").map((a) => {
+      const ev = d(a, "FormalityEvent");
+      const grezza = t(ev, "EventDescription") ?? "";
+      const nota = t(a, "Note");
+      const ann = d(a, "AnnotationData");
+      const annPiena = !!ann && (ann.figli.length > 0 || !!txt(ann));
+      const notaCanc = !!nota && /^CANCELLAZIONE/i.test(nota);
+      const dataNota = notaCanc ? nota!.match(/(\d{2})\/(\d{2})\/(\d{4})/) : null;
+      const ben = d(a, "Beneficiary");
+      const benCo = d(ben, "Company"), benPe = d(ben, "Person");
+      const nomePersona = benPe ? ([t(benPe, "FirstName"), t(benPe, "LastName")].filter(Boolean).join(" ") || t(benPe, "Name")) : null;
+      const importo = (k: string) => { const v = num(d(a, k)); return v ? v : null; };
+      return {
+        riguarda_azienda: propria, soggetto: t(sogg, "CompanyName") ?? t(sogg, "Name"), codice_fiscale: t(sogg, "TaxCode"),
+        pregiudizievole: bool(d(a, "PrejudicialEventType")) === true,
+        descrizione: grezza.replace(/\s*\*\*CANC\*\*\s*/gi, " ").trim(), data: dataXml(d(ev, "EventDate")),
+        cancellato: annPiena || /\*\*CANC\*\*/i.test(grezza) || notaCanc,
+        data_cancellazione: dataXml(d(ann, "Date")) ?? (dataNota ? `${dataNota[3]}-${dataNota[2]}-${dataNota[1]}` : null),
+        conservatoria: t(d(a, "DepartmentInformation"), "DepartmentDescription"),
+        importo_iscritto: importo("AmountEnrolledInEuros"), importo_capitale: importo("CapitalAmountInEuros"),
+        a_favore_di: t(benCo, "CompanyName") ?? nomePersona ?? null,
+        numero_registrazione: t(d(a, "NumberRegistrationInfo"), "RegistrationNumber"),
+      };
+    });
+  });
+  const flagProcedure = bank ? procedure.some((p) => p.riguarda_azienda) : null;
+  const flagPregiudizievoli = agreed ? atti.some((a) => a.riguarda_azienda && a.pregiudizievole && !a.cancellato) : null;
+  // Eventi di altri soggetti: descrizioni brevi agganciate al collegato con lo stesso codice fiscale.
+  const perSoggetto = new Map<string, { nome: string | null; codice_fiscale: string | null; eventi: string[] }>();
+  const aggiungi = (nome: string | null, cf: string | null, e: string) => {
+    const k = cf ?? `nome:${nome ?? ""}`;
+    const r = perSoggetto.get(k) ?? { nome, codice_fiscale: cf, eventi: [] };
+    if (!r.eventi.includes(e)) r.eventi.push(e);
+    perSoggetto.set(k, r);
+  };
+  for (const p of procedure) if (!p.riguarda_azienda) {
+    aggiungi(p.soggetto, p.codice_fiscale, [p.tipo ? frase(p.tipo) : "Procedura concorsuale", p.tribunale ? tribunaleBreve(p.tribunale) : null].filter(Boolean).join(" — "));
+  }
+  for (const a of atti) if (!a.riguarda_azienda && a.pregiudizievole && !a.cancellato) {
+    aggiungi(a.soggetto, a.codice_fiscale, [a.descrizione ? frase(a.descrizione) : "Atto pregiudizievole", a.a_favore_di, a.importo_iscritto != null ? euroIt(a.importo_iscritto) : null].filter(Boolean).join(" — "));
+  }
+  const altri_soggetti: { nome: string | null; codice_fiscale: string | null; eventi: string[] }[] = [];
+  const eventiPerIndice = new Map<number, string[]>();
+  for (const r of perSoggetto.values()) {
+    const idx = r.codice_fiscale ? collegati.map((c, i) => (c.codice_fiscale === r.codice_fiscale ? i : -1)).filter((i) => i >= 0) : [];
+    // Stesso codice fiscale per persona e ditta individuale: si preferisce il collegato non persona.
+    const scelto = idx.find((i) => collegati[i]!.persona === false) ?? idx[0];
+    if (scelto == null) { altri_soggetti.push(r); continue; }
+    eventiPerIndice.set(scelto, [...(eventiPerIndice.get(scelto) ?? []), ...r.eventi]);
+  }
+  const conEventi = collegati.map((c, i) => (eventiPerIndice.has(i) ? { ...c, eventi: eventiPerIndice.get(i)! } : c));
+  return { procedure, atti, flagProcedure, flagPregiudizievoli, collegati: conEventi, altri_soggetti };
+}
 
 /** Unico lettore dell'XML del Light Report (percorsi verificati sull'XML reale). */
 export function normalizzaLightReportXml(xml: string): LightReportCerved {
@@ -1086,8 +1194,11 @@ export function normalizzaLightReportXml(xml: string): LightReportCerved {
     return { id_societa: conTesto(info, "IDCompany"), nome: conTesto(info, "CompanyName"), forma_giuridica: txt(forma), forma_descrizione: testo(forma?.attr.LegalFormDescription), forma_codice: testo(forma?.attr.LegalFormCode), codice_fiscale: conTesto(info, "TaxCode"), stato_codice: conTesto(a, "ActivityStatus"), stato_descrizione: conTesto(a, "ActivityDescription"), stato_dal: dataXml(diretto(a, "ActivityStatusStartDate")), costituita_il: dataXml(diretto(a, "IncorporationDate")), ateco_codice: testo(ateco?.attr.Code?.split("/")[0]), ateco_descrizione: txt(ateco), capitale: num(diretto(a, "EquityCapital")), fatturato: importo("Revenue"), utile: importo("Profit"), eventi_negativi: bool(diretto(a, "NegativeEvents")), gruppo: conTesto(a, "Group"), richieste_12_mesi: num(diretto(a, "CreditRequestsLastTwelveMonths")), id_esponente: conTesto(a, "LinkSubjectId"), ruoli: ruoli(c) };
   }));
 
+  const conc = leggiEventiConcorsuali(root, collegati);
+
   return {
     esponenti, societa_collegate,
+    procedure_concorsuali: conc.procedure, atti_conservatoria: conc.atti,
     data_report: dataXml(trova(doc, "DeliveryAndSummaryDetails/DeliveredOn")),
     anagrafica: item ? {
       denominazione: conTesto(item, "OfficialCompanyName") ?? conTesto(company, "CompanyName"),
@@ -1124,10 +1235,11 @@ export function normalizzaLightReportXml(xml: string): LightReportCerved {
       azienda: root && (subs || diretto(root, "Protests") || diretto(root, "Bankruptcy") || diretto(root, "AgreedWindingUpProcedures")) ? {
         ...flagAssenti,
         // ProtestsSimilarityExists indica omonimia, NON un protesto accertato.
-        fallimenti_propri: nonVuoto(diretto(root, "Bankruptcy")), procedure: nonVuoto(diretto(root, "AgreedWindingUpProcedures")),
+        // FM99: solo eventi propri (SubjectReport=true); procedure e fallimenti_propri restano allineati.
+        fallimenti_propri: conc.flagProcedure, procedure: conc.flagProcedure, pregiudizievoli: conc.flagPregiudizievoli,
       } : null,
       persone: collegati.filter((c) => c.persona === true).map((c) => ({ ...flagAssenti, nome: c.nome })),
-      codici_azienda: codici(diretto(subs, "CgrFlags")), collegati,
+      codici_azienda: codici(diretto(subs, "CgrFlags")), collegati: conc.collegati, altri_soggetti: conc.altri_soggetti,
     },
     payline: pay ? {
       score: num(figli(pay, "Score")[0] ?? null),
@@ -1177,8 +1289,8 @@ export function normalizzaLightReportXml(xml: string): LightReportCerved {
     } : null,
     protesti: {
       possibile_omonimia: bool(figli(pr, "ProtestsSimilarityExists")[0] ?? null),
-      fallimento: nonVuoto(trova(doc, "Bankruptcy")),
-      procedure: nonVuoto(trova(doc, "AgreedWindingUpProcedures")),
+      fallimento: conc.flagProcedure,
+      procedure: conc.flagProcedure,
     },
   };
 }

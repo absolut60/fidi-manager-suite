@@ -198,7 +198,7 @@ describe("FM79: presentazione LR → fotografia → assente", () => {
   it("eventi solo LR, collegati deduplicati senza flag di allarme", () => {
     const v = datiSchedaCerved({ light_report: build, eventi_negativi: { azienda: { procedure: true, protesti: true, cigs: false } } }).eventi;
     expect(v.azienda.procedure).toBe(false); expect(v.azienda.fallimenti_propri).toBe(false);
-    expect(v.azienda.protesti).toBeNull(); expect(v.azienda.cigs).toBeNull(); expect(v.azienda.pregiudizievoli).toBeNull();
+    expect(v.azienda.protesti).toBeNull(); expect(v.azienda.cigs).toBeNull(); expect(v.azienda.pregiudizievoli).toBe(false); // FM99: era null
     expect(v.collegati).toHaveLength(3);
     expect(v.collegati[0]).toEqual({ nome: "FINARELLI MARCO", codice_fiscale: "FNRMRC71P14H501D" });
     expect(datiSchedaCerved({ light_report: { eventi_negativi: { azienda: { protesti: true }, codici_azienda: { CgrPr: 5 } } } }).eventi.azienda.protesti).toBe(true);

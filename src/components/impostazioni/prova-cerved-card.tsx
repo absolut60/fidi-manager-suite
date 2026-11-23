@@ -3,7 +3,8 @@ import type React from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation } from "@tanstack/react-query";
 import { Search } from "lucide-react";
-import { provaCercaCerved, provaArchivioCerved, provaRecuperoCerved, provaDatiEstesiCerved, provaAcquistoLightReport } from "@/lib/cerved/cerved-prova.functions";
+import { toast } from "sonner";
+import { rileggiLightReportSalvati, provaCercaCerved, provaArchivioCerved, provaRecuperoCerved, provaDatiEstesiCerved, provaAcquistoLightReport } from "@/lib/cerved/cerved-prova.functions";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,6 +47,41 @@ function Righe({ righe }: { righe: [string, React.ReactNode][] }) {
 function comuneProvincia(comune: string | null, provincia: string | null): string | null {
   if (comune && provincia) return `${comune} (${provincia})`;
   return comune || provincia || null;
+}
+
+/** FM99: rilettura dei Light Report salvati dagli originali (solo amministratore, nessuna chiamata a Cerved). */
+function RileggiReportCerved() {
+  const [aperta, setAperta] = useState(false);
+  const fn = useServerFn(rileggiLightReportSalvati);
+  const m = useMutation({
+    mutationFn: () => fn(),
+    onSuccess: (r) => {
+      const testo = `${r.aggiornate} report riletti su ${r.lette}` + (r.senza_xml ? `, ${r.senza_xml} senza originale` : "");
+      if (r.errori.length) toast.warning(`${testo}, ${r.errori.length} con errori`, { description: r.errori.slice(0, 5).join("\n") });
+      else toast.success(testo);
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Rilettura non riuscita"),
+  });
+  return (
+    <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-2 rounded-md border p-3">
+      <p className="text-sm text-muted-foreground flex-1 min-w-0">Aggiorna la lettura dei report Cerved già salvati, senza nuove chiamate.</p>
+      <Button type="button" variant="outline" size="sm" className="h-10 shrink-0" disabled={m.isPending} onClick={() => setAperta(true)}>
+        {m.isPending ? "Rilettura…" : "Rileggi report salvati"}
+      </Button>
+      <AlertDialog open={aperta} onOpenChange={setAperta}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rileggi report salvati</AlertDialogTitle>
+            <AlertDialogDescription>Rilegge dagli originali già scaricati i report Cerved salvati. Nessuna nuova chiamata a Cerved, nessun costo.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={() => m.mutate()}>Rileggi</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
 }
 
 export function ProvaCervedCard() {
@@ -139,6 +175,7 @@ export function ProvaCervedCard() {
   return (
     <Card className="p-4 sm:p-5 max-w-2xl">
       <h2 className="font-semibold flex items-center gap-2 mb-3"><Search className="size-4" /> Prova Cerved</h2>
+      <RileggiReportCerved />
       <form
         className="flex flex-col sm:flex-row sm:items-end gap-2"
         onSubmit={(e) => { e.preventDefault(); if (valida) m.mutate(piva); }}

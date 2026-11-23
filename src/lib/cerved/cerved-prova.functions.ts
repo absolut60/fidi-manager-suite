@@ -264,3 +264,14 @@ export const provaAcquistoLightReport = createServerFn({ method: "POST" })
 
 /** Bucket privato esistente dei documenti dei clienti, usato anche per i report Cerved. */
 const BUCKET_DOCUMENTI_CERVED = "schede-clienti";
+
+/** FM99: rilegge dagli XML già scaricati i Light Report salvati (nessuna chiamata a Cerved): solo amministratori. */
+export const rileggiLightReportSalvati = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: isAdmin } = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "amministratore" });
+    if (!isAdmin) throw new Error("Operazione riservata agli amministratori");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { rileggiLightReport } = await import("./cerved-rilettura.server");
+    return rileggiLightReport(supabaseAdmin);
+  });
