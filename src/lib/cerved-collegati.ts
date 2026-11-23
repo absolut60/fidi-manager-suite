@@ -45,3 +45,21 @@ export function sintesiCollegatiCerved(esponenti: EsponenteCerved[], societa: So
   const eventi = nomiEventiRelazionatiCerved(persone,societa);
   return `${nome} ${esponenti.length === 1 ? "ha" : "hanno"} avuto ruoli in ${societa.length} ${societa.length === 1 ? "altra società" : "altre società"}${conteggi ? `: ${conteggi}` : ""}. ${eventi.length ? `Eventi negativi segnalati: ${eventi.join("; ")}.` : "Nessun evento negativo segnalato."}`;
 }
+export type SoggettoConEventiCerved = { nome: string | null; codice_fiscale: string | null; eventi: string[] };
+/**
+ * FM99-B: eventi dei collegati (da eventi_negativi.collegati[].eventi) agganciati per codice fiscale
+ * alle società o agli esponenti mostrati; quelli senza riscontro e altri_soggetti vanno in coda.
+ */
+export function eventiSoggettiCerved(collegati: Record<string, unknown>[], altri: SoggettoConEventiCerved[], societa: SocietaCollegataCerved[], esponenti: EsponenteCerved[]) {
+  const perCf: Record<string, string[]> = {};
+  const inCoda: SoggettoConEventiCerved[] = [];
+  const cfMostrati = new Set([...societa.map(s => s.codice_fiscale), ...esponenti.map(e => e.codice_fiscale)].filter((c): c is string => !!c));
+  for (const c of collegati) {
+    const eventi = Array.isArray(c.eventi) ? c.eventi.filter((e): e is string => typeof e === "string") : [];
+    if (!eventi.length) continue;
+    const cf = typeof c.codice_fiscale === "string" ? c.codice_fiscale : null;
+    if (cf && cfMostrati.has(cf)) perCf[cf] = [...new Set([...(perCf[cf] ?? []), ...eventi])];
+    else inCoda.push({ nome: typeof c.nome === "string" ? c.nome : null, codice_fiscale: cf, eventi });
+  }
+  return { perCf, altri: [...inCoda, ...altri.filter(a => a.eventi.length)] };
+}

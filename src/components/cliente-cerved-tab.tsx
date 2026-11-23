@@ -19,13 +19,14 @@ import {
   formattaEuroCompatto, variazionePercentuale,
   dataIsoIt, meseBreveIt, formattaGiorniCerved, formattaPercentualeCerved, ETICHETTE_LIGHT_REPORT,
   testoGiorniPayline, testoConfrontoFido, eventoRecenteCerved,
-  datiSchedaCerved, scoreCervedPresentazione, gradingCervedPresentazione, statoReportCerved, eventiAziendaAssenti,
+  datiSchedaCerved, elementoEventiAzienda, elementoEventiRelazionati, soggettiRelazionatiConEventi, vociProcedureAtti, TESTO_DA_VERIFICARE, scoreCervedPresentazione, gradingCervedPresentazione, statoReportCerved,
 } from "@/lib/cerved-presentazione";
 import { letturaReportCerved, SOGLIE_LETTURA_CERVED } from "@/lib/cerved-lettura";
 import { VisualizzatorePdf } from "@/components/visualizzatore-pdf";
 import { GaugeCerved } from "@/components/cerved/gauge-cerved";
 import { EsponentiSocietaCerved } from "@/components/cerved/esponenti-societa";
-import { nomiEventiRelazionatiCerved } from "@/lib/cerved-collegati";
+import { nomiEventiRelazionatiCerved, eventiSoggettiCerved } from "@/lib/cerved-collegati";
+import { ProcedureAttiCerved } from "@/components/cerved/procedure-atti-cerved";
 import { useLightReportEntita, chiaveLightReportEntita } from "@/hooks/use-light-report-cliente";
 import { useEsperienzaPagamentoCliente, testiEsperienzaPagamento } from "@/hooks/use-esperienza-pagamento";
 import { SemaforoAffidabilitaBadge } from "@/components/pannello-rischio-cliente";
@@ -206,18 +207,17 @@ export function VistaCerved({ dati, clienteId, entita = "cliente", datiMade = tr
   const anni = vista.anni;
   const lr = dati.foto.light_report ?? null;
   const dataLr = dataIsoIt(lr?.data_report);
+  const eventiSogg = eventiSoggettiCerved(ev.collegati ?? [], Array.isArray(lr?.eventi_negativi?.altri_soggetti) ? lr.eventi_negativi.altri_soggetti : [], lr?.societa_collegate ?? [], lr?.esponenti ?? []);
 
   const elementiVoci = (
     <>
           {(() => {
-            if (eventiAziendaAssenti(lr)) return <Elemento k="Eventi negativi su azienda" v="Assenti" tono="verde" />;
-            if (!Object.values(ev.azienda).some(v => typeof v === "boolean")) return <Elemento k="Eventi negativi su azienda" v="Dato non disponibile" />;
-            const presenti = EVENTI.filter(([k]) => ev.azienda[k] === true).map(([, et]) => et);
-            return <Elemento k="Eventi negativi su azienda" v={presenti.length ? presenti.join(", ") : Object.values(ev.azienda).every(v => v === false) ? "Assenti" : "Dati parziali"} tono={presenti.length ? "rosso" : Object.values(ev.azienda).every(v => v === false) ? "verde" : undefined} />;
+            const e = elementoEventiAzienda(lr, ev);
+            return <Elemento k="Eventi negativi su azienda" v={e.testo} tono={e.tono ?? undefined} />;
           })()}
           {(() => {
-            const nomi = nomiEventiRelazionatiCerved(Array.isArray(ev.persone) ? ev.persone : [], lr?.societa_collegate ?? []);
-            return <Elemento k="Eventi negativi su soggetti relazionati" v={nomi.length ? nomi.join("; ") : "Nessuno segnalato"} tono={nomi.length ? "rosso" : "verde"} />;
+            const e = elementoEventiRelazionati([...nomiEventiRelazionatiCerved(Array.isArray(ev.persone) ? ev.persone : [], lr?.societa_collegate ?? []), ...soggettiRelazionatiConEventi(lr)]);
+            return <Elemento k="Eventi negativi su soggetti relazionati" v={e.testo} tono={e.tono ?? undefined} />;
           })()}
           <Elemento k="Appartenenza a un gruppo" v={p?.gruppo == null ? "—" : p.gruppo ? `Sì${p.capogruppo?.length ? ` – ${p.capogruppo.join(", ")}` : ""}` : "No"} />
           <Elemento k="N. addetti" v={a.dipendenti != null ? `${a.dipendenti.toLocaleString("it-IT")}${a.dipendenti_anno ? ` (${a.dipendenti_anno})` : ""}` : "—"} />
@@ -259,7 +259,7 @@ export function VistaCerved({ dati, clienteId, entita = "cliente", datiMade = tr
                     <li key={k} className="flex items-center justify-between gap-2">
                       <span className="min-w-0 break-words">{et}</span>
                       <span className={`shrink-0 font-bold ${val === true ? "text-destructive" : val === false ? "text-success" : "text-muted-foreground"}`}>
-                        {val === true ? "Presenti" : val === false ? "Assenti" : "—"}
+                        {val === true ? "Presenti" : val === false ? "Assenti" : ev.da_verificare?.includes(k) ? TESTO_DA_VERIFICARE : "—"}
                       </span>
                     </li>
                   );
@@ -365,7 +365,8 @@ export function VistaCerved({ dati, clienteId, entita = "cliente", datiMade = tr
             {elementiVoci}
           </div>
         </Sezione>
-        {lr && <EsponentiSocietaCerved esponenti={lr.esponenti} societa={lr.societa_collegate} persone={ev.persone} atecoCliente={a.ateco_2025_codice} pagina />}
+        {lr && <ProcedureAttiCerved voci={vociProcedureAtti(lr)} />}
+        {lr && <EsponentiSocietaCerved esponenti={lr.esponenti} societa={lr.societa_collegate} persone={ev.persone} atecoCliente={a.ateco_2025_codice} eventiPerCf={eventiSogg.perCf} altriConEventi={eventiSogg.altri} pagina />}
 
         {altriDati}
       </div>
@@ -479,7 +480,8 @@ export function VistaCerved({ dati, clienteId, entita = "cliente", datiMade = tr
           {elementiVoci}
         </div>
       </Sezione>
-      {lr && <EsponentiSocietaCerved esponenti={lr.esponenti} societa={lr.societa_collegate} persone={ev.persone} atecoCliente={a.ateco_2025_codice} />}
+      {lr && <ProcedureAttiCerved voci={vociProcedureAtti(lr)} />}
+        {lr && <EsponentiSocietaCerved esponenti={lr.esponenti} societa={lr.societa_collegate} persone={ev.persone} atecoCliente={a.ateco_2025_codice} eventiPerCf={eventiSogg.perCf} altriConEventi={eventiSogg.altri} />}
 
       {/* E) Altri dati */}
       {altriDati}
@@ -488,8 +490,8 @@ export function VistaCerved({ dati, clienteId, entita = "cliente", datiMade = tr
 }
 
 const EVENTI = [
-  ["protesti", "Protesti"], ["pregiudizievoli", "Pregiudizievoli"], ["procedure", "Procedure concorsuali"],
-  ["eventi_crisi", "Eventi di crisi"], ["cigs", "Cassa integrazione straordinaria"], ["fallimenti_propri", "Fallimenti in proprio"],
+  ["protesti", "Protesti"], ["pregiudizievoli", "Pregiudizievoli (azienda)"], ["procedure", "Procedure concorsuali (azienda)"],
+  ["eventi_crisi", "Eventi di crisi"], ["cigs", "Cassa integrazione straordinaria"], ["fallimenti_propri", "Fallimenti in proprio (azienda)"],
 ] as const;
 
 const TESTO_ESITO: Record<EsitoScore, string> = { verde: "text-success", ambra: "text-warning", rosso: "text-destructive", neutro: "text-foreground" };
@@ -729,11 +731,11 @@ function CampoTestata({ k, v, sotto, piccolo, className = "" }: { k: string; v: 
   );
 }
 
-function Elemento({ k, v, tono }: { k: string; v: string; tono?: "verde" | "rosso" }) {
+function Elemento({ k, v, tono }: { k: string; v: string; tono?: "verde" | "rosso" | "grigio" }) {
   return (
     <div className="min-w-0 rounded-sm border p-3">
       <p className="break-words text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{k}</p>
-      <p className={`mt-1 break-words text-sm font-bold ${tono === "verde" ? "text-success" : tono === "rosso" ? "text-destructive" : ""}`}>{v}</p>
+      <p className={`mt-1 break-words text-sm font-bold ${tono === "verde" ? "text-success" : tono === "rosso" ? "text-destructive" : tono === "grigio" ? "text-muted-foreground" : ""}`}>{v}</p>
     </div>
   );
 }

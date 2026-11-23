@@ -1083,7 +1083,8 @@ function leggiEventiConcorsuali<C extends { nome: string | null; codice_fiscale:
       };
     });
   });
-  const flagProcedure = bank ? procedure.some((p) => p.riguarda_azienda) : null;
+  // FM99-B: un'istanza respinta non è una procedura in corso.
+  const flagProcedure = bank ? procedure.some((p) => p.riguarda_azienda && p.respinta !== true) : null;
   const flagPregiudizievoli = agreed ? atti.some((a) => a.riguarda_azienda && a.pregiudizievole && !a.cancellato) : null;
   // Eventi di altri soggetti: descrizioni brevi agganciate al collegato con lo stesso codice fiscale.
   const perSoggetto = new Map<string, { nome: string | null; codice_fiscale: string | null; eventi: string[] }>();
@@ -1094,7 +1095,7 @@ function leggiEventiConcorsuali<C extends { nome: string | null; codice_fiscale:
     perSoggetto.set(k, r);
   };
   for (const p of procedure) if (!p.riguarda_azienda) {
-    aggiungi(p.soggetto, p.codice_fiscale, [p.tipo ? frase(p.tipo) : "Procedura concorsuale", p.tribunale ? tribunaleBreve(p.tribunale) : null].filter(Boolean).join(" — "));
+    aggiungi(p.soggetto, p.codice_fiscale, [p.tipo ? frase(p.tipo) : "Procedura concorsuale", p.tribunale ? tribunaleBreve(p.tribunale) : null].filter(Boolean).join(" — ") + (p.respinta === true ? " (istanza respinta)" : ""));
   }
   for (const a of atti) if (!a.riguarda_azienda && a.pregiudizievole && !a.cancellato) {
     aggiungi(a.soggetto, a.codice_fiscale, [a.descrizione ? frase(a.descrizione) : "Atto pregiudizievole", a.a_favore_di, a.importo_iscritto != null ? euroIt(a.importo_iscritto) : null].filter(Boolean).join(" — "));

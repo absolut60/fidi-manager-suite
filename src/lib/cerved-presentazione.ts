@@ -150,17 +150,124 @@ export function datiSchedaCerved(foto: DatoCerved, soggetto: DatoCerved = {}) {
   };
   const bilanciLr = Array.isArray(lr?.bilanci) && lr.bilanci.length > 0;
   const anni: DatoCerved[] = bilanciLr ? lr.bilanci.slice(0, 3) : Array.isArray(foto.bilancio?.anni) ? foto.bilancio.anni : [];
+  // FM99-B: procedure/fallimenti/pregiudizievoli dalle fotografie granulari solo se il Light Report
+  // non ha né Bankruptcy né AgreedWindingUpProcedures; il valore "true" non distingue azienda e
+  // collegati, quindi resta null e la chiave finisce in da_verificare (mai rosso).
+  const ripiego = ripiegoEventiGranulari(lr);
+  const da_verificare: string[] = [];
   const azienda = Object.fromEntries(["protesti", "pregiudizievoli", "procedure", "eventi_crisi", "cigs", "fallimenti_propri"].map(k => {
     const xml = lr?.eventi_negativi?.azienda?.[k];
     const fallback = foto.eventi_negativi?.azienda?.[k];
+    if (CHIAVI_CONSERVATORIA.includes(k)) {
+      if (!ripiego) return [k, typeof xml === "boolean" ? xml : null];
+      if (fallback === true) { da_verificare.push(k); return [k, null]; }
+      return [k, typeof fallback === "boolean" ? fallback : null];
+    }
     return [k, typeof xml === "boolean" ? xml : typeof fallback === "boolean" ? fallback : null];
   }));
-  const collegati: DatoCerved[] = Array.isArray(lr?.eventi_negativi?.collegati) ? lr.eventi_negativi.collegati.map((c: DatoCerved) => ({ nome: testoCerved(c.nome), codice_fiscale: testoCerved(c.codice_fiscale) })).filter((c: DatoCerved) => c.nome || c.codice_fiscale) : [];
-  const unici = [...new Map(collegati.map(c => [`${c.codice_fiscale ?? ""}|${c.nome ?? ""}`.toUpperCase(), c])).values()];
-  return { anagrafica, anni, bilanciLr, eventi: { azienda, persone: lr?.eventi_negativi?.persone ?? foto.eventi_negativi?.persone ?? [], collegati: unici } };
+  const collegati: DatoCerved[] = Array.isArray(lr?.eventi_negativi?.collegati) ? lr.eventi_negativi.collegati.map((c: DatoCerved) => ({ nome: testoCerved(c.nome), codice_fiscale: testoCerved(c.codice_fiscale), ...(Array.isArray(c.eventi) && c.eventi.length ? { eventi: c.eventi } : {}) })).filter((c: DatoCerved) => c.nome || c.codice_fiscale) : [];
+  const unici = [...collegati.reduce((m, c) => {
+    const k = `${c.codice_fiscale ?? ""}|${c.nome ?? ""}`.toUpperCase();
+    const prima = m.get(k);
+    const eventi = [...new Set([...(prima?.eventi ?? []), ...(c.eventi ?? [])])];
+    m.set(k, eventi.length ? { ...(prima ?? c), eventi } : (prima ?? c));
+    return m;
+  }, new Map<string, DatoCerved>()).values()];
+  return { anagrafica, anni, bilanciLr, eventi: { azienda, persone: lr?.eventi_negativi?.persone ?? foto.eventi_negativi?.persone ?? [], collegati: unici, da_verificare } };
+}
+
+const CHIAVI_CONSERVATORIA = ["pregiudizievoli", "procedure", "fallimenti_propri"];
+
+/** Vero se il Light Report manca o non contiene né Bankruptcy né AgreedWindingUpProcedures. */
+export function ripiegoEventiGranulari(lr: DatoCerved | null | undefined): boolean {
+  const a = lr?.eventi_negativi?.azienda;
+  if (!lr) return true;
+  if (!a) return true;
+  return a.fallimenti_propri == null && a.procedure == null && a.pregiudizievoli == null;
+}
+
+const fraseIt = (t: string) => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
+const euroIntero = (v: number) => `${new Intl.NumberFormat("it-IT", { maximumFractionDigits: 0 }).format(v)} €`;
+const procedureDi = (lr: DatoCerved | null | undefined): DatoCerved[] => Array.isArray(lr?.procedure_concorsuali) ? lr.procedure_concorsuali : [];
+const attiDi = (lr: DatoCerved | null | undefined): DatoCerved[] => Array.isArray(lr?.atti_conservatoria) ? lr.atti_conservatoria : [];
+const proceduraAttiva = (p: DatoCerved) => p.respinta !== true;
+const attoAttivo = (a: DatoCerved) => a.pregiudizievole === true && a.cancellato !== true;
+
+export const TESTO_DA_VERIFICARE = "da verificare (dato non distinto tra azienda e collegati)";
+export const ETICHETTE_EVENTI_AZIENDA: Record<string, string> = {
+  protesti: "Protesti", pregiudizievoli: "Atti pregiudizievoli (azienda)", procedure: "Procedure concorsuali (azienda)",
+  eventi_crisi: "Eventi di crisi", cigs: "Cassa integrazione straordinaria", fallimenti_propri: "Fallimenti in proprio (azienda)",
+};
+
+export type ElementoEventi = { testo: string; tono: "verde" | "rosso" | "grigio" | null };
+
+/** Riquadro "Eventi negativi su azienda": rosso solo per eventi propri attivi (FM99-B). */
+export function elementoEventiAzienda(lr: DatoCerved | null | undefined, ev: { azienda: Record<string, boolean | null>; da_verificare?: string[] }): ElementoEventi {
+  const proprieProc = procedureDi(lr).filter(p => p.riguarda_azienda === true);
+  const propriAtti = attiDi(lr).filter(a => a.riguarda_azienda === true);
+  const parti: string[] = [];
+  const tipi = [...new Set(proprieProc.filter(proceduraAttiva).map(p => p.tipo ? fraseIt(String(p.tipo)) : "Procedura concorsuale"))];
+  if (tipi.length) parti.push(`Procedura concorsuale: ${tipi.join(", ")}`);
+  else if (ev.azienda.procedure === true || ev.azienda.fallimenti_propri === true) parti.push(ETICHETTE_EVENTI_AZIENDA["procedure"]!);
+  const nAtti = propriAtti.filter(attoAttivo).length;
+  if (nAtti) parti.push(`Atti pregiudizievoli: ${nAtti}`);
+  else if (ev.azienda.pregiudizievoli === true) parti.push("Atti pregiudizievoli");
+  for (const k of ["protesti", "eventi_crisi", "cigs"]) if (ev.azienda[k] === true) parti.push(ETICHETTE_EVENTI_AZIENDA[k]!);
+  if (parti.length) return { testo: parti.join(" · "), tono: "rosso" };
+  if (ev.da_verificare?.length) return { testo: `${ev.da_verificare.map(k => ETICHETTE_EVENTI_AZIENDA[k]).join(", ")}: ${TESTO_DA_VERIFICARE}`, tono: "grigio" };
+  if (propriAtti.length || proprieProc.length) return { testo: "Solo atti informativi", tono: "grigio" };
+  if (!Object.values(ev.azienda).some(v => typeof v === "boolean")) return { testo: "Dato non disponibile", tono: null };
+  return { testo: "Nessuno segnalato", tono: "verde" };
+}
+
+/** Nomi dei soggetti relazionati con procedure in corso o atti pregiudizievoli attivi (dalle liste del Light Report). */
+export function soggettiRelazionatiConEventi(lr: DatoCerved | null | undefined): string[] {
+  return [...new Set([
+    ...procedureDi(lr).filter(p => p.riguarda_azienda !== true && proceduraAttiva(p)),
+    ...attiDi(lr).filter(a => a.riguarda_azienda !== true && attoAttivo(a)),
+  ].map(x => (typeof x.soggetto === "string" && x.soggetto) ? x.soggetto : "Soggetto senza nome"))];
+}
+
+/** Riquadro "Eventi negativi su soggetti relazionati": al massimo due nomi più "e altri N". */
+export function elementoEventiRelazionati(nomi: string[]): ElementoEventi {
+  const unici = [...new Set(nomi)];
+  if (!unici.length) return { testo: "Nessuno segnalato", tono: "verde" };
+  const altri = unici.length - 2;
+  return { testo: `${unici.length} ${unici.length === 1 ? "soggetto" : "soggetti"}: ${unici.slice(0, 2).join(", ")}${altri > 0 ? ` e altri ${altri}` : ""}`, tono: "rosso" };
+}
+
+export type BadgeVoceCerved = { testo: string; tono: "rosso" | "grigio"; barrato?: boolean };
+export type VoceProceduraAtto = { chiave: string; tipo: "procedura" | "atto"; titolo: string; data: string | null; soggetto: string | null; dettagli: string[]; badge: BadgeVoceCerved[]; azienda: boolean };
+
+/** Voci della sezione "Procedure e atti di Conservatoria": azienda prima, poi collegati; più recenti in alto. */
+export function vociProcedureAtti(lr: DatoCerved | null | undefined): VoceProceduraAtto[] {
+  const proc: (VoceProceduraAtto & { iso: string })[] = procedureDi(lr).map((p, i) => ({
+    chiave: `p${i}`, tipo: "procedura", titolo: p.tipo ? fraseIt(String(p.tipo)) : "Procedura concorsuale",
+    iso: p.data_apertura ?? "", data: dataIsoIt(p.data_apertura), azienda: p.riguarda_azienda === true,
+    soggetto: p.riguarda_azienda === true ? null : (p.soggetto ?? "soggetto collegato"),
+    dettagli: [p.tribunale, p.data_apertura ? `Aperta il ${dataIsoIt(p.data_apertura)}` : null].filter((x): x is string => !!x),
+    badge: [p.respinta === true ? { testo: "Istanza respinta", tono: "grigio" } : { testo: "In corso", tono: "rosso" }],
+  }));
+  const atti: (VoceProceduraAtto & { iso: string })[] = attiDi(lr).map((a, i) => ({
+    chiave: `a${i}`, tipo: "atto", titolo: a.descrizione ? fraseIt(String(a.descrizione)) : "Atto di Conservatoria",
+    iso: a.data ?? "", data: dataIsoIt(a.data), azienda: a.riguarda_azienda === true,
+    soggetto: a.riguarda_azienda === true ? null : (a.soggetto ?? "soggetto collegato"),
+    dettagli: [a.conservatoria ? `Conservatoria di ${a.conservatoria}` : null, a.a_favore_di ? `A favore di ${a.a_favore_di}` : null,
+      typeof a.importo_iscritto === "number" ? `Importo ${euroIntero(a.importo_iscritto)}` : null].filter((x): x is string => !!x),
+    badge: [
+      a.pregiudizievole === true && a.cancellato !== true ? { testo: "Pregiudizievole", tono: "rosso" } : { testo: a.pregiudizievole === true ? "Pregiudizievole" : "Informativo", tono: "grigio" },
+      ...(a.cancellato === true ? [{ testo: a.data_cancellazione ? `Cancellato il ${dataIsoIt(a.data_cancellazione)}` : "Cancellato", tono: "grigio" as const, barrato: true }] : []),
+    ] as BadgeVoceCerved[],
+  }));
+  return [...proc, ...atti]
+    .sort((x, y) => Number(y.azienda) - Number(x.azienda) || y.iso.localeCompare(x.iso))
+    .map(({ iso: _iso, ...v }) => v);
 }
 
 export function eventiAziendaAssenti(lr: DatoCerved | null | undefined) {
+  // FM99-B: nessuna procedura propria in corso e nessun atto proprio pregiudizievole attivo.
+  if (procedureDi(lr).some(p => p.riguarda_azienda === true && proceduraAttiva(p))) return false;
+  if (attiDi(lr).some(a => a.riguarda_azienda === true && attoAttivo(a))) return false;
   return lr?.gradings?.dettagli?.eventi_negativi?.descrizione === "C4_1" &&
     !Object.values(lr?.eventi_negativi?.azienda ?? {}).some(v => v === true) &&
     !(lr?.eventi_negativi?.persone ?? []).some((p: DatoCerved) => Object.entries(p).some(([k,v]) => k !== "nome" && v === true));
