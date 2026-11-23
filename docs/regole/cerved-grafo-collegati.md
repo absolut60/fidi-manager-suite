@@ -53,3 +53,44 @@ Componente unico `GrafoCollegatiCerved` (`src/components/cerved/grafo-collegati-
 - **Telefono/tablet (pointer coarse)**: nella scheda anteprima ferma (la pagina continua a scorrere), un tocco apre la finestra a tutto schermo con le stesse funzioni; `touch-action: none` solo lì (un dito trascina nodo o vista, due dita zoom).
 - **Dettaglio** (finestra sovrapposta, dal basso sul telefono): nome intero, tipo, codice fiscale, stato, dettagli, eventi in rosso, legami con l'altro capo; per ogni cliente MADE ragione sociale, codice, sede, fido, esposizione, scaduto, oltre 60 gg, Bloccato / In legale.
 - **"Apri scheda cliente" solo se `visibile`** (l'utente vede il cliente con la propria RLS) e non è questo cliente.
+
+## Famiglie di legame ed etichette brevi (FM100, ridisegno leggibilità)
+Fonte unica in `src/lib/cerved-grafo.ts`: `TABELLA_RUOLI_GRAFO` + `classificaRuoloCerved` (ruoli Cerved), `famigliaArco`, `etichettaArco` (sostituiscono `percentualiArco`/`ruoliArco`, eliminate). Ogni arco ha `legami[]` ({famiglia, breve, titolare?}). La prima regola della tabella che corrisponde vale (testo maiuscolo senza accenti).
+
+| Fonte / ruolo Cerved | Famiglia | Etichetta |
+|---|---|---|
+| Socio dell'elenco soci | quote | "Socio N%" (o "Socio") |
+| Partecipazione | quote | "Partecipa N%" |
+| Titolare effettivo POSSESSO_QUOTE | quote | "Titolare effettivo" (solo se sull'arco non c'è già una quota) |
+| Titolare effettivo POTERI_… | cariche | "Titolare effettivo" |
+| Socio principale (soci delle società socie) | quote | "Socio" |
+| SOCIO UNICO | quote | Socio unico |
+| …ACCOMANDANTE / …ACCOMANDATARIO | quote | Accomandante / Accomandatario |
+| SOCIO AMMINISTRATORE | quote | Socio amministratore |
+| altri SOCIO (SNC, lavorante, non partecipa…) | quote | Socio |
+| TITOLARE FIRMATARIO | quote | Titolare |
+| …COLLEGIO SINDACALE, SINDACO EFFETTIVO/SUPPLENTE | altri | Sindaco |
+| REVISORE (legale/unico/dei conti) | altri | Revisore |
+| AMMINISTRATORE DELEGATO | cariche | Amm. delegato |
+| AMMINISTRATORE UNICO / AMMINISTRATORE | cariche | Amministratore |
+| CONSIGLIERE / CONSIGLIERE DELEGATO | cariche | Consigliere |
+| VICE PRESIDENTE (anche CdA) | cariche | Vicepresidente |
+| PRESIDENTE CONSIGLIO AMMINISTRAZIONE | cariche | Presidente CdA |
+| LIQUIDATORE | cariche | Liquidatore |
+| LEGALE RAPPRESENTANTE | cariche | Legale rappr. |
+| MEMBRO CONSIGLIO/COMITATO DIRETTIVO | cariche | Membro direttivo |
+| PROCURATORE (anche speciale) | altri | Procuratore |
+| RESPONSABILE TECNICO / DIRETTORE TECNICO | altri | Resp. tecnico / Dir. tecnico |
+| PREPOSTO… / INSTITORE | altri | Preposto / Institore |
+| ruolo non riconosciuto | altri | testo Cerved con sola iniziale maiuscola, max 18 caratteri |
+
+Arco: famiglia = quote se c'è almeno un legame quote, altrimenti cariche, altrimenti altri. Etichetta = quote, poi cariche, poi altri, voci uniche unite con " · ", al massimo 2 + "+N". Testo completo con date solo nel dettaglio e nell'Elenco.
+
+**Lead già in FidiManager** (`datiMadeGrafoCerved` → `lead`): con `supabaseAdmin`, lead con P.IVA/CF fra le chiavi (stessa normalizzazione), `cliente_id` NULL, escluso il lead della scheda; `visibile` = RLS dell'utente su `lead`. Composizione pura `componiLeadGrafo`. Se la chiave ha un cliente il nodo è "Cliente", mai "Lead" (`leadPerNodo`).
+
+## Schermata — ridisegno leggibilità (sostituisce le voci su targhetta MADE, bordo verde e percentuali/ruoli al passaggio)
+- **Frecce**: etichetta breve sempre visibile a metà freccia, in pastiglia (fondo `--background`, bordo sottile, 9,5 px). Colore per famiglia: quote `primary` spessore 2; cariche `warning` 1,5; altri grigio 1; punta dello stesso colore (un marker per famiglia). Cessato: tratteggiato e opacità 0,5. Verso: da chi detiene/ricopre verso l'azienda.
+- **Nodi**: centro primario pieno; già cliente = fondo primario 15% + bordo primario + seconda riga "Cliente <codice>" (`rigaClienteNodo`), rossa con " · bloccato / in legale / scaduto oltre 60 gg"; già lead = fondo info 15% + "Lead"; altri fondo bianco. Persona cerchio, società riquadro. Nome su 2 righe da ~20 caratteri (`righeNome`). Bordo rosso = eventi/procedure; cessata grigia e sbiadita; niente bordo verde (lo stato resta nel dettaglio); nessun testo "MADE" nel disegno.
+- **Dettaglio**: blocco cliente con badge "Cliente N"; blocco "Lead in FidiManager" (ragione sociale, stato, "Apri scheda lead" solo se visibile).
+- **Legenda** (`LegendaGrafo`): PC sempre aperta sotto il grafico; telefono e schermo intero con pulsante "Legenda". Voci: azienda che stai guardando · "Cliente N" · "Lead" · persona · società · eventi negativi/procedure · cessata · quote/soci · cariche · altri incarichi · legame cessato · verso della freccia.
+- **Elenco**: etichetta breve + testo completo sotto in piccolo; badge "Cliente N" o "Lead".

@@ -17,7 +17,10 @@ export type NodoGrafo = {
   stato: StatoNodoGrafo; stato_testo: string | null; eventi: string[]; livello: 0 | 1 | 2;
   dettagli: { etichetta: string; valore: string }[];
 };
-export type ArcoGrafo = { id: string; da: string; a: string; etichette: string[]; tipi: string[]; in_corso: boolean };
+export type FamigliaLegame = "quote" | "cariche" | "altri";
+/** Legame classificato: famiglia ed etichetta breve (senza date). `titolare` = titolare effettivo (mostrato solo senza altre quote). */
+export type LegameBreve = { famiglia: FamigliaLegame; breve: string; titolare?: boolean };
+export type ArcoGrafo = { id: string; da: string; a: string; etichette: string[]; tipi: string[]; in_corso: boolean; legami: LegameBreve[] };
 export type GrafoCerved = { nodi: NodoGrafo[]; archi: ArcoGrafo[] };
 export type CentroGrafo = { nome: string | null; partita_iva: string | null; codice_fiscale: string | null };
 
@@ -80,11 +83,12 @@ export function costruisciGrafoCerved(lr: Pick<LightReportCerved, "soci" | "tito
     return id;
   }
   const archi = new Map<string, ArcoGrafo>();
-  function arco(da: string, a: string, tipo: string, etichetta: string, inCorso: boolean) {
+  function arco(da: string, a: string, tipo: string, etichetta: string, inCorso: boolean, legame: LegameBreve) {
     if (da === a) return;
     const k = [da, a].sort().join("|");
     let x = archi.get(k);
-    if (!x) { x = { id: k, da, a, etichette: [], tipi: [], in_corso: false }; archi.set(k, x); }
+    if (!x) { x = { id: k, da, a, etichette: [], tipi: [], in_corso: false, legami: [] }; archi.set(k, x); }
+    if (!x.legami.some((l) => l.breve === legame.breve && l.famiglia === legame.famiglia)) x.legami.push(legame);
     if (!x.etichette.includes(etichetta)) x.etichette.push(etichetta);
     if (!x.tipi.includes(tipo)) x.tipi.push(tipo);
     x.in_corso ||= inCorso;
@@ -108,20 +112,21 @@ export function costruisciGrafoCerved(lr: Pick<LightReportCerved, "soci" | "tito
   for (const s of lr.soci ?? []) {
     const id = nodo({ tipo: s.tipo, nome: s.nome, cf: s.codice_fiscale, idCerved: s.id_cerved, subject: s.subject_id }, 1);
     const et = [pct(s.percentuale), s.diritto && s.diritto !== "PROPRIETA'" ? s.diritto : null].filter(Boolean).join(" ") || "Socio";
-    arco(id, CENTRO, "socio", et, true);
+    arco(id, CENTRO, "socio", et, true, { famiglia: "quote", breve: s.percentuale != null ? `Socio ${pct(s.percentuale)}` : "Socio" });
     if (s.tipo !== "persona") { statoSoc(id, s); eventoSocieta(id, s.eventi_negativi); dettaglio(id, "Forma", s.forma); dettaglio(id, "Ateco", [s.ateco_codice, s.ateco_descrizione].filter(Boolean).join(" ") || null); dettaglio(id, "Gruppo", s.gruppo); dettaglio(id, "Nazionalità", s.nazionalita); }
     for (const p of s.soci_principali ?? []) sociPrincipali.push({ nome: p, verso: id });
   }
   for (const t of lr.titolari_effettivi ?? []) {
     const id = nodo({ tipo: t.persona === false ? "societa" : "persona", nome: t.nome, cf: t.codice_fiscale, subject: t.id_soggetto }, 1);
     const extra = t.criterio === "POSSESSO_QUOTE" ? (t.percentuale != null ? `quote ${pct(t.percentuale)}` : "quote") : t.criterio?.startsWith("POTERI_") ? "poteri di amministrazione" : null;
-    arco(id, CENTRO, "titolare_effettivo", ["Titolare effettivo", extra].filter(Boolean).join(" — "), true);
+    arco(id, CENTRO, "titolare_effettivo", ["Titolare effettivo", extra].filter(Boolean).join(" — "), true,
+      { famiglia: t.criterio === "POSSESSO_QUOTE" ? "quote" : t.criterio?.startsWith("POTERI_") ? "cariche" : "altri", breve: "Titolare effettivo", titolare: true });
   }
   for (const e of lr.esponenti ?? []) {
     const id = nodo({ tipo: "persona", nome: nomeEsponenteCerved(e), cf: e.codice_fiscale, idCerved: e.id_persona, subject: e.subject_id }, 1);
     if (e.id_persona) idEsponenti.set(e.id_persona, id);
     dettaglio(id, "Nascita", [e.data_nascita ? dataIsoIt(e.data_nascita) ?? e.data_nascita : null, e.luogo_nascita ? `${e.luogo_nascita}${e.provincia_nascita ? ` (${e.provincia_nascita})` : ""}` : null].filter(Boolean).join(" — ") || null);
-    for (const r of e.ruoli) { const t = testoRuoloCerved(r); arco(id, CENTRO, "esponente", t.testo, t.inCorso); }
+    for (const r of e.ruoli) { const t = testoRuoloCerved(r); arco(id, CENTRO, "esponente", t.testo, t.inCorso, classificaRuoloCerved(r.tipo ?? r.codice)); }
   }
   for (const g of raggruppaSocietaCerved(lr.societa_collegate ?? [], lr.esponenti ?? [])) {
     const s = g.societa;
@@ -129,7 +134,7 @@ export function costruisciGrafoCerved(lr: Pick<LightReportCerved, "soci" | "tito
       const da = (l.esponente?.id_persona && idEsponenti.get(l.esponente.id_persona)) || CENTRO;
       const id = nodo({ tipo: "societa", nome: s.nome, cf: s.codice_fiscale, idCerved: s.id_societa }, da === CENTRO ? 1 : 2);
       const t = testoRuoloCerved(l.ruolo, s);
-      arco(da, id, "societa_collegata", t.testo, t.inCorso);
+      arco(da, id, "societa_collegata", t.testo, t.inCorso, classificaRuoloCerved(l.ruolo.tipo ?? l.ruolo.codice));
       statoSoc(id, s); eventoSocieta(id, s.eventi_negativi);
       dettaglio(id, "Forma", s.forma_giuridica); dettaglio(id, "Ateco", [s.ateco_codice, s.ateco_descrizione].filter(Boolean).join(" ") || null);
       dettaglio(id, "Fatturato", importo(s.fatturato)); dettaglio(id, "Utile", importo(s.utile)); dettaglio(id, "Gruppo", s.gruppo);
@@ -137,12 +142,13 @@ export function costruisciGrafoCerved(lr: Pick<LightReportCerved, "soci" | "tito
   }
   for (const p of lr.partecipazioni ?? []) {
     const id = nodo({ tipo: "societa", nome: p.nome, cf: p.codice_fiscale, idCerved: p.id_societa }, 1);
-    arco(CENTRO, id, "partecipazione", [pct(p.percentuale), p.diritto && p.diritto !== "PROPRIETA'" ? p.diritto : null].filter(Boolean).join(" ") || "Partecipazione", true);
+    arco(CENTRO, id, "partecipazione", [pct(p.percentuale), p.diritto && p.diritto !== "PROPRIETA'" ? p.diritto : null].filter(Boolean).join(" ") || "Partecipazione", true,
+      { famiglia: "quote", breve: p.percentuale != null ? `Partecipa ${pct(p.percentuale)}` : "Partecipa" });
     statoSoc(id, p); eventoSocieta(id, p.eventi_negativi);
     dettaglio(id, "Forma", p.forma); dettaglio(id, "Ateco", [p.ateco_codice, p.ateco_descrizione].filter(Boolean).join(" ") || null);
     dettaglio(id, "Fatturato", importo(p.fatturato)); dettaglio(id, "Utile", importo(p.utile));
   }
-  for (const p of sociPrincipali) arco(nodo({ tipo: "solo_nome", nome: p.nome, cf: null }, 2), p.verso, "socio_principale", "Socio principale", true);
+  for (const p of sociPrincipali) arco(nodo({ tipo: "solo_nome", nome: p.nome, cf: null }, 2), p.verso, "socio_principale", "Socio principale", true, { famiglia: "quote", breve: "Socio" });
   // Eventi dei soggetti (FM99-B): stessi testi di eventiSoggettiCerved, abbinati per codice fiscale.
   const ev = lr.eventi_negativi;
   const { perCf, altri } = eventiSoggettiCerved((ev?.collegati ?? []) as Record<string, unknown>[], ev?.altri_soggetti ?? [], lr.societa_collegate ?? [], (lr.esponenti ?? []) as EsponenteCerved[]);
@@ -211,17 +217,67 @@ export function riepilogoGruppoMade(clienti: ClienteMadeGrafo[]): { questo: Tota
   return r;
 }
 
-/** Percentuali uniche ("NN%" / "NN,NN%") presenti nelle etichette di un arco, unite con " · "; "" se nessuna. */
-export function percentualiArco(arco: Pick<ArcoGrafo, "etichette">): string {
-  const viste: string[] = [];
-  for (const e of arco.etichette) for (const m of e.matchAll(/\d+(?:[.,]\d+)?\s?%/g)) {
-    const v = m[0].replace(/\s/g, "");
-    if (!viste.includes(v)) viste.push(v);
-  }
-  return viste.join(" · ");
+/**
+ * Tabella unica ruolo Cerved → famiglia ed etichetta breve (ordine significativo: la prima regola che corrisponde vale).
+ * Regole: docs/regole/cerved-grafo-collegati.md, "Famiglie di legame".
+ */
+export const TABELLA_RUOLI_GRAFO: [RegExp, FamigliaLegame, string][] = [
+  [/SOCIO UNICO/, "quote", "Socio unico"],
+  [/ACCOMANDANTE/, "quote", "Accomandante"],
+  [/ACCOMANDATARIO/, "quote", "Accomandatario"],
+  [/SOCIO AMMINISTRATORE/, "quote", "Socio amministratore"],
+  [/\bSOCIO\b/, "quote", "Socio"],
+  [/^TITOLARE( FIRMATARIO)?$/, "quote", "Titolare"],
+  [/COLLEGIO SINDACALE|SINDACO/, "altri", "Sindaco"],
+  [/REVISORE/, "altri", "Revisore"],
+  [/AMMINISTRATORE DELEGATO/, "cariche", "Amm. delegato"],
+  [/AMMINISTRATORE/, "cariche", "Amministratore"],
+  [/CONSIGLIERE/, "cariche", "Consigliere"],
+  [/VICE ?PRESIDENTE/, "cariche", "Vicepresidente"],
+  [/PRESIDENTE/, "cariche", "Presidente CdA"],
+  [/LIQUIDATORE/, "cariche", "Liquidatore"],
+  [/LEGALE RAPPRESENTANTE/, "cariche", "Legale rappr."],
+  [/MEMBRO.*(CONSIGLIO|COMITATO) DIRETTIVO/, "cariche", "Membro direttivo"],
+  [/PROCURATORE/, "altri", "Procuratore"],
+  [/RESPONSABILE TECNICO/, "altri", "Resp. tecnico"],
+  [/DIRETTORE TECNICO/, "altri", "Dir. tecnico"],
+  [/PREPOSTO/, "altri", "Preposto"],
+  [/INSTITORE/, "altri", "Institore"],
+];
+/** Ruolo Cerved (testo grezzo, senza date) → famiglia/etichetta breve; sconosciuto = "altri", iniziale maiuscola, max 18 caratteri. */
+export function classificaRuoloCerved(ruolo: string | null | undefined): LegameBreve {
+  const r = String(ruolo ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/\s+/g, " ").trim();
+  for (const [re, famiglia, breve] of TABELLA_RUOLI_GRAFO) if (re.test(r)) return { famiglia, breve };
+  const s = String(ruolo ?? "").trim().toLowerCase();
+  const t = s ? s[0]!.toUpperCase() + s.slice(1) : "Ruolo";
+  return { famiglia: "altri", breve: t.length > 18 ? `${t.slice(0, 17)}…` : t };
+}
+const ORDINE_FAMIGLIA: FamigliaLegame[] = ["quote", "cariche", "altri"];
+/** Legami da mostrare sull'arco: "Titolare effettivo" solo se non c'è già una quota; ordine quote → cariche → altri. */
+function legamiVisibili(arco: Pick<ArcoGrafo, "legami">): LegameBreve[] {
+  const quote = arco.legami.some((l) => l.famiglia === "quote" && !l.titolare);
+  const v = arco.legami.filter((l) => !(l.titolare && quote));
+  return ORDINE_FAMIGLIA.flatMap((f) => v.filter((l) => l.famiglia === f)).filter((l, i, a) => a.findIndex((x) => x.breve === l.breve) === i);
+}
+/** Famiglia dell'arco: quote se c'è almeno un legame quote, altrimenti cariche, altrimenti altri. */
+export function famigliaArco(arco: Pick<ArcoGrafo, "legami">): FamigliaLegame {
+  return ORDINE_FAMIGLIA.find((f) => arco.legami.some((l) => l.famiglia === f)) ?? "altri";
+}
+/** Etichetta breve dell'arco: al massimo 2 voci unite con " · " + "+N". */
+export function etichettaArco(arco: Pick<ArcoGrafo, "legami">): string {
+  const v = legamiVisibili(arco).map((l) => l.breve);
+  return v.slice(0, 2).join(" · ") + (v.length > 2 ? ` +${v.length - 2}` : "");
 }
 
-/** Etichette di un arco senza la sola percentuale (ruoli, "Titolare effettivo", ...), per la vista a fuoco. */
-export function ruoliArco(arco: Pick<ArcoGrafo, "etichette">): string {
-  return arco.etichette.map((e) => e.replace(/\s*[—-]?\s*(quote\s+)?\d+(?:[.,]\d+)?\s?%/gi, "").trim()).filter(Boolean).join(" · ");
+export type LeadMadeGrafo = { chiave: string; lead_id: string; ragione_sociale: string | null; stato: string | null; visibile: boolean };
+export type RigaLeadGrafo = { id: string; ragione_sociale: string | null; stato: string | null; partita_iva: string | null; codice_fiscale: string | null; cliente_id: string | null };
+/** Righe lead → LeadMadeGrafo (una per chiave abbinata); esclusi i lead già collegati a un cliente e il lead della scheda. */
+export function componiLeadGrafo(righe: RigaLeadGrafo[], o: { chiavi: string[]; visibili: Set<string>; escludi: string | null }): LeadMadeGrafo[] {
+  const insieme = new Set(o.chiavi), out: LeadMadeGrafo[] = [];
+  for (const r of righe) {
+    if (r.cliente_id || r.id === o.escludi) continue;
+    const proprie = [...new Set([chiaveFiscaleValida(r.partita_iva), chiaveFiscaleValida(r.codice_fiscale)].filter((k): k is string => !!k && insieme.has(k)))];
+    for (const chiave of proprie) out.push({ chiave, lead_id: r.id, ragione_sociale: r.ragione_sociale ?? null, stato: r.stato ?? null, visibile: o.visibili.has(r.id) });
+  }
+  return out;
 }

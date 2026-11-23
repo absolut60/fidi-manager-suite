@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { readFileSync } from "fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { normalizzaLightReportXml } from "../src/lib/cerved/cerved.server";
-import { componiClientiGrafo, costruisciGrafoCerved, percentualiArco, type ClienteMadeGrafo, type RigaClienteGrafo } from "../src/lib/cerved-grafo";
+import { componiClientiGrafo, componiLeadGrafo, costruisciGrafoCerved, etichettaArco, type ClienteMadeGrafo, type RigaClienteGrafo } from "../src/lib/cerved-grafo";
 import { DettaglioNodoGrafo, VistaGrafoCollegati, clientiPerNodo, filtraGrafo } from "../src/components/cerved/grafo-collegati-cerved";
 
 const r = normalizzaLightReportXml(readFileSync(`${import.meta.dir}/fixtures/cerved-light-report-ecocostruzioni.xml`, "utf8"));
@@ -10,11 +10,12 @@ const grafo = costruisciGrafoCerved(r, { nome: r.anagrafica?.denominazione ?? nu
 const ecotema = (visibile: boolean): ClienteMadeGrafo => ({ chiave: "04835640162", cliente_id: "c-eco", ragione_sociale: "ECOTEMA SRL", codice: "C123", sede: "Lissone", fido: 10000, esposizione: 4000, scaduto: 500, scaduto_oltre_60: 100, bloccato: false, in_gestione_legale: false, visibile, e_questo_cliente: false, chiave_centro: false });
 const link = (id: string, t: unknown) => <a data-cliente={id}>{t as string}</a>;
 
-test("grafico ECOCOSTRUZIONI con cliente MADE su ECOTEMA: targhetta e riepilogo", () => {
+test("grafico ECOCOSTRUZIONI con cliente su ECOTEMA: riga Cliente C123, riepilogo, nessun testo MADE nel disegno", () => {
   const html = renderToStaticMarkup(<VistaGrafoCollegati grafo={grafo} clienti={[ecotema(true)]} entita="cliente" />);
-  expect(html).toContain("Grafico dei collegamenti");
   expect(html).toContain("1 società/persona collegata è già cliente MADE");
-  expect(html).toMatch(/data-nodo="societa:cf:04835640162"[^]*?>MADE</);
+  const svg = html.slice(html.indexOf("<svg"), html.indexOf("</svg>"));
+  expect(svg).toMatch(/data-nodo="societa:cf:04835640162"[^]*?data-riga2[^>]*>Cliente C123[^<]*</);
+  expect(svg).not.toContain(">MADE<");
 });
 
 test("filtro Legami cessati: spento nasconde gli archi non in corso", () => {
@@ -59,29 +60,42 @@ test("server: e_questo_cliente e chiave_centro per cliente e lead", () => {
   expect(lead.map((c) => [c.cliente_id, c.e_questo_cliente, c.chiave_centro])).toEqual([["self", true, true], ["eco", false, false]]);
 });
 
-test("centro abbinato a un cliente: niente targhetta MADE sul centro, sì su ECOTEMA", () => {
+test("centro abbinato a un cliente: nessuna riga Cliente sul centro, sì su ECOTEMA; bloccato in rosso", () => {
   const centro = grafo.nodi.find((n) => n.tipo === "centro")!;
   const self: ClienteMadeGrafo = { ...ecotema(true), chiave: "x", cliente_id: "self", ragione_sociale: "SELF", e_questo_cliente: true, chiave_centro: true };
-  expect(clientiPerNodo(grafo, [self, ecotema(true)]).has(centro.id)).toBe(true);
-  const html = renderToStaticMarkup(<VistaGrafoCollegati grafo={grafo} clienti={[self, ecotema(true)]} entita="cliente" />);
-  const blocco = (id: string) => { const i = html.indexOf(`data-nodo="${id}"`); return html.slice(i, html.indexOf("</g>", html.indexOf("<text y=", i) + 1)); };
-  expect(html.match(/data-targhetta-made/g)?.length).toBe(1);
-  expect(blocco(centro.id)).not.toContain("data-targhetta-made");
-  expect(html).toMatch(/data-nodo="societa:cf:04835640162"[^]*?data-targhetta-made/);
+  const html = renderToStaticMarkup(<VistaGrafoCollegati grafo={grafo} clienti={[self, { ...ecotema(true), codice: "13142", bloccato: true }]} entita="cliente" />);
+  const i = html.indexOf(`data-nodo="${centro.id}"`);
+  expect(html.slice(i, html.indexOf("</g>", i))).not.toContain("data-riga2");
+  expect(html).toMatch(/data-riga2[^>]*class="fill-destructive"[^>]*>Cliente 13142 · bloccato · scaduto oltre 60 gg</);
 });
 
-test("percentualiArco", () => {
-  expect(percentualiArco({ etichette: ["80%", "Titolare effettivo — quote 80%"] })).toBe("80%");
-  expect(percentualiArco({ etichette: ["Amministratore unico"] })).toBe("");
-  expect(percentualiArco({ etichette: ["12,50%", "30%"] })).toBe("12,50% · 30%");
+test("nodo lead: riga Lead; un cliente sulla stessa chiave vince", () => {
+  const l = { chiave: "04835640162", lead_id: "l-1", ragione_sociale: "ECOTEMA SRL", stato: "nuovo", visibile: true };
+  const html = renderToStaticMarkup(<VistaGrafoCollegati grafo={grafo} clienti={[]} lead={[l]} entita="cliente" />);
+  expect(html).toMatch(/data-nodo="societa:cf:04835640162"[^]*?data-riga2[^>]*>Lead</);
+  const conCliente = renderToStaticMarkup(<VistaGrafoCollegati grafo={grafo} clienti={[ecotema(true)]} lead={[l]} entita="cliente" />);
+  expect(conCliente).not.toMatch(/data-riga2[^>]*>Lead</);
 });
 
-test("ECOCOSTRUZIONI: ruoli nascosti senza nodo attivo, 80% visibile, ogni arco con freccia", () => {
+test("legenda presente ed etichette brevi visibili senza nodo attivo, frecce con colore di famiglia", () => {
   const html = renderToStaticMarkup(<VistaGrafoCollegati grafo={grafo} clienti={[]} entita="cliente" />);
-  expect(html).not.toContain("data-ruoli");
-  expect(html).not.toContain("Titolare effettivo</text>");
-  expect(html).toMatch(/data-percentuale[^]*?>80%</);
-  const linee = html.match(/data-arco="[^"]*"[^>]*><line [^>]*>/g) ?? [];
+  expect(html).toContain("data-legenda");
+  expect(html).toContain("quote / soci (con %)");
+  expect(html).toMatch(/data-etichetta[^]*?>Socio 80% · Amministratore</);
+  const linee = html.match(/data-arco="[^"]*" data-famiglia="(quote|cariche|altri)"[^>]*><line [^>]*>/g) ?? [];
   expect(linee.length).toBeGreaterThan(0);
-  expect(linee.every((l) => /marker-end="url\(#freccia-/.test(l))).toBe(true);
+  expect(linee.every((x) => /marker-end="url\(#freccia-[^"]*-(quote|cariche|altri)\)"/.test(x))).toBe(true);
+  expect(linee.some((x) => x.includes('data-famiglia="quote"') && x.includes("stroke-primary"))).toBe(true);
+});
+
+test("arco Efrem → ECOCOSTRUZIONI: famiglia quote, Socio 80% · Amministratore", () => {
+  const efrem = grafo.nodi.find((n) => n.nome === "ROBECCHI EFREM")!;
+  const a = grafo.archi.find((x) => x.da === efrem.id && x.a === "centro")!;
+  expect(etichettaArco(a)).toBe("Socio 80% · Amministratore");
+});
+
+test("server: lead con cliente_id e lead della scheda esclusi", () => {
+  const r = (id: string, cliente_id: string | null) => ({ id, ragione_sociale: id, stato: "nuovo", partita_iva: "04835640162", codice_fiscale: null, cliente_id });
+  const out = componiLeadGrafo([r("libero", null), r("collegato", "c-1"), r("scheda", null)], { chiavi: ["04835640162"], visibili: new Set(["libero"]), escludi: "scheda" });
+  expect(out).toEqual([{ chiave: "04835640162", lead_id: "libero", ragione_sociale: "libero", stato: "nuovo", visibile: true }]);
 });
