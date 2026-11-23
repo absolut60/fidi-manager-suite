@@ -3,7 +3,7 @@
  * Dati solo da costruisciGrafoCerved + datiMadeGrafoCerved; d3-force solo per la disposizione, disegno SVG nostro.
  * Regole: docs/regole/cerved-grafo-collegati.md, sezione "Schermata".
  */
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Link } from "@tanstack/react-router";
@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { formatEuro } from "@/lib/fidi";
-import { chiaveFiscaleValida, costruisciGrafoCerved, riepilogoGruppoMade, type ArcoGrafo, type ClienteMadeGrafo, type GrafoCerved, type NodoGrafo } from "@/lib/cerved-grafo";
+import { chiaveFiscaleValida, costruisciGrafoCerved, percentualiArco, riepilogoGruppoMade, ruoliArco, type ArcoGrafo, type ClienteMadeGrafo, type GrafoCerved, type NodoGrafo } from "@/lib/cerved-grafo";
 import { datiMadeGrafoCerved } from "@/lib/cerved/cerved-grafo.functions";
 import type { EntitaCerved } from "@/lib/cerved/cerved-entita";
 
@@ -29,7 +29,6 @@ const GRUPPI_ELENCO: { tipo: string; titolo: string }[] = [
   { tipo: "socio", titolo: "Soci" }, { tipo: "titolare_effettivo", titolo: "Titolari effettivi" }, { tipo: "partecipazione", titolo: "Partecipazioni" },
   { tipo: "esponente", titolo: "Esponenti" }, { tipo: "societa_collegata", titolo: "Società collegate tramite esponenti" }, { tipo: "socio_principale", titolo: "Soci delle società socie" },
 ];
-const SOGLIA_ETICHETTE = 30;
 const SOGLIA_CLIC = 4;
 const tronca = (s: string, n = 22) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 const rosso = (n: NodoGrafo) => n.stato === "procedura" || n.eventi.length > 0;
@@ -87,6 +86,15 @@ function adatta(nodi: NodoSim[], w: number, h: number): Vista {
   return { k, x: w / 2 - ((minX + maxX) / 2) * k, y: h / 2 - ((minY + maxY) / 2) * k };
 }
 
+/** Spostamento dal centro del nodo al suo bordo verso (dx,dy), più 3 px di margine per la punta. */
+function bordoNodo(n: NodoGrafo, dx: number, dy: number): { x: number; y: number } {
+  const d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d, r = raggio(n), m = 3;
+  if (n.tipo === "persona" || n.tipo === "solo_nome" || n.tipo === "centro") return { x: ux * (r + m), y: uy * (r + m) };
+  const hw = r + 6, hh = Math.max(1, r - 3);
+  const t = Math.min(Math.abs(ux) > 1e-6 ? hw / Math.abs(ux) : Infinity, Math.abs(uy) > 1e-6 ? hh / Math.abs(uy) : Infinity);
+  return { x: ux * (t + m), y: uy * (t + m) };
+}
+
 function TelaGrafo({ grafo, perNodo, interattivo, schermoIntero = false, evidenziaMade, evidenziaEventi, onApri, onAnteprima, classeAltezza }: {
   grafo: GrafoCerved; perNodo: Map<string, ClienteMadeGrafo[]>; interattivo: boolean; schermoIntero?: boolean;
   evidenziaMade: boolean; evidenziaEventi: boolean; onApri: (id: string) => void; onAnteprima?: () => void; classeAltezza: string;
@@ -99,6 +107,7 @@ function TelaGrafo({ grafo, perNodo, interattivo, schermoIntero = false, evidenz
   const motore = useMemo(() => creaSimulazione(grafo), [firma]); // eslint-disable-line react-hooks/exhaustive-deps
   const [vista, setVista] = useState<Vista>(() => adatta(motore.nodi, 800, 520));
   const [attivo, setAttivo] = useState<string | null>(null);
+  const idFreccia = `freccia-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const puntatori = useRef(new Map<number, { x: number; y: number }>());
   const gesto = useRef<{ tipo: "nodo" | "vista"; id?: string; x0: number; y0: number; mosso: boolean; vista0: Vista; pinch?: { d: number; k: number } } | null>(null);
 
@@ -174,8 +183,7 @@ function TelaGrafo({ grafo, perNodo, interattivo, schermoIntero = false, evidenz
   }
   const riordina = () => { for (const n of motore.nodi) if (n.nodo.tipo !== "centro") { n.fx = null; n.fy = null; } motore.sim.alpha(0.8).alphaTarget(0).restart(); };
 
-  const molti = grafo.nodi.length > SOGLIA_ETICHETTE;
-  const archiAttivi = (a: ArcoGrafo) => !molti || (attivo != null && (a.da === attivo || a.a === attivo));
+  const archiAttivi = (a: ArcoGrafo) => attivo != null && (a.da === attivo || a.a === attivo);
   const attenuato = (n: NodoGrafo) => (evidenziaMade && !perNodo.has(n.id) && n.tipo !== "centro") || (evidenziaEventi && !rosso(n) && n.tipo !== "centro");
   const pos = new Map(motore.nodi.map((n) => [n.id, n]));
   const nRossi = grafo.nodi.filter(rosso).length;
@@ -187,15 +195,27 @@ function TelaGrafo({ grafo, perNodo, interattivo, schermoIntero = false, evidenz
       onClick={!interattivo ? onAnteprima : undefined}>
       <svg ref={svg} role="img" aria-label={aria} width="100%" height="100%" className={cn("block select-none", interattivo ? "cursor-grab" : "cursor-pointer")}
         onPointerDown={(e) => giu(e)} onPointerMove={muovi} onPointerUp={su} onPointerCancel={su}>
+        <defs><marker id={idFreccia} viewBox="0 0 10 10" refX={10} refY={5} markerWidth={7} markerHeight={7} orient="auto-start-reverse" markerUnits="userSpaceOnUse">
+          <path d="M0,0 L10,5 L0,10 z" className="fill-muted-foreground" fillOpacity={0.6} />
+        </marker></defs>
         <g transform={`translate(${vista.x},${vista.y}) scale(${vista.k})`}>
           {motore.archi.map((l) => {
             const s = l.source as NodoSim, t = l.target as NodoSim;
             if (!pos.has(s.id) || !pos.has(t.id)) return null;
-            const mx = ((s.x ?? 0) + (t.x ?? 0)) / 2, my = ((s.y ?? 0) + (t.y ?? 0)) / 2;
+            const sx = s.x ?? 0, sy = s.y ?? 0, tx0 = t.x ?? 0, ty0 = t.y ?? 0;
+            const fine = bordoNodo(t.nodo, sx - tx0, sy - ty0);
+            const tx = tx0 + fine.x, ty = ty0 + fine.y;
+            const mx = (sx + tx) / 2, my = (sy + ty) / 2;
             const fioco = attenuato(s.nodo) && attenuato(t.nodo);
+            const perc = percentualiArco(l.arco), ruoli = archiAttivi(l.arco) ? ruoliArco(l.arco) : "";
+            const lp = perc.length * 5 + 8;
             return <g key={l.arco.id} data-arco={l.arco.id} data-in-corso={l.arco.in_corso} opacity={fioco ? 0.2 : 1}>
-              <line x1={s.x} y1={s.y} x2={t.x} y2={t.y} className="stroke-muted-foreground" strokeWidth={1.2} strokeDasharray={l.arco.in_corso ? undefined : "5 4"} strokeOpacity={0.6} />
-              {archiAttivi(l.arco) && <text x={mx} y={my} textAnchor="middle" className="fill-muted-foreground" fontSize={8} paintOrder="stroke" stroke="var(--background)" strokeWidth={3}>{tronca(l.arco.etichette.join(" · "), 34)}</text>}
+              <line x1={sx} y1={sy} x2={tx} y2={ty} className="stroke-muted-foreground" strokeWidth={1.2} strokeDasharray={l.arco.in_corso ? undefined : "5 4"} strokeOpacity={0.6} markerEnd={`url(#${idFreccia})`} />
+              {perc && <g data-percentuale transform={`translate(${mx},${my})`}>
+                <rect x={-lp / 2} y={-7} width={lp} height={13} rx={6} fill="var(--background)" className="stroke-border" strokeWidth={0.8} />
+                <text textAnchor="middle" y={3} fontSize={9} fontWeight={700} className="fill-foreground">{perc}</text>
+              </g>}
+              {ruoli && <text data-ruoli x={mx} y={my + (perc ? 17 : 3)} textAnchor="middle" className="fill-muted-foreground" fontSize={8} paintOrder="stroke" stroke="var(--background)" strokeWidth={3}>{tronca(ruoli, 34)}</text>}
             </g>;
           })}
           {motore.nodi.map((s) => {
@@ -212,7 +232,7 @@ function TelaGrafo({ grafo, perNodo, interattivo, schermoIntero = false, evidenz
               {n.tipo === "persona" || n.tipo === "solo_nome" || n.tipo === "centro"
                 ? <circle r={r} className={cn(n.tipo === "centro" ? "fill-primary" : "fill-card", bordo)} strokeWidth={n.tipo === "centro" ? 3 : 2} strokeDasharray={tratt} />
                 : <rect x={-r - 6} y={-r + 3} width={(r + 6) * 2} height={(r - 3) * 2} rx={5} className={cn("fill-card", bordo)} strokeWidth={2} strokeDasharray={tratt} />}
-              {clienti.length > 0 && <g transform={`translate(0,${-r - 7})`}>
+              {clienti.length > 0 && n.tipo !== "centro" && <g data-targhetta-made transform={`translate(0,${-r - 7})`}>
                 <rect x={-17} y={-7} width={34} height={13} rx={3} className="fill-primary" />
                 <text textAnchor="middle" y={3} fontSize={8} fontWeight={700} className="fill-primary-foreground">MADE</text>
                 {(bloccato || legale) && <text textAnchor="middle" y={-10} fontSize={7} fontWeight={600} className="fill-destructive">{[bloccato && "bloccato", legale && "in legale"].filter(Boolean).join(" · ")}</text>}

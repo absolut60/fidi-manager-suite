@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { readFileSync } from "fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { normalizzaLightReportXml } from "../src/lib/cerved/cerved.server";
-import { componiClientiGrafo, costruisciGrafoCerved, type ClienteMadeGrafo, type RigaClienteGrafo } from "../src/lib/cerved-grafo";
+import { componiClientiGrafo, costruisciGrafoCerved, percentualiArco, type ClienteMadeGrafo, type RigaClienteGrafo } from "../src/lib/cerved-grafo";
 import { DettaglioNodoGrafo, VistaGrafoCollegati, clientiPerNodo, filtraGrafo } from "../src/components/cerved/grafo-collegati-cerved";
 
 const r = normalizzaLightReportXml(readFileSync(`${import.meta.dir}/fixtures/cerved-light-report-ecocostruzioni.xml`, "utf8"));
@@ -57,4 +57,31 @@ test("server: e_questo_cliente e chiave_centro per cliente e lead", () => {
   expect(cliente.map((c) => [c.cliente_id, c.e_questo_cliente, c.chiave_centro, c.visibile, c.sede])).toEqual([["self", true, true, false, "Lissone"], ["eco", false, false, true, "Lissone"]]);
   const lead = componiClientiGrafo(righe, { ...base, entita: "lead", id: "lead-1" });
   expect(lead.map((c) => [c.cliente_id, c.e_questo_cliente, c.chiave_centro])).toEqual([["self", true, true], ["eco", false, false]]);
+});
+
+test("centro abbinato a un cliente: niente targhetta MADE sul centro, sì su ECOTEMA", () => {
+  const centro = grafo.nodi.find((n) => n.tipo === "centro")!;
+  const self: ClienteMadeGrafo = { ...ecotema(true), chiave: "x", cliente_id: "self", ragione_sociale: "SELF", e_questo_cliente: true, chiave_centro: true };
+  expect(clientiPerNodo(grafo, [self, ecotema(true)]).has(centro.id)).toBe(true);
+  const html = renderToStaticMarkup(<VistaGrafoCollegati grafo={grafo} clienti={[self, ecotema(true)]} entita="cliente" />);
+  const blocco = (id: string) => { const i = html.indexOf(`data-nodo="${id}"`); return html.slice(i, html.indexOf("</g>", html.indexOf("<text y=", i) + 1)); };
+  expect(html.match(/data-targhetta-made/g)?.length).toBe(1);
+  expect(blocco(centro.id)).not.toContain("data-targhetta-made");
+  expect(html).toMatch(/data-nodo="societa:cf:04835640162"[^]*?data-targhetta-made/);
+});
+
+test("percentualiArco", () => {
+  expect(percentualiArco({ etichette: ["80%", "Titolare effettivo — quote 80%"] })).toBe("80%");
+  expect(percentualiArco({ etichette: ["Amministratore unico"] })).toBe("");
+  expect(percentualiArco({ etichette: ["12,50%", "30%"] })).toBe("12,50% · 30%");
+});
+
+test("ECOCOSTRUZIONI: ruoli nascosti senza nodo attivo, 80% visibile, ogni arco con freccia", () => {
+  const html = renderToStaticMarkup(<VistaGrafoCollegati grafo={grafo} clienti={[]} entita="cliente" />);
+  expect(html).not.toContain("data-ruoli");
+  expect(html).not.toContain("Titolare effettivo</text>");
+  expect(html).toMatch(/data-percentuale[^]*?>80%</);
+  const linee = html.match(/data-arco="[^"]*"[^>]*><line [^>]*>/g) ?? [];
+  expect(linee.length).toBeGreaterThan(0);
+  expect(linee.every((l) => /marker-end="url\(#freccia-/.test(l))).toBe(true);
 });

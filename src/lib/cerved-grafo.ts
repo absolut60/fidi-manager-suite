@@ -210,3 +210,18 @@ export function riepilogoGruppoMade(clienti: ClienteMadeGrafo[]): { questo: Tota
   }
   return r;
 }
+
+/** Percentuali uniche ("NN%" / "NN,NN%") presenti nelle etichette di un arco, unite con " · "; "" se nessuna. */
+export function percentualiArco(arco: Pick<ArcoGrafo, "etichette">): string {
+  const viste: string[] = [];
+  for (const e of arco.etichette) for (const m of e.matchAll(/\d+(?:[.,]\d+)?\s?%/g)) {
+    const v = m[0].replace(/\s/g, "");
+    if (!viste.includes(v)) viste.push(v);
+  }
+  return viste.join(" · ");
+}
+
+/** Etichette di un arco senza la sola percentuale (ruoli, "Titolare effettivo", ...), per la vista a fuoco. */
+export function ruoliArco(arco: Pick<ArcoGrafo, "etichette">): string {
+  return arco.etichette.map((e) => e.replace(/\s*[—-]?\s*(quote\s+)?\d+(?:[.,]\d+)?\s?%/gi, "").trim()).filter(Boolean).join(" · ");
+}
