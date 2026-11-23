@@ -329,21 +329,21 @@ function drawNoteCliente(doc: jsPDF, prev: PreventivoConDettagli, branding: Bran
     return Math.max(62, drawHeader(doc, logo === 'fidimanager' ? 'Proposta rapida' : etichetteDocumento(prev.tipo).nome, prev, branding, logo) + 5);
   };
   const titolo = (y: number) => {
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...NAVY);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(...NAVY);
     doc.text('Note', 14, y);
-    return y + 5;
+    return y + 4;
   };
   let y = dopoTotale + 7;
-  if (y + 9 > fondo) y = nuovaPagina();
+  if (y + 7 > fondo) y = nuovaPagina();
   y = titolo(y);
   for (const riga of prev.note_cliente.split(/\r?\n/)) {
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(6);
     const righe = riga.trim() ? doc.splitTextToSize(riga, w - 28) as string[] : [''];
     for (const line of righe) {
-      if (y + 3.6 > fondo) y = titolo(nuovaPagina());
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...GRIGIO);
+      if (y + 2.7 > fondo) y = titolo(nuovaPagina());
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(6); doc.setTextColor(...GRIGIO);
       if (line) doc.text(line, 14, y);
-      y += 3.6;
+      y += 2.7;
     }
   }
 }
