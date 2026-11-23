@@ -13,6 +13,7 @@ Queste regole sono parte delle istruzioni permanenti del progetto: valgono quant
 - Lettura diretta di articoli_gamma_listini e prezzi_deposito_gamma limitata via RLS alla sede (FM64). Ogni nuova lettura di prezzi per conto di un cliente con listino diverso da quello della sede (es. futuro motore del preventivo) deve passare da una funzione SECURITY DEFINER, mai dalla lettura diretta.
 - `lead-riconciliazione.md` — leggere prima di toccare: collegamento lead → cliente, annullamento conversione, riconciliazione dopo import clienti (FM99), divieto di cancellare clienti arrivati da Gamma.
 - `cerved-eventi-negativi.md` — leggere prima di toccare: procedure concorsuali, atti di Conservatoria, flag eventi negativi Cerved propri vs collegati, rilettura dei report salvati (FM99).
+- `cerved-grafo-collegati.md` — leggere prima di toccare: soci, titolari effettivi e partecipazioni dal Light Report (FM100), percorsi XML, Aziendaslim vs AziendaSlim, valori grezzi.
 - `lingua-italiana.md` — leggere prima di toccare qualsiasi pagina: app sempre in italiano, niente traduzione automatica, niente controlli nativi con testo del browser, locale it-IT.
 - `cantiere-provvisorio.md` — cantieri provvisori: segno, conferma, badge, esclusione dai conteggi marketing.
 - `preventivo-salvataggio.md` — leggere prima di toccare la scheda preventivo: sempre modificabile, sola lettura per confermati/ordini, salvataggio automatico e pulsante Salva, chiave comune delle scritture, finestra d'uscita.

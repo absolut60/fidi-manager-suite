@@ -970,7 +970,32 @@ export type AttoConservatoriaCerved = {
   a_favore_di: string | null; numero_registrazione: string | null;
 };
 
+/** FM100: soci (Shareholders/ShareholdersList/Shareholder). Valori grezzi, nessuna decodifica. */
+export type SocioCerved = {
+  tipo: "persona" | "societa" | "societa_estera"; id_cerved: string | null; subject_id: string | null; nome: string | null;
+  codice_fiscale: string | null; percentuale: number | null; diritto: string | null; codice_diritto: string | null;
+  valore_quota: number | null; valuta: string | null; stato_codice: string | null; stato_descrizione: string | null; stato_dal: string | null;
+  forma: string | null; ateco_codice: string | null; ateco_descrizione: string | null; eventi_negativi: boolean | null;
+  gruppo: string | null; nazionalita: string | null; soci_principali: string[];
+};
+/** FM100: titolari effettivi (BeneficialOwnersV2/BeneficialOwner). */
+export type TitolareEffettivoCerved = {
+  nome: string | null; codice_fiscale: string | null; id_soggetto: string | null; criterio: string | null; persona: boolean | null; percentuale: number | null;
+};
+/** FM100: partecipazioni (HoldingsFromShareholders/Holdings/Holding). */
+export type PartecipazioneCerved = {
+  id_societa: string | null; nome: string | null; codice_fiscale: string | null; forma: string | null;
+  stato_codice: string | null; stato_descrizione: string | null; stato_dal: string | null;
+  ateco_codice: string | null; ateco_descrizione: string | null; percentuale: number | null; diritto: string | null;
+  significativa: boolean | null; data_atto: string | null;
+  fatturato: SocietaCollegataCerved["fatturato"]; utile: SocietaCollegataCerved["utile"]; eventi_negativi: boolean | null;
+};
+
 export type LightReportCerved = {
+  /** FM100: sempre presenti, array vuoto se il contenitore manca. */
+  soci: SocioCerved[];
+  titolari_effettivi: TitolareEffettivoCerved[];
+  partecipazioni: PartecipazioneCerved[];
   esponenti: EsponenteCerved[];
   societa_collegate: SocietaCollegataCerved[];
   data_report: string | null;
@@ -1196,9 +1221,43 @@ export function normalizzaLightReportXml(xml: string): LightReportCerved {
   }));
 
   const conc = leggiEventiConcorsuali(root, collegati);
+  // FM100: soci, titolari effettivi, partecipazioni — ancorati alla radice.
+  const importoDi = (base: NodoXml | null, tag: string) => { const v = diretto(base, tag); return v ? { valore: num(diretto(v, "Value")), data: dataXml(diretto(v, "Date")), valuta: conTesto(v, "Currency") } : null; };
+  const soci: SocioCerved[] = figli(diretto(diretto(root, "Shareholders"), "ShareholdersList"), "Shareholder").map((sh) => {
+    const it = diretto(sh, "ShareholderItem");
+    const pf = diretto(it, "IndividualInformation"), az = diretto(it, "Aziendaslim"), est = az ? null : diretto(it, "CompanyInformation");
+    const info = diretto(az, "CompanyInformation") ?? est, forma = diretto(info, "CompanyForm"), at = diretto(az, "Ateco2025");
+    const nomePf = pf ? conTesto(pf, "Name") ?? ([conTesto(pf, "LastName"), conTesto(pf, "FirstName")].filter(Boolean).join(" ") || null) : null;
+    return {
+      tipo: pf ? "persona" : az ? "societa" : "societa_estera",
+      id_cerved: pf ? conTesto(pf, "IDPerson") : conTesto(info, "IDCompany"), subject_id: conTesto(pf, "SubjectId"),
+      nome: pf ? nomePf : conTesto(info, "CompanyName"), codice_fiscale: conTesto(pf ?? info, "TaxCode"),
+      percentuale: num(diretto(sh, "PercentageShares")), diritto: conTesto(sh, "DescriptionLinkCode"), codice_diritto: conTesto(sh, "LinkCode"),
+      valore_quota: num(diretto(sh, "ValueOfPart")), valuta: conTesto(sh, "CurrencyValueOfPart"),
+      stato_codice: conTesto(az, "ActivityStatus"), stato_descrizione: conTesto(az, "ActivityDescription"), stato_dal: dataXml(diretto(az, "ActivityStatusStartDate")),
+      forma: txt(forma) ?? testo(forma?.attr.LegalFormDescription), ateco_codice: testo(at?.attr.Code?.split("/")[0]), ateco_descrizione: txt(at),
+      eventi_negativi: bool(diretto(az, "NegativeEvents")), gruppo: conTesto(az, "Group"), nazionalita: conTesto(est, "Nationality"),
+      soci_principali: figli(diretto(az, "MainShareholders"), "ShareHolderName").map(txt).filter((x): x is string => x != null),
+    };
+  });
+  const titolari_effettivi: TitolareEffettivoCerved[] = figli(diretto(root, "BeneficialOwnersV2"), "BeneficialOwner").map((b) => {
+    const fs = conTesto(b, "FlagStatus");
+    const pn = [conTesto(b, "LastName"), conTesto(b, "FirstName")].filter(Boolean).join(" ") || null;
+    return { nome: pn ?? conTesto(b, "CompanyName"), codice_fiscale: conTesto(b, "TaxCode"), id_soggetto: conTesto(b, "IdSubject"),
+      criterio: testo(b.attr.Strategy), persona: fs === "PF" ? true : fs === "PG" ? false : null, percentuale: num(diretto(b, "CumulativeSharePercentage")) };
+  });
+  const partecipazioni: PartecipazioneCerved[] = figli(diretto(diretto(root, "HoldingsFromShareholders"), "Holdings"), "Holding").map((h) => {
+    const a = diretto(h, "AziendaSlim"), info = diretto(a, "CompanyInformation"), forma = diretto(info, "CompanyForm"), at = diretto(a, "Ateco");
+    const share = diretto(diretto(h, "Shares"), "Share"), right = diretto(diretto(share, "RightType"), "Right");
+    return { id_societa: conTesto(info, "IDCompany"), nome: conTesto(info, "CompanyName"), codice_fiscale: conTesto(info, "TaxCode"), forma: txt(forma),
+      stato_codice: conTesto(a, "ActivityStatus"), stato_descrizione: conTesto(a, "ActivityDescription"), stato_dal: dataXml(diretto(a, "ActivityStatusStartDate")),
+      ateco_codice: testo(at?.attr.Code?.split("/")[0]), ateco_descrizione: txt(at), percentuale: num(diretto(share, "SharesPercentage")),
+      diritto: txt(right), significativa: bool(diretto(h, "SignificantShare")), data_atto: dataXml(diretto(share, "DeedDate") ?? diretto(h, "DeedDate")),
+      fatturato: importoDi(a, "Revenue"), utile: importoDi(a, "Profit"), eventi_negativi: bool(diretto(a, "NegativeEvents")) };
+  });
 
   return {
-    esponenti, societa_collegate,
+    esponenti, societa_collegate, soci, titolari_effettivi, partecipazioni,
     procedure_concorsuali: conc.procedure, atti_conservatoria: conc.atti,
     data_report: dataXml(trova(doc, "DeliveryAndSummaryDetails/DeliveredOn")),
     anagrafica: item ? {
