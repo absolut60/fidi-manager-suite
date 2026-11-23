@@ -1,3 +1,8 @@
+# FM98 — Fetta 3
+- [ ] A: attende chiarimento lettura showroom/responsabile_showroom: auth_ha_accesso_preventivi reale li esclude, in contrasto con la condivisione per chi vede la linea; nessuna migrazione applicata.
+- [ ] B: note cliente nel Piede, libreria per linea, duplicazione e PDF cliente.
+- [ ] Test TS/SQL in ROLLBACK, confronti raster, verifiche schermi e rapporto.
+
 # FM98 — Fetta 2
 - [x] Modalità privacy da firmare e identità byte/raster dei cinque moduli esistenti.
 - [x] Mappatura anagrafica unica, spunta transitoria e PDF unito per anteprima/email.
