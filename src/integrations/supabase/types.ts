@@ -5040,6 +5040,98 @@ export type Database = {
           },
         ]
       }
+      lead_riconciliazioni: {
+        Row: {
+          candidati: Json
+          chiave: string | null
+          cliente_codice: string | null
+          cliente_id: string | null
+          cliente_ragione_sociale: string | null
+          creato_il: string
+          esito: string
+          id: string
+          importazione_id: string | null
+          lead_codice_fiscale: string | null
+          lead_creato_da: string | null
+          lead_id: string
+          lead_partita_iva: string | null
+          nome_lead: string | null
+          nota: string | null
+          operatore_id: string | null
+          risolto_da: string | null
+          risolto_il: string | null
+        }
+        Insert: {
+          candidati?: Json
+          chiave?: string | null
+          cliente_codice?: string | null
+          cliente_id?: string | null
+          cliente_ragione_sociale?: string | null
+          creato_il?: string
+          esito: string
+          id?: string
+          importazione_id?: string | null
+          lead_codice_fiscale?: string | null
+          lead_creato_da?: string | null
+          lead_id: string
+          lead_partita_iva?: string | null
+          nome_lead?: string | null
+          nota?: string | null
+          operatore_id?: string | null
+          risolto_da?: string | null
+          risolto_il?: string | null
+        }
+        Update: {
+          candidati?: Json
+          chiave?: string | null
+          cliente_codice?: string | null
+          cliente_id?: string | null
+          cliente_ragione_sociale?: string | null
+          creato_il?: string
+          esito?: string
+          id?: string
+          importazione_id?: string | null
+          lead_codice_fiscale?: string | null
+          lead_creato_da?: string | null
+          lead_id?: string
+          lead_partita_iva?: string | null
+          nome_lead?: string | null
+          nota?: string | null
+          operatore_id?: string | null
+          risolto_da?: string | null
+          risolto_il?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_riconciliazioni_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_riconciliazioni_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "lead_riconciliazioni_importazione_id_fkey"
+            columns: ["importazione_id"]
+            isOneToOne: false
+            referencedRelation: "importazioni"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_riconciliazioni_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "lead"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_storico: {
         Row: {
           created_at: string
@@ -8837,6 +8929,16 @@ export type Database = {
       }
     }
     Functions: {
+      _collega_lead_a_cliente_interno: {
+        Args: {
+          _cliente_id: string
+          _conversione_tipo: string
+          _lead_id: string
+          _nota: string
+          _operatore: string
+        }
+        Returns: Json
+      }
       _crea_contatto_da_iscritto: {
         Args: { _cliente_id: string; _isc_id: string }
         Returns: string
@@ -9468,6 +9570,10 @@ export type Database = {
       }
       collega_lead_a_cliente: {
         Args: { _cliente_id: string; _lead_id: string }
+        Returns: Json
+      }
+      collega_lead_da_riconciliare: {
+        Args: { _cliente_id: string; _riconciliazione_id: string }
         Returns: Json
       }
       collega_righe_import: {
@@ -11426,6 +11532,11 @@ export type Database = {
         Args: { _cliente_id?: string; _id: string; _lead_id?: string }
         Returns: Json
       }
+      riconcilia_lead_clienti: {
+        Args: { _importazione_id: string; _operatore: string }
+        Returns: Json
+      }
+      riconcilia_lead_ora: { Args: never; Returns: Json }
       riconcilia_partecipante: {
         Args: {
           _cliente_id?: string
