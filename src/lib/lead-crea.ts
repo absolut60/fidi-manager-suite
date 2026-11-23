@@ -2,13 +2,18 @@ import { supabase } from "@/integrations/supabase/client";
 import type { LeadFonte, LeadPriorita, LeadTipo } from "@/lib/lead-costanti";
 import { normalizzaCodiceSdi } from './codice-sdi';
 import { normalizzaTestoLead as t } from './lead-anagrafica';
+import { LEAD_PREVENTIVO_SELECT } from './lead-preventivo-api';
+import type { LeadPreventivo } from './soggetto-preventivo';
+import type { CondizioniCommercialiLead } from './lead-condizioni-commerciali';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/integrations/supabase/types';
 
 /**
  * Creazione lead: unica via applicativa.
  * Replica la logica storicamente inline nel dialog "Nuovo lead":
  * insert su `lead` (stato "nuovo") + riga di storico stato_da:null → stato_a:"nuovo".
  */
-export type CreaLeadInput = {
+export type CreaLeadInput = Partial<CondizioniCommercialiLead> & {
   tipo_soggetto?: "azienda" | "persona_fisica";
   ragione_sociale?: string | null;
   nome?: string | null;
@@ -35,7 +40,7 @@ export type CreaLeadInput = {
   notaStorico?: string;
 };
 
-export async function creaLead(input: CreaLeadInput): Promise<{ id: string }> {
+export async function creaLead(input: CreaLeadInput, client: SupabaseClient<Database> = supabase): Promise<LeadPreventivo> {
   const payload = {
     tipo_soggetto: input.tipo_soggetto ?? "azienda",
     ragione_sociale: t(input.ragione_sociale),
@@ -60,13 +65,17 @@ export async function creaLead(input: CreaLeadInput): Promise<{ id: string }> {
     note: t(input.note),
     stato: "nuovo" as const,
     created_by: input.createdBy ?? null,
+    ...(input.listino_rif !== undefined ? { listino_rif: input.listino_rif } : {}),
+    ...(input.macrocategoria_rif !== undefined ? { macrocategoria_rif: t(input.macrocategoria_rif) } : {}),
+    ...(input.categoria_rif !== undefined ? { categoria_rif: t(input.categoria_rif) } : {}),
+    ...(input.condizione_pagamento_cod !== undefined ? { condizione_pagamento_cod: t(input.condizione_pagamento_cod) } : {}),
   };
 
-  const { data, error } = await supabase.from("lead").insert(payload).select("id").single();
+  const { data, error } = await client.from("lead").insert(payload).select(LEAD_PREVENTIVO_SELECT).single();
   if (error) throw error;
   if (!data) throw new Error("Creazione lead non riuscita");
 
-  await supabase.from("lead_storico").insert({
+  await client.from("lead_storico").insert({
     lead_id: data.id,
     stato_da: null,
     stato_a: "nuovo",
@@ -74,5 +83,5 @@ export async function creaLead(input: CreaLeadInput): Promise<{ id: string }> {
     nota: input.notaStorico ?? "Lead creato",
   });
 
-  return { id: data.id };
+  return data;
 }

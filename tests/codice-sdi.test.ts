@@ -1,6 +1,5 @@
 import { expect, test } from 'bun:test';
 import { normalizzaCodiceSdi, avvisoCodiceSdi } from '../src/lib/codice-sdi';
-import { campiLeadRapido } from '../src/lib/soggetto-preventivo';
 
 test('SDI: maiuscolo e senza spazi, anche incollando', () => {
   expect(normalizzaCodiceSdi(' ab c\t12\n34 ')).toBe('ABC1234');
@@ -13,11 +12,9 @@ test('SDI: sette caratteri non richiedono avviso', () => {
 });
 test('SDI: codice incompleto segnala solo un avviso e viene mantenuto', () => {
   expect(avvisoCodiceSdi('ab')).toBe(true);
-  expect(campiLeadRapido({ nome: 'Persona', store_id: null, codice_sdi: ' ab ' }, null).codice_sdi).toBe('AB');
 });
-test('SDI: vuoto/null/assente ammessi, salvataggio rapido null', () => {
+test('SDI: vuoto/null/assente ammessi, normalizzazione vuota', () => {
   for (const v of ['', '  ', null, undefined]) {
     expect(normalizzaCodiceSdi(v)).toBe(''); expect(avvisoCodiceSdi(v)).toBe(false);
   }
-  expect(campiLeadRapido({ nome: 'Persona', store_id: null }, null).codice_sdi).toBeNull();
 });

@@ -29,8 +29,13 @@ import { creaLead } from "@/lib/lead-crea";
 import { LIMITE_IDENTIFICATIVO_LEAD } from '@/lib/lead-anagrafica';
 import { CampoCodiceSdi } from './campo-codice-sdi';
 import { cercaDuplicati, DEDUP_CAMPO_LABEL, type DedupMatch } from "@/lib/lead-dedup";
+import { LeadCondizioniCommerciali } from './lead-condizioni-commerciali';
+import { RiquadroAnagrafica } from '@/components/ui/riquadro-anagrafica';
+import { campiCondizioniCommercialiLead, condizioniLeadMancanti, type CondizioniCommercialiLead } from '@/lib/lead-condizioni-commerciali';
+import { puoConsultarePreventivi } from '@/lib/permessi-preventivi';
+import type { LeadPreventivo } from '@/lib/soggetto-preventivo';
 
-type Form = {
+type Form = CondizioniCommercialiLead & {
   tipo_soggetto: "azienda" | "persona_fisica";
   ragione_sociale: string;
   nome: string;
@@ -62,21 +67,32 @@ const EMPTY: Form = {
   fonte: "manuale", fonte_dettaglio: "",
   tipo_lead: "potenziale_cliente", priorita: "media",
   store_id: "", agente_codice: "", note: "",
+  listino_rif: null, macrocategoria_rif: null, categoria_rif: null, condizione_pagamento_cod: null,
 };
 
 const NESSUNO = "__none__";
 
-export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
+export function NuovoLeadDialog({ onClose, origine = "altro", sedeIniziale, onCreato }: {
+  onClose: () => void; origine?: "preventivo" | "altro"; sedeIniziale?: string | null;
+  onCreato?: (lead: LeadPreventivo) => void;
+}) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { user, roles, profilo } = useAuth();
   // Agente senza ruoli di gestione: il lead è sempre assegnato a sé stesso (RLS lo richiede).
   const agenteVincolato = roles.includes("agente") && !puoGestireLead(roles as string[]);
   const mioCodiceAgente = profilo?.codice_agente ?? null;
-  // FM56: per lo showroom la sede è la sua, precompilata e non modificabile (policy lead 0141).
+  // Fuori dal documento resta il vincolo storico; dal preventivo la sede proposta è modificabile.
+  // La policy lead conserva comunque il perimetro di sedi autorizzate dell'utente.
   const soloShowroom = isSoloShowroom(roles as string[]);
-  const sedeShowroom = soloShowroom ? (profilo?.store_id ?? null) : null;
-  const [f, setF] = useState<Form>(EMPTY);
+  const sedeVincolata = soloShowroom && origine !== "preventivo";
+  const sedeShowroom = sedeVincolata ? (profilo?.store_id ?? null) : null;
+  const [f, setF] = useState<Form>(() => ({ ...EMPTY, store_id: sedeIniziale ?? "" }));
+  const [riferimentoAttivo, setRiferimentoAttivo] = useState(origine === "preventivo");
+  const condizioniVisibili = origine === "preventivo" || puoConsultarePreventivi(roles);
+  const mancanti = condizioniLeadMancanti(origine, f);
+  const riferimentoIncompleto = condizioniVisibili && riferimentoAttivo &&
+    (f.listino_rif == null || !f.macrocategoria_rif || !f.categoria_rif);
   const [duplicati, setDuplicati] = useState<DedupMatch[]>([]);
   const [checking, setChecking] = useState(false);
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setF((p) => ({ ...p, [k]: v }));
@@ -134,6 +150,7 @@ export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
 
   const mut = useMutation({
     mutationFn: () => {
+      if (mancanti.length) throw new Error(`Completa: ${mancanti.join(", ")}.`);
       if (agenteVincolato && !mioCodiceAgente) {
         throw new Error("Profilo senza codice agente: contatta l'amministrazione");
       }
@@ -161,10 +178,19 @@ export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
         note: f.note,
         createdBy: user?.id ?? null,
         notaStorico: "Lead creato manualmente",
+        ...campiCondizioniCommercialiLead(roles, riferimentoAttivo, f),
       });
     },
 
     onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["lead-lista"] });
+      qc.invalidateQueries({ queryKey: ["lead-preventivo-search"] });
+      if (origine === "preventivo") {
+        onCreato?.(data);
+        toast.success("Lead creato e selezionato");
+        onClose();
+        return;
+      }
       toast.success("Lead creato", {
         description:
           "Prossimo passo: aggiungi un contatto-persona nella scheda del lead per raccogliere privacy e consensi marketing.",
@@ -185,7 +211,7 @@ export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
   });
 
   return (
-    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+    <DialogContent className="w-[calc(100vw-2rem)] max-w-3xl min-w-0 max-h-[90dvh] overflow-y-auto overflow-x-hidden [&>*]:min-w-0 [&_input]:min-h-10 [&_button:not([role=switch])]:min-h-10 [&_button[role=combobox]]:h-auto [&_button[role=combobox]>span]:whitespace-normal [&_button[role=combobox]>span]:break-words">
       <DialogHeader>
         <DialogTitle>Nuovo lead</DialogTitle>
         <DialogDescription>
@@ -315,14 +341,14 @@ export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
         </div>
         <div>
           <Label className="text-xs">Sede</Label>
-          <Select value={f.store_id || NESSUNO} onValueChange={(v) => set("store_id", v === NESSUNO ? "" : v)} disabled={soloShowroom}>
+          <Select value={f.store_id || NESSUNO} onValueChange={(v) => set("store_id", v === NESSUNO ? "" : v)} disabled={sedeVincolata}>
             <SelectTrigger><SelectValue placeholder="Nessuna" /></SelectTrigger>
             <SelectContent>
               <SelectItem value={NESSUNO}>Nessuna</SelectItem>
               {(stores ?? []).map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
             </SelectContent>
           </Select>
-          {soloShowroom && !sedeShowroom && (
+          {sedeVincolata && !sedeShowroom && (
             <p className="mt-1 text-xs text-destructive">
               Profilo senza sede: contatta l'amministrazione
             </p>
@@ -355,9 +381,16 @@ export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
         </div>
       </div>
 
+      {condizioniVisibili && <RiquadroAnagrafica tono="arancio">
+        <h3 className="mb-3 text-sm font-semibold">Condizioni commerciali di riferimento</h3>
+        <LeadCondizioniCommerciali modifica obbligatorio={origine === "preventivo"} valori={f}
+          onAttivo={setRiferimentoAttivo} onValori={patch => setF(p => ({ ...p, ...patch }))} />
+        {mancanti.length > 0 && <p role="alert" className="mt-2 text-xs text-destructive">Per creare il lead dal preventivo, completa: {mancanti.join(", ")}.</p>}
+      </RiquadroAnagrafica>}
+
       <DialogFooter>
         <Button variant="outline" onClick={onClose}>Annulla</Button>
-        <Button disabled={!valido || mut.isPending || (agenteVincolato && !mioCodiceAgente) || (soloShowroom && !sedeShowroom)} onClick={() => mut.mutate()}>
+        <Button disabled={!valido || mancanti.length > 0 || riferimentoIncompleto || mut.isPending || (agenteVincolato && !mioCodiceAgente) || (sedeVincolata && !sedeShowroom)} onClick={() => mut.mutate()}>
           {mut.isPending && <Loader2 className="size-4 animate-spin mr-1" />}
           Crea lead
         </Button>

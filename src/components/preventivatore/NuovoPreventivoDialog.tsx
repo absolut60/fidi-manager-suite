@@ -3,7 +3,7 @@ import { CondizioniClienteGamma } from "@/components/preventivatore/CondizioniCl
 import { CondizionePagamentoRichiestaSelect } from "@/components/condizione-pagamento-richiesta-select";
 import { campiSedePreventivo, risolviSedePreventivo, riallineaValidita, validitaProposta } from "@/lib/preventivo-creazione";
 import { creaConPrimoBlocco } from "@/lib/nuovo-preventivo";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -26,7 +26,7 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { SoggettoPreventivoPicker } from "./SoggettoPreventivoPicker";
-import { campiSoggettoPreventivo, riferimentoVuoto, type SoggettoPreventivo } from "@/lib/soggetto-preventivo";
+import { campiSoggettoPreventivo, condizioniDaLeadPreventivo, riferimentoVuoto, type SoggettoPreventivo } from "@/lib/soggetto-preventivo";
 import { campiRiferimentoPreventivo } from "@/lib/condizioni-riferimento";
 import type { SoggettoTabPreventivi } from "@/lib/preventivi-soggetto";
 import { LEAD_PREVENTIVO_SELECT } from "@/lib/lead-preventivo-api";
@@ -70,6 +70,19 @@ export function NuovoPreventivoDialog({
   const profiloCodiceAgente = profilo ? (profilo as unknown as Record<string, unknown>).codice_agente as string | null | undefined : undefined;
   const writeOnlyMissingCodice = mancaCodiceAgenteScrittura(roles, profiloCodiceAgente);
 
+  // Unico percorso sia per soggettoIniziale sia per scelta/creazione nel picker.
+  const scegliSoggetto = useCallback((v: SoggettoPreventivo | null) => {
+    setSoggetto(v);
+    setClienteId(v?.tipo === "cliente" ? v.id : null);
+    setCantiereId(null);
+    if (v?.tipo === "lead") {
+      const condizioni = condizioniDaLeadPreventivo(v.lead, roles, profiloCodiceAgente);
+      setRiferimento(condizioni.riferimento);
+      setPagamento(condizioni.pagamento);
+      setAgenteId(condizioni.agente);
+    }
+  }, [isWriteOnly, profiloCodiceAgente, roles]);
+
   const leadIniziale = useQuery({
     queryKey: ["lead-preventivo-iniziale", soggettoIniziale?.id],
     enabled: open && soggettoIniziale?.tipo === "lead",
@@ -82,17 +95,12 @@ export function NuovoPreventivoDialog({
   useEffect(() => {
     if (!open || !soggettoIniziale) return;
     if (soggettoIniziale.tipo === "cliente") {
-      setSoggetto({ tipo: "cliente", id: soggettoIniziale.id });
-      setClienteId(soggettoIniziale.id);
+      scegliSoggetto({ tipo: "cliente", id: soggettoIniziale.id });
     } else if (leadIniziale.data) {
       const lead = leadIniziale.data;
-      setSoggetto({ tipo: "lead", id: lead.id, lead });
-      setClienteId(null);
-      setRiferimento({ listino_rif: lead.listino_rif, macrocategoria_rif: lead.macrocategoria_rif, categoria_rif: lead.categoria_rif });
-      setPagamento(lead.condizione_pagamento_cod ?? "");
-      if (!isWriteOnly) setAgenteId(lead.agente_codice ?? (roles.includes("agente") ? profiloCodiceAgente ?? null : null));
+      scegliSoggetto({ tipo: "lead", id: lead.id, lead });
     }
-  }, [open, soggettoIniziale?.tipo, soggettoIniziale?.id, leadIniziale.data]);
+  }, [open, soggettoIniziale?.tipo, soggettoIniziale?.id, leadIniziale.data, scegliSoggetto]);
 
   const { data: agenti = [] } = useQuery({ queryKey: ["agenti"], queryFn: fetchAgenti });
 
@@ -225,10 +233,7 @@ export function NuovoPreventivoDialog({
           {isOrdine && <div className="grid gap-1.5"><Label htmlFor="nuovo-ordine-data-consegna">Data di consegna</Label><Input id="nuovo-ordine-data-consegna" type="date" value={dataConsegna} onChange={e => setDataConsegna(e.target.value)} /></div>}
           <div className="grid gap-1.5">
             <Label>Soggetto *</Label>
-            {soggettoIniziale?.tipo === "lead" && leadIniziale.isPending ? <p className="text-sm text-muted-foreground">Caricamento lead…</p> : soggettoIniziale?.tipo === "lead" && leadIniziale.error ? <p role="alert" className="text-sm text-destructive">{leadIniziale.error.message}</p> : <SoggettoPreventivoPicker key={soggettoIniziale?.id} value={soggetto} riferimento={riferimento} onRiferimento={setRiferimento} consentiLead sedeId={filiale || null} onChange={v => {
-              setSoggetto(v); setClienteId(v?.tipo === "cliente" ? v.id : null); setCantiereId(null);
-              if (v?.tipo === "lead") { setPagamento(v.lead.condizione_pagamento_cod ?? ""); if (!isWriteOnly) setAgenteId(v.lead.agente_codice ?? (roles.includes("agente") ? profiloCodiceAgente ?? null : null)); }
-            }}/>}
+            {soggettoIniziale?.tipo === "lead" && leadIniziale.isPending ? <p className="text-sm text-muted-foreground">Caricamento lead…</p> : soggettoIniziale?.tipo === "lead" && leadIniziale.error ? <p role="alert" className="text-sm text-destructive">{leadIniziale.error.message}</p> : <SoggettoPreventivoPicker key={soggettoIniziale?.id} value={soggetto} riferimento={riferimento} onRiferimento={setRiferimento} consentiLead sedeId={filiale || null} onChange={scegliSoggetto}/>}
           </div>
           <div className="grid gap-1.5">
             <Label>Cantiere</Label>

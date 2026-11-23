@@ -1,3 +1,8 @@
+# FM98 — Fetta 4
+- [x] Maschera lead completa condivisa, condizioni obbligatorie solo dal preventivo, selezione e copia uniche; nessuno schema.
+- [x] 1438 test verdi, Playwright 320–1920 e ruoli manage/write/responsabile showroom; rapporto fm98-fetta4.md.
+- [ ] Collaudo autenticato sul database ospitato: nessun account corrispondente ad Andrea disponibile; prove browser con risposte locali intercettate, nessuna scrittura reale.
+
 # FM98 — Fetta 3
 - [x] A: migrazione 0273 + 0274 per revocare privilegi anon ereditati; schema/policy/pg_proc verificati prima di B; gate esistente e ACL RPC invariati.
 - [x] B: note cliente nel Piede, libreria per linea, duplicazione/alternative e PDF cliente.
