@@ -70,7 +70,7 @@ test("chiaviFiscaliGrafo: segnaposto esclusi, centro escluso, persone incluse", 
 });
 
 test("riepilogoGruppoMade: stesso cliente da due chiavi contato una volta, questo cliente separato", () => {
-  const c = (chiave: string, id: string, fido: number, questo = false): ClienteMadeGrafo => ({ chiave, cliente_id: id, ragione_sociale: id, codice: null, sede: null, fido, esposizione: 100, scaduto: 10, scaduto_oltre_60: 5, bloccato: false, in_gestione_legale: false, visibile: true, e_questo_cliente: questo });
+  const c = (chiave: string, id: string, fido: number, questo = false): ClienteMadeGrafo => ({ chiave, cliente_id: id, ragione_sociale: id, codice: null, sede: null, fido, esposizione: 100, scaduto: 10, scaduto_oltre_60: 5, bloccato: false, in_gestione_legale: false, visibile: true, e_questo_cliente: questo, chiave_centro: false });
   const r = riepilogoGruppoMade([c("A", "1", 1000), c("B", "1", 1000), c("C", "2", 500), c("D", "3", 200, true)]);
   expect(r.altri).toEqual({ clienti: 2, fido: 1500, esposizione: 200, scaduto: 20, scaduto_oltre_60: 10 });
   expect(r.questo).toEqual({ clienti: 1, fido: 200, esposizione: 100, scaduto: 10, scaduto_oltre_60: 5 });

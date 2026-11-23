@@ -25,6 +25,7 @@ import { letturaReportCerved, SOGLIE_LETTURA_CERVED } from "@/lib/cerved-lettura
 import { VisualizzatorePdf } from "@/components/visualizzatore-pdf";
 import { GaugeCerved } from "@/components/cerved/gauge-cerved";
 import { EsponentiSocietaCerved } from "@/components/cerved/esponenti-societa";
+import { GrafoCollegatiCerved } from "@/components/cerved/grafo-collegati-cerved";
 import { nomiEventiRelazionatiCerved, eventiSoggettiCerved } from "@/lib/cerved-collegati";
 import { ProcedureAttiCerved } from "@/components/cerved/procedure-atti-cerved";
 import { useLightReportEntita, chiaveLightReportEntita } from "@/hooks/use-light-report-cliente";
@@ -114,6 +115,7 @@ export function SchedaCervedEntita({ entita, id, partitaIva, fidoMade, esposizio
     <VistaCerved
       dati={{ ...q.data, foto: { ...q.data.foto, light_report: lr.data ?? null } }}
       clienteId={clienteId}
+      idEntita={id}
       entita={entita}
       datiMade={entita === "cliente"}
       fidoMade={fidoMade}
@@ -132,10 +134,12 @@ function Riquadro({ children }: { children: React.ReactNode }) {
 }
 
 /** Parte solo presentazionale (riusabile con dati finti). Impianto della prima pagina del Light Report. */
-export function VistaCerved({ dati, clienteId, entita = "cliente", datiMade = true, fidoMade, puoAggiornare, inCorso, onAggiorna, barraReport, esposizione, pagina = false }: {
+export function VistaCerved({ dati, clienteId, idEntita, entita = "cliente", datiMade = true, fidoMade, puoAggiornare, inCorso, onAggiorna, barraReport, esposizione, pagina = false }: {
   pagina?: boolean;
   /** null per il lead: usato solo dalle parti MADE. */
   clienteId: string | null; entita?: EntitaCerved; datiMade?: boolean;
+  /** Id del cliente o del lead (grafico dei collegamenti). */
+  idEntita?: string | null;
   esposizione?: number | null; dati: DatiCervedCliente; fidoMade: number | null | undefined; puoAggiornare: boolean;
   inCorso: boolean; onAggiorna: () => void; barraReport?: React.ReactNode;
 }) {
@@ -366,6 +370,7 @@ export function VistaCerved({ dati, clienteId, entita = "cliente", datiMade = tr
           </div>
         </Sezione>
         {lr && <ProcedureAttiCerved voci={vociProcedureAtti(lr)} />}
+        {lr && <GrafoCollegatiCerved lr={lr} entita={entita} id={idEntita ?? clienteId} pagina />}
         {lr && <EsponentiSocietaCerved esponenti={lr.esponenti} societa={lr.societa_collegate} persone={ev.persone} atecoCliente={a.ateco_2025_codice} eventiPerCf={eventiSogg.perCf} altriConEventi={eventiSogg.altri} pagina />}
 
         {altriDati}
@@ -481,6 +486,7 @@ export function VistaCerved({ dati, clienteId, entita = "cliente", datiMade = tr
         </div>
       </Sezione>
       {lr && <ProcedureAttiCerved voci={vociProcedureAtti(lr)} />}
+      {lr && <GrafoCollegatiCerved lr={lr} entita={entita} id={idEntita ?? clienteId} />}
         {lr && <EsponentiSocietaCerved esponenti={lr.esponenti} societa={lr.societa_collegate} persone={ev.persone} atecoCliente={a.ateco_2025_codice} eventiPerCf={eventiSogg.perCf} altriConEventi={eventiSogg.altri} />}
 
       {/* E) Altri dati */}

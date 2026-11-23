@@ -4,8 +4,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { BLOCCO_LETTURE_CERVED, ultimoLightReportDiEntita } from "./cerved-letture";
 import type { EntitaCerved } from "./cerved-entita";
 import type { LightReportCerved } from "./cerved.server";
-import { chiaveFiscaleValida, chiaviFiscaliGrafo, costruisciGrafoCerved, type ClienteMadeGrafo } from "../cerved-grafo";
-import { FIDO_CLIENTE_SELECT, getFidoAttuale } from "../fido-cliente";
+import { chiaveFiscaleValida, chiaviFiscaliGrafo, componiClientiGrafo, costruisciGrafoCerved, type ClienteMadeGrafo } from "../cerved-grafo";
+import { FIDO_CLIENTE_SELECT } from "../fido-cliente";
 
 const schema = z.object({ entita: z.enum(["cliente", "lead"]), id: z.string().uuid() });
 type Contesto = { supabase: any };
@@ -20,7 +20,8 @@ export async function eseguiDatiMadeGrafoCerved(entita: EntitaCerved, id: string
   if (!lr) return { clienti: [] };
   const a = lr.anagrafica;
   const grafo = costruisciGrafoCerved(lr, { nome: a?.denominazione ?? null, partita_iva: a?.partita_iva ?? null, codice_fiscale: a?.codice_fiscale ?? null });
-  const chiavi = chiaviFiscaliGrafo(grafo.nodi);
+  const chiaviCentro = [...new Set([chiaveFiscaleValida(a?.partita_iva), chiaveFiscaleValida(a?.codice_fiscale)].filter((k): k is string => !!k))];
+  const chiavi = [...new Set([...chiaviFiscaliGrafo(grafo.nodi), ...chiaviCentro])];
   if (!chiavi.length) return { clienti: [] };
 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -45,20 +46,7 @@ export async function eseguiDatiMadeGrafoCerved(entita: EntitaCerved, id: string
     const { data: vis } = await context.supabase.from("clienti").select("id").in("id", b);
     for (const v of vis ?? []) visibili.add(v.id);
   }
-  const insieme = new Set(chiavi);
-  const out: ClienteMadeGrafo[] = [];
-  for (const r of righe.values()) {
-    const proprie = [...new Set([chiaveFiscaleValida(r.partita_iva), chiaveFiscaleValida(r.codice_fiscale)].filter((k): k is string => !!k && insieme.has(k)))];
-    const s = scaduti.get(r.id);
-    for (const chiave of proprie) out.push({
-      chiave, cliente_id: r.id, ragione_sociale: r.ragione_sociale ?? null, codice: r.codice_gestionale ?? null,
-      sede: (Array.isArray(r.stores) ? r.stores[0]?.nome : r.stores?.nome) ?? null,
-      fido: getFidoAttuale(r), esposizione: r.totale_rischio == null ? null : Number(r.totale_rischio),
-      scaduto: Number(s?.eur_scaduto ?? 0), scaduto_oltre_60: Number(s?.eur_grave ?? 0),
-      bloccato: !!r.bloccato, in_gestione_legale: !!r.in_gestione_legale,
-      visibile: visibili.has(r.id), e_questo_cliente: entita === "cliente" && r.id === id,
-    });
-  }
+  const out = componiClientiGrafo([...righe.values()], { chiavi, chiaviCentro, scaduti, visibili, entita, id });
   return { clienti: out };
 }
 

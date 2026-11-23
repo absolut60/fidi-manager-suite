@@ -8,6 +8,7 @@ import { eventiSoggettiCerved, nomeEsponenteCerved, raggruppaSocietaCerved, stat
 import { pivaCifre } from "./cerved/cerved-entita";
 import { dataIsoIt } from "./cerved-presentazione";
 import { formatEuro } from "./fidi";
+import { getFidoAttuale } from "./fido-cliente";
 
 export type TipoNodoGrafo = "centro" | "persona" | "societa" | "societa_estera" | "solo_nome";
 export type StatoNodoGrafo = "attiva" | "cessata" | "procedura" | "non_indicato";
@@ -162,7 +163,39 @@ export type ClienteMadeGrafo = {
   chiave: string; cliente_id: string; ragione_sociale: string | null; codice: string | null; sede: string | null;
   fido: number; esposizione: number | null; scaduto: number; scaduto_oltre_60: number;
   bloccato: boolean; in_gestione_legale: boolean; visibile: boolean; e_questo_cliente: boolean;
+  /** Trovato sulle chiavi del centro (P.IVA/CF dell'azienda del report): per il lead = "già cliente MADE". */
+  chiave_centro: boolean;
 };
+
+export type RigaClienteGrafo = {
+  id: string; ragione_sociale: string | null; codice_gestionale: string | null; partita_iva: string | null; codice_fiscale: string | null;
+  totale_rischio: number | string | null; bloccato: boolean | null; in_gestione_legale: boolean | null; fido_gestionale?: number | string | null;
+  stores?: { nome: string | null } | { nome: string | null }[] | null;
+};
+/**
+ * Righe clienti → ClienteMadeGrafo (una per chiave abbinata). Cliente: e_questo_cliente = stesso id.
+ * Lead: e_questo_cliente = trovato sulle chiavi del centro (il lead è già cliente MADE).
+ */
+export function componiClientiGrafo(righe: RigaClienteGrafo[], o: { chiavi: string[]; chiaviCentro: string[]; scaduti: Map<string, { eur_scaduto: number; eur_grave: number }>; visibili: Set<string>; entita: "cliente" | "lead"; id: string }): ClienteMadeGrafo[] {
+  const insieme = new Set(o.chiavi), centro = new Set(o.chiaviCentro);
+  const out: ClienteMadeGrafo[] = [];
+  for (const r of righe) {
+    const proprie = [...new Set([chiaveFiscaleValida(r.partita_iva), chiaveFiscaleValida(r.codice_fiscale)].filter((k): k is string => !!k && insieme.has(k)))];
+    const s = o.scaduti.get(r.id);
+    for (const chiave of proprie) {
+      const chiave_centro = centro.has(chiave);
+      out.push({
+        chiave, cliente_id: r.id, ragione_sociale: r.ragione_sociale ?? null, codice: r.codice_gestionale ?? null,
+        sede: (Array.isArray(r.stores) ? r.stores[0]?.nome : r.stores?.nome) ?? null,
+        fido: getFidoAttuale(r), esposizione: r.totale_rischio == null ? null : Number(r.totale_rischio),
+        scaduto: Number(s?.eur_scaduto ?? 0), scaduto_oltre_60: Number(s?.eur_grave ?? 0),
+        bloccato: !!r.bloccato, in_gestione_legale: !!r.in_gestione_legale, visibile: o.visibili.has(r.id),
+        e_questo_cliente: o.entita === "cliente" ? r.id === o.id : chiave_centro, chiave_centro,
+      });
+    }
+  }
+  return out;
+}
 export type TotaliMade = { clienti: number; fido: number; esposizione: number; scaduto: number; scaduto_oltre_60: number };
 const vuoto = (): TotaliMade => ({ clienti: 0, fido: 0, esposizione: 0, scaduto: 0, scaduto_oltre_60: 0 });
 /** Totali per cliente distinto (cliente_id): "questo cliente" separato dagli altri. */
