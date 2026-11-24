@@ -94,3 +94,9 @@ Arco: famiglia = quote se c'è almeno un legame quote, altrimenti cariche, altri
 - **Dettaglio**: blocco cliente con badge "Cliente N"; blocco "Lead in FidiManager" (ragione sociale, stato, "Apri scheda lead" solo se visibile).
 - **Legenda** (`LegendaGrafo`): PC sempre aperta sotto il grafico; telefono e schermo intero con pulsante "Legenda". Voci: azienda che stai guardando · "Cliente N" · "Lead" · persona · società · eventi negativi/procedure · cessata · quote/soci · cariche · altri incarichi · legame cessato · verso della freccia.
 - **Elenco**: etichetta breve + testo completo sotto in piccolo; badge "Cliente N" o "Lead".
+
+## Schermata — disposizione ampia e trascinamento stabile (FM101)
+- **Disposizione** (`creaSimulazione(grafo, fascia)`): link 160 (200 se un capo ha livello ≥ 2); carica −900 con distanceMax 600; collisione 75 per il centro, 58 per gli altri (spazio per il nome), 2 iterazioni; velocityDecay 0,5. Fascia della tela (`fasciaTela`): larga se w/h ≥ 1,2 (forceX 0,012, forceY 0,05), alta se ≤ 0,8 (0,05 / 0,012), altrimenti normale (0,025 / 0,025). La simulazione si ricrea solo se cambia la firma del grafo o la fascia; posizioni iniziali a cerchio per livello, 300 passi sincroni, poi `sim.stop()`: non riparte mai da sola.
+- **Adatta/Centra**: margini X 80 px, Y −45/+55 px; zoom tra 0,2 e 1,6.
+- **Trascinamento**: nessuna simulazione durante il gesto. Il nodo va sotto il dito/mouse e le sue foglie esclusive (`foglieEsclusive`: vicini con un solo legame, quello col nodo, mai il centro) lo seguono rigidamente; gli altri nodi restano fermi. Al rilascio restano dove lasciati (fx/fy). Clic sotto soglia apre il dettaglio. Pinch, spostamento vista, pulsanti zoom e Ctrl/⌘+rotella invariati.
+- **Riordina**: azzera fx/fy (centro fisso in 0,0), posizioni iniziali, 300 passi sincroni, stop, ridisegno e ricentratura; nessuna animazione.

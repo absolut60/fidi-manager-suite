@@ -100,32 +100,57 @@ type NodoSim = SimulationNodeDatum & { id: string; nodo: NodoGrafo };
 type ArcoSim = SimulationLinkDatum<NodoSim> & { arco: ArcoGrafo };
 const raggio = (n: NodoGrafo) => (n.tipo === "centro" ? 28 : n.tipo === "solo_nome" ? 8 : n.tipo === "persona" ? 14 : 16);
 
-function creaSimulazione(g: GrafoCerved) {
-  const nodi: NodoSim[] = g.nodi.map((n, i) => {
-    const ang = (i / Math.max(1, g.nodi.length)) * Math.PI * 2;
-    return n.tipo === "centro" ? { id: n.id, nodo: n, x: 0, y: 0, fx: 0, fy: 0 } : { id: n.id, nodo: n, x: Math.cos(ang) * 100 * n.livello, y: Math.sin(ang) * 100 * n.livello };
+export type FasciaTela = "larga" | "alta" | "normale";
+export const fasciaTela = (w: number, h: number): FasciaTela => { const r = w / Math.max(1, h); return r >= 1.2 ? "larga" : r <= 0.8 ? "alta" : "normale"; };
+
+/** Vicini del nodo che hanno un solo legame (quello con il nodo) e non sono il centro: lo seguono nel trascinamento. */
+export function foglieEsclusive(idNodo: string, archi: { da: string; a: string }[], idCentro: string | null | undefined): string[] {
+  const gradi = new Map<string, number>();
+  for (const a of archi) { gradi.set(a.da, (gradi.get(a.da) ?? 0) + 1); gradi.set(a.a, (gradi.get(a.a) ?? 0) + 1); }
+  const out = new Set<string>();
+  for (const a of archi) {
+    const v = a.da === idNodo ? a.a : a.a === idNodo ? a.da : null;
+    if (v && v !== idNodo && v !== idCentro && gradi.get(v) === 1) out.add(v);
+  }
+  return [...out];
+}
+
+function posizioniIniziali(nodi: NodoSim[]) {
+  nodi.forEach((n, i) => {
+    const ang = (i / Math.max(1, nodi.length)) * Math.PI * 2;
+    if (n.nodo.tipo === "centro") { n.x = 0; n.y = 0; n.fx = 0; n.fy = 0; } else { n.x = Math.cos(ang) * 100 * n.nodo.livello; n.y = Math.sin(ang) * 100 * n.nodo.livello; n.fx = null; n.fy = null; }
+    n.vx = 0; n.vy = 0;
   });
+}
+
+export function creaSimulazione(g: GrafoCerved, fascia: FasciaTela = "normale") {
+  const nodi: NodoSim[] = g.nodi.map((n) => ({ id: n.id, nodo: n }));
+  posizioniIniziali(nodi);
+  const [fx, fy] = fascia === "larga" ? [0.012, 0.05] : fascia === "alta" ? [0.05, 0.012] : [0.025, 0.025];
   const perId = new Map(nodi.map((n) => [n.id, n]));
   const archi: ArcoSim[] = g.archi.filter((a) => perId.has(a.da) && perId.has(a.a)).map((a) => ({ source: a.da, target: a.a, arco: a }));
   const sim = forceSimulation(nodi)
     .force("link", forceLink<NodoSim, ArcoSim>(archi).id((d) => d.id).distance((l) => {
       const s = l.source as NodoSim, t = l.target as NodoSim;
-      return Math.max(s.nodo.livello, t.nodo.livello) >= 2 ? 130 : 90;
+      return Math.max(s.nodo.livello, t.nodo.livello) >= 2 ? 200 : 160;
     }))
-    .force("carica", forceManyBody().strength(-300))
-    .force("urto", forceCollide<NodoSim>().radius((d) => raggio(d.nodo) + 26))
-    .force("x", forceX(0).strength(0.03)).force("y", forceY(0).strength(0.03))
+    .force("carica", forceManyBody().strength(-900).distanceMax(600))
+    .force("urto", forceCollide<NodoSim>().radius((d) => (d.nodo.tipo === "centro" ? 75 : 58)).iterations(2))
+    .force("x", forceX(0).strength(fx)).force("y", forceY(0).strength(fy))
+    .velocityDecay(0.5)
     .stop();
   for (let i = 0; i < 300; i++) sim.tick();
-  return { sim, nodi, archi };
+  sim.stop();
+  const riordina = () => { posizioniIniziali(nodi); sim.alpha(1); for (let i = 0; i < 300; i++) sim.tick(); sim.stop(); };
+  return { sim, nodi, archi, riordina };
 }
 
 type Vista = { k: number; x: number; y: number };
 function adatta(nodi: NodoSim[], w: number, h: number): Vista {
   if (!nodi.length) return { k: 1, x: w / 2, y: h / 2 };
   const xs = nodi.map((n) => n.x ?? 0), ys = nodi.map((n) => n.y ?? 0);
-  const minX = Math.min(...xs) - 60, maxX = Math.max(...xs) + 60, minY = Math.min(...ys) - 40, maxY = Math.max(...ys) + 50;
-  const k = Math.min(1.1, Math.max(0.2, Math.min(w / (maxX - minX), h / (maxY - minY))));
+  const minX = Math.min(...xs) - 80, maxX = Math.max(...xs) + 80, minY = Math.min(...ys) - 45, maxY = Math.max(...ys) + 55;
+  const k = Math.min(1.6, Math.max(0.2, Math.min(w / (maxX - minX), h / (maxY - minY))));
   return { k, x: w / 2 - ((minX + maxX) / 2) * k, y: h / 2 - ((minY + maxY) / 2) * k };
 }
 
@@ -147,12 +172,13 @@ function TelaGrafo({ grafo, perNodo, perLead, interattivo, schermoIntero = false
   const [dim, setDim] = useState({ w: 800, h: 520 });
   const [, setTick] = useState(0);
   const firma = grafo.nodi.map((n) => n.id).join("|") + "#" + grafo.archi.length;
-  const motore = useMemo(() => creaSimulazione(grafo), [firma]); // eslint-disable-line react-hooks/exhaustive-deps
+  const fascia = fasciaTela(dim.w, dim.h);
+  const motore = useMemo(() => creaSimulazione(grafo, fascia), [firma, fascia]); // eslint-disable-line react-hooks/exhaustive-deps
   const [vista, setVista] = useState<Vista>(() => adatta(motore.nodi, 800, 520));
   const [attivo, setAttivo] = useState<string | null>(null);
   const idFreccia = `freccia-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const puntatori = useRef(new Map<number, { x: number; y: number }>());
-  const gesto = useRef<{ tipo: "nodo" | "vista"; id?: string; x0: number; y0: number; mosso: boolean; vista0: Vista; pinch?: { d: number; k: number } } | null>(null);
+  const gesto = useRef<{ tipo: "nodo" | "vista"; id?: string; x0: number; y0: number; mosso: boolean; vista0: Vista; foglie?: { n: NodoSim; dx: number; dy: number }[]; pinch?: { d: number; k: number } } | null>(null);
 
   useEffect(() => {
     const el = box.current; if (!el) return;
@@ -195,7 +221,14 @@ function TelaGrafo({ grafo, perNodo, perLead, interattivo, schermoIntero = false
       gesto.current = { tipo: "vista", x0: p.x, y0: p.y, mosso: true, vista0: vista, pinch: { d: Math.hypot(a!.x - b!.x, a!.y - b!.y), k: vista.k } };
       return;
     }
-    gesto.current = { tipo: id ? "nodo" : "vista", id, x0: p.x, y0: p.y, mosso: false, vista0: vista };
+    let foglie: { n: NodoSim; dx: number; dy: number }[] | undefined;
+    const n = id ? motore.nodi.find((x) => x.id === id) : undefined;
+    if (n) {
+      const centro = motore.nodi.find((x) => x.nodo.tipo === "centro")?.id;
+      const ids = new Set(foglieEsclusive(n.id, motore.archi.map((a) => a.arco), centro));
+      foglie = motore.nodi.filter((x) => ids.has(x.id)).map((x) => ({ n: x, dx: (x.x ?? 0) - (n.x ?? 0), dy: (x.y ?? 0) - (n.y ?? 0) }));
+    }
+    gesto.current = { tipo: id ? "nodo" : "vista", id, x0: p.x, y0: p.y, mosso: false, vista0: vista, foglie };
   }
   function muovi(e: React.PointerEvent) {
     const g = gesto.current; if (!g || !puntatori.current.has(e.pointerId)) return;
@@ -212,8 +245,9 @@ function TelaGrafo({ grafo, perNodo, perLead, interattivo, schermoIntero = false
     g.mosso = true;
     if (g.tipo === "nodo" && g.id) {
       const n = motore.nodi.find((x) => x.id === g.id); if (!n) return;
-      const w = mondo(p.x, p.y); n.fx = w.x; n.fy = w.y;
-      motore.sim.alphaTarget(0.3).restart();
+      const w = mondo(p.x, p.y); n.x = n.fx = w.x; n.y = n.fy = w.y;
+      for (const f of g.foglie ?? []) { f.n.x = f.n.fx = w.x + f.dx; f.n.y = f.n.fy = w.y + f.dy; }
+      setTick((t) => t + 1);
     } else setVista({ ...g.vista0, x: g.vista0.x + p.x - g.x0, y: g.vista0.y + p.y - g.y0 });
   }
   function su(e: React.PointerEvent) {
@@ -222,9 +256,9 @@ function TelaGrafo({ grafo, perNodo, perLead, interattivo, schermoIntero = false
     if (!g) return;
     if (puntatori.current.size > 0) return;
     gesto.current = null;
-    if (g.tipo === "nodo") { motore.sim.alphaTarget(0); if (!g.mosso && g.id) onApri(g.id); }
+    if (g.tipo === "nodo") { if (!g.mosso && g.id) onApri(g.id); }
   }
-  const riordina = () => { for (const n of motore.nodi) if (n.nodo.tipo !== "centro") { n.fx = null; n.fy = null; } motore.sim.alpha(0.8).alphaTarget(0).restart(); };
+  const riordina = () => { motore.riordina(); setTick((t) => t + 1); setVista(adatta(motore.nodi, dim.w, dim.h)); };
 
   const archiAttivi = (a: ArcoGrafo) => attivo != null && (a.da === attivo || a.a === attivo);
   const attenuato = (n: NodoGrafo) => (evidenziaMade && !perNodo.has(n.id) && n.tipo !== "centro") || (evidenziaEventi && !rosso(n) && n.tipo !== "centro");
