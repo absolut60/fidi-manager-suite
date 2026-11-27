@@ -13,7 +13,7 @@ export type UnitaGammaRiga = { um: string | null; um2: string | null; fattore_co
 
 /** Presentation and edits only: persisted quantities/prices/costs always remain UM1. */
 export function rigaInUnita(
-  riga: ImportoRigaInput & { incidenza?: number | null; costo?: number | null; articolo_codice?: string | null; um?: string | null; um2?: string | null; fattore_conversione?: number | null; um_scelta?: string | null },
+  riga: ImportoRigaInput & AcquistoManuale & { tipo_riga?: string | null; incidenza?: number | null; costo?: number | null; articolo_codice?: string | null; um?: string | null; um2?: string | null; fattore_conversione?: number | null; um_scelta?: string | null },
   gamma?: UnitaGammaRiga | null,
   patch: { quantita?: number | null; incidenza?: number | null; prezzo_unit?: number | null; costo_unit?: number | null } = {},
 ) {
@@ -29,14 +29,13 @@ export function rigaInUnita(
   if ("incidenza" in patch) patchUm1.incidenza = converti(patch.incidenza, "quantita", true);
   if ("prezzo_unit" in patch) patchUm1.prezzo_unit = converti(patch.prezzo_unit, "prezzo", true);
   if ("costo_unit" in patch) patchUm1.costo = patch.costo_unit == null ? null : costoRiga(converti(patch.costo_unit, "prezzo", true), riga.quantita);
-  const q = num(riga.quantita);
   return {
     ...u, secondaria, um: secondaria ? u.um2 : u.um1,
     quantita: converti(riga.quantita == null ? null : num(riga.quantita), "quantita"),
     incidenza: converti(riga.incidenza, "quantita"),
     prezzo_unit: converti(riga.prezzo_unit == null ? null : num(riga.prezzo_unit), "prezzo"),
     netto: converti(prezzoNettoRiga(riga), "prezzo"),
-    costo_unit: converti(riga.costo == null ? null : q > 0 ? num(riga.costo) / q : num(riga.costo), "prezzo"),
+    costo_unit: converti(costoUnitRiga(riga), "prezzo"),
     patchUm1,
   };
 }
@@ -111,6 +110,26 @@ export interface AcquistoManuale {
   acq_magg_perc?: number | null; acq_magg_euro?: number | null;
 }
 
+/** FM101: costo unitario UM1 dalle condizioni d'acquisto della riga; null senza listino. */
+export function costoUnitAcquistoManuale(r: AcquistoManuale): number | null {
+  return r.listino_fornitore == null ? null : nettoAcquistoGamma(num(r.listino_fornitore),
+    [r.acq_sc1 ?? null, r.acq_sc2 ?? null, r.acq_sc3 ?? null], r.acq_magg_perc ?? null, r.acq_magg_euro ?? null);
+}
+
+/**
+ * FM101 — Fonte unica del costo unitario UM1 di riga. Righe manuali: dalle condizioni d'acquisto,
+ * indipendente dalla quantità. Altre righe: costo totale / quantità (o costo se quantità vuota).
+ */
+export function costoUnitRiga(r: AcquistoManuale & { tipo_riga?: string | null; costo?: number | string | null; quantita?: number | string | null }): number | null {
+  if (r.tipo_riga === "manuale") {
+    const u = costoUnitAcquistoManuale(r);
+    if (u != null) return u;
+  }
+  if (r.costo == null) return null;
+  const q = num(r.quantita);
+  return q > 0 ? num(r.costo) / q : num(r.costo);
+}
+
 /** Solo costo: il salvataggio lo usa anche come listino, senza condizioni d'acquisto. */
 export function preparaAcquistoManuale(r: AcquistoManuale, costoUnit: number | null) {
   const conListino = r.listino_fornitore != null;
@@ -122,8 +141,7 @@ export function preparaAcquistoManuale(r: AcquistoManuale, costoUnit: number | n
     acq_magg_euro: conListino ? r.acq_magg_euro ?? null : null,
   };
   const listino_fornitore = r.listino_fornitore ?? costoUnit;
-  return { listino_fornitore, ...condizioni, costo_unit: listino_fornitore == null ? null : nettoAcquistoGamma(listino_fornitore,
-    [condizioni.acq_sc1, condizioni.acq_sc2, condizioni.acq_sc3], condizioni.acq_magg_perc, condizioni.acq_magg_euro) };
+  return { listino_fornitore, ...condizioni, costo_unit: costoUnitAcquistoManuale({ listino_fornitore, ...condizioni }) };
 }
 
 /** Precompila solo slot d'acquisto vuoti; gli sconti di vendita non sono un input. */
@@ -137,11 +155,19 @@ export function importoRiga(r: ImportoRigaInput): number {
 }
 
 /** Margine % sul prezzo netto (con segno), dato il costo totale della riga. */
-export function marginePercRiga(r: ImportoRigaInput & { costo?: number | string | null }): number {
+export function marginePercRiga(r: ImportoRigaInput & AcquistoManuale & { tipo_riga?: string | null; costo?: number | string | null }): number {
   const q = num(r.quantita);
   const netto = prezzoNettoRiga(r) * segnoRiga(r.segno);
-  const costoUnit = q > 0 ? num(r.costo) / q : 0;
+  const manuale = r.tipo_riga === "manuale" ? costoUnitAcquistoManuale(r) : null;
+  const costoUnit = manuale ?? (q > 0 ? num(r.costo) / q : 0);
   return netto !== 0 ? Math.round(((netto - costoUnit) / netto) * 10000) / 100 : 0;
+}
+
+/** FM101: margine per unità, indipendente dalla quantità; null senza costo unitario. */
+export function margineUnitario(netto: number, costoUnit: number | null): { euro: number; perc: number } | null {
+  if (costoUnit == null) return null;
+  const euro = netto - costoUnit;
+  return { euro, perc: netto !== 0 ? Math.round(euro / netto * 10000) / 100 : 0 };
 }
 
 // ---------------------------------------------------------------------------
@@ -267,7 +293,9 @@ type RigaBase = {
   sconti_gamma?: number[] | null; maggiorazione_perc?: number | null; segno?: number | null; costo?: number | null;
   incidenza?: number | null; peso?: number | null; peso_gamma_unit?: number | null;
   ruolo_kit?: string | null;
-};
+} & AcquistoManuale;
+
+const CAMPI_ACQUISTO = ["listino_fornitore", "acq_sc1", "acq_sc2", "acq_sc3", "acq_magg_perc", "acq_magg_euro"] as const;
 
 export type FontePrezzo = "listino" | "cantiere" | "manuale";
 
@@ -301,8 +329,13 @@ export function patchConImporto<P extends Partial<RigaBase>>(riga: RigaBase, pat
     const inc = incidenzaDaQuantita(out.quantita, Qb);
     if (inc != null) out.incidenza = inc;
   }
-  if (!CAMPI_IMPORTO.some((k) => k in out)) return out;
-  if ("quantita" in out && !("costo" in patch) && riga.costo != null) {
+  const unitManuale = tipo === "manuale" ? costoUnitAcquistoManuale({ ...riga, ...patch }) : null;
+  if (!CAMPI_IMPORTO.some((k) => k in out) && !(unitManuale != null && CAMPI_ACQUISTO.some((k) => k in patch))) return out;
+  if (unitManuale != null) {
+    if (!("costo" in patch) && ("quantita" in out || CAMPI_ACQUISTO.some((k) => k in patch))) {
+      out.costo = costoRiga(unitManuale, "quantita" in out ? out.quantita : riga.quantita);
+    }
+  } else if ("quantita" in out && !("costo" in patch) && riga.costo != null) {
     const qVecchia = num(riga.quantita);
     if (qVecchia > 0) out.costo = costoRiga(num(riga.costo) / qVecchia, out.quantita);
   }

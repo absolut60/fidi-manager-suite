@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { codiceArticoloNuovo, LIMITI_GAMMA, validazioneManualeGamma } from "@/lib/esportazione-gamma";
 import { formatNumeroIt, parseNumeroIt } from "@/lib/numero-it";
-import { importoRiga, marginePercRiga, preparaAcquistoManuale, precompilaScontiAcquisto, prezzoNettoRiga, rigaInUnita, type AcquistoManuale } from "@/lib/riga-preventivo";
+import { importoRiga, margineUnitario, preparaAcquistoManuale, precompilaScontiAcquisto, prezzoNettoRiga, rigaInUnita, type AcquistoManuale } from "@/lib/riga-preventivo";
 import { applicaLeva, formatCascata, parseCascata, type LevaPrezzoShowroom } from "@/lib/leve-prezzo-showroom";
 import type { updateRiga } from "@/lib/preventivi-api";
 import type { ArticoloGammaScelto } from "@/components/preventivatore/ArticoloGammaPicker";
@@ -161,8 +161,11 @@ export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch, 
   const patchCosto = rigaInUnita({ ...row, um_scelta: 'um1' }, null, { costo_unit: costoUnit }).patchUm1;
   const anteprima = { ...row, ...(patchLeva ?? {}), costo: numeriValidi ? patchCosto.costo ?? null : row.costo ?? null };
   const importoAnteprima = importoRiga(anteprima);
-  const margineEuro = importoAnteprima - Number(anteprima.costo ?? 0);
-  const marginePerc = marginePercRiga(anteprima);
+  const margineUnit = margineUnitario(prezzoNettoRiga(anteprima) * (anteprima.segno === -1 ? -1 : 1), numeriValidi ? costoUnit : null);
+  const marginePerc = margineUnit?.perc ?? 0;
+  const etichettaUm = um.trim() ? `al ${um.trim()}` : "per unità";
+  const quantitaPresente = row.quantita != null && Number(row.quantita) > 0;
+  const fmt2m = (v: number) => formatNumeroIt(v, { minDecimals: 2, maxDecimals: 2 });
   const fattoreNum = parseNumeroIt(fattore);
   const controlliGamma = validazioneManualeGamma(descrizione, um2, fattoreNum, fattore.trim() !== "");
   const codiceGamma = codiceArticoloNuovo(marca, codice);
@@ -324,7 +327,8 @@ export function ArticoloInDefinizioneDialog({ open, onOpenChange, row, onPatch, 
             <div className="flex flex-wrap gap-2 text-sm">
               <span className="rounded-full bg-muted px-2 py-0.5">Netto € {fmt4(prezzoNettoRiga(anteprima))}</span>
               <span className={marginePerc < 0 ? "rounded-full bg-destructive/10 px-2 py-0.5 text-destructive" : "rounded-full bg-pv-verde-tenue px-2 py-0.5 text-pv-verde"}>
-                Margine € {formatNumeroIt(margineEuro, { minDecimals: 2, maxDecimals: 2 })} · {formatNumeroIt(marginePerc, { minDecimals: 1, maxDecimals: 1 })}%
+                {margineUnit == null ? "Margine —" : <>Margine € {fmt2m(margineUnit.euro)} {etichettaUm} · {formatNumeroIt(margineUnit.perc, { minDecimals: 1, maxDecimals: 1 })}%
+                  {quantitaPresente && <> · totale € {fmt2m(importoAnteprima - Number(anteprima.costo ?? 0))}</>}</>}
               </span>
             </div>
           </div>}

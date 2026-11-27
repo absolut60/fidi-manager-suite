@@ -186,3 +186,11 @@ La tabella `public.cantiere_listini_speciali` contiene prezzi manuali senza date
 - Convenzione cascata: internamente quella di `sconti_gamma` (positivo = sconto, negativo = maggiorazione). Testo con almeno un "-" o che inizia con "+" (F5b, così "+10" = maggiorazione 10): "-" sconto, "+" maggiorazione ("-45+5" → [45, −5]); senza "-" notazione Gamma, tutti sconti ("45+5" → [45, 5]). `fornitori.sconti_base` usa la convenzione interna.
 - Sconto extra (`sconto_perc`) resta sopra tutto, invariato. `fonte_prezzo` delle righe manuali resta 'manuale' (FM69). Importi a 4 decimali (FM63).
 - UI (F5b, solo linee con `articoloInDefinizione`): sezione "Prezzo di vendita" nella finestra della riga manuale con Ricarico %, Sconto dal listino (attivo solo con listino fornitore) e Prezzo; comanda l'ultimo campo modificato, anteprima netto/margine da `prezzoNettoRiga`/`importoRiga`/`marginePercRiga`, salvataggio insieme agli altri campi. Scelta del fornitore: se la cascata è vuota propone `fornitori.sconti_base` (`formatCascata`), senza salvare. La scheda fornitore ha "Scontistica di base". Nelle righe la cella Marg.% mostra anche il margine € (importo − costo) solo per queste linee.
+
+## FM101 — Costo unitario delle righe manuali
+
+- Per le righe `tipo_riga = 'manuale'` con `listino_fornitore` valorizzato il costo unitario UM1 NON dipende dalla quantità: è ricavato dalle condizioni d'acquisto salvate (listino + acq_sc1..3 + acq_magg_perc + acq_magg_euro) da `costoUnitAcquistoManuale` / `costoUnitRiga` (`src/lib/riga-preventivo.ts`). Con "solo costo" il listino coincide con il costo.
+- Il campo `costo` resta il costo TOTALE = costo unitario × quantità; `patchConImporto` lo ricalcola a ogni cambio di quantità o di condizione d'acquisto senza `costo` nel patch.
+- Colonna COSTO, MARG.% (`marginePercRiga`) e `rigaInUnita` usano `costoUnitRiga`; righe Gamma e manuali senza listino invariate (costo/quantità, costo segue la quantità solo se quella vecchia > 0).
+- La finestra "Articolo in definizione" mostra il margine per unità ("Margine € X al mq · Y%", "per unità" senza U.M., "Margine —" senza costo) e, con quantità, il totale.
+- Le righe esistenti con costo 0 si correggono alla prossima modifica di quantità o condizioni d'acquisto; nessun dato riscritto.
