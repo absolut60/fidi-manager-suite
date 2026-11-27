@@ -1,4 +1,5 @@
 # Architecture rules
+- Showroom net edits use levaDaNetto only, verify via prezzoNettoRiga, and share the row hook across table/cards; inverse rigaInUnita conversion happens before the lever so UM1 prices cannot be converted twice.
 - Full lead creation uses NuovoLeadDialog/creaLead everywhere; LeadCondizioniCommerciali shares quote catalogs and controls, while condizioniDaLeadPreventivo and one selection handler initialize both preassigned and newly created subjects, preserving canonical agent restrictions.
 - Customer note permissions and library CRUD live only in note-preventivo (SQL twins auth_legge_note_preventivo/auth_scrive_note_preventivo); NoteClientePreventivo queues blur/library writes through the existing quote save mutation, and one PDF renderer prints after totals before sale conditions, preserving empty-note output.
 - Quote privacy mapping and PDF merge live only in privacy-preventivo, using existing authorized customer/lead reads; GeneraDocumentoDialog stores the merged blob once for preview/download/print/email and never persists the opt-in.

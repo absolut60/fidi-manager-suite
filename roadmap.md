@@ -1,3 +1,7 @@
+# FM101 — Netto modificabile Showroom
+- [x] Leva pura, celle condivise PC/telefono e regole documentate; nessuna migrazione o scrittura dati.
+- [x] Suite 1497 prima / 1506 dopo; browser 320/375/390/768/1280/1920 con salvataggi locali intercettati, schermate 375/1280 controllate, pagina temporanea rimossa. Persistenza autenticata reale non provata: dati reali esclusi dalla richiesta.
+
 # FM98 — Fetta 4
 - [x] Maschera lead completa condivisa, condizioni obbligatorie solo dal preventivo, selezione e copia uniche; nessuno schema.
 - [x] 1438 test verdi, Playwright 320–1920 e ruoli manage/write/responsabile showroom; rapporto fm98-fetta4.md.

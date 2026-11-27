@@ -51,7 +51,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 import { EditableNumberCell } from "@/components/preventivatore/EditableNumberCell";
 import { ArticoloGammaPicker, type ArticoloGammaScelto } from "@/components/preventivatore/ArticoloGammaPicker";
-import { segnoPrezzoCantiere, costoRiga, formatScontiGamma, isIntestazioneKit, margineTotaliRighe, patchConImporto, parseScontiGamma, prezzoNettoRiga, rigaInUnita } from "@/lib/riga-preventivo";
+import { segnoPrezzoCantiere, costoRiga, costoUnitRiga, formatScontiGamma, isIntestazioneKit, margineTotaliRighe, patchConImporto, parseScontiGamma, prezzoNettoRiga, rigaInUnita } from "@/lib/riga-preventivo";
 import { campiRigaGammaPreventivo } from '@/lib/riga-gamma-preventivo';
 import {
   calcolaBlocco, deleteRiga, salvaPatchRigaCalcolata, fractionalOrder, insertRiga, reorderRighe,
@@ -62,7 +62,7 @@ import type { FasciaListino } from "@/lib/articoli-api";
 import { formatNumeroIt } from "@/lib/numero-it";
 import { cn } from "@/lib/utils";
 import { lineaPreventivo } from "@/lib/linee-preventivo";
-import { applicaLeva, ricaricoImplicito } from "@/lib/leve-prezzo-showroom";
+import { applicaLeva, levaDaNetto, nettoShowroomModificabile, ricaricoImplicito } from "@/lib/leve-prezzo-showroom";
 import { isRaccoglitorePosa } from "@/lib/riga-preventivo";
 import { toast } from "sonner";
 import { useIsTablet } from "@/hooks/use-tablet";
@@ -272,7 +272,7 @@ export function RigheTable({
   }
 
   const righeProps = (r: (typeof blocco.righe)[number], idx: number) => ({
-    row: r, tipoDocumento, fornitoreModificabile, solaLetturaGamma,
+    row: r, linea, tipoDocumento, fornitoreModificabile, solaLetturaGamma,
     fornitore: fornitori.data?.get(r.id) ?? null, fornitoreCaricamento: fornitori.isPending, fornitoreErrore: !!fornitori.error,
     onFornitore: async (id: string) => { await salvaFornitore.mutateAsync({ id: r.id, fornitoreId: id }); },
     conMisure, righeStampabili, conBs, articoloInDefinizione, gamma, mostraEvasione,
@@ -462,6 +462,7 @@ function AddRowMenu({
 
 
 type RigaProps = {
+  linea: unknown;
   tipoDocumento: string; fornitoreModificabile: boolean; fornitore: FornitoreOrdine | null;
   fornitoreCaricamento: boolean; fornitoreErrore: boolean; onFornitore: (id: string) => Promise<void>;
   mostraEvasione: boolean;
@@ -574,6 +575,7 @@ function useCelleRiga(p: RigaProps) {
   const isCompact = tipo === "nota" || tipo === "separatore" || intestazioneKit;
   const isSubtotal = tipo === "sotto_totale";
   const valorizzata = !isCompact && !isSubtotal;
+  const nettoModificabile = nettoShowroomModificabile(p.linea, valorizzata, readOnly || p.solaLetturaGamma);
   const isText = tipo === "nota";
   const segno = (row.segno ?? 1) === -1 ? -1 : 1;
   const q = Number(row.quantita ?? 0);
@@ -614,7 +616,7 @@ function useCelleRiga(p: RigaProps) {
   const evasa = statoEvasioneRiga(row).stato === "evasa";
 
   const celle = {
-    tipo, isCompact, isSubtotal, valorizzata, segno, kitSenzaPrezzo,
+    tipo, isCompact, isSubtotal, valorizzata, segno, kitSenzaPrezzo, nettoModificabile,
     articolo,
     codice,
     um: row.articolo_codice || unita.convertibile ? <CellaUm idx={p.idx} um1={unita.um1 ?? unita.um ?? row.um ?? "—"} um2={unita.convertibile ? unita.um2 ?? null : null}
@@ -647,7 +649,18 @@ function useCelleRiga(p: RigaProps) {
       <EditableNumberCell value={row.sconto_perc == null ? null : Number(row.sconto_perc) || null}
         onCommit={(v) => onPatch({ sconto_perc: v ?? 0 })} />
     ),
-    netto: row.prezzo_unit == null ? "—" : fmt4(unita.netto ?? 0),
+    netto: nettoModificabile ? <EditableNumberCell value={unita.netto} decimali={4} ariaLabel="Netto"
+      onCommit={(v) => {
+        if (v == null) { toast.error("Netto non valido"); return; }
+        const nettoUm1 = rigaInUnita(row, row.unita_gamma, { prezzo_unit: v }).patchUm1.prezzo_unit;
+        if (nettoUm1 == null) { toast.error("Netto non valido"); return; }
+        const patch = levaDaNetto({ nettoUm1, prezzoUnit: row.prezzo_unit, sconti: row.sconti_gamma,
+          maggiorazionePerc: row.maggiorazione_perc, scontoPerc: row.sconto_perc,
+          costoUnit: costoUnitRiga(row), levaAttuale: row.leva_prezzo });
+        if (!patch) { toast.error("Netto non valido"); return; }
+        // La leva ha già lavorato in UM1: non riconvertire il prezzo una seconda volta.
+        onPatch(patch);
+      }} /> : row.prezzo_unit == null ? "—" : fmt4(unita.netto ?? 0),
     /** FM75: leva ricarico in riga, stesso applicaLeva della finestra riga (scrive prezzo e azzera gli sconti). */
     ricarico: (
       <EditableNumberCell ariaLabel="Ricarico %" decimali={2}
@@ -916,7 +929,7 @@ function RigaScheda(p: RigaProps) {
           {campo("Prezzo lordo", c.lordo)}
           {campo("Sconti", c.sconti)}
           {p.gamma ? campo("Extra %", c.extra, undefined, "Sconto extra %") : campo("Ricarico %", c.ricarico)}
-          {valore("Netto", c.netto)}
+          {c.nettoModificabile ? campo("Netto", c.netto) : valore("Netto", c.netto)}
           {p.conMisure && campo("Incidenza", c.incidenza)}
           {p.gamma && campo("Magg.%", c.magg)}
           {p.gamma && campo("±", c.segnoSel)}

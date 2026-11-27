@@ -4,6 +4,7 @@
  * (riga-preventivo.ts), margini compresi. Nessun secondo motore prezzi.
  */
 import { MAX_SCONTI_GAMMA, prezzoNettoRiga } from "@/lib/riga-preventivo";
+import { LINEE_PREVENTIVO, lineaPreventivo } from "@/lib/linee-preventivo";
 
 export type LevaPrezzoShowroom = "ricarico" | "sconto_listino" | "prezzo_manuale";
 
@@ -50,6 +51,41 @@ export function applicaLeva(i: InputLeva): PatchLeva | null {
   if (!valido(i.prezzoManuale)) return null;
   const prezzo = round4(i.prezzoManuale);
   return { ...base, prezzo_unit: prezzo, sconti_gamma: [], ricarico: ricaricoImplicito(prezzo, i.costoUnit) };
+}
+
+/** Netto editabile solo sulle righe valorizzate Showroom, rispettando la sola lettura. */
+export function nettoShowroomModificabile(linea: unknown, valorizzata: boolean, solaLettura: boolean): boolean {
+  return lineaPreventivo(linea) === LINEE_PREVENTIVO.showroom && valorizzata && !solaLettura;
+}
+
+/** Scrive le condizioni che producono il netto UM1, senza introdurre un altro motore prezzi. */
+export function levaDaNetto(i: {
+  nettoUm1: number;
+  prezzoUnit: number | null;
+  sconti: readonly number[] | null;
+  maggiorazionePerc?: number | null;
+  scontoPerc?: number | null;
+  costoUnit?: number | null;
+  levaAttuale?: LevaPrezzoShowroom | null;
+}): (Omit<PatchLeva, "leva_prezzo"> & { leva_prezzo: LevaPrezzoShowroom | null }) | null {
+  const condizioni = { maggiorazione_perc: i.maggiorazionePerc ?? 0, sconto_perc: i.scontoPerc ?? 0 };
+  if (!Number.isFinite(condizioni.maggiorazione_perc) || !Number.isFinite(condizioni.sconto_perc)) return null;
+  const f = prezzoNettoRiga({ prezzo_unit: 1, ...condizioni });
+  if (!valido(i.nettoUm1) || i.nettoUm1 < 0 || !Number.isFinite(f) || f <= 0) return null;
+  let patch: Omit<PatchLeva, "leva_prezzo"> & { leva_prezzo: LevaPrezzoShowroom | null };
+  if (i.sconti?.some(s => s !== 0) && valido(i.prezzoUnit) && i.prezzoUnit > 0) {
+    const s = round4((1 - i.nettoUm1 / (i.prezzoUnit * f)) * 100);
+    if (!Number.isFinite(s)) return null;
+    patch = { prezzo_unit: i.prezzoUnit, sconti_gamma: s === 0 ? [] : [s],
+      leva_prezzo: i.levaAttuale ?? null, ricarico: null, fonte_prezzo: "manuale" };
+  } else {
+    const manuale = applicaLeva({ leva: "prezzo_manuale", prezzoManuale: i.nettoUm1 / f, costoUnit: i.costoUnit });
+    if (!manuale) return null;
+    patch = manuale;
+  }
+  const netto = prezzoNettoRiga({ ...patch, ...condizioni });
+  if (!Number.isFinite(netto) || netto < 0) return null;
+  return { ...patch, ricarico: ricaricoImplicito(netto, i.costoUnit) };
 }
 
 /**
